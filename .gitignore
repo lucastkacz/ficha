@@ -1,0 +1,19 @@
+# Build products and generated projects
+.build/
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/
+.swiftpm/
+xcuserdata/
+
+# Lucas's cards live in ~/Library/Application Support/Ficha, never in the repo
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Claude Code: per-machine settings and session worktrees
+.claude/settings.local.json
+.claude/worktrees/
+
+# macOS
+.DS_Store
