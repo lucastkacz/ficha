@@ -1,0 +1,65 @@
+# XcodeGen spec: the source of truth for Ficha.xcodeproj, which is generated
+# (`make project`) and never committed or edited by hand.
+
+name: Ficha
+
+options:
+  bundleIdPrefix: com.lucastkacz
+  deploymentTarget:
+    macOS: "26.0"
+  developmentLanguage: es
+  createIntermediateGroups: true
+  minimumXcodeGenVersion: 2.46.0
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  FichaKit:
+    path: Packages/FichaKit
+
+targets:
+  Ficha:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: FichaKit
+        product: FichaCore
+    settings:
+      base:
+        PRODUCT_NAME: Ficha
+        PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
+        GENERATE_INFOPLIST_FILE: YES
+        # Menu bar only: no Dock icon and no main window.
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Ficha
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        # Xcode 26's defaults for app targets: main actor by default.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        # Personal app: signed to run locally, no sandbox, not notarized.
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+
+schemes:
+  Ficha:
+    build:
+      targets:
+        Ficha: all
+    run:
+      config: Debug
+    archive:
+      config: Release

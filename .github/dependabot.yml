@@ -1,0 +1,14 @@
+# Monthly update PRs. They touch CI or dependencies, so they're labeled
+# risk:high and Lucas merges them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: ["risk:high"]
+  - package-ecosystem: swift
+    directory: /Packages/FichaKit
+    schedule:
+      interval: monthly
+    labels: ["risk:high"]

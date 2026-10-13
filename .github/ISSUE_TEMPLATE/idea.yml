@@ -1,0 +1,16 @@
+name: Idea
+description: Something Ficha could do, or do better. Claude triages it with /triage.
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: The idea, in a few words. Dictating is fine.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What it would improve, if it isn't obvious.
