@@ -1,5 +1,7 @@
 # Ficha's commands. `make check` must pass before every pull request; CI runs it too.
 
+.DEFAULT_GOAL := check
+
 PACKAGE := Packages/FichaKit
 DERIVED := .build/DerivedData
 SWIFT_SOURCES := App $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests
@@ -35,7 +37,8 @@ run: build ## Build and open the app.
 	@pkill -x Ficha || true
 	open $(DERIVED)/Build/Products/Debug/Ficha.app
 
-install: project ## Build a Release copy into /Applications.
+install: project ## Build a Release copy into /Applications, replacing the running app.
 	$(XCODEBUILD) -configuration Release build
+	@pkill -x Ficha || true
 	rm -rf /Applications/Ficha.app
 	cp -R $(DERIVED)/Build/Products/Release/Ficha.app /Applications/

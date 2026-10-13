@@ -9,6 +9,7 @@ options:
     macOS: "26.0"
   developmentLanguage: es
   createIntermediateGroups: true
+  minimumXcodeGenVersion: 2.46.0
 
 settings:
   base:

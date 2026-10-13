@@ -10,7 +10,7 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 
 ## Layers
 
-- `FichaCore` holds the logic as pure functions and value types. It imports only Foundation and the standard library: no AppKit, SwiftUI, GRDB or OS services.
+- `FichaCore` holds the logic as pure functions and value types. It imports only Foundation and the standard library's modules (such as `Synchronization`): no AppKit, SwiftUI, GRDB or OS services.
 - Storage, the CLI and the app stay thin at the edges and call into `FichaCore`.
 - What the OS tells us (camera or microphone in use, idle time, power assertions, full-screen apps) enters through protocols the app implements, so the logic that reacts to it is tested without the OS.
 - The Xcode project is generated from `project.yml`. Never edit `Ficha.xcodeproj`.

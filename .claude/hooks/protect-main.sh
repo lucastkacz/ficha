@@ -1,25 +1,64 @@
 #!/bin/bash
-# Keeps main clean (PreToolUse on Bash). Every change reaches main through a
-# pull request (CLAUDE.md), so a command that would commit or merge while the
-# main branch is checked out is blocked. Pulling with --ff-only, other commands
-# and other branches pass. GitHub's ruleset is the lock on the remote; this hook
-# stops the mistake before it's made locally.
+# Keeps main clean (PreToolUse on Bash and on the terminal panel). Every change
+# reaches main through a pull request (CLAUDE.md), so a git command that would
+# commit, merge or rewrite history on main is blocked: in the command's
+# directory, in any `cd <dir>` or `git -C <dir>` it names, or after it switches
+# to main. `git pull --ff-only` passes: it's how main gets updated. GitHub's
+# ruleset is the lock on the remote; this hook stops the mistake locally, and
+# errs on the side of blocking.
 
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // ""' <<<"$input")
-dir=$(jq -r '.cwd // "."' <<<"$input")
+base=$(jq -r '.cwd // "."' <<<"$input")
+panel_dir=$(jq -r '.tool_input.cwd // ""' <<<"$input")
 
-# git commit|merge|cherry-pick|revert|am|rebase, also as `git -C <dir> ...`.
-pattern='(^|[^[:alnum:]_./-])git[[:space:]]+(-C[[:space:]]+([^[:space:]]+)[[:space:]]+)?(commit|merge|cherry-pick|revert|am|rebase)([[:space:]]|$)'
-[[ $cmd =~ $pattern ]] || exit 0
-if [[ -n ${BASH_REMATCH[3]} ]]; then
-  target=${BASH_REMATCH[3]//[\"\']/}
-  [[ $target == "~"* ]] && target=$HOME${target:1}
-  if [[ $target == /* ]]; then dir=$target; else dir="$dir/$target"; fi
-fi
+resolve() {
+  local path=${1//[\"\']/}
+  path=${path//\$\{CLAUDE_PROJECT_DIR\}/${CLAUDE_PROJECT_DIR:-}}
+  path=${path//\$CLAUDE_PROJECT_DIR/${CLAUDE_PROJECT_DIR:-}}
+  path=${path//\$HOME/$HOME}
+  [[ $path == "~"* ]] && path=$HOME${path:1}
+  [[ $path == /* ]] || path="$base/$path"
+  echo "$path"
+}
 
-branch=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0
-[[ $branch == main ]] || exit 0
+# git, its options, then a subcommand that changes a branch's history.
+changes='(^|[^[:alnum:]_.-])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+(commit|merge|cherry-pick|revert|am|rebase|pull)([[:space:]]|$)'
+switch_to_main='(^|[^[:alnum:]_.-])git[[:space:]]+(switch|checkout)[[:space:]]+main([;&|[:space:]]|$)'
 
-echo "On main nothing is committed or merged: create a branch <issue>-<short-name> and open a pull request (CLAUDE.md)." >&2
-exit 2
+subcommands=()
+rest=$cmd
+while [[ $rest =~ $changes ]]; do
+  subcommands+=("${BASH_REMATCH[4]}")
+  rest=${rest#*"${BASH_REMATCH[0]}"}
+done
+((${#subcommands[@]} > 0)) || exit 0
+
+# Fast-forward pulls are how main is updated.
+only_pulls=1
+for subcommand in "${subcommands[@]}"; do [[ $subcommand == pull ]] || only_pulls=0; done
+((only_pulls)) && [[ $cmd == *--ff-only* ]] && exit 0
+
+block() {
+  echo "On main nothing is committed or merged: create a branch <issue>-<short-name> and open a pull request (CLAUDE.md)." >&2
+  exit 2
+}
+
+[[ $cmd =~ $switch_to_main ]] && block
+
+dirs=("$base")
+[[ -n $panel_dir ]] && dirs+=("$(resolve "$panel_dir")")
+set -f
+words=($cmd)
+set +f
+for ((i = 0; i + 1 < ${#words[@]}; i++)); do
+  case ${words[i]} in
+    -C | cd) dirs+=("$(resolve "${words[i + 1]}")") ;;
+  esac
+done
+
+for dir in "${dirs[@]}"; do
+  branch=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null) || continue
+  [[ $branch == main ]] && block
+done
+exit 0
