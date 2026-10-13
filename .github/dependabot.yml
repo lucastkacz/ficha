@@ -1,0 +1,11 @@
+# Monthly update PRs. They touch CI or dependencies, so they're risk:high: Lucas merges them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: swift
+    directory: /Packages/FichaKit
+    schedule:
+      interval: monthly

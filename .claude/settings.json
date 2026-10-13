@@ -1,0 +1,96 @@
+{
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "3"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git switch *)",
+      "Bash(git branch *)",
+      "Bash(git worktree *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git merge *)",
+      "Bash(git rev-parse *)",
+      "Bash(git push -u origin *)",
+      "Bash(git push origin *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(gh label list *)",
+      "Bash(gh api repos/lucastkacz/ficha/issues/*)",
+      "Bash(make *)",
+      "Bash(swift *)",
+      "Bash(xcodebuild *)",
+      "Bash(xcodegen *)"
+    ],
+    "deny": [
+      "Workflow",
+      "Read(~/Library/Application Support/Ficha/**)",
+      "Edit(~/Library/Application Support/Ficha/**)",
+      "Bash(security *)",
+      "Bash(git push *--force*)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(git push *+*)",
+      "Bash(git push * main)",
+      "Bash(git push *:main)",
+      "Bash(git reset *--hard*)",
+      "Bash(git clean *)",
+      "Bash(gh repo delete *)",
+      "Bash(gh repo edit *)",
+      "Bash(gh issue delete *)",
+      "Bash(gh pr merge *--admin*)",
+      "Bash(gh api *rulesets*)",
+      "Bash(gh api *pulls/*/merge*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-main.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/merge-gate.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/swift-format.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true
+  }
+}
