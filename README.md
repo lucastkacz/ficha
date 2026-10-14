@@ -16,7 +16,7 @@ make install     # installs Ficha in /Applications
 
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
-Ficha Dev's menu also has "Depuración", to try a change in minutes: it loads sample cards, written by hand, and moves Ficha Dev's time forward. Its time keeps running from there, and stays ahead when Ficha Dev restarts. The real Ficha has no such menu and always runs on the system's time.
+Ficha Dev's menu also has "Depuración", to try a change in minutes: it loads sample cards, written by hand, and moves Ficha Dev's time forward. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
 
 ## The `ficha` command
 

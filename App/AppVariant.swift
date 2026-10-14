@@ -42,7 +42,8 @@ enum AppVariant {
 
     /// Whether the app has the debug menu, which loads sample cards and moves
     /// the app's time forward, so Lucas and agents can try a change in minutes.
-    /// Only Ficha Dev has it: the real Ficha always runs on the system's time.
+    /// Only Ficha Dev has it, and its CLI runs on the time the menu moves too:
+    /// the real Ficha and its CLI always run on the system's time.
     var hasDebugMenu: Bool {
         switch self {
         case .dev: true

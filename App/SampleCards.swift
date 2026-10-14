@@ -11,12 +11,11 @@ import Foundation
 enum SampleCards {
     /// Loads the sample cards into the engine's database as new cards, each
     /// approved from a capture of its own, the way refining leaves them, so the
-    /// inbox stays as it was. Loading them again adds them again.
+    /// inbox stays as it was. Every sample is checked before any is saved, so a
+    /// mistake in this file saves none. Loading them again adds them again.
     static func load(into engine: Engine) throws {
-        for sample in sampleCaptures {
-            let cards = try sample.cards.map { card in
-                try card.content(source: sample.source, capture: sample.text)
-            }
+        let samples = try sampleCaptures.map { sample in (sample, try sample.cardContents()) }
+        for (sample, cards) in samples {
             let capture = try engine.capture(text: sample.text, note: nil, source: sample.source)
             try engine.approve(capture.id, into: cards)
         }
@@ -29,6 +28,19 @@ private struct SampleCapture {
     let text: String
     let source: String?
     let cards: [SampleCard]
+
+    /// Its cards as the engine takes them, with its source.
+    func cardContents() throws(SampleCardsError) -> [CardContent] {
+        try cards.map { card throws(SampleCardsError) in
+            guard
+                let content = CardContent(
+                    type: card.type, front: card.front, back: card.back, tags: card.tags, source: source)
+            else {
+                throw .blankSide(capture: text)
+            }
+            return content
+        }
+    }
 }
 
 /// A card a sample capture was approved into.
@@ -43,14 +55,6 @@ private struct SampleCard {
         self.front = front
         self.back = back
         self.tags = tags
-    }
-
-    /// The card as the engine takes it, with its capture's source.
-    func content(source: String?, capture: String) throws(SampleCardsError) -> CardContent {
-        guard let content = CardContent(type: type, front: front, back: back, tags: tags, source: source) else {
-            throw .blankSide(capture: capture)
-        }
-        return content
     }
 }
 
@@ -129,8 +133,8 @@ private let sampleCaptures = [
                 .question,
                 front: "¿Por qué el cielo es azul?",
                 back: """
-                    Porque el aire dispersa mucho más la luz azul, de onda corta, que la roja, y esa luz dispersada te \
-                    llega desde todo el cielo. Se llama dispersión de Rayleigh.
+                    Porque el aire dispersa mucho más la luz azul, de longitud de onda corta, que la roja, y esa luz \
+                    dispersada te llega desde todo el cielo. Se llama dispersión de Rayleigh.
                     """,
                 tags: ["ciencia"]
             )
@@ -151,7 +155,7 @@ private let sampleCaptures = [
             )
         ]
     ),
-    // The longest back, close to the 40 words a back can have.
+    // The longest back: the 40 words a back can have.
     SampleCapture(
         text: "navaja de Ockham",
         source: nil,
@@ -162,7 +166,7 @@ private let sampleCaptures = [
                 back: """
                     Entre dos explicaciones que dan cuenta de lo mismo, conviene preferir la que necesita menos \
                     supuestos. Se atribuye a Guillermo de Ockham, un fraile franciscano inglés del siglo XIV, aunque \
-                    la idea es más antigua.
+                    la idea es más antigua: ya la había planteado Aristóteles.
                     """,
                 tags: ["filosofía"]
             )
@@ -219,8 +223,8 @@ private let sampleCaptures = [
                 .concept,
                 front: "La falacia del costo hundido",
                 back: """
-                    Seguir con algo solo por lo que ya invertiste, aunque no te convenga. Lo gastado no vuelve: decidí \
-                    mirando lo que viene.
+                    Seguir con algo solo por lo que ya invertiste, aunque no te convenga. Lo gastado no vuelve: para \
+                    decidir, mirá lo que viene.
                     """,
                 tags: ["psicología"]
             )

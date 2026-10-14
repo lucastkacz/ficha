@@ -13,7 +13,7 @@ struct DebugMenu: View {
             Divider()
             ForEach(timeSteps, id: \.self) { step in
                 Button("Avanzar \(inWords(step))") {
-                    tools.moveTimeForward(by: step)
+                    moveTimeForward(by: step)
                 }
             }
             Divider()
@@ -23,33 +23,36 @@ struct DebugMenu: View {
 
     /// How far ahead of the system's time Ficha Dev's time is, in words.
     private var timeShiftLine: String {
-        tools.timeShift == 0 ? "El tiempo es el del sistema" : "Tiempo avanzado: \(inWords(tools.timeShift))"
+        tools.timeShift == .zero ? "El tiempo es el del sistema" : "Tiempo avanzado: \(inWords(tools.timeShift))"
     }
 
-    /// Loads the sample cards, and says why when they couldn't be loaded.
     private func loadSampleCards() {
         do {
             try tools.loadSampleCards()
         } catch {
-            let alert = NSAlert()
-            alert.messageText = "No se pudieron cargar las fichas de ejemplo"
-            alert.informativeText = error.localizedDescription
-            alert.addButton(withTitle: "Aceptar")
-            // A menu-bar app isn't active until it's asked to be, and its
-            // alert would open behind the other apps.
-            NSApplication.shared.activate()
-            alert.runModal()
+            showAlert(
+                "No se pudieron cargar las fichas de ejemplo", explaining: error, style: .warning, button: "Aceptar")
+        }
+    }
+
+    private func moveTimeForward(by step: Duration) {
+        do {
+            try tools.moveTimeForward(by: step)
+        } catch {
+            showAlert("No se pudo avanzar el tiempo", explaining: error, style: .warning, button: "Aceptar")
         }
     }
 }
 
 /// How far the debug menu moves time forward at a time: from the 10 minutes an
-/// untouched review panel stays open to the 30 days a learned card waits.
-private let timeSteps: [TimeInterval] = [10 * 60, 60 * 60, 24 * 60 * 60, 7 * 24 * 60 * 60, 30 * 24 * 60 * 60]
+/// untouched review panel stays open to the 30-day step, from which a card is
+/// learned.
+private let timeSteps: [Duration] = [
+    .seconds(10 * 60), .seconds(60 * 60), .seconds(24 * 60 * 60), .seconds(7 * 24 * 60 * 60),
+    .seconds(30 * 24 * 60 * 60),
+]
 
-/// An interval in words, in Spanish, like "1 día y 2 horas".
-private func inWords(_ interval: TimeInterval) -> String {
-    Duration.seconds(interval).formatted(
-        .units(allowed: [.days, .hours, .minutes], width: .wide).locale(Locale(identifier: "es"))
-    )
+/// A span of time in words, in Spanish, like "1 día y 2 horas".
+private func inWords(_ duration: Duration) -> String {
+    duration.formatted(.units(allowed: [.days, .hours, .minutes], width: .wide).locale(Locale(identifier: "es")))
 }
