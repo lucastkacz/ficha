@@ -1,18 +1,28 @@
-import AppKit
 import SwiftUI
 
 /// Ficha lives in the menu bar only: no Dock icon and no main window
 /// (`LSUIElement` in `project.yml`).
 @main
 struct FichaApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     private let variant = AppVariant.current
 
     var body: some Scene {
+        // Without a model, the database couldn't be opened, and the app quits
+        // as soon as it has said why.
         MenuBarExtra(variant.name, systemImage: variant.menuBarSymbol) {
-            Button("Salir") {
-                NSApplication.shared.terminate(nil)
+            if let model = appDelegate.model {
+                MenuContent(model: model)
             }
-            .keyboardShortcut("q")
         }
+        Window("Capturar", id: CaptureView.windowID) {
+            if let model = appDelegate.model {
+                CaptureView(model: model)
+            }
+        }
+        .windowResizability(.contentSize)
+        .windowLevel(.floating)
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
     }
 }

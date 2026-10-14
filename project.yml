@@ -35,6 +35,8 @@ targets:
     dependencies:
       - package: FichaKit
         product: FichaCore
+      - package: FichaKit
+        product: FichaData
     settings:
       base:
         # One module name for both apps below, so the code behaves the same in each.
