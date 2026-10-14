@@ -17,9 +17,9 @@ public final class DebugTimeSource: TimeSource {
     /// Ficha Dev's time in this data folder: `base`, the system's time except
     /// in tests, moved as far as the file there says, or not moved when
     /// there's no file yet.
-    public init(savedIn folder: URL, base: any TimeSource) throws(DebugTimeError) {
+    public init(savedIn folder: URL, base: any TimeSource = SystemTimeSource()) throws(DebugTimeError) {
         self.base = base
-        file = folder.appending(path: "Time shift.json")
+        file = folder.appending(path: fileName)
         shiftInSeconds = Mutex(try savedShift(in: file))
     }
 
@@ -33,9 +33,12 @@ public final class DebugTimeSource: TimeSource {
     }
 
     /// Moves time forward by `step`, in whole seconds, and saves how far ahead
-    /// it is. A move that would take it behind the system's time, or more than
-    /// 100 years ahead, is refused.
+    /// it is. A step back, or one that would take it more than 100 years
+    /// ahead, is refused.
     public func moveForward(by step: Duration) throws(DebugTimeError) {
+        guard step >= .zero else {
+            throw .outOfRange
+        }
         try shiftInSeconds.withLock { shift throws(DebugTimeError) in
             let (moved, overflow) = shift.addingReportingOverflow(step.components.seconds)
             guard !overflow, validShifts.contains(moved) else {
@@ -54,8 +57,7 @@ public enum DebugTimeError: Error, Equatable {
     /// The file next to the database doesn't hold a shift the debug menu
     /// could have saved, so it isn't known what time it is.
     case unreadable
-    /// A move would take the time behind the system's, or more than 100 years
-    /// ahead.
+    /// A move would take the time back, or more than 100 years ahead.
     case outOfRange
     /// The file couldn't be read or saved. FichaData logs why.
     case storage
@@ -66,16 +68,27 @@ extension DebugTimeError: LocalizedError {
         switch self {
         case .unreadable:
             """
-            El archivo «Time shift.json» de la carpeta de Ficha Dev no dice bien cuánto se adelantó su hora, así \
-            que Ficha Dev no sabe qué hora es. Borralo y Ficha Dev vuelve a la hora del sistema.
+            El archivo «\(fileName)» de la carpeta de Ficha Dev no dice bien cuánto se adelantó su hora, así que \
+            Ficha Dev no sabe qué hora es. \(startingOver)
             """
         case .outOfRange:
-            "La hora de Ficha Dev solo avanza, y hasta 100 años: no puede ir más lejos."
+            "La hora de Ficha Dev solo avanza, y hasta 100 años: no puede ir más lejos. \(startingOver)"
         case .storage:
             "Ficha Dev no pudo leer o guardar cuánto adelantó su hora. Probá de nuevo y, si sigue pasando, reportalo."
         }
     }
 }
+
+/// The file in Ficha Dev's data folder that keeps how far its time moved.
+private let fileName = "Time shift.json"
+
+/// What to do when Ficha Dev's time can't go on, as the README says: start
+/// over, with no cards and on the system's time. Only taking the file away
+/// would leave what Ficha Dev saved ahead of its time.
+private let startingOver = """
+    Para empezar de cero, salí de Ficha Dev y mandá su carpeta, ~/Library/Application Support/Ficha Dev/, a la \
+    Papelera.
+    """
 
 /// How far ahead Ficha Dev's time can be, in seconds: up to 100 years, far
 /// beyond any test. A file with a shift outside them wasn't saved by the

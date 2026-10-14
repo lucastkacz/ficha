@@ -61,12 +61,16 @@ final class DebugTimeTests {
         }
     }
 
-    // Otherwise it would save a shift that the next opening refuses.
-    @Test("moving Ficha Dev's time more than 100 years ahead is refused, and leaves it where it was")
-    func movingTooFarIsRefused() throws {
+    // Going back would stamp what Ficha Dev saves behind what it already
+    // saved, and going too far would save a shift the next opening refuses.
+    @Test("moving Ficha Dev's time back, or more than 100 years ahead, is refused, and leaves it where it was")
+    func movingBackOrTooFarIsRefused() throws {
         let time = try DebugTimeSource(savedIn: folder, base: base)
         try time.moveForward(by: .seconds(100 * 365 * 86_400))
 
+        #expect(throws: DebugTimeError.outOfRange) {
+            try time.moveForward(by: .seconds(-60))
+        }
         #expect(throws: DebugTimeError.outOfRange) {
             try time.moveForward(by: .seconds(1))
         }

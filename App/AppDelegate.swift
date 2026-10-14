@@ -12,12 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let variant = AppVariant.current
         guard variant.hasDebugMenu else {
             // The real Ficha always runs on the system's time.
-            let engine = try Engine(location: .folder(variant.dataFolder), time: SystemTimeSource())
-            return AppModel(engine: engine, debugTools: nil)
+            return AppModel(engine: try Engine(location: .folder(variant.dataFolder), time: SystemTimeSource()))
         }
         // Ficha Dev's engine runs on the time its debug menu moves forward.
-        let debugTools = try DebugTools(dataFolder: variant.dataFolder)
-        return AppModel(engine: debugTools.engine, debugTools: debugTools)
+        return AppModel(debugTools: try DebugTools(dataFolder: variant.dataFolder))
     }
 
     /// What the menu and the capture window show, when the database is open.

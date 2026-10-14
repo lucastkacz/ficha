@@ -1,11 +1,10 @@
-import FichaCore
 import FichaData
 import Foundation
 import Observation
 
-/// What Ficha Dev's debug menu does: it loads sample cards and moves Ficha
-/// Dev's time forward. Ficha Dev's engine runs on that time, so everything the
-/// app saves follows it.
+/// Ficha Dev's engine and time, and what its debug menu does with them: it
+/// loads sample cards and moves the time forward. The engine runs on that
+/// time, so everything Ficha Dev saves follows it.
 @Observable
 final class DebugTools {
     /// Ficha Dev's engine, on the time the debug menu moves.
@@ -18,7 +17,7 @@ final class DebugTools {
     /// far ahead as the debug menu left it, so the engine and the menu share
     /// one time.
     init(dataFolder: URL) throws {
-        time = try DebugTimeSource(savedIn: dataFolder, base: SystemTimeSource())
+        time = try DebugTimeSource(savedIn: dataFolder)
         engine = try Engine(location: .folder(dataFolder), time: time)
         timeShift = time.shift
     }

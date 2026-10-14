@@ -32,10 +32,7 @@ private struct SampleCapture {
     /// Its cards as the engine takes them, with its source.
     func cardContents() throws(SampleCardsError) -> [CardContent] {
         try cards.map { card throws(SampleCardsError) in
-            guard
-                let content = CardContent(
-                    type: card.type, front: card.front, back: card.back, tags: card.tags, source: source)
-            else {
+            guard let content = card.content(source: source) else {
                 throw .blankSide(capture: text)
             }
             return content
@@ -55,6 +52,12 @@ private struct SampleCard {
         self.front = front
         self.back = back
         self.tags = tags
+    }
+
+    /// The card as the engine takes it, with its capture's source, or nil when
+    /// its front or back is blank.
+    func content(source: String?) -> CardContent? {
+        CardContent(type: type, front: front, back: back, tags: tags, source: source)
     }
 }
 

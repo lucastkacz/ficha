@@ -9,11 +9,17 @@ struct DebugMenu: View {
 
     var body: some View {
         Menu("Depuración") {
-            Button("Cargar fichas de ejemplo", action: loadSampleCards)
+            Button("Cargar fichas de ejemplo") {
+                attempt("No se pudieron cargar las fichas de ejemplo") {
+                    try tools.loadSampleCards()
+                }
+            }
             Divider()
             ForEach(timeSteps, id: \.self) { step in
                 Button("Avanzar \(inWords(step))") {
-                    moveTimeForward(by: step)
+                    attempt("No se pudo avanzar el tiempo") {
+                        try tools.moveTimeForward(by: step)
+                    }
                 }
             }
             Divider()
@@ -26,20 +32,13 @@ struct DebugMenu: View {
         tools.timeShift == .zero ? "El tiempo es el del sistema" : "Tiempo avanzado: \(inWords(tools.timeShift))"
     }
 
-    private func loadSampleCards() {
+    /// Does `action`, and when it fails, says why in an alert headed by
+    /// `failure`.
+    private func attempt(_ failure: String, _ action: () throws -> Void) {
         do {
-            try tools.loadSampleCards()
+            try action()
         } catch {
-            showAlert(
-                "No se pudieron cargar las fichas de ejemplo", explaining: error, style: .warning, button: "Aceptar")
-        }
-    }
-
-    private func moveTimeForward(by step: Duration) {
-        do {
-            try tools.moveTimeForward(by: step)
-        } catch {
-            showAlert("No se pudo avanzar el tiempo", explaining: error, style: .warning, button: "Aceptar")
+            showAlert(failure, explaining: error, style: .warning, button: "Aceptar")
         }
     }
 }

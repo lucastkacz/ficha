@@ -33,7 +33,7 @@ public struct FichaCommand: ParsableCommand {
             }
             let time: any TimeSource =
                 if runsOnDebugTime {
-                    try DebugTimeSource(savedIn: dataFolder, base: SystemTimeSource())
+                    try DebugTimeSource(savedIn: dataFolder)
                 } else {
                     SystemTimeSource()
                 }
