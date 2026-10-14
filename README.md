@@ -16,6 +16,8 @@ make install     # installs Ficha in /Applications
 
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
+Ficha Dev's menu also has "Depuración", to try a change in minutes: it loads sample cards, written by hand, and moves Ficha Dev's time forward. Its time keeps running from there, and stays ahead when Ficha Dev restarts. The real Ficha has no such menu and always runs on the system's time.
+
 ## The `ficha` command
 
 Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards, and you can capture from a terminal with it:

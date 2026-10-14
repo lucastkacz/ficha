@@ -8,7 +8,17 @@ import FichaData
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The open database, or why it couldn't be opened.
     let opening = Result { () throws(EngineError) -> AppModel in
-        AppModel(engine: try Engine(location: .folder(AppVariant.current.dataFolder), time: SystemTimeSource()))
+        let variant = AppVariant.current
+        let location = DatabaseLocation.folder(variant.dataFolder)
+        guard variant.hasDebugMenu else {
+            // The real Ficha always runs on the system's time.
+            return AppModel(engine: try Engine(location: location, time: SystemTimeSource()), debugTools: nil)
+        }
+        // Ficha Dev runs on the time its debug menu moves forward, and so
+        // does everything the engine does for it.
+        let time = DebugTools.savedTime()
+        let engine = try Engine(location: location, time: time)
+        return AppModel(engine: engine, debugTools: DebugTools(engine: engine, time: time))
     }
 
     /// What the menu and the capture window show, when the database is open.
