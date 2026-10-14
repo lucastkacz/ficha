@@ -53,18 +53,20 @@ targets:
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO
         ENABLE_APP_SANDBOX: NO
-      # Two apps that run side by side, each with its own name and bundle
-      # identifier, and so its own preferences. `AppVariant` holds the rest of
-      # what tells them apart: the menu-bar icon and the data folder.
+      # Two apps that run side by side. Each configuration names its app, gives
+      # it a bundle identifier of its own, and so preferences of its own, and
+      # sets the flag that `AppVariant` reads for its menu-bar icon and data folder.
       configs:
         # Ficha Dev, for development: `make run` builds and opens it.
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_DEV
         # The real Ficha: `make install` puts it in /Applications.
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_REAL
 
 schemes:
   Ficha:

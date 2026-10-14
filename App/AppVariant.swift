@@ -1,23 +1,28 @@
 import Foundation
 
-/// Which app this build is. Debug builds, which `make run` opens, are Ficha Dev:
-/// a separate app, so work in progress never touches the real Ficha or Lucas's
-/// cards. Release builds, which `make install` puts in /Applications, are the
-/// real Ficha. Each app's name and bundle identifier come from `project.yml`, and
-/// the bundle identifier also keeps each app's preferences apart.
+/// Which app this build is: Ficha Dev, for development, or the real Ficha, so
+/// work in progress never touches the real Ficha or Lucas's cards. Each build
+/// configuration in `project.yml` names its app, gives it its own bundle
+/// identifier (and so its own preferences) and sets the flag `current` reads.
 enum AppVariant {
+    /// Ficha Dev, which `make run` builds and opens.
     case dev
+    /// The real Ficha, which `make install` puts in /Applications.
     case real
 
-    /// The app this build is.
+    /// The app this build is. A build that doesn't say doesn't compile, so it
+    /// can never fall back on the real Ficha's data folder.
     static var current: AppVariant {
-        #if DEBUG
+        #if FICHA_DEV
             return .dev
-        #else
+        #elseif FICHA_REAL
             return .real
+        #else
+            #error("This build doesn't say which app it is: set FICHA_DEV or FICHA_REAL in project.yml.")
         #endif
     }
 
+    /// The app's name, the same as its product name in `project.yml`.
     var name: String {
         switch self {
         case .dev: "Ficha Dev"
@@ -37,11 +42,11 @@ enum AppVariant {
     /// Application Support. It's named apart from `name`, so renaming an app never
     /// moves its cards.
     var dataFolder: URL {
-        let folder =
+        let folderName =
             switch self {
             case .dev: "Ficha Dev"
             case .real: "Ficha"
             }
-        return URL.applicationSupportDirectory.appending(path: folder, directoryHint: .isDirectory)
+        return URL.applicationSupportDirectory.appending(path: folderName, directoryHint: .isDirectory)
     }
 }
