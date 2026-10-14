@@ -21,6 +21,21 @@ settings:
     DEAD_CODE_STRIPPING: YES
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    # Personal apps: signed to run locally, not notarized.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+  # Two apps that run side by side, each with its own `ficha` CLI. Each
+  # configuration sets the flag that `AppVariant` reads, in the app and in its
+  # CLI alike, for the menu-bar icon and the data folder.
+  configs:
+    # Ficha Dev, for development: `make run` builds and opens it.
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
+    # The real Ficha: `make install` puts it in /Applications.
+    Release:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
 
 packages:
   FichaKit:
@@ -56,31 +71,22 @@ targets:
         # Xcode 26's defaults for app targets: main actor by default.
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         SWIFT_APPROACHABLE_CONCURRENCY: YES
-        # Personal app: signed to run locally, no sandbox, not notarized.
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGN_STYLE: Manual
-        DEVELOPMENT_TEAM: ""
-        ENABLE_HARDENED_RUNTIME: NO
+        # Personal app: no sandbox.
         ENABLE_APP_SANDBOX: NO
-      # Two apps that run side by side. Each configuration names its app, gives
-      # it a bundle identifier of its own, and so preferences of its own, and
-      # sets the flag that `AppVariant` reads for its menu-bar icon and data folder.
+      # Each configuration names its app and gives it a bundle identifier of
+      # its own, and so preferences of its own.
       configs:
-        # Ficha Dev, for development: `make run` builds and opens it.
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_DEV
-        # The real Ficha: `make install` puts it in /Applications.
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_REAL
 
   # The `ficha` CLI (ADR 0008): its commands live in FichaKit, and this tool
-  # only picks whose cards they open. It's built with each app, with the same
-  # flag, and compiles `AppVariant` too, so the CLI inside Ficha Dev opens
-  # Ficha Dev's cards, and the one inside the real Ficha opens Lucas's.
+  # only picks whose cards they open. It's built with each app, in the same
+  # configuration, and compiles `AppVariant` too, so the CLI inside Ficha Dev
+  # opens Ficha Dev's cards, and the one inside the real Ficha opens Lucas's.
   CLI:
     type: tool
     platform: macOS
@@ -95,15 +101,6 @@ targets:
         PRODUCT_NAME: ficha
         # Built into the app, never installed on its own.
         SKIP_INSTALL: YES
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGN_STYLE: Manual
-        DEVELOPMENT_TEAM: ""
-        ENABLE_HARDENED_RUNTIME: NO
-      configs:
-        Debug:
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_DEV
-        Release:
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_REAL
 
 schemes:
   Ficha:

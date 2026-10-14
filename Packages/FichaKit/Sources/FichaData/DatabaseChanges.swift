@@ -2,8 +2,6 @@ import Foundation
 import notify
 import os
 
-private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "engine")
-
 /// How the engines on one database tell each other that it changed, even from
 /// another process, as the app and the `ficha` CLI are: a Darwin notification
 /// named after the database. SQLite doesn't tell one process about another's

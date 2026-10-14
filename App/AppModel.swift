@@ -12,11 +12,13 @@ final class AppModel {
 
     init(engine: Engine) {
         self.engine = engine
-        countCapturesInInbox()
+        // Listening before counting, so no change falls in between.
         let changes = engine.changes()
+        countCapturesInInbox()
         Task { [weak self] in
             for await _ in changes {
-                self?.countCapturesInInbox()
+                guard let self else { return }
+                countCapturesInInbox()
             }
         }
     }

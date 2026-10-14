@@ -31,10 +31,16 @@ extension Card {
         self.type = type
         front = try row.decode(forColumn: "front")
         back = try row.decode(forColumn: "back")
-        let tagsJSON: String = try row.decode(forColumn: "tags")
-        tags = try JSONDecoder().decode([String].self, from: Data(tagsJSON.utf8))
+        let tagsColumn: String = try row.decode(forColumn: "tags")
+        tags = try JSONDecoder().decode([String].self, from: Data(tagsColumn.utf8))
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
         captureID = try row.decode(forColumn: "captureId")
     }
+}
+
+/// A card's tags as the `card` table keeps them: a JSON array, which
+/// `Card(row:)` reads back.
+func tagsJSON(_ tags: [String]) throws -> String {
+    String(decoding: try JSONEncoder().encode(tags), as: UTF8.self)
 }

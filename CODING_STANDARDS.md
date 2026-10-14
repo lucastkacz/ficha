@@ -33,6 +33,7 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 ## UI
 
 - Every user-facing text is in Spanish.
+- The `ficha` CLI is the exception: its commands, options and JSON fields are in English, as the code names them, and so are swift-argument-parser's own words (ADR 0008). Its help and its messages are in Spanish.
 - Every action has a keyboard path. Icon-only buttons have an accessibility label.
 - Icons are SF Symbols.
 

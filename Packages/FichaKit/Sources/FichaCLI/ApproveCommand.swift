@@ -11,8 +11,7 @@ struct ApproveCommand: EngineCommand {
         commandName: "approve",
         abstract: "Aprueba una captura en una o más fichas, que lee en JSON de la entrada estándar.",
         discussion: """
-            Las fichas son una lista JSON. Cada una tiene type (word, concept, quote o question), front, back, \
-            tags (una lista, que puede estar vacía) y source (null si no tiene). Por ejemplo:
+            Las fichas son una lista JSON. Cada una tiene \(cardFields). Por ejemplo:
 
               ficha approve 12 <<'EOF'
               [{"type": "word", "front": "serendipia",
@@ -39,6 +38,13 @@ struct ApproveCommand: EngineCommand {
         return try engine.approve(captureID, into: cards(in: input))
     }
 }
+
+/// The fields of each card `ficha approve` reads, as its help and its errors
+/// list them.
+private let cardFields = """
+    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "es"))))), \
+    front, back, tags (una lista, que puede estar vacía) y source (null si no tiene)
+    """
 
 /// A card as `ficha approve` reads it. Every field must be there, `source`
 /// too, as null when there's none, so a misspelled field fails instead of
@@ -95,33 +101,34 @@ enum CardsInputError: LocalizedError {
         switch self {
         case .unreadable(let error):
             """
-            No se pudieron leer las fichas: \(problem(error)). Tienen que ser una lista JSON donde cada ficha \
-            tiene type (word, concept, quote o question), front, back, tags y source; mirá `ficha approve --help`.
+            No se pudieron leer las fichas: \(explanation(of: error)). Tienen que ser una lista JSON donde cada \
+            ficha tiene \(cardFields); mirá `ficha approve --help`.
             """
         case .blankSide(let position):
-            "La ficha [\(position)] tiene el frente o el dorso vacío, y una ficha necesita los dos."
+            "La ficha [\(position)] tiene el frente o el dorso vacío: escribí los dos."
         }
     }
 }
 
-/// Where the JSON doesn't fit, and why.
-private func problem(_ error: DecodingError) -> String {
+/// Where the cards' JSON doesn't fit, and why.
+private func explanation(of error: DecodingError) -> String {
     switch error {
     case .keyNotFound(let key, let context):
-        "a la ficha \(place(context.codingPath)) le falta \"\(key.stringValue)\""
+        "a la ficha \(jsonPath(context.codingPath)) le falta \"\(key.stringValue)\""
     case .valueNotFound(_, let context):
-        "\(place(context.codingPath)) es null"
+        "\(jsonPath(context.codingPath)) es null"
     case .typeMismatch(_, let context):
-        context.codingPath.isEmpty ? "no son una lista" : "\(place(context.codingPath)) no es del tipo que corresponde"
+        context.codingPath.isEmpty
+            ? "no son una lista" : "\(jsonPath(context.codingPath)) no es del tipo que corresponde"
     case .dataCorrupted(let context):
-        context.codingPath.isEmpty ? "no son JSON válido" : "\(place(context.codingPath)) no es válido"
+        context.codingPath.isEmpty ? "no son JSON válido" : "\(jsonPath(context.codingPath)) no es válido"
     @unknown default:
         "no tienen la forma que corresponde"
     }
 }
 
 /// A place in the cards' JSON, like `[1].source`, or the list itself.
-private func place(_ path: [any CodingKey]) -> String {
+private func jsonPath(_ path: [any CodingKey]) -> String {
     guard !path.isEmpty else {
         return "la lista"
     }

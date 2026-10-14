@@ -3,7 +3,8 @@ import Foundation
 internal import GRDB
 import os
 
-private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "engine")
+/// The engine's log, for FichaData's files.
+let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "engine")
 
 /// Where the engine keeps the database.
 public enum DatabaseLocation: Sendable {
@@ -27,34 +28,29 @@ public struct Engine: Sendable {
     /// that an older version of Ficha left, it saves a copy of it next to it.
     /// A database that a newer version migrated is refused, and left as it was.
     public init(location: DatabaseLocation, time: any TimeSource) throws(EngineError) {
-        let (database, databaseChanges) = try reportingStorageErrors {
-            () throws -> (any DatabaseWriter, DatabaseChanges) in
-            switch location {
-            case .folder(let folder):
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let file = folder.appending(path: "Ficha.sqlite").path(percentEncoded: false)
-                // The app and the CLI write to the same file, so a write waits
-                // for the other process's to end instead of failing, as GRDB's
-                // guide to sharing a database says.
-                var configuration = Configuration()
-                configuration.busyMode = .timeout(5)
-                return (try DatabasePool(path: file, configuration: configuration), DatabaseChanges(database: file))
-            case .inMemory:
-                return (try DatabaseQueue(), DatabaseChanges(database: "in memory \(UUID().uuidString)"))
+        switch location {
+        case .folder(let folder):
+            let file = folder.appending(path: "Ficha.sqlite")
+            database = try whileNoOtherProcessOpens(file) { () throws(EngineError) in
+                let pool = try reportingStorageErrors {
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    // The app and the CLI write to the same file, so a write
+                    // waits for the other process's to end instead of failing,
+                    // as GRDB's guide to sharing a database says.
+                    var configuration = Configuration()
+                    configuration.busyMode = .timeout(5)
+                    return try DatabasePool(path: file.path(percentEncoded: false), configuration: configuration)
+                }
+                try migrate(pool, savingACopyIn: folder)
+                return pool
             }
+            databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
+        case .inMemory:
+            let queue = try reportingStorageErrors { try DatabaseQueue() }
+            try migrate(queue, savingACopyIn: nil)
+            database = queue
+            databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
         }
-        if try reportingStorageErrors({ try database.read(Schema.migrator.hasBeenSuperseded) }) {
-            logger.error("Refused a database that a newer version of Ficha migrated")
-            throw .migratedByNewerVersion
-        }
-        if case .folder(let folder) = location,
-            let migration = try reportingStorageErrors({ try database.read(firstMigrationToApply) })
-        {
-            try saveCopy(of: database, in: folder, before: migration)
-        }
-        try reportingStorageErrors { try Schema.migrator.migrate(database) }
-        self.database = database
-        self.databaseChanges = databaseChanges
         self.time = time
     }
 
@@ -164,6 +160,43 @@ public struct Engine: Sendable {
     }
 }
 
+/// Runs `work` on `file` while no other process does the same, as GRDB's guide
+/// to sharing a database says: Ficha and its CLI may open the database at the
+/// same time, and both could migrate it, or copy it once it's migrated.
+private func whileNoOtherProcessOpens<Value>(
+    _ file: URL,
+    _ work: () throws(EngineError) -> Value
+) throws(EngineError) -> Value {
+    var result: Result<Value, EngineError>?
+    var coordinationError: NSError?
+    NSFileCoordinator(filePresenter: nil).coordinate(
+        writingItemAt: file,
+        options: .forMerging,
+        error: &coordinationError
+    ) { _ in
+        result = Result(catching: work)
+    }
+    guard let result else {
+        logger.error("Couldn't wait for other processes to open the database: \(String(describing: coordinationError))")
+        throw .storage
+    }
+    return try result.get()
+}
+
+/// Migrates the database to this version's schema. A database that a newer
+/// version migrated is refused, and one that an older version left is copied
+/// into `folder` first, if there's one.
+private func migrate(_ database: any DatabaseWriter, savingACopyIn folder: URL?) throws(EngineError) {
+    if try reportingStorageErrors({ try database.read(Schema.migrator.hasBeenSuperseded) }) {
+        logger.error("Refused a database that a newer version of Ficha migrated")
+        throw .migratedByNewerVersion
+    }
+    if let folder, let migration = try reportingStorageErrors({ try database.read(firstMigrationToApply) }) {
+        try saveCopy(of: database, in: folder, before: migration)
+    }
+    try reportingStorageErrors { try Schema.migrator.migrate(database) }
+}
+
 /// The first migration this version would apply to a database that an older
 /// version left, or nil when the database is new or already up to date.
 private func firstMigrationToApply(_ db: Database) throws -> String? {
@@ -200,11 +233,6 @@ private func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) 
     }
     try db.execute(sql: "UPDATE capture SET refinedAt = ? WHERE id = ?", arguments: [time, captureID])
     return try Capture(row: row)
-}
-
-/// A card's tags as the `card` table keeps them: a JSON array.
-private func tagsJSON(_ tags: [String]) throws -> String {
-    String(decoding: try JSONEncoder().encode(tags), as: UTF8.self)
 }
 
 /// Runs work on the database. The engine's own errors pass through as they
