@@ -37,6 +37,13 @@ targets:
         product: FichaCore
       - package: FichaKit
         product: FichaData
+      # The `ficha` CLI ships inside the app, so the two are always the same
+      # version. It goes in Contents/Helpers, since Contents/MacOS holds the
+      # real Ficha's own `Ficha`, and macOS doesn't tell the two names apart.
+      - target: CLI
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
     settings:
       base:
         # One module name for both apps below, so the code behaves the same in each.
@@ -68,6 +75,34 @@ targets:
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_REAL
+
+  # The `ficha` CLI (ADR 0008): its commands live in FichaKit, and this tool
+  # only picks whose cards they open. It's built with each app, with the same
+  # flag, and compiles `AppVariant` too, so the CLI inside Ficha Dev opens
+  # Ficha Dev's cards, and the one inside the real Ficha opens Lucas's.
+  CLI:
+    type: tool
+    platform: macOS
+    sources:
+      - path: CLI
+      - path: App/AppVariant.swift
+    dependencies:
+      - package: FichaKit
+        product: FichaCLI
+    settings:
+      base:
+        PRODUCT_NAME: ficha
+        # Built into the app, never installed on its own.
+        SKIP_INSTALL: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_DEV
+        Release:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) FICHA_REAL
 
 schemes:

@@ -4,6 +4,8 @@ import Foundation
 /// work in progress never touches the real Ficha or Lucas's cards. Each build
 /// configuration in `project.yml` names its app, gives it its own bundle
 /// identifier (and so its own preferences) and sets the flag `current` reads.
+/// The `ficha` CLI compiles this file too, so the CLI built with each app
+/// opens that app's cards.
 enum AppVariant {
     /// Ficha Dev, which `make run` builds and opens.
     case dev

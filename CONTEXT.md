@@ -50,6 +50,14 @@ _Avoid_: merge, append
 Turning what waits in the inbox into finished cards, in a Claude session Lucas starts. Claude drafts each change following the content guide, and Lucas approves it.
 _Avoid_: process, generate, import
 
+**Approve** (_aprobar_):
+Turning a capture into the cards Lucas accepted for it, which takes it out of the inbox.
+_Avoid_: accept, save
+
+**Discard** (_descartar_):
+Taking a capture out of the inbox without turning it into cards.
+_Avoid_: delete, reject
+
 **Content guide** (_guía de contenido_):
 The written rules Claude follows to draft cards: what each type holds, how long it is and how it's worded.
 _Avoid_: style guide, template, prompt

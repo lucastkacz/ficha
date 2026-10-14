@@ -2,7 +2,7 @@ import FichaData
 import Observation
 
 /// The app's way into Lucas's cards: it goes through the engine and keeps what
-/// the menu shows up to date.
+/// the menu shows up to date, whether the app or the `ficha` CLI changed it.
 @Observable
 final class AppModel {
     private let engine: Engine
@@ -13,12 +13,18 @@ final class AppModel {
     init(engine: Engine) {
         self.engine = engine
         countCapturesInInbox()
+        let changes = engine.changes()
+        Task { [weak self] in
+            for await _ in changes {
+                self?.countCapturesInInbox()
+            }
+        }
     }
 
     /// Saves a capture in the inbox, as the capture window's fields hold it.
+    /// The menu counts it when the engine says the database changed.
     func capture(text: String, note: String, source: String) throws(EngineError) {
         try engine.capture(text: text, note: note, source: source)
-        countCapturesInInbox()
     }
 
     private func countCapturesInInbox() {

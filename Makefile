@@ -4,7 +4,7 @@
 
 PACKAGE := Packages/FichaKit
 DERIVED := .build/DerivedData
-SWIFT_SOURCES := App $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests
+SWIFT_SOURCES := App CLI $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests
 XCODEBUILD := xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
 	-derivedDataPath $(DERIVED) -quiet
 

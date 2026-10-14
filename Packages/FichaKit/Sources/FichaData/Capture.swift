@@ -2,8 +2,9 @@ import Foundation
 internal import GRDB
 
 /// Something Lucas jotted down to turn into cards later: the raw text, with an
-/// optional note and source. It waits in the inbox until it's refined.
-public struct Capture: Sendable {
+/// optional note and source. It waits in the inbox until it's refined. The
+/// `ficha` CLI prints it as JSON, without the note or source it doesn't have.
+public struct Capture: Sendable, Encodable {
     public let id: Int64
     public let text: String
     public let note: String?
