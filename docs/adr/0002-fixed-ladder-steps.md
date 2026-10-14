@@ -4,7 +4,7 @@ Cards are spaced with a Leitner ladder: a fixed list of waits (1 h, 4 h, 2 d, 5 
 
 ## Consequences
 
-- Every review is saved, and the review log is the source of truth: a card's step is worked out from its reviews. The ladder sits behind a `Scheduler` protocol, so a formula can replace it later without losing history.
+- Every first view and review is saved, and that log is the source of truth: a card's step is worked out from it, so a formula could replace the ladder later without losing history.
 - A first view isn't a review: the card always starts on the first step.
 - A review ahead only counts when it's an again. Otherwise a bored afternoon would climb cards without the waits in between.
 - The last step repeats for good: a learned card keeps coming back every 75 days, and Lucas buries the ones he no longer wants.
