@@ -5,8 +5,10 @@ import SwiftUI
 /// (`LSUIElement` in `project.yml`).
 @main
 struct FichaApp: App {
+    private let variant = AppVariant.current
+
     var body: some Scene {
-        MenuBarExtra("Ficha", systemImage: "character.book.closed") {
+        MenuBarExtra(variant.name, systemImage: variant.menuBarSymbol) {
             Button("Salir") {
                 NSApplication.shared.terminate(nil)
             }

@@ -33,11 +33,11 @@ hooks-test: ## Test the Claude Code hooks.
 
 check: lint test build hooks-test ## Everything CI runs.
 
-run: build ## Build and open the app.
-	@pkill -x Ficha || true
-	open $(DERIVED)/Build/Products/Debug/Ficha.app
+run: build ## Build and open Ficha Dev, restarting it; the real Ficha keeps running.
+	@pkill -x "Ficha Dev" || true
+	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 
-install: project ## Build a Release copy into /Applications, replacing the running app.
+install: project ## Build the real Ficha into /Applications, replacing the running one.
 	$(XCODEBUILD) -configuration Release build
 	@pkill -x Ficha || true
 	rm -rf /Applications/Ficha.app

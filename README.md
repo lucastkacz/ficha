@@ -10,8 +10,11 @@ Requires macOS 26 and Xcode 26.
 
 ```bash
 make bootstrap   # installs XcodeGen
-make run         # builds and opens the app
+make run         # builds and opens Ficha Dev, the development app
+make install     # installs Ficha in /Applications
 ```
+
+Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
 ## How it's built
 

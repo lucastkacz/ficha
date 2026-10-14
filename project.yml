@@ -37,12 +37,12 @@ targets:
         product: FichaCore
     settings:
       base:
-        PRODUCT_NAME: Ficha
-        PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
+        # One module name for both apps below, so the code behaves the same in each.
+        PRODUCT_MODULE_NAME: Ficha
         GENERATE_INFOPLIST_FILE: YES
         # Menu bar only: no Dock icon and no main window.
         INFOPLIST_KEY_LSUIElement: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Ficha
+        INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         # Xcode 26's defaults for app targets: main actor by default.
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
@@ -53,6 +53,18 @@ targets:
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO
         ENABLE_APP_SANDBOX: NO
+      # Two apps that run side by side, each with its own name and bundle
+      # identifier, and so its own preferences. `AppVariant` holds the rest of
+      # what tells them apart: the menu-bar icon and the data folder.
+      configs:
+        # Ficha Dev, for development: `make run` builds and opens it.
+        Debug:
+          PRODUCT_NAME: Ficha Dev
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
+        # The real Ficha: `make install` puts it in /Applications.
+        Release:
+          PRODUCT_NAME: Ficha
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
 
 schemes:
   Ficha:
