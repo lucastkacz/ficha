@@ -6,12 +6,26 @@ import Observation
 @Observable
 final class AppModel {
     private let engine: Engine
+    /// What Ficha Dev's debug menu does, or nil in the real Ficha, which has no
+    /// debug menu.
+    let debugTools: DebugTools?
     /// How many captures wait in the inbox, or nil when they couldn't be
     /// counted (the engine logs why).
     private(set) var capturesInInbox: Int?
 
-    init(engine: Engine) {
+    /// The real Ficha's way into Lucas's cards, through `engine`.
+    convenience init(engine: Engine) {
+        self.init(engine: engine, debugTools: nil)
+    }
+
+    /// Ficha Dev's, through the engine its debug tools run on their time.
+    convenience init(debugTools: DebugTools) {
+        self.init(engine: debugTools.engine, debugTools: debugTools)
+    }
+
+    private init(engine: Engine, debugTools: DebugTools?) {
         self.engine = engine
+        self.debugTools = debugTools
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
         countCapturesInInbox()

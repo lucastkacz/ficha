@@ -15,6 +15,10 @@ struct MenuContent: View {
         }
         Divider()
         Text(inboxLine)
+        if let debugTools = model.debugTools {
+            Divider()
+            DebugMenu(tools: debugTools)
+        }
         Divider()
         Button("Salir") {
             NSApplication.shared.terminate(nil)

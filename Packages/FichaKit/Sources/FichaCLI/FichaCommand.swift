@@ -20,8 +20,10 @@ public struct FichaCommand: ParsableCommand {
 
     /// Runs the command in the process's arguments on the database in
     /// `dataFolder`, prints its result as JSON, and exits. A command that
-    /// fails says why on standard error and exits with an error code.
-    public static func main(dataFolder: URL) -> Never {
+    /// fails says why on standard error and exits with an error code. It runs
+    /// on the system's time or, for Ficha Dev's CLI, on the time Ficha Dev's
+    /// debug menu moved forward, as Ficha Dev does.
+    public static func main(dataFolder: URL, runsOnDebugTime: Bool) -> Never {
         do {
             var command = try parseAsRoot()
             guard let engineCommand = command as? any EngineCommand else {
@@ -29,7 +31,13 @@ public struct FichaCommand: ParsableCommand {
                 try command.run()
                 Self.exit()
             }
-            let engine = try Engine(location: .folder(dataFolder), time: SystemTimeSource())
+            let time: any TimeSource =
+                if runsOnDebugTime {
+                    try DebugTimeSource(savedIn: dataFolder)
+                } else {
+                    SystemTimeSource()
+                }
+            let engine = try Engine(location: .folder(dataFolder), time: time)
             print(try json(engineCommand.run(on: engine)))
             Self.exit()
         } catch {

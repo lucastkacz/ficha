@@ -6,9 +6,16 @@ import FichaData
 /// When it can't, the app says why and quits: Ficha doesn't run without its
 /// cards.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// The open database, or why it couldn't be opened.
-    let opening = Result { () throws(EngineError) -> AppModel in
-        AppModel(engine: try Engine(location: .folder(AppVariant.current.dataFolder), time: SystemTimeSource()))
+    /// The open database, or why it couldn't be opened, which in Ficha Dev
+    /// includes not knowing how far its debug menu moved its time.
+    let opening = Result { () throws -> AppModel in
+        let variant = AppVariant.current
+        guard variant.hasDebugMenu else {
+            // The real Ficha always runs on the system's time.
+            return AppModel(engine: try Engine(location: .folder(variant.dataFolder), time: SystemTimeSource()))
+        }
+        // Ficha Dev's engine runs on the time its debug menu moves forward.
+        return AppModel(debugTools: try DebugTools(dataFolder: variant.dataFolder))
     }
 
     /// What the menu and the capture window show, when the database is open.
@@ -18,13 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard case .failure(let error) = opening else { return }
-        let alert = NSAlert()
-        alert.alertStyle = .critical
-        alert.messageText = "\(AppVariant.current.name) no puede abrir tus fichas"
-        alert.informativeText = error.localizedDescription
-        alert.addButton(withTitle: "Salir")
-        NSApplication.shared.activate()
-        alert.runModal()
+        showAlert(
+            "\(AppVariant.current.name) no puede abrir tus fichas", explaining: error, style: .critical, button: "Salir"
+        )
         NSApplication.shared.terminate(nil)
     }
 }

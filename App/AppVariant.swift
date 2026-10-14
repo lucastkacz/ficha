@@ -40,6 +40,17 @@ enum AppVariant {
         }
     }
 
+    /// Whether the app has the debug menu, which loads sample cards and moves
+    /// the app's time forward, so Lucas and agents can try a change in minutes.
+    /// Only Ficha Dev has it, and its CLI runs on the time the menu moves too:
+    /// the real Ficha and its CLI always run on the system's time.
+    var hasDebugMenu: Bool {
+        switch self {
+        case .dev: true
+        case .real: false
+        }
+    }
+
     /// Where the app keeps its data, such as its database: a folder of its own in
     /// Application Support. It's named apart from `name`, so renaming an app never
     /// moves its cards.

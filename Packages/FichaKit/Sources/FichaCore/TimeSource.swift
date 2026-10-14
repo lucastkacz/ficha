@@ -18,7 +18,7 @@ public struct SystemTimeSource: TimeSource {
     public var now: Date { Date() }
 }
 
-/// A time that only moves when told to: for tests, previews and the debug menu.
+/// A time that only moves when told to: for tests and previews.
 public final class ManualTimeSource: TimeSource {
     private let current: Mutex<Date>
 
