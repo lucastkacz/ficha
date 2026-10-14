@@ -2,7 +2,9 @@ internal import GRDB
 
 /// The database's schema, built by versioned migrations in order. A migration
 /// that has shipped never changes: every change to the schema is a new
-/// migration at the end. Changing this file makes a pull request risk:high.
+/// migration at the end. Every migration lives here, where the merge gate
+/// (`.claude/hooks/merge-gate.sh`) watches: changing this file makes a pull
+/// request risk:high.
 enum Schema {
     static let migrator: DatabaseMigrator = {
         var migrator = DatabaseMigrator()

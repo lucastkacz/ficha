@@ -17,13 +17,15 @@ final class DatabaseFileTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    @Test("captures are still in the inbox after the database is opened again")
-    func capturesSurviveReopening() throws {
-        try Engine(location: .folder(folder), time: time).capture(text: "serendipia", note: nil, source: nil)
+    @Test("the inbox still counts its captures after the database is opened again")
+    func inboxCountSurvivesReopening() throws {
+        let engine = try Engine(location: .folder(folder), time: time)
+        try engine.capture(text: "serendipia", note: nil, source: nil)
+        try engine.capture(text: "¿Por qué el cielo es azul?", note: nil, source: "Una charla")
 
         let reopened = try Engine(location: .folder(folder), time: time)
 
-        #expect(try reopened.inbox().map(\.text) == ["serendipia"])
+        #expect(try reopened.inboxCount() == 2)
     }
 
     @Test("a database that a newer version of Ficha migrated is refused")

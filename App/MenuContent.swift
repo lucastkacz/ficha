@@ -24,7 +24,7 @@ struct MenuContent: View {
 
     /// How many captures wait in the inbox, in words.
     private var inboxLine: String {
-        switch model.inboxCount {
+        switch model.capturesInInbox {
         case nil: "No se pudo contar la bandeja"
         case 0: "La bandeja está vacía"
         case 1: "1 captura en la bandeja"

@@ -8,8 +8,8 @@ public enum EngineError: Error, Equatable {
     case migratedByNewerVersion
     /// A capture's text was empty, so there was nothing to save.
     case emptyCapture
-    /// SQLite couldn't open, read or write the database, for the reason given.
-    case storage(String)
+    /// SQLite couldn't open, read or write the database. The engine logs why.
+    case storage
 }
 
 extension EngineError: LocalizedError {
@@ -18,12 +18,12 @@ extension EngineError: LocalizedError {
         case .migratedByNewerVersion:
             """
             Una versión más nueva de Ficha modificó la base de datos, y esta versión no la abre para no dañar \
-            tus fichas. Instalá la versión más nueva de Ficha.
+            tus fichas. Abrila con la versión que la modificó o con una más nueva.
             """
         case .emptyCapture:
             "La captura está vacía: escribí lo que querés recordar."
-        case .storage(let reason):
-            "Ficha no pudo leer o guardar su base de datos (\(reason)). Probá de nuevo y, si sigue pasando, reportalo."
+        case .storage:
+            "Ficha no pudo leer o guardar su base de datos. Probá de nuevo y, si sigue pasando, reportalo."
         }
     }
 }

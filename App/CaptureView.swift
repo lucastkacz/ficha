@@ -1,3 +1,4 @@
+import FichaCore
 import FichaData
 import SwiftUI
 
@@ -36,7 +37,7 @@ struct CaptureView: View {
                 .keyboardShortcut(.cancelAction)
                 Button("Guardar", action: save)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(textIsBlank)
+                    .disabled(!fieldsMakeACapture)
             }
         }
         .textFieldStyle(.roundedBorder)
@@ -56,13 +57,14 @@ struct CaptureView: View {
         }
     }
 
-    /// Whether there's no text to save yet, so "Guardar" waits for it.
-    private var textIsBlank: Bool {
-        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    /// Whether the fields hold a capture yet, by the same rule the engine
+    /// saves it with: until there's text, "Guardar" and Enter wait for it.
+    private var fieldsMakeACapture: Bool {
+        CaptureContent(text: text, note: note, source: source) != nil
     }
 
     private func save() {
-        guard !textIsBlank else { return }
+        guard fieldsMakeACapture else { return }
         do {
             try model.capture(text: text, note: note, source: source)
             dismiss()

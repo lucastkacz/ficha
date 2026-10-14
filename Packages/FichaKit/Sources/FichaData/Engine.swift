@@ -1,6 +1,9 @@
 import FichaCore
 import Foundation
 internal import GRDB
+import os
+
+private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "engine")
 
 /// Where the engine keeps the database.
 public enum DatabaseLocation: Sendable {
@@ -21,7 +24,7 @@ public struct Engine: Sendable {
     /// and migrates it to this version's schema. A database that a newer
     /// version of Ficha migrated is refused, and left as it was.
     public init(location: DatabaseLocation, time: any TimeSource) throws(EngineError) {
-        let database = try storage { () throws -> any DatabaseWriter in
+        let database = try reportingStorageErrors { () throws -> any DatabaseWriter in
             switch location {
             case .folder(let folder):
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -30,28 +33,27 @@ public struct Engine: Sendable {
                 return try DatabaseQueue()
             }
         }
-        if try storage({ try database.read(Schema.migrator.hasBeenSuperseded) }) {
+        if try reportingStorageErrors({ try database.read(Schema.migrator.hasBeenSuperseded) }) {
+            logger.error("Refused a database that a newer version of Ficha migrated")
             throw .migratedByNewerVersion
         }
-        try storage { try Schema.migrator.migrate(database) }
+        try reportingStorageErrors { try Schema.migrator.migrate(database) }
         self.database = database
         self.time = time
     }
 
-    /// Saves a capture in the inbox, without surrounding spaces. A blank note or
-    /// source is left out, and a capture without text isn't saved.
+    /// Saves a capture in the inbox, cleaned up as `CaptureContent` says. A
+    /// capture without text isn't saved.
     public func capture(text: String, note: String?, source: String?) throws(EngineError) {
-        guard let text = nonBlank(text) else {
+        guard let content = CaptureContent(text: text, note: note, source: source) else {
             throw .emptyCapture
         }
-        let note = nonBlank(note)
-        let source = nonBlank(source)
         let createdAt = time.now
-        try storage {
+        try reportingStorageErrors {
             try database.write { db in
                 try db.execute(
                     sql: "INSERT INTO capture (text, note, source, createdAt) VALUES (?, ?, ?, ?)",
-                    arguments: [text, note, source, createdAt]
+                    arguments: [content.text, content.note, content.source, createdAt]
                 )
             }
         }
@@ -59,29 +61,30 @@ public struct Engine: Sendable {
 
     /// The captures waiting in the inbox, oldest first.
     public func inbox() throws(EngineError) -> [Capture] {
-        try storage {
+        try reportingStorageErrors {
             try database.read { db in
                 try Row.fetchAll(db, sql: "SELECT * FROM capture ORDER BY id").map(Capture.init(row:))
             }
         }
     }
-}
 
-/// The value without surrounding spaces, or nil when nothing is left.
-private func nonBlank(_ value: String?) -> String? {
-    guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
-        return nil
+    /// How many captures wait in the inbox.
+    public func inboxCount() throws(EngineError) -> Int {
+        try reportingStorageErrors {
+            try database.read { db in
+                try Table("capture").fetchCount(db)
+            }
+        }
     }
-    return value
 }
 
-/// Runs work on the database, turning what SQLite throws into the engine's error.
-private func storage<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
+/// Runs work on the database. When SQLite fails, it logs why and throws the
+/// engine's error, whose message Lucas can read.
+private func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
     do {
         return try work()
-    } catch let error as EngineError {
-        throw error
     } catch {
-        throw .storage(String(describing: error))
+        logger.error("The database failed: \(String(describing: error))")
+        throw .storage
     }
 }
