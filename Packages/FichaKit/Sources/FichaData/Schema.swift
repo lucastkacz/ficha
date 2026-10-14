@@ -17,6 +17,24 @@ enum Schema {
                 table.column("createdAt", .datetime).notNull()
             }
         }
+        migrator.registerMigration("v2 cards") { db in
+            // A capture leaves the inbox when it's refined, into cards or into
+            // none, and stays in the table, so a card can say where it came from.
+            try db.alter(table: "capture") { table in
+                table.add(column: "refinedAt", .datetime)
+            }
+            try db.create(table: "card") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("type", .text).notNull()
+                table.column("front", .text).notNull()
+                table.column("back", .text).notNull()
+                // A JSON array of strings.
+                table.column("tags", .jsonText).notNull()
+                table.column("source", .text)
+                table.column("createdAt", .datetime).notNull()
+                table.belongsTo("capture").notNull()
+            }
+        }
         return migrator
     }()
 }
