@@ -73,3 +73,17 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - Auto mode refuses Claude's edits to `CLAUDE.md` and `.claude/settings.json`. Ask Lucas to switch the session to manual mode for those edits; never get around it with Bash.
 - Skills, hooks and settings load when a session starts. After changing them, check them in a new session.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues (`lucastkacz/ficha`), through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels, each named after its role: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
