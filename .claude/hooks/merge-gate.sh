@@ -19,9 +19,10 @@ cmd=${cmd##+([[:space:]])}
 cmd=${cmd%%+([[:space:]])}
 repo=${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$input")}
 
-# The risk:high paths. A PR that creates the database schema or migrations, the
-# scheduler or the content guide adds their paths here (CLAUDE.md).
-risky_paths='^(CLAUDE\.md|CODING_STANDARDS\.md|\.claude/|docs/agents/|\.github/workflows/|\.github/dependabot\.yml|Makefile|scripts/|\.swift-format|project\.yml|Packages/FichaKit/Package\.(swift|resolved))'
+# The risk:high paths. Among them, the database schema and its migrations, which
+# all live in FichaData/Schema*. A PR that creates the scheduler or the content
+# guide adds their paths here (CLAUDE.md).
+risky_paths='^(CLAUDE\.md|CODING_STANDARDS\.md|\.claude/|docs/agents/|\.github/workflows/|\.github/dependabot\.yml|Makefile|scripts/|\.swift-format|project\.yml|Packages/FichaKit/Package\.(swift|resolved)|Packages/FichaKit/Sources/FichaData/Schema)'
 
 # `gh` with `merge` later in the same command, in any form or place.
 merge_anywhere='(^|[^[:alnum:]_.-])gh[[:space:]]([^;&|]*[[:space:]])?merge([[:space:]]|$)'
