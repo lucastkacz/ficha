@@ -99,6 +99,27 @@ struct UndoTests {
             try engine.standing(of: cards[0].id, on: settings.ladder) == .onLadder(step: 1, due: time.now + hours(4)))
     }
 
+    // A refine session can fix or unbury a card while the panel is open.
+    @Test("⌘Z doesn't undo a flag or a bury that changed outside the panel, and says so")
+    func undoRefusesWhatChangedOutsideThePanel() throws {
+        let cards = try dueCards("ubuntu", "petricor", "serendipia")
+        var flagging = engine.openPanel(.reviewNow, with: [.review(cards[0]), .review(cards[2])], settings: settings)
+        try flagging.flag(note: note("Falta un ejemplo"))
+        try engine.fix(cards[0].id, with: card(.word, front: "ubuntu", back: "Soy porque somos."))
+        var burying = engine.openPanel(.reviewNow, with: [.review(cards[1]), .review(cards[2])], settings: settings)
+        try burying.bury()
+        try engine.unbury(cards[1].id)
+
+        #expect(throws: EngineError.cannotUndo(cards[0].id)) {
+            try flagging.undo()
+        }
+        #expect(throws: EngineError.cannotUndo(cards[1].id)) {
+            try burying.undo()
+        }
+        #expect(flagging.current == .review(cards[2]))
+        #expect(burying.current == .review(cards[2]))
+    }
+
     /// Approves a word card for each front, in order, and meets them all now,
     /// so that they come due together an hour later, when this moves the
     /// time. Review now brings them in the order given.

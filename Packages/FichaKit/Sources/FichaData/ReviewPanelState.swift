@@ -182,12 +182,34 @@ extension Engine {
     }
 
     /// Undoes `action`, which Lucas did to a card in the review panel, so the
-    /// card stands where it stood before it.
+    /// card stands where it stood before it. His answer leaves the review
+    /// log, as an answer undone never happened, the way Anki's undo deletes it
+    /// too; his flag or burial leaves the card. When the card changed outside
+    /// the panel since, nothing is undone.
     fileprivate func undo(_ action: PanelAction, to cardID: Int64) throws(EngineError) {
-        switch action {
-        case .answered: try undoLastAnswer(to: cardID)
-        case .flagged: try unflag(cardID)
-        case .buried: try unbury(cardID)
+        try write { db in
+            let card = try existingCard(cardID, in: db)
+            switch action {
+            case .answered:
+                // The panel's answer is the card's last entry.
+                try db.execute(
+                    sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ?)",
+                    arguments: [cardID]
+                )
+                guard db.changesCount == 1 else {
+                    throw EngineError.cannotUndo(cardID)
+                }
+            case .flagged:
+                guard card.flag != nil, card.buriedAt == nil else {
+                    throw EngineError.cannotUndo(cardID)
+                }
+                _ = try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
+            case .buried:
+                guard card.buriedAt != nil else {
+                    throw EngineError.cannotUndo(cardID)
+                }
+                _ = try updateCard(cardID, setting: "buriedAt = NULL", in: db)
+            }
         }
     }
 }

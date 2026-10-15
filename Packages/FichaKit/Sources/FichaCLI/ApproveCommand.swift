@@ -25,7 +25,7 @@ struct ApproveCommand: EngineCommand {
     var captureID: Int64
 
     func validate() throws {
-        try requireStandardInput("the cards", for: "approve")
+        try CardsInput.list.requireStandardInput()
     }
 
     func run(on engine: Engine) throws -> any Encodable {

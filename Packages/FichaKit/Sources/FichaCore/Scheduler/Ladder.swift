@@ -46,8 +46,8 @@ public struct Ladder: Sendable, Equatable {
     }
 
     /// How many cards are due at `now`, and how many are learned: on a step
-    /// that waits 30 days or more. Out of every card, by id, and the whole
-    /// review log, in the order it was written.
+    /// that waits 30 days or more. Out of the cards with these ids, and the
+    /// whole review log, in the order it was written.
     public func counts(of cardIDs: [Int64], after log: [ReviewLogEntry], at now: Date) throws(UnexpectedReviewLog)
         -> (due: Int, learned: Int)
     {

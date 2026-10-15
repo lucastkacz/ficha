@@ -25,7 +25,7 @@ struct FixCommand: EngineCommand {
     var cardID: Int64
 
     func validate() throws {
-        try requireStandardInput("the card", for: "fix")
+        try CardsInput.one.requireStandardInput()
     }
 
     func run(on engine: Engine) throws -> any Encodable {

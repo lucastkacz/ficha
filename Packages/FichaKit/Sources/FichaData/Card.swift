@@ -25,7 +25,9 @@ public struct Card: Sendable, Equatable, Encodable {
 
 /// Lucas's flag on a card: his note on what to fix, and when he wrote it.
 public struct Flag: Sendable, Equatable, Encodable {
+    /// What to fix, in his words.
     public let note: String
+    /// When he flagged the card.
     public let flaggedAt: Date
 
     public init(note: String, flaggedAt: Date) {
@@ -65,6 +67,39 @@ extension Card {
 /// Every card, in the order Lucas approved them.
 func allCards(in db: Database) throws -> [Card] {
     try Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id").map(Card.init(row:))
+}
+
+/// The card with this id, as it is now, or an error when there's none.
+func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
+    guard let row = try Table("card").filter(Column("id") == cardID).fetchOne(db) else {
+        throw EngineError.cardNotFound(cardID)
+    }
+    return try Card(row: row)
+}
+
+/// The card with this id, while it's in Lucas's reviews, or an error that
+/// says it's buried or flagged, or that there's no such card.
+func cardInReviews(_ cardID: Int64, in db: Database) throws -> Card {
+    let card = try existingCard(cardID, in: db)
+    guard card.buriedAt == nil else {
+        throw EngineError.cardBuried(cardID)
+    }
+    guard card.flag == nil else {
+        throw EngineError.cardFlagged(cardID)
+    }
+    return card
+}
+
+/// Sets some of a card's columns, as `assignments` say, to `values` in
+/// order, and returns the card as it is then.
+func updateCard(
+    _ cardID: Int64,
+    setting assignments: String,
+    to values: StatementArguments = [],
+    in db: Database
+) throws -> Card {
+    try db.execute(sql: "UPDATE card SET \(assignments) WHERE id = ?", arguments: values + [cardID])
+    return try existingCard(cardID, in: db)
 }
 
 /// The cards in Lucas's reviews, neither flagged nor buried, in the order he

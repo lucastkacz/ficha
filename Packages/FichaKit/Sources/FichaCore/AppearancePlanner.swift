@@ -37,15 +37,15 @@ extension NoAppearance {
 }
 
 extension ReviewSettings {
-    /// Whether the review panel shows up on its own at `now`, out of every
-    /// card, by id in the order Lucas approved them, the whole review log, in
-    /// the order it was written, when the last appearance or review now
-    /// closed, if any did, and what `mac` says. While the Mac and its screens
-    /// are awake, within active hours, by `calendar`'s clock, and once
-    /// `separation` has passed since that closing and `waitAfterWaking` since
-    /// the Mac woke, it shows up once a card is due, or, with nothing due,
-    /// once a new card may come in. It brings the cards review now would,
-    /// along with those due within `lookAhead`.
+    /// Whether the review panel shows up on its own at `now`, out of the cards
+    /// in Lucas's reviews, neither flagged nor buried, by id in the order he
+    /// approved them, the whole review log, in the order it was written, when
+    /// the last appearance or review now closed, if any did, and what `mac`
+    /// says. While the Mac and its screens are awake, within active hours, by
+    /// `calendar`'s clock, and once `separation` has passed since that closing
+    /// and `waitAfterWaking` since the Mac woke, it shows up once a card is
+    /// due, or, with nothing due, once a new card may come in. It brings the
+    /// cards review now would, along with those due within `lookAhead`.
     public func appearance(
         cardIDs: [Int64],
         log: [ReviewLogEntry],

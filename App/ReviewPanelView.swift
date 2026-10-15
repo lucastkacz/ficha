@@ -26,7 +26,7 @@ struct ReviewPanelView: View {
                             closeWindow()
                         }
                     }
-                    .failureAlert(failureTitle(panel.failedAttempt), failure: Bindable(panel).failure)
+                    .failureAlert(Bindable(panel).failure)
             case .failure(let failure):
                 header {
                     VStack(alignment: .leading, spacing: 6) {
@@ -71,7 +71,7 @@ struct ReviewPanelView: View {
             HStack {
                 Spacer()
                 Button(action: panel.endFirstView) {
-                    KeyLabel(title: "Got it", key: "↩")
+                    KeyLabel(title: Text("Got it"), key: "↩")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
@@ -87,7 +87,7 @@ struct ReviewPanelView: View {
                 Spacer()
                 Button(action: panel.flip) {
                     KeyLabel(
-                        title: "Flip",
+                        title: Text("Flip"),
                         key: String(localized: "space", comment: "The Space key's name, next to the button it presses.")
                     )
                 }
@@ -154,12 +154,22 @@ struct ReviewPanelView: View {
             .keyboardShortcut("z", modifiers: .command)
             .disabled(!panel.canUndo)
             .help("Undo (⌘Z)")
-        Button("Flag…", systemImage: "flag", action: panel.startFlagging)
-            .keyboardShortcut("m", modifiers: [])
-            .help("Flag… (m)")
-        Button("Bury", systemImage: "eye.slash", action: panel.bury)
-            .keyboardShortcut("e", modifiers: [])
-            .help("Bury (e)")
+        Button(
+            String(
+                localized: "Flag…",
+                comment: "A button that flags the card the review panel shows, asking for a note on what to fix."),
+            systemImage: "flag", action: panel.startFlagging
+        )
+        .keyboardShortcut("m", modifiers: [])
+        .help(Text("Flag… (m)", comment: "The tooltip of the button that flags the card, with its key."))
+        Button(
+            String(
+                localized: "Bury",
+                comment: "A button that buries the card the review panel shows: it never shows up again."),
+            systemImage: "eye.slash", action: panel.bury
+        )
+        .keyboardShortcut("e", modifiers: [])
+        .help(Text("Bury (e)", comment: "The tooltip of the button that buries the card, with its key."))
     }
 
     /// Where Lucas writes what to fix in the card he flags: Enter flags it,
@@ -180,11 +190,16 @@ struct ReviewPanelView: View {
             .onSubmit(panel.flag)
             HStack {
                 Button(action: panel.cancelFlagging) {
-                    KeyLabel(title: "Cancel", key: "esc")
+                    KeyLabel(
+                        title: Text("Cancel"),
+                        key: String(localized: "esc", comment: "The Esc key's name, next to the button it presses.")
+                    )
                 }
                 .keyboardShortcut(.cancelAction)
                 Button(action: panel.flag) {
-                    KeyLabel(title: "Flag", key: "↩")
+                    KeyLabel(
+                        title: Text("Flag", comment: "The button that flags the card with the note written above it."),
+                        key: "↩")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
@@ -232,34 +247,24 @@ struct ReviewPanelView: View {
         Button {
             panel.rate(rating)
         } label: {
-            KeyLabel(title: title, key: String(key))
+            KeyLabel(title: Text(title), key: String(key))
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
         .keyboardShortcut(KeyEquivalent(key), modifiers: [])
     }
-
-    /// The alert's title when what Lucas tried couldn't be saved.
-    private func failureTitle(_ attempt: ReviewPanelModel.Attempt) -> LocalizedStringKey {
-        switch attempt {
-        case .answer: "Couldn't save your answer"
-        case .flag: "Couldn't flag the card"
-        case .bury: "Couldn't bury the card"
-        case .undo: "Couldn't undo"
-        }
-    }
 }
 
 /// A button's title, followed by the key that does the same, small. The key
-/// shows as it's given: a symbol, a digit, or the Space key's name, which the
-/// caller translates.
+/// shows as it's given: a symbol, a digit, or a key's name, like Space's,
+/// which the caller translates.
 private struct KeyLabel: View {
-    let title: LocalizedStringKey
+    let title: Text
     let key: String
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(title)
+            title
             Text(key)
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -17,11 +17,12 @@ extension Engine {
         }
     }
 
-    /// Records Lucas's answer to a card in the review log: the end of its
-    /// first view, which puts it on the ladder's first step, or a review with
-    /// his rating, which moves it on the ladder of `settings`. A first view is
-    /// only for a new card, and a review only for a due one, or, in an
-    /// appearance, for one due within the look-ahead, which it brings along.
+    /// Records Lucas's answer to a card in his reviews in the review log: the
+    /// end of its first view, which puts it on the ladder's first step, or a
+    /// review with his rating, which moves it on the ladder of `settings`. A
+    /// first view is only for a new card, and a review only for a due one, or,
+    /// in an appearance, for one due within the look-ahead, which it brings
+    /// along.
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
@@ -32,6 +33,7 @@ extension Engine {
         let entry = ReviewLogEntry(
             cardID: cardID, kind: kind, answeredAt: time.now, responseTime: responseTime, trigger: trigger)
         try write { db in
+            _ = try cardInReviews(cardID, in: db)
             let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
             do throws(RefusedAnswer) {
                 try standing.check(
@@ -40,18 +42,6 @@ extension Engine {
                 throw EngineError(refused: error, cardID: cardID)
             }
             try insert(entry, in: db)
-        }
-    }
-
-    /// Takes Lucas's last answer to a card out of the review log, which puts
-    /// the card back where it stood before it: ⌘Z in the review panel, where
-    /// it was the last answer to that card.
-    func undoLastAnswer(to cardID: Int64) throws(EngineError) {
-        try write { db in
-            try db.execute(
-                sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ?)",
-                arguments: [cardID]
-            )
         }
     }
 

@@ -1,5 +1,6 @@
 import FichaCore
 import FichaData
+import Foundation
 import Observation
 
 /// The cards a review now or an appearance brought, as the review panel shows
@@ -29,14 +30,6 @@ final class ReviewPanelModel {
         case done
     }
 
-    /// What Lucas tried to do, when it couldn't be saved.
-    enum Attempt {
-        case answer
-        case flag
-        case bury
-        case undo
-    }
-
     private var state: ReviewPanelState
     private var isFlipped = false
     /// When the panel showed the current card: Lucas's response time runs from
@@ -44,17 +37,15 @@ final class ReviewPanelModel {
     /// it's how long he took, not a time of day, so moving Ficha Dev's time
     /// doesn't change it.
     private var cardShownAt = ContinuousClock.now
-    /// How Lucas left each card he went through, in order: flipped or not,
-    /// and after how long. ⌘Z shows the card that way again, and its response
-    /// time goes on from there.
-    private var leftCards: [(isFlipped: Bool, timeOnCard: Duration)] = []
     /// The note Lucas is writing to flag the current card, while he writes
-    /// it.
-    private(set) var note: String?
-    /// Why what Lucas tried last couldn't be saved, while the panel says so.
-    var failure: EngineError?
-    /// What Lucas tried when it failed.
-    private(set) var failedAttempt = Attempt.answer
+    /// it, and how long he had been on the card when he started: the card's
+    /// response time waits while he writes.
+    private var flagging: (note: String, timeOnCard: Duration)?
+    /// How Lucas left each card he went through, by id: ⌘Z shows it that way
+    /// again.
+    private var visits: [Int64: Visit] = [:]
+    /// What Lucas did that couldn't be saved, while the panel says so.
+    var failure: Failure?
 
     /// The panel for the cards in `state`, which shows them from now on.
     init(_ state: ReviewPanelState) {
@@ -68,7 +59,7 @@ final class ReviewPanelModel {
         guard let current = state.current else {
             return .done
         }
-        if note != nil {
+        if flagging != nil {
             return switch current {
             case .firstView(let card): .flagging(card, showsBack: true)
             case .review(let card): .flagging(card, showsBack: isFlipped)
@@ -78,6 +69,11 @@ final class ReviewPanelModel {
         case .firstView(let card): .firstView(card)
         case .review(let card): isFlipped ? .back(card) : .front(card)
         }
+    }
+
+    /// The note Lucas is writing to flag the card he's on, while he writes it.
+    var note: String? {
+        flagging?.note
     }
 
     /// Whether the panel closed: Lucas went through every card or closed it,
@@ -94,7 +90,7 @@ final class ReviewPanelModel {
 
     /// Whether ⌘Z has something to undo, while Lucas isn't writing a note.
     var canUndo: Bool {
-        state.canUndo && note == nil
+        state.canUndo && flagging == nil
     }
 
     /// Whether the note says what to fix, so the card can be flagged with it.
@@ -113,7 +109,7 @@ final class ReviewPanelModel {
     /// step: "Got it".
     func endFirstView() {
         guard case .firstView = content else { return }
-        goThrough(.answer) { responseTime throws(EngineError) in
+        goThrough(failing: "Couldn't save your answer", after: timeOnCard) { responseTime throws(EngineError) in
             try state.answer(.firstView, responseTime: responseTime)
         }
     }
@@ -121,7 +117,7 @@ final class ReviewPanelModel {
     /// Rates the due card, once flipped, which moves it on the ladder.
     func rate(_ rating: Rating) {
         guard case .back = content else { return }
-        goThrough(.answer) { responseTime throws(EngineError) in
+        goThrough(failing: "Couldn't save your answer", after: timeOnCard) { responseTime throws(EngineError) in
             try state.answer(.review(rating), responseTime: responseTime)
         }
     }
@@ -130,29 +126,32 @@ final class ReviewPanelModel {
     /// what to fix.
     func startFlagging() {
         guard isOnACard else { return }
-        note = ""
+        flagging = ("", timeOnCard)
         state.touch()
     }
 
     /// Takes the note as Lucas writes it, which keeps the panel open.
     func write(note: String) {
-        guard self.note != nil else { return }
-        self.note = note
+        guard flagging != nil else { return }
+        flagging?.note = note
         state.touch()
     }
 
-    /// Stops flagging the card: it stays as it was.
+    /// Stops flagging the card: it stays as it was, and its response time
+    /// goes on from where it waited.
     func cancelFlagging() {
-        note = nil
+        guard let flagging else { return }
+        self.flagging = nil
+        cardShownAt = .now - flagging.timeOnCard
         state.touch()
     }
 
     /// Flags the card with the note, which sends it to the inbox until a
     /// refine session fixes it, and moves on to the next card.
     func flag() {
-        guard let note, let flagNote = FlagNote(note) else { return }
-        goThrough(.flag) { _ throws(EngineError) in
-            try state.flag(note: flagNote)
+        guard let flagging, let note = FlagNote(flagging.note) else { return }
+        goThrough(failing: "Couldn't flag the card", after: flagging.timeOnCard) { _ throws(EngineError) in
+            try state.flag(note: note)
         }
     }
 
@@ -160,7 +159,7 @@ final class ReviewPanelModel {
     /// good, and moves on to the next card.
     func bury() {
         guard isOnACard else { return }
-        goThrough(.bury) { _ throws(EngineError) in
+        goThrough(failing: "Couldn't bury the card", after: timeOnCard) { _ throws(EngineError) in
             try state.bury()
         }
     }
@@ -168,16 +167,16 @@ final class ReviewPanelModel {
     /// Undoes what Lucas did with the last card he went through, and shows it
     /// again as he left it: ⌘Z.
     func undo() {
-        guard canUndo, let left = leftCards.last else { return }
+        guard canUndo else { return }
         do {
             try state.undo()
         } catch {
-            fail(.undo, error)
+            failure = Failure(title: "Couldn't undo", error: error)
             return
         }
-        leftCards.removeLast()
-        isFlipped = left.isFlipped
-        cardShownAt = .now - left.timeOnCard
+        guard let card = state.current?.card, let visit = visits[card.id] else { return }
+        isFlipped = visit.showedBack
+        cardShownAt = .now - visit.timeOnCard
     }
 
     /// Notes that Lucas clicked the panel, which gives it the keyboard.
@@ -209,30 +208,37 @@ final class ReviewPanelModel {
         }
     }
 
-    /// Does what Lucas asked with the card he's on, given how long he's been
-    /// on it, which moves the panel on to the next card, and notes how he left
-    /// it for ⌘Z. When it can't be saved, the card stays, and the panel says
-    /// why.
+    /// How long Lucas has been on the current card.
+    private var timeOnCard: Duration {
+        ContinuousClock.now - cardShownAt
+    }
+
+    /// Does what Lucas asked with the card he's on, after `timeOnCard` on it,
+    /// which moves the panel on to the next card, and notes how he left the
+    /// card, for ⌘Z. When it can't be saved, the card stays, and the panel
+    /// says why under `title`.
     private func goThrough(
-        _ attempt: Attempt,
+        failing title: LocalizedStringResource,
+        after timeOnCard: Duration,
         doing action: (_ responseTime: Duration) throws(EngineError) -> Void
     ) {
-        let timeOnCard = ContinuousClock.now - cardShownAt
+        guard let card = state.current?.card else { return }
         do {
             try action(timeOnCard)
         } catch {
-            fail(attempt, error)
+            failure = Failure(title: title, error: error)
             return
         }
-        leftCards.append((isFlipped, timeOnCard))
+        visits[card.id] = Visit(showedBack: isFlipped, timeOnCard: timeOnCard)
         isFlipped = false
-        note = nil
+        flagging = nil
         cardShownAt = .now
     }
+}
 
-    /// Says that `attempt` couldn't be saved, and why.
-    private func fail(_ attempt: Attempt, _ error: EngineError) {
-        failedAttempt = attempt
-        failure = error
-    }
+/// How Lucas left a card he went through in the review panel: whether its
+/// back showed, and how long he had been on it.
+private struct Visit {
+    let showedBack: Bool
+    let timeOnCard: Duration
 }

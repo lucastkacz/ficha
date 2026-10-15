@@ -40,10 +40,11 @@ struct BuryingTests {
         #expect(try engine.reviewLog() == log)
     }
 
-    @Test("an unburied card goes back to its step in Lucas's reviews")
+    @Test("an unburied card goes back to its step in Lucas's reviews, and counts again")
     func anUnburiedCardGoesBackToItsStep() throws {
+        // serendipia gets to the 30-day step, from which a card is learned.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 1, movingForward: time)
+        try engine.climb(serendipia, to: 5, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
         try engine.bury(serendipia.id)
         time.advance(by: days(30))
@@ -53,6 +54,9 @@ struct BuryingTests {
         #expect(unburied.buriedAt == nil)
         #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
         #expect(try engine.reviewNow(settings) == [.review(unburied)])
+        let progress = try engine.progress(settings)
+        #expect(progress.due == 1)
+        #expect(progress.learned == 1)
     }
 
     // A refine session can bury a flagged card instead of fixing it, and

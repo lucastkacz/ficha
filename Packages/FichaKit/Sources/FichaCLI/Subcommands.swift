@@ -57,7 +57,7 @@ struct DiscardCommand: EngineCommand {
 struct BuryCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "bury",
-        abstract: "Bury a card: take it out of your reviews for good, with its history, and print the card.",
+        abstract: "Bury a card: take it out of your reviews for good, with its review log, and print the card.",
         discussion: "A flagged card leaves the inbox too, with its note, until it's unburied."
     )
 

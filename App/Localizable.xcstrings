@@ -73,10 +73,10 @@
 
     },
     "Bury" : {
-
+      "comment" : "A button that buries the card the review panel shows: it never shows up again."
     },
     "Bury (e)" : {
-
+      "comment" : "The tooltip of the button that buries the card, with its key."
     },
     "Cancel" : {
 
@@ -117,14 +117,17 @@
     "Don't know" : {
 
     },
+    "esc" : {
+      "comment" : "The Esc key's name, next to the button it presses."
+    },
     "Flag" : {
-
+      "comment" : "The button that flags the card with the note written above it."
     },
     "Flag…" : {
-
+      "comment" : "A button that flags the card the review panel shows, asking for a note on what to fix."
     },
     "Flag… (m)" : {
-
+      "comment" : "The tooltip of the button that flags the card, with its key."
     },
     "Flip" : {
 
