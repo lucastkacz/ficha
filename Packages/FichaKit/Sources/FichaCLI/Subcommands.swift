@@ -22,11 +22,15 @@ struct CaptureCommand: EngineCommand {
     }
 }
 
-/// `ficha inbox`: lists the captures waiting in the inbox.
+/// `ficha inbox`: lists what waits in the inbox.
 struct InboxCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "inbox",
-        abstract: "List the captures waiting in the inbox, oldest first."
+        abstract: "List what waits in the inbox: your captures, and the cards you flagged.",
+        discussion: """
+            It prints "captures", oldest first, and "flaggedCards", each with your note on what to fix in "flag", \
+            the first flagged first.
+            """
     )
 
     func run(on engine: Engine) throws -> any Encodable {
@@ -49,11 +53,47 @@ struct DiscardCommand: EngineCommand {
     }
 }
 
+/// `ficha bury`: takes a card out of the reviews for good.
+struct BuryCommand: EngineCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "bury",
+        abstract: "Bury a card: take it out of your reviews for good, with its history, and print the card.",
+        discussion: "A flagged card leaves the inbox too, with its note, until it's unburied."
+    )
+
+    @Argument(help: "The card's id, as `ficha cards` or `ficha inbox` shows it.")
+    var cardID: Int64
+
+    func run(on engine: Engine) throws -> any Encodable {
+        try engine.bury(cardID)
+    }
+}
+
+/// `ficha unbury`: brings a buried card back.
+struct UnburyCommand: EngineCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "unbury",
+        abstract: "Unbury a card: put it back in your reviews, on its step, and print the card.",
+        discussion: "A card that was flagged when it was buried goes back to the inbox instead, with its note."
+    )
+
+    @Argument(help: "The buried card's id, as `ficha cards` shows it.")
+    var cardID: Int64
+
+    func run(on engine: Engine) throws -> any Encodable {
+        try engine.unbury(cardID)
+    }
+}
+
 /// `ficha cards`: lists the cards.
 struct CardsCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "cards",
-        abstract: "List your cards, in the order you approved them."
+        abstract: "List your cards, in the order you approved them.",
+        discussion: """
+            A flagged card has your note on what to fix in "flag", and a buried one says when you buried it in \
+            "buriedAt".
+            """
     )
 
     func run(on engine: Engine) throws -> any Encodable {

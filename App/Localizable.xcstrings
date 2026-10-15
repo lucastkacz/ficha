@@ -4,8 +4,8 @@
     "%@ can't open your cards" : {
 
     },
-    "%lld cards learned · %lld captures in the inbox" : {
-      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures wait in the inbox.",
+    "%lld cards learned · %lld in the inbox" : {
+      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait in the inbox.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -21,13 +21,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg capture in the inbox"
+                      "value" : "%arg in the inbox"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg captures in the inbox"
+                      "value" : "%arg in the inbox"
                     }
                   },
                   "zero" : {
@@ -72,6 +72,12 @@
     "A word, a concept, a quote or a question" : {
 
     },
+    "Bury" : {
+
+    },
+    "Bury (e)" : {
+
+    },
     "Cancel" : {
 
     },
@@ -87,7 +93,13 @@
     "Close (esc)" : {
 
     },
+    "Couldn't bury the card" : {
+
+    },
     "Couldn't count your progress" : {
+
+    },
+    "Couldn't flag the card" : {
 
     },
     "Couldn't load the cards" : {
@@ -99,7 +111,19 @@
     "Couldn't save your answer" : {
 
     },
+    "Couldn't undo" : {
+
+    },
     "Don't know" : {
+
+    },
+    "Flag" : {
+
+    },
+    "Flag…" : {
+
+    },
+    "Flag… (m)" : {
 
     },
     "Flip" : {
@@ -154,6 +178,15 @@
       "comment" : "The Space key's name, next to the button it presses."
     },
     "Text" : {
+
+    },
+    "Undo" : {
+
+    },
+    "Undo (⌘Z)" : {
+
+    },
+    "What needs fixing?" : {
 
     }
   },

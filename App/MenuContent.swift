@@ -42,15 +42,19 @@ struct MenuContent: View {
         return String(localized: "Review now (\(due) due)")
     }
 
-    /// How many cards Lucas learned and how many captures wait in the inbox,
-    /// in words. The String Catalog words each count for zero, one and more.
+    /// How many cards Lucas learned and how many captures and flagged cards
+    /// wait in the inbox, in words. The String Catalog words each count for
+    /// zero, one and more.
     private var progressLine: String {
         guard let progress = model.progress else {
             return String(localized: "Couldn't count your progress")
         }
         return String(
-            localized: "\(progress.learned) cards learned · \(progress.capturesInInbox) captures in the inbox",
-            comment: "The menu's progress line: how many cards Lucas learned, and how many captures wait in the inbox."
+            localized: "\(progress.learned) cards learned · \(progress.inInbox) in the inbox",
+            comment: """
+                The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait \
+                in the inbox.
+                """
         )
     }
 }

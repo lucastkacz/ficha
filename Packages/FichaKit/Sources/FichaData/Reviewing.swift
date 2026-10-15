@@ -10,7 +10,7 @@ extension Engine {
     public func reviewNow(_ settings: ReviewSettings) throws(EngineError) -> [PanelCard] {
         let now = time.now
         return try read { db in
-            let cards = try allCards(in: db)
+            let cards = try cardsInReviews(in: db)
             let picked = try settings.reviewNowCards(
                 cardIDs: cards.map(\.id), log: logEntries(in: db), now: now, calendar: calendar)
             return try panelCards(picked, from: cards)
@@ -43,15 +43,29 @@ extension Engine {
         }
     }
 
-    /// What the menu shows of Lucas's progress: how many cards are due, how
-    /// many he learned, and how many captures wait in the inbox.
+    /// Takes Lucas's last answer to a card out of the review log, which puts
+    /// the card back where it stood before it: ⌘Z in the review panel, where
+    /// it was the last answer to that card.
+    func undoLastAnswer(to cardID: Int64) throws(EngineError) {
+        try write { db in
+            try db.execute(
+                sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ?)",
+                arguments: [cardID]
+            )
+        }
+    }
+
+    /// What the menu shows of Lucas's progress: how many cards in his reviews
+    /// are due, how many he learned, and how many captures and flagged cards
+    /// wait in the inbox.
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in
-            let cardIDs = try Int64.fetchAll(db, sql: "SELECT id FROM card ORDER BY id")
+            let cardIDs = try cardsInReviews(in: db).map(\.id)
             let counts = try settings.ladder.counts(of: cardIDs, after: logEntries(in: db), at: now)
             return ProgressCounts(
-                due: counts.due, learned: counts.learned, capturesInInbox: try capturesInInbox.fetchCount(db))
+                due: counts.due, learned: counts.learned,
+                inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsInInbox.fetchCount(db))
         }
     }
 

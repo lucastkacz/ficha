@@ -30,6 +30,13 @@ public enum EngineError: Error, Equatable {
     case cardStillNew(Int64)
     /// The card with this id isn't due yet, so it can't be reviewed.
     case cardNotDue(Int64)
+    /// The card with this id isn't flagged, so there's no flag to fix: it was
+    /// already fixed, or it was never flagged.
+    case cardNotFlagged(Int64)
+    /// The card with this id is already buried, so it can't be buried again.
+    case cardBuried(Int64)
+    /// The card with this id isn't buried, so it can't be unburied.
+    case cardNotBuried(Int64)
     /// The review log of the card with this id doesn't start with its first
     /// view, or has a second one, so it isn't known where the card stands.
     /// The engine logs it.
@@ -63,7 +70,7 @@ extension EngineError: LocalizedError {
                     "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
             )
         case .cardNotFound(let id):
-            String(localized: "There's no card with the id \(id). \(reopenReviewNow)")
+            String(localized: "There's no card with the id \(id). Check the card's id.")
         case .cardNotNew(let id):
             String(localized: "Card \(id) already had its first view. \(reopenReviewNow)")
         case .cardStillNew(let id):
@@ -71,6 +78,17 @@ extension EngineError: LocalizedError {
                 localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")
         case .cardNotDue(let id):
             String(localized: "Card \(id) isn't due yet, so it can't be reviewed. \(reopenReviewNow)")
+        case .cardNotFlagged(let id):
+            String(
+                localized: """
+                    Card \(id) isn't flagged, so there's nothing to fix: it was already fixed, or it was never \
+                    flagged. Check what's in the inbox.
+                    """
+            )
+        case .cardBuried(let id):
+            String(localized: "Card \(id) is already buried. To bring it back, unbury it.")
+        case .cardNotBuried(let id):
+            String(localized: "Card \(id) isn't buried, so there's nothing to unbury.")
         case .unreadableReviewLog(let id):
             String(
                 localized: """

@@ -25,7 +25,7 @@ final class DatabaseFileTests {
 
         let reopened = try Engine(location: .folder(folder), time: time)
 
-        #expect(try reopened.progress(.defaults).capturesInInbox == 2)
+        #expect(try reopened.progress(.defaults).inInbox == 2)
     }
 
     @Test("a database that a newer version of Ficha migrated is refused")
@@ -48,7 +48,7 @@ final class DatabaseFileTests {
 
         let engine = try Engine(location: .folder(folder), time: time)
 
-        #expect(try engine.inbox().map(\.text) == ["serendipia"])
+        #expect(try engine.inbox().captures.map(\.text) == ["serendipia"])
         let copyPath = path(of: "Ficha before v2 cards.sqlite")
         try #require(FileManager.default.fileExists(atPath: copyPath))
         let (captures, hasCards) = try DatabaseQueue(path: copyPath).read { db in
@@ -75,11 +75,11 @@ final class DatabaseFileTests {
         let cli = try Engine(location: .folder(folder), time: time)
 
         let capture = try app.capture(text: "serendipia", note: nil, source: nil)
-        #expect(try cli.inbox().map(\.text) == ["serendipia"])
+        #expect(try cli.inbox().captures.map(\.text) == ["serendipia"])
 
         try cli.approve(
             capture.id, into: [card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad.")])
-        #expect(try app.progress(.defaults).capturesInInbox == 0)
+        #expect(try app.progress(.defaults).inInbox == 0)
         #expect(try app.cards().map(\.front) == ["serendipia"])
     }
 
@@ -96,7 +96,7 @@ final class DatabaseFileTests {
         try cli.capture(text: "serendipia", note: nil, source: nil)
 
         #expect(await changes.next() != nil)
-        #expect(try app.progress(.defaults).capturesInInbox == 1)
+        #expect(try app.progress(.defaults).inInbox == 1)
     }
 
     /// The path of a file in the data folder.

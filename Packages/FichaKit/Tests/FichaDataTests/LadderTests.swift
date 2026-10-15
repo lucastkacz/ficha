@@ -46,9 +46,9 @@ struct LadderTests {
     @Test("hard keeps a card on its step, to wait that step's wait again")
     func hardKeepsTheCardOnItsStep() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try climb(serendipia, to: 1)
+        try engine.climb(serendipia, to: 1, movingForward: time)
 
-        try reviewWhenDue(serendipia, .hard)
+        try engine.reviewWhenDue(serendipia, .hard, movingForward: time)
 
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 1, due: time.now + hours(4)))
     }
@@ -56,9 +56,9 @@ struct LadderTests {
     @Test("again sends a card back to the first step")
     func againSendsTheCardBackToTheFirstStep() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try climb(serendipia, to: 3)
+        try engine.climb(serendipia, to: 3, movingForward: time)
 
-        try reviewWhenDue(serendipia, .again)
+        try engine.reviewWhenDue(serendipia, .again, movingForward: time)
 
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 0, due: time.now + hours(1)))
     }
@@ -66,10 +66,10 @@ struct LadderTests {
     @Test("good on the last step keeps a card there, to come back every 75 days")
     func theLastStepRepeats() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try climb(serendipia, to: 6)
+        try engine.climb(serendipia, to: 6, movingForward: time)
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 6, due: time.now + days(75)))
 
-        try reviewWhenDue(serendipia, .good)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
 
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 6, due: time.now + days(75)))
     }
@@ -108,8 +108,8 @@ struct LadderTests {
         try engine.capture(text: "algo para refinar", note: nil, source: nil)
         // serendipia gets to the 30-day step, from which a card is learned,
         // and ubuntu to the step below it, 12 days.
-        try climb(serendipia, to: 5)
-        try climb(ubuntu, to: 4)
+        try engine.climb(serendipia, to: 5, movingForward: time)
+        try engine.climb(ubuntu, to: 4, movingForward: time)
         try engine.meet(petricor)
 
         time.advance(by: hours(1))
@@ -117,7 +117,7 @@ struct LadderTests {
         let progress = try engine.progress(.defaults)
         #expect(progress.due == 1)
         #expect(progress.learned == 1)
-        #expect(progress.capturesInInbox == 1)
+        #expect(progress.inInbox == 1)
     }
 
     // The review panel shows a first view only for a new card, and a review
@@ -149,20 +149,5 @@ struct LadderTests {
             try engine.standing(of: 99, on: ladder)
         }
         #expect(try engine.reviewLog().map(\.cardID) == [serendipia.id])
-    }
-
-    /// Puts a new card on `step`: its first view now, and then good each time
-    /// it's due.
-    private func climb(_ card: Card, to step: Int) throws {
-        try engine.meet(card)
-        for _ in 0..<step {
-            try reviewWhenDue(card, .good)
-        }
-    }
-
-    /// Waits until a card on the ladder is due, and reviews it with `rating`.
-    private func reviewWhenDue(_ card: Card, _ rating: Rating) throws {
-        time.move(to: try #require(try engine.standing(of: card.id, on: ladder).due))
-        try engine.review(card, rating)
     }
 }

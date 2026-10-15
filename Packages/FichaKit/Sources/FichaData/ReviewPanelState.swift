@@ -3,9 +3,11 @@ import Foundation
 
 /// An appearance or a review now while the review panel shows it: the cards
 /// it brought, which Lucas goes through one at a time, whether the panel may
-/// have the keyboard, and how it closes. His answers go into the review log as
-/// he gives them, and the panel goes into the appearance log as it closes. It
-/// runs on the engine's time, which Ficha Dev's debug menu moves forward.
+/// have the keyboard, and how it closes. He answers, flags or buries each
+/// card, which is saved as he does it, and ⌘Z undoes it, one card at a time,
+/// while the panel is open. The panel goes into the appearance log as it
+/// closes. It runs on the engine's time, which Ficha Dev's debug menu moves
+/// forward.
 public struct ReviewPanelState: Sendable {
     /// Who closes the panel.
     public enum Closing: Sendable {
@@ -31,8 +33,9 @@ public struct ReviewPanelState: Sendable {
     private let shownAt: Date
     /// When Lucas last did something in the panel, or when it showed.
     private var touchedAt: Date
-    /// How many cards Lucas answered.
-    private var answered = 0
+    /// What Lucas did with each card he went through, in order: ⌘Z undoes
+    /// the last one.
+    private var wentThrough: [PanelAction] = []
 
     init(trigger: Trigger, cards: [PanelCard], engine: Engine, settings: ReviewSettings) {
         self.trigger = trigger
@@ -44,9 +47,15 @@ public struct ReviewPanelState: Sendable {
         touchedAt = shownAt
     }
 
-    /// The card Lucas is on, or nil once he answered every one.
+    /// The card Lucas is on, or nil once he went through every one.
     public var current: PanelCard? {
-        answered < cards.count ? cards[answered] : nil
+        wentThrough.count < cards.count ? cards[wentThrough.count] : nil
+    }
+
+    /// Whether ⌘Z has something to undo: what Lucas did with a card, while
+    /// the panel is open.
+    public var canUndo: Bool {
+        outcome == nil && !wentThrough.isEmpty
     }
 
     /// Notes that Lucas did something in the panel, like flipping a card: the
@@ -82,7 +91,41 @@ public struct ReviewPanelState: Sendable {
         guard outcome == nil, let answering = current else { return }
         try engine.record(
             kind, of: answering.card.id, responseTime: responseTime, trigger: trigger, settings: settings)
-        answered += 1
+        moveOn(after: .answered)
+    }
+
+    /// Flags the current card with Lucas's note on what to fix, which sends
+    /// it to the inbox, and moves on to the next card. After the last one, the
+    /// panel closes as finished.
+    public mutating func flag(note: FlagNote) throws(EngineError) {
+        guard outcome == nil, let flagging = current else { return }
+        try engine.flag(flagging.card.id, note: note)
+        moveOn(after: .flagged)
+    }
+
+    /// Buries the current card, which takes it out of Lucas's reviews for
+    /// good, and moves on to the next card. After the last one, the panel
+    /// closes as finished.
+    public mutating func bury() throws(EngineError) {
+        guard outcome == nil, let burying = current else { return }
+        try engine.bury(burying.card.id)
+        moveOn(after: .buried)
+    }
+
+    /// Undoes what Lucas did with the last card he went through, which puts
+    /// the card back where it stood, and goes back to it: ⌘Z. Nothing is left
+    /// to undo once the panel closed.
+    public mutating func undo() throws(EngineError) {
+        guard outcome == nil, let last = wentThrough.last else { return }
+        try engine.undo(last, to: cards[wentThrough.count - 1].card.id)
+        wentThrough.removeLast()
+        touch()
+    }
+
+    /// Moves on to the next card, once Lucas did `action` with the current
+    /// one. After the last one, the panel closes as finished.
+    private mutating func moveOn(after action: PanelAction) {
+        wentThrough.append(action)
         touch()
         if current == nil {
             close(.byLucas)
@@ -121,10 +164,30 @@ public struct ReviewPanelState: Sendable {
     }
 }
 
+/// What Lucas did with a card in the review panel, which ⌘Z undoes.
+enum PanelAction: Sendable {
+    /// He answered it: he ended its first view, or rated it.
+    case answered
+    /// He flagged it.
+    case flagged
+    /// He buried it.
+    case buried
+}
+
 extension Engine {
     /// Opens the review panel with `cards`, which `trigger` brought: the panel
     /// shows them from now on.
     public func openPanel(_ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings) -> ReviewPanelState {
         ReviewPanelState(trigger: trigger, cards: cards, engine: self, settings: settings)
+    }
+
+    /// Undoes `action`, which Lucas did to a card in the review panel, so the
+    /// card stands where it stood before it.
+    fileprivate func undo(_ action: PanelAction, to cardID: Int64) throws(EngineError) {
+        switch action {
+        case .answered: try undoLastAnswer(to: cardID)
+        case .flagged: try unflag(cardID)
+        case .buried: try unbury(cardID)
+        }
     }
 }

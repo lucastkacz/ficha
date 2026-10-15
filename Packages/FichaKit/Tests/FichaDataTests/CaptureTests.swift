@@ -12,7 +12,7 @@ struct CaptureTests {
 
         try engine.capture(text: "serendipia", note: "Lo opuesto a buscar algo", source: "Un ensayo de Borges")
 
-        let inbox = try engine.inbox()
+        let inbox = try engine.inbox().captures
         try #require(inbox.count == 1)
         #expect(inbox[0].text == "serendipia")
         #expect(inbox[0].note == "Lo opuesto a buscar algo")
@@ -28,7 +28,7 @@ struct CaptureTests {
 
         try engine.capture(text: "  ubuntu\n", note: "", source: "   ")
 
-        let inbox = try engine.inbox()
+        let inbox = try engine.inbox().captures
         try #require(inbox.count == 1)
         #expect(inbox[0].text == "ubuntu")
         #expect(inbox[0].note == nil)
@@ -42,6 +42,6 @@ struct CaptureTests {
         #expect(throws: EngineError.emptyCapture) {
             try engine.capture(text: " \n", note: "Una nota sin texto", source: nil)
         }
-        #expect(try engine.inbox().isEmpty)
+        #expect(try engine.inbox().captures.isEmpty)
     }
 }
