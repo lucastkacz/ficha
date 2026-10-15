@@ -77,19 +77,6 @@ func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
     return try Card(row: row)
 }
 
-/// The card with this id, while it's in Lucas's reviews, or an error that
-/// says it's buried or flagged, or that there's no such card.
-func cardInReviews(_ cardID: Int64, in db: Database) throws -> Card {
-    let card = try existingCard(cardID, in: db)
-    guard card.buriedAt == nil else {
-        throw EngineError.cardBuried(cardID)
-    }
-    guard card.flag == nil else {
-        throw EngineError.cardFlagged(cardID)
-    }
-    return card
-}
-
 /// Sets some of a card's columns, as `assignments` say, to `values` in
 /// order, and returns the card as it is then.
 func updateCard(
@@ -100,13 +87,6 @@ func updateCard(
 ) throws -> Card {
     try db.execute(sql: "UPDATE card SET \(assignments) WHERE id = ?", arguments: values + [cardID])
     return try existingCard(cardID, in: db)
-}
-
-/// The cards in Lucas's reviews, neither flagged nor buried, in the order he
-/// approved them: the only ones the review panel brings.
-func cardsInReviews(in db: Database) throws -> [Card] {
-    try Table("card").filter(Column("flaggedAt") == nil && Column("buriedAt") == nil).order(Column("id"))
-        .fetchAll(db).map(Card.init(row:))
 }
 
 /// The cards that wait in the inbox to be fixed: flagged, and not buried.
