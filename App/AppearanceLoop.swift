@@ -1,6 +1,6 @@
-import AppKit
 import FichaCore
 import FichaData
+import Foundation
 import os
 
 /// The appearances' log.
@@ -10,8 +10,6 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "appear
 enum AppearanceCheck {
     /// The review panel was open, so the engine wasn't asked.
     case panelOpen
-    /// The Mac or its screens were asleep, so the engine wasn't asked.
-    case asleep
     /// The engine decided this, and the panel showed up if it said so.
     case decided(AppearanceDecision)
     /// The engine couldn't decide, for this reason.
@@ -20,51 +18,42 @@ enum AppearanceCheck {
 
 /// Asks the engine whether the review panel shows up on its own, and shows it
 /// when the engine says so (ADR 0003): every minute, or sooner, when the
-/// engine says when the next appearance may come. While the Mac or its
-/// screens sleep, it doesn't ask. When they wake, it notes when, since an
-/// appearance waits a while after waking, and asks again.
+/// engine says when the next appearance may come, and as soon as the Mac or
+/// its screens wake. As they go to sleep, the open panel closes on its own.
 final class AppearanceLoop {
     /// How long it waits at most between two checks.
     private static let checkInterval = Duration.seconds(60)
 
     private let model: AppModel
     private let mac: SystemMacSignals
-    private let panels: ReviewPanels
-    private var isMacAsleep = false
-    private var areScreensAsleep = false
+    private let panel: ReviewPanel
     /// The wait until the next check.
     private var nextCheck: Task<Void, Never>?
-    /// What the loop follows of the Mac's sleep and wake, for as long as
-    /// Ficha runs.
-    private var observers: [any NSObjectProtocol] = []
+    /// Whether the last check failed: the panel says so once, not every
+    /// minute.
+    private var lastCheckFailed = false
 
-    init(model: AppModel, mac: SystemMacSignals, panels: ReviewPanels) {
+    init(model: AppModel, mac: SystemMacSignals, panel: ReviewPanel) {
         self.model = model
         self.mac = mac
-        self.panels = panels
+        self.panel = panel
     }
 
-    /// Starts checking, a minute from now. A panel shown while Ficha is still
+    /// Starts checking, a minute from now. A panel shown while Ficha was still
     /// launching took the keyboard as it showed, while Lucas typed, so the
     /// first check waits until Ficha has settled.
     func start() {
-        observe(NSWorkspace.willSleepNotification, as: .macSleeps)
-        observe(NSWorkspace.screensDidSleepNotification, as: .screensSleep)
-        observe(NSWorkspace.didWakeNotification, as: .macWakes)
-        observe(NSWorkspace.screensDidWakeNotification, as: .screensWake)
+        mac.sleptOrWoke = { [weak self] in
+            self?.macSleptOrWoke()
+        }
         checkAgain(after: Self.checkInterval)
     }
 
-    /// Asks the engine now, unless the panel is open or the Mac is asleep,
-    /// shows the panel if the engine says so, and waits for the next check.
-    /// Ficha Dev's debug menu checks this way too.
+    /// Asks the engine now, unless the panel is open, shows the panel if the
+    /// engine says so, and waits for the next check. Ficha Dev's debug menu
+    /// checks this way too.
     @discardableResult
     func check() -> AppearanceCheck {
-        nextCheck?.cancel()
-        nextCheck = nil
-        guard !isMacAsleep, !areScreensAsleep else {
-            return .asleep
-        }
         let result = askTheEngine()
         var wait = Self.checkInterval
         if case .decided(.notNow(let reason)) = result, let until = reason.until {
@@ -88,7 +77,7 @@ final class AppearanceLoop {
     }
 
     private func askTheEngine() -> AppearanceCheck {
-        guard !panels.isOpen else {
+        guard !panel.isOpen else {
             return .panelOpen
         }
         let decision: AppearanceDecision
@@ -96,71 +85,34 @@ final class AppearanceLoop {
             decision = try model.checkAppearance(mac: mac)
         } catch {
             logger.error("Couldn't check for an appearance: \(String(describing: error), privacy: .public)")
+            // Rather than stop showing up without a word, the panel shows up
+            // once to say why.
+            if !lastCheckFailed {
+                panel.showFailure(error)
+            }
+            lastCheckFailed = true
             return .failed(error)
         }
+        lastCheckFailed = false
         switch decision {
         case .show(let cards):
             logger.info("The review panel shows up on its own with \(cards.count) cards")
-            panels.showAppearance(cards)
+            panel.showAppearance(cards)
         case .notNow(let reason):
             logger.debug("No appearance now: \(String(describing: reason), privacy: .public)")
         }
         return .decided(decision)
     }
 
-    /// Follows `notification`, which the OS posts when the Mac or its screens
-    /// sleep or wake.
-    private func observe(_ notification: Notification.Name, as event: SleepOrWake) {
-        let observer = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: notification, object: nil, queue: .main
-        ) { [weak self] _ in
-            // An observer on the main queue runs on the main actor.
-            MainActor.assumeIsolated {
-                self?.follow(event)
-            }
-        }
-        observers.append(observer)
-    }
-
-    /// When the Mac or its screens go to sleep, there's no one to show the
-    /// panel to: the open panel closes on its own, and the checks stop. When
-    /// both are awake again, it notes when they woke, and checks.
-    private func follow(_ event: SleepOrWake) {
-        let wasAsleep = isMacAsleep || areScreensAsleep
-        switch event {
-        case .macSleeps: isMacAsleep = true
-        case .screensSleep: areScreensAsleep = true
-        case .macWakes: isMacAsleep = false
-        case .screensWake: areScreensAsleep = false
-        }
-        switch (wasAsleep, isMacAsleep || areScreensAsleep) {
-        case (false, true):
-            nextCheck?.cancel()
-            nextCheck = nil
-            panels.closeOnItsOwn()
-        case (true, false):
-            mac.noteWake(at: model.now)
+    /// As the Mac or its screens go to sleep, there's no one to show the panel
+    /// to, so the open panel closes on its own. As they wake, it checks right
+    /// away, so the next appearance comes as soon as the wait after waking
+    /// is over.
+    private func macSleptOrWoke() {
+        if mac.isAsleep {
+            panel.close(.onItsOwn)
+        } else {
             check()
-        case (false, false), (true, true):
-            break
-        }
-    }
-}
-
-/// The Mac or its screens going to sleep or waking.
-private enum SleepOrWake {
-    case macSleeps
-    case screensSleep
-    case macWakes
-    case screensWake
-}
-
-extension NoAppearance {
-    /// When an appearance may come, when the engine knows it.
-    fileprivate var until: Date? {
-        switch self {
-        case .tooSoonAfterLastOne(let until), .tooSoonAfterWaking(let until): until
-        case .outsideActiveHours, .nothingDue: nil
         }
     }
 }

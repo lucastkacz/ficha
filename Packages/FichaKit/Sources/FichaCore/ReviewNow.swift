@@ -12,14 +12,14 @@ public struct PanelCardIDs: Sendable, Equatable {
 extension ReviewSettings {
     /// The cards review now brings at `now`, out of every card, by id in the
     /// order Lucas approved them, and the whole review log, in the order it
-    /// was written: the due cards, and a new card, as `panelCards` picks them.
+    /// was written: the due cards, and a new card, as `pickCards` picks them.
     public func reviewNowCards(
         cardIDs: [Int64],
         log: [ReviewLogEntry],
         now: Date,
         calendar: Calendar
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
-        panelCards(
+        pickCards(
             after: try ladder.standings(of: cardIDs, after: log), log: log, dueBy: now, now: now, calendar: calendar)
     }
 
@@ -29,7 +29,7 @@ extension ReviewSettings {
     /// longest overdue, up to `cardsPerAppearance`, and then the first new
     /// card Lucas approved, if there's room (ADR 0003) and he hasn't met
     /// `newCardsPerDay` today, by `calendar`'s day.
-    func panelCards(
+    func pickCards(
         after standings: [(cardID: Int64, standing: CardStanding)],
         log: [ReviewLogEntry],
         dueBy horizon: Date,

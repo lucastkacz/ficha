@@ -4,7 +4,7 @@ import FichaData
 import SwiftUI
 import os
 
-/// The review panel's log, which says when it takes the keyboard.
+/// The review panel's log, which says when the panel gets the keyboard.
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "review panel")
 
 /// The review panel's window: a small floating panel without a title bar,
@@ -12,19 +12,23 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "review
 /// Lucas is in. It's an AppKit panel because a SwiftUI window without a title
 /// bar can't take the keyboard. It takes the keyboard without activating
 /// Ficha, so once it closes, the keyboard goes back to the app Lucas was in.
-/// When it shows up on its own, it takes the keyboard only as the focus mode
-/// says, so it doesn't catch what Lucas is typing (#10's findings).
+/// When it shows up on its own, it can't have the keyboard until the focus
+/// mode says so or Lucas clicks it, so it doesn't catch what he's typing
+/// (#10's findings).
 final class ReviewPanelWindow: NSPanel {
-    /// The panel's cards, or why review now couldn't bring them.
+    /// The panel's cards, or why they couldn't be brought.
     private let model: Result<ReviewPanelModel, EngineError>
-    /// Whether the panel takes the keyboard now, while it waits to take it on
-    /// its own: nil once it has it, which happens once per panel.
-    private var takesKeyboardNow: (() -> Bool)?
+    /// Whether a panel that says why it couldn't bring its cards may have the
+    /// keyboard: when Lucas opened it, or once he clicks it.
+    private var failureMayHaveKeyboard = false
+    /// What tells the panel how long Lucas has been idle, while it waits to
+    /// take the keyboard on its own.
+    private var mac: SystemMacSignals?
     /// Watches the panel while it's open.
     private var watching: Task<Void, Never>?
 
     /// A panel for the cards a review now or an appearance brought, which
-    /// closes itself when Lucas is done.
+    /// closes itself when Lucas is done, or for why they couldn't be brought.
     init(model: Result<ReviewPanelModel, EngineError>) {
         self.model = model
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
@@ -46,52 +50,61 @@ final class ReviewPanelWindow: NSPanel {
         )
     }
 
-    // A window without a title bar takes the keyboard only when it says so.
-    override var canBecomeKey: Bool { true }
+    // A window without a title bar takes the keyboard only when it says so,
+    // and this one says so only when it may have it: AppKit once gave it the
+    // keyboard as it showed, while Lucas typed, before the focus mode allowed
+    // it.
+    override var canBecomeKey: Bool {
+        switch model {
+        case .success(let panel): panel.mayHaveKeyboard
+        case .failure: failureMayHaveKeyboard
+        }
+    }
+
+    // A click gives the panel the keyboard, before AppKit decides whether it
+    // may have it.
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown, !isKeyWindow {
+            giveKeyboard()
+            logger.info("Lucas clicked the review panel, which gives it the keyboard")
+        }
+        super.sendEvent(event)
+    }
 
     /// Shows the panel and gives it the keyboard, since Lucas asked for it:
     /// a review now.
     func show() {
+        failureMayHaveKeyboard = true
         place()
         makeKeyAndOrderFront(nil)
         watch()
     }
 
     /// Shows the panel on its own, over whatever Lucas is doing, without the
-    /// keyboard: an appearance. It takes the keyboard once, when the focus
-    /// mode of `settings` says so, by how long `mac` says Lucas has been idle.
-    /// Ficha is never activated, so the app Lucas is in stays in front.
-    func showOnItsOwn(settings: ReviewSettings, mac: some MacSignals) {
+    /// keyboard: an appearance, or why one couldn't come. It takes the
+    /// keyboard once, as the focus mode says, by how long `mac` says Lucas has
+    /// been idle. Ficha is never activated, so the app Lucas is in stays in
+    /// front.
+    func showOnItsOwn(mac: SystemMacSignals) {
+        self.mac = mac
         place()
         orderFrontRegardless()
-        takesKeyboardNow = {
-            settings.focusMode.takesKeyboard(idle: mac.idleTime, after: settings.idleBeforeTakingKeyboard)
-        }
         takeKeyboardIfItsTime()
         watch()
     }
 
     /// Brings the open panel to the front with the keyboard, since Lucas
-    /// asked for it.
+    /// asked for it with review now.
     func bringForward() {
+        giveKeyboard()
         orderFrontRegardless()
         makeKey()
-        takesKeyboardNow = nil
     }
 
-    /// Closes the panel as Esc does, which snoozes an appearance: as Ficha
-    /// quits.
-    func closeAsLucasWould() {
+    /// Closes the panel: Lucas closes it, or it closes on its own.
+    func close(_ closing: ReviewPanelState.Closing) {
         if case .success(let panel) = model {
-            panel.close()
-        }
-        close()
-    }
-
-    /// Closes the panel on its own: as the Mac or its screens go to sleep.
-    func closeOnItsOwn() {
-        if case .success(let panel) = model {
-            panel.closeOnItsOwn()
+            panel.close(closing)
         }
         close()
     }
@@ -100,6 +113,14 @@ final class ReviewPanelWindow: NSPanel {
         watching?.cancel()
         watching = nil
         super.close()
+    }
+
+    /// Lets the panel have the keyboard, since Lucas asked for it.
+    private func giveKeyboard() {
+        switch model {
+        case .success(let panel): panel.clicked()
+        case .failure: failureMayHaveKeyboard = true
+        }
     }
 
     /// Places the panel at the top of the screen Lucas is pointing at,
@@ -137,18 +158,10 @@ final class ReviewPanelWindow: NSPanel {
         }
     }
 
-    /// Gives the panel the keyboard once the focus mode says so. If Lucas
-    /// gave it the keyboard first, by clicking it, it doesn't take it again
-    /// after he clicks away.
+    /// Gives the panel the keyboard when the focus mode says so.
     private func takeKeyboardIfItsTime() {
-        guard let takesKeyboardNow else { return }
-        if isKeyWindow {
-            logger.info("The review panel has the keyboard, though it didn't take it")
-            self.takesKeyboardNow = nil
-        } else if takesKeyboardNow() {
-            makeKey()
-            logger.info("The review panel took the keyboard")
-            self.takesKeyboardNow = nil
-        }
+        guard let mac, case .success(let panel) = model, panel.takesKeyboard(on: mac) else { return }
+        makeKey()
+        logger.info("The review panel took the keyboard")
     }
 }

@@ -44,14 +44,15 @@ struct ReviewPanelView: View {
 
     @ViewBuilder
     private func content(of panel: ReviewPanelModel) -> some View {
+        let closeByLucas = { panel.close(.byLucas) }
         switch panel.content {
         case .nothingToReview:
-            header(close: panel.close) {
+            header(close: closeByLucas) {
                 Text("No cards to review right now.")
                     .font(.headline)
             }
         case .firstView(let card):
-            header(close: panel.close) {
+            header(close: closeByLucas) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("New", comment: "A badge on a card the review panel shows for the first time.")
                         .font(.caption.weight(.semibold))
@@ -72,7 +73,7 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.defaultAction)
             }
         case .front(let card):
-            header(close: panel.close) {
+            header(close: closeByLucas) {
                 front(of: card)
             }
             HStack {
@@ -87,7 +88,7 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.space, modifiers: [])
             }
         case .back(let card):
-            header(close: panel.close) {
+            header(close: closeByLucas) {
                 front(of: card)
             }
             back(of: card)

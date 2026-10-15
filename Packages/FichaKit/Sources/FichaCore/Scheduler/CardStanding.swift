@@ -42,7 +42,7 @@ extension CardStanding {
         case (.review, .new):
             throw .stillNew
         case (.review, .onLadder):
-            guard isDue(at: time + lookAhead / .seconds(1)) else {
+            guard isDue(at: time.adding(lookAhead)) else {
                 throw .notDue
             }
         }

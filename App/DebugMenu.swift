@@ -68,8 +68,6 @@ struct DebugMenu: View {
             showAlert(
                 noAppearance, details: "The review panel is open: close it, and check again.", style: .informational,
                 button: "OK")
-        case .asleep:
-            showAlert(noAppearance, details: "The Mac or its screens are asleep.", style: .informational, button: "OK")
         case .failed(let error):
             showAlert("Couldn't check for an appearance", explaining: error, style: .warning, button: "OK")
         }
@@ -78,6 +76,8 @@ struct DebugMenu: View {
     /// Why the engine said there's no appearance now, in words.
     private func whyNot(_ reason: NoAppearance) -> String {
         switch reason {
+        case .asleep:
+            "The Mac or its screens are asleep."
         case .outsideActiveHours:
             "It's outside active hours, from \(settings.activeHours.lowerBound):00 to \(settings.activeHours.upperBound):00."
         case .tooSoonAfterLastOne(let until):
@@ -97,7 +97,7 @@ struct DebugMenu: View {
 
     /// How long until `time`, by Ficha Dev's time, in words, to the second.
     private func timeLeft(_ time: Date) -> String {
-        inWords(.seconds(time.timeIntervalSince(tools.engine.time.now)), units: [.hours, .minutes, .seconds])
+        inWords(.seconds(time.timeIntervalSince(tools.engine.now)), units: [.hours, .minutes, .seconds])
     }
 
     /// Does `action`, and when it fails, says why in an alert headed by

@@ -20,8 +20,8 @@ extension Engine {
     /// Records Lucas's answer to a card in the review log: the end of its
     /// first view, which puts it on the ladder's first step, or a review with
     /// his rating, which moves it on the ladder of `settings`. A first view is
-    /// only for a new card, and a review only for one due within the
-    /// look-ahead, as an appearance brings them.
+    /// only for a new card, and a review only for a due one, or, in an
+    /// appearance, for one due within the look-ahead, which it brings along.
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
@@ -34,7 +34,8 @@ extension Engine {
         try write { db in
             let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
             do throws(RefusedAnswer) {
-                try standing.check(kind, at: entry.answeredAt, lookingAhead: settings.lookAhead)
+                try standing.check(
+                    kind, at: entry.answeredAt, lookingAhead: trigger == .appearance ? settings.lookAhead : .zero)
             } catch {
                 throw EngineError(refused: error, cardID: cardID)
             }

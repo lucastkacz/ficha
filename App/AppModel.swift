@@ -64,7 +64,7 @@ final class AppModel {
     /// through, or why they couldn't be brought.
     func startReviewNow() -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            try ReviewPanelModel.reviewNow(engine: engine, settings: settings)
+            ReviewPanelModel(engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings))
         }
     }
 
@@ -77,13 +77,13 @@ final class AppModel {
     /// Starts an appearance with the cards the engine picked, for the review
     /// panel to go through.
     func startAppearance(with cards: [PanelCard]) -> ReviewPanelModel {
-        ReviewPanelModel(trigger: .appearance, cards: cards, engine: engine, settings: settings)
+        ReviewPanelModel(engine.openPanel(.appearance, with: cards, settings: settings))
     }
 
     /// The engine's time: the system's, or, in Ficha Dev, the time its debug
     /// menu moves forward.
     var now: Date {
-        engine.time.now
+        engine.now
     }
 
     /// Counts again what the menu shows of Lucas's progress. Changes to the

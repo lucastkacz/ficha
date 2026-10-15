@@ -66,6 +66,19 @@ struct AppearanceTests {
         }
     }
 
+    // Lucas, 2026-10-15: the look-ahead is for appearances only.
+    @Test("review now can't review a card before it's due, even one an appearance would bring along")
+    func reviewNowDoesNotLookAhead() throws {
+        try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 20))
+        time.move(to: try at(10, 0))
+
+        #expect(throws: EngineError.cardNotDue(serendipia.id)) {
+            try engine.record(
+                .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+        }
+    }
+
     @Test("the cards an appearance brings along take their place by step, as review now's cards do")
     func cardsBroughtAlongTakeTheirPlaceByStep() throws {
         // petricor climbs to the second step, due at 14:00, and ubuntu waits
@@ -100,13 +113,25 @@ struct AppearanceTests {
     )
     func waitsThirtyMinutesAfterTheLastOneClosed(trigger: Trigger) throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        var panel = engine.openPanel(trigger, with: [.review(serendipia)], settings: settings)
         time.move(to: try at(10, 5))
-        try engine.recordClosing(of: trigger, shownAt: try at(10, 0), outcome: .snoozed)
+        panel.close(.byLucas)
 
         time.move(to: try at(10, 35) - 1)
         #expect(try appearance() == .notNow(.tooSoonAfterLastOne(until: try at(10, 35))))
         time.move(to: try at(10, 35))
         #expect(try appearance() == .show([.review(serendipia)]))
+    }
+
+    @Test("while the Mac or its screens are asleep, no appearance comes")
+    func noAppearanceWhileTheMacIsAsleep() throws {
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+
+        time.move(to: try at(10, 0))
+
+        #expect(try appearance(on: FakeMac(isAsleep: true)) == .notNow(.asleep))
+        #expect(try appearance(on: FakeMac(isAsleep: false)) == .show([.review(serendipia)]))
     }
 
     @Test("after the Mac wakes, a waiting appearance comes 2 minutes later")
@@ -122,15 +147,15 @@ struct AppearanceTests {
 
     @Test(
         "an appearance snoozed with Esc or closed on its own leaves its cards due for the next one",
-        arguments: [AppearanceLogEntry.Outcome.snoozed, .autoClosed]
+        arguments: [ReviewPanelState.Closing.byLucas, .onItsOwn]
     )
-    func aSnoozedAppearanceLeavesItsCardsDue(outcome: AppearanceLogEntry.Outcome) throws {
+    func aSnoozedAppearanceLeavesItsCardsDue(closing: ReviewPanelState.Closing) throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
         time.move(to: try at(10, 0))
-        #expect(try appearance() == .show([.review(serendipia)]))
+        var panel = try openAppearance()
 
         time.move(to: try at(10, 10))
-        try engine.recordClosing(of: .appearance, shownAt: try at(10, 0), outcome: outcome)
+        panel.close(closing)
 
         time.move(to: try at(10, 40))
         #expect(try appearance() == .show([.review(serendipia)]))
@@ -145,10 +170,11 @@ struct AppearanceTests {
         for card in met {
             try engine.meet(card)
         }
-        #expect(try appearance() == .show([.firstView(ockham)]))
+        var panel = try openAppearance()
+        #expect(panel.cards == [.firstView(ockham)])
 
         time.move(to: try at(9, 5))
-        try engine.recordClosing(of: .appearance, shownAt: try at(9, 0), outcome: .snoozed)
+        panel.close(.byLucas)
 
         time.move(to: try at(9, 35))
         #expect(try appearance() == .show([.firstView(ockham)]))
@@ -178,12 +204,19 @@ struct AppearanceTests {
 
     @Test("every appearance and review now goes into the appearance log, with its trigger, times and outcome")
     func appearancesAndReviewNowsGoIntoTheAppearanceLog() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        time.move(to: try at(10, 0))
+        var snoozed = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
         time.move(to: try at(10, 3))
-        try engine.recordClosing(of: .appearance, shownAt: try at(10, 0), outcome: .snoozed)
+        snoozed.close(.byLucas)
+        time.move(to: try at(11, 18))
+        var finished = engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
         time.move(to: try at(11, 20))
-        try engine.recordClosing(of: .reviewNow, shownAt: try at(11, 18), outcome: .finished)
+        try finished.answer(.firstView, responseTime: .seconds(90))
+        time.move(to: try at(12, 0))
+        var autoClosed = engine.openPanel(.appearance, with: [.review(serendipia)], settings: settings)
         time.move(to: try at(12, 10))
-        try engine.recordClosing(of: .appearance, shownAt: try at(12, 0), outcome: .autoClosed)
+        autoClosed.closeIfUntouched()
 
         #expect(
             try engine.appearanceLog() == [
@@ -200,6 +233,15 @@ struct AppearanceTests {
     /// What the engine decides now about an appearance, on `mac`.
     private func appearance(on mac: FakeMac = FakeMac()) throws -> AppearanceDecision {
         try engine.checkAppearance(settings, mac: mac)
+    }
+
+    /// Opens the review panel of the appearance the engine decides on now, as
+    /// the app does, and fails when there's none.
+    private func openAppearance() throws -> ReviewPanelState {
+        guard case .show(let cards) = try appearance() else {
+            throw NoAppearanceNow()
+        }
+        return engine.openPanel(.appearance, with: cards, settings: settings)
     }
 
     /// Approves a card with this front and meets it, an hour before `due`, so
@@ -219,3 +261,6 @@ struct AppearanceTests {
         try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute)))
     }
 }
+
+/// The engine decided there's no appearance, where a test expected one.
+private struct NoAppearanceNow: Error {}

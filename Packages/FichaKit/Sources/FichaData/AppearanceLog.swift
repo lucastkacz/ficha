@@ -2,8 +2,9 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// One entry in the appearance log: an appearance or a review now, from when
-/// the review panel showed to when it closed, and how it closed.
+/// One entry in the appearance log: an appearance, or a review now that
+/// brought cards, from when the review panel showed to when it closed, and
+/// how it closed.
 public struct AppearanceLogEntry: Sendable, Equatable {
     /// How the review panel closed. Each raw value is how the appearance log
     /// names it.
@@ -13,8 +14,8 @@ public struct AppearanceLogEntry: Sendable, Equatable {
         /// Lucas closed it with cards left, which stay as they were: a
         /// snooze.
         case snoozed
-        /// It closed on its own, untouched for a while, with cards left: it
-        /// counts as a snooze.
+        /// It closed on its own with cards left, untouched for a while or as
+        /// the Mac or its screens went to sleep: it counts as a snooze.
         case autoClosed
     }
 

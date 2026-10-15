@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// The review panel, once the app launched with its cards.
-    private var panels: ReviewPanels?
+    private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
     /// cards.
     private var appearances: AppearanceLoop?
@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Opens the review panel with the cards a review now brings, or brings
     /// it forward when it's open.
     func openReviewPanel() {
-        panels?.openReviewNow()
+        panel?.openReviewNow()
     }
 
     /// Asks the engine right away whether the review panel shows up on its
@@ -45,10 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         switch opening {
         case .success(let model):
-            let mac = SystemMacSignals()
-            let panels = ReviewPanels(model: model, mac: mac)
-            let appearances = AppearanceLoop(model: model, mac: mac, panels: panels)
-            self.panels = panels
+            let mac = SystemMacSignals { model.now }
+            let panel = ReviewPanel(model: model, mac: mac)
+            let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
+            self.panel = panel
             self.appearances = appearances
             appearances.start()
         case .failure(let error):
@@ -63,6 +63,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// An open panel closes as Esc closes it, so it goes into the appearance
     /// log, and its cards stay as they were.
     func applicationWillTerminate(_ notification: Notification) {
-        panels?.closeAsLucasWould()
+        panel?.close(.byLucas)
     }
 }

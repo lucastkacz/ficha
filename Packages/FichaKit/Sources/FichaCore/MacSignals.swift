@@ -4,8 +4,11 @@ import Foundation
 /// fake, so the rules that react to it are tested without the OS
 /// (`CODING_STANDARDS.md`).
 public protocol MacSignals {
-    /// When the Mac last woke, by the engine's time, or nil when it hasn't
-    /// slept since Ficha started.
+    /// Whether the Mac or its screens are asleep, so there's no one to show
+    /// the review panel to.
+    var isAsleep: Bool { get }
+    /// When the Mac or its screens last woke, by the engine's time, or nil
+    /// when they haven't slept since Ficha started.
     var lastWake: Date? { get }
     /// How long it's been since Lucas last pressed a key, clicked, moved the
     /// pointer or scrolled, or nil when the Mac doesn't say.

@@ -149,7 +149,7 @@ Putting off an appearance, or what's left of a review now, without rating its ca
 _Avoid_: dismiss, skip, postpone
 
 **Auto-close**:
-The review panel closing on its own once it's been untouched for a while. It counts as a snooze.
+The review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze.
 _Avoid_: timeout, expiry
 
 **Suppression**:
@@ -161,5 +161,5 @@ Whether the review panel takes the keyboard when it shows up on its own: never, 
 _Avoid_: Focus, keyboard grab
 
 **Appearance log**:
-Every appearance and review now, with what opened the review panel, when it showed and closed, and how it closed: finished, snoozed or auto-closed.
+Every appearance, and every review now that brought cards, with what opened the review panel, when it showed and closed, and how it closed: finished, snoozed or auto-closed.
 _Avoid_: history, session log
