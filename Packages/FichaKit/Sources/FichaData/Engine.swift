@@ -21,7 +21,9 @@ public enum DatabaseLocation: Sendable {
 public struct Engine: Sendable {
     private let database: any DatabaseWriter
     private let databaseChanges: DatabaseChanges
-    let time: any TimeSource
+    /// The time the engine works with: the system's, except in tests and in
+    /// Ficha Dev, whose debug menu moves it forward.
+    public let time: any TimeSource
     /// The Mac's calendar, whose days the new cards are counted by.
     let calendar: Calendar
 

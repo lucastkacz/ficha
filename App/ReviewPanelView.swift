@@ -2,29 +2,31 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// What the review panel shows, on Liquid Glass: the cards a review now
-/// brought, one at a time. Every action has a key and a button: Enter ends a
-/// first view, Space flips a card, 1, 2 and 3 rate it, and Esc closes the
-/// panel. Once Lucas answered every card, the panel closes on its own.
+/// What the review panel shows, on Liquid Glass: the cards a review now or an
+/// appearance brought, one at a time. Every action has a key and a button:
+/// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, and Esc
+/// closes the panel, which snoozes an appearance. Once Lucas answered every
+/// card, the panel closes on its own.
 struct ReviewPanelView: View {
-    /// The cards a review now brought, or why it couldn't bring them.
+    /// The cards a review now or an appearance brought, or why review now
+    /// couldn't bring them.
     let model: Result<ReviewPanelModel, EngineError>
-    /// Closes the panel.
-    let close: () -> Void
+    /// Closes the panel's window.
+    let closeWindow: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             switch model {
             case .success(let panel):
                 content(of: panel)
-                    .onChange(of: panel.isDone) { _, isDone in
-                        if isDone {
-                            close()
+                    .onChange(of: panel.isClosed) { _, isClosed in
+                        if isClosed {
+                            closeWindow()
                         }
                     }
                     .failureAlert("Couldn't save your answer", failure: Bindable(panel).failure)
             case .failure(let failure):
-                header {
+                header(close: closeWindow) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Couldn't load the cards")
                             .font(.headline)
@@ -44,12 +46,12 @@ struct ReviewPanelView: View {
     private func content(of panel: ReviewPanelModel) -> some View {
         switch panel.content {
         case .nothingToReview:
-            header {
+            header(close: panel.close) {
                 Text("No cards to review right now.")
                     .font(.headline)
             }
         case .firstView(let card):
-            header {
+            header(close: panel.close) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("New", comment: "A badge on a card the review panel shows for the first time.")
                         .font(.caption.weight(.semibold))
@@ -70,7 +72,7 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.defaultAction)
             }
         case .front(let card):
-            header {
+            header(close: panel.close) {
                 front(of: card)
             }
             HStack {
@@ -85,7 +87,7 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.space, modifiers: [])
             }
         case .back(let card):
-            header {
+            header(close: panel.close) {
                 front(of: card)
             }
             back(of: card)
@@ -100,8 +102,9 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// The panel's first line, next to the button that closes it.
-    private func header(@ViewBuilder _ title: () -> some View) -> some View {
+    /// The panel's first line, next to the button that closes it with
+    /// `close`.
+    private func header(close: @escaping () -> Void, @ViewBuilder _ title: () -> some View) -> some View {
         HStack(alignment: .top) {
             title()
             Spacer(minLength: 12)

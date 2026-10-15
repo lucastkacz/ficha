@@ -12,7 +12,9 @@ struct FichaApp: App {
         // as soon as it has said why.
         MenuBarExtra(variant.name, systemImage: variant.menuBarSymbol) {
             if let model = appDelegate.model {
-                MenuContent(model: model, openReviewPanel: appDelegate.openReviewPanel)
+                MenuContent(
+                    model: model, openReviewPanel: appDelegate.openReviewPanel,
+                    checkAppearance: appDelegate.checkAppearanceNow)
             }
         }
         Window(Text("Capture", comment: "The capture window's title."), id: CaptureView.windowID) {

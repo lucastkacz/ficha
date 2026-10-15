@@ -6,6 +6,9 @@ struct MenuContent: View {
     let model: AppModel
     /// Opens the review panel with the cards a review now brings.
     let openReviewPanel: () -> Void
+    /// Asks right away whether the review panel shows up on its own, for
+    /// Ficha Dev's debug menu.
+    let checkAppearance: () -> AppearanceCheck?
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -20,7 +23,9 @@ struct MenuContent: View {
         Text(progressLine)
         if let debugTools = model.debugTools {
             Divider()
-            DebugMenu(tools: debugTools, timeMoved: model.countProgress)
+            DebugMenu(
+                tools: debugTools, settings: model.settings, timeMoved: model.countProgress,
+                checkAppearance: checkAppearance)
         }
         Divider()
         Button("Quit") {
