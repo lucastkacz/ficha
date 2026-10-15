@@ -35,6 +35,18 @@ enum PrototypeFocusMode: String, CaseIterable {
     }
 }
 
+/// How the panel gives the keyboard back when it closes, to the app in front.
+enum KeyboardReturn: String {
+    /// Only closes, as #9's panel does. Lucas found that his keys didn't go
+    /// back to TextEdit (#34).
+    case nothing
+    /// Yields activation to the app in front and activates it, as macOS 14's
+    /// cooperative activation asks, before closing.
+    case activateFront
+    /// Hides Ficha Dev once the panel is closed.
+    case hide
+}
+
 /// How long Lucas must be idle before the panel takes the keyboard, in the
 /// `afterIdle` mode.
 private let idleThreshold: TimeInterval = 5
@@ -69,6 +81,10 @@ final class FocusPrototype {
     private(set) var keys: [String] = []
     private(set) var permissions = ""
 
+    /// How the panel gives the keyboard back when it closes: from the debug
+    /// menu, as #9's panel does, so Lucas's trials match it.
+    private(set) var keyboardReturn = KeyboardReturn.nothing
+
     private var trial: Task<Void, Never>?
     private var panel: ReviewPanelWindow?
     private var keyMonitor: Any?
@@ -90,14 +106,21 @@ final class FocusPrototype {
     }
 
     /// For agents: with `-FocusPrototype <mode>` among Ficha Dev's launch
-    /// arguments, runs one trial right away, closes the panel 8 seconds after
-    /// it shows, and quits.
+    /// arguments, runs one trial right away, closes the panel 3 seconds after
+    /// it shows, and quits 4 seconds later. `-FocusPrototypeReturn <how>` picks
+    /// how the panel gives the keyboard back.
     func runFromLaunchArguments() {
+        let defaults = UserDefaults.standard
         guard
-            let argument = UserDefaults.standard.string(forKey: "FocusPrototype"),
+            let argument = defaults.string(forKey: "FocusPrototype"),
             let mode = PrototypeFocusMode(rawValue: argument)
         else {
             return
+        }
+        if let argument = defaults.string(forKey: "FocusPrototypeReturn"),
+            let keyboardReturn = KeyboardReturn(rawValue: argument)
+        {
+            self.keyboardReturn = keyboardReturn
         }
         start(mode, after: .seconds(2), quitWhenDone: true)
     }
@@ -116,16 +139,21 @@ final class FocusPrototype {
         let panel = ReviewPanelWindow(model: .success(model))
         panel.contentView = NSHostingView(
             rootView: VStack(spacing: 8) {
-                ReviewPanelView(model: .success(model)) { [weak panel] in
-                    panel?.close()
+                ReviewPanelView(model: .success(model)) { [weak self, weak panel] in
+                    guard let panel else { return }
+                    self?.close(panel)
                 }
                 FocusReadout(prototype: self)
             }
         )
         self.panel = panel
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.keys.append(name(of: event))
-            logger.info("a key reached the panel")
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
+            if panel?.isVisible == true {
+                self?.keys.append(name(of: event))
+                logger.info("a key reached the panel")
+            } else {
+                logger.info("a key reached Ficha Dev after the panel closed")
+            }
             return event
         }
 
@@ -148,8 +176,8 @@ final class FocusPrototype {
             if hasKeyboard != hadKeyboard {
                 logger.info("panel is key: \(self.hasKeyboard, privacy: .public)")
             }
-            if quitWhenDone, elapsed > .seconds(8) {
-                panel.close()
+            if quitWhenDone, elapsed > .seconds(3) {
+                close(panel)
             }
             do {
                 try await Task.sleep(for: .milliseconds(250))
@@ -158,17 +186,52 @@ final class FocusPrototype {
             }
         }
 
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-        }
-        keyMonitor = nil
         readTheOS()
         logger.info(
             "panel closed; frontmost \(self.frontmostApp, privacy: .public), Ficha active \(self.isFichaActive, privacy: .public), \(self.keys.count, privacy: .public) keys reached it"
         )
+        // Keys that still reach Ficha Dev now went nowhere: the monitor keeps
+        // listening for a while, to tell.
+        let closedAt = ContinuousClock.now
+        while ContinuousClock.now - closedAt < .seconds(4), !Task.isCancelled {
+            readTheOS()
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                break
+            }
+        }
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+        }
+        keyMonitor = nil
         if quitWhenDone {
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    /// Closes the panel and gives the keyboard back to the app in front, as
+    /// `keyboardReturn` says.
+    private func close(_ panel: ReviewPanelWindow) {
+        guard panel.isVisible else { return }
+        let front = NSWorkspace.shared.frontmostApplication
+        let isFichaInFront = front?.processIdentifier == NSRunningApplication.current.processIdentifier
+        switch keyboardReturn {
+        case .nothing:
+            panel.close()
+        case .activateFront:
+            if let front, !isFichaInFront {
+                NSApplication.shared.yieldActivation(to: front)
+                let activated = front.activate(from: .current, options: [])
+                logger.info(
+                    "activating \(front.localizedName ?? "?", privacy: .public): \(activated, privacy: .public)")
+            }
+            panel.close()
+        case .hide:
+            panel.close()
+            NSApplication.shared.hide(nil)
+        }
+        logger.info("closed, giving the keyboard back by \(self.keyboardReturn.rawValue, privacy: .public)")
     }
 
     /// Reads what the OS says now: the idle times, the frontmost app and the
