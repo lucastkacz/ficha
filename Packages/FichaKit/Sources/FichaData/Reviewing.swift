@@ -13,32 +13,29 @@ extension Engine {
             let cards = try allCards(in: db)
             let picked = try settings.reviewNowCards(
                 cardIDs: cards.map(\.id), log: logEntries(in: db), now: now, calendar: calendar)
-            let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
-            var panelCards = try picked.reviews.map { PanelCard.review(try card($0, in: cardsByID)) }
-            if let id = picked.firstView {
-                panelCards.append(.firstView(try card(id, in: cardsByID)))
-            }
-            return panelCards
+            return try panelCards(picked, from: cards)
         }
     }
 
     /// Records Lucas's answer to a card in the review log: the end of its
     /// first view, which puts it on the ladder's first step, or a review with
-    /// his rating, which moves it on `ladder`. A first view is only for a new
-    /// card, and a review only for a due one.
+    /// his rating, which moves it on the ladder of `settings`. A first view is
+    /// only for a new card, and a review only for a due one, or, in an
+    /// appearance, for one due within the look-ahead, which it brings along.
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
         responseTime: Duration,
         trigger: Trigger,
-        ladder: Ladder
+        settings: ReviewSettings
     ) throws(EngineError) {
         let entry = ReviewLogEntry(
             cardID: cardID, kind: kind, answeredAt: time.now, responseTime: responseTime, trigger: trigger)
         try write { db in
-            let standing = try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
+            let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
             do throws(RefusedAnswer) {
-                try standing.check(kind, at: entry.answeredAt)
+                try standing.check(
+                    kind, at: entry.answeredAt, lookingAhead: trigger == .appearance ? settings.lookAhead : .zero)
             } catch {
                 throw EngineError(refused: error, cardID: cardID)
             }
@@ -72,6 +69,17 @@ extension Engine {
     }
 }
 
+/// The cards the review panel brings, picked by id out of `cards`, in the
+/// order it shows them: the cards to review, and then the new card.
+func panelCards(_ picked: PanelCardIDs, from cards: [Card]) throws -> [PanelCard] {
+    let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
+    var panelCards = try picked.reviews.map { PanelCard.review(try card($0, in: cardsByID)) }
+    if let id = picked.firstView {
+        panelCards.append(.firstView(try card(id, in: cardsByID)))
+    }
+    return panelCards
+}
+
 /// The card with this id, out of `cards`.
 private func card(_ id: Int64, in cards: [Int64: Card]) throws -> Card {
     guard let card = cards[id] else {
@@ -81,7 +89,7 @@ private func card(_ id: Int64, in cards: [Int64: Card]) throws -> Card {
 }
 
 /// The review log's entries, in the order they happened.
-private func logEntries(in db: Database) throws -> [ReviewLogEntry] {
+func logEntries(in db: Database) throws -> [ReviewLogEntry] {
     try Row.fetchAll(db, sql: "SELECT * FROM reviewLog ORDER BY id").map(ReviewLogEntry.init(row:))
 }
 

@@ -6,4 +6,11 @@ public enum PanelCard: Sendable, Equatable {
     /// A due card, which the panel shows front first: Lucas flips it and
     /// rates it.
     case review(Card)
+
+    /// The card, however the panel shows it.
+    public var card: Card {
+        switch self {
+        case .firstView(let card), .review(let card): card
+        }
+    }
 }

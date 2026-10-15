@@ -132,13 +132,25 @@ _Avoid_: mastered, known, mature
 A time the review panel shows up on its own, with the cards that are due or about to be.
 _Avoid_: session, prompt, popup, presentation
 
+**Look-ahead**:
+How far ahead an appearance looks: it brings along the cards due within it, whose reviews count as on time.
+_Avoid_: buffer, window
+
 **Active hours**:
 The part of the day in which appearances may happen.
 _Avoid_: schedule, work hours
 
+**Separation**:
+The least time between appearances, counted from when the last appearance or review now closed.
+_Avoid_: cooldown, gap, interval
+
 **Snooze**:
-Putting off an appearance without rating its cards, which stay due.
+Putting off an appearance, or what's left of a review now, without rating its cards, which stay due.
 _Avoid_: dismiss, skip, postpone
+
+**Auto-close**:
+The review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze.
+_Avoid_: timeout, expiry
 
 **Suppression**:
 A situation in which Ficha holds back appearances so as not to interrupt: a meeting, a video or a full-screen app.
@@ -147,3 +159,7 @@ _Avoid_: exception, block, do not disturb
 **Focus mode**:
 Whether the review panel takes the keyboard when it shows up on its own: never, once Lucas is idle, or always. It has nothing to do with macOS's Focus.
 _Avoid_: Focus, keyboard grab
+
+**Appearance log**:
+Every appearance, and every review now that brought cards, with what opened the review panel, when it showed and closed, and how it closed: finished, snoozed or auto-closed.
+_Avoid_: history, session log

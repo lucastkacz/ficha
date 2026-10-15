@@ -24,7 +24,8 @@ struct LadderTests {
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .new)
         time.advance(by: 60)
 
-        try engine.record(.firstView, of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow, ladder: ladder)
+        try engine.record(
+            .firstView, of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
 
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 0, due: time.now + hours(1)))
     }
@@ -32,11 +33,12 @@ struct LadderTests {
     @Test("good moves a card up one step")
     func goodMovesTheCardUpOneStep() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.record(.firstView, of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow, ladder: ladder)
+        try engine.record(
+            .firstView, of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
         time.advance(by: hours(1))
 
         try engine.record(
-            .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, ladder: ladder)
+            .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults)
 
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 1, due: time.now + hours(4)))
     }
@@ -77,11 +79,12 @@ struct LadderTests {
         let serendipia = try approveCard("serendipia", in: engine)
         let firstViewTime = time.now
         try engine.record(
-            .firstView, of: serendipia.id, responseTime: .milliseconds(8_250), trigger: .reviewNow, ladder: ladder)
+            .firstView, of: serendipia.id, responseTime: .milliseconds(8_250), trigger: .reviewNow, settings: .defaults)
         time.advance(by: hours(1))
 
         try engine.record(
-            .review(.hard), of: serendipia.id, responseTime: .milliseconds(2_500), trigger: .reviewNow, ladder: ladder)
+            .review(.hard), of: serendipia.id, responseTime: .milliseconds(2_500), trigger: .reviewNow,
+            settings: .defaults)
 
         #expect(
             try engine.reviewLog() == [
@@ -136,10 +139,11 @@ struct LadderTests {
             try engine.review(serendipia, .good)
         }
         #expect(throws: EngineError.cardNotFound(99)) {
-            try engine.record(.firstView, of: 99, responseTime: .seconds(8), trigger: .reviewNow, ladder: ladder)
+            try engine.record(.firstView, of: 99, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
         }
         #expect(throws: EngineError.cardNotFound(99)) {
-            try engine.record(.review(.good), of: 99, responseTime: .seconds(3), trigger: .reviewNow, ladder: ladder)
+            try engine.record(
+                .review(.good), of: 99, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults)
         }
         #expect(throws: EngineError.cardNotFound(99)) {
             try engine.standing(of: 99, on: ladder)

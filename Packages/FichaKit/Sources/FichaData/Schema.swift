@@ -58,6 +58,20 @@ enum Schema {
                 )
             }
         }
+        migrator.registerMigration("v4 appearance log") { db in
+            // One entry per appearance, or review now that brought cards,
+            // written when the review panel closes: the next appearance waits
+            // from the last closing.
+            try db.create(table: "appearanceLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                // What opened the review panel, as `Trigger` names it.
+                table.column("trigger", .text).notNull()
+                table.column("shownAt", .datetime).notNull()
+                table.column("closedAt", .datetime).notNull()
+                // How it closed: "finished", "snoozed" or "autoClosed".
+                table.column("outcome", .text).notNull()
+            }
+        }
         return migrator
     }()
 }

@@ -30,13 +30,13 @@ extension Engine {
     /// Records a new card's first view, as the review panel does when Lucas
     /// ends it, from review now.
     func meet(_ card: Card) throws {
-        try record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, ladder: .standard)
+        try record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
     }
 
     /// Records a review of a due card with `rating`, as the review panel does
-    /// when Lucas rates it, from review now, on the default ladder.
+    /// when Lucas rates it, from review now, with the default settings.
     func review(_ card: Card, _ rating: Rating) throws {
-        try record(.review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, ladder: .standard)
+        try record(.review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults)
     }
 }
 
@@ -45,6 +45,15 @@ extension ManualTimeSource {
     func move(to date: Date) {
         advance(by: date.timeIntervalSince(now))
     }
+}
+
+/// What a test's Mac tells the engine, as the app reads it from the OS: by
+/// default, a Mac awake since Ficha started, which doesn't say how long Lucas
+/// has been idle.
+struct FakeMac: MacSignals {
+    var isAsleep = false
+    var lastWake: Date? = nil
+    var idleTime: Duration? = nil
 }
 
 /// The calendar of a Mac in Buenos Aires, whose days start at midnight there,

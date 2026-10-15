@@ -3,4 +3,6 @@
 public enum Trigger: String, Sendable {
     /// Lucas opened it himself: a review now.
     case reviewNow
+    /// It showed up on its own: an appearance.
+    case appearance
 }

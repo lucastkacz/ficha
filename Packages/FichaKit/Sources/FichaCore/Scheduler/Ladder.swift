@@ -42,7 +42,7 @@ public struct Ladder: Sendable, Equatable {
             }
         }
         let last = entries[entries.count - 1]
-        return .onLadder(step: step, due: last.answeredAt.addingTimeInterval(waits[step] / .seconds(1)))
+        return .onLadder(step: step, due: last.answeredAt.adding(waits[step]))
     }
 
     /// How many cards are due at `now`, and how many are learned: on a step

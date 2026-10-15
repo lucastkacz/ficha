@@ -1,9 +1,9 @@
 import Foundation
 
-/// The cards review now brings, by id: due cards to review, then a new card
+/// The cards the review panel brings, by id: cards to review, then a new card
 /// to meet.
-public struct ReviewNowCards: Sendable, Equatable {
-    /// The due cards, to review in this order.
+public struct PanelCardIDs: Sendable, Equatable {
+    /// The cards to review, in this order.
     public let reviews: [Int64]
     /// A new card, to meet in its first view after them, if any.
     public let firstView: Int64?
@@ -12,23 +12,37 @@ public struct ReviewNowCards: Sendable, Equatable {
 extension ReviewSettings {
     /// The cards review now brings at `now`, out of every card, by id in the
     /// order Lucas approved them, and the whole review log, in the order it
-    /// was written: the due cards, lowest step first and then the longest
-    /// overdue, up to `cardsPerAppearance`, and then the first new card Lucas
-    /// approved, if there's room (ADR 0003) and he hasn't met
-    /// `newCardsPerDay` today, by `calendar`'s day.
+    /// was written: the due cards, and a new card, as `pickCards` picks them.
     public func reviewNowCards(
         cardIDs: [Int64],
         log: [ReviewLogEntry],
         now: Date,
         calendar: Calendar
-    ) throws(UnexpectedReviewLog) -> ReviewNowCards {
+    ) throws(UnexpectedReviewLog) -> PanelCardIDs {
+        pickCards(
+            after: try ladder.standings(of: cardIDs, after: log), log: log, dueBy: now, now: now, calendar: calendar)
+    }
+
+    /// The cards the review panel brings at `now`, out of where every card
+    /// stands, by id in the order Lucas approved them, and the whole review
+    /// log: the cards due by `horizon`, lowest step first and then the
+    /// longest overdue, up to `cardsPerAppearance`, and then the first new
+    /// card Lucas approved, if there's room (ADR 0003) and he hasn't met
+    /// `newCardsPerDay` today, by `calendar`'s day.
+    func pickCards(
+        after standings: [(cardID: Int64, standing: CardStanding)],
+        log: [ReviewLogEntry],
+        dueBy horizon: Date,
+        now: Date,
+        calendar: Calendar
+    ) -> PanelCardIDs {
         var due: [(id: Int64, step: Int, due: Date)] = []
         var new: [Int64] = []
-        for (id, standing) in try ladder.standings(of: cardIDs, after: log) {
+        for (id, standing) in standings {
             switch standing {
             case .new:
                 new.append(id)
-            case .onLadder(let step, let dueTime) where standing.isDue(at: now):
+            case .onLadder(let step, let dueTime) where standing.isDue(at: horizon):
                 due.append((id, step, dueTime))
             case .onLadder:
                 break
@@ -42,6 +56,6 @@ extension ReviewSettings {
         let hasRoom = reviews.count < cardsPerAppearance
         let metToday = log.count { $0.kind == .firstView && calendar.isDate($0.answeredAt, inSameDayAs: now) }
         let mayMeetMore = metToday < newCardsPerDay
-        return ReviewNowCards(reviews: reviews, firstView: hasRoom && mayMeetMore ? new.first : nil)
+        return PanelCardIDs(reviews: reviews, firstView: hasRoom && mayMeetMore ? new.first : nil)
     }
 }

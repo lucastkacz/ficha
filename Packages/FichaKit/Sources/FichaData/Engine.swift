@@ -69,6 +69,12 @@ public struct Engine: Sendable {
         databaseChanges.stream()
     }
 
+    /// The current time the engine works with: the system's, except in tests
+    /// and in Ficha Dev, whose debug menu moves it forward.
+    public var now: Date {
+        time.now
+    }
+
     /// Saves a capture in the inbox, cleaned up as `CaptureContent` says, and
     /// returns it. A capture without text isn't saved.
     @discardableResult

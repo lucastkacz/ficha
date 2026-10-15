@@ -1,5 +1,6 @@
 import FichaCore
 import FichaData
+import Foundation
 import Observation
 
 /// The app's way into Lucas's cards: it goes through the engine and keeps what
@@ -63,8 +64,26 @@ final class AppModel {
     /// through, or why they couldn't be brought.
     func startReviewNow() -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            try ReviewPanelModel(engine: engine, settings: settings)
+            ReviewPanelModel(engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings))
         }
+    }
+
+    /// Whether the review panel shows up on its own now, by what `mac` says,
+    /// and with which cards, or why not. The engine decides.
+    func checkAppearance(mac: some MacSignals) throws(EngineError) -> AppearanceDecision {
+        try engine.checkAppearance(settings, mac: mac)
+    }
+
+    /// Starts an appearance with the cards the engine picked, for the review
+    /// panel to go through.
+    func startAppearance(with cards: [PanelCard]) -> ReviewPanelModel {
+        ReviewPanelModel(engine.openPanel(.appearance, with: cards, settings: settings))
+    }
+
+    /// The engine's time: the system's, or, in Ficha Dev, the time its debug
+    /// menu moves forward.
+    var now: Date {
+        engine.now
     }
 
     /// Counts again what the menu shows of Lucas's progress. Changes to the
