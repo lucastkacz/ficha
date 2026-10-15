@@ -157,7 +157,7 @@ final class ReviewPanelModel {
         guard self.outcome == nil else { return }
         self.outcome = outcome
         logger.info(
-            "The review panel of a \(self.trigger.rawValue, privacy: .public) closed: \(outcome.rawValue, privacy: .public)"
+            "The review panel (\(self.trigger.rawValue, privacy: .public)) closed: \(outcome.rawValue, privacy: .public)"
         )
         do {
             try engine.recordClosing(of: trigger, shownAt: shownAt, outcome: outcome)

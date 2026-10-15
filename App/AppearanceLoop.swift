@@ -44,13 +44,15 @@ final class AppearanceLoop {
         self.panels = panels
     }
 
-    /// Starts checking: right away, and from then on.
+    /// Starts checking, a minute from now. A panel shown while Ficha is still
+    /// launching took the keyboard as it showed, while Lucas typed, so the
+    /// first check waits until Ficha has settled.
     func start() {
         observe(NSWorkspace.willSleepNotification, as: .macSleeps)
         observe(NSWorkspace.screensDidSleepNotification, as: .screensSleep)
         observe(NSWorkspace.didWakeNotification, as: .macWakes)
         observe(NSWorkspace.screensDidWakeNotification, as: .screensWake)
-        check()
+        checkAgain(after: Self.checkInterval)
     }
 
     /// Asks the engine now, unless the panel is open or the Mac is asleep,
@@ -68,6 +70,13 @@ final class AppearanceLoop {
         if case .decided(.notNow(let reason)) = result, let until = reason.until {
             wait = min(wait, max(.seconds(1), .seconds(until.timeIntervalSince(model.now))))
         }
+        checkAgain(after: wait)
+        return result
+    }
+
+    /// Checks again after `wait`, in place of any check it was waiting for.
+    private func checkAgain(after wait: Duration) {
+        nextCheck?.cancel()
         nextCheck = Task { [weak self] in
             do {
                 try await Task.sleep(for: wait)
@@ -76,7 +85,6 @@ final class AppearanceLoop {
             }
             self?.check()
         }
-        return result
     }
 
     private func askTheEngine() -> AppearanceCheck {
@@ -90,9 +98,12 @@ final class AppearanceLoop {
             logger.error("Couldn't check for an appearance: \(String(describing: error), privacy: .public)")
             return .failed(error)
         }
-        if case .show(let cards) = decision {
+        switch decision {
+        case .show(let cards):
             logger.info("The review panel shows up on its own with \(cards.count) cards")
             panels.showAppearance(cards)
+        case .notNow(let reason):
+            logger.debug("No appearance now: \(String(describing: reason), privacy: .public)")
         }
         return .decided(decision)
     }

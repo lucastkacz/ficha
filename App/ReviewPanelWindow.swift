@@ -143,7 +143,7 @@ final class ReviewPanelWindow: NSPanel {
     private func takeKeyboardIfItsTime() {
         guard let takesKeyboardNow else { return }
         if isKeyWindow {
-            logger.info("The review panel has the keyboard: Lucas clicked it")
+            logger.info("The review panel has the keyboard, though it didn't take it")
             self.takesKeyboardNow = nil
         } else if takesKeyboardNow() {
             makeKey()
