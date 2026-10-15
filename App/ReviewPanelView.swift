@@ -51,7 +51,7 @@ struct ReviewPanelView: View {
         case .firstView(let card):
             header {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("New")
+                    Text("New", comment: "A badge on a card the review panel shows for the first time.")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.tint)
                         .padding(.horizontal, 8)
@@ -76,7 +76,10 @@ struct ReviewPanelView: View {
             HStack {
                 Spacer()
                 Button(action: panel.flip) {
-                    KeyLabel(title: "Flip", key: String(localized: "space"))
+                    KeyLabel(
+                        title: "Flip",
+                        key: String(localized: "space", comment: "The Space key's name, next to the button it presses.")
+                    )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])

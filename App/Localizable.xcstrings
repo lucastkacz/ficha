@@ -4,45 +4,64 @@
     "%@ can't open your cards" : {
 
     },
-    "%lld captures in the inbox" : {
-      "comment" : "The menu's progress line, after the learned cards. Zero has a text of its own: \"the inbox is empty\".",
+    "%lld cards learned · %lld captures in the inbox" : {
+      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures wait in the inbox.",
       "localizations" : {
         "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld capture in the inbox"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld captures in the inbox"
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@learned@ · %#@inbox@"
+          },
+          "substitutions" : {
+            "inbox" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg capture in the inbox"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg captures in the inbox"
+                    }
+                  },
+                  "zero" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "the inbox is empty"
+                    }
+                  }
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards learned" : {
-      "comment" : "The menu's progress line, before the captures in the inbox. Zero has a text of its own: \"No cards learned\".",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card learned"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards learned"
+            },
+            "learned" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card learned"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards learned"
+                    }
+                  },
+                  "zero" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "No cards learned"
+                    }
+                  }
                 }
               }
             }
@@ -57,7 +76,7 @@
 
     },
     "Capture" : {
-
+      "comment" : "The capture window's title."
     },
     "Capture…" : {
 
@@ -93,10 +112,7 @@
 
     },
     "New" : {
-
-    },
-    "No cards learned" : {
-
+      "comment" : "A badge on a card the review panel shows for the first time."
     },
     "No cards to review right now." : {
 
@@ -114,7 +130,7 @@
 
     },
     "Review" : {
-
+      "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
     },
     "Review now" : {
 
@@ -135,12 +151,9 @@
 
     },
     "space" : {
-
+      "comment" : "The Space key's name, next to the button it presses."
     },
     "Text" : {
-
-    },
-    "the inbox is empty" : {
 
     }
   },

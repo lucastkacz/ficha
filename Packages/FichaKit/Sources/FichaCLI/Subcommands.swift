@@ -5,7 +5,7 @@ import FichaData
 struct CaptureCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "capture",
-        abstract: "Saves a capture in the inbox, to refine later, and prints the capture."
+        abstract: "Save a capture in the inbox, to refine later, and print the capture."
     )
 
     @Argument(help: "What you want to remember: a word, a concept, a quote or a question.")
@@ -26,7 +26,7 @@ struct CaptureCommand: EngineCommand {
 struct InboxCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "inbox",
-        abstract: "Lists the captures waiting in the inbox, oldest first."
+        abstract: "List the captures waiting in the inbox, oldest first."
     )
 
     func run(on engine: Engine) throws -> any Encodable {
@@ -38,7 +38,7 @@ struct InboxCommand: EngineCommand {
 struct DiscardCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "discard",
-        abstract: "Discards a capture: takes it out of the inbox without cards, and prints the capture."
+        abstract: "Discard a capture: take it out of the inbox without cards, and print the capture."
     )
 
     @Argument(help: "The capture's id, as `ficha inbox` shows it.")
@@ -53,7 +53,7 @@ struct DiscardCommand: EngineCommand {
 struct CardsCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "cards",
-        abstract: "Lists your cards, in the order you approved them."
+        abstract: "List your cards, in the order you approved them."
     )
 
     func run(on engine: Engine) throws -> any Encodable {

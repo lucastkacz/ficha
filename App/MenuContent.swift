@@ -38,22 +38,14 @@ struct MenuContent: View {
     }
 
     /// How many cards Lucas learned and how many captures wait in the inbox,
-    /// in words. The String Catalog holds the singular and plural of each
-    /// count.
+    /// in words. The String Catalog words each count for zero, one and more.
     private var progressLine: String {
         guard let progress = model.progress else {
             return String(localized: "Couldn't count your progress")
         }
-        let learned =
-            switch progress.learned {
-            case 0: String(localized: "No cards learned")
-            case let count: String(localized: "\(count) cards learned")
-            }
-        let inbox =
-            switch progress.capturesInInbox {
-            case 0: String(localized: "the inbox is empty")
-            case let count: String(localized: "\(count) captures in the inbox")
-            }
-        return "\(learned) · \(inbox)"
+        return String(
+            localized: "\(progress.learned) cards learned · \(progress.capturesInInbox) captures in the inbox",
+            comment: "The menu's progress line: how many cards Lucas learned, and how many captures wait in the inbox."
+        )
     }
 }

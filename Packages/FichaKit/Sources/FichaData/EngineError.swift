@@ -2,11 +2,12 @@ import FichaCore
 import Foundation
 
 /// What can go wrong in the engine. Each message says what happened and what
-/// to do about it, in English. The app shows them, so they're looked up with
-/// `String(localized:)` in the main bundle, which is the app's: its String
-/// Catalog can translate them (ADR 0009). The package has no catalog of its
-/// own, so Xcode doesn't add these messages to the app's catalog: a
-/// translation adds them by hand.
+/// to do about it, in English, and is looked up with `String(localized:)` in
+/// the main bundle (ADR 0009). In the app, that's the app's bundle, whose
+/// String Catalog can translate the messages. Xcode doesn't add them to it,
+/// so a translation adds them by hand, keyed by their English text. The
+/// `ficha` CLI's main bundle is its own folder in the app, Contents/Helpers,
+/// which has no catalog, so the CLI always prints them in English.
 public enum EngineError: Error, Equatable {
     /// The database has migrations this version doesn't know: a newer version
     /// of Ficha migrated it, so this one refuses to open it.

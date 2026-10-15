@@ -9,7 +9,7 @@ import Foundation
 struct ApproveCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "approve",
-        abstract: "Approves a capture into one or more cards, which it reads as JSON from standard input.",
+        abstract: "Approve a capture into one or more cards, read as JSON from standard input.",
         discussion: """
             The cards are a JSON list. Each one has \(cardFields). For example:
 
@@ -19,7 +19,7 @@ struct ApproveCommand: EngineCommand {
                 "tags": ["lenguaje"], "source": null}]
               EOF
 
-            Saves the cards as new, in that order, takes the capture out of the inbox, and prints the cards.
+            It saves the cards as new, in that order, takes the capture out of the inbox and prints the cards.
             """
     )
 
@@ -40,9 +40,10 @@ struct ApproveCommand: EngineCommand {
 }
 
 /// The fields of each card `ficha approve` reads, as its help and its errors
-/// list them.
+/// list them. The types are listed the British way, with no comma before
+/// "or", like the rest of the text.
 private let cardFields = """
-    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en"))))), \
+    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en_GB"))))), \
     front, back, tags (a list, which can be empty) and source (null when there's none)
     """
 
