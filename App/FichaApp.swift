@@ -15,7 +15,7 @@ struct FichaApp: App {
                 MenuContent(model: model, openReviewPanel: appDelegate.openReviewPanel)
             }
         }
-        Window("Capturar", id: CaptureView.windowID) {
+        Window("Capture", id: CaptureView.windowID) {
             if let model = appDelegate.model {
                 CaptureView(model: model)
             }

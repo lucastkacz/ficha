@@ -12,7 +12,7 @@ final class ReviewPanelWindow: NSPanel {
     /// Lucas is done.
     init(model: Result<ReviewPanelModel, EngineError>) {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        title = "Repasar"
+        title = String(localized: "Review")
         level = .floating
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isMovableByWindowBackground = true

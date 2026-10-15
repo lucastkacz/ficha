@@ -39,7 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard case .failure(let error) = opening else { return }
         showAlert(
-            "\(AppVariant.current.name) no puede abrir tus fichas", explaining: error, style: .critical, button: "Salir"
+            String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error, style: .critical,
+            button: String(localized: "Quit")
         )
         NSApplication.shared.terminate(nil)
     }

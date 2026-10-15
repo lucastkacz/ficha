@@ -2,6 +2,8 @@
 
 A macOS menu-bar app that shows you a tiny flashcard every so often (a word, a concept, a quote or a question) and spaces each card by how well you know it. Answering takes seconds, and everything stays on your Mac.
 
+Ficha follows your Mac's language. For now it's in English; Spanish comes later.
+
 Status: early development.
 
 ## Run it
@@ -16,11 +18,11 @@ make install     # installs Ficha in /Applications
 
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
-Ficha Dev's menu also has "Depuración", to try a change in minutes: it loads sample cards, written by hand, and moves Ficha Dev's time forward. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
+Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, and moves Ficha Dev's time forward. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
 
 ## Reviewing
 
-"Repasar ahora", in the menu, shows how many cards are due and opens the review panel with up to five cards: the due ones, lowest step first, and a new card when there's room, up to five new cards a day. A new card shows whole, marked "Nueva": press Enter. Any other card shows its front: Space flips it, and 1, 2 or 3 rate it ("No lo sé", "Más o menos", "Lo sé"). Esc closes the panel, and every action can also be clicked. The menu also says how many cards you've learned and how many captures wait in the inbox.
+"Review now", in the menu, shows how many cards are due and opens the review panel with up to five cards: the due ones, lowest step first, and a new card when there's room, up to five new cards a day. A new card shows whole, marked "New": press Enter. Any other card shows its front: Space flips it, and 1, 2 or 3 rate it ("Don't know", "Sort of", "Know it"). Esc closes the panel, and every action can also be clicked. The menu also says how many cards you've learned and how many captures wait in the inbox.
 
 ## The `ficha` command
 

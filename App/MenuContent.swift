@@ -9,7 +9,7 @@ struct MenuContent: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Capturar…") {
+        Button("Capture…") {
             // A menu-bar app isn't active until it's asked to be, and the
             // window only takes the keyboard in an active app.
             NSApplication.shared.activate()
@@ -23,41 +23,37 @@ struct MenuContent: View {
             DebugMenu(tools: debugTools, timeMoved: model.countProgress)
         }
         Divider()
-        Button("Salir") {
+        Button("Quit") {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
     }
 
-    /// "Repasar ahora", with how many cards are due when some are.
+    /// "Review now", with how many cards are due when some are.
     private var reviewNowTitle: String {
         guard let due = model.progress?.due, due > 0 else {
-            return "Repasar ahora"
+            return String(localized: "Review now")
         }
-        return "Repasar ahora (\(inWords(due, one: "vencida", many: "vencidas")))"
+        return String(localized: "Review now (\(due) due)")
     }
 
     /// How many cards Lucas learned and how many captures wait in the inbox,
-    /// in words.
+    /// in words. The String Catalog holds the singular and plural of each
+    /// count.
     private var progressLine: String {
         guard let progress = model.progress else {
-            return "No se pudo contar tu progreso"
+            return String(localized: "Couldn't count your progress")
         }
         let learned =
             switch progress.learned {
-            case 0: "Ninguna ficha aprendida"
-            case let count: inWords(count, one: "ficha aprendida", many: "fichas aprendidas")
+            case 0: String(localized: "No cards learned")
+            case let count: String(localized: "\(count) cards learned")
             }
         let inbox =
             switch progress.capturesInInbox {
-            case 0: "la bandeja está vacía"
-            case let count: inWords(count, one: "captura en la bandeja", many: "capturas en la bandeja")
+            case 0: String(localized: "the inbox is empty")
+            case let count: String(localized: "\(count) captures in the inbox")
             }
         return "\(learned) · \(inbox)"
     }
-}
-
-/// A count in words, like "1 ficha" or "3 fichas".
-private func inWords(_ count: Int, one: String, many: String) -> String {
-    "\(count) \(count == 1 ? one : many)"
 }

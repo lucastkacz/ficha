@@ -1,0 +1,148 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ can't open your cards" : {
+
+    },
+    "%lld captures in the inbox" : {
+      "comment" : "The menu's progress line, after the learned cards. Zero has a text of its own: \"the inbox is empty\".",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld capture in the inbox"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld captures in the inbox"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards learned" : {
+      "comment" : "The menu's progress line, before the captures in the inbox. Zero has a text of its own: \"No cards learned\".",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card learned"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards learned"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "A word, a concept, a quote or a question" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Capture" : {
+
+    },
+    "Capture…" : {
+
+    },
+    "Close" : {
+
+    },
+    "Close (esc)" : {
+
+    },
+    "Couldn't count your progress" : {
+
+    },
+    "Couldn't load the cards" : {
+
+    },
+    "Couldn't save the capture" : {
+
+    },
+    "Couldn't save your answer" : {
+
+    },
+    "Don't know" : {
+
+    },
+    "Flip" : {
+
+    },
+    "Got it" : {
+
+    },
+    "Know it" : {
+
+    },
+    "New" : {
+
+    },
+    "No cards learned" : {
+
+    },
+    "No cards to review right now." : {
+
+    },
+    "Note" : {
+
+    },
+    "Note (optional)" : {
+
+    },
+    "OK" : {
+
+    },
+    "Quit" : {
+
+    },
+    "Review" : {
+
+    },
+    "Review now" : {
+
+    },
+    "Review now (%lld due)" : {
+
+    },
+    "Save" : {
+
+    },
+    "Sort of" : {
+
+    },
+    "Source" : {
+
+    },
+    "Source (optional): a book, a podcast…" : {
+
+    },
+    "space" : {
+
+    },
+    "Text" : {
+
+    },
+    "the inbox is empty" : {
+
+    }
+  },
+  "version" : "1.0"
+}

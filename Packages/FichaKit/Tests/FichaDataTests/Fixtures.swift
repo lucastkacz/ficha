@@ -28,7 +28,7 @@ func approveCard(_ front: String, in engine: Engine) throws -> Card {
 
 extension Engine {
     /// Records a new card's first view, as the review panel does when Lucas
-    /// presses "Entendido", from review now.
+    /// presses "Got it", from review now.
     func meet(_ card: Card) throws {
         try record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, ladder: .standard)
     }

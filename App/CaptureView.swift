@@ -19,23 +19,23 @@ struct CaptureView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             TextField(
-                "Texto",
+                "Text",
                 text: $text,
-                prompt: Text("Una palabra, un concepto, una frase o una pregunta"),
+                prompt: Text("A word, a concept, a quote or a question"),
                 axis: .vertical
             )
             .lineLimit(3...8)
             .focused($textIsFocused)
-            TextField("Nota", text: $note, prompt: Text("Nota (opcional)"), axis: .vertical)
+            TextField("Note", text: $note, prompt: Text("Note (optional)"), axis: .vertical)
                 .lineLimit(1...4)
-            TextField("Fuente", text: $source, prompt: Text("Fuente (opcional): un libro, un podcast…"))
+            TextField("Source", text: $source, prompt: Text("Source (optional): a book, a podcast…"))
             HStack {
                 Spacer()
-                Button("Cancelar", role: .cancel) {
+                Button("Cancel", role: .cancel) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
-                Button("Guardar", action: save)
+                Button("Save", action: save)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!fieldsMakeACapture)
             }
@@ -46,11 +46,11 @@ struct CaptureView: View {
         .padding()
         .frame(width: 420)
         .defaultFocus($textIsFocused, true)
-        .failureAlert("No se pudo guardar la captura", failure: $failure)
+        .failureAlert("Couldn't save the capture", failure: $failure)
     }
 
     /// Whether the fields hold a capture yet, by the same rule the engine
-    /// saves it with: until there's text, "Guardar" and Enter wait for it.
+    /// saves it with: until there's text, "Save" and Enter wait for it.
     private var fieldsMakeACapture: Bool {
         CaptureContent(text: text, note: note, source: source) != nil
     }

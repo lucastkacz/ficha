@@ -6,7 +6,7 @@ import Foundation
 public struct ReviewLogEntry: Sendable, Equatable {
     /// What Lucas did with the card.
     public enum Kind: Sendable, Equatable {
-        /// He met it whole, and ended its first view with "Entendido".
+        /// He met it whole, and ended its first view with "Got it".
         case firstView
         /// He reviewed it, and rated it.
         case review(Rating)
@@ -14,7 +14,7 @@ public struct ReviewLogEntry: Sendable, Equatable {
 
     public let cardID: Int64
     public let kind: Kind
-    /// When he answered: with "Entendido", or with his rating.
+    /// When he answered: with "Got it", or with his rating.
     public let answeredAt: Date
     /// How long he took, from the panel showing the card to his answer.
     public let responseTime: Duration

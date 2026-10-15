@@ -69,7 +69,7 @@ enum SampleCardsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .blankSide(let capture):
-            "Una ficha de ejemplo de «\(capture)» tiene el frente o el dorso vacío: completala en SampleCards.swift."
+            "A sample card of “\(capture)” has a blank front or back: complete it in SampleCards.swift."
         }
     }
 }
