@@ -25,7 +25,7 @@ final class DatabaseFileTests {
 
         let reopened = try Engine(location: .folder(folder), time: time)
 
-        #expect(try reopened.inboxCount() == 2)
+        #expect(try reopened.progress(.defaults).capturesInInbox == 2)
     }
 
     @Test("a database that a newer version of Ficha migrated is refused")
@@ -79,7 +79,7 @@ final class DatabaseFileTests {
 
         try cli.approve(
             capture.id, into: [card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad.")])
-        #expect(try app.inboxCount() == 0)
+        #expect(try app.progress(.defaults).capturesInInbox == 0)
         #expect(try app.cards().map(\.front) == ["serendipia"])
     }
 
@@ -96,7 +96,7 @@ final class DatabaseFileTests {
         try cli.capture(text: "serendipia", note: nil, source: nil)
 
         #expect(await changes.next() != nil)
-        #expect(try app.inboxCount() == 1)
+        #expect(try app.progress(.defaults).capturesInInbox == 1)
     }
 
     /// The path of a file in the data folder.

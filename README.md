@@ -18,6 +18,10 @@ Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, s
 
 Ficha Dev's menu also has "Depuración", to try a change in minutes: it loads sample cards, written by hand, and moves Ficha Dev's time forward. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
 
+## Reviewing
+
+"Repasar ahora", in the menu, shows how many cards are due and opens the review panel with up to five cards: the due ones, lowest step first, and a new card when there's room, up to five new cards a day. A new card shows whole, marked "Nueva": press Enter. Any other card shows its front: Space flips it, and 1, 2 or 3 rate it ("No lo sé", "Más o menos", "Lo sé"). Esc closes the panel, and every action can also be clicked. The menu also says how many cards you've learned and how many captures wait in the inbox.
+
 ## The `ficha` command
 
 Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards, and you can capture from a terminal with it:

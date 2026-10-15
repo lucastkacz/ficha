@@ -1,3 +1,4 @@
+import FichaCore
 import FichaData
 import Observation
 
@@ -9,9 +10,12 @@ final class AppModel {
     /// What Ficha Dev's debug menu does, or nil in the real Ficha, which has no
     /// debug menu.
     let debugTools: DebugTools?
-    /// How many captures wait in the inbox, or nil when they couldn't be
+    /// The settings the engine decides with: the defaults, until Lucas can
+    /// change them.
+    let settings = ReviewSettings.defaults
+    /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
-    private(set) var capturesInInbox: Int?
+    private(set) var progress: ProgressCounts?
 
     /// The real Ficha's way into Lucas's cards, through `engine`.
     convenience init(engine: Engine) {
@@ -28,11 +32,23 @@ final class AppModel {
         self.debugTools = debugTools
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
-        countCapturesInInbox()
+        countProgress()
         Task { [weak self] in
             for await _ in changes {
                 guard let self else { return }
-                countCapturesInInbox()
+                countProgress()
+            }
+        }
+        // Cards come due as time passes, without the database changing.
+        Task { [weak self] in
+            while true {
+                do {
+                    try await Task.sleep(for: .seconds(60))
+                } catch {
+                    return
+                }
+                guard let self else { return }
+                countProgress()
             }
         }
     }
@@ -43,7 +59,18 @@ final class AppModel {
         try engine.capture(text: text, note: note, source: source)
     }
 
-    private func countCapturesInInbox() {
-        capturesInInbox = try? engine.inboxCount()
+    /// The cards a review now brings, for the review panel to go through, or
+    /// why they couldn't be brought.
+    func reviewNow() -> Result<ReviewPanel, EngineError> {
+        Result { () throws(EngineError) in
+            try ReviewPanel(engine: engine, settings: settings)
+        }
+    }
+
+    /// Counts again what the menu shows of Lucas's progress. Changes to the
+    /// database and the passing of time count it on their own; Ficha Dev's
+    /// debug menu asks for it when it moves the time.
+    func countProgress() {
+        progress = try? engine.progress(settings)
     }
 }

@@ -6,6 +6,8 @@ import SwiftUI
 /// forward. The real Ficha has none (`AppVariant.hasDebugMenu`).
 struct DebugMenu: View {
     let tools: DebugTools
+    /// What to do once the time moved, since cards may have come due.
+    let timeMoved: () -> Void
 
     var body: some View {
         Menu("Depuración") {
@@ -19,6 +21,7 @@ struct DebugMenu: View {
                 Button("Avanzar \(inWords(step))") {
                     attempt("No se pudo avanzar el tiempo") {
                         try tools.moveTimeForward(by: step)
+                        timeMoved()
                     }
                 }
             }

@@ -80,6 +80,10 @@ _Avoid_: grade, score, ease
 The first time Lucas sees a card, whole, before it's on the ladder. It isn't a review.
 _Avoid_: introduction, first review, learning step
 
+**Review log** (_historial de repasos_):
+Every first view and review, with when Lucas answered, what opened the review panel, how long he took and his rating. A card's step and due time are worked out from it.
+_Avoid_: history, review history
+
 **Review now** (_Repasar ahora_):
 Lucas opening the review panel himself, from the menu bar, outside an appearance.
 _Avoid_: manual session, study mode

@@ -14,6 +14,16 @@ public enum EngineError: Error, Equatable {
     /// A capture was approved into no cards. One that becomes no cards is
     /// discarded instead.
     case noCards
+    /// There's no card with this id.
+    case cardNotFound(Int64)
+    /// The card with this id already had its first view, so it can't have
+    /// another.
+    case cardNotNew(Int64)
+    /// The card with this id is new, so it can't be reviewed before its first
+    /// view.
+    case cardIsNew(Int64)
+    /// The card with this id isn't due yet, so it can't be reviewed.
+    case cardNotDue(Int64)
     /// SQLite couldn't open, read or write the database. The engine logs why.
     case storage
 }
@@ -32,8 +42,20 @@ extension EngineError: LocalizedError {
             "La captura \(id) no está en la bandeja: ya se aprobó o se descartó, o no existe. Revisá qué hay en la bandeja."
         case .noCards:
             "Una captura se aprueba en una o más fichas. Para sacarla de la bandeja sin fichas, descartala."
+        case .cardNotFound(let id):
+            "No hay ninguna ficha con el id \(id). Revisá los ids con `ficha cards`."
+        case .cardNotNew(let id):
+            "La ficha \(id) ya tuvo su primera vista. \(reopenReviewNow)"
+        case .cardIsNew(let id):
+            "La ficha \(id) es nueva: antes de repasarla tiene que tener su primera vista. \(reopenReviewNow)"
+        case .cardNotDue(let id):
+            "La ficha \(id) todavía no está vencida, así que no se puede repasar. \(reopenReviewNow)"
         case .storage:
             "Ficha no pudo leer o guardar su base de datos. Probá de nuevo y, si sigue pasando, reportalo."
         }
     }
 }
+
+/// What to do when the review panel shows a card for what it can't be used
+/// for: start over with the cards as they are now.
+private let reopenReviewNow = "Cerrá la cajita y volvé a abrir «Repasar ahora»."

@@ -19,15 +19,22 @@ public enum DatabaseLocation: Sendable {
 /// writes each change in one transaction. The app and the CLI each open their
 /// own engine on the same database, and each hears about the other's changes.
 public struct Engine: Sendable {
-    private let database: any DatabaseWriter
+    let database: any DatabaseWriter
     private let databaseChanges: DatabaseChanges
-    private let time: any TimeSource
+    let time: any TimeSource
+    /// The Mac's calendar, whose days the new cards are counted by.
+    let calendar: Calendar
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
     /// that an older version of Ficha left, it saves a copy of it next to it.
     /// A database that a newer version migrated is refused, and left as it was.
-    public init(location: DatabaseLocation, time: any TimeSource) throws(EngineError) {
+    /// Days start at midnight by `calendar`: the Mac's, except in tests.
+    public init(
+        location: DatabaseLocation,
+        time: any TimeSource,
+        calendar: Calendar = .autoupdatingCurrent
+    ) throws(EngineError) {
         switch location {
         case .folder(let folder):
             let file = folder.appending(path: "Ficha.sqlite")
@@ -52,6 +59,7 @@ public struct Engine: Sendable {
             databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
         }
         self.time = time
+        self.calendar = calendar
     }
 
     /// Every change to the database from now on, by this engine or by another
@@ -89,15 +97,6 @@ public struct Engine: Sendable {
         try reportingStorageErrors {
             try database.read { db in
                 try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
-            }
-        }
-    }
-
-    /// How many captures wait in the inbox.
-    public func inboxCount() throws(EngineError) -> Int {
-        try reportingStorageErrors {
-            try database.read { db in
-                try capturesInInbox.fetchCount(db)
             }
         }
     }
@@ -153,7 +152,7 @@ public struct Engine: Sendable {
 
     /// Runs `updates` in one transaction, then tells every engine on the
     /// database that it changed.
-    private func write<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
+    func write<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
         let value = try reportingStorageErrors { try database.write(updates) }
         databaseChanges.post()
         return value
@@ -220,7 +219,7 @@ private func saveCopy(of database: any DatabaseWriter, in folder: URL, before mi
 
 /// The captures that wait in the inbox: those not refined yet, into cards or
 /// into none.
-private var capturesInInbox: QueryInterfaceRequest<Row> {
+var capturesInInbox: QueryInterfaceRequest<Row> {
     Table("capture").filter(Column("refinedAt") == nil)
 }
 
@@ -238,7 +237,7 @@ private func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) 
 /// Runs work on the database. The engine's own errors pass through as they
 /// are; when SQLite fails, it logs why and throws the engine's error, whose
 /// message Lucas can read.
-private func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
+func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
     do {
         return try work()
     } catch let error as EngineError {

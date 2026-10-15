@@ -5,7 +5,7 @@ internal import GRDB
 /// One small thing Lucas wants to remember, with a front and a back, as the
 /// engine saved it when he approved it. The `ficha` CLI prints it as JSON,
 /// without the source it doesn't have.
-public struct Card: Sendable, Encodable {
+public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     public let type: CardType
     public let front: String
