@@ -12,7 +12,7 @@ struct FichaApp: App {
         // as soon as it has said why.
         MenuBarExtra(variant.name, systemImage: variant.menuBarSymbol) {
             if let model = appDelegate.model {
-                MenuContent(model: model)
+                MenuContent(model: model, openReviewPanel: appDelegate.openReviewPanel)
             }
         }
         Window("Capturar", id: CaptureView.windowID) {

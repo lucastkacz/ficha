@@ -32,7 +32,7 @@ struct RefiningTests {
         )
 
         #expect(try engine.inbox().isEmpty)
-        #expect(try engine.inboxCount() == 0)
+        #expect(try engine.progress(.defaults).capturesInInbox == 0)
         let cards = try engine.cards()
         #expect(cards.map(\.type) == [.word, .question])
         #expect(cards.map(\.front) == ["serendipia", "¿De dónde viene la palabra «serendipia»?"])
@@ -57,7 +57,7 @@ struct RefiningTests {
         try engine.discard(discarded.id)
 
         #expect(try engine.inbox().map(\.text) == ["ubuntu"])
-        #expect(try engine.inboxCount() == 1)
+        #expect(try engine.progress(.defaults).capturesInInbox == 1)
         #expect(try engine.cards().isEmpty)
     }
 

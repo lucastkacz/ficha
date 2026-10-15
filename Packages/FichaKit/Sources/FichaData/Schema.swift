@@ -35,6 +35,29 @@ enum Schema {
                 table.belongsTo("capture").notNull()
             }
         }
+        migrator.registerMigration("v3 review log") { db in
+            // One entry per first view or review, which a card's step and due
+            // time are worked out from (ADR 0002). Only a review has a rating.
+            try db.create(table: "reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.belongsTo("card").notNull()
+                // "firstView" or "review".
+                table.column("kind", .text).notNull()
+                // A review's rating: "again", "hard" or "good".
+                table.column("rating", .text)
+                table.column("answeredAt", .datetime).notNull()
+                // From showing the card to the answer, in seconds.
+                table.column("responseTime", .double).notNull()
+                // What opened the review panel, as `Trigger` names it.
+                table.column("trigger", .text).notNull()
+                table.check(
+                    sql: """
+                        (kind = 'firstView' AND rating IS NULL)
+                        OR (kind = 'review' AND rating IN ('again', 'hard', 'good'))
+                        """
+                )
+            }
+        }
         return migrator
     }()
 }
