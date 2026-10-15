@@ -32,9 +32,10 @@ final class ReviewPanelWindow: NSPanel {
     override var canBecomeKey: Bool { true }
 
     /// Shows the panel at the top of the screen Lucas is pointing at, centered
-    /// just below the menu bar, and gives it the keyboard. As its content
+    /// just below the menu bar, and gives it the keyboard unless
+    /// `takingKeyboard` is false (the focus prototype, #10). As its content
     /// changes size, it keeps its top edge where it is.
-    func show() {
+    func show(takingKeyboard: Bool = true) {
         let mouse = NSEvent.mouseLocation
         guard
             let contentView,
@@ -46,6 +47,10 @@ final class ReviewPanelWindow: NSPanel {
         setContentSize(size)
         let visible = screen.visibleFrame
         setFrameTopLeftPoint(NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - 40))
-        makeKeyAndOrderFront(nil)
+        if takingKeyboard {
+            makeKeyAndOrderFront(nil)
+        } else {
+            orderFrontRegardless()
+        }
     }
 }

@@ -37,6 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // PROTOTYPE for #10, throwaway: this branch is never merged.
+        FocusPrototype.shared.runFromLaunchArguments()
         guard case .failure(let error) = opening else { return }
         showAlert(
             "\(AppVariant.current.name) no puede abrir tus fichas", explaining: error, style: .critical, button: "Salir"

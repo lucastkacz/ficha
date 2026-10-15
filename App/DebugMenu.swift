@@ -27,6 +27,16 @@ struct DebugMenu: View {
             }
             Divider()
             Text(timeShiftLine)
+            // PROTOTYPE for #10, throwaway: this branch is never merged.
+            Divider()
+            Menu("Prototipo: foco de la cajita") {
+                Text("La cajita aparece 10 s después: andá a escribir a otra app")
+                ForEach(PrototypeFocusMode.allCases, id: \.self) { mode in
+                    Button(mode.title) {
+                        FocusPrototype.shared.start(mode)
+                    }
+                }
+            }
         }
     }
 
