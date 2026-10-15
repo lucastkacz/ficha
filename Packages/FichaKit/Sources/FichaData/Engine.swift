@@ -98,10 +98,15 @@ public struct Engine: Sendable {
         }
     }
 
-    /// The captures waiting in the inbox, oldest first.
-    public func inbox() throws(EngineError) -> [Capture] {
+    /// What waits in the inbox: the captures, oldest first, and the flagged
+    /// cards, the first flagged first.
+    public func inbox() throws(EngineError) -> Inbox {
         try read { db in
-            try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
+            Inbox(
+                captures: try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:)),
+                flaggedCards: try flaggedCardsInInbox.order(Column("flaggedAt"), Column("id")).fetchAll(db)
+                    .map(Card.init(row:))
+            )
         }
     }
 

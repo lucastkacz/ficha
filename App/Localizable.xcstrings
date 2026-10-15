@@ -4,8 +4,8 @@
     "%@ can't open your cards" : {
 
     },
-    "%lld cards learned · %lld captures in the inbox" : {
-      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures wait in the inbox.",
+    "%lld cards learned · %lld in the inbox" : {
+      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait in the inbox.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -21,13 +21,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg capture in the inbox"
+                      "value" : "%arg in the inbox"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg captures in the inbox"
+                      "value" : "%arg in the inbox"
                     }
                   },
                   "zero" : {
@@ -72,6 +72,12 @@
     "A word, a concept, a quote or a question" : {
 
     },
+    "Bury" : {
+      "comment" : "A button that buries the card the review panel shows: it never shows up again."
+    },
+    "Bury (e)" : {
+      "comment" : "The tooltip of the button that buries the card, with its key."
+    },
     "Cancel" : {
 
     },
@@ -87,7 +93,13 @@
     "Close (esc)" : {
 
     },
+    "Couldn't bury the card" : {
+
+    },
     "Couldn't count your progress" : {
+
+    },
+    "Couldn't flag the card" : {
 
     },
     "Couldn't load the cards" : {
@@ -99,8 +111,23 @@
     "Couldn't save your answer" : {
 
     },
+    "Couldn't undo" : {
+
+    },
     "Don't know" : {
 
+    },
+    "esc" : {
+      "comment" : "The Esc key's name, next to the button it presses."
+    },
+    "Flag" : {
+      "comment" : "The button that flags the card with the note written above it."
+    },
+    "Flag…" : {
+      "comment" : "A button that flags the card the review panel shows, asking for a note on what to fix."
+    },
+    "Flag… (m)" : {
+      "comment" : "The tooltip of the button that flags the card, with its key."
     },
     "Flip" : {
 
@@ -154,6 +181,15 @@
       "comment" : "The Space key's name, next to the button it presses."
     },
     "Text" : {
+
+    },
+    "Undo" : {
+
+    },
+    "Undo (⌘Z)" : {
+
+    },
+    "What needs fixing?" : {
 
     }
   },

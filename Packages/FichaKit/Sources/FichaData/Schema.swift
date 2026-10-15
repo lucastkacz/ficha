@@ -72,6 +72,18 @@ enum Schema {
                 table.column("outcome", .text).notNull()
             }
         }
+        migrator.registerMigration("v5 flagged and buried cards") { db in
+            // A flagged card waits in the inbox, with Lucas's note on what to
+            // fix, until it's fixed, and a buried card is out of his reviews
+            // for good. Either way it keeps its review log, and a card that's
+            // neither is in his reviews.
+            try db.alter(table: "card") { table in
+                table.add(column: "flagNote", .text)
+                table.add(column: "flaggedAt", .datetime)
+                    .check(sql: "(flagNote IS NULL) = (flaggedAt IS NULL)")
+                table.add(column: "buriedAt", .datetime)
+            }
+        }
         return migrator
     }()
 }

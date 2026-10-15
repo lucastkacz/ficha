@@ -12,7 +12,8 @@ public struct FichaCommand: ParsableCommand {
         abstract: "Capture and refine your cards from the terminal.",
         discussion: "Every command prints its result as JSON.",
         subcommands: [
-            CaptureCommand.self, InboxCommand.self, ApproveCommand.self, DiscardCommand.self, CardsCommand.self,
+            CaptureCommand.self, InboxCommand.self, ApproveCommand.self, DiscardCommand.self, FixCommand.self,
+            BuryCommand.self, UnburyCommand.self, CardsCommand.self,
         ]
     )
 

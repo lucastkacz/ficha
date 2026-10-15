@@ -4,7 +4,7 @@ internal import GRDB
 
 /// One small thing Lucas wants to remember, with a front and a back, as the
 /// engine saved it when he approved it. The `ficha` CLI prints it as JSON,
-/// without the source it doesn't have.
+/// without the source, flag or burial it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     public let type: CardType
@@ -16,6 +16,24 @@ public struct Card: Sendable, Equatable, Encodable {
     public let createdAt: Date
     /// The capture it was refined from.
     public let captureID: Int64
+    /// Lucas's flag, while the card waits to be fixed: out of his reviews,
+    /// and in the inbox unless it's buried too.
+    public let flag: Flag?
+    /// When Lucas buried it, while it's buried: out of his reviews for good.
+    public let buriedAt: Date?
+}
+
+/// Lucas's flag on a card: his note on what to fix, and when he wrote it.
+public struct Flag: Sendable, Equatable, Encodable {
+    /// What to fix, in his words.
+    public let note: String
+    /// When he flagged the card.
+    public let flaggedAt: Date
+
+    public init(note: String, flaggedAt: Date) {
+        self.note = note
+        self.flaggedAt = flaggedAt
+    }
 }
 
 extension Card {
@@ -34,12 +52,46 @@ extension Card {
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
         captureID = try row.decode(forColumn: "captureId")
+        switch (try row.decode(forColumn: "flagNote") as String?, try row.decode(forColumn: "flaggedAt") as Date?) {
+        case (nil, nil):
+            flag = nil
+        case (let note?, let flaggedAt?):
+            flag = Flag(note: note, flaggedAt: flaggedAt)
+        default:
+            throw unreadable("Card \(id) has a flag without its note or its time")
+        }
+        buriedAt = try row.decode(forColumn: "buriedAt")
     }
 }
 
 /// Every card, in the order Lucas approved them.
 func allCards(in db: Database) throws -> [Card] {
     try Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id").map(Card.init(row:))
+}
+
+/// The card with this id, as it is now, or an error when there's none.
+func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
+    guard let row = try Table("card").filter(Column("id") == cardID).fetchOne(db) else {
+        throw EngineError.cardNotFound(cardID)
+    }
+    return try Card(row: row)
+}
+
+/// Sets some of a card's columns, as `assignments` say, to `values` in
+/// order, and returns the card as it is then.
+func updateCard(
+    _ cardID: Int64,
+    setting assignments: String,
+    to values: StatementArguments = [],
+    in db: Database
+) throws -> Card {
+    try db.execute(sql: "UPDATE card SET \(assignments) WHERE id = ?", arguments: values + [cardID])
+    return try existingCard(cardID, in: db)
+}
+
+/// The cards that wait in the inbox to be fixed: flagged, and not buried.
+var flaggedCardsInInbox: QueryInterfaceRequest<Row> {
+    Table("card").filter(Column("flaggedAt") != nil && Column("buriedAt") == nil)
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which

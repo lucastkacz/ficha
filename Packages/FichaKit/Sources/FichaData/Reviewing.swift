@@ -10,18 +10,19 @@ extension Engine {
     public func reviewNow(_ settings: ReviewSettings) throws(EngineError) -> [PanelCard] {
         let now = time.now
         return try read { db in
-            let cards = try allCards(in: db)
+            let cards = try cardsInReviews(in: db)
             let picked = try settings.reviewNowCards(
                 cardIDs: cards.map(\.id), log: logEntries(in: db), now: now, calendar: calendar)
             return try panelCards(picked, from: cards)
         }
     }
 
-    /// Records Lucas's answer to a card in the review log: the end of its
-    /// first view, which puts it on the ladder's first step, or a review with
-    /// his rating, which moves it on the ladder of `settings`. A first view is
-    /// only for a new card, and a review only for a due one, or, in an
-    /// appearance, for one due within the look-ahead, which it brings along.
+    /// Records Lucas's answer to a card in his reviews in the review log: the
+    /// end of its first view, which puts it on the ladder's first step, or a
+    /// review with his rating, which moves it on the ladder of `settings`. A
+    /// first view is only for a new card, and a review only for a due one, or,
+    /// in an appearance, for one due within the look-ahead, which it brings
+    /// along.
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
@@ -32,6 +33,7 @@ extension Engine {
         let entry = ReviewLogEntry(
             cardID: cardID, kind: kind, answeredAt: time.now, responseTime: responseTime, trigger: trigger)
         try write { db in
+            _ = try cardInReviews(cardID, in: db)
             let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
             do throws(RefusedAnswer) {
                 try standing.check(
@@ -43,15 +45,17 @@ extension Engine {
         }
     }
 
-    /// What the menu shows of Lucas's progress: how many cards are due, how
-    /// many he learned, and how many captures wait in the inbox.
+    /// What the menu shows of Lucas's progress: how many cards in his reviews
+    /// are due, how many he learned, and how many captures and flagged cards
+    /// wait in the inbox.
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in
-            let cardIDs = try Int64.fetchAll(db, sql: "SELECT id FROM card ORDER BY id")
+            let cardIDs = try cardsInReviews(in: db).map(\.id)
             let counts = try settings.ladder.counts(of: cardIDs, after: logEntries(in: db), at: now)
             return ProgressCounts(
-                due: counts.due, learned: counts.learned, capturesInInbox: try capturesInInbox.fetchCount(db))
+                due: counts.due, learned: counts.learned,
+                inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsInInbox.fetchCount(db))
         }
     }
 

@@ -31,8 +31,8 @@ struct RefiningTests {
             ]
         )
 
-        #expect(try engine.inbox().isEmpty)
-        #expect(try engine.progress(.defaults).capturesInInbox == 0)
+        #expect(try engine.inbox().captures.isEmpty)
+        #expect(try engine.progress(.defaults).inInbox == 0)
         let cards = try engine.cards()
         #expect(cards.map(\.type) == [.word, .question])
         #expect(cards.map(\.front) == ["serendipia", "¿De dónde viene la palabra «serendipia»?"])
@@ -56,8 +56,8 @@ struct RefiningTests {
 
         try engine.discard(discarded.id)
 
-        #expect(try engine.inbox().map(\.text) == ["ubuntu"])
-        #expect(try engine.progress(.defaults).capturesInInbox == 1)
+        #expect(try engine.inbox().captures.map(\.text) == ["ubuntu"])
+        #expect(try engine.progress(.defaults).inInbox == 1)
         #expect(try engine.cards().isEmpty)
     }
 
@@ -97,7 +97,7 @@ struct RefiningTests {
         #expect(throws: EngineError.noCards) {
             try engine.approve(capture.id, into: [])
         }
-        #expect(try engine.inbox().map(\.id) == [capture.id])
+        #expect(try engine.inbox().captures.map(\.id) == [capture.id])
     }
 
     @Test("a card is saved without surrounding spaces, and a blank tag or source is left out")

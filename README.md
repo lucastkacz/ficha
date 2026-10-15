@@ -22,13 +22,15 @@ Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample c
 
 ## Reviewing
 
-"Review now", in the menu, shows how many cards are due and opens the review panel with up to five cards: the due ones, lowest step first, and a new card when there's room, up to five new cards a day. A new card shows whole, marked "New": press Enter. Any other card shows its front: Space flips it, and 1, 2 or 3 rate it ("Don't know", "Sort of", "Know it"). Esc closes the panel, and every action can also be clicked. The menu also says how many cards you've learned and how many captures wait in the inbox.
+"Review now", in the menu, shows how many cards are due and opens the review panel with up to five cards: the due ones, lowest step first, and a new card when there's room, up to five new cards a day. A new card shows whole, marked "New": press Enter. Any other card shows its front: Space flips it, and 1, 2 or 3 rate it ("Don't know", "Sort of", "Know it"). Esc closes the panel, and every action can also be clicked. The menu also says how many cards you've learned and how much waits in the inbox.
+
+M flags a card with a note on what to fix: it leaves your reviews and waits in the inbox until a refine session fixes it, and then it goes back to its step. E buries a card: it never shows up again, and keeps its review log, and `ficha unbury` brings it back. ⌘Z undoes what you did with the last card, one card at a time, while the panel is open: a rating, a flag or a bury.
 
 The review panel also shows up on its own when cards are due, between 9:00 and 22:00, with the same cards plus those due within the next 20 minutes. With nothing due, one new card is enough. It comes at least 30 minutes after the last panel with cards closed, never while your Mac or its screens sleep, and 2 minutes after they wake. It shows up without the keyboard, so it doesn't catch what you're typing, and takes it once you've been idle for 5 seconds. Esc snoozes it, and left untouched for 10 minutes it closes on its own: either way, its cards stay due.
 
 ## The `ficha` command
 
-Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards, and you can capture from a terminal with it:
+Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards and to fix the cards you flag, and you can capture from a terminal with it:
 
 ```bash
 /Applications/Ficha.app/Contents/Helpers/ficha capture "serendipia" --source "Un ensayo de Borges"

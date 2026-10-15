@@ -10,9 +10,10 @@ public struct PanelCardIDs: Sendable, Equatable {
 }
 
 extension ReviewSettings {
-    /// The cards review now brings at `now`, out of every card, by id in the
-    /// order Lucas approved them, and the whole review log, in the order it
-    /// was written: the due cards, and a new card, as `pickCards` picks them.
+    /// The cards review now brings at `now`, out of the cards in Lucas's
+    /// reviews, neither flagged nor buried, by id in the order he approved
+    /// them, and the whole review log, in the order it was written: the due
+    /// cards, and a new card, as `pickCards` picks them.
     public func reviewNowCards(
         cardIDs: [Int64],
         log: [ReviewLogEntry],
@@ -23,11 +24,11 @@ extension ReviewSettings {
             after: try ladder.standings(of: cardIDs, after: log), log: log, dueBy: now, now: now, calendar: calendar)
     }
 
-    /// The cards the review panel brings at `now`, out of where every card
-    /// stands, by id in the order Lucas approved them, and the whole review
-    /// log: the cards due by `horizon`, lowest step first and then the
-    /// longest overdue, up to `cardsPerAppearance`, and then the first new
-    /// card Lucas approved, if there's room (ADR 0003) and he hasn't met
+    /// The cards the review panel brings at `now`, out of where each card in
+    /// Lucas's reviews stands, by id in the order he approved them, and the
+    /// whole review log: the cards due by `horizon`, lowest step first and
+    /// then the longest overdue, up to `cardsPerAppearance`, and then the first
+    /// new card he approved, if there's room (ADR 0003) and he hasn't met
     /// `newCardsPerDay` today, by `calendar`'s day.
     func pickCards(
         after standings: [(cardID: Int64, standing: CardStanding)],

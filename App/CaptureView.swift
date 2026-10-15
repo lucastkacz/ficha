@@ -13,7 +13,7 @@ struct CaptureView: View {
     @State private var text = ""
     @State private var note = ""
     @State private var source = ""
-    @State private var failure: EngineError?
+    @State private var failure: Failure?
     @FocusState private var textIsFocused: Bool
 
     var body: some View {
@@ -46,7 +46,7 @@ struct CaptureView: View {
         .padding()
         .frame(width: 420)
         .defaultFocus($textIsFocused, true)
-        .failureAlert("Couldn't save the capture", failure: $failure)
+        .failureAlert($failure)
     }
 
     /// Whether the fields hold a capture yet, by the same rule the engine
@@ -61,7 +61,7 @@ struct CaptureView: View {
             try model.capture(text: text, note: note, source: source)
             dismiss()
         } catch {
-            failure = error
+            failure = Failure(title: "Couldn't save the capture", error: error)
         }
     }
 }

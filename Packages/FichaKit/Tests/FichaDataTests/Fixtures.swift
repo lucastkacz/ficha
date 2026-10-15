@@ -15,6 +15,11 @@ func card(
     try #require(CardContent(type: type, front: front, back: back, tags: tags, source: source))
 }
 
+/// Lucas's note on what to fix in a card he flags, which isn't blank.
+func note(_ text: String) throws -> FlagNote {
+    try #require(FlagNote(text))
+}
+
 /// Approves a capture into one word card with this front, the way refining
 /// saves cards, and returns the card: a new card, after the ones approved
 /// before it.
@@ -37,6 +42,22 @@ extension Engine {
     /// when Lucas rates it, from review now, with the default settings.
     func review(_ card: Card, _ rating: Rating) throws {
         try record(.review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults)
+    }
+
+    /// Puts a new card on `step` of the default ladder: its first view now,
+    /// and then good each time it's due, moving `time` forward to it.
+    func climb(_ card: Card, to step: Int, movingForward time: ManualTimeSource) throws {
+        try meet(card)
+        for _ in 0..<step {
+            try reviewWhenDue(card, .good, movingForward: time)
+        }
+    }
+
+    /// Moves `time` forward until a card on the default ladder is due, and
+    /// reviews it with `rating`.
+    func reviewWhenDue(_ card: Card, _ rating: Rating, movingForward time: ManualTimeSource) throws {
+        time.move(to: try #require(try standing(of: card.id, on: ReviewSettings.defaults.ladder).due))
+        try review(card, rating)
     }
 }
 

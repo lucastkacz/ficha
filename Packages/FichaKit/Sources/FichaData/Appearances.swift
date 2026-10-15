@@ -19,7 +19,7 @@ extension Engine {
     {
         let now = time.now
         return try read { db in
-            let cards = try allCards(in: db)
+            let cards = try cardsInReviews(in: db)
             let lastClosing = try Date.fetchOne(db, sql: "SELECT closedAt FROM appearanceLog ORDER BY id DESC LIMIT 1")
             switch try settings.appearance(
                 cardIDs: cards.map(\.id), log: logEntries(in: db), lastClosing: lastClosing, mac: mac, now: now,
