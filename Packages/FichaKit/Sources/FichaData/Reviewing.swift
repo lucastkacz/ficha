@@ -3,57 +3,46 @@ import Foundation
 internal import GRDB
 
 extension Engine {
-    /// The cards review now brings, in the order the review panel shows them.
+    /// The cards review now brings, in the order the review panel shows them:
+    /// the due ones, lowest step first and then the longest overdue, and then
+    /// a new card, when there's room and Lucas hasn't met the day's new cards
+    /// yet.
     public func reviewNow(_ settings: ReviewSettings) throws(EngineError) -> [PanelCard] {
         let now = time.now
-        return try reportingStorageErrors {
-            try database.read { db in
-                let cards = try Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id").map(Card.init(row:))
-                let log = try logEntries(in: db)
-                let picked = try settings.reviewNow(cardIDs: cards.map(\.id), log: log, now: now, calendar: calendar)
-                let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
-                var panelCards = try picked.reviews.map { PanelCard.review(try card($0, in: cardsByID)) }
-                if let id = picked.firstView {
-                    panelCards.append(.firstView(try card(id, in: cardsByID)))
-                }
-                return panelCards
+        return try read { db in
+            let cards = try allCards(in: db)
+            let picked = try settings.reviewNowCards(
+                cardIDs: cards.map(\.id), log: logEntries(in: db), now: now, calendar: calendar)
+            let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
+            var panelCards = try picked.reviews.map { PanelCard.review(try card($0, in: cardsByID)) }
+            if let id = picked.firstView {
+                panelCards.append(.firstView(try card(id, in: cardsByID)))
             }
+            return panelCards
         }
     }
 
-    /// Records a new card's first view, which Lucas ended with "Entendido",
-    /// in the review log: it puts the card on the ladder's first step.
-    public func recordFirstView(of cardID: Int64, responseTime: Duration, trigger: Trigger) throws(EngineError) {
-        let entry = ReviewLogEntry(
-            cardID: cardID, kind: .firstView, answeredAt: time.now, responseTime: responseTime, trigger: trigger)
-        try write { db in
-            guard try logEntries(ofExisting: cardID, in: db).isEmpty else {
-                throw EngineError.cardNotNew(cardID)
-            }
-            try insert(entry, in: db)
-        }
-    }
-
-    /// Records a review of a due card in the review log, with Lucas's
-    /// rating, which moves the card on `ladder`.
-    public func recordReview(
+    /// Records Lucas's answer to a card in the review log: the end of its
+    /// first view, which puts it on the ladder's first step, or a review with
+    /// his rating, which moves it on `ladder`. A first view is only for a new
+    /// card, and a review only for a due one.
+    public func record(
+        _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
-        rating: Rating,
         responseTime: Duration,
         trigger: Trigger,
         ladder: Ladder
     ) throws(EngineError) {
         let entry = ReviewLogEntry(
-            cardID: cardID, kind: .review(rating), answeredAt: time.now, responseTime: responseTime, trigger: trigger)
+            cardID: cardID, kind: kind, answeredAt: time.now, responseTime: responseTime, trigger: trigger)
         try write { db in
-            switch try ladder.standing(after: logEntries(ofExisting: cardID, in: db)) {
-            case .new:
-                throw EngineError.cardIsNew(cardID)
-            case .onLadder(_, let due) where due > entry.answeredAt:
-                throw EngineError.cardNotDue(cardID)
-            case .onLadder:
-                try insert(entry, in: db)
+            let standing = try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
+            do throws(RefusedAnswer) {
+                try standing.check(kind, at: entry.answeredAt)
+            } catch {
+                throw EngineError(refused: error, cardID: cardID)
             }
+            try insert(entry, in: db)
         }
     }
 
@@ -61,35 +50,24 @@ extension Engine {
     /// many he learned, and how many captures wait in the inbox.
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
-        return try reportingStorageErrors {
-            try database.read { db in
-                let cardIDs = try Int64.fetchAll(db, sql: "SELECT id FROM card ORDER BY id")
-                let standings = try settings.ladder.standings(of: cardIDs, after: logEntries(in: db)).map(\.standing)
-                return ProgressCounts(
-                    due: standings.count { $0.isDue(at: now) },
-                    learned: standings.count(where: settings.ladder.isLearned),
-                    capturesInInbox: try capturesInInbox.fetchCount(db)
-                )
-            }
+        return try read { db in
+            let cardIDs = try Int64.fetchAll(db, sql: "SELECT id FROM card ORDER BY id")
+            let counts = try settings.ladder.counts(of: cardIDs, after: logEntries(in: db), at: now)
+            return ProgressCounts(
+                due: counts.due, learned: counts.learned, capturesInInbox: try capturesInInbox.fetchCount(db))
         }
     }
 
     /// Every first view and review, in the order they happened.
     public func reviewLog() throws(EngineError) -> [ReviewLogEntry] {
-        try reportingStorageErrors {
-            try database.read { db in
-                try logEntries(in: db)
-            }
-        }
+        try read(logEntries(in:))
     }
 
     /// Where a card stands: new, or on a step of `ladder` until it's due,
     /// worked out from its review log.
     public func standing(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> CardStanding {
-        try reportingStorageErrors {
-            try database.read { db in
-                try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
-            }
+        try read { db in
+            try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
         }
     }
 }
@@ -179,9 +157,4 @@ extension ReviewLogEntry.Kind {
         case .review(let rating): ("review", rating.rawValue)
         }
     }
-}
-
-/// The error for a row whose values this version of Ficha doesn't know.
-private func unreadable(_ description: String) -> DecodingError {
-    DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: description))
 }

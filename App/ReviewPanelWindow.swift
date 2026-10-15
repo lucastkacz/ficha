@@ -8,9 +8,9 @@ import SwiftUI
 /// bar can't take the keyboard. It takes the keyboard without activating
 /// Ficha, so once it closes, the keyboard goes back to the app Lucas was in.
 final class ReviewPanelWindow: NSPanel {
-    /// A panel for the cards review now brought, which closes itself when
+    /// A panel for the cards a review now brought, which closes itself when
     /// Lucas is done.
-    init(review: Result<ReviewPanel, EngineError>) {
+    init(model: Result<ReviewPanelModel, EngineError>) {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         title = "Repasar"
         level = .floating
@@ -22,7 +22,7 @@ final class ReviewPanelWindow: NSPanel {
         isOpaque = false
         hasShadow = true
         contentView = NSHostingView(
-            rootView: ReviewPanelView(review: review) { [weak self] in
+            rootView: ReviewPanelView(model: model) { [weak self] in
                 self?.close()
             }
         )

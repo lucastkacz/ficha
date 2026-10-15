@@ -59,11 +59,11 @@ final class AppModel {
         try engine.capture(text: text, note: note, source: source)
     }
 
-    /// The cards a review now brings, for the review panel to go through, or
-    /// why they couldn't be brought.
-    func reviewNow() -> Result<ReviewPanel, EngineError> {
+    /// Starts a review now: the cards it brings, for the review panel to go
+    /// through, or why they couldn't be brought.
+    func startReviewNow() -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            try ReviewPanel(engine: engine, settings: settings)
+            try ReviewPanelModel(engine: engine, settings: settings)
         }
     }
 

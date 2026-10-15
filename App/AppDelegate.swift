@@ -26,12 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The review panel, while it's open.
     private var reviewPanel: ReviewPanelWindow?
 
-    /// Opens the review panel with the cards review now brings, in place of
+    /// Opens the review panel with the cards a review now brings, in place of
     /// any it had open.
-    func reviewNow() {
+    func openReviewPanel() {
         guard let model else { return }
         reviewPanel?.close()
-        let panel = ReviewPanelWindow(review: model.reviewNow())
+        let panel = ReviewPanelWindow(model: model.startReviewNow())
         panel.show()
         reviewPanel = panel
     }

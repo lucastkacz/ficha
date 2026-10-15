@@ -26,7 +26,7 @@ struct ReviewNowTests {
     @Test("a card comes back in review now as a review once its wait is over, and not before")
     func aCardComesBackOnceItsWaitIsOver() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.recordFirstView(of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow)
+        try engine.meet(serendipia)
 
         time.advance(by: hours(1) - 1)
         #expect(try engine.reviewNow(settings).isEmpty)

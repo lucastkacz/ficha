@@ -30,15 +30,13 @@ extension Engine {
     /// Records a new card's first view, as the review panel does when Lucas
     /// presses "Entendido", from review now.
     func meet(_ card: Card) throws {
-        try recordFirstView(of: card.id, responseTime: .seconds(8), trigger: .reviewNow)
+        try record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, ladder: .standard)
     }
 
     /// Records a review of a due card with `rating`, as the review panel does
     /// when Lucas rates it, from review now, on the default ladder.
     func review(_ card: Card, _ rating: Rating) throws {
-        try recordReview(
-            of: card.id, rating: rating, responseTime: .seconds(3), trigger: .reviewNow,
-            ladder: ReviewSettings.defaults.ladder)
+        try record(.review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, ladder: .standard)
     }
 }
 

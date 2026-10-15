@@ -4,8 +4,8 @@ import SwiftUI
 /// The menu under Ficha's icon in the menu bar.
 struct MenuContent: View {
     let model: AppModel
-    /// Opens the review panel with the cards review now brings.
-    let reviewNow: () -> Void
+    /// Opens the review panel with the cards a review now brings.
+    let openReviewPanel: () -> Void
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -15,7 +15,7 @@ struct MenuContent: View {
             NSApplication.shared.activate()
             openWindow(id: CaptureView.windowID)
         }
-        Button(reviewNowTitle, action: reviewNow)
+        Button(reviewNowTitle, action: openReviewPanel)
         Divider()
         Text(progressLine)
         if let debugTools = model.debugTools {
@@ -31,11 +31,10 @@ struct MenuContent: View {
 
     /// "Repasar ahora", with how many cards are due when some are.
     private var reviewNowTitle: String {
-        switch model.progress?.due {
-        case nil, 0: "Repasar ahora"
-        case 1: "Repasar ahora (1 vencida)"
-        case let count?: "Repasar ahora (\(count) vencidas)"
+        guard let due = model.progress?.due, due > 0 else {
+            return "Repasar ahora"
         }
+        return "Repasar ahora (\(inWords(due, one: "vencida", many: "vencidas")))"
     }
 
     /// How many cards Lucas learned and how many captures wait in the inbox,
@@ -47,15 +46,18 @@ struct MenuContent: View {
         let learned =
             switch progress.learned {
             case 0: "Ninguna ficha aprendida"
-            case 1: "1 ficha aprendida"
-            case let count: "\(count) fichas aprendidas"
+            case let count: inWords(count, one: "ficha aprendida", many: "fichas aprendidas")
             }
         let inbox =
             switch progress.capturesInInbox {
             case 0: "la bandeja está vacía"
-            case 1: "1 captura en la bandeja"
-            case let count: "\(count) capturas en la bandeja"
+            case let count: inWords(count, one: "captura en la bandeja", many: "capturas en la bandeja")
             }
         return "\(learned) · \(inbox)"
     }
+}
+
+/// A count in words, like "1 ficha" or "3 fichas".
+private func inWords(_ count: Int, one: String, many: String) -> String {
+    "\(count) \(count == 1 ? one : many)"
 }

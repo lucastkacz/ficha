@@ -7,14 +7,14 @@ import SwiftUI
 /// first view, Space flips a card, 1, 2 and 3 rate it, and Esc closes the
 /// panel. Once Lucas answered every card, the panel closes on its own.
 struct ReviewPanelView: View {
-    /// The cards review now brought, or why it couldn't bring them.
-    let review: Result<ReviewPanel, EngineError>
+    /// The cards a review now brought, or why it couldn't bring them.
+    let model: Result<ReviewPanelModel, EngineError>
     /// Closes the panel.
     let close: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            switch review {
+            switch model {
             case .success(let panel):
                 content(of: panel)
                     .onChange(of: panel.isDone) { _, isDone in
@@ -22,15 +22,7 @@ struct ReviewPanelView: View {
                             close()
                         }
                     }
-                    .alert(
-                        "No se pudo guardar tu respuesta",
-                        isPresented: Binding(get: { panel.failure != nil }, set: { if !$0 { panel.failure = nil } }),
-                        presenting: panel.failure
-                    ) { _ in
-                        Button("Aceptar") {}
-                    } message: { failure in
-                        Text(failure.localizedDescription)
-                    }
+                    .failureAlert("No se pudo guardar tu respuesta", failure: Bindable(panel).failure)
             case .failure(let failure):
                 header {
                     VStack(alignment: .leading, spacing: 6) {
@@ -49,7 +41,7 @@ struct ReviewPanelView: View {
     }
 
     @ViewBuilder
-    private func content(of panel: ReviewPanel) -> some View {
+    private func content(of panel: ReviewPanelModel) -> some View {
         switch panel.content {
         case .nothingToReview:
             header {
@@ -139,7 +131,8 @@ struct ReviewPanelView: View {
         }
     }
 
-    private func ratingButton(_ title: String, key: Character, rating: Rating, in panel: ReviewPanel) -> some View {
+    private func ratingButton(_ title: String, key: Character, rating: Rating, in panel: ReviewPanelModel) -> some View
+    {
         Button {
             panel.rate(rating)
         } label: {

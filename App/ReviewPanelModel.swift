@@ -7,7 +7,7 @@ import Observation
 /// rates a due card. Each answer goes into the review log as he gives it, so
 /// the cards he doesn't get to stay as they were.
 @Observable
-final class ReviewPanel {
+final class ReviewPanelModel {
     /// What the panel shows.
     enum Content {
         /// Review now brought no cards: none is due, and no new card is
@@ -71,26 +71,23 @@ final class ReviewPanel {
     /// step: "Entendido".
     func endFirstView() {
         guard case .firstView(let card) = content else { return }
-        answer { responseTime throws(EngineError) in
-            try engine.recordFirstView(of: card.id, responseTime: responseTime, trigger: .reviewNow)
-        }
+        answer(card, .firstView)
     }
 
     /// Rates the due card, once flipped, which moves it on the ladder.
     func rate(_ rating: Rating) {
         guard case .back(let card) = content else { return }
-        answer { responseTime throws(EngineError) in
-            try engine.recordReview(
-                of: card.id, rating: rating, responseTime: responseTime, trigger: .reviewNow,
-                ladder: settings.ladder)
-        }
+        answer(card, .review(rating))
     }
 
-    /// Saves an answer with Lucas's response time, and moves on to the next
-    /// card. When it can't be saved, the card stays, and the panel says why.
-    private func answer(_ save: (Duration) throws(EngineError) -> Void) {
+    /// Saves Lucas's answer to `card`, with his response time, and moves on to
+    /// the next card. When it can't be saved, the card stays, and the panel
+    /// says why.
+    private func answer(_ card: Card, _ kind: ReviewLogEntry.Kind) {
         do {
-            try save(ContinuousClock.now - shownAt)
+            try engine.record(
+                kind, of: card.id, responseTime: ContinuousClock.now - shownAt, trigger: .reviewNow,
+                ladder: settings.ladder)
         } catch {
             failure = error
             return

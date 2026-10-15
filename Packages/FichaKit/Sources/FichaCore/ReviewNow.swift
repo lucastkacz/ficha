@@ -16,7 +16,7 @@ extension ReviewSettings {
     /// overdue, up to `cardsPerAppearance`, and then the first new card Lucas
     /// approved, if there's room (ADR 0003) and he hasn't met
     /// `newCardsPerDay` today, by `calendar`'s day.
-    public func reviewNow(
+    public func reviewNowCards(
         cardIDs: [Int64],
         log: [ReviewLogEntry],
         now: Date,
@@ -28,10 +28,10 @@ extension ReviewSettings {
             switch standing {
             case .new:
                 new.append(id)
-            case .onLadder(let step, let dueTime):
-                if dueTime <= now {
-                    due.append((id, step, dueTime))
-                }
+            case .onLadder(let step, let dueTime) where standing.isDue(at: now):
+                due.append((id, step, dueTime))
+            case .onLadder:
+                break
             }
         }
         // Cards on the same step and due at the same time come in the order

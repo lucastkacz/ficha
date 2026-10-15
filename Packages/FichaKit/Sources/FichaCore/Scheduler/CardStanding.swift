@@ -11,11 +11,47 @@ public enum CardStanding: Sendable, Equatable {
 }
 
 extension CardStanding {
-    /// Whether the card is due at `now`: on the ladder, with its wait over.
-    public func isDue(at now: Date) -> Bool {
+    /// When the card is due, or nil while it's new.
+    public var due: Date? {
         guard case .onLadder(_, let due) = self else {
+            return nil
+        }
+        return due
+    }
+
+    /// Whether the card is due at `time`: on the ladder, with its wait over.
+    public func isDue(at time: Date) -> Bool {
+        guard let due else {
             return false
         }
-        return due <= now
+        return due <= time
     }
+
+    /// Checks that Lucas can answer the card with `kind` at `time`: a first
+    /// view only while it's new, and a review only once it's due, so that a
+    /// review ahead never counts as one on time (ADR 0002).
+    public func check(_ kind: ReviewLogEntry.Kind, at time: Date) throws(RefusedAnswer) {
+        switch (kind, self) {
+        case (.firstView, .new):
+            return
+        case (.firstView, .onLadder):
+            throw .notNew
+        case (.review, .new):
+            throw .stillNew
+        case (.review, .onLadder):
+            guard isDue(at: time) else {
+                throw .notDue
+            }
+        }
+    }
+}
+
+/// Why an answer can't go into a card's review log.
+public enum RefusedAnswer: Error, Equatable {
+    /// A first view, for a card that already had one.
+    case notNew
+    /// A review, for a card that hasn't had its first view yet.
+    case stillNew
+    /// A review, for a card that isn't due yet.
+    case notDue
 }

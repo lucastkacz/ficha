@@ -24,9 +24,7 @@ extension Card {
         id = try row.decode(forColumn: "id")
         let typeName: String = try row.decode(forColumn: "type")
         guard let type = CardType(rawValue: typeName) else {
-            throw DecodingError.dataCorrupted(
-                DecodingError.Context(codingPath: [], debugDescription: "Card \(id) has an unknown type")
-            )
+            throw unreadable("Card \(id) has an unknown type")
         }
         self.type = type
         front = try row.decode(forColumn: "front")
@@ -37,6 +35,11 @@ extension Card {
         createdAt = try row.decode(forColumn: "createdAt")
         captureID = try row.decode(forColumn: "captureId")
     }
+}
+
+/// Every card, in the order Lucas approved them.
+func allCards(in db: Database) throws -> [Card] {
+    try Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id").map(Card.init(row:))
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which

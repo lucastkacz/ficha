@@ -46,15 +46,7 @@ struct CaptureView: View {
         .padding()
         .frame(width: 420)
         .defaultFocus($textIsFocused, true)
-        .alert(
-            "No se pudo guardar la captura",
-            isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
-            presenting: failure
-        ) { _ in
-            Button("Aceptar") {}
-        } message: { failure in
-            Text(failure.localizedDescription)
-        }
+        .failureAlert("No se pudo guardar la captura", failure: $failure)
     }
 
     /// Whether the fields hold a capture yet, by the same rule the engine

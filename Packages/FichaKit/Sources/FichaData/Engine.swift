@@ -19,7 +19,7 @@ public enum DatabaseLocation: Sendable {
 /// writes each change in one transaction. The app and the CLI each open their
 /// own engine on the same database, and each hears about the other's changes.
 public struct Engine: Sendable {
-    let database: any DatabaseWriter
+    private let database: any DatabaseWriter
     private let databaseChanges: DatabaseChanges
     let time: any TimeSource
     /// The Mac's calendar, whose days the new cards are counted by.
@@ -94,10 +94,8 @@ public struct Engine: Sendable {
 
     /// The captures waiting in the inbox, oldest first.
     public func inbox() throws(EngineError) -> [Capture] {
-        try reportingStorageErrors {
-            try database.read { db in
-                try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
-            }
+        try read { db in
+            try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
         }
     }
 
@@ -143,11 +141,12 @@ public struct Engine: Sendable {
 
     /// Every card, in the order Lucas approved them.
     public func cards() throws(EngineError) -> [Card] {
-        try reportingStorageErrors {
-            try database.read { db in
-                try Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id").map(Card.init(row:))
-            }
-        }
+        try read(allCards(in:))
+    }
+
+    /// Runs `work` on the database as it is, in one read.
+    func read<Value>(_ work: (Database) throws -> Value) throws(EngineError) -> Value {
+        try reportingStorageErrors { try database.read(work) }
     }
 
     /// Runs `updates` in one transaction, then tells every engine on the
@@ -235,15 +234,23 @@ private func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) 
 }
 
 /// Runs work on the database. The engine's own errors pass through as they
-/// are; when SQLite fails, it logs why and throws the engine's error, whose
-/// message Lucas can read.
-func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
+/// are; when a card's review log can't be followed, or SQLite fails, it logs
+/// why and throws the engine's error, whose message Lucas can read.
+private func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
     do {
         return try work()
     } catch let error as EngineError {
         throw error
+    } catch let error as UnexpectedReviewLog {
+        logger.error("Card \(error.cardID)'s review log doesn't start with its first view, or has a second one")
+        throw .unreadableReviewLog(error.cardID)
     } catch {
         logger.error("The database failed: \(String(describing: error))")
         throw .storage
     }
+}
+
+/// The error for a row whose values this version of Ficha doesn't know.
+func unreadable(_ description: String) -> DecodingError {
+    DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: description))
 }
