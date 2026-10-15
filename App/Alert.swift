@@ -18,13 +18,13 @@ func showAlert(_ message: String, explaining error: any Error, style: NSAlert.St
 extension View {
     /// An alert headed by `title` that says what went wrong while `failure`
     /// holds an error, which closing it clears.
-    func failureAlert(_ title: String, failure: Binding<EngineError?>) -> some View {
+    func failureAlert(_ title: LocalizedStringKey, failure: Binding<EngineError?>) -> some View {
         alert(
             title,
             isPresented: Binding(get: { failure.wrappedValue != nil }, set: { if !$0 { failure.wrappedValue = nil } }),
             presenting: failure.wrappedValue
         ) { _ in
-            Button("Aceptar") {}
+            Button("OK") {}
         } message: { failure in
             Text(failure.localizedDescription)
         }

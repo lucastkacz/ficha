@@ -9,9 +9,9 @@ import Foundation
 struct ApproveCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "approve",
-        abstract: "Aprueba una captura en una o más fichas, que lee en JSON de la entrada estándar.",
+        abstract: "Approve a capture into one or more cards, read as JSON from standard input.",
         discussion: """
-            Las fichas son una lista JSON. Cada una tiene \(cardFields). Por ejemplo:
+            The cards are a JSON list. Each one has \(cardFields). For example:
 
               ficha approve 12 <<'EOF'
               [{"type": "word", "front": "serendipia",
@@ -19,17 +19,17 @@ struct ApproveCommand: EngineCommand {
                 "tags": ["lenguaje"], "source": null}]
               EOF
 
-            Guarda las fichas como nuevas, en ese orden, saca la captura de la bandeja e imprime las fichas.
+            It saves the cards as new, in that order, takes the capture out of the inbox and prints the cards.
             """
     )
 
-    @Argument(help: "El id de la captura, como lo muestra `ficha inbox`.")
+    @Argument(help: "The capture's id, as `ficha inbox` shows it.")
     var captureID: Int64
 
     func validate() throws {
         // Without input, the command would wait for it in silence.
         if isatty(FileHandle.standardInput.fileDescriptor) == 1 {
-            throw ValidationError("Pasale las fichas en JSON por la entrada estándar; mirá `ficha approve --help`.")
+            throw ValidationError("Pass the cards as JSON on standard input; see `ficha approve --help`.")
         }
     }
 
@@ -40,10 +40,11 @@ struct ApproveCommand: EngineCommand {
 }
 
 /// The fields of each card `ficha approve` reads, as its help and its errors
-/// list them.
+/// list them. The types are listed the British way, with no comma before
+/// "or", like the rest of the text.
 private let cardFields = """
-    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "es"))))), \
-    front, back, tags (una lista, que puede estar vacía) y source (null si no tiene)
+    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en_GB"))))), \
+    front, back, tags (a list, which can be empty) and source (null when there's none)
     """
 
 /// A card as `ficha approve` reads it. Every field must be there, `source`
@@ -101,11 +102,11 @@ enum CardsInputError: LocalizedError {
         switch self {
         case .unreadable(let error):
             """
-            No se pudieron leer las fichas: \(explanation(of: error)). Tienen que ser una lista JSON donde cada \
-            ficha tiene \(cardFields); mirá `ficha approve --help`.
+            Couldn't read the cards: \(explanation(of: error)). They must be a JSON list where each card has \
+            \(cardFields); see `ficha approve --help`.
             """
         case .blankSide(let position):
-            "La ficha [\(position)] tiene el frente o el dorso vacío: escribí los dos."
+            "Card [\(position)] has a blank front or back: write both."
         }
     }
 }
@@ -114,23 +115,23 @@ enum CardsInputError: LocalizedError {
 private func explanation(of error: DecodingError) -> String {
     switch error {
     case .keyNotFound(let key, let context):
-        "a la ficha \(jsonPath(context.codingPath)) le falta \"\(key.stringValue)\""
+        "card \(jsonPath(context.codingPath)) is missing \"\(key.stringValue)\""
     case .valueNotFound(_, let context):
-        "\(jsonPath(context.codingPath)) es null"
+        "\(jsonPath(context.codingPath)) is null"
     case .typeMismatch(_, let context):
         context.codingPath.isEmpty
-            ? "no son una lista" : "\(jsonPath(context.codingPath)) no es del tipo que corresponde"
+            ? "they aren't a list" : "\(jsonPath(context.codingPath)) isn't of the right type"
     case .dataCorrupted(let context):
-        context.codingPath.isEmpty ? "no son JSON válido" : "\(jsonPath(context.codingPath)) no es válido"
+        context.codingPath.isEmpty ? "they aren't valid JSON" : "\(jsonPath(context.codingPath)) isn't valid"
     @unknown default:
-        "no tienen la forma que corresponde"
+        "they don't have the right shape"
     }
 }
 
 /// A place in the cards' JSON, like `[1].source`, or the list itself.
 private func jsonPath(_ path: [any CodingKey]) -> String {
     guard !path.isEmpty else {
-        return "la lista"
+        return "the list"
     }
     return path.map { key in key.intValue.map { "[\($0)]" } ?? ".\(key.stringValue)" }.joined()
 }

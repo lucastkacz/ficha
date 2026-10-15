@@ -1,12 +1,12 @@
 /// What a card holds. Each raw value is how the database and the `ficha` CLI
 /// name the type.
 public enum CardType: String, Sendable, Codable, CaseIterable {
-    /// A word (_palabra_).
+    /// A word.
     case word
-    /// A concept (_concepto_).
+    /// A concept.
     case concept
-    /// A quote (_frase_).
+    /// A quote.
     case quote
-    /// A question (_pregunta_).
+    /// A question.
     case question
 }

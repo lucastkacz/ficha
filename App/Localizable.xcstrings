@@ -1,0 +1,161 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ can't open your cards" : {
+
+    },
+    "%lld cards learned · %lld captures in the inbox" : {
+      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures wait in the inbox.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@learned@ · %#@inbox@"
+          },
+          "substitutions" : {
+            "inbox" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg capture in the inbox"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg captures in the inbox"
+                    }
+                  },
+                  "zero" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "the inbox is empty"
+                    }
+                  }
+                }
+              }
+            },
+            "learned" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card learned"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards learned"
+                    }
+                  },
+                  "zero" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "No cards learned"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "A word, a concept, a quote or a question" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Capture" : {
+      "comment" : "The capture window's title."
+    },
+    "Capture…" : {
+
+    },
+    "Close" : {
+
+    },
+    "Close (esc)" : {
+
+    },
+    "Couldn't count your progress" : {
+
+    },
+    "Couldn't load the cards" : {
+
+    },
+    "Couldn't save the capture" : {
+
+    },
+    "Couldn't save your answer" : {
+
+    },
+    "Don't know" : {
+
+    },
+    "Flip" : {
+
+    },
+    "Got it" : {
+
+    },
+    "Know it" : {
+
+    },
+    "New" : {
+      "comment" : "A badge on a card the review panel shows for the first time."
+    },
+    "No cards to review right now." : {
+
+    },
+    "Note" : {
+
+    },
+    "Note (optional)" : {
+
+    },
+    "OK" : {
+
+    },
+    "Quit" : {
+
+    },
+    "Review" : {
+      "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
+    },
+    "Review now" : {
+
+    },
+    "Review now (%lld due)" : {
+
+    },
+    "Save" : {
+
+    },
+    "Sort of" : {
+
+    },
+    "Source" : {
+
+    },
+    "Source (optional): a book, a podcast…" : {
+
+    },
+    "space" : {
+      "comment" : "The Space key's name, next to the button it presses."
+    },
+    "Text" : {
+
+    }
+  },
+  "version" : "1.0"
+}

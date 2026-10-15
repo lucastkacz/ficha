@@ -3,7 +3,7 @@ import FichaData
 import Observation
 
 /// The cards a review now brought, which the review panel goes through one at
-/// a time: Lucas ends a new card's first view with "Entendido", and flips and
+/// a time: Lucas ends a new card's first view with "Got it", and flips and
 /// rates a due card. Each answer goes into the review log as he gives it, so
 /// the cards he doesn't get to stay as they were.
 @Observable
@@ -68,7 +68,7 @@ final class ReviewPanelModel {
     }
 
     /// Ends the new card's first view, which puts it on the ladder's first
-    /// step: "Entendido".
+    /// step: "Got it".
     func endFirstView() {
         guard case .firstView(let card) = content else { return }
         answer(card, .firstView)

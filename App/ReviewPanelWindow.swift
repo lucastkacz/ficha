@@ -12,7 +12,9 @@ final class ReviewPanelWindow: NSPanel {
     /// Lucas is done.
     init(model: Result<ReviewPanelModel, EngineError>) {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        title = "Repasar"
+        title = String(
+            localized: "Review",
+            comment: "The review panel's window title, which doesn't show: the panel has no title bar.")
         level = .floating
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isMovableByWindowBackground = true

@@ -22,11 +22,11 @@ struct ReviewPanelView: View {
                             close()
                         }
                     }
-                    .failureAlert("No se pudo guardar tu respuesta", failure: Bindable(panel).failure)
+                    .failureAlert("Couldn't save your answer", failure: Bindable(panel).failure)
             case .failure(let failure):
                 header {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("No se pudieron traer las fichas")
+                        Text("Couldn't load the cards")
                             .font(.headline)
                         Text(failure.localizedDescription)
                             .foregroundStyle(.secondary)
@@ -45,13 +45,13 @@ struct ReviewPanelView: View {
         switch panel.content {
         case .nothingToReview:
             header {
-                Text("No hay fichas para repasar ahora.")
+                Text("No cards to review right now.")
                     .font(.headline)
             }
         case .firstView(let card):
             header {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Nueva")
+                    Text("New", comment: "A badge on a card the review panel shows for the first time.")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.tint)
                         .padding(.horizontal, 8)
@@ -64,7 +64,7 @@ struct ReviewPanelView: View {
             HStack {
                 Spacer()
                 Button(action: panel.endFirstView) {
-                    KeyLabel(title: "Entendido", key: "↩")
+                    KeyLabel(title: "Got it", key: "↩")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
@@ -76,7 +76,10 @@ struct ReviewPanelView: View {
             HStack {
                 Spacer()
                 Button(action: panel.flip) {
-                    KeyLabel(title: "Dar vuelta", key: "espacio")
+                    KeyLabel(
+                        title: "Flip",
+                        key: String(localized: "space", comment: "The Space key's name, next to the button it presses.")
+                    )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])
@@ -87,9 +90,9 @@ struct ReviewPanelView: View {
             }
             back(of: card)
             HStack {
-                ratingButton("No lo sé", key: "1", rating: .again, in: panel)
-                ratingButton("Más o menos", key: "2", rating: .hard, in: panel)
-                ratingButton("Lo sé", key: "3", rating: .good, in: panel)
+                ratingButton("Don't know", key: "1", rating: .again, in: panel)
+                ratingButton("Sort of", key: "2", rating: .hard, in: panel)
+                ratingButton("Know it", key: "3", rating: .good, in: panel)
             }
         case .done:
             // The panel closes.
@@ -102,11 +105,11 @@ struct ReviewPanelView: View {
         HStack(alignment: .top) {
             title()
             Spacer(minLength: 12)
-            Button("Cerrar", systemImage: "xmark", action: close)
+            Button("Close", systemImage: "xmark", action: close)
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
                 .keyboardShortcut(.cancelAction)
-                .help("Cerrar (esc)")
+                .help("Close (esc)")
         }
     }
 
@@ -131,8 +134,9 @@ struct ReviewPanelView: View {
         }
     }
 
-    private func ratingButton(_ title: String, key: Character, rating: Rating, in panel: ReviewPanelModel) -> some View
-    {
+    private func ratingButton(
+        _ title: LocalizedStringKey, key: Character, rating: Rating, in panel: ReviewPanelModel
+    ) -> some View {
         Button {
             panel.rate(rating)
         } label: {
@@ -144,9 +148,11 @@ struct ReviewPanelView: View {
     }
 }
 
-/// A button's title, followed by the key that does the same, small.
+/// A button's title, followed by the key that does the same, small. The key
+/// shows as it's given: a symbol, a digit, or the Space key's name, which the
+/// caller translates.
 private struct KeyLabel: View {
-    let title: String
+    let title: LocalizedStringKey
     let key: String
 
     var body: some View {

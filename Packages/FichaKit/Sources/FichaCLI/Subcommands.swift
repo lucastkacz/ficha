@@ -5,16 +5,16 @@ import FichaData
 struct CaptureCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "capture",
-        abstract: "Guarda una captura en la bandeja, para refinarla después, e imprime la captura."
+        abstract: "Save a capture in the inbox, to refine later, and print the capture."
     )
 
-    @Argument(help: "Lo que querés recordar: una palabra, un concepto, una frase o una pregunta.")
+    @Argument(help: "What you want to remember: a word, a concept, a quote or a question.")
     var text: String
 
-    @Option(help: "Una nota sobre qué quisiste decir, para cuando la refines.")
+    @Option(help: "A note on what you meant, for when you refine it.")
     var note: String?
 
-    @Option(help: "Dónde lo encontraste: un libro, un podcast…")
+    @Option(help: "Where you came across it: a book, a podcast…")
     var source: String?
 
     func run(on engine: Engine) throws -> any Encodable {
@@ -26,7 +26,7 @@ struct CaptureCommand: EngineCommand {
 struct InboxCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "inbox",
-        abstract: "Lista las capturas que esperan en la bandeja, de la más vieja a la más nueva."
+        abstract: "List the captures waiting in the inbox, oldest first."
     )
 
     func run(on engine: Engine) throws -> any Encodable {
@@ -38,10 +38,10 @@ struct InboxCommand: EngineCommand {
 struct DiscardCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "discard",
-        abstract: "Descarta una captura: la saca de la bandeja sin fichas, e imprime la captura."
+        abstract: "Discard a capture: take it out of the inbox without cards, and print the capture."
     )
 
-    @Argument(help: "El id de la captura, como lo muestra `ficha inbox`.")
+    @Argument(help: "The capture's id, as `ficha inbox` shows it.")
     var captureID: Int64
 
     func run(on engine: Engine) throws -> any Encodable {
@@ -53,7 +53,7 @@ struct DiscardCommand: EngineCommand {
 struct CardsCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "cards",
-        abstract: "Lista tus fichas, en el orden en que las aprobaste."
+        abstract: "List your cards, in the order you approved them."
     )
 
     func run(on engine: Engine) throws -> any Encodable {

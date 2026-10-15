@@ -7,7 +7,8 @@ options:
   bundleIdPrefix: com.lucastkacz
   deploymentTarget:
     macOS: "26.0"
-  developmentLanguage: es
+  # The app follows the Mac's language, with English as the base (ADR 0009).
+  developmentLanguage: en
   createIntermediateGroups: true
   minimumXcodeGenVersion: 2.46.0
 
@@ -19,6 +20,9 @@ settings:
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     DEAD_CODE_STRIPPING: YES
+    # Texts go through String Catalogs, which Xcode fills from the code.
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     # Personal apps: signed to run locally, not notarized.

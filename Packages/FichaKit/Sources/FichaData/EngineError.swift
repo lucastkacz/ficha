@@ -2,7 +2,12 @@ import FichaCore
 import Foundation
 
 /// What can go wrong in the engine. Each message says what happened and what
-/// to do about it, in Spanish, since Lucas reads it in the app.
+/// to do about it, in English, and is looked up with `String(localized:)` in
+/// the main bundle (ADR 0009). In the app, that's the app's bundle, whose
+/// String Catalog can translate the messages. Xcode doesn't add them to it,
+/// so a translation adds them by hand, keyed by their English text. The
+/// `ficha` CLI's main bundle is its own folder in the app, Contents/Helpers,
+/// which has no catalog, so the CLI always prints them in English.
 public enum EngineError: Error, Equatable {
     /// The database has migrations this version doesn't know: a newer version
     /// of Ficha migrated it, so this one refuses to open it.
@@ -37,38 +42,54 @@ extension EngineError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .migratedByNewerVersion:
-            """
-            Una versión más nueva de Ficha modificó la base de datos, y esta versión no la abre para no dañar \
-            tus fichas. Abrila con la versión que la modificó o con una más nueva.
-            """
+            String(
+                localized: """
+                    A newer version of Ficha changed the database, and this version won't open it, so as not to \
+                    damage your cards. Open it with the version that changed it, or a newer one.
+                    """
+            )
         case .emptyCapture:
-            "La captura está vacía: escribí lo que querés recordar."
+            String(localized: "The capture is empty: write what you want to remember.")
         case .captureNotInInbox(let id):
-            "La captura \(id) no está en la bandeja: ya se aprobó o se descartó, o no existe. Revisá qué hay en la bandeja."
+            String(
+                localized: """
+                    Capture \(id) isn't in the inbox: it was already approved or discarded, or it doesn't exist. \
+                    Check what's in the inbox.
+                    """
+            )
         case .noCards:
-            "Una captura se aprueba en una o más fichas. Para sacarla de la bandeja sin fichas, descartala."
+            String(
+                localized:
+                    "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
+            )
         case .cardNotFound(let id):
-            "No hay ninguna ficha con el id \(id). \(reopenReviewNow)"
+            String(localized: "There's no card with the id \(id). \(reopenReviewNow)")
         case .cardNotNew(let id):
-            "La ficha \(id) ya tuvo su primera vista. \(reopenReviewNow)"
+            String(localized: "Card \(id) already had its first view. \(reopenReviewNow)")
         case .cardStillNew(let id):
-            "La ficha \(id) es nueva: antes de repasarla tiene que tener su primera vista. \(reopenReviewNow)"
+            String(
+                localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")
         case .cardNotDue(let id):
-            "La ficha \(id) todavía no está vencida, así que no se puede repasar. \(reopenReviewNow)"
+            String(localized: "Card \(id) isn't due yet, so it can't be reviewed. \(reopenReviewNow)")
         case .unreadableReviewLog(let id):
-            """
-            Ficha no entiende el historial de repasos de la ficha \(id), así que no sabe en qué escalón está. Tus \
-            fichas siguen guardadas: reportalo.
-            """
+            String(
+                localized: """
+                    Ficha can't make sense of the review log of card \(id), so it doesn't know which step the card \
+                    is on. Your cards are still saved: report it.
+                    """
+            )
         case .storage:
-            "Ficha no pudo leer o guardar su base de datos. Probá de nuevo y, si sigue pasando, reportalo."
+            String(
+                localized: "Ficha couldn't read or save its database. Try again, and if it keeps happening, report it.")
         }
     }
 }
 
 /// What to do when the review panel shows a card for an answer it can't take:
 /// start over with the cards as they are now.
-private let reopenReviewNow = "Cerrá la cajita y volvé a abrir «Repasar ahora»."
+private var reopenReviewNow: String {
+    String(localized: "Close the review panel and open “Review now” again.")
+}
 
 extension EngineError {
     /// The engine's error for an answer to the card with this id that the

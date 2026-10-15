@@ -51,8 +51,8 @@ public final class DebugTimeSource: TimeSource {
 }
 
 /// What can go wrong with Ficha Dev's time. Each message says what happened
-/// and what to do about it, in Spanish, since Lucas reads it in Ficha Dev and
-/// in its CLI.
+/// and what to do about it, in English and verbatim: like Ficha Dev's debug
+/// menu, it isn't translated (ADR 0009).
 public enum DebugTimeError: Error, Equatable {
     /// The file next to the database doesn't hold a shift the debug menu
     /// could have saved, so it isn't known what time it is.
@@ -68,13 +68,13 @@ extension DebugTimeError: LocalizedError {
         switch self {
         case .unreadable:
             """
-            El archivo «\(fileName)» de la carpeta de Ficha Dev no dice bien cuánto se adelantó su hora, así que \
-            Ficha Dev no sabe qué hora es. \(startingOver)
+            The file “\(fileName)” in Ficha Dev's folder doesn't say how far its time moved forward, so Ficha Dev \
+            doesn't know what time it is. \(startingOver)
             """
         case .outOfRange:
-            "La hora de Ficha Dev solo avanza, y hasta 100 años: no puede ir más lejos. \(startingOver)"
+            "Ficha Dev's time only moves forward, and up to 100 years: it can't go any further. \(startingOver)"
         case .storage:
-            "Ficha Dev no pudo leer o guardar cuánto adelantó su hora. Probá de nuevo y, si sigue pasando, reportalo."
+            "Ficha Dev couldn't read or save how far its time moved forward. Try again, and if it keeps happening, report it."
         }
     }
 }
@@ -86,8 +86,7 @@ private let fileName = "Time shift.json"
 /// over, with no cards and on the system's time. Only taking the file away
 /// would leave what Ficha Dev saved ahead of its time.
 private let startingOver = """
-    Para empezar de cero, salí de Ficha Dev y mandá su carpeta, ~/Library/Application Support/Ficha Dev/, a la \
-    Papelera.
+    To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
     """
 
 /// How far ahead Ficha Dev's time can be, in seconds: up to 100 years, far

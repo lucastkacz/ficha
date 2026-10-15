@@ -32,8 +32,9 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 
 ## UI
 
-- Every user-facing text is in Spanish.
-- The `ficha` CLI is the exception: its commands, options and JSON fields are in English, as the code names them, and so are swift-argument-parser's own words (ADR 0008). Its help and its messages are in Spanish.
+- Every text the app shows is in English, its base language, and can be translated (ADR 0009): SwiftUI's text literals, and `String(localized:)` for text built in code, with a comment when the text alone is ambiguous. A sentence is one localized string with its values interpolated, never pieces put together in code. A word that changes with a count gets a plural variation in the String Catalog, `App/Localizable.xcstrings`.
+- `EngineError`'s messages use `String(localized:)` in the main bundle too. Xcode doesn't add them to the app's String Catalog, so a translation adds them by hand. The `ficha` CLI's main bundle is its own folder in the app, with no catalog, which keeps them in English there.
+- Two exceptions are in English only and never translated. Ficha Dev's debug menu and its messages are verbatim (`Text(verbatim:)`, plain `String`s), so they stay out of the String Catalog. The `ficha` CLI is in English whatever the Mac's language: its commands, options, JSON fields, help and messages, like swift-argument-parser's own words (ADR 0008).
 - Every action has a keyboard path. Icon-only buttons have an accessibility label.
 - Icons are SF Symbols.
 
