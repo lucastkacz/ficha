@@ -28,9 +28,12 @@ extension CardStanding {
     }
 
     /// Checks that Lucas can answer the card with `kind` at `time`: a first
-    /// view only while it's new, and a review only once it's due, so that a
+    /// view only while it's new, and a review only once it's due, or due
+    /// within `lookAhead`, as when an appearance brings it along. That way a
     /// review ahead never counts as one on time (ADR 0002).
-    public func check(_ kind: ReviewLogEntry.Kind, at time: Date) throws(RefusedAnswer) {
+    public func check(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration)
+        throws(RefusedAnswer)
+    {
         switch (kind, self) {
         case (.firstView, .new):
             return
@@ -39,7 +42,7 @@ extension CardStanding {
         case (.review, .new):
             throw .stillNew
         case (.review, .onLadder):
-            guard isDue(at: time) else {
+            guard isDue(at: time + lookAhead / .seconds(1)) else {
                 throw .notDue
             }
         }

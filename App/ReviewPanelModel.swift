@@ -87,7 +87,7 @@ final class ReviewPanelModel {
         do {
             try engine.record(
                 kind, of: card.id, responseTime: ContinuousClock.now - shownAt, trigger: .reviewNow,
-                ladder: settings.ladder)
+                settings: settings)
         } catch {
             failure = error
             return
