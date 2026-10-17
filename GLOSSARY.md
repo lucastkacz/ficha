@@ -156,7 +156,7 @@ Putting off an appearance, or what's left of a review now, without rating its ca
 _Avoid_: dismiss, skip, postpone
 
 **Auto-close**:
-The review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze.
+The review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze, unless Lucas had gone through every card it brought.
 _Avoid_: timeout, expiry
 
 **Suppression**:

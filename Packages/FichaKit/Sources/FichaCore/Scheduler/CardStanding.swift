@@ -49,6 +49,18 @@ extension CardStanding {
     }
 }
 
+extension CardStanding {
+    /// Whether answering the card with `kind` at `time` is a review ahead: a
+    /// review of a card on the ladder that isn't due yet, not even within
+    /// `lookAhead`.
+    public func isReviewAhead(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration) -> Bool {
+        guard case .review = kind, case .onLadder = self else {
+            return false
+        }
+        return !isDue(at: time.adding(lookAhead))
+    }
+}
+
 /// Why an answer can't go into a card's review log.
 public enum RefusedAnswer: Error, Equatable {
     /// A first view, for a card that already had one.

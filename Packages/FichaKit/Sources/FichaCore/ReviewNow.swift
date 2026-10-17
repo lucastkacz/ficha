@@ -1,10 +1,12 @@
 import Foundation
 
-/// The cards the review panel brings, by id: cards to review, then a new card
-/// to meet.
+/// The cards the review panel brings, by id: cards to review, then cards to
+/// review ahead, then a new card to meet.
 public struct PanelCardIDs: Sendable, Equatable {
     /// The cards to review, in this order.
     public let reviews: [Int64]
+    /// The cards to review ahead, which aren't due yet, in this order.
+    public let reviewsAhead: [Int64]
     /// A new card, to meet in its first view after them, if any.
     public let firstView: Int64?
 }
@@ -37,7 +39,50 @@ extension ReviewSettings {
         now: Date,
         calendar: Calendar
     ) -> PanelCardIDs {
+        let sorted = SortedStandings(standings, dueBy: horizon)
+        let reviews = Array(sorted.due.prefix(cardsPerAppearance))
+        let hasRoom = reviews.count < cardsPerAppearance
+        let metToday = log.count { $0.kind == .firstView && calendar.isDate($0.answeredAt, inSameDayAs: now) }
+        let mayMeetMore = metToday < newCardsPerDay
+        return PanelCardIDs(
+            reviews: reviews, reviewsAhead: [], firstView: hasRoom && mayMeetMore ? sorted.new.first : nil)
+    }
+
+    /// The cards "See more" brings at `now`, once Lucas went through the
+    /// review panel's cards, out of the other cards in his reviews, by id in
+    /// the order he approved them, and the whole review log, in the order it
+    /// was written: the cards due by `horizon` that didn't fit, as `pickCards`
+    /// orders them, and then, if there's room, the cards closest to being due,
+    /// as reviews ahead, up to `cardsPerAppearance`. Never a new card, so the
+    /// day's new cards keep Lucas's load in the coming weeks as it was.
+    public func seeMoreCards(
+        cardIDs: [Int64],
+        log: [ReviewLogEntry],
+        dueBy horizon: Date
+    ) throws(UnexpectedReviewLog) -> PanelCardIDs {
+        let sorted = SortedStandings(try ladder.standings(of: cardIDs, after: log), dueBy: horizon)
+        let reviews = Array(sorted.due.prefix(cardsPerAppearance))
+        let reviewsAhead = Array(sorted.notDue.prefix(cardsPerAppearance - reviews.count))
+        return PanelCardIDs(reviews: reviews, reviewsAhead: reviewsAhead, firstView: nil)
+    }
+}
+
+/// The cards in Lucas's reviews by where they stand at a time, each group in
+/// the order the review panel brings them.
+private struct SortedStandings {
+    /// The cards due by then: lowest step first, and then the longest overdue.
+    let due: [Int64]
+    /// The cards on the ladder that aren't due by then: the closest to being
+    /// due first.
+    let notDue: [Int64]
+    /// The new cards, in the order Lucas approved them.
+    let new: [Int64]
+
+    /// The cards that stand as `standings` say, by id in the order Lucas
+    /// approved them, sorted by whether they're due by `horizon`.
+    init(_ standings: [(cardID: Int64, standing: CardStanding)], dueBy horizon: Date) {
         var due: [(id: Int64, step: Int, due: Date)] = []
+        var notDue: [(id: Int64, due: Date)] = []
         var new: [Int64] = []
         for (id, standing) in standings {
             switch standing {
@@ -45,18 +90,14 @@ extension ReviewSettings {
                 new.append(id)
             case .onLadder(let step, let dueTime) where standing.isDue(at: horizon):
                 due.append((id, step, dueTime))
-            case .onLadder:
-                break
+            case .onLadder(_, let dueTime):
+                notDue.append((id, dueTime))
             }
         }
         // Cards on the same step and due at the same time come in the order
         // Lucas approved them.
-        let reviews = due.sorted { ($0.step, $0.due, $0.id) < ($1.step, $1.due, $1.id) }
-            .prefix(cardsPerAppearance)
-            .map(\.id)
-        let hasRoom = reviews.count < cardsPerAppearance
-        let metToday = log.count { $0.kind == .firstView && calendar.isDate($0.answeredAt, inSameDayAs: now) }
-        let mayMeetMore = metToday < newCardsPerDay
-        return PanelCardIDs(reviews: reviews, firstView: hasRoom && mayMeetMore ? new.first : nil)
+        self.due = due.sorted { ($0.step, $0.due, $0.id) < ($1.step, $1.due, $1.id) }.map(\.id)
+        self.notDue = notDue.sorted { ($0.due, $0.id) < ($1.due, $1.id) }.map(\.id)
+        self.new = new
     }
 }

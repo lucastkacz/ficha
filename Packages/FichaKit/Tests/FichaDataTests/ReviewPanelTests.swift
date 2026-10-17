@@ -51,14 +51,18 @@ struct ReviewPanelTests {
         #expect(panel.outcome == .autoClosed)
     }
 
-    @Test("the panel closes as finished once Lucas answered every card")
-    func answeringEveryCardFinishesThePanel() throws {
+    // So Lucas can ask for more cards, or undo the last one.
+    @Test("once Lucas answered every card, the panel stays open, and closing it then finishes it")
+    func thePanelStaysOpenOnceEveryCardIsAnswered() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let start = time.now
         var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
         time.advance(by: 8)
 
         try panel.answer(.firstView, responseTime: .seconds(8))
+        #expect(panel.current == nil)
+        #expect(panel.outcome == nil)
+        panel.close(.byLucas)
 
         #expect(panel.outcome == .finished)
         #expect(

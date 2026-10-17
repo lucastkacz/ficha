@@ -92,6 +92,15 @@ enum Schema {
                 table.add(column: "expandsCardId", .integer).references("card")
             }
         }
+        migrator.registerMigration("v7 reviews ahead") { db in
+            // Whether a review was ahead: of a card that wasn't due yet, which
+            // Lucas asked for with "See more". Only its again counts (ADR
+            // 0002). The reviews before it were all on time.
+            try db.alter(table: "reviewLog") { table in
+                table.add(column: "isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+            }
+        }
         return migrator
     }()
 }

@@ -28,7 +28,8 @@ final class ReviewPanelWindow: NSPanel {
     private var watching: Task<Void, Never>?
 
     /// A panel for the cards a review now or an appearance brought, which
-    /// closes itself when Lucas is done, or for why they couldn't be brought.
+    /// closes itself when Lucas closes it or it closes on its own, or for why
+    /// they couldn't be brought.
     init(model: Result<ReviewPanelModel, EngineError>) {
         self.model = model
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
