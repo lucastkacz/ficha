@@ -22,26 +22,35 @@ extension Engine {
     /// review with his rating, which moves it on the ladder of `settings`. A
     /// first view is only for a new card, and a review only for a due one, or,
     /// in an appearance, for one due within the look-ahead, which it brings
-    /// along.
+    /// along. When Lucas asked to review ahead, a review of a card that isn't
+    /// due yet goes into the log as a review ahead, of which only again
+    /// counts; one of a card that came due by then is on time.
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
         responseTime: Duration,
         trigger: Trigger,
-        settings: ReviewSettings
+        settings: ReviewSettings,
+        reviewingAhead: Bool = false
     ) throws(EngineError) {
-        let entry = ReviewLogEntry(
-            cardID: cardID, kind: kind, answeredAt: time.now, responseTime: responseTime, trigger: trigger)
+        let answeredAt = time.now
+        let lookAhead = trigger.lookAhead(in: settings)
         try write { db in
             _ = try cardInReviews(cardID, in: db)
             let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
-            do throws(RefusedAnswer) {
-                try standing.check(
-                    kind, at: entry.answeredAt, lookingAhead: trigger == .appearance ? settings.lookAhead : .zero)
-            } catch {
-                throw EngineError(refused: error, cardID: cardID)
+            let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
+            if !isAhead {
+                do throws(RefusedAnswer) {
+                    try standing.check(kind, at: answeredAt, lookingAhead: lookAhead)
+                } catch {
+                    throw EngineError(refused: error, cardID: cardID)
+                }
             }
-            try insert(entry, in: db)
+            try insert(
+                ReviewLogEntry(
+                    cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
+                    isAhead: isAhead),
+                in: db)
         }
     }
 
@@ -56,6 +65,22 @@ extension Engine {
             return ProgressCounts(
                 due: counts.due, learned: counts.learned,
                 inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsInInbox.fetchCount(db))
+        }
+    }
+
+    /// The cards "See more" brings once Lucas went through the review panel's
+    /// cards, which `trigger` brought: the due cards that didn't fit, and then
+    /// the cards closest to being due, as reviews ahead, out of the cards in
+    /// his reviews but those in `shown`, the panel's. Never a new card. For an
+    /// appearance, a card due within the look-ahead counts as due.
+    func seeMore(after shown: Set<Int64>, from trigger: Trigger, settings: ReviewSettings) throws(EngineError)
+        -> [PanelCard]
+    {
+        let horizon = time.now.adding(trigger.lookAhead(in: settings))
+        return try read { db in
+            let cards = try cardsInReviews(in: db).filter { !shown.contains($0.id) }
+            let picked = try settings.seeMoreCards(cardIDs: cards.map(\.id), log: logEntries(in: db), dueBy: horizon)
+            return try panelCards(picked, from: cards)
         }
     }
 
@@ -74,10 +99,12 @@ extension Engine {
 }
 
 /// The cards the review panel brings, picked by id out of `cards`, in the
-/// order it shows them: the cards to review, and then the new card.
+/// order it shows them: the cards to review, the cards to review ahead, and
+/// then the new card.
 func panelCards(_ picked: PanelCardIDs, from cards: [Card]) throws -> [PanelCard] {
     let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     var panelCards = try picked.reviews.map { PanelCard.review(try card($0, in: cardsByID)) }
+    panelCards += try picked.reviewsAhead.map { PanelCard.reviewAhead(try card($0, in: cardsByID)) }
     if let id = picked.firstView {
         panelCards.append(.firstView(try card(id, in: cardsByID)))
     }
@@ -112,11 +139,12 @@ private func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let (kind, rating) = entry.kind.columns
     try db.execute(
         sql: """
-            INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
             entry.cardID, kind, rating, entry.answeredAt, entry.responseTime / .seconds(1), entry.trigger.rawValue,
+            entry.isAhead,
         ]
     )
 }
@@ -139,7 +167,8 @@ extension ReviewLogEntry {
             kind: kind,
             answeredAt: try row.decode(forColumn: "answeredAt"),
             responseTime: .seconds(responseTime),
-            trigger: trigger
+            trigger: trigger,
+            isAhead: try row.decode(forColumn: "isAhead")
         )
     }
 }

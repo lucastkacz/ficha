@@ -22,7 +22,8 @@ public struct Ladder: Sendable, Equatable {
     /// first step; then good moves it up one step, hard keeps it on its step
     /// and again sends it back to the first. The last step repeats for good.
     /// After each entry, the card waits its step's wait from when Lucas
-    /// answered.
+    /// answered. A review ahead only counts when it's an again: hard and good
+    /// leave the card's step and due time as they were (ADR 0002).
     public func standing(after entries: [ReviewLogEntry]) throws(UnexpectedReviewLog) -> CardStanding {
         guard let first = entries.first else {
             return .new
@@ -31,18 +32,20 @@ public struct Ladder: Sendable, Equatable {
             throw UnexpectedReviewLog(cardID: first.cardID)
         }
         var step = 0
+        var waitingSince = first.answeredAt
         for entry in entries.dropFirst() {
             guard case .review(let rating) = entry.kind else {
                 throw UnexpectedReviewLog(cardID: entry.cardID)
             }
-            switch rating {
-            case .again: step = 0
-            case .hard: break
-            case .good: step = min(step + 1, waits.count - 1)
+            switch (rating, entry.isAhead) {
+            case (.again, _): step = 0
+            case (.hard, false): break
+            case (.good, false): step = min(step + 1, waits.count - 1)
+            case (.hard, true), (.good, true): continue
             }
+            waitingSince = entry.answeredAt
         }
-        let last = entries[entries.count - 1]
-        return .onLadder(step: step, due: last.answeredAt.adding(waits[step]))
+        return .onLadder(step: step, due: waitingSince.adding(waits[step]))
     }
 
     /// How many cards are due at `now`, and how many are learned: on a step

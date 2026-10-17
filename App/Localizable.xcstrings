@@ -69,8 +69,17 @@
         }
       }
     },
+    "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
+
+    },
+    "A review ahead: only “Don't know” moves the card." : {
+
+    },
     "A word, a concept, a quote or a question" : {
 
+    },
+    "Ahead" : {
+      "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
     },
     "Bury" : {
       "comment" : "A button that buries the card the review panel shows: it never shows up again."
@@ -123,6 +132,9 @@
     "Don't know" : {
 
     },
+    "Done" : {
+
+    },
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
@@ -153,6 +165,9 @@
     "New" : {
       "comment" : "A badge on a card the review panel shows for the first time."
     },
+    "No cards are due right now." : {
+
+    },
     "No cards to review right now." : {
 
     },
@@ -171,6 +186,9 @@
     "Review" : {
       "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
     },
+    "Review ahead" : {
+
+    },
     "Review now" : {
 
     },
@@ -178,6 +196,12 @@
 
     },
     "Save" : {
+
+    },
+    "See more" : {
+
+    },
+    "See more?" : {
 
     },
     "Sort of" : {
@@ -208,6 +232,12 @@
 
     },
     "What needs fixing?" : {
+
+    },
+    "You went through every card." : {
+
+    },
+    "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
     }
   },
