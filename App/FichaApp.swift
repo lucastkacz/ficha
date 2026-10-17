@@ -13,18 +13,10 @@ struct FichaApp: App {
         MenuBarExtra(variant.name, systemImage: variant.menuBarSymbol) {
             if let model = appDelegate.model {
                 MenuContent(
-                    model: model, openReviewPanel: appDelegate.openReviewPanel,
+                    model: model, openCapture: appDelegate.openCapture,
+                    captureShortcut: appDelegate.captureShortcut, openReviewPanel: appDelegate.openReviewPanel,
                     checkAppearance: appDelegate.checkAppearanceNow)
             }
         }
-        Window(Text("Capture", comment: "The capture window's title."), id: CaptureView.windowID) {
-            if let model = appDelegate.model {
-                CaptureView(model: model)
-            }
-        }
-        .windowResizability(.contentSize)
-        .windowLevel(.floating)
-        .defaultLaunchBehavior(.suppressed)
-        .restorationBehavior(.disabled)
     }
 }
