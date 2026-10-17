@@ -2,7 +2,7 @@
 
 A macOS menu-bar app that shows Lucas a tiny flashcard every so often (a word, a concept, a quote or a question) and spaces each card by how well he knows it. Zero friction: answering takes seconds, and everything stays on his Mac.
 
-Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claude/settings.json`. Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; the domain glossary is `GLOSSARY.md` (the name plugin 1.3.1 uses) and decisions are in `docs/adr/`.
+Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claude/settings.json`. Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; the domain glossary is `GLOSSARY.md` (the name the plugin's skills read) and decisions are in `docs/adr/`.
 
 ## Rules
 
@@ -19,7 +19,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 ## Skills: Claude suggests, Lucas types
 
 <!-- skill-map: mattpocock-skills 1.3.1 -->
-Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map is for mattpocock-skills 1.3.1, the version in the marker above. When the session-start hook says the installed version changed, update the map, the marker and the glossary's file name from the installed `ask-matt` router and `claude plugin details mattpocock-skills@claude-plugins-official`.
+Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map is for the mattpocock-skills version in the marker above. When the session-start hook says the installed version changed, update the map, the marker and the glossary's file name from the installed `ask-matt` router and `claude plugin details mattpocock-skills@claude-plugins-official`.
 
 - **Model-invoked skills** run on their own whenever they fit: `grilling`, `tdd`, `diagnosing-bugs`, `code-review`, `pr`, `domain-modeling`, `codebase-design`, `prototype`, `research`, `wizard` and `writing-for-agents`.
 - **User-invoked skills** run only when Lucas types them, and Claude can't see them. When one fits, suggest it in one line, with the exact command and why, e.g. "¿Corrés `/to-tickets`? Parte la spec en tickets." Never carry out a user-invoked skill's steps by hand instead.
@@ -29,9 +29,9 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 | Lucas brings an idea, a feature or a change | `/grill-with-docs` |
 | An idea is settled in the conversation | `/to-spec`, then `/to-tickets`, in the same session |
 | A ticket is ready for an agent | `/implement #<ticket>`, then `/clear` before the next one |
-| All of a spec's tickets are ready, and Lucas would rather not drive each one | `/implement-spec #<spec>`: parallel agents build them on one branch, behind one PR |
+| All of a spec's tickets are ready, and Lucas would rather not drive each one | `/implement-spec #<spec>`: parallel agents build them on one branch, `<spec>-<short-name>`, behind one PR |
 | A small change that fits in this session | `/implement`, right here, without a spec or tickets |
-| A build or a bug fix is done, above all one that went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, not the code, and its findings feed the comparison in ADR 0007 |
+| A build or a bug fix is done, above all one that went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007 |
 | Raw issues are waiting: ideas from Lucas's phone, bug reports | `/triage` |
 | An effort too big and foggy for one session | `/wayfinder` |
 | The code feels hard to change, or there's a spare moment | `/improve-codebase-architecture` |
@@ -40,7 +40,7 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 | Lucas isn't sure what comes next | `/ask-matt` |
 | The repo's skill configuration is missing or outdated | `/setup-matt-pocock-skills` |
 
-Not used here: `/grill-me` (`/grill-with-docs` does the same and keeps the glossary and the ADRs), `/teach` (Ficha teaches in the app, not in the repo) and `/to-questionnaire` (there's no one else to send questions to). Still in Matt's beta, so not installed yet: `/chief-of-staff` (one long goal in one session, worked through subagents; it also suggests recurring schedules, which Ficha doesn't run).
+Not used here: `/grill-me` (`/grill-with-docs` does the same and keeps the glossary and the ADRs), `/teach` (Ficha teaches in the app, not in the repo) and `/to-questionnaire` (there's no one else to send questions to). Worth watching in Matt's beta, not installed yet: `/chief-of-staff` (one long goal in one session, worked through subagents; it also suggests recurring schedules, which Ficha doesn't run).
 
 At the end of each phase of work (the grilling, an implementation, a review), decide how to go on as `ask-matt` describes: continue, `/clear`, `/handoff`, a subagent or `/compact`. Suggest it.
 
