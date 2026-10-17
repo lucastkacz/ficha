@@ -7,10 +7,9 @@ import SwiftUI
 /// line, and Esc closes the window. A capture that repeats a card or a capture
 /// asks him first whether to expand it or ignore it.
 struct CaptureView: View {
-    static let windowID = "capture"
-
     let model: AppModel
-    @Environment(\.dismiss) private var dismiss
+    /// Closes the window.
+    let dismiss: () -> Void
     @State private var text = ""
     @State private var note = ""
     @State private var source = ""
