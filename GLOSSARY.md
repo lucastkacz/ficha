@@ -40,18 +40,21 @@ What waits to be refined: captures, including expansions, and flagged cards.
 _Avoid_: queue, backlog
 
 **Duplicate**:
-A capture whose text matches another capture or a card's front, ignoring case and accents.
+A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano".
 
 **Expand**:
-Keeping a duplicate in the inbox, attached to the card it repeats, so that refining adds it to that card.
+Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that refining adds it to that card; or next to the capture it repeats, to be refined with it.
 _Avoid_: merge, append
+
+**Expansion**:
+A capture in the inbox attached to the card it repeats. Approving it gives that card new content, and the card keeps its step.
 
 **Refine**:
 Turning what waits in the inbox into finished cards, in a Claude session Lucas starts. Claude drafts each change following the content guide, and Lucas approves it.
 _Avoid_: process, generate, import
 
 **Approve**:
-Turning a capture into the cards Lucas accepted for it, which takes it out of the inbox.
+Turning a capture into the cards Lucas accepted for it, which takes it out of the inbox. Approving an expansion gives its card the content Lucas accepted instead.
 _Avoid_: accept, save
 
 **Discard**:

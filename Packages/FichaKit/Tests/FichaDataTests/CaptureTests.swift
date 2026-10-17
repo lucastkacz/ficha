@@ -10,7 +10,7 @@ struct CaptureTests {
     func captureWaitsInTheInbox() throws {
         let engine = try Engine(location: .inMemory, time: time)
 
-        try engine.capture(text: "serendipia", note: "Lo opuesto a buscar algo", source: "Un ensayo de Borges")
+        try engine.newCapture("serendipia", note: "Lo opuesto a buscar algo", source: "Un ensayo de Borges")
 
         let inbox = try engine.inbox().captures
         try #require(inbox.count == 1)
@@ -26,7 +26,7 @@ struct CaptureTests {
     func blankNoteAndSourceAreLeftOut() throws {
         let engine = try Engine(location: .inMemory, time: time)
 
-        try engine.capture(text: "  ubuntu\n", note: "", source: "   ")
+        try engine.newCapture("  ubuntu\n", note: "", source: "   ")
 
         let inbox = try engine.inbox().captures
         try #require(inbox.count == 1)
@@ -40,7 +40,7 @@ struct CaptureTests {
         let engine = try Engine(location: .inMemory, time: time)
 
         #expect(throws: EngineError.emptyCapture) {
-            try engine.capture(text: " \n", note: "Una nota sin texto", source: nil)
+            _ = try engine.capture(text: " \n", note: "Una nota sin texto", source: nil)
         }
         #expect(try engine.inbox().captures.isEmpty)
     }

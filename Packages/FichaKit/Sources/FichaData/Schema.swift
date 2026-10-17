@@ -84,6 +84,14 @@ enum Schema {
                 table.add(column: "buriedAt", .datetime)
             }
         }
+        migrator.registerMigration("v6 expansions") { db in
+            // A capture that repeats a card's front, which Lucas chose to
+            // expand: it waits in the inbox attached to that card, so that
+            // refining adds it to the card.
+            try db.alter(table: "capture") { table in
+                table.add(column: "expandsCardId", .integer).references("card")
+            }
+        }
         return migrator
     }()
 }

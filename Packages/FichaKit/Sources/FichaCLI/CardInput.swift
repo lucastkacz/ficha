@@ -2,7 +2,8 @@ import ArgumentParser
 import FichaCore
 import Foundation
 
-/// The fields of each card `ficha approve` and `ficha fix` read, as their
+/// The fields of each card `ficha approve`, `ficha approve-expansion` and
+/// `ficha fix` read, as their
 /// help and their errors list them. The types are listed the British way,
 /// with no comma before "or", like the rest of the text.
 let cardFields = """
@@ -13,7 +14,7 @@ let cardFields = """
 /// What a command reads as JSON on standard input, where Claude can pass any
 /// text in a quoted heredoc without escaping it, in the words its errors use:
 /// a list of cards, which `ficha approve` reads, or one card, which `ficha
-/// fix` reads.
+/// approve-expansion` and `ficha fix` read.
 struct CardsInput {
     /// The command that reads it.
     let command: String
@@ -33,9 +34,16 @@ struct CardsInput {
         command: "approve", what: "the cards", whole: "the list", json: "a JSON list",
         rule: "They must be a JSON list where each card has \(cardFields)", isList: true)
     /// The card `ficha fix` reads.
-    static let one = CardsInput(
-        command: "fix", what: "the card", whole: "the card", json: "a JSON object",
-        rule: "It must be a JSON object with \(cardFields)", isList: false)
+    static let fixedCard = oneCard(for: "fix")
+    /// The card `ficha approve-expansion` reads.
+    static let expandedCard = oneCard(for: "approve-expansion")
+
+    /// One card, as `command` reads it.
+    private static func oneCard(for command: String) -> CardsInput {
+        CardsInput(
+            command: command, what: "the card", whole: "the card", json: "a JSON object",
+            rule: "It must be a JSON object with \(cardFields)", isList: false)
+    }
 
     /// Checks that something comes on standard input: without it, the
     /// command would wait for it in silence.
@@ -62,13 +70,14 @@ func cards(in input: Data) throws -> [CardContent] {
     }
 }
 
-/// The card in `input`, a JSON object, cleaned up as `CardContent` says.
-func card(in input: Data) throws -> CardContent {
+/// The card in `input`, a JSON object read as `cardsInput` says, cleaned up as
+/// `CardContent` says.
+func card(in input: Data, as cardsInput: CardsInput) throws -> CardContent {
     let card: CardInput
     do {
         card = try JSONDecoder().decode(CardInput.self, from: input)
     } catch let error as DecodingError {
-        throw CardsInputError.unreadable(error, .one)
+        throw CardsInputError.unreadable(error, cardsInput)
     }
     guard let content = card.content else {
         throw CardsInputError.blankSide(position: nil)
@@ -81,7 +90,8 @@ func standardInput() throws -> Data {
     try FileHandle.standardInput.readToEnd() ?? Data()
 }
 
-/// A card as `ficha approve` and `ficha fix` read it. Every field must be
+/// A card as `ficha approve`, `ficha approve-expansion` and `ficha fix` read
+/// it. Every field must be
 /// there, `source` too, as null when there's none, so a misspelled field
 /// fails instead of passing for a missing one.
 private struct CardInput: Decodable {
@@ -111,7 +121,8 @@ private struct CardInput: Decodable {
     }
 }
 
-/// What can be wrong with the cards `ficha approve` or `ficha fix` reads.
+/// What can be wrong with the cards `ficha approve`, `ficha approve-expansion`
+/// or `ficha fix` reads.
 /// Each message says where, so whoever wrote the JSON can fix it.
 enum CardsInputError: LocalizedError {
     /// The input isn't the JSON the command reads, with every field.

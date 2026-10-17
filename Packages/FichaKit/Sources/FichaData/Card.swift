@@ -89,6 +89,23 @@ func updateCard(
     return try existingCard(cardID, in: db)
 }
 
+/// Replaces a card's content with `content`, keeping its review log, and
+/// sets `others` too, as `updateCard` says. Returns the card as it is then.
+func replaceContent(
+    of cardID: Int64,
+    with content: CardContent,
+    alsoSetting others: String? = nil,
+    in db: Database
+) throws -> Card {
+    try updateCard(
+        cardID,
+        setting: ["type = ?, front = ?, back = ?, tags = ?, source = ?", others].compactMap(\.self).joined(
+            separator: ", "),
+        to: [content.type.rawValue, content.front, content.back, try tagsJSON(content.tags), content.source],
+        in: db
+    )
+}
+
 /// The cards that wait in the inbox to be fixed: flagged, and not buried.
 var flaggedCardsInInbox: QueryInterfaceRequest<Row> {
     Table("card").filter(Column("flaggedAt") != nil && Column("buriedAt") == nil)
