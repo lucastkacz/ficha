@@ -432,7 +432,10 @@ final class Detector {
             CaptureDevice(name: $0.localizedName, transport: nil, running: $0.isInUseByAnotherApplication)
         }
         return MicrophoneReading(
-            inUse: devices.contains { $0.running && $0.transport != "aggr" },
+            // Aggregates, `kAudioDeviceTransportTypeAggregate` ('grup') and the
+            // old `kAudioDeviceTransportTypeAutoAggregate` ('fgrp'), are made of
+            // other devices, which are read on their own.
+            inUse: devices.contains { $0.running && !["grup", "fgrp"].contains($0.transport) },
             anyAppRunningInput: processes.contains { $0.ignoredBecause == nil },
             devices: devices.sorted { $0.name < $1.name },
             processes: processes,
