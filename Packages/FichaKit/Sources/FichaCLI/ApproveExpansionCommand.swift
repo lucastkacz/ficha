@@ -31,6 +31,6 @@ struct ApproveExpansionCommand: EngineCommand {
     }
 
     func run(on engine: Engine) throws -> any Encodable {
-        try engine.approveExpansion(captureID, into: card(in: standardInput(), readBy: .expandedCard))
+        try engine.approveExpansion(captureID, into: card(in: standardInput(), as: .expandedCard))
     }
 }

@@ -33,6 +33,7 @@ func approveCard(_ front: String, in engine: Engine) throws -> Card {
 
 extension Engine {
     /// Saves a capture that repeats no card or capture, and returns it.
+    @discardableResult
     func newCapture(_ text: String, note: String? = nil, source: String? = nil) throws -> Capture {
         try #require(try capture(text: text, note: note, source: source).saved)
     }

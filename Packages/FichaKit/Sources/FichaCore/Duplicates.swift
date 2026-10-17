@@ -1,9 +1,9 @@
 import Foundation
 
-/// Whether a capture's text repeats `text`, another capture's text or a card's
-/// front: they're the same once their surrounding spaces and line breaks are
-/// trimmed, ignoring case and accents. In Spanish, ñ is a letter of its own
-/// and not an n with an accent, so “año” doesn't repeat “ano”.
+/// Whether a capture's text repeats `text`, which is another capture's text or
+/// a card's front: they're the same once their surrounding spaces and line
+/// breaks are trimmed, ignoring case and accents. In Spanish, ñ is a letter of
+/// its own and not an n with an accent, so “año” doesn't repeat “ano”.
 public func repeats(_ captureText: String, _ text: String) -> Bool {
     comparable(captureText) == comparable(text)
 }

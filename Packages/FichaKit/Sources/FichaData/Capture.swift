@@ -17,17 +17,18 @@ public struct Capture: Sendable, Equatable, Encodable {
     public let expandsCardID: Int64?
 }
 
-/// What capturing did: saved the capture in the inbox, or found that it
-/// repeats a card or a capture and left it for Lucas to expand or ignore.
+/// What capturing did: saved the capture in the inbox, or found that it's a
+/// duplicate and left it for Lucas to expand or ignore.
 public enum CaptureResult: Sendable, Equatable {
     /// The capture waits in the inbox.
     case saved(Capture)
-    /// The capture repeats this card or capture, so it wasn't saved.
-    case duplicate(Duplicate)
+    /// The capture is a duplicate of this card or capture, so it wasn't saved.
+    case duplicate(of: Repeated)
 }
 
-/// What a duplicate repeats: a card, by its front, or a capture in the inbox.
-public enum Duplicate: Sendable, Equatable {
+/// What a duplicate repeats: a card, by its front or by the capture it was
+/// approved from, or a capture in the inbox.
+public enum Repeated: Sendable, Equatable {
     case card(Card)
     case capture(Capture)
 }
@@ -61,12 +62,25 @@ func save(_ content: CaptureContent, expanding cardID: Int64?, at time: Date, in
     )
 }
 
-/// What `text` repeats, if anything: the first card whose front it repeats,
-/// or else the first capture in the inbox whose text it repeats.
-func duplicate(of text: String, in db: Database) throws -> Duplicate? {
-    if let card = try allCards(in: db).first(where: { repeats(text, $0.front) }) {
+/// What a capture with this text would repeat, if anything: the first card
+/// whose front it repeats, or whose capture it repeats, or else the first
+/// capture in the inbox it repeats. A capture that was discarded is left
+/// out: it's in neither.
+func repeated(by text: String, in db: Database) throws -> Repeated? {
+    let capturedAs = Dictionary(
+        uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT id, text FROM capture")
+            .map { row in (try row.decode(forColumn: "id") as Int64, try row.decode(forColumn: "text") as String) }
+    )
+    let card = try allCards(in: db).first { card in
+        repeats(text, card.front) || capturedAs[card.captureID].map { repeats(text, $0) } == true
+    }
+    if let card {
         return .card(card)
     }
-    let captures = try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
-    return captures.first { repeats(text, $0.text) }.map(Duplicate.capture)
+    return try capturesWaiting(in: db).first { repeats(text, $0.text) }.map(Repeated.capture)
+}
+
+/// The captures that wait in the inbox, expansions included, oldest first.
+func capturesWaiting(in db: Database) throws -> [Capture] {
+    try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
 }

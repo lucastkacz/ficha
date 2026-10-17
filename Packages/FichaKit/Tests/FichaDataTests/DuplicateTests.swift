@@ -13,7 +13,7 @@ struct DuplicateTests {
 
         let result = try engine.capture(text: "  pensamiento CRITICO\n", note: "Otra acepción", source: nil)
 
-        #expect(result == .duplicate(.card(card)))
+        #expect(result == .duplicate(of: .card(card)))
         #expect(try engine.inbox().captures.isEmpty)
     }
 
@@ -24,7 +24,7 @@ struct DuplicateTests {
 
         let result = try engine.capture(text: "ubuntu", note: "El sistema operativo", source: nil)
 
-        #expect(result == .duplicate(.capture(first)))
+        #expect(result == .duplicate(of: .capture(first)))
         #expect(try engine.inbox().captures == [first])
     }
 
@@ -39,17 +39,54 @@ struct DuplicateTests {
         #expect(result.saved?.text == "ano")
     }
 
-    // Lucas discarded it, or it's in the cards it was approved into, whose
-    // fronts are what count.
-    @Test("a capture that repeats a capture already refined is saved")
-    func refinedCapturesAreNotDuplicates() throws {
+    // Fronts rarely repeat the capture word for word: "ubuntu" becomes "¿Qué
+    // es el ubuntu?".
+    @Test("a capture that repeats the capture a card was approved from repeats that card")
+    func repeatingAnApprovedCaptureRepeatsItsCard() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let approved = try engine.newCapture("Ubuntu")
+        let cards = try engine.approve(
+            approved.id, into: [card(.concept, front: "¿Qué es el ubuntu?", back: "Soy porque somos.")])
+
+        let result = try engine.capture(text: "ubuntu", note: nil, source: nil)
+
+        #expect(result == .duplicate(of: .card(try #require(cards.first))))
+    }
+
+    @Test("a capture that repeats a discarded capture is saved")
+    func discardedCapturesAreNotRepeated() throws {
         let engine = try Engine(location: .inMemory, time: time)
         try engine.discard(try engine.newCapture("serendipia").id)
-        let approved = try engine.newCapture("ubuntu")
-        try engine.approve(approved.id, into: [card(.concept, front: "¿Qué es el ubuntu?", back: "Soy porque somos.")])
 
         #expect(try engine.capture(text: "serendipia", note: nil, source: nil).saved != nil)
-        #expect(try engine.capture(text: "ubuntu", note: nil, source: nil).saved != nil)
+    }
+
+    @Test("flagged and buried cards count as repeated too")
+    func flaggedAndBuriedCardsCount() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let flagged = try approveCard("serendipia", in: engine)
+        let buried = try approveCard("ubuntu", in: engine)
+        try engine.flag(flagged.id, note: note("El dorso es confuso"))
+        try engine.bury(buried.id)
+
+        let serendipia = try engine.capture(text: "serendipia", note: nil, source: nil)
+        let ubuntu = try engine.capture(text: "ubuntu", note: nil, source: nil)
+
+        #expect(serendipia == .duplicate(of: .card(try existing(flagged, in: engine))))
+        #expect(ubuntu == .duplicate(of: .card(try existing(buried, in: engine))))
+    }
+
+    // Only a card can be expanded.
+    @Test("a capture that repeats both a card and a capture in the inbox repeats the card")
+    func aCardCountsBeforeACapture() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        try engine.newCapture("serendipia")
+        let other = try engine.newCapture("un hallazgo por casualidad")
+        let card = try #require(
+            try engine.approve(other.id, into: [card(.word, front: "Serendipia", back: "Un hallazgo por casualidad.")])
+                .first)
+
+        #expect(try engine.capture(text: "serendipia", note: nil, source: nil) == .duplicate(of: .card(card)))
     }
 
     @Test("expanding a capture that repeats a card keeps it in the inbox, attached to that card")
@@ -81,6 +118,24 @@ struct DuplicateTests {
         #expect(inbox.captures == [first, second])
         #expect(inbox.expansions.isEmpty)
         #expect(second.expandsCardID == nil)
+    }
+
+    // Its card's front changed after it was expanded, so the new capture only
+    // repeats the expansion.
+    @Test("expanding a capture that repeats an expansion attaches it to that expansion's card")
+    func expandingAnExpansionAttachesToItsCard() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let ubuntu = try engine.newCapture("ubuntu")
+        let concept = try card(.concept, front: "¿Qué es el ubuntu?", back: "Soy porque somos.")
+        let fixed = try card(.concept, front: "El ubuntu, la filosofía", back: "Soy porque somos.")
+        let approved = try #require(try engine.approve(ubuntu.id, into: [concept]).first)
+        try engine.expand(text: "¿Qué es el ubuntu?", note: "La distribución de Linux", source: nil)
+        try engine.flag(approved.id, note: note("Que diga de dónde viene"))
+        try engine.fix(approved.id, with: fixed)
+
+        let expansion = try engine.expand(text: "¿que es el ubuntu?", note: nil, source: nil)
+
+        #expect(expansion.expandsCardID == approved.id)
     }
 
     @Test("approving an expansion changes its card's content, keeps its step and takes it out of the inbox")
@@ -129,6 +184,24 @@ struct DuplicateTests {
         #expect(try engine.cards().map(\.id) == [serendipia.id])
     }
 
+    // One idea per card: a second meaning can make a card of its own.
+    @Test("an expansion can be approved into new cards instead")
+    func anExpansionCanBecomeNewCards() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let serendipia = try approveCard("serendipia", in: engine)
+        let expansion = try engine.expand(text: "serendipia", note: "También es una película", source: nil)
+
+        let new = try engine.approve(
+            expansion.id,
+            into: [
+                card(.question, front: "¿Qué película se llama «Serendipia»?", back: "Una comedia romántica de 2001.")
+            ]
+        )
+
+        #expect(try engine.cards().map(\.id) == [serendipia.id] + new.map(\.id))
+        #expect(try engine.inbox().expansions.isEmpty)
+    }
+
     // Refining unburies it first, if Lucas wants it back.
     @Test("an expansion of a buried card can't be approved until the card is unburied")
     func anExpansionOfABuriedCardWaits() throws {
@@ -145,5 +218,10 @@ struct DuplicateTests {
 
         try engine.unbury(serendipia.id)
         #expect(try engine.approveExpansion(expansion.id, into: content).back == "Un hallazgo por casualidad.")
+    }
+
+    /// The card as the engine has it now.
+    private func existing(_ card: Card, in engine: Engine) throws -> Card {
+        try #require(try engine.cards().first { $0.id == card.id })
     }
 }

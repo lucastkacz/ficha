@@ -52,7 +52,7 @@ struct RefiningTests {
     func discardingTakesItOutWithoutCards() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let discarded = try engine.newCapture("algo que ya no me interesa")
-        try engine.capture(text: "ubuntu", note: nil, source: nil)
+        try engine.newCapture("ubuntu")
 
         try engine.discard(discarded.id)
 

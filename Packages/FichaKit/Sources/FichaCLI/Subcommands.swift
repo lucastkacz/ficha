@@ -8,8 +8,8 @@ struct CaptureCommand: EngineCommand {
         commandName: "capture",
         abstract: "Save a capture in the inbox, to refine later, and print the capture.",
         discussion: """
-            A capture that repeats a card's front or a capture in the inbox, ignoring case and accents, isn't saved: \
-            the command says what it repeats and fails. To keep it, capture it again with --expand; to ignore it, do \
+            A capture that repeats a card's front, the capture a card was approved from or a capture in the inbox, \
+            ignoring case and accents, isn't saved: the command says what it repeats and fails. To keep it, capture it again with --expand; to ignore it, do \
             nothing.
             """
     )
@@ -38,8 +38,8 @@ struct CaptureCommand: EngineCommand {
         return switch try engine.capture(text: text, note: note, source: source) {
         case .saved(let capture):
             capture
-        case .duplicate(let duplicate):
-            throw DuplicateCapture(text: text, duplicate: duplicate)
+        case .duplicate(let repeated):
+            throw DuplicateCaptureError(text: text, repeated: repeated)
         }
     }
 }

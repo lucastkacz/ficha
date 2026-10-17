@@ -29,6 +29,6 @@ struct FixCommand: EngineCommand {
     }
 
     func run(on engine: Engine) throws -> any Encodable {
-        try engine.fix(cardID, with: card(in: standardInput(), readBy: .fixedCard))
+        try engine.fix(cardID, with: card(in: standardInput(), as: .fixedCard))
     }
 }

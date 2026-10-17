@@ -70,14 +70,14 @@ func cards(in input: Data) throws -> [CardContent] {
     }
 }
 
-/// The card in `input`, a JSON object that `command` reads, cleaned up as
+/// The card in `input`, a JSON object read as `cardsInput` says, cleaned up as
 /// `CardContent` says.
-func card(in input: Data, readBy command: CardsInput) throws -> CardContent {
+func card(in input: Data, as cardsInput: CardsInput) throws -> CardContent {
     let card: CardInput
     do {
         card = try JSONDecoder().decode(CardInput.self, from: input)
     } catch let error as DecodingError {
-        throw CardsInputError.unreadable(error, command)
+        throw CardsInputError.unreadable(error, cardsInput)
     }
     guard let content = card.content else {
         throw CardsInputError.blankSide(position: nil)

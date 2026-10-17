@@ -20,8 +20,8 @@ final class DatabaseFileTests {
     @Test("the inbox still counts its captures after the database is opened again")
     func inboxCountSurvivesReopening() throws {
         let engine = try Engine(location: .folder(folder), time: time)
-        try engine.capture(text: "serendipia", note: nil, source: nil)
-        try engine.capture(text: "¿Por qué el cielo es azul?", note: nil, source: "Una charla")
+        try engine.newCapture("serendipia")
+        try engine.newCapture("¿Por qué el cielo es azul?", source: "Una charla")
 
         let reopened = try Engine(location: .folder(folder), time: time)
 
@@ -93,7 +93,7 @@ final class DatabaseFileTests {
         let cli = try Engine(location: .folder(folder), time: time)
         var changes = app.changes().makeAsyncIterator()
 
-        try cli.capture(text: "serendipia", note: nil, source: nil)
+        try cli.newCapture("serendipia")
 
         #expect(await changes.next() != nil)
         #expect(try app.progress(.defaults).inInbox == 1)

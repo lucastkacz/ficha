@@ -3,11 +3,12 @@ import Foundation
 internal import GRDB
 
 extension Engine {
-    /// Saves a capture that Lucas chose to expand, cleaned up as
-    /// `CaptureContent` says, and returns it. One that repeats a card's front
-    /// waits in the inbox attached to that card, so that refining adds it to
-    /// the card. One that repeats a capture in the inbox waits next to it, to
-    /// be refined with it, and one that repeats nothing is saved as any
+    /// Saves a duplicate that Lucas chose to expand, cleaned up as
+    /// `CaptureContent` says, and returns it. One that repeats a card waits in
+    /// the inbox attached to that card, as an expansion, so that refining adds
+    /// it to the card; so does one that repeats an expansion, attached to its
+    /// card. One that repeats another capture in the inbox waits next to it,
+    /// to be refined with it, and one that repeats nothing is saved as any
     /// capture is. A capture without text isn't saved.
     @discardableResult
     public func expand(text: String, note: String?, source: String?) throws(EngineError) -> Capture {
@@ -16,12 +17,13 @@ extension Engine {
         }
         let createdAt = time.now
         return try write { db in
-            let expandedCard: Int64? =
-                switch try duplicate(of: content.text, in: db) {
+            let expandedCardID: Int64? =
+                switch try repeated(by: content.text, in: db) {
                 case .card(let card): card.id
-                case .capture, nil: nil
+                case .capture(let capture): capture.expandsCardID
+                case nil: nil
                 }
-            return try save(content, expanding: expandedCard, at: createdAt, in: db)
+            return try save(content, expanding: expandedCardID, at: createdAt, in: db)
         }
     }
 

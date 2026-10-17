@@ -40,7 +40,7 @@ public enum EngineError: Error, Equatable {
     /// already fixed, or it was never flagged.
     case cardNotFlagged(Int64)
     /// The card with this id is buried, so it can't be answered, flagged,
-    /// fixed or buried again until it's unburied.
+    /// fixed, expanded or buried again until it's unburied.
     case cardBuried(Int64)
     /// The card with this id isn't buried, so it can't be unburied.
     case cardNotBuried(Int64)

@@ -127,7 +127,7 @@
       "comment" : "The Esc key's name, next to the button it presses."
     },
     "Expand" : {
-
+      "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
     },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
@@ -145,7 +145,7 @@
 
     },
     "Ignore" : {
-
+      "comment" : "A button that drops a capture that repeats a card or a capture."
     },
     "Know it" : {
 
