@@ -25,10 +25,10 @@ struct FixCommand: EngineCommand {
     var cardID: Int64
 
     func validate() throws {
-        try CardsInput.one.requireStandardInput()
+        try CardsInput.fixedCard.requireStandardInput()
     }
 
     func run(on engine: Engine) throws -> any Encodable {
-        try engine.fix(cardID, with: card(in: standardInput()))
+        try engine.fix(cardID, with: card(in: standardInput(), readBy: .fixedCard))
     }
 }

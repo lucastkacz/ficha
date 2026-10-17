@@ -16,7 +16,10 @@ enum SampleCards {
     static func load(into engine: Engine) throws {
         let samples = try sampleCaptures.map { sample in (sample, try sample.cardContents()) }
         for (sample, cards) in samples {
-            let capture = try engine.capture(text: sample.text, note: nil, source: sample.source)
+            // Loaded again, a sample can repeat the front of a card it was
+            // approved into: expanding saves it all the same, and approving
+            // it makes new cards.
+            let capture = try engine.expand(text: sample.text, note: nil, source: sample.source)
             try engine.approve(capture.id, into: cards)
         }
     }

@@ -1,11 +1,17 @@
 import ArgumentParser
 import FichaData
 
-/// `ficha capture`: saves a capture in the inbox.
+/// `ficha capture`: saves a capture in the inbox, unless it repeats a card or
+/// a capture and isn't expanded.
 struct CaptureCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "capture",
-        abstract: "Save a capture in the inbox, to refine later, and print the capture."
+        abstract: "Save a capture in the inbox, to refine later, and print the capture.",
+        discussion: """
+            A capture that repeats a card's front or a capture in the inbox, ignoring case and accents, isn't saved: \
+            the command says what it repeats and fails. To keep it, capture it again with --expand; to ignore it, do \
+            nothing.
+            """
     )
 
     @Argument(help: "What you want to remember: a word, a concept, a quote or a question.")
@@ -17,8 +23,24 @@ struct CaptureCommand: EngineCommand {
     @Option(help: "Where you came across it: a book, a podcast…")
     var source: String?
 
+    @ArgumentParser.Flag(
+        help: """
+            If it repeats a card, keep it in the inbox attached to that card, to add to it when you refine. If it \
+            repeats a capture, keep it next to that one.
+            """
+    )
+    var expand = false
+
     func run(on engine: Engine) throws -> any Encodable {
-        try engine.capture(text: text, note: note, source: source)
+        if expand {
+            return try engine.expand(text: text, note: note, source: source)
+        }
+        return switch try engine.capture(text: text, note: note, source: source) {
+        case .saved(let capture):
+            capture
+        case .duplicate(let duplicate):
+            throw DuplicateCapture(text: text, duplicate: duplicate)
+        }
     }
 }
 
@@ -26,10 +48,10 @@ struct CaptureCommand: EngineCommand {
 struct InboxCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "inbox",
-        abstract: "List what waits in the inbox: your captures, and the cards you flagged.",
+        abstract: "List what waits in the inbox: your captures, your cards' expansions and the cards you flagged.",
         discussion: """
-            It prints "captures", oldest first, and "flaggedCards", each with your note on what to fix in "flag", \
-            the first flagged first.
+            It prints "captures", oldest first; "expansions", each a capture with the card it expands, oldest \
+            first; and "flaggedCards", each with your note on what to fix in "flag", the first flagged first.
             """
     )
 

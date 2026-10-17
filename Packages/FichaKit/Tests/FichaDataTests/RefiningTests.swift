@@ -9,7 +9,7 @@ struct RefiningTests {
     @Test("approving a capture into several cards saves them in order and takes the capture out of the inbox")
     func approvingSavesTheCardsAndEmptiesTheInbox() throws {
         let engine = try Engine(location: .inMemory, time: time)
-        let capture = try engine.capture(text: "serendipia", note: nil, source: "Un ensayo de Borges")
+        let capture = try engine.newCapture("serendipia", source: "Un ensayo de Borges")
         time.advance(by: 3_600)
 
         try engine.approve(
@@ -51,7 +51,7 @@ struct RefiningTests {
     @Test("discarding a capture takes it out of the inbox without cards")
     func discardingTakesItOutWithoutCards() throws {
         let engine = try Engine(location: .inMemory, time: time)
-        let discarded = try engine.capture(text: "algo que ya no me interesa", note: nil, source: nil)
+        let discarded = try engine.newCapture("algo que ya no me interesa")
         try engine.capture(text: "ubuntu", note: nil, source: nil)
 
         try engine.discard(discarded.id)
@@ -66,8 +66,8 @@ struct RefiningTests {
     @Test("only a capture in the inbox can be approved or discarded")
     func onlyACaptureInTheInboxCanBeRefined() throws {
         let engine = try Engine(location: .inMemory, time: time)
-        let approved = try engine.capture(text: "serendipia", note: nil, source: nil)
-        let discarded = try engine.capture(text: "algo que ya no me interesa", note: nil, source: nil)
+        let approved = try engine.newCapture("serendipia")
+        let discarded = try engine.newCapture("algo que ya no me interesa")
         let serendipia = try card(.word, front: "serendipia", back: "Un hallazgo valioso que se da por casualidad.")
         try engine.approve(approved.id, into: [serendipia])
         try engine.discard(discarded.id)
@@ -92,7 +92,7 @@ struct RefiningTests {
     @Test("approving a capture into no cards is refused, and the capture stays in the inbox")
     func approvingIntoNoCardsIsRefused() throws {
         let engine = try Engine(location: .inMemory, time: time)
-        let capture = try engine.capture(text: "serendipia", note: nil, source: nil)
+        let capture = try engine.newCapture("serendipia")
 
         #expect(throws: EngineError.noCards) {
             try engine.approve(capture.id, into: [])
@@ -103,7 +103,7 @@ struct RefiningTests {
     @Test("a card is saved without surrounding spaces, and a blank tag or source is left out")
     func cardsAreSavedCleanedUp() throws {
         let engine = try Engine(location: .inMemory, time: time)
-        let capture = try engine.capture(text: "ubuntu", note: nil, source: nil)
+        let capture = try engine.newCapture("ubuntu")
 
         try engine.approve(
             capture.id,

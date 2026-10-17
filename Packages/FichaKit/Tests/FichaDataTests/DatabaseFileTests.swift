@@ -74,7 +74,7 @@ final class DatabaseFileTests {
         let app = try Engine(location: .folder(folder), time: time)
         let cli = try Engine(location: .folder(folder), time: time)
 
-        let capture = try app.capture(text: "serendipia", note: nil, source: nil)
+        let capture = try app.newCapture("serendipia")
         #expect(try cli.inbox().captures.map(\.text) == ["serendipia"])
 
         try cli.approve(

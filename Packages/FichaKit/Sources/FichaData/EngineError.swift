@@ -17,6 +17,9 @@ public enum EngineError: Error, Equatable {
     /// The capture with this id isn't in the inbox, so it can't be approved or
     /// discarded: it already was, or it doesn't exist.
     case captureNotInInbox(Int64)
+    /// The capture with this id doesn't expand a card, so it can't be approved
+    /// as an expansion: it's approved into cards instead, or discarded.
+    case notAnExpansion(Int64)
     /// A capture was approved into no cards. One that becomes no cards is
     /// discarded instead.
     case noCards
@@ -71,6 +74,9 @@ extension EngineError: LocalizedError {
                     Check what's in the inbox.
                     """
             )
+        case .notAnExpansion(let id):
+            String(
+                localized: "Capture \(id) doesn't expand a card. Approve it into cards, or discard it.")
         case .noCards:
             String(
                 localized:

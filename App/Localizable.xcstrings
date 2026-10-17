@@ -84,7 +84,13 @@
     "Capture" : {
       "comment" : "The capture window's title."
     },
+    "Capture: “%@”\n\nExpand keeps yours next to it, so that refining takes both together. Ignore drops yours." : {
+
+    },
     "Capture…" : {
+
+    },
+    "Card: “%@”\n\nExpand keeps your capture in the inbox, attached to that card, so that refining adds it to the card. Ignore drops it." : {
 
     },
     "Close" : {
@@ -120,6 +126,9 @@
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
+    "Expand" : {
+
+    },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
     },
@@ -133,6 +142,9 @@
 
     },
     "Got it" : {
+
+    },
+    "Ignore" : {
 
     },
     "Know it" : {
@@ -181,6 +193,12 @@
       "comment" : "The Space key's name, next to the button it presses."
     },
     "Text" : {
+
+    },
+    "This is already in the inbox" : {
+
+    },
+    "This repeats a card" : {
 
     },
     "Undo" : {

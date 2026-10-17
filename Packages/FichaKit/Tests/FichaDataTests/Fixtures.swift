@@ -25,13 +25,18 @@ func note(_ text: String) throws -> FlagNote {
 /// before it.
 @discardableResult
 func approveCard(_ front: String, in engine: Engine) throws -> Card {
-    let capture = try engine.capture(text: front, note: nil, source: nil)
+    let capture = try engine.newCapture(front)
     let cards = try engine.approve(
         capture.id, into: [card(.word, front: front, back: "Lo que quiere decir «\(front)».")])
     return try #require(cards.first)
 }
 
 extension Engine {
+    /// Saves a capture that repeats no card or capture, and returns it.
+    func newCapture(_ text: String, note: String? = nil, source: String? = nil) throws -> Capture {
+        try #require(try capture(text: text, note: note, source: source).saved)
+    }
+
     /// Records a new card's first view, as the review panel does when Lucas
     /// ends it, from review now.
     func meet(_ card: Card) throws {
@@ -103,4 +108,14 @@ func hours(_ count: Int) -> TimeInterval {
 /// A span of whole days, in seconds.
 func days(_ count: Int) -> TimeInterval {
     TimeInterval(count * 24 * 60 * 60)
+}
+
+extension CaptureResult {
+    /// The capture, when it was saved, or nil when it was a duplicate.
+    var saved: Capture? {
+        guard case .saved(let capture) = self else {
+            return nil
+        }
+        return capture
+    }
 }
