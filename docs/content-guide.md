@@ -1,6 +1,6 @@
 # Content guide
 
-How Claude drafts Lucas's cards in a refine session: what each card holds, how long it is and how it's worded. The terms are `CONTEXT.md`'s.
+How Claude drafts Lucas's cards in a refine session: what each card holds, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
 
 ## The four rules
 
