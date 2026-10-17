@@ -7,8 +7,9 @@ import SwiftUI
 /// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, M flags it
 /// with a note, E buries it, ⌘Z undoes what Lucas did with the last card, and
 /// Esc closes the panel, which snoozes an appearance. Once Lucas went through
-/// every card, the panel asks whether to see more, and Enter brings them;
-/// review now with nothing due offers to review ahead the same way.
+/// every card, the panel stays open until he closes it, and offers more cards
+/// if there are any, which Enter brings; review now with nothing due offers
+/// to review ahead the same way.
 struct ReviewPanelView: View {
     /// The cards a review now or an appearance brought, or why review now
     /// couldn't bring them.
@@ -61,7 +62,10 @@ struct ReviewPanelView: View {
             } buttons: {
                 closeButton(closeByLucas)
             }
-            seeMoreButton(Text("Review ahead"), of: panel)
+            enterButton(
+                Text(
+                    "Review ahead", comment: "A button that brings the cards closest to being due, to review them now."),
+                action: panel.seeMore)
         case .nothingToReview:
             header {
                 Text("No cards to review right now.")
@@ -80,22 +84,10 @@ struct ReviewPanelView: View {
                 closeButton(closeByLucas)
             }
             back(of: card)
-            HStack {
-                Spacer()
-                Button(action: panel.endFirstView) {
-                    KeyLabel(title: Text("Got it"), key: "↩")
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-            }
+            enterButton(Text("Got it"), action: panel.endFirstView)
         case .front(let card, let isAhead):
             header {
-                VStack(alignment: .leading, spacing: 8) {
-                    if isAhead {
-                        aheadBadge
-                    }
-                    front(of: card)
-                }
+                front(of: card, isAhead: isAhead)
             } buttons: {
                 cardButtons(of: panel)
                 closeButton(closeByLucas)
@@ -113,12 +105,7 @@ struct ReviewPanelView: View {
             }
         case .back(let card, let isAhead):
             header {
-                VStack(alignment: .leading, spacing: 8) {
-                    if isAhead {
-                        aheadBadge
-                    }
-                    front(of: card)
-                }
+                front(of: card, isAhead: isAhead)
             } buttons: {
                 cardButtons(of: panel)
                 closeButton(closeByLucas)
@@ -156,7 +143,7 @@ struct ReviewPanelView: View {
                 undoButton(of: panel)
                 closeButton(closeByLucas)
             }
-            seeMoreButton(Text("See more"), of: panel)
+            enterButton(Text("See more"), action: panel.seeMore)
         case .done:
             header {
                 Text("You went through every card.")
@@ -165,22 +152,17 @@ struct ReviewPanelView: View {
                 undoButton(of: panel)
                 closeButton(closeByLucas)
             }
-            HStack {
-                Spacer()
-                Button(action: closeByLucas) {
-                    KeyLabel(title: Text("Done"), key: "↩")
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-            }
+            enterButton(
+                Text("Done", comment: "A button that closes the review panel once every card was gone through."),
+                action: closeByLucas)
         }
     }
 
-    /// The button that brings the cards "See more" offers, with Enter.
-    private func seeMoreButton(_ title: Text, of panel: ReviewPanelModel) -> some View {
+    /// The panel's main button, at its bottom right, which Enter presses.
+    private func enterButton(_ title: Text, action: @escaping () -> Void) -> some View {
         HStack {
             Spacer()
-            Button(action: panel.seeMore) {
+            Button(action: action) {
                 KeyLabel(title: title, key: "↩")
             }
             .buttonStyle(.borderedProminent)
@@ -306,6 +288,16 @@ struct ReviewPanelView: View {
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
         .help(Text("A review ahead: only “Don't know” moves the card."))
+    }
+
+    /// The card's front, under the badge of a review ahead when it's one.
+    private func front(of card: Card, isAhead: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if isAhead {
+                aheadBadge
+            }
+            front(of: card)
+        }
     }
 
     private func front(of card: Card) -> some View {

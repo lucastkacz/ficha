@@ -73,7 +73,7 @@ extension Engine {
     /// the cards closest to being due, as reviews ahead, out of the cards in
     /// his reviews but those in `shown`, the panel's. Never a new card. For an
     /// appearance, a card due within the look-ahead counts as due.
-    func seeMore(after shown: Set<Int64>, from trigger: Trigger, settings: ReviewSettings) throws(EngineError)
+    func seeMoreCards(after shown: Set<Int64>, from trigger: Trigger, settings: ReviewSettings) throws(EngineError)
         -> [PanelCard]
     {
         let horizon = time.now.adding(trigger.lookAhead(in: settings))

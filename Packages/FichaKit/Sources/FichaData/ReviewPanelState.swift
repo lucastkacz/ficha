@@ -28,7 +28,13 @@ public struct ReviewPanelState: Sendable {
     /// none: the due cards that didn't fit, and then the cards closest to
     /// being due, as reviews ahead. Review now with nothing due offers them
     /// from the start.
-    public private(set) var more: [PanelCard] = []
+    public private(set) var moreCards: [PanelCard] = []
+    /// Why the panel couldn't look for the cards "See more" would add, if it
+    /// couldn't: then it offers none.
+    public private(set) var moreCardsFailure: EngineError?
+    /// How many cards the panel brought, before "See more" added any: once
+    /// Lucas went through them, closing the panel finishes it.
+    private let broughtCount: Int
     /// Whether the panel may have the keyboard: from the start when Lucas
     /// opened it, and in an appearance, once the focus mode says so or Lucas
     /// clicks it.
@@ -47,6 +53,7 @@ public struct ReviewPanelState: Sendable {
     init(trigger: Trigger, cards: [PanelCard], engine: Engine, settings: ReviewSettings) {
         self.trigger = trigger
         self.cards = cards
+        broughtCount = cards.count
         self.engine = engine
         self.settings = settings
         mayHaveKeyboard = trigger == .reviewNow
@@ -96,22 +103,17 @@ public struct ReviewPanelState: Sendable {
     /// long he took, and moves on to the next card: in a review ahead, as one.
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
-        let isAhead: Bool =
-            switch answering {
-            case .reviewAhead: true
-            case .firstView, .review: false
-            }
         try engine.record(
             kind, of: answering.card.id, responseTime: responseTime, trigger: trigger, settings: settings,
-            reviewingAhead: isAhead)
+            reviewingAhead: answering.isAhead)
         moveOn(after: .answered)
     }
 
     /// Adds the cards "See more" offers, and goes on to the first of them.
     public mutating func seeMore() {
         guard outcome == nil, current == nil else { return }
-        cards += more
-        more = []
+        cards += moreCards
+        moreCards = []
         touch()
     }
 
@@ -139,7 +141,7 @@ public struct ReviewPanelState: Sendable {
         guard outcome == nil, let last = wentThrough.last else { return }
         try engine.undo(last, to: cards[wentThrough.count - 1].card.id)
         wentThrough.removeLast()
-        more = []
+        moreCards = []
         touch()
     }
 
@@ -154,16 +156,16 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Finds the cards "See more" would add, now that Lucas went through
-    /// every card. When they can't be found, the panel offers none, and the
-    /// engine logs why.
+    /// every card. When they can't be found, the panel offers none, and says
+    /// why.
     private mutating func lookForMore() {
         guard current == nil else { return }
         do {
-            more = try engine.seeMore(after: Set(cards.map(\.card.id)), from: trigger, settings: settings)
+            moreCards = try engine.seeMoreCards(after: Set(cards.map(\.card.id)), from: trigger, settings: settings)
+            moreCardsFailure = nil
         } catch {
-            more = []
-            logger.error(
-                "Couldn't find more cards for the review panel: \(String(describing: error), privacy: .public)")
+            moreCards = []
+            moreCardsFailure = error
         }
     }
 
@@ -174,18 +176,19 @@ public struct ReviewPanelState: Sendable {
         close(.onItsOwn)
     }
 
-    /// Closes the panel, once: as finished when no card was left, and
-    /// otherwise as a snooze, Lucas's or the panel's own. It goes into the
+    /// Closes the panel, once: as finished when no card it brought was left,
+    /// even if some that "See more" added were, and otherwise as a snooze,
+    /// Lucas's or the panel's own. It goes into the
     /// appearance log, unless it brought no cards: an empty review now holds
     /// no appearance back (Lucas, 2026-10-15). When it can't be recorded, the
     /// panel closes anyway, and the engine logs why.
     public mutating func close(_ closing: Closing) {
         guard outcome == nil else { return }
         let outcome: AppearanceLogEntry.Outcome =
-            switch (current, closing) {
-            case (nil, _): .finished
-            case (_?, .byLucas): .snoozed
-            case (_?, .onItsOwn): .autoClosed
+            switch (wentThrough.count >= broughtCount, closing) {
+            case (true, _): .finished
+            case (false, .byLucas): .snoozed
+            case (false, .onItsOwn): .autoClosed
             }
         self.outcome = outcome
         guard !cards.isEmpty else { return }

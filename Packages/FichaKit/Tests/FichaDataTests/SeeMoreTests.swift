@@ -24,7 +24,7 @@ struct SeeMoreTests {
         time.advance(by: days(1))
         var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
         #expect(panel.cards.isEmpty)
-        #expect(panel.more == [.reviewAhead(serendipia)])
+        #expect(panel.moreCards == [.reviewAhead(serendipia)])
 
         panel.seeMore()
         try panel.answer(.review(.again), responseTime: .seconds(4))
@@ -55,8 +55,9 @@ struct SeeMoreTests {
     @Test("\"See more\" brings the due cards that didn't fit first, then the closest to being due, and no new card")
     func seeMoreBringsTheLeftoversFirst() throws {
         let due = try ["uno", "dos", "tres", "cuatro", "cinco", "seis", "siete"].map { try approveCard($0, in: engine) }
-        let later = try approveCard("más tarde", in: engine)
+        // Approved in the opposite order to when they come due.
         let muchLater = try approveCard("mucho más tarde", in: engine)
+        let later = try approveCard("más tarde", in: engine)
         try approveCard("nueva", in: engine)
         for card in due {
             try engine.meet(card)
@@ -80,7 +81,7 @@ struct SeeMoreTests {
         }
 
         #expect(
-            panel.more == [.review(due[3]), .review(due[4]), .reviewAhead(later), .reviewAhead(muchLater)])
+            panel.moreCards == [.review(due[3]), .review(due[4]), .reviewAhead(later), .reviewAhead(muchLater)])
         panel.seeMore()
         #expect(panel.current == .review(due[3]))
     }
@@ -96,13 +97,13 @@ struct SeeMoreTests {
         // "petricor" is due in 50 minutes, beyond the 20-minute look-ahead.
         var panel = engine.openPanel(.appearance, with: [.review(ubuntu)], settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
-        #expect(panel.more == [.reviewAhead(petricor)])
+        #expect(panel.moreCards == [.reviewAhead(petricor)])
         panel.close(.byLucas)
         time.advance(by: minutes(35))
 
         var later = engine.openPanel(.appearance, with: [], settings: settings)
 
-        #expect(later.more == [.review(petricor), .reviewAhead(ubuntu)])
+        #expect(later.moreCards == [.review(petricor), .reviewAhead(ubuntu)])
         later.seeMore()
         try later.answer(.review(.good), responseTime: .seconds(3))
         #expect(try engine.reviewLog().last?.isAhead == false)
@@ -118,7 +119,7 @@ struct SeeMoreTests {
         try panel.answer(.firstView, responseTime: .seconds(8))
 
         #expect(panel.current == nil)
-        #expect(panel.more.isEmpty)
+        #expect(panel.moreCards.isEmpty)
     }
 
     // Lucas, in #14: once "See more?" keeps the panel open, a slip on the
@@ -136,13 +137,13 @@ struct SeeMoreTests {
         #expect(panel.cards == [.review(ubuntu), .firstView(serendipia)])
         try panel.answer(.review(.good), responseTime: .seconds(3))
         try panel.answer(.firstView, responseTime: .seconds(8))
-        #expect(panel.more == [.reviewAhead(petricor)])
+        #expect(panel.moreCards == [.reviewAhead(petricor)])
         #expect(panel.canUndo)
 
         try panel.undo()
 
         #expect(panel.current == .firstView(serendipia))
-        #expect(panel.more.isEmpty)
+        #expect(panel.moreCards.isEmpty)
         #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .new)
         try panel.undo()
         #expect(panel.current == .review(ubuntu))
@@ -165,5 +166,29 @@ struct SeeMoreTests {
         #expect(try engine.reviewLog().last?.isAhead == false)
         #expect(
             try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: time.now + hours(4)))
+    }
+
+    // A snooze leaves cards due, and the cards "See more" adds aren't due,
+    // or were left over.
+    @Test("closing the panel partway through the cards \"See more\" added still finishes it")
+    func stoppingPartwayThroughMoreFinishes() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.meet(ubuntu)
+        time.advance(by: minutes(30))
+        try engine.meet(petricor)
+        try engine.meet(serendipia)
+        time.advance(by: minutes(30))
+        var panel = engine.openPanel(.appearance, with: [.review(ubuntu)], settings: settings)
+        try panel.answer(.review(.good), responseTime: .seconds(3))
+        panel.seeMore()
+        try panel.answer(.review(.again), responseTime: .seconds(3))
+        #expect(panel.current == .reviewAhead(serendipia))
+
+        panel.close(.byLucas)
+
+        #expect(panel.outcome == .finished)
+        #expect(try engine.appearanceLog().map(\.outcome) == [.finished])
     }
 }

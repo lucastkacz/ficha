@@ -53,7 +53,7 @@ struct ReviewPanelTests {
 
     // So Lucas can ask for more cards, or undo the last one.
     @Test("once Lucas answered every card, the panel stays open, and closing it then finishes it")
-    func answeringEveryCardFinishesThePanel() throws {
+    func thePanelStaysOpenOnceEveryCardIsAnswered() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let start = time.now
         var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)

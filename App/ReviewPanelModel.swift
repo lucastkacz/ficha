@@ -53,6 +53,7 @@ final class ReviewPanelModel {
     /// The panel for the cards in `state`, which shows them from now on.
     init(_ state: ReviewPanelState) {
         self.state = state
+        sayIfMoreCardsFailed()
     }
 
     var content: Content {
@@ -70,15 +71,15 @@ final class ReviewPanelModel {
         }
         return switch current {
         case .firstView(let card): .firstView(card)
-        case .review(let card): isFlipped ? .back(card, isAhead: false) : .front(card, isAhead: false)
-        case .reviewAhead(let card): isFlipped ? .back(card, isAhead: true) : .front(card, isAhead: true)
+        case .review(let card), .reviewAhead(let card):
+            isFlipped ? .back(card, isAhead: current.isAhead) : .front(card, isAhead: current.isAhead)
         }
     }
 
     /// Whether "See more" has cards to bring, now that Lucas went through
     /// every card, or review now brought none.
     var canSeeMore: Bool {
-        state.current == nil && !state.more.isEmpty
+        state.current == nil && !state.moreCards.isEmpty
     }
 
     /// The note Lucas is writing to flag the card he's on, while he writes it.
@@ -86,8 +87,7 @@ final class ReviewPanelModel {
         flagging?.note
     }
 
-    /// Whether the panel closed: Lucas went through every card or closed it,
-    /// or it closed on its own.
+    /// Whether the panel closed: Lucas closed it, or it closed on its own.
     var isClosed: Bool {
         state.outcome != nil
     }
@@ -116,7 +116,7 @@ final class ReviewPanelModel {
         cardShownAt = .now
     }
 
-    /// Turns the due card to its back.
+    /// Turns the card Lucas reviews to its back.
     func flip() {
         guard case .front = content else { return }
         isFlipped = true
@@ -132,7 +132,8 @@ final class ReviewPanelModel {
         }
     }
 
-    /// Rates the due card, once flipped, which moves it on the ladder.
+    /// Rates the card Lucas reviews, once flipped, which moves it on the
+    /// ladder: in a review ahead, only again does.
     func rate(_ rating: Rating) {
         guard case .back = content else { return }
         goThrough(failing: "Couldn't save your answer", after: timeOnCard) { responseTime throws(EngineError) in
@@ -251,6 +252,14 @@ final class ReviewPanelModel {
         isFlipped = false
         flagging = nil
         cardShownAt = .now
+        sayIfMoreCardsFailed()
+    }
+
+    /// Says why the panel couldn't look for the cards "See more" would add,
+    /// if it couldn't, once Lucas went through every card.
+    private func sayIfMoreCardsFailed() {
+        guard state.current == nil, let error = state.moreCardsFailure else { return }
+        failure = Failure(title: "Couldn't look for more cards", error: error)
     }
 }
 

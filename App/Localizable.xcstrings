@@ -120,6 +120,9 @@
     "Couldn't load the cards" : {
 
     },
+    "Couldn't look for more cards" : {
+
+    },
     "Couldn't save the capture" : {
 
     },
@@ -133,7 +136,7 @@
 
     },
     "Done" : {
-
+      "comment" : "A button that closes the review panel once every card was gone through."
     },
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
@@ -187,7 +190,7 @@
       "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
     },
     "Review ahead" : {
-
+      "comment" : "A button that brings the cards closest to being due, to review them now."
     },
     "Review now" : {
 
