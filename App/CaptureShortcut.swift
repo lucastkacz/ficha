@@ -5,8 +5,9 @@ import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "capture shortcut")
 
-/// A keyboard shortcut that opens "Capture…" from any app.
-struct CaptureShortcut: Equatable {
+/// A keyboard shortcut that opens "Capture…" from any app: a letter key with
+/// modifiers.
+struct CaptureShortcut {
     /// The key, as the system's hot keys name it: a virtual key code.
     let keyCode: UInt32
     /// The modifier keys, as the system's hot keys name them.
@@ -17,22 +18,29 @@ struct CaptureShortcut: Equatable {
     let symbols: String
 
     /// The real Ficha's: ⌃⌥⌘C, which common apps and macOS leave free.
-    static let ficha = CaptureShortcut(
-        keyCode: UInt32(kVK_ANSI_C),
-        carbonModifiers: UInt32(controlKey | optionKey | cmdKey),
-        keyboardShortcut: KeyboardShortcut("c", modifiers: [.control, .option, .command]),
-        symbols: "⌃⌥⌘C"
-    )
+    static let ficha = CaptureShortcut("c", keyCode: kVK_ANSI_C, modifiers: [.control, .option, .command])
 
     /// The one Ficha Dev's debug menu turns on: ⌃⌥⇧⌘C, so it never takes the
     /// real Ficha's and both apps can run side by side.
-    static let fichaDev = CaptureShortcut(
-        keyCode: UInt32(kVK_ANSI_C),
-        carbonModifiers: UInt32(controlKey | optionKey | shiftKey | cmdKey),
-        keyboardShortcut: KeyboardShortcut("c", modifiers: [.control, .option, .shift, .command]),
-        symbols: "⌃⌥⇧⌘C"
-    )
+    static let fichaDev = CaptureShortcut("c", keyCode: kVK_ANSI_C, modifiers: [.control, .option, .shift, .command])
+
+    /// The shortcut of `key`, whose virtual key code is `keyCode`, with
+    /// `modifiers`, each as the system's hot keys, a menu and the symbols
+    /// name it.
+    private init(_ key: Character, keyCode: Int, modifiers: SwiftUI.EventModifiers) {
+        let named = modifierNames.filter { modifiers.contains($0.modifier) }
+        self.keyCode = UInt32(keyCode)
+        carbonModifiers = named.reduce(0) { $0 | UInt32($1.carbon) }
+        keyboardShortcut = KeyboardShortcut(KeyEquivalent(key), modifiers: modifiers)
+        symbols = named.map(\.symbol).joined() + key.uppercased()
+    }
 }
+
+/// Each modifier key, in the order macOS writes them, as SwiftUI, the
+/// system's hot keys and its symbol name it.
+private let modifierNames: [(modifier: SwiftUI.EventModifiers, carbon: Int, symbol: String)] = [
+    (.control, controlKey, "⌃"), (.option, optionKey, "⌥"), (.shift, shiftKey, "⇧"), (.command, cmdKey, "⌘"),
+]
 
 extension AppVariant {
     /// The shortcut the app opens "Capture…" with from launch: the real
@@ -101,9 +109,9 @@ final class CaptureShortcutRegistration {
     }
 }
 
-/// Why the capture shortcut couldn't be turned on. Only Ficha Dev's debug
-/// menu shows it, so it's in English and not translated (ADR 0009).
-enum CaptureShortcutError: Error, LocalizedError {
+/// Why the capture shortcut couldn't be turned on. Each message says what to
+/// do about it.
+enum CaptureShortcutError: LocalizedError {
     /// Another app has the shortcut.
     case taken
     /// The system refused it, with this status.
@@ -111,9 +119,15 @@ enum CaptureShortcutError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .taken: "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again."
+        case .taken:
+            String(
+                localized: "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again.")
         case .failed(let status):
-            "macOS refused the shortcut (error \(status)). Try again, and if it keeps failing, report it."
+            String(
+                localized: """
+                    macOS refused the shortcut (error \(status)). Restart the app, and if it keeps failing, report \
+                    it.
+                    """)
         }
     }
 }

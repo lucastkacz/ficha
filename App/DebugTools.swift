@@ -4,7 +4,8 @@ import Observation
 
 /// Ficha Dev's engine and time, and what its debug menu does with them: it
 /// loads sample cards and moves the time forward. The engine runs on that
-/// time, so everything Ficha Dev saves follows it.
+/// time, so everything Ficha Dev saves follows it. It also keeps whether the
+/// debug menu turned on Ficha Dev's capture shortcut.
 @Observable
 final class DebugTools {
     /// Ficha Dev's engine, on the time the debug menu moves.

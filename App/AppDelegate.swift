@@ -18,24 +18,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return AppModel(debugTools: try DebugTools(dataFolder: variant.dataFolder))
     }
 
-    /// What the menu and the capture window show, when the database is open.
+    /// The app's way into Lucas's cards, for the menu, the capture window and
+    /// the review panel, when the database is open.
     var model: AppModel? {
         try? opening.get()
     }
 
     /// The shortcut that opens "Capture…" from any app, while one is on.
     let captureShortcut = CaptureShortcutRegistration()
-    /// The capture window, once the app launched with its cards.
-    private var capture: CaptureWindow?
+    /// The capture window, from the last time it showed.
+    private var captureWindow: CaptureWindow?
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
     /// cards.
     private var appearances: AppearanceLoop?
 
-    /// Opens the capture window, or brings it forward when it's open.
+    /// Opens the capture window with empty fields, or brings it forward
+    /// when it's open, with what Lucas typed. Either way it takes the
+    /// keyboard.
     func openCapture() {
-        capture?.open()
+        if let captureWindow, captureWindow.isVisible {
+            captureWindow.bringForward()
+            return
+        }
+        guard let model else { return }
+        let window = CaptureWindow(model: model)
+        window.show()
+        captureWindow = window
     }
 
     /// Opens the review panel with the cards a review now brings, or brings
@@ -60,7 +70,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.panel = panel
             self.appearances = appearances
             appearances.start()
-            capture = CaptureWindow(model: model)
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
         case .failure(let error):
@@ -74,7 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Turns on the shortcut that opens "Capture…" from launch: the real
     /// Ficha's, or, in Ficha Dev, its debug menu's when it's on. When another
-    /// app has it, the menu shows no shortcut, and the log says why.
+    /// app has it, the menu shows no shortcut next to "Capture…", and the log
+    /// says why; when macOS refuses it for another reason, an alert says so.
     private func turnOnCaptureShortcut() {
         let shortcut =
             if model?.debugTools?.capturesWithShortcut == true {
@@ -83,7 +93,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 AppVariant.current.captureShortcut
             }
         guard let shortcut else { return }
-        try? captureShortcut.turnOn(shortcut)
+        do {
+            try captureShortcut.turnOn(shortcut)
+        } catch .taken {
+            // Expected when another app has it: Settings will let Lucas pick
+            // another (#18).
+        } catch {
+            showAlert(
+                String(localized: "\(AppVariant.current.name) couldn't turn on its capture shortcut"),
+                explaining: error, style: .warning, button: String(localized: "OK"))
+        }
     }
 
     /// An open panel closes as Esc closes it, so it goes into the appearance
