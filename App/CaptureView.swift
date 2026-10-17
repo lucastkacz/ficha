@@ -6,10 +6,9 @@ import SwiftUI
 /// a source if he wants. Enter saves it to the inbox, Option-Enter starts a new
 /// line, and Esc closes the window.
 struct CaptureView: View {
-    static let windowID = "capture"
-
     let model: AppModel
-    @Environment(\.dismiss) private var dismiss
+    /// Closes the window.
+    let dismiss: () -> Void
     @State private var text = ""
     @State private var note = ""
     @State private var source = ""

@@ -23,11 +23,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? opening.get()
     }
 
+    /// The shortcut that opens "Capture…" from any app, while one is on.
+    let captureShortcut = CaptureShortcutRegistration()
+    /// The capture window, once the app launched with its cards.
+    private var capture: CaptureWindow?
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
     /// cards.
     private var appearances: AppearanceLoop?
+
+    /// Opens the capture window, or brings it forward when it's open.
+    func openCapture() {
+        capture?.open()
+    }
 
     /// Opens the review panel with the cards a review now brings, or brings
     /// it forward when it's open.
@@ -51,6 +60,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.panel = panel
             self.appearances = appearances
             appearances.start()
+            capture = CaptureWindow(model: model)
+            captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
+            turnOnCaptureShortcut()
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,
@@ -58,6 +70,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    /// Turns on the shortcut that opens "Capture…" from launch: the real
+    /// Ficha's, or, in Ficha Dev, its debug menu's when it's on. When another
+    /// app has it, the menu shows no shortcut, and the log says why.
+    private func turnOnCaptureShortcut() {
+        let shortcut =
+            if model?.debugTools?.capturesWithShortcut == true {
+                CaptureShortcut.fichaDev
+            } else {
+                AppVariant.current.captureShortcut
+            }
+        guard let shortcut else { return }
+        try? captureShortcut.turnOn(shortcut)
     }
 
     /// An open panel closes as Esc closes it, so it goes into the appearance

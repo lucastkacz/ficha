@@ -32,4 +32,15 @@ final class DebugTools {
         try time.moveForward(by: step)
         timeShift = time.shift
     }
+
+    /// Whether the debug menu turned on Ficha Dev's capture shortcut, which
+    /// Ficha Dev's preferences keep across launches. It's off until then, so
+    /// Ficha Dev takes no shortcut of its own.
+    var capturesWithShortcut: Bool {
+        get { UserDefaults.standard.bool(forKey: capturesWithShortcutKey) }
+        set { UserDefaults.standard.set(newValue, forKey: capturesWithShortcutKey) }
+    }
 }
+
+/// Where Ficha Dev's preferences keep whether its capture shortcut is on.
+private let capturesWithShortcutKey = "DebugCapturesWithShortcut"
