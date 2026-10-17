@@ -4,20 +4,20 @@ import SwiftUI
 /// The menu under Ficha's icon in the menu bar.
 struct MenuContent: View {
     let model: AppModel
+    /// Opens the capture window.
+    let openCapture: () -> Void
+    /// The shortcut that opens the capture window from any app, which the
+    /// menu shows next to "Capture…" while it's on.
+    let captureShortcut: CaptureShortcutRegistration
     /// Opens the review panel with the cards a review now brings.
     let openReviewPanel: () -> Void
     /// Asks right away whether the review panel shows up on its own, for
     /// Ficha Dev's debug menu.
     let checkAppearance: () -> AppearanceCheck?
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Capture…") {
-            // A menu-bar app isn't active until it's asked to be, and the
-            // window only takes the keyboard in an active app.
-            NSApplication.shared.activate()
-            openWindow(id: CaptureView.windowID)
-        }
+        Button("Capture…", action: openCapture)
+            .keyboardShortcut(captureShortcut.shortcut?.keyboardShortcut)
         Button(reviewNowTitle, action: openReviewPanel)
         Divider()
         Text(progressLine)
@@ -25,7 +25,7 @@ struct MenuContent: View {
             Divider()
             DebugMenu(
                 tools: debugTools, settings: model.settings, timeMoved: model.countProgress,
-                checkAppearance: checkAppearance)
+                checkAppearance: checkAppearance, captureShortcut: captureShortcut)
         }
         Divider()
         Button("Quit") {

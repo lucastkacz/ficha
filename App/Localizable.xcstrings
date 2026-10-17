@@ -4,6 +4,9 @@
     "%@ can't open your cards" : {
 
     },
+    "%@ couldn't turn on its capture shortcut" : {
+
+    },
     "%lld cards learned · %lld in the inbox" : {
       "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait in the inbox.",
       "localizations" : {
@@ -80,6 +83,9 @@
     },
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
+    },
+    "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again." : {
+
     },
     "Bury" : {
       "comment" : "A button that buries the card the review panel shows: it never shows up again."
@@ -163,6 +169,9 @@
       "comment" : "A button that drops a capture that repeats a card or a capture."
     },
     "Know it" : {
+
+    },
+    "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
 
     },
     "New" : {
