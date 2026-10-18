@@ -19,7 +19,8 @@ enum AppearanceCheck {
 /// Asks the engine whether the review panel shows up on its own, and shows it
 /// when the engine says so (ADR 0003): every minute, or sooner, when the
 /// engine says when the next appearance may come, and as soon as the Mac or
-/// its screens wake. As they go to sleep, the open panel closes on its own.
+/// its screens wake, or a suppression starts or ends. As they go to sleep,
+/// the open panel closes on its own.
 final class AppearanceLoop {
     /// How long it waits at most between two checks.
     private static let checkInterval = Duration.seconds(60)
@@ -46,6 +47,10 @@ final class AppearanceLoop {
         mac.sleptOrWoke = { [weak self] in
             self?.macSleptOrWoke()
         }
+        mac.suppressionsChanged = { [weak self] in
+            self?.check()
+        }
+        mac.startDetecting()
         checkAgain(after: Self.checkInterval)
     }
 

@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let captureShortcut = CaptureShortcutRegistration()
     /// The capture window, from the last time it showed.
     private var captureWindow: CaptureWindow?
+    /// The Diagnostics window, from the last time it showed.
+    private var diagnosticsWindow: DiagnosticsWindow?
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
@@ -46,6 +48,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let window = CaptureWindow(model: model)
         window.show()
         captureWindow = window
+    }
+
+    /// Opens the Diagnostics window, or brings it forward when it's open.
+    func openDiagnostics() {
+        if let diagnosticsWindow, diagnosticsWindow.isVisible {
+            diagnosticsWindow.bringForward()
+            return
+        }
+        guard let model else { return }
+        let window = DiagnosticsWindow(model: model)
+        window.show()
+        diagnosticsWindow = window
     }
 
     /// Opens the review panel with the cards a review now brings, or brings

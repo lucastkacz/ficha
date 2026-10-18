@@ -13,4 +13,11 @@ public protocol MacSignals {
     /// How long it's been since Lucas last pressed a key, clicked, moved the
     /// pointer or scrolled, or nil when the Mac doesn't say.
     var idleTime: Duration? { get }
+    /// What holds appearances back now: a meeting, a video or a full-screen
+    /// app, or none of them.
+    var suppressions: Set<Suppression> { get }
+    /// When the last suppression ended, by the engine's time: when nothing
+    /// held appearances back any more. Nil when none has ended since Ficha
+    /// started.
+    var lastSuppressionEnd: Date? { get }
 }

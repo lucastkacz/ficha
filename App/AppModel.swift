@@ -82,6 +82,12 @@ final class AppModel {
         try engine.checkAppearance(settings, mac: mac)
     }
 
+    /// The latest entries of the appearance log, the latest first, up to
+    /// `count`, for Diagnostics.
+    func latestAppearances(_ count: Int) throws(EngineError) -> [AppearanceLogEntry] {
+        Array(try engine.appearanceLog().suffix(count).reversed())
+    }
+
     /// Starts an appearance with the cards the engine picked, for the review
     /// panel to go through.
     func startAppearance(with cards: [PanelCard]) -> ReviewPanelModel {

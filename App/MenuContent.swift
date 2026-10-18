@@ -11,6 +11,8 @@ struct MenuContent: View {
     let captureShortcut: CaptureShortcutRegistration
     /// Opens the review panel with the cards a review now brings.
     let openReviewPanel: () -> Void
+    /// Opens the Diagnostics window.
+    let openDiagnostics: () -> Void
     /// Asks right away whether the review panel shows up on its own, for
     /// Ficha Dev's debug menu.
     let checkAppearance: () -> AppearanceCheck?
@@ -21,6 +23,7 @@ struct MenuContent: View {
         Button(reviewNowTitle, action: openReviewPanel)
         Divider()
         Text(progressLine)
+        Button("Diagnostics", action: openDiagnostics)
         if let debugTools = model.debugTools {
             Divider()
             DebugMenu(

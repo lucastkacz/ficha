@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ · %@" : {
+      "comment" : "An appearance log entry in Diagnostics: when it showed, and what opened it.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ can't open your cards" : {
 
     },
@@ -72,11 +83,26 @@
         }
       }
     },
+    "A camera" : {
+
+    },
+    "A full-screen app" : {
+      "comment" : "A suppression: the app in front is in full screen."
+    },
+    "A meeting" : {
+      "comment" : "A suppression: the camera or the microphone is in use."
+    },
+    "A microphone" : {
+
+    },
     "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
 
     },
     "A review ahead: only “Don't know” moves the card." : {
 
+    },
+    "A video" : {
+      "comment" : "A suppression: an app keeps the display awake."
     },
     "A word, a concept, a quote or a question" : {
 
@@ -87,11 +113,20 @@
     "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again." : {
 
     },
+    "Appearance" : {
+      "comment" : "What opened the review panel, in Diagnostics."
+    },
     "Bury" : {
       "comment" : "A button that buries the card the review panel shows: it never shows up again."
     },
     "Bury (e)" : {
       "comment" : "The tooltip of the button that buries the card, with its key."
+    },
+    "Camera" : {
+
+    },
+    "Can't tell" : {
+      "comment" : "A detector the OS didn't answer, in Diagnostics."
     },
     "Cancel" : {
 
@@ -113,6 +148,9 @@
     },
     "Close (esc)" : {
 
+    },
+    "Closed on its own" : {
+      "comment" : "How an appearance closed, in Diagnostics."
     },
     "Couldn't bury the card" : {
 
@@ -138,6 +176,9 @@
     "Couldn't undo" : {
 
     },
+    "Diagnostics" : {
+      "comment" : "The Diagnostics window's title."
+    },
     "Don't know" : {
 
     },
@@ -149,6 +190,9 @@
     },
     "Expand" : {
       "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
+    },
+    "Finished" : {
+      "comment" : "How an appearance closed, in Diagnostics."
     },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
@@ -162,20 +206,44 @@
     "Flip" : {
 
     },
+    "Full screen" : {
+
+    },
     "Got it" : {
+
+    },
+    "Held back: %@" : {
+      "comment" : "An appearance a suppression held back, in Diagnostics, with the suppression."
+    },
+    "Holds appearances back" : {
 
     },
     "Ignore" : {
       "comment" : "A button that drops a capture that repeats a card or a capture."
     },
+    "In use: %@" : {
+      "comment" : "What a detector sees in Diagnostics."
+    },
+    "Keeping the display awake" : {
+
+    },
     "Know it" : {
+
+    },
+    "Latest appearances" : {
 
     },
     "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
 
     },
+    "Microphone" : {
+
+    },
     "New" : {
       "comment" : "A badge on a card the review panel shows for the first time."
+    },
+    "No appearance yet." : {
+
     },
     "No cards are due right now." : {
 
@@ -183,13 +251,22 @@
     "No cards to review right now." : {
 
     },
+    "Not in use" : {
+      "comment" : "What a detector sees in Diagnostics."
+    },
     "Note" : {
 
     },
     "Note (optional)" : {
 
     },
+    "Nothing" : {
+      "comment" : "No suppression holds appearances back, in Diagnostics."
+    },
     "OK" : {
+
+    },
+    "Process %d" : {
 
     },
     "Quit" : {
@@ -202,9 +279,12 @@
       "comment" : "A button that brings the cards closest to being due, to review them now."
     },
     "Review now" : {
-
+      "comment" : "What opened the review panel, in Diagnostics."
     },
     "Review now (%lld due)" : {
+
+    },
+    "Right now" : {
 
     },
     "Save" : {
@@ -215,6 +295,9 @@
     },
     "See more?" : {
 
+    },
+    "Snoozed" : {
+      "comment" : "How an appearance closed, in Diagnostics."
     },
     "Sort of" : {
 

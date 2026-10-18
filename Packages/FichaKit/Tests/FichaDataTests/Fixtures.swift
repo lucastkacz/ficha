@@ -76,11 +76,13 @@ extension ManualTimeSource {
 
 /// What a test's Mac tells the engine, as the app reads it from the OS: by
 /// default, a Mac awake since Ficha started, which doesn't say how long Lucas
-/// has been idle.
+/// has been idle, with nothing holding appearances back.
 struct FakeMac: MacSignals {
     var isAsleep = false
     var lastWake: Date? = nil
     var idleTime: Duration? = nil
+    var suppressions: Set<Suppression> = []
+    var lastSuppressionEnd: Date? = nil
 }
 
 /// The calendar of a Mac in Buenos Aires, whose days start at midnight there,

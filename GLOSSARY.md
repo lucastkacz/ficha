@@ -168,5 +168,5 @@ Whether the review panel takes the keyboard when it shows up on its own: never, 
 _Avoid_: Focus, keyboard grab
 
 **Appearance log**:
-Every appearance, and every review now that brought cards, with what opened the review panel, when it showed and closed, and how it closed: finished, snoozed or auto-closed.
+Every appearance, and every review now that brought cards, with what opened the review panel, when it showed and closed, and how it closed: finished, snoozed or auto-closed. An appearance a suppression held back goes in once too, with the suppression.
 _Avoid_: history, session log

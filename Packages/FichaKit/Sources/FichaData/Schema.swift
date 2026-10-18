@@ -101,6 +101,17 @@ enum Schema {
                     .check(sql: "isAhead = 0 OR kind = 'review'")
             }
         }
+        migrator.registerMigration("v8 held-back appearances") { db in
+            // An appearance a suppression held back goes into the appearance
+            // log once, with "heldBack" as its outcome and the suppression, as
+            // `Suppression` names it; its shownAt and closedAt are when it was
+            // held back. It never showed, so the next appearance doesn't wait
+            // from it.
+            try db.alter(table: "appearanceLog") { table in
+                table.add(column: "heldBackBy", .text)
+                    .check(sql: "(outcome = 'heldBack') = (heldBackBy IS NOT NULL)")
+            }
+        }
         return migrator
     }()
 }

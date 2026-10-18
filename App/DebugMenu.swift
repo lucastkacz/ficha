@@ -102,6 +102,22 @@ struct DebugMenu: View {
             """
         case .nothingDue:
             "No card is due, and no new card can come in today."
+        case .suppressed(let suppression):
+            "\(heldBackBy(suppression)) holds appearances back: Diagnostics says what each detector sees."
+        case .tooSoonAfterSuppression(let until):
+            """
+            A suppression ended less than \(inWords(settings.waitAfterSuppression)) ago: an appearance can come \
+            in \(timeLeft(until)).
+            """
+        }
+    }
+
+    /// What a suppression is, in words, at the start of a sentence.
+    private func heldBackBy(_ suppression: Suppression) -> String {
+        switch suppression {
+        case .meeting: "A meeting (the camera or the microphone in use)"
+        case .video: "A video (an app keeping the display awake)"
+        case .fullScreen: "A full-screen app"
         }
     }
 
