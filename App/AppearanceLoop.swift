@@ -40,9 +40,11 @@ final class AppearanceLoop {
         self.panel = panel
     }
 
-    /// Starts checking, a minute from now. A panel shown while Ficha was still
-    /// launching took the keyboard as it showed, while Lucas typed, so the
-    /// first check waits until Ficha has settled.
+    /// Starts checking, a minute from now, and as suppressions start and end.
+    /// A panel shown while Ficha was still launching took the keyboard as it
+    /// showed, while Lucas typed, so the first check waits until Ficha has
+    /// settled: one a suppression brings sooner never shows the panel, since
+    /// the suppression holds the appearance back.
     func start() {
         mac.sleptOrWoke = { [weak self] in
             self?.macSleptOrWoke()

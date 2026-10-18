@@ -77,7 +77,8 @@ final class AppModel {
     }
 
     /// Whether the review panel shows up on its own now, by what `mac` says,
-    /// and with which cards, or why not. The engine decides.
+    /// and with which cards, or why not. The engine decides, and notes an
+    /// appearance a suppression holds back in the appearance log.
     func checkAppearance(mac: some MacSignals) throws(EngineError) -> AppearanceDecision {
         try engine.checkAppearance(settings, mac: mac)
     }

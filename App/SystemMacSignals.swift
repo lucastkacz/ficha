@@ -33,6 +33,8 @@ final class SystemMacSignals: MacSignals {
     private var observers: [any NSObjectProtocol] = []
     /// The detectors' polling, for as long as Ficha runs.
     private var detecting: Task<Void, Never>?
+    /// The suppressions whose detectors couldn't tell at the last look.
+    private var cantTell: Set<Suppression> = []
 
     /// The Mac's signals, noting its wakes and its suppressions' ends by
     /// `now`, the engine's time.
@@ -47,6 +49,7 @@ final class SystemMacSignals: MacSignals {
     /// Starts looking at what holds appearances back, now and every few
     /// seconds, for as long as Ficha runs.
     func startDetecting() {
+        detecting?.cancel()
         detectSuppressions()
         detecting = Task { [weak self] in
             while true {
@@ -55,15 +58,26 @@ final class SystemMacSignals: MacSignals {
                 } catch {
                     return
                 }
-                self?.detectSuppressions()
+                guard let self else { return }
+                detectSuppressions()
             }
         }
     }
 
     /// Notes what holds appearances back now, and when the last of them
-    /// ended, and says when that changed.
+    /// ended, and says when that changed. A suppression whose detector can't
+    /// tell stays as it was, so a failed reading neither starts nor ends one,
+    /// and the log says so.
     private func detectSuppressions() {
-        let detected = Detection.now().suppressions
+        let detection = Detection.read()
+        let unknown = Set(Suppression.allCases.filter { detection.isOn($0) == nil })
+        if unknown != cantTell {
+            let names = Suppression.allCases.filter(unknown.contains).map(\.rawValue).joined(separator: ", ")
+            logger.error(
+                "Can't tell whether these hold appearances back: \(names.isEmpty ? "none" : names, privacy: .public)")
+            cantTell = unknown
+        }
+        let detected = Set(Suppression.allCases.filter { detection.isOn($0) ?? suppressions.contains($0) })
         guard detected != suppressions else { return }
         if detected.isEmpty {
             lastSuppressionEnd = now()

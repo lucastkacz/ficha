@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ · %@" : {
-      "comment" : "An appearance log entry in Diagnostics: when it showed, and what opened it.",
+      "comment" : "An appearance log entry in Diagnostics: when it showed, or was held back, and what opened the review panel.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -84,25 +84,16 @@
       }
     },
     "A camera" : {
-
-    },
-    "A full-screen app" : {
-      "comment" : "A suppression: the app in front is in full screen."
-    },
-    "A meeting" : {
-      "comment" : "A suppression: the camera or the microphone is in use."
+      "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
     },
     "A microphone" : {
-
+      "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
     },
     "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
 
     },
     "A review ahead: only “Don't know” moves the card." : {
 
-    },
-    "A video" : {
-      "comment" : "A suppression: an app keeps the display awake."
     },
     "A word, a concept, a quote or a question" : {
 
@@ -113,8 +104,8 @@
     "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again." : {
 
     },
-    "Appearance" : {
-      "comment" : "What opened the review panel, in Diagnostics."
+    "Apps using the microphone" : {
+      "comment" : "In Diagnostics: which apps use a microphone."
     },
     "Bury" : {
       "comment" : "A button that buries the card the review panel shows: it never shows up again."
@@ -123,7 +114,7 @@
       "comment" : "The tooltip of the button that buries the card, with its key."
     },
     "Camera" : {
-
+      "comment" : "A detector in Diagnostics: the cameras in use."
     },
     "Can't tell" : {
       "comment" : "A detector the OS didn't answer, in Diagnostics."
@@ -206,17 +197,23 @@
     "Flip" : {
 
     },
+    "From the menu" : {
+      "comment" : "In Diagnostics: Lucas opened the review panel with Review now."
+    },
     "Full screen" : {
-
+      "comment" : "A detector in Diagnostics: the app in front in full screen."
     },
     "Got it" : {
 
     },
-    "Held back: %@" : {
-      "comment" : "An appearance a suppression held back, in Diagnostics, with the suppression."
+    "Held back by a full-screen app" : {
+      "comment" : "In Diagnostics: the app in front was in full screen."
     },
-    "Holds appearances back" : {
-
+    "Held back by a meeting" : {
+      "comment" : "In Diagnostics: the camera or the microphone was in use."
+    },
+    "Held back by a video" : {
+      "comment" : "In Diagnostics: an app kept the display awake."
     },
     "Ignore" : {
       "comment" : "A button that drops a capture that repeats a card or a capture."
@@ -225,7 +222,7 @@
       "comment" : "What a detector sees in Diagnostics."
     },
     "Keeping the display awake" : {
-
+      "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
     },
     "Know it" : {
 
@@ -237,7 +234,7 @@
 
     },
     "Microphone" : {
-
+      "comment" : "A detector in Diagnostics: the microphones in use."
     },
     "New" : {
       "comment" : "A badge on a card the review panel shows for the first time."
@@ -260,14 +257,14 @@
     "Note (optional)" : {
 
     },
-    "Nothing" : {
-      "comment" : "No suppression holds appearances back, in Diagnostics."
-    },
     "OK" : {
 
     },
+    "On its own" : {
+      "comment" : "In Diagnostics: the review panel showed up on its own."
+    },
     "Process %d" : {
-
+      "comment" : "A process with no name, by its id, in Diagnostics: a noun."
     },
     "Quit" : {
 
@@ -279,7 +276,7 @@
       "comment" : "A button that brings the cards closest to being due, to review them now."
     },
     "Review now" : {
-      "comment" : "What opened the review panel, in Diagnostics."
+
     },
     "Review now (%lld due)" : {
 

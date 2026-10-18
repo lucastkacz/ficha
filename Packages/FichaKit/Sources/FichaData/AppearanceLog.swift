@@ -24,9 +24,11 @@ public struct AppearanceLogEntry: Sendable, Equatable {
     }
 
     public let trigger: Trigger
-    /// When the review panel showed, or, held back, when it was held back.
+    /// When the review panel showed, or, held back, when the hold started.
     public let shownAt: Date
-    /// When the review panel closed, or, held back, when it was held back.
+    /// When the review panel closed, or, held back, when the hold ended: when
+    /// the panel showed, or the appearance couldn't come any more. A hold
+    /// that's still on has its shownAt here.
     public let closedAt: Date
     public let outcome: Outcome
 
@@ -60,20 +62,21 @@ extension AppearanceLogEntry {
     }
 }
 
+/// How the `appearanceLog` table's `outcome` column names each outcome.
+enum OutcomeName: String {
+    case finished, snoozed, autoClosed, heldBack
+}
+
 extension AppearanceLogEntry.Outcome {
     /// The outcome that the `appearanceLog` table's `outcome` and
     /// `heldBackBy` columns name, or nil when this version of Ficha doesn't
     /// know it.
     fileprivate init?(outcome: String, heldBackBy: String?) {
-        switch (outcome, heldBackBy) {
-        case ("finished", nil): self = .finished
-        case ("snoozed", nil): self = .snoozed
-        case ("autoClosed", nil): self = .autoClosed
-        case ("heldBack", let suppression?):
-            guard let suppression = Suppression(rawValue: suppression) else {
-                return nil
-            }
-            self = .heldBack(suppression)
+        switch (OutcomeName(rawValue: outcome), heldBackBy.map(Suppression.init(rawValue:))) {
+        case (.finished, nil): self = .finished
+        case (.snoozed, nil): self = .snoozed
+        case (.autoClosed, nil): self = .autoClosed
+        case (.heldBack, let suppression??): self = .heldBack(suppression)
         default: return nil
         }
     }
@@ -82,10 +85,10 @@ extension AppearanceLogEntry.Outcome {
     /// columns that name this outcome.
     var columns: (outcome: String, heldBackBy: String?) {
         switch self {
-        case .finished: ("finished", nil)
-        case .snoozed: ("snoozed", nil)
-        case .autoClosed: ("autoClosed", nil)
-        case .heldBack(let suppression): ("heldBack", suppression.rawValue)
+        case .finished: (OutcomeName.finished.rawValue, nil)
+        case .snoozed: (OutcomeName.snoozed.rawValue, nil)
+        case .autoClosed: (OutcomeName.autoClosed.rawValue, nil)
+        case .heldBack(let suppression): (OutcomeName.heldBack.rawValue, suppression.rawValue)
         }
     }
 }

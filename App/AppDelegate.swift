@@ -69,8 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Asks the engine right away whether the review panel shows up on its
-    /// own, for Ficha Dev's debug menu, and shows it if so: what the check came
-    /// to, or nil before the app launched with its cards.
+    /// own, for Ficha Dev's debug menu, and shows it if so, as every check
+    /// does, noting an appearance a suppression holds back: what the check
+    /// came to, or nil before the app launched with its cards.
     func checkAppearanceNow() -> AppearanceCheck? {
         appearances?.check()
     }

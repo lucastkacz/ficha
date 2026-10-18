@@ -13,34 +13,39 @@ struct Detection: Equatable {
     var cameras: DetectorReading
     /// The microphones running in some process, by name.
     var microphones: DetectorReading
+    /// The apps using a microphone, by name, which Diagnostics shows to tell
+    /// a call from dictation. It never decides anything: a system daemon runs
+    /// input whenever sound plays (#12's findings).
+    var microphoneApps: DetectorReading
     /// The apps that keep the display awake, as a video player does, by name.
     var displayAwake: DetectorReading
     /// The app in front, by name, while it's in full screen.
     var fullScreen: DetectorReading
 
-    /// What holds appearances back now: a meeting while a camera or a
-    /// microphone is in use, a video while an app keeps the display awake,
-    /// and the app in front in full screen. A reading that can't tell holds
-    /// nothing back, and Diagnostics shows it.
-    var suppressions: Set<Suppression> {
-        var suppressions: Set<Suppression> = []
-        if cameras.isInUse || microphones.isInUse {
-            suppressions.insert(.meeting)
-        }
-        if displayAwake.isInUse {
-            suppressions.insert(.video)
-        }
-        if fullScreen.isInUse {
-            suppressions.insert(.fullScreen)
-        }
-        return suppressions
+    /// What the detectors see now.
+    static func read() -> Detection {
+        Detection(
+            cameras: runningCameras(), microphones: runningMicrophones(), microphoneApps: appsUsingTheMicrophone(),
+            displayAwake: appsKeepingTheDisplayAwake(), fullScreen: fullScreenApp())
     }
 
-    /// What the detectors see now.
-    static func now() -> Detection {
-        Detection(
-            cameras: runningCameras(), microphones: runningMicrophones(), displayAwake: appsKeepingTheDisplayAwake(),
-            fullScreen: fullScreenApp())
+    /// Whether `suppression` is on, by the readings, or nil when they can't
+    /// tell: a meeting while a camera or a microphone is in use, a video
+    /// while an app keeps the display awake, and the app in front in full
+    /// screen.
+    func isOn(_ suppression: Suppression) -> Bool? {
+        switch suppression {
+        case .meeting:
+            if cameras.isInUse == true || microphones.isInUse == true {
+                true
+            } else if cameras.isInUse == nil || microphones.isInUse == nil {
+                nil
+            } else {
+                false
+            }
+        case .video: displayAwake.isInUse
+        case .fullScreen: fullScreen.isInUse
+        }
     }
 }
 
@@ -53,14 +58,26 @@ enum DetectorReading: Equatable {
     /// The OS didn't answer, so the detector can't tell.
     case unknown
 
-    /// Whether something is in use.
-    var isInUse: Bool {
-        if case .inUse = self { true } else { false }
+    /// Whether something is in use, or nil when the detector can't tell.
+    var isInUse: Bool? {
+        switch self {
+        case .inUse: true
+        case .notInUse: false
+        case .unknown: nil
+        }
     }
 
-    /// `names` in use, or nothing when there are none.
-    init(_ names: [String]) {
-        self = names.isEmpty ? .notInUse : .inUse(names)
+    /// `names` in use, or nothing when there are none; or, when a part of
+    /// the reading failed and nothing is in use, that it can't tell.
+    init(_ names: [String], anyFailed: Bool = false) {
+        self =
+            if !names.isEmpty {
+                .inUse(names)
+            } else if anyFailed {
+                .unknown
+            } else {
+                .notInUse
+            }
     }
 }
 
@@ -73,15 +90,21 @@ private func runningCameras() -> DetectorReading {
         return .unknown
     }
     var running: [String] = []
+    var anyFailed = false
     for device in devices {
-        guard let isRunning = cmioUInt32(device, kCMIODevicePropertyDeviceIsRunningSomewhere) else {
-            return .unknown
-        }
-        if isRunning == 1 {
-            running.append(cmioString(device, kCMIOObjectPropertyName) ?? String(localized: "A camera"))
+        switch cmioUInt32(device, kCMIODevicePropertyDeviceIsRunningSomewhere) {
+        case 1?:
+            running.append(
+                cmioString(device, kCMIOObjectPropertyName)
+                    ?? String(
+                        localized: "A camera", comment: "A camera whose name the OS doesn't give, in Diagnostics."))
+        case _?:
+            break
+        case nil:
+            anyFailed = true
         }
     }
-    return DetectorReading(running)
+    return DetectorReading(running, anyFailed: anyFailed)
 }
 
 private func cmioAddress(_ selector: Int) -> CMIOObjectPropertyAddress {
@@ -134,29 +157,64 @@ private func runningMicrophones() -> DetectorReading {
         return .unknown
     }
     var running: [String] = []
-    for device in devices where hasInput(device) && !isAggregate(device) {
-        guard let isRunning = audioUInt32(device, kAudioDevicePropertyDeviceIsRunningSomewhere) else {
-            return .unknown
+    var anyFailed = false
+    for device in devices {
+        guard let hasInput = hasInput(device), let transport = audioUInt32(device, kAudioDevicePropertyTransportType)
+        else {
+            anyFailed = true
+            continue
         }
-        if isRunning == 1 {
-            running.append(audioString(device, kAudioObjectPropertyName) ?? String(localized: "A microphone"))
+        let isAggregate =
+            transport == kAudioDeviceTransportTypeAggregate || transport == kAudioDeviceTransportTypeAutoAggregate
+        guard hasInput, !isAggregate else { continue }
+        switch audioUInt32(device, kAudioDevicePropertyDeviceIsRunningSomewhere) {
+        case 1?:
+            running.append(
+                audioString(device, kAudioObjectPropertyName)
+                    ?? String(
+                        localized: "A microphone",
+                        comment: "A microphone whose name the OS doesn't give, in Diagnostics."
+                    ))
+        case _?:
+            break
+        case nil:
+            anyFailed = true
         }
     }
-    return DetectorReading(running)
+    return DetectorReading(running, anyFailed: anyFailed)
 }
 
-/// Whether the device has input streams.
-private func hasInput(_ device: AudioObjectID) -> Bool {
+/// The apps running audio input, through CoreAudio's process objects, but
+/// those with no bundle identifier, like the system daemon that runs input
+/// whenever sound plays, and Ficha.
+private func appsUsingTheMicrophone() -> DetectorReading {
+    guard
+        let processes = audioObjects(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyProcessObjectList)
+    else {
+        return .unknown
+    }
+    var apps: Set<String> = []
+    var anyFailed = false
+    for process in processes {
+        guard let isRunningInput = audioUInt32(process, kAudioProcessPropertyIsRunningInput),
+            let pid = audioUInt32(process, kAudioProcessPropertyPID).map({ pid_t(bitPattern: $0) })
+        else {
+            anyFailed = true
+            continue
+        }
+        let bundleID = audioString(process, kAudioProcessPropertyBundleID) ?? ""
+        guard isRunningInput == 1, !bundleID.isEmpty, !isFicha(pid) else { continue }
+        apps.insert(appName(pid))
+    }
+    return DetectorReading(apps.sorted(), anyFailed: anyFailed)
+}
+
+/// Whether the device has input streams, or nil when the OS doesn't say.
+private func hasInput(_ device: AudioObjectID) -> Bool? {
     var address = audioAddress(kAudioDevicePropertyStreams, kAudioObjectPropertyScopeInput)
     var size: UInt32 = 0
-    return AudioObjectGetPropertyDataSize(device, &address, 0, nil, &size) == noErr && size > 0
-}
-
-/// Whether the device is an aggregate: `kAudioDeviceTransportTypeAggregate`,
-/// or the old `kAudioDeviceTransportTypeAutoAggregate`.
-private func isAggregate(_ device: AudioObjectID) -> Bool {
-    let transport = audioUInt32(device, kAudioDevicePropertyTransportType)
-    return transport == kAudioDeviceTransportTypeAggregate || transport == kAudioDeviceTransportTypeAutoAggregate
+    guard AudioObjectGetPropertyDataSize(device, &address, 0, nil, &size) == noErr else { return nil }
+    return size > 0
 }
 
 private func audioAddress(
@@ -209,16 +267,22 @@ private func appsKeepingTheDisplayAwake() -> DetectorReading {
         return .unknown
     }
     let displayAwake: Set<String> = [kIOPMAssertPreventUserIdleDisplaySleep, kIOPMAssertionTypeNoDisplaySleep]
-    let holders = assertions.compactMap { pid, list -> String? in
-        let keepsTheDisplayAwake = list.contains { properties in
-            guard let type = properties[kIOPMAssertionTypeKey] as? String else { return false }
-            return displayAwake.contains(type)
-                && (properties[kIOPMAssertionLevelKey] as? Int) != Int(kIOPMAssertionLevelOff)
+    var holders: Set<String> = []
+    var anyFailed = false
+    for (pid, list) in assertions where !isFicha(pid.int32Value) {
+        for properties in list {
+            guard let type = properties[kIOPMAssertionTypeKey] as? String,
+                let level = properties[kIOPMAssertionLevelKey] as? Int
+            else {
+                anyFailed = true
+                continue
+            }
+            if displayAwake.contains(type), level == Int(kIOPMAssertionLevelOn) {
+                holders.insert(appName(pid.int32Value))
+            }
         }
-        guard keepsTheDisplayAwake, !isFicha(pid.int32Value) else { return nil }
-        return appName(pid.int32Value)
     }
-    return DetectorReading(Array(Set(holders)).sorted())
+    return DetectorReading(holders.sorted(), anyFailed: anyFailed)
 }
 
 // MARK: - Full screen
@@ -228,17 +292,27 @@ private func appsKeepingTheDisplayAwake() -> DetectorReading {
 /// screen while its menu bar is gone. It reads the windows' layers, bounds
 /// and owners, which need no permission, and never their names.
 private func fullScreenApp() -> DetectorReading {
-    guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else {
+    guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]],
+        let frontmost = NSWorkspace.shared.frontmostApplication
+    else {
         return .unknown
     }
-    guard let frontmost = NSWorkspace.shared.frontmostApplication, !isFicha(frontmost.processIdentifier) else {
+    guard !isFicha(frontmost.processIdentifier) else {
         return .notInUse
     }
     let windows = info.compactMap(ScreenWindow.init)
-    let coversAScreen = NSScreen.screens.contains { screen in
-        covers(screen, withAWindowOf: frontmost.processIdentifier, among: windows)
+    guard windows.count == info.count else {
+        return .unknown
     }
-    return coversAScreen ? .inUse([frontmost.localizedName ?? appName(frontmost.processIdentifier)]) : .notInUse
+    var anyFailed = false
+    for screen in NSScreen.screens {
+        switch covers(screen, withAWindowOf: frontmost.processIdentifier, among: windows) {
+        case true?: return .inUse([frontmost.localizedName ?? appName(frontmost.processIdentifier)])
+        case false?: break
+        case nil: anyFailed = true
+        }
+    }
+    return anyFailed ? .unknown : .notInUse
 }
 
 /// A window on screen, as the window list describes it.
@@ -262,11 +336,12 @@ private struct ScreenWindow {
 }
 
 /// Whether a normal window of the app with `pid` covers `screen` as a
-/// full-screen window does. Bounds are in points, from the main screen's
-/// top-left corner, as the window list gives them.
-private func covers(_ screen: NSScreen, withAWindowOf pid: pid_t, among windows: [ScreenWindow]) -> Bool {
+/// full-screen window does, or nil when the screen doesn't say which display
+/// it is. Bounds are in points, from the main screen's top-left corner, as
+/// the window list gives them.
+private func covers(_ screen: NSScreen, withAWindowOf pid: pid_t, among windows: [ScreenWindow]) -> Bool? {
     guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
-        return false
+        return nil
     }
     let bounds = CGDisplayBounds(CGDirectDisplayID(number.uint32Value))
     let cameraHousing = Double(screen.safeAreaInsets.top)
@@ -303,11 +378,13 @@ private func appName(_ pid: pid_t) -> String {
     var info = kinfo_proc()
     var size = MemoryLayout<kinfo_proc>.stride
     var request = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
-    guard sysctl(&request, 4, &info, &size, nil, 0) == 0, size > 0 else {
-        return String(localized: "Process \(pid)")
+    let unnamed = String(
+        localized: "Process \(pid)", comment: "A process with no name, by its id, in Diagnostics: a noun.")
+    guard sysctl(&request, UInt32(request.count), &info, &size, nil, 0) == 0, size > 0 else {
+        return unnamed
     }
     let name = withUnsafeBytes(of: info.kp_proc.p_comm) { bytes in
         String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
     }
-    return name.isEmpty ? String(localized: "Process \(pid)") : name
+    return name.isEmpty ? unnamed : name
 }

@@ -15,11 +15,33 @@ struct DiagnosticsView: View {
         Form {
             Section("Right now") {
                 if let detection {
-                    LabeledContent("Camera") { reading(detection.cameras) }
-                    LabeledContent("Microphone") { reading(detection.microphones) }
-                    LabeledContent("Keeping the display awake") { reading(detection.displayAwake) }
-                    LabeledContent("Full screen") { reading(detection.fullScreen) }
-                    LabeledContent("Holds appearances back") { Text(holdsBack(detection.suppressions)) }
+                    LabeledContent {
+                        reading(detection.cameras)
+                    } label: {
+                        Text("Camera", comment: "A detector in Diagnostics: the cameras in use.")
+                    }
+                    LabeledContent {
+                        reading(detection.microphones)
+                    } label: {
+                        Text("Microphone", comment: "A detector in Diagnostics: the microphones in use.")
+                    }
+                    LabeledContent {
+                        reading(detection.microphoneApps)
+                    } label: {
+                        Text("Apps using the microphone", comment: "In Diagnostics: which apps use a microphone.")
+                    }
+                    LabeledContent {
+                        reading(detection.displayAwake)
+                    } label: {
+                        Text(
+                            "Keeping the display awake",
+                            comment: "A detector in Diagnostics: the apps keeping the display awake, as a video does.")
+                    }
+                    LabeledContent {
+                        reading(detection.fullScreen)
+                    } label: {
+                        Text("Full screen", comment: "A detector in Diagnostics: the app in front in full screen.")
+                    }
                 }
             }
             Section("Latest appearances") {
@@ -34,7 +56,10 @@ struct DiagnosticsView: View {
                         } label: {
                             Text(
                                 "\(entry.shownAt.formatted(date: .abbreviated, time: .shortened)) · \(trigger(entry.trigger))",
-                                comment: "An appearance log entry in Diagnostics: when it showed, and what opened it.")
+                                comment: """
+                                    An appearance log entry in Diagnostics: when it showed, or was held back, and what \
+                                    opened the review panel.
+                                    """)
                         }
                     }
                 case .failure(let error):
@@ -61,7 +86,7 @@ struct DiagnosticsView: View {
 
     /// Reads the detectors and the appearance log again.
     private func refresh() {
-        detection = Detection.now()
+        detection = Detection.read()
         appearances = Result { () throws(EngineError) in try model.latestAppearances(20) }
     }
 
@@ -77,29 +102,14 @@ struct DiagnosticsView: View {
         }
     }
 
-    /// What holds appearances back now, in words.
-    private func holdsBack(_ suppressions: Set<Suppression>) -> String {
-        let names = Suppression.allCases.filter(suppressions.contains).map(name)
-        return names.isEmpty
-            ? String(localized: "Nothing", comment: "No suppression holds appearances back, in Diagnostics.")
-            : names.formatted(.list(type: .and))
-    }
-
-    /// A suppression's name, as Diagnostics shows it.
-    private func name(_ suppression: Suppression) -> String {
-        switch suppression {
-        case .meeting: String(localized: "A meeting", comment: "A suppression: the camera or the microphone is in use.")
-        case .video: String(localized: "A video", comment: "A suppression: an app keeps the display awake.")
-        case .fullScreen:
-            String(localized: "A full-screen app", comment: "A suppression: the app in front is in full screen.")
-        }
-    }
-
     /// What opened the review panel, in words.
     private func trigger(_ trigger: Trigger) -> String {
         switch trigger {
-        case .appearance: String(localized: "Appearance", comment: "What opened the review panel, in Diagnostics.")
-        case .reviewNow: String(localized: "Review now", comment: "What opened the review panel, in Diagnostics.")
+        case .appearance:
+            String(localized: "On its own", comment: "In Diagnostics: the review panel showed up on its own.")
+        case .reviewNow:
+            String(
+                localized: "From the menu", comment: "In Diagnostics: Lucas opened the review panel with Review now.")
         }
     }
 
@@ -109,10 +119,16 @@ struct DiagnosticsView: View {
         case .finished: String(localized: "Finished", comment: "How an appearance closed, in Diagnostics.")
         case .snoozed: String(localized: "Snoozed", comment: "How an appearance closed, in Diagnostics.")
         case .autoClosed: String(localized: "Closed on its own", comment: "How an appearance closed, in Diagnostics.")
-        case .heldBack(let suppression):
+        case .heldBack(.meeting):
             String(
-                localized: "Held back: \(name(suppression))",
-                comment: "An appearance a suppression held back, in Diagnostics, with the suppression.")
+                localized: "Held back by a meeting", comment: "In Diagnostics: the camera or the microphone was in use."
+            )
+        case .heldBack(.video):
+            String(localized: "Held back by a video", comment: "In Diagnostics: an app kept the display awake.")
+        case .heldBack(.fullScreen):
+            String(
+                localized: "Held back by a full-screen app",
+                comment: "In Diagnostics: the app in front was in full screen.")
         }
     }
 }
