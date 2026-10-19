@@ -72,8 +72,17 @@
         }
       }
     },
+    "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
+
+    },
+    "A review ahead: only “Don't know” moves the card." : {
+
+    },
     "A word, a concept, a quote or a question" : {
 
+    },
+    "Ahead" : {
+      "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
     },
     "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again." : {
 
@@ -117,6 +126,9 @@
     "Couldn't load the cards" : {
 
     },
+    "Couldn't look for more cards" : {
+
+    },
     "Couldn't save the capture" : {
 
     },
@@ -128,6 +140,9 @@
     },
     "Don't know" : {
 
+    },
+    "Done" : {
+      "comment" : "A button that closes the review panel once every card was gone through."
     },
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
@@ -162,6 +177,9 @@
     "New" : {
       "comment" : "A badge on a card the review panel shows for the first time."
     },
+    "No cards are due right now." : {
+
+    },
     "No cards to review right now." : {
 
     },
@@ -180,6 +198,9 @@
     "Review" : {
       "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
     },
+    "Review ahead" : {
+      "comment" : "A button that brings the cards closest to being due, to review them now."
+    },
     "Review now" : {
 
     },
@@ -187,6 +208,12 @@
 
     },
     "Save" : {
+
+    },
+    "See more" : {
+
+    },
+    "See more?" : {
 
     },
     "Sort of" : {
@@ -217,6 +244,12 @@
 
     },
     "What needs fixing?" : {
+
+    },
+    "You went through every card." : {
+
+    },
+    "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
     }
   },

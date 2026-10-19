@@ -9,7 +9,8 @@ public struct AppearanceLogEntry: Sendable, Equatable {
     /// How the review panel closed. Each raw value is how the appearance log
     /// names it.
     public enum Outcome: String, Sendable {
-        /// No card was left: Lucas answered every card it brought.
+        /// No card it brought was left: Lucas answered, flagged or buried
+        /// each one, and maybe some that "See more" added.
         case finished
         /// Lucas closed it with cards left, which stay as they were: a
         /// snooze.

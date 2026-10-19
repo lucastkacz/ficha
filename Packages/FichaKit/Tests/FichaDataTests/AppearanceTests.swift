@@ -213,6 +213,7 @@ struct AppearanceTests {
         var finished = engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
         time.move(to: try at(11, 20))
         try finished.answer(.firstView, responseTime: .seconds(90))
+        finished.close(.byLucas)
         time.move(to: try at(12, 0))
         var autoClosed = engine.openPanel(.appearance, with: [.review(serendipia)], settings: settings)
         time.move(to: try at(12, 10))

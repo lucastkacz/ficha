@@ -20,12 +20,23 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// How long he took, from the panel showing the card to his answer.
     public let responseTime: Duration
     public let trigger: Trigger
+    /// Whether it was a review ahead: of a card that wasn't due yet, which
+    /// Lucas asked for. Only its again counts (ADR 0002).
+    public let isAhead: Bool
 
-    public init(cardID: Int64, kind: Kind, answeredAt: Date, responseTime: Duration, trigger: Trigger) {
+    public init(
+        cardID: Int64,
+        kind: Kind,
+        answeredAt: Date,
+        responseTime: Duration,
+        trigger: Trigger,
+        isAhead: Bool = false
+    ) {
         self.cardID = cardID
         self.kind = kind
         self.answeredAt = answeredAt
         self.responseTime = responseTime
         self.trigger = trigger
+        self.isAhead = isAhead
     }
 }
