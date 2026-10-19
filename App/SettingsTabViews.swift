@@ -308,6 +308,48 @@ struct LadderSettings: View {
     }
 }
 
+/// The About tab of Settings: which version of the app this is, as macOS's
+/// About panel shows it. Under the app's icon and name come its version and
+/// its copyright line, from its Info.plist: "Version", the release version,
+/// then the build in parentheses. Lucas can select the text, to copy it.
+struct AboutTab: View {
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
+                .accessibilityHidden(true)
+            Text(verbatim: AppVariant.current.name)
+                .font(.title2.bold())
+            Text(versionLine)
+            if let copyright = infoPlistValue("NSHumanReadableCopyright") {
+                Text(verbatim: copyright)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    /// The release version, then the build in parentheses.
+    private var versionLine: String {
+        guard let version = infoPlistValue("CFBundleShortVersionString"), let build = infoPlistValue("CFBundleVersion")
+        else {
+            return String(localized: "Unknown version", comment: "Settings' About tab, when the build doesn't say.")
+        }
+        return String(
+            localized: "Version \(version) (\(build))",
+            comment: "Settings' About tab: the release version, then the build number in parentheses.")
+    }
+
+    /// The app's Info.plist value for `key`, which the build sets.
+    private func infoPlistValue(_ key: String) -> String? {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String
+    }
+}
+
 /// The hour of the day `hour` starts at, as the Mac writes it, like "9:00":
 /// 24 is midnight, at the end of the day.
 private func hourOfDay(_ hour: Int) -> String {

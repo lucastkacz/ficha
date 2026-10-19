@@ -8,6 +8,7 @@ enum SettingsTab: String {
     case appearances
     case reviewPanel
     case ladder
+    case about
 
     /// The tab `item` shows, if it's one of these.
     init?(of item: NSTabViewItem?) {
@@ -22,6 +23,7 @@ enum SettingsTab: String {
         case .appearances: String(localized: "Appearances", comment: "A tab of the Settings window.")
         case .reviewPanel: String(localized: "Review panel", comment: "A tab of the Settings window.")
         case .ladder: String(localized: "Ladder", comment: "A tab of the Settings window.")
+        case .about: String(localized: "About", comment: "A tab of the Settings window.")
         }
     }
 
@@ -32,37 +34,42 @@ enum SettingsTab: String {
         case .appearances: "clock"
         case .reviewPanel: "macwindow"
         case .ladder: "stairs"
+        case .about: "info.circle"
         }
     }
 }
 
 /// The Settings window's content, as a Mac's usual settings window: its tabs
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
-/// window as tall as the selected tab. It opens on the tab Lucas left it on
-/// last.
+/// window as tall as the selected tab. The last tab says which version of the
+/// app this is. It opens on the tab Lucas left it on last.
 final class SettingsTabViewController: NSTabViewController {
     /// The tabs of every default Lucas can change in `model`, and of the
-    /// capture shortcut, `captureShortcut`.
+    /// capture shortcut, `captureShortcut`, then the About tab.
     convenience init(model: AppModel, captureShortcut: CaptureShortcutRegistration) {
         self.init(nibName: nil, bundle: nil)
         // Read before adding the tabs, since adding the first one selects it.
         let lastTab = Preferences.settingsTab
         tabStyle = .toolbar
-        add(.general, GeneralSettings(model: model, captureShortcut: captureShortcut))
-        add(.appearances, AppearancesSettings(model: model))
-        add(.reviewPanel, ReviewPanelSettings(model: model))
-        add(.ladder, LadderSettings(ladder: Bindable(model).settings.ladder))
+        add(.general, settings: GeneralSettings(model: model, captureShortcut: captureShortcut))
+        add(.appearances, settings: AppearancesSettings(model: model))
+        add(.reviewPanel, settings: ReviewPanelSettings(model: model))
+        add(.ladder, settings: LadderSettings(ladder: Bindable(model).settings.ladder))
+        add(.about, content: AboutTab())
         if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == lastTab }) {
             selectedTabViewItemIndex = index
         }
     }
 
-    /// Adds `tab`, which shows `settings` in a grouped form. The tab follows
-    /// the form's height as it changes, as when Lucas adds a step to the
-    /// ladder.
-    private func add(_ tab: SettingsTab, _ settings: some View) {
-        let form = Form { settings }.formStyle(.grouped).frame(width: 500)
-        let controller = NSHostingController(rootView: form)
+    /// Adds `tab`, which shows `settings` in a grouped form.
+    private func add(_ tab: SettingsTab, settings: some View) {
+        add(tab, content: Form { settings }.formStyle(.grouped))
+    }
+
+    /// Adds `tab`, which shows `content`. The tab follows the content's
+    /// height as it changes, as when Lucas adds a step to the ladder.
+    private func add(_ tab: SettingsTab, content: some View) {
+        let controller = NSHostingController(rootView: content.frame(width: 500))
         controller.sizingOptions = .preferredContentSize
         controller.title = tab.name
         let item = NSTabViewItem(viewController: controller)
