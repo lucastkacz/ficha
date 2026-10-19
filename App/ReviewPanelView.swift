@@ -16,6 +16,8 @@ struct ReviewPanelView: View {
     let model: Result<ReviewPanelModel, EngineError>
     /// Closes the panel's window.
     let closeWindow: () -> Void
+    /// Whether the note's field has the keyboard. Whatever shows the note
+    /// sets it, in the same action, as the flag button does.
     @FocusState private var noteIsFocused: Bool
 
     var body: some View {
@@ -210,10 +212,9 @@ struct ReviewPanelView: View {
             systemImage: "flag"
         ) {
             panel.startFlagging()
-            // The note's field asks for the keyboard here, as it shows up:
-            // asked from the field's `onAppear`, in the update that M's key
-            // equivalent brings, SwiftUI drops the request while the panel
-            // has the keyboard (#61).
+            // The note's field gets the keyboard in the same action that
+            // shows it. Asked from the field's `onAppear` instead, after M,
+            // SwiftUI never focused it while the panel had the keyboard (#61).
             noteIsFocused = true
         }
         .keyboardShortcut("m", modifiers: [])
