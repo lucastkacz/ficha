@@ -1,16 +1,16 @@
 import AppKit
 import SwiftUI
 
-/// The Diagnostics window, one at a time: what each detector sees right now,
-/// and the latest appearances. Opening it while it's open brings it forward.
-final class DiagnosticsWindow: NSWindow {
-    /// A window that shows what `model`'s appearances and the detectors say.
-    init(model: AppModel) {
+/// One of the app's windows, like Diagnostics or Settings: one at a time, in
+/// the middle of the screen, with a title bar and a close button.
+final class AppWindow: NSWindow {
+    /// A window titled `title` that shows `content`.
+    init(title: String, content: some View) {
         super.init(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: true)
-        title = String(localized: "Diagnostics", comment: "The Diagnostics window's title.")
+        self.title = title
         isReleasedWhenClosed = false
         isRestorable = false
-        contentView = NSHostingView(rootView: DiagnosticsView(model: model))
+        contentView = NSHostingView(rootView: content)
     }
 
     /// Shows the window in the middle of the screen, in front of the other

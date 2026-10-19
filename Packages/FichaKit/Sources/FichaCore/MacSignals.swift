@@ -16,8 +16,7 @@ public protocol MacSignals {
     /// What holds appearances back now: a meeting, a video or a full-screen
     /// app, or none of them.
     var suppressions: Set<Suppression> { get }
-    /// When the last suppression ended, by the engine's time: when nothing
-    /// held appearances back any more. Nil when none has ended since Ficha
-    /// started.
-    var lastSuppressionEnd: Date? { get }
+    /// When each suppression last ended, by the engine's time. One that
+    /// hasn't ended since Ficha started has none.
+    var suppressionEnds: [Suppression: Date] { get }
 }

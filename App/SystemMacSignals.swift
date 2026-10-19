@@ -21,7 +21,7 @@ final class SystemMacSignals: MacSignals {
     private var areScreensAsleep = false
     private(set) var lastWake: Date?
     private(set) var suppressions: Set<Suppression> = []
-    private(set) var lastSuppressionEnd: Date?
+    private(set) var suppressionEnds: [Suppression: Date] = [:]
     /// The engine's time, which the wakes and the suppressions' ends are
     /// noted by.
     private let now: () -> Date
@@ -64,10 +64,10 @@ final class SystemMacSignals: MacSignals {
         }
     }
 
-    /// Notes what holds appearances back now, and when the last of them
-    /// ended, and says when that changed. A suppression whose detector can't
-    /// tell stays as it was, so a failed reading neither starts nor ends one,
-    /// and the log says so.
+    /// Notes what holds appearances back now, and when each of those that
+    /// stopped ended, and says when that changed. A suppression whose
+    /// detector can't tell stays as it was, so a failed reading neither
+    /// starts nor ends one, and the log says so.
     private func detectSuppressions() {
         let detection = Detection.read()
         let unknown = Set(Suppression.allCases.filter { detection.isOn($0) == nil })
@@ -79,8 +79,9 @@ final class SystemMacSignals: MacSignals {
         }
         let detected = Set(Suppression.allCases.filter { detection.isOn($0) ?? suppressions.contains($0) })
         guard detected != suppressions else { return }
-        if detected.isEmpty {
-            lastSuppressionEnd = now()
+        let endedAt = now()
+        for ended in suppressions.subtracting(detected) {
+            suppressionEnds[ended] = endedAt
         }
         suppressions = detected
         let names = Suppression.allCases.filter(detected.contains).map(\.rawValue).joined(separator: ", ")

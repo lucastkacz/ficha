@@ -3,17 +3,28 @@ import Foundation
 /// The ladder: the fixed waits a card climbs as Lucas remembers it (ADR 0002).
 /// Its steps count from 0, the first step.
 public struct Ladder: Sendable, Equatable {
-    /// Each step's wait, from the first step up. There's always one at least:
-    /// the standard ladder is the only one, until Lucas can set his own.
+    /// Each step's wait, from the first step up: one at least, each longer
+    /// than the one before.
     public let waits: [Duration]
 
     /// The ladder Ficha starts with: 1 hour, 4 hours, 2 days, 5 days, 12
     /// days, 30 days and 75 days.
-    public static let standard = Ladder(waits: [
-        hours(1), hours(4), days(2), days(5), days(12), days(30), days(75),
-    ])
+    public static let standard = Ladder(
+        checkedWaits: [hours(1), hours(4), days(2), days(5), days(12), days(30), days(75)])
 
-    private init(waits: [Duration]) {
+    /// The ladder with these waits, which are known to be one at least, each
+    /// longer than the one before.
+    private init(checkedWaits waits: [Duration]) {
+        self.waits = waits
+    }
+
+    /// The ladder with these waits, from the first step up, or nil unless
+    /// there's one at least and each is longer than the one before, the
+    /// first longer than nothing.
+    public init?(waits: [Duration]) {
+        guard !waits.isEmpty, zip([.zero] + waits, waits).allSatisfy({ $0 < $1 }) else {
+            return nil
+        }
         self.waits = waits
     }
 

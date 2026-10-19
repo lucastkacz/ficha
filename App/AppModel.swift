@@ -11,9 +11,23 @@ final class AppModel {
     /// What Ficha Dev's debug menu does, or nil in the real Ficha, which has no
     /// debug menu.
     let debugTools: DebugTools?
-    /// The settings the engine decides with: the defaults, until Lucas can
-    /// change them.
-    let settings = ReviewSettings.defaults
+    /// The settings the engine decides with, as Lucas left them in Settings,
+    /// which keeps them in the app's preferences. A change applies from the
+    /// next decision on, and the menu counts again at once; an open review
+    /// panel keeps the settings it opened with.
+    var settings = Preferences.reviewSettings() {
+        didSet {
+            Preferences.save(settings)
+            countProgress()
+        }
+    }
+    /// Whether the menu-bar icon shows how many cards are due: off by
+    /// default, so Ficha doesn't pressure Lucas.
+    var showsDueCount = Preferences.showsDueCount {
+        didSet {
+            Preferences.showsDueCount = showsDueCount
+        }
+    }
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
     private(set) var progress: ProgressCounts?

@@ -4,8 +4,7 @@ import Observation
 
 /// Ficha Dev's engine and time, and what its debug menu does with them: it
 /// loads sample cards and moves the time forward. The engine runs on that
-/// time, so everything Ficha Dev saves follows it. It also keeps whether the
-/// debug menu turned on Ficha Dev's capture shortcut.
+/// time, so everything Ficha Dev saves follows it.
 @Observable
 final class DebugTools {
     /// Ficha Dev's engine, on the time the debug menu moves.
@@ -33,15 +32,4 @@ final class DebugTools {
         try time.moveForward(by: step)
         timeShift = time.shift
     }
-
-    /// Whether the debug menu turned on Ficha Dev's capture shortcut, which
-    /// Ficha Dev's preferences keep across launches. It's off until then, so
-    /// Ficha Dev takes no shortcut of its own.
-    var capturesWithShortcut: Bool {
-        get { UserDefaults.standard.bool(forKey: capturesWithShortcutKey) }
-        set { UserDefaults.standard.set(newValue, forKey: capturesWithShortcutKey) }
-    }
 }
-
-/// Where Ficha Dev's preferences keep whether its capture shortcut is on.
-private let capturesWithShortcutKey = "DebugCapturesWithShortcut"
