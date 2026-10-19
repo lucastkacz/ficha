@@ -45,7 +45,7 @@ enum SettingsTab: String {
 /// app this is. It opens on the tab Lucas left it on last.
 final class SettingsTabViewController: NSTabViewController {
     /// The tabs of every default Lucas can change in `model`, and of the
-    /// capture shortcut, `captureShortcut`.
+    /// capture shortcut, `captureShortcut`, then the About tab.
     convenience init(model: AppModel, captureShortcut: CaptureShortcutRegistration) {
         self.init(nibName: nil, bundle: nil)
         // Read before adding the tabs, since adding the first one selects it.
@@ -55,7 +55,7 @@ final class SettingsTabViewController: NSTabViewController {
         add(.appearances, settings: AppearancesSettings(model: model))
         add(.reviewPanel, settings: ReviewPanelSettings(model: model))
         add(.ladder, settings: LadderSettings(ladder: Bindable(model).settings.ladder))
-        add(.about, AboutTab())
+        add(.about, content: AboutTab())
         if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == lastTab }) {
             selectedTabViewItemIndex = index
         }
@@ -63,12 +63,12 @@ final class SettingsTabViewController: NSTabViewController {
 
     /// Adds `tab`, which shows `settings` in a grouped form.
     private func add(_ tab: SettingsTab, settings: some View) {
-        add(tab, Form { settings }.formStyle(.grouped))
+        add(tab, content: Form { settings }.formStyle(.grouped))
     }
 
     /// Adds `tab`, which shows `content`. The tab follows the content's
     /// height as it changes, as when Lucas adds a step to the ladder.
-    private func add(_ tab: SettingsTab, _ content: some View) {
+    private func add(_ tab: SettingsTab, content: some View) {
         let controller = NSHostingController(rootView: content.frame(width: 500))
         controller.sizingOptions = .preferredContentSize
         controller.title = tab.name

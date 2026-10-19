@@ -308,10 +308,10 @@ struct LadderSettings: View {
     }
 }
 
-/// The About tab of Settings: which version of the app this is, written as
-/// macOS's About panel writes it: the app's icon and name, "Version 0.1.0
-/// (27)" and the copyright line, all from the app's Info.plist. Lucas can
-/// select the text, to copy it.
+/// The About tab of Settings: which version of the app this is, as macOS's
+/// About panel shows it. Under the app's icon and name come its version and
+/// its copyright line, from its Info.plist: "Version", the release version,
+/// then the build in parentheses. Lucas can select the text, to copy it.
 struct AboutTab: View {
     var body: some View {
         VStack(spacing: 6) {
@@ -322,7 +322,7 @@ struct AboutTab: View {
             Text(verbatim: AppVariant.current.name)
                 .font(.title2.bold())
             Text(versionLine)
-            if let copyright = info("NSHumanReadableCopyright") {
+            if let copyright = infoPlistValue("NSHumanReadableCopyright") {
                 Text(verbatim: copyright)
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -335,7 +335,8 @@ struct AboutTab: View {
 
     /// The release version, then the build in parentheses.
     private var versionLine: String {
-        guard let version = info("CFBundleShortVersionString"), let build = info("CFBundleVersion") else {
+        guard let version = infoPlistValue("CFBundleShortVersionString"), let build = infoPlistValue("CFBundleVersion")
+        else {
             return String(localized: "Unknown version", comment: "Settings' About tab, when the build doesn't say.")
         }
         return String(
@@ -344,7 +345,7 @@ struct AboutTab: View {
     }
 
     /// The app's Info.plist value for `key`, which the build sets.
-    private func info(_ key: String) -> String? {
+    private func infoPlistValue(_ key: String) -> String? {
         Bundle.main.object(forInfoDictionaryKey: key) as? String
     }
 }
