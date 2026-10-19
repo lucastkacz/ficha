@@ -15,6 +15,17 @@
     "%@ can't open your cards" : {
 
     },
+    "%@ couldn't read these settings, as when they're edited by hand: %@. They're at their defaults, and a capture shortcut is off, until you set them again in Settings." : {
+      "comment" : "An alert at launch. The names are the settings' names in the app's preferences.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ couldn't read these settings, as when they're edited by hand: %2$@. They're at their defaults, and a capture shortcut is off, until you set them again in Settings."
+          }
+        }
+      }
+    },
     "%@ couldn't turn on its capture shortcut" : {
 
     },
@@ -100,6 +111,9 @@
     "A camera" : {
       "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
     },
+    "A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns it off." : {
+
+    },
     "A microphone" : {
       "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
     },
@@ -114,6 +128,9 @@
     },
     "Add Step" : {
 
+    },
+    "After the Mac wakes, wait" : {
+      "comment" : "Settings, under Appearances: how long an appearance waits once the Mac wakes."
     },
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
@@ -280,6 +297,9 @@
     "Hold appearances back during" : {
 
     },
+    "Idle for" : {
+      "comment" : "Settings, under Review panel: how long Lucas must be idle before the panel takes the keyboard, in the \"Once you're idle\" focus mode."
+    },
     "Ignore" : {
       "comment" : "A button that drops a capture that repeats a card or a capture."
     },
@@ -416,6 +436,9 @@
     },
     "Snoozed" : {
       "comment" : "How an appearance closed, in Diagnostics."
+    },
+    "Some settings couldn't be read" : {
+
     },
     "Sort of" : {
 

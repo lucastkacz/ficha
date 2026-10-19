@@ -29,9 +29,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The capture window, from the last time it showed.
     private var captureWindow: CaptureWindow?
     /// The Diagnostics window, from the last time it showed.
-    private var diagnosticsWindow: DiagnosticsWindow?
+    private var diagnosticsWindow: AppWindow?
     /// The Settings window, from the last time it showed.
-    private var settingsWindow: SettingsWindow?
+    private var settingsWindow: AppWindow?
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
@@ -52,28 +52,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureWindow = window
     }
 
-    /// Opens the Diagnostics window, or brings it forward when it's open.
+    /// Opens the Diagnostics window: what each detector sees right now, and
+    /// the latest appearances. When it's open, it comes forward.
     func openDiagnostics() {
-        if let diagnosticsWindow, diagnosticsWindow.isVisible {
-            diagnosticsWindow.bringForward()
-            return
-        }
         guard let model else { return }
-        let window = DiagnosticsWindow(model: model)
-        window.show()
-        diagnosticsWindow = window
+        open(&diagnosticsWindow) {
+            AppWindow(
+                title: String(localized: "Diagnostics", comment: "The Diagnostics window's title."),
+                content: DiagnosticsView(model: model))
+        }
     }
 
-    /// Opens the Settings window, or brings it forward when it's open.
+    /// Opens the Settings window: every default Lucas can change. When it's
+    /// open, it comes forward.
     func openSettings() {
-        if let settingsWindow, settingsWindow.isVisible {
-            settingsWindow.bringForward()
+        guard let model else { return }
+        open(&settingsWindow) {
+            AppWindow(
+                title: String(localized: "Settings", comment: "The Settings window's title."),
+                content: SettingsView(model: model, captureShortcut: captureShortcut))
+        }
+    }
+
+    /// Brings `window` forward when it's open, and otherwise shows the one
+    /// `make` makes, in its place.
+    private func open(_ window: inout AppWindow?, making make: () -> AppWindow) {
+        if let window, window.isVisible {
+            window.bringForward()
             return
         }
-        guard let model else { return }
-        let window = SettingsWindow(model: model, captureShortcut: captureShortcut)
-        window.show()
-        settingsWindow = window
+        let made = make()
+        made.show()
+        window = made
     }
 
     /// Opens the review panel with the cards a review now brings, or brings
@@ -102,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.turnOnAtFirstLaunch()
+            sayIfSettingsAreUnreadable()
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,
@@ -127,6 +138,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 String(localized: "\(AppVariant.current.name) couldn't turn on its capture shortcut"),
                 explaining: error, style: .warning, button: String(localized: "OK"))
         }
+    }
+
+    /// Says which stored settings couldn't be read, as when they were edited
+    /// by hand, if any: they're at their defaults until Lucas sets them
+    /// again, and a capture shortcut is off.
+    private func sayIfSettingsAreUnreadable() {
+        guard !Preferences.unreadable.isEmpty else { return }
+        let names = Preferences.unreadable.sorted().formatted(.list(type: .and))
+        showAlert(
+            String(localized: "Some settings couldn't be read"),
+            details: String(
+                localized: """
+                    \(AppVariant.current.name) couldn't read these settings, as when they're edited by hand: \
+                    \(names). They're at their defaults, and a capture shortcut is off, until you set them again in \
+                    Settings.
+                    """,
+                comment: "An alert at launch. The names are the settings' names in the app's preferences."),
+            style: .warning, button: String(localized: "OK"))
     }
 
     /// An open panel closes as Esc closes it, so it goes into the appearance

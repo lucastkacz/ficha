@@ -16,12 +16,21 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("General") {
+            Section {
                 startAtLoginToggle
                 Toggle("Show how many cards are due in the menu bar", isOn: $model.showsDueCount)
                 LabeledContent("Capture shortcut") {
                     CaptureShortcutRecorder(registration: captureShortcut)
                 }
+            } header: {
+                Text("General")
+            } footer: {
+                Text(
+                    """
+                    A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what \
+                    you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns \
+                    it off.
+                    """)
             }
             Section("Appearances") {
                 Picker(selection: activeHoursStart) {
@@ -59,6 +68,13 @@ struct SettingsView: View {
                         comment:
                             "Settings, under Appearances: the look-ahead, how soon a card due later may come along.")
                 }
+                Picker(selection: $model.settings.waitAfterWaking) {
+                    spans(waitsAfterWaking, including: model.settings.waitAfterWaking)
+                } label: {
+                    Text(
+                        "After the Mac wakes, wait",
+                        comment: "Settings, under Appearances: how long an appearance waits once the Mac wakes.")
+                }
             }
             Section {
                 Picker(selection: $model.settings.focusMode) {
@@ -77,6 +93,17 @@ struct SettingsView: View {
                             "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
                     )
                 }
+                Picker(selection: $model.settings.idleBeforeTakingKeyboard) {
+                    spans(idleTimes, including: model.settings.idleBeforeTakingKeyboard, in: [.seconds])
+                } label: {
+                    Text(
+                        "Idle for",
+                        comment: """
+                            Settings, under Review panel: how long Lucas must be idle before the panel takes the \
+                            keyboard, in the "Once you're idle" focus mode.
+                            """)
+                }
+                .disabled(model.settings.focusMode != .onceIdle)
                 Picker(selection: $model.settings.autoClose) {
                     spans(autoCloses, including: model.settings.autoClose)
                 } label: {
@@ -196,13 +223,17 @@ private struct LadderSection: View {
         Section {
             ForEach(Array(ladder.waits.enumerated()), id: \.offset) { index, wait in
                 HStack {
-                    Picker(selection: step(index)) {
+                    Picker(selection: step(index, waiting: wait)) {
                         spans(ladderSteps.filter { fits($0, at: index) }, including: wait)
                     } label: {
                         Text("Step \(index + 1)", comment: "Settings: a step of the ladder, counted from 1.")
                     }
                     Button {
-                        change { $0.remove(at: index) }
+                        change { waits in
+                            if waits.indices.contains(index) {
+                                waits.remove(at: index)
+                            }
+                        }
                     } label: {
                         Label {
                             Text("Remove Step \(index + 1)", comment: "Settings: removes a step of the ladder.")
@@ -232,9 +263,19 @@ private struct LadderSection: View {
         }
     }
 
-    /// The wait of the step at `index`.
-    private func step(_ index: Int) -> Binding<Duration> {
-        Binding(get: { ladder.waits[index] }, set: { wait in change { $0[index] = wait } })
+    /// The wait of the step at `index`, which waits `wait` as its row shows.
+    /// The row may outlive its step for a moment once Lucas removes it, so
+    /// the step is never read by its index.
+    private func step(_ index: Int, waiting wait: Duration) -> Binding<Duration> {
+        Binding(
+            get: { wait },
+            set: { newWait in
+                change { waits in
+                    if waits.indices.contains(index) {
+                        waits[index] = newWait
+                    }
+                }
+            })
     }
 
     /// Whether `wait` fits the step at `index`: longer than the step before
@@ -277,29 +318,32 @@ private func counts(_ range: ClosedRange<Int>, including current: Int) -> some V
 }
 
 /// The options of a picker of spans of time: `options`, along with `current`,
-/// shortest first, in words, like "20 minutes".
+/// shortest first, in words, like "20 minutes", in `units`.
 @ViewBuilder
-private func spans(_ options: [Duration], including current: Duration) -> some View {
+private func spans(
+    _ options: [Duration],
+    including current: Duration,
+    in units: Set<Duration.UnitsFormatStyle.Unit> = [.days, .hours, .minutes]
+) -> some View {
     ForEach(Set(options).union([current]).sorted(), id: \.self) { span in
-        Text(span.formatted(.units(allowed: [.days, .hours, .minutes], width: .wide))).tag(span)
+        Text(span.formatted(.units(allowed: units, width: .wide))).tag(span)
     }
 }
 
 /// The separations to pick from.
-private let separations: [Duration] = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240].map(minutes)
+private let separations: [Duration] = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240].map(Duration.minutes)
 /// The look-aheads to pick from.
-private let lookAheads: [Duration] = [0, 5, 10, 15, 20, 30, 45, 60].map(minutes)
+private let lookAheads: [Duration] = [0, 5, 10, 15, 20, 30, 45, 60].map(Duration.minutes)
 /// The auto-closes to pick from.
-private let autoCloses: [Duration] = [1, 2, 3, 5, 10, 15, 20, 30, 60].map(minutes)
+private let autoCloses: [Duration] = [1, 2, 3, 5, 10, 15, 20, 30, 60].map(Duration.minutes)
+/// The waits after the Mac wakes to pick from.
+private let waitsAfterWaking: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(Duration.minutes)
+/// The idle times to pick from, before the review panel takes the keyboard.
+private let idleTimes: [Duration] = [1, 2, 3, 5, 10, 15, 30].map { .seconds($0) }
 /// The waits after a suppression to pick from.
-private let waitsAfterSuppression: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(minutes)
+private let waitsAfterSuppression: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(Duration.minutes)
 /// The ladder steps to pick from: from 10 minutes to a year, the standard
 /// ladder's among them.
 private let ladderSteps: [Duration] =
-    [10, 15, 20, 30].map(minutes) + [1, 2, 3, 4, 6, 8, 12].map { minutes($0 * 60) }
-    + [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 21, 30, 45, 60, 75, 90, 120, 180, 365].map { minutes($0 * 24 * 60) }
-
-/// A span of whole minutes.
-private nonisolated func minutes(_ count: Int) -> Duration {
-    .seconds(count * 60)
-}
+    [10, 15, 20, 30].map(Duration.minutes) + [1, 2, 3, 4, 6, 8, 12].map { Duration.minutes($0 * 60) }
+    + [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 21, 30, 45, 60, 75, 90, 120, 180, 365].map { Duration.minutes($0 * 24 * 60) }

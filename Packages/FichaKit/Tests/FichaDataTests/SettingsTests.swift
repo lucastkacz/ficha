@@ -21,22 +21,33 @@ struct SettingsTests {
     // applies to every card at once, without losing its progress.
     @Test("a changed ladder re-times every card from its history")
     func aChangedLadderReTimesTheCards() throws {
+        var settings = ReviewSettings.defaults
+        settings.ladder = try #require(Ladder(waits: [.seconds(minutes(30)), .seconds(hours(3)), .seconds(days(1))]))
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.climb(serendipia, to: 2, movingForward: time)
         let reviewedAt = time.now
-        let ladder = try #require(Ladder(waits: [.seconds(minutes(30)), .seconds(hours(3)), .seconds(days(1))]))
 
-        #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 2, due: reviewedAt + days(1)))
+        time.move(to: reviewedAt + days(1))
+
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 2, due: time.now))
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.review(serendipia)]))
+        #expect(try engine.progress(settings).due == 1)
     }
 
     @Test("after the ladder is shortened, a card beyond its end sits on its last step")
     func aShortenedLadderKeepsTheCardOnItsLastStep() throws {
+        var settings = ReviewSettings.defaults
+        settings.ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1)), .seconds(days(3))]))
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.climb(serendipia, to: 5, movingForward: time)
+        #expect(try engine.progress(.defaults).learned == 1)
         let reviewedAt = time.now
-        let ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1)), .seconds(days(3))]))
 
-        #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 2, due: reviewedAt + days(3)))
+        time.move(to: reviewedAt + days(3))
+
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 2, due: time.now))
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.review(serendipia)]))
+        #expect(try engine.progress(settings).learned == 0)
     }
 
     @Test("a suppression Lucas turned off neither holds appearances back nor makes them wait once it ends")
@@ -111,12 +122,14 @@ struct SettingsTests {
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.firstView(serendipia)]))
     }
 
-    @Test("a held-back appearance comes as long after the suppression ends as the settings say")
-    func theWaitAfterASuppressionComesFromTheSettings() throws {
+    @Test("an appearance waits as long after a suppression ends, or the Mac wakes, as the settings say")
+    func theWaitsAfterASuppressionAndWakingComeFromTheSettings() throws {
         var settings = ReviewSettings.defaults
         settings.waitAfterSuppression = .seconds(minutes(5))
+        settings.waitAfterWaking = .seconds(minutes(10))
         let serendipia = try approveCard("serendipia", in: engine)
         let afterTheMeeting = FakeMac(suppressionEnds: [.meeting: time.now])
+        let afterWaking = FakeMac(lastWake: time.now)
 
         time.advance(by: minutes(5) - 1)
         #expect(
@@ -124,6 +137,9 @@ struct SettingsTests {
                 == .notNow(.tooSoonAfterSuppression(until: try at(9, 5))))
         time.advance(by: 1)
         #expect(try engine.checkAppearance(settings, mac: afterTheMeeting) == .show([.firstView(serendipia)]))
+        #expect(
+            try engine.checkAppearance(settings, mac: afterWaking) == .notNow(.tooSoonAfterWaking(until: try at(9, 10)))
+        )
     }
 
     @Test("an appearance's panel closes on its own, and takes the keyboard, as the settings say")
@@ -140,6 +156,20 @@ struct SettingsTests {
 
         #expect(takesItWhileLucasTypes)
         #expect(panel.outcome == .autoClosed)
+    }
+
+    @Test("in the once-idle focus mode, an appearance's panel takes the keyboard after the settings' idle time")
+    func theIdleTimeComesFromTheSettings() throws {
+        var settings = ReviewSettings.defaults
+        settings.idleBeforeTakingKeyboard = .seconds(2)
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+
+        let takesItAfterASecond = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(1)))
+        let takesItAfterTwoSeconds = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(2)))
+
+        #expect(!takesItAfterASecond)
+        #expect(takesItAfterTwoSeconds)
     }
 
     /// Approves a card with this front and meets it, an hour before `due`, so

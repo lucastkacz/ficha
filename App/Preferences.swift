@@ -9,25 +9,33 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "settin
 /// are its own for each app (`AppVariant`), so Ficha Dev's never touch the
 /// real Ficha's. Only what differs from a default is stored, so a setting
 /// Lucas never changed follows its default. A stored value the app can't
-/// read, as when it was edited by hand, reads as its default, and the log
-/// says why.
+/// read, as when it was edited by hand, goes into `unreadable`, for the app
+/// to say so: a setting reads as its default meanwhile, and a capture
+/// shortcut as off.
 enum Preferences {
+    /// The names of the stored settings that couldn't be read so far.
+    private(set) static var unreadable: Set<String> = []
+
     /// The settings the engine decides with, as Lucas left them.
     static func reviewSettings() -> ReviewSettings {
         var settings = ReviewSettings.defaults
-        settings.ladder = read(.ladder, as: [Int].self) { Ladder(waits: $0.map(minutes)) } ?? settings.ladder
+        settings.ladder = read(.ladder, as: [Int].self, ladder) ?? settings.ladder
         settings.cardsPerAppearance =
             read(.cardsPerAppearance, as: Int.self) { $0 >= 1 ? $0 : nil } ?? settings.cardsPerAppearance
         settings.newCardsPerDay = read(.newCardsPerDay, as: Int.self) { $0 >= 0 ? $0 : nil } ?? settings.newCardsPerDay
         settings.lookAhead = read(.lookAhead, as: Int.self, minutesFrom: 0) ?? settings.lookAhead
         settings.activeHours = read(.activeHours, as: [Int].self, activeHours) ?? settings.activeHours
         settings.separation = read(.separation, as: Int.self, minutesFrom: 0) ?? settings.separation
+        settings.waitAfterWaking = read(.waitAfterWaking, as: Int.self, minutesFrom: 0) ?? settings.waitAfterWaking
         settings.waitAfterSuppression =
             read(.waitAfterSuppression, as: Int.self, minutesFrom: 0) ?? settings.waitAfterSuppression
         settings.suppressionsThatApply =
             read(.suppressionsThatApply, as: [String].self, suppressions) ?? settings.suppressionsThatApply
         settings.autoClose = read(.autoClose, as: Int.self, minutesFrom: 1) ?? settings.autoClose
         settings.focusMode = read(.focusMode, as: String.self, FocusMode.init(rawValue:)) ?? settings.focusMode
+        settings.idleBeforeTakingKeyboard =
+            read(.idleBeforeTakingKeyboard, as: Int.self) { (0...longest).contains($0) ? .seconds($0) : nil }
+            ?? settings.idleBeforeTakingKeyboard
         return settings
     }
 
@@ -43,6 +51,9 @@ enum Preferences {
             unless: [defaults.activeHours.lowerBound, defaults.activeHours.upperBound])
         write(wholeMinutes(settings.separation), for: .separation, unless: wholeMinutes(defaults.separation))
         write(
+            wholeMinutes(settings.waitAfterWaking), for: .waitAfterWaking,
+            unless: wholeMinutes(defaults.waitAfterWaking))
+        write(
             wholeMinutes(settings.waitAfterSuppression), for: .waitAfterSuppression,
             unless: wholeMinutes(defaults.waitAfterSuppression))
         write(
@@ -50,6 +61,9 @@ enum Preferences {
             for: .suppressionsThatApply, unless: Suppression.allCases.map(\.rawValue))
         write(wholeMinutes(settings.autoClose), for: .autoClose, unless: wholeMinutes(defaults.autoClose))
         write(settings.focusMode.rawValue, for: .focusMode, unless: defaults.focusMode.rawValue)
+        write(
+            settings.idleBeforeTakingKeyboard.components.seconds, for: .idleBeforeTakingKeyboard,
+            unless: defaults.idleBeforeTakingKeyboard.components.seconds)
     }
 
     /// Whether the menu-bar icon shows how many cards are due: off by
@@ -59,18 +73,21 @@ enum Preferences {
         set { write(newValue, for: .showsDueCount, unless: false) }
     }
 
-    /// The shortcut that opens "Capture…" from any app, or nil when Lucas
-    /// turned it off: the app's own (`AppVariant.captureShortcut`) until he
-    /// picks another. An empty one stored says he turned it off.
+    /// The shortcut that opens "Capture…" from any app, or nil when it's off:
+    /// the app's own (`AppVariant.captureShortcut`) until Lucas picks another
+    /// or turns it off, which an empty one stored says. One that can't be
+    /// read is off, since it isn't known which one he wanted.
     static var captureShortcut: CaptureShortcut? {
         get {
+            guard UserDefaults.standard.object(forKey: Key.captureShortcut.rawValue) != nil else {
+                return AppVariant.current.captureShortcut
+            }
             let stored = read(.captureShortcut, as: [String: Any].self) { stored -> StoredShortcut? in
                 stored.isEmpty ? .off : CaptureShortcut(stored: stored).map(StoredShortcut.on)
             }
             return switch stored {
             case .on(let shortcut): shortcut
-            case .off: nil
-            case nil: AppVariant.current.captureShortcut
+            case .off, nil: nil
             }
         }
         set {
@@ -91,7 +108,7 @@ enum Preferences {
     }
 
     /// Each setting's name in the preferences. Spans of time are stored in
-    /// whole minutes.
+    /// whole minutes, but the idle time, in whole seconds.
     private enum Key: String {
         case ladder = "LadderMinutes"
         case cardsPerAppearance = "CardsPerAppearance"
@@ -100,35 +117,39 @@ enum Preferences {
         /// The first hour and the hour after the last one, as two numbers.
         case activeHours = "ActiveHours"
         case separation = "SeparationMinutes"
+        case waitAfterWaking = "WaitAfterWakingMinutes"
         case waitAfterSuppression = "WaitAfterSuppressionMinutes"
         /// The raw values of the suppressions that apply.
         case suppressionsThatApply = "SuppressionsThatApply"
         case autoClose = "AutoCloseMinutes"
         case focusMode = "FocusMode"
+        case idleBeforeTakingKeyboard = "IdleBeforeTakingKeyboardSeconds"
         case showsDueCount = "ShowsDueCount"
         case captureShortcut = "CaptureShortcut"
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
     }
 
-    /// The setting stored for `key`, as `read` makes it out of the stored
+    /// The setting stored for `key`, as `make` makes it out of the stored
     /// value, or nil when none is stored, or when the stored value can't be
-    /// made into one: then the log says so.
+    /// made into one: then it goes into `unreadable`, and the log says so.
     private static func read<Stored, Value>(_ key: Key, as stored: Stored.Type, _ make: (Stored) -> Value?) -> Value? {
         guard let object = UserDefaults.standard.object(forKey: key.rawValue) else {
             return nil
         }
         guard let stored = object as? Stored, let value = make(stored) else {
             logger.error(
-                "Couldn't read the setting \(key.rawValue, privacy: .public), so it's at its default: \(String(describing: object), privacy: .public)"
+                "Couldn't read the setting \(key.rawValue, privacy: .public): \(String(describing: object), privacy: .public)"
             )
+            unreadable.insert(key.rawValue)
             return nil
         }
         return value
     }
 
-    /// The span of time stored for `key` in whole minutes, `least` at least.
+    /// The span of time stored for `key` in whole minutes, from `least` up
+    /// to a year.
     private static func read(_ key: Key, as stored: Int.Type, minutesFrom least: Int) -> Duration? {
-        read(key, as: stored) { $0 >= least ? minutes($0) : nil }
+        read(key, as: stored) { (least...longest).contains($0) ? .minutes($0) : nil }
     }
 
     /// Stores `value` for `key`, unless it's the default, `defaultValue`:
@@ -142,14 +163,29 @@ enum Preferences {
     }
 }
 
-/// A span of whole minutes.
-private func minutes(_ count: Int) -> Duration {
-    .seconds(count * 60)
+extension Duration {
+    /// A span of whole minutes.
+    nonisolated static func minutes(_ count: Int) -> Duration {
+        .seconds(count * 60)
+    }
 }
 
+/// The most minutes or seconds a stored span of time may hold: a year's
+/// minutes, far beyond any setting's, and too few for the span to overflow.
+private let longest = 366 * 24 * 60
+
 /// A span of time in whole minutes, leaving out any seconds.
-private func wholeMinutes(_ duration: Duration) -> Int {
-    Int(duration.components.seconds / 60)
+private func wholeMinutes(_ duration: Duration) -> Int64 {
+    duration.components.seconds / 60
+}
+
+/// The ladder stored as each step's wait in whole minutes, or nil unless they
+/// make one, each step up to a year.
+private func ladder(_ stored: [Int]) -> Ladder? {
+    guard stored.allSatisfy((1...longest).contains) else {
+        return nil
+    }
+    return Ladder(waits: stored.map(Duration.minutes))
 }
 
 /// The active hours stored as two numbers, the first hour and the hour after

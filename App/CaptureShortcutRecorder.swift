@@ -5,8 +5,8 @@ import SwiftUI
 
 /// Where Lucas picks, in Settings, the shortcut that opens "Capture…" from
 /// any app: he clicks it and types the shortcut, which turns on at once. Esc
-/// leaves the one that was on, Delete turns it off, and a key without
-/// Command, Control or Option is refused with a beep.
+/// leaves the one that was on, Delete turns it off, and a key without two of
+/// Control, Option and Command is refused with a beep.
 struct CaptureShortcutRecorder: View {
     let registration: CaptureShortcutRegistration
     @State private var recording = Recording()
@@ -88,17 +88,25 @@ private final class Recording {
     }
 
     /// Stops hearing Lucas's keys and turns on again the shortcut that was
-    /// on, if he was typing one.
+    /// on, if he was typing one, leaving the preferences as they were. When
+    /// macOS refuses it, an alert says why.
     func cancel() {
         guard isOn, let registration else { return }
         stop()
-        change(registration, to: previous, fallback: nil)
+        guard let previous else { return }
+        do {
+            try registration.turnOn(previous)
+        } catch {
+            showAlert(
+                String(localized: "Couldn't turn on the capture shortcut"), explaining: error, style: .warning,
+                button: String(localized: "OK"))
+        }
     }
 
     /// What a key Lucas typed does while he types a new shortcut.
     private func typed(_ event: NSEvent) {
         guard let registration else { return }
-        let modifiers = eventModifiers(event.modifierFlags)
+        let modifiers = eventModifiers(of: event)
         switch Int(event.keyCode) {
         case kVK_Escape where modifiers.isEmpty:
             cancel()
@@ -106,10 +114,7 @@ private final class Recording {
             stop()
             change(registration, to: nil, fallback: nil)
         default:
-            guard
-                let key = event.characters(byApplyingModifiers: [])?.first,
-                let shortcut = CaptureShortcut(key: key, keyCode: Int(event.keyCode), modifiers: modifiers)
-            else {
+            guard let shortcut = CaptureShortcut(typed: event) else {
                 NSSound.beep()
                 return
             }
@@ -130,15 +135,6 @@ private final class Recording {
         observers = []
         isOn = false
     }
-}
-
-/// The modifier keys of a key Lucas typed, as SwiftUI names them: Control,
-/// Option, Shift and Command, and no others.
-private func eventModifiers(_ flags: NSEvent.ModifierFlags) -> SwiftUI.EventModifiers {
-    let names: [(flag: NSEvent.ModifierFlags, modifier: SwiftUI.EventModifiers)] = [
-        (.control, .control), (.option, .option), (.shift, .shift), (.command, .command),
-    ]
-    return SwiftUI.EventModifiers(names.filter { flags.contains($0.flag) }.map(\.modifier))
 }
 
 /// Turns `shortcut` on in `registration`, or turns it off when it's nil,

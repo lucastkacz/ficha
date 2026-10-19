@@ -1,3 +1,4 @@
+import AppKit
 import Carbon.HIToolbox
 import Observation
 import SwiftUI
@@ -5,9 +6,9 @@ import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "capture shortcut")
 
-/// A keyboard shortcut that opens "Capture…" from any app: a key with
-/// modifiers, Command, Control or Option among them, so it never takes a key
-/// Lucas types.
+/// A keyboard shortcut that opens "Capture…" from any app: a key with two of
+/// Control, Option and Command at least, so it never takes a key Lucas types,
+/// like Option-N for the ñ, or a common app's shortcut, like Command-C.
 struct CaptureShortcut: Equatable {
     /// The key, as the system's hot keys name it: a virtual key code.
     let keyCode: UInt32
@@ -27,14 +28,14 @@ struct CaptureShortcut: Equatable {
     /// The shortcut of the key that types `key` without modifiers, whose
     /// virtual key code is `keyCode`, with `modifiers`, or nil unless `key` is
     /// a letter, a digit, a punctuation mark or a symbol and `modifiers` holds
-    /// Command, Control or Option. Modifiers other than those and Shift are
-    /// left out.
+    /// two of Control, Option and Command at least. Modifiers other than
+    /// those and Shift are left out.
     init?(key: Character, keyCode: Int, modifiers: SwiftUI.EventModifiers) {
         let key = Character(key.lowercased())
         let modifiers = modifiers.intersection([.control, .option, .shift, .command])
+        let held = [SwiftUI.EventModifiers.control, .option, .command].count(where: modifiers.contains)
         guard
-            key.isLetter || key.isNumber || key.isPunctuation || key.isSymbol,
-            !modifiers.isDisjoint(with: [.control, .option, .command]),
+            key.isLetter || key.isNumber || key.isPunctuation || key.isSymbol, held >= 2,
             let keyCode = UInt32(exactly: keyCode)
         else {
             return nil
@@ -51,9 +52,18 @@ struct CaptureShortcut: Equatable {
         self.modifiers = modifiers
     }
 
+    /// The shortcut Lucas typed with `event`, a key press, or nil when it
+    /// doesn't make one.
+    init?(typed event: NSEvent) {
+        guard let key = event.characters(byApplyingModifiers: [])?.first else {
+            return nil
+        }
+        self.init(key: key, keyCode: Int(event.keyCode), modifiers: eventModifiers(of: event))
+    }
+
     /// The modifier keys, as the system's hot keys name them.
     var carbonModifiers: UInt32 {
-        modifierNames.filter { modifiers.contains($0.modifier) }.reduce(0) { $0 | UInt32($1.carbon) }
+        heldModifiers.reduce(0) { $0 | UInt32($1.carbon) }
     }
 
     /// The same shortcut, as a menu shows it next to "Capture…".
@@ -64,7 +74,13 @@ struct CaptureShortcut: Equatable {
     /// The shortcut in symbols, like "⌃⌥⌘C", for Settings, the debug menu and
     /// the log.
     var symbols: String {
-        modifierNames.filter { modifiers.contains($0.modifier) }.map(\.symbol).joined() + key.uppercased()
+        heldModifiers.map(\.symbol).joined() + key.uppercased()
+    }
+
+    /// How each of the shortcut's modifier keys is named, in the order macOS
+    /// writes them.
+    private var heldModifiers: [ModifierNames] {
+        modifierNames.filter { modifiers.contains($0.modifier) }
     }
 }
 
@@ -74,7 +90,7 @@ extension CaptureShortcut {
     var stored: [String: Any] {
         [
             "key": String(key), "keyCode": Int(keyCode),
-            "modifiers": modifierNames.filter { modifiers.contains($0.modifier) }.map(\.name),
+            "modifiers": heldModifiers.map(\.name),
         ]
     }
 
@@ -96,11 +112,23 @@ extension CaptureShortcut {
     }
 }
 
-/// Each modifier key, in the order macOS writes them, as SwiftUI, the
-/// system's hot keys, its symbol and the app's preferences name it.
-private let modifierNames: [(modifier: SwiftUI.EventModifiers, carbon: Int, symbol: String, name: String)] = [
-    (.control, controlKey, "⌃", "control"), (.option, optionKey, "⌥", "option"), (.shift, shiftKey, "⇧", "shift"),
-    (.command, cmdKey, "⌘", "command"),
+/// The modifier keys held for `event`, a key press, as SwiftUI names them:
+/// Control, Option, Shift and Command, and no others.
+func eventModifiers(of event: NSEvent) -> SwiftUI.EventModifiers {
+    SwiftUI.EventModifiers(modifierNames.filter { event.modifierFlags.contains($0.flag) }.map(\.modifier))
+}
+
+/// How SwiftUI, AppKit, the system's hot keys, its symbol and the app's
+/// preferences name a modifier key.
+private typealias ModifierNames = (
+    modifier: SwiftUI.EventModifiers, flag: NSEvent.ModifierFlags, carbon: Int, symbol: String, name: String
+)
+
+/// Each modifier key a capture shortcut may hold, in the order macOS writes
+/// them, with its names.
+private let modifierNames: [ModifierNames] = [
+    (.control, .control, controlKey, "⌃", "control"), (.option, .option, optionKey, "⌥", "option"),
+    (.shift, .shift, shiftKey, "⇧", "shift"), (.command, .command, cmdKey, "⌘", "command"),
 ]
 
 extension AppVariant {
