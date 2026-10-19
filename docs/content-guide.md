@@ -2,6 +2,8 @@
 
 How Claude drafts Lucas's cards in a refine session: what each card holds, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
 
+Everything Claude drafts is a proposal: a card, a fix, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
+
 ## The four rules
 
 1. **Rioplatense Spanish, with "vos"**: "sabés", "mirá", "tenés".
@@ -15,9 +17,9 @@ A capture becomes one card, several or none. Several when it holds more than one
 
 ## Each type
 
-- **Word** (`word`): the front is the word alone, in lowercase unless its language capitalizes it ("Schadenfreude"). The back is its meaning in plain words, and its etymology only when that helps remember it.
+- **Word** (`word`): the front is the word alone, in lowercase unless its language capitalizes it ("Schadenfreude"). The back is its meaning in plain words, and its etymology only when that helps remember it. A short etymology goes on the back ("Schadenfreude"); one that's a story of its own becomes a question card of its own ("¿De dónde viene la palabra «serendipia»?").
 - **Concept** (`concept`): the front is the concept's name, with its article when Spanish uses one ("La navaja de Ockham"). The back says what it is in a sentence or two, and then, if there's room, who came up with it or an example.
-- **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
+- **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. A quote too long for one line is cut to its most memorable part, still word for word, with "…" where it's cut. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
 - **Question** (`question`): the front is a question with one answer. The back gives that answer first, and then why or how, in a sentence.
 
 ## Tags
@@ -30,12 +32,12 @@ A card takes its capture's source as Lucas wrote it, and the review panel shows 
 
 ## Flagged cards and expansions
 
-- **A flagged card**: Claude changes what Lucas's note asks for and keeps the rest as it was, so he recognizes the card. When the note says the card is no longer worth it, Claude proposes burying it.
+- **A flagged card**: Claude changes what Lucas's note asks for and keeps the rest as it was, so he recognizes the card. When the note says the card is no longer worth it, Claude proposes burying it. When the card holds two ideas, Claude fixes it to one, and captures the other to propose it as a new card in the same session.
 - **An expansion**: when what it adds fits on its card, within the 40 words, Claude proposes the card's new content. When it's another idea, like a second meaning, it becomes a card of its own.
 
 ## Examples
 
-Each example is a card: its front in bold, then its back, then its tags in italics and its source, if it has one, after a dot.
+Each example is a card: its front in bold, then its back, then its tags in italics and its source, if it has one, after a dot. They come from Ficha Dev's sample cards, some trimmed. After Lucas's first refine session, cards of his own replace them.
 
 ### Word
 
