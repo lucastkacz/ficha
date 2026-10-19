@@ -105,7 +105,7 @@ struct LadderTests {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let petricor = try approveCard("petricor", in: engine)
         try approveCard("Schadenfreude", in: engine)
-        try engine.capture(text: "algo para refinar", note: nil, source: nil)
+        try engine.newCapture("algo para refinar")
         // serendipia gets to the 30-day step, from which a card is learned,
         // and ubuntu to the step below it, 12 days.
         try engine.climb(serendipia, to: 5, movingForward: time)

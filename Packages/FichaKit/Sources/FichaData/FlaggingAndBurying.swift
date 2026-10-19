@@ -29,12 +29,8 @@ extension Engine {
             guard card.flag != nil else {
                 throw EngineError.cardNotFlagged(cardID)
             }
-            return try updateCard(
-                cardID,
-                setting: "type = ?, front = ?, back = ?, tags = ?, source = ?, flagNote = NULL, flaggedAt = NULL",
-                to: [content.type.rawValue, content.front, content.back, try tagsJSON(content.tags), content.source],
-                in: db
-            )
+            return try replaceContent(
+                of: cardID, with: content, alsoSetting: "flagNote = NULL, flaggedAt = NULL", in: db)
         }
     }
 

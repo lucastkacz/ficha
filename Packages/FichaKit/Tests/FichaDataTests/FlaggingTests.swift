@@ -53,7 +53,7 @@ struct FlaggingTests {
         // serendipia gets to the 30-day step, from which a card is learned.
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.climb(serendipia, to: 5, movingForward: time)
-        try engine.capture(text: "algo para refinar", note: nil, source: nil)
+        try engine.newCapture("algo para refinar")
         try engine.flag(serendipia.id, note: note("La definición está incompleta"))
         time.advance(by: days(30))
 

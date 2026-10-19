@@ -37,7 +37,7 @@ final class DebugTimeTests {
 
         let cliTime = try DebugTimeSource(savedIn: folder, base: base)
         let cli = try Engine(location: .folder(folder), time: cliTime)
-        let capture = try cli.capture(text: "serendipia", note: nil, source: nil)
+        let capture = try cli.newCapture("serendipia")
 
         #expect(cliTime.shift == .seconds(86_400))
         #expect(capture.createdAt == Date(timeIntervalSince1970: 1_760_000_000 + 86_400))

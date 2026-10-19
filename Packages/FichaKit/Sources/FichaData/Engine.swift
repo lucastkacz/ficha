@@ -76,34 +76,32 @@ public struct Engine: Sendable {
     }
 
     /// Saves a capture in the inbox, cleaned up as `CaptureContent` says, and
-    /// returns it. A capture without text isn't saved.
-    @discardableResult
-    public func capture(text: String, note: String?, source: String?) throws(EngineError) -> Capture {
+    /// returns it, unless it's a duplicate of a card or a capture in the inbox:
+    /// then it isn't saved, and the result says what it repeats, for Lucas to
+    /// expand or ignore it. A capture without text isn't saved.
+    public func capture(text: String, note: String?, source: String?) throws(EngineError) -> CaptureResult {
         guard let content = CaptureContent(text: text, note: note, source: source) else {
             throw .emptyCapture
         }
         let createdAt = time.now
         return try write { db in
-            try db.execute(
-                sql: "INSERT INTO capture (text, note, source, createdAt) VALUES (?, ?, ?, ?)",
-                arguments: [content.text, content.note, content.source, createdAt]
-            )
-            return Capture(
-                id: db.lastInsertedRowID,
-                text: content.text,
-                note: content.note,
-                source: content.source,
-                createdAt: createdAt
-            )
+            if let repeated = try repeated(by: content.text, in: db) {
+                return .duplicate(of: repeated)
+            }
+            return .saved(try save(content, expanding: nil, at: createdAt, in: db))
         }
     }
 
-    /// What waits in the inbox: the captures, oldest first, and the flagged
-    /// cards, the first flagged first.
+    /// What waits in the inbox: the captures and the expansions, oldest first,
+    /// and the flagged cards, the first flagged first.
     public func inbox() throws(EngineError) -> Inbox {
         try read { db in
-            Inbox(
-                captures: try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:)),
+            let captures = try capturesWaiting(in: db)
+            return Inbox(
+                captures: captures.filter { $0.expandsCardID == nil },
+                expansions: try captures.compactMap { capture in
+                    try capture.expandsCardID.map { Expansion(capture: capture, card: try existingCard($0, in: db)) }
+                },
                 flaggedCards: try flaggedCardsInInbox.order(Column("flaggedAt"), Column("id")).fetchAll(db)
                     .map(Card.init(row:))
             )
@@ -236,7 +234,7 @@ var capturesInInbox: QueryInterfaceRequest<Row> {
 /// Takes a capture out of the inbox, as refined at `time`, and returns it, or
 /// throws when it isn't in the inbox.
 @discardableResult
-private func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) throws -> Capture {
+func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) throws -> Capture {
     guard let row = try capturesInInbox.filter(Column("id") == captureID).fetchOne(db) else {
         throw EngineError.captureNotInInbox(captureID)
     }
