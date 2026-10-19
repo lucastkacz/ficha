@@ -68,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func openSettings() {
         guard let model else { return }
         open(&settingsWindow) {
-            AppWindow(tabs: SettingsTabs(model: model, captureShortcut: captureShortcut))
+            AppWindow(tabs: SettingsTabViewController(model: model, captureShortcut: captureShortcut))
         }
     }
 

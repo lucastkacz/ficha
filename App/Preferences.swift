@@ -100,7 +100,8 @@ enum Preferences {
     }
 
     /// The tab Settings opens on: the one Lucas left it on last, and at
-    /// first General.
+    /// first General. One that can't be read is only logged, with no alert:
+    /// Settings opens on General, and the next tab Lucas picks replaces it.
     static var settingsTab: SettingsTab {
         get { read(.settingsTab, as: String.self, SettingsTab.init(rawValue:)) ?? .general }
         set { write(newValue.rawValue, for: .settingsTab, unless: SettingsTab.general.rawValue) }

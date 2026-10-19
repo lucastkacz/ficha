@@ -2,12 +2,18 @@ import AppKit
 import SwiftUI
 
 /// A tab of the Settings window. Its raw value is how the preferences store
-/// it, so it never changes.
+/// it, and its tab's identifier, so it never changes.
 enum SettingsTab: String {
     case general
     case appearances
     case reviewPanel
     case ladder
+
+    /// The tab `item` shows, if it's one of these.
+    init?(of item: NSTabViewItem?) {
+        guard let identifier = item?.identifier as? String else { return nil }
+        self.init(rawValue: identifier)
+    }
 
     /// The tab's name, under its icon and in the window's title.
     var name: String {
@@ -34,7 +40,7 @@ enum SettingsTab: String {
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
 /// window as tall as the selected tab. It opens on the tab Lucas left it on
 /// last.
-final class SettingsTabs: NSTabViewController {
+final class SettingsTabViewController: NSTabViewController {
     /// The tabs of every default Lucas can change in `model`, and of the
     /// capture shortcut, `captureShortcut`.
     convenience init(model: AppModel, captureShortcut: CaptureShortcutRegistration) {
@@ -45,17 +51,18 @@ final class SettingsTabs: NSTabViewController {
         add(.general, GeneralSettings(model: model, captureShortcut: captureShortcut))
         add(.appearances, AppearancesSettings(model: model))
         add(.reviewPanel, ReviewPanelSettings(model: model))
-        add(.ladder, LadderSettings(model: model))
-        if let index = tabViewItems.firstIndex(where: { $0.identifier as? String == lastTab.rawValue }) {
+        add(.ladder, LadderSettings(ladder: Bindable(model).settings.ladder))
+        if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == lastTab }) {
             selectedTabViewItemIndex = index
         }
     }
 
-    /// Adds `tab`, which shows `settings` as a grouped form. The tab follows
+    /// Adds `tab`, which shows `settings` in a grouped form. The tab follows
     /// the form's height as it changes, as when Lucas adds a step to the
     /// ladder.
     private func add(_ tab: SettingsTab, _ settings: some View) {
-        let controller = NSHostingController(rootView: settings.formStyle(.grouped).frame(width: 500))
+        let form = Form { settings }.formStyle(.grouped).frame(width: 500)
+        let controller = NSHostingController(rootView: form)
         controller.sizingOptions = .preferredContentSize
         controller.title = tab.name
         let item = NSTabViewItem(viewController: controller)
@@ -68,7 +75,7 @@ final class SettingsTabs: NSTabViewController {
     /// Keeps the tab Lucas picks, for the next time Settings opens.
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         super.tabView(tabView, didSelect: tabViewItem)
-        if let identifier = tabViewItem?.identifier as? String, let tab = SettingsTab(rawValue: identifier) {
+        if let tab = SettingsTab(of: tabViewItem) {
             Preferences.settingsTab = tab
         }
     }

@@ -12,23 +12,23 @@ struct GeneralSettings: View {
     @State private var startAtLogin = StartAtLogin.status
 
     var body: some View {
-        Form {
-            Section {
-                startAtLoginToggle
-                Toggle("Show how many cards are due in the menu bar", isOn: $model.showsDueCount)
-                LabeledContent("Capture shortcut") {
-                    CaptureShortcutRecorder(registration: captureShortcut)
-                }
-            } footer: {
-                Text(
-                    """
-                    A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what \
-                    you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns \
-                    it off.
-                    """)
+        Section {
+            startAtLoginToggle
+            Toggle("Show how many cards are due in the menu bar", isOn: $model.showsDueCount)
+            LabeledContent("Capture shortcut") {
+                CaptureShortcutRecorder(registration: captureShortcut)
             }
+        } footer: {
+            Text(
+                """
+                A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what \
+                you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns \
+                it off.
+                """)
         }
-        // Lucas may change it in System Settings meanwhile.
+        // Lucas may change it in System Settings meanwhile, even before he
+        // first picks this tab.
+        .onAppear { startAtLogin = StartAtLogin.status }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             startAtLogin = StartAtLogin.status
         }
@@ -77,70 +77,68 @@ struct AppearancesSettings: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                Picker(selection: activeHoursStart) {
-                    ForEach(0..<model.settings.activeHours.upperBound, id: \.self) { hour in
-                        Text(hourOfDay(hour)).tag(hour)
-                    }
-                } label: {
-                    Text("Start at", comment: "Settings, under Appearances: the hour active hours start at.")
+        Section {
+            Picker(selection: activeHoursStart) {
+                ForEach(0..<model.settings.activeHours.upperBound, id: \.self) { hour in
+                    Text(hourOfDay(hour)).tag(hour)
                 }
-                Picker(selection: activeHoursEnd) {
-                    ForEach((model.settings.activeHours.lowerBound + 1)...24, id: \.self) { hour in
-                        Text(hourOfDay(hour)).tag(hour)
-                    }
-                } label: {
-                    Text("End at", comment: "Settings, under Appearances: the hour active hours end at.")
-                }
-                Picker(selection: $model.settings.separation) {
-                    spans(separations, including: model.settings.separation)
-                } label: {
-                    Text(
-                        "At least this long apart",
-                        comment: "Settings, under Appearances: the least time between two appearances.")
-                }
-                Picker("Cards per appearance", selection: $model.settings.cardsPerAppearance) {
-                    counts(1...10, including: model.settings.cardsPerAppearance)
-                }
-                Picker("New cards per day", selection: $model.settings.newCardsPerDay) {
-                    counts(0...20, including: model.settings.newCardsPerDay)
-                }
-                Picker(selection: $model.settings.lookAhead) {
-                    spans(lookAheads, including: model.settings.lookAhead)
-                } label: {
-                    Text(
-                        "Bring along cards due within",
-                        comment:
-                            "Settings, under Appearances: the look-ahead, how soon a card due later may come along.")
-                }
-                Picker(selection: $model.settings.waitAfterWaking) {
-                    spans(waitsAfterWaking, including: model.settings.waitAfterWaking)
-                } label: {
-                    Text(
-                        "After the Mac wakes, wait",
-                        comment: "Settings, under Appearances: how long an appearance waits once the Mac wakes.")
-                }
+            } label: {
+                Text("Start at", comment: "Settings, under Appearances: the hour active hours start at.")
             }
-            Section("Hold appearances back during") {
-                Toggle(isOn: applies(.meeting)) {
-                    Text("Meetings")
-                    Text("The camera or the microphone in use")
+            Picker(selection: activeHoursEnd) {
+                ForEach((model.settings.activeHours.lowerBound + 1)...24, id: \.self) { hour in
+                    Text(hourOfDay(hour)).tag(hour)
                 }
-                Toggle(isOn: applies(.video)) {
-                    Text("Videos")
-                    Text("An app keeping the display awake")
-                }
-                Toggle("Full-screen apps", isOn: applies(.fullScreen))
-                Picker(selection: $model.settings.waitAfterSuppression) {
-                    spans(waitsAfterSuppression, including: model.settings.waitAfterSuppression)
-                } label: {
-                    Text(
-                        "Then wait",
-                        comment:
-                            "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
-                    )
-                }
+            } label: {
+                Text("End at", comment: "Settings, under Appearances: the hour active hours end at.")
+            }
+            Picker(selection: $model.settings.separation) {
+                spans(separations, including: model.settings.separation)
+            } label: {
+                Text(
+                    "At least this long apart",
+                    comment: "Settings, under Appearances: the least time between two appearances.")
+            }
+            Picker("Cards per appearance", selection: $model.settings.cardsPerAppearance) {
+                counts(1...10, including: model.settings.cardsPerAppearance)
+            }
+            Picker("New cards per day", selection: $model.settings.newCardsPerDay) {
+                counts(0...20, including: model.settings.newCardsPerDay)
+            }
+            Picker(selection: $model.settings.lookAhead) {
+                spans(lookAheads, including: model.settings.lookAhead)
+            } label: {
+                Text(
+                    "Bring along cards due within",
+                    comment:
+                        "Settings, under Appearances: the look-ahead, how soon a card due later may come along.")
+            }
+            Picker(selection: $model.settings.waitAfterWaking) {
+                spans(waitsAfterWaking, including: model.settings.waitAfterWaking)
+            } label: {
+                Text(
+                    "After the Mac wakes, wait",
+                    comment: "Settings, under Appearances: how long an appearance waits once the Mac wakes.")
+            }
+        }
+        Section("Hold appearances back during") {
+            Toggle(isOn: applies(.meeting)) {
+                Text("Meetings")
+                Text("The camera or the microphone in use")
+            }
+            Toggle(isOn: applies(.video)) {
+                Text("Videos")
+                Text("An app keeping the display awake")
+            }
+            Toggle("Full-screen apps", isOn: applies(.fullScreen))
+            Picker(selection: $model.settings.waitAfterSuppression) {
+                spans(waitsAfterSuppression, including: model.settings.waitAfterSuppression)
+            } label: {
+                Text(
+                    "Then wait",
+                    comment:
+                        "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
+                )
             }
         }
     }
@@ -179,67 +177,54 @@ struct ReviewPanelSettings: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                Picker(selection: $model.settings.focusMode) {
-                    Text("Never", comment: "Settings: the review panel never takes the keyboard on its own.")
-                        .tag(FocusMode.never)
-                    Text(
-                        "Once you're idle", comment: "Settings: the review panel takes the keyboard once Lucas is idle."
-                    )
-                    .tag(FocusMode.onceIdle)
-                    Text("Always", comment: "Settings: the review panel takes the keyboard as it shows up.")
-                        .tag(FocusMode.always)
-                } label: {
-                    Text(
-                        "Take the keyboard",
-                        comment:
-                            "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
-                    )
-                }
-                Picker(selection: $model.settings.idleBeforeTakingKeyboard) {
-                    spans(idleTimes, including: model.settings.idleBeforeTakingKeyboard, in: [.seconds])
-                } label: {
-                    Text(
-                        "Idle for",
-                        comment: """
-                            Settings, under Review panel: how long Lucas must be idle before the panel takes the \
-                            keyboard, in the "Once you're idle" focus mode.
-                            """)
-                }
-                .disabled(model.settings.focusMode != .onceIdle)
-                Picker(selection: $model.settings.autoClose) {
-                    spans(autoCloses, including: model.settings.autoClose)
-                } label: {
-                    Text(
-                        "Close it when untouched for",
-                        comment:
-                            "Settings, under Review panel: how long it stays open untouched before it closes on its own."
-                    )
-                }
-            } footer: {
-                Text("When it shows up on its own. Opened with Review now, it takes the keyboard at once.")
+        Section {
+            Picker(selection: $model.settings.focusMode) {
+                Text("Never", comment: "Settings: the review panel never takes the keyboard on its own.")
+                    .tag(FocusMode.never)
+                Text(
+                    "Once you're idle", comment: "Settings: the review panel takes the keyboard once Lucas is idle."
+                )
+                .tag(FocusMode.onceIdle)
+                Text("Always", comment: "Settings: the review panel takes the keyboard as it shows up.")
+                    .tag(FocusMode.always)
+            } label: {
+                Text(
+                    "Take the keyboard",
+                    comment:
+                        "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
+                )
             }
+            Picker(selection: $model.settings.idleBeforeTakingKeyboard) {
+                spans(idleTimes, including: model.settings.idleBeforeTakingKeyboard, in: [.seconds])
+            } label: {
+                Text(
+                    "Idle for",
+                    comment: """
+                        Settings, under Review panel: how long Lucas must be idle before the panel takes the \
+                        keyboard, in the "Once you're idle" focus mode.
+                        """)
+            }
+            .disabled(model.settings.focusMode != .onceIdle)
+            Picker(selection: $model.settings.autoClose) {
+                spans(autoCloses, including: model.settings.autoClose)
+            } label: {
+                Text(
+                    "Close it when untouched for",
+                    comment:
+                        "Settings, under Review panel: how long it stays open untouched before it closes on its own."
+                )
+            }
+        } footer: {
+            Text("When it shows up on its own. Opened with Review now, it takes the keyboard at once.")
         }
     }
 }
 
-/// The Ladder tab of Settings: how long a card waits on each step.
+/// The Ladder tab of Settings: the ladder's steps, each picked from a list
+/// that keeps it longer than the step before it and shorter than the one
+/// after it, so every ladder Lucas makes is one the engine can use. A change
+/// re-times every card from its history.
 struct LadderSettings: View {
-    @Bindable var model: AppModel
-
-    var body: some View {
-        Form {
-            LadderSection(ladder: $model.settings.ladder)
-        }
-    }
-}
-
-/// The ladder's steps, each picked from a list that keeps it longer than the
-/// step before it and shorter than the one after it, so every ladder Lucas
-/// makes is one the engine can use. A change re-times every card from its
-/// history.
-private struct LadderSection: View {
     @Binding var ladder: Ladder
 
     var body: some View {

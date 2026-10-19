@@ -19,7 +19,7 @@ final class AppWindow: NSWindow {
         contentViewController = tabs
         // As NSWindow's documentation suggests, since the content doesn't
         // title the window. The tabs' title is the selected tab's.
-        bind(.title, to: tabs, withKeyPath: "title")
+        bind(.title, to: tabs, withKeyPath: #keyPath(NSViewController.title))
     }
 
     /// A window with no content yet.
