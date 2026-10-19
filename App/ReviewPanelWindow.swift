@@ -40,6 +40,10 @@ final class ReviewPanelWindow: NSPanel {
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
         hidesOnDeactivate = false
+        // AppKit shows tooltips only in the active app's windows, and Ficha
+        // is never activated: the panel's tooltips say what each icon does,
+        // and which key does the same (#66).
+        allowsToolTipsWhenApplicationIsInactive = true
         isReleasedWhenClosed = false
         backgroundColor = .clear
         isOpaque = false
