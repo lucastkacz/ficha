@@ -36,7 +36,7 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 - `EngineError`'s messages use `String(localized:)` in the main bundle too. Xcode doesn't add them to the app's String Catalog, so a translation adds them by hand. The `ficha` CLI's main bundle is its own folder in the app, with no catalog, which keeps them in English there.
 - Two exceptions are in English only and never translated. Ficha Dev's debug menu and its messages are verbatim (`Text(verbatim:)`, plain `String`s), so they stay out of the String Catalog. The `ficha` CLI is in English whatever the Mac's language: its commands, options, JSON fields, help and messages, like swift-argument-parser's own words (ADR 0008).
 - Every action has a keyboard path. Icon-only buttons have an accessibility label.
-- Icons are SF Symbols.
+- Icons are SF Symbols. The app icon is the exception: Apple's terms don't allow SF Symbols, or images confusingly similar to them, in app icons, so it's our own drawing, vector layers in Icon Composer documents (`App/*.icon`).
 
 ## Tests
 
