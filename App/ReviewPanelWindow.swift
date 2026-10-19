@@ -44,11 +44,20 @@ final class ReviewPanelWindow: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true
-        contentView = NSHostingView(
+        let content = NSHostingView(
             rootView: ReviewPanelView(model: model) { [weak self] in
                 self?.close()
             }
         )
+        // The panel is the glass's rounded rectangle, not its whole frame:
+        // while the panel has the keyboard, the glass's backdrop covers the
+        // whole frame, and the panel's shadow follows it, unless the content
+        // is clipped to the glass's shape (#64).
+        content.wantsLayer = true
+        content.layer?.cornerRadius = ReviewPanelView.cornerRadius
+        content.layer?.cornerCurve = .continuous
+        content.layer?.masksToBounds = true
+        contentView = content
     }
 
     // A window without a title bar takes the keyboard only when it says so,
