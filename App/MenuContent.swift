@@ -25,6 +25,7 @@ struct MenuContent: View {
         Button(reviewNowTitle, action: openReviewPanel)
         Divider()
         Text(progressLine)
+        Button("About \(AppVariant.current.name)", action: showAboutPanel)
         Button("Diagnostics", action: openDiagnostics)
         Button("Settings…", action: openSettings)
             .keyboardShortcut(",")
@@ -39,6 +40,15 @@ struct MenuContent: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    /// Shows macOS's standard About panel: the app's icon and name, its
+    /// version and build from its Info.plist, and the copyright line. It
+    /// comes in front of the other apps, as the app's windows do, since a
+    /// menu-bar app isn't active until it's asked to be.
+    private func showAboutPanel() {
+        NSApplication.shared.activate()
+        NSApplication.shared.orderFrontStandardAboutPanel(nil)
     }
 
     /// "Review now", with how many cards are due when some are.

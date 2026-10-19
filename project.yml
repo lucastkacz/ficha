@@ -23,7 +23,10 @@ settings:
     # Texts go through String Catalogs, which Xcode fills from the code.
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     SWIFT_EMIT_LOC_STRINGS: YES
+    # The release version, CFBundleShortVersionString, changed by hand.
     MARKETING_VERSION: "0.1.0"
+    # The build number, CFBundleVersion. The Makefile sets it from git on
+    # each build; this one is only for a build outside it.
     CURRENT_PROJECT_VERSION: "1"
     # Personal apps: signed to run locally, not notarized.
     CODE_SIGN_IDENTITY: "-"
@@ -71,6 +74,8 @@ targets:
         # Menu bar only: no Dock icon and no main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
+        # The About panel's copyright line, which isn't translated.
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Lucas Ariel Tkacz"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         # Xcode 26's defaults for app targets: main actor by default.
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor

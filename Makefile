@@ -5,8 +5,12 @@
 PACKAGE := Packages/FichaKit
 DERIVED := .build/DerivedData
 SWIFT_SOURCES := App CLI $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests
+# The build number, the app's CFBundleVersion: how many commits the built
+# commit's history has, so each build after a merge shows a larger one. It's
+# passed to xcodebuild as a build setting, which overrides project.yml's.
+BUILD_NUMBER := $(shell git rev-list --count HEAD)
 XCODEBUILD := xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
-	-derivedDataPath $(DERIVED) -quiet
+	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 
 .PHONY: bootstrap project build test lint fmt hooks-test check run install
 
