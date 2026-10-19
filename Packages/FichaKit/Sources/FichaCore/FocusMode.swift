@@ -1,7 +1,8 @@
 /// Whether the review panel takes the keyboard when it shows up on its own,
 /// so it doesn't catch what Lucas is typing in another app. It has nothing to
-/// do with macOS's Focus.
-public enum FocusMode: Sendable {
+/// do with macOS's Focus. Each raw value is how the app's preferences name
+/// it.
+public enum FocusMode: String, CaseIterable, Sendable {
     /// It never takes the keyboard on its own: Lucas clicks it.
     case never
     /// It takes the keyboard once Lucas has been idle for a moment.

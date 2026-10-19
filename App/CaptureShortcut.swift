@@ -5,46 +5,107 @@ import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "capture shortcut")
 
-/// A keyboard shortcut that opens "Capture…" from any app: a letter key with
-/// modifiers.
-struct CaptureShortcut {
+/// A keyboard shortcut that opens "Capture…" from any app: a key with
+/// modifiers, Command, Control or Option among them, so it never takes a key
+/// Lucas types.
+struct CaptureShortcut: Equatable {
     /// The key, as the system's hot keys name it: a virtual key code.
     let keyCode: UInt32
-    /// The modifier keys, as the system's hot keys name them.
-    let carbonModifiers: UInt32
-    /// The same shortcut, as a menu shows it next to "Capture…".
-    let keyboardShortcut: KeyboardShortcut
-    /// The shortcut in symbols, like "⌃⌥⌘C", for the debug menu and the log.
-    let symbols: String
+    /// What the key types without modifiers, in lowercase, as a menu shows it.
+    let key: Character
+    /// The modifier keys: Control, Option, Shift and Command, and no others.
+    let modifiers: SwiftUI.EventModifiers
 
     /// The real Ficha's: ⌃⌥⌘C, which common apps and macOS leave free.
-    static let ficha = CaptureShortcut("c", keyCode: kVK_ANSI_C, modifiers: [.control, .option, .command])
+    static let ficha = CaptureShortcut(checkedKey: "c", keyCode: kVK_ANSI_C, modifiers: [.control, .option, .command])
 
     /// The one Ficha Dev's debug menu turns on: ⌃⌥⇧⌘C, so it never takes the
     /// real Ficha's and both apps can run side by side.
-    static let fichaDev = CaptureShortcut("c", keyCode: kVK_ANSI_C, modifiers: [.control, .option, .shift, .command])
+    static let fichaDev = CaptureShortcut(
+        checkedKey: "c", keyCode: kVK_ANSI_C, modifiers: [.control, .option, .shift, .command])
 
-    /// The shortcut of `key`, whose virtual key code is `keyCode`, with
-    /// `modifiers`, each as the system's hot keys, a menu and the symbols
-    /// name it.
-    private init(_ key: Character, keyCode: Int, modifiers: SwiftUI.EventModifiers) {
-        let named = modifierNames.filter { modifiers.contains($0.modifier) }
+    /// The shortcut of the key that types `key` without modifiers, whose
+    /// virtual key code is `keyCode`, with `modifiers`, or nil unless `key` is
+    /// a letter, a digit, a punctuation mark or a symbol and `modifiers` holds
+    /// Command, Control or Option. Modifiers other than those and Shift are
+    /// left out.
+    init?(key: Character, keyCode: Int, modifiers: SwiftUI.EventModifiers) {
+        let key = Character(key.lowercased())
+        let modifiers = modifiers.intersection([.control, .option, .shift, .command])
+        guard
+            key.isLetter || key.isNumber || key.isPunctuation || key.isSymbol,
+            !modifiers.isDisjoint(with: [.control, .option, .command]),
+            let keyCode = UInt32(exactly: keyCode)
+        else {
+            return nil
+        }
+        self.key = key
+        self.keyCode = keyCode
+        self.modifiers = modifiers
+    }
+
+    /// A shortcut whose key and modifiers are known to make one.
+    private init(checkedKey key: Character, keyCode: Int, modifiers: SwiftUI.EventModifiers) {
+        self.key = key
         self.keyCode = UInt32(keyCode)
-        carbonModifiers = named.reduce(0) { $0 | UInt32($1.carbon) }
-        keyboardShortcut = KeyboardShortcut(KeyEquivalent(key), modifiers: modifiers)
-        symbols = named.map(\.symbol).joined() + key.uppercased()
+        self.modifiers = modifiers
+    }
+
+    /// The modifier keys, as the system's hot keys name them.
+    var carbonModifiers: UInt32 {
+        modifierNames.filter { modifiers.contains($0.modifier) }.reduce(0) { $0 | UInt32($1.carbon) }
+    }
+
+    /// The same shortcut, as a menu shows it next to "Capture…".
+    var keyboardShortcut: KeyboardShortcut {
+        KeyboardShortcut(KeyEquivalent(key), modifiers: modifiers)
+    }
+
+    /// The shortcut in symbols, like "⌃⌥⌘C", for Settings, the debug menu and
+    /// the log.
+    var symbols: String {
+        modifierNames.filter { modifiers.contains($0.modifier) }.map(\.symbol).joined() + key.uppercased()
+    }
+}
+
+extension CaptureShortcut {
+    /// The shortcut as the app's preferences store it: its key, its key code
+    /// and its modifiers' names.
+    var stored: [String: Any] {
+        [
+            "key": String(key), "keyCode": Int(keyCode),
+            "modifiers": modifierNames.filter { modifiers.contains($0.modifier) }.map(\.name),
+        ]
+    }
+
+    /// The shortcut the preferences stored as `stored`, or nil when that
+    /// doesn't make one.
+    init?(stored: [String: Any]) {
+        guard
+            let key = stored["key"] as? String, key.count == 1, let character = key.first,
+            let keyCode = stored["keyCode"] as? Int,
+            let names = stored["modifiers"] as? [String]
+        else {
+            return nil
+        }
+        let modifiers = names.compactMap { name in modifierNames.first { $0.name == name }?.modifier }
+        guard modifiers.count == names.count else {
+            return nil
+        }
+        self.init(key: character, keyCode: keyCode, modifiers: SwiftUI.EventModifiers(modifiers))
     }
 }
 
 /// Each modifier key, in the order macOS writes them, as SwiftUI, the
-/// system's hot keys and its symbol name it.
-private let modifierNames: [(modifier: SwiftUI.EventModifiers, carbon: Int, symbol: String)] = [
-    (.control, controlKey, "⌃"), (.option, optionKey, "⌥"), (.shift, shiftKey, "⇧"), (.command, cmdKey, "⌘"),
+/// system's hot keys, its symbol and the app's preferences name it.
+private let modifierNames: [(modifier: SwiftUI.EventModifiers, carbon: Int, symbol: String, name: String)] = [
+    (.control, controlKey, "⌃", "control"), (.option, optionKey, "⌥", "option"), (.shift, shiftKey, "⇧", "shift"),
+    (.command, cmdKey, "⌘", "command"),
 ]
 
 extension AppVariant {
-    /// The shortcut the app opens "Capture…" with from launch: the real
-    /// Ficha's, and none in Ficha Dev, until its debug menu turns one on.
+    /// The shortcut the app opens "Capture…" with until Lucas picks another
+    /// in Settings: the real Ficha's, and none in Ficha Dev.
     var captureShortcut: CaptureShortcut? {
         switch self {
         case .dev: nil
@@ -84,6 +145,32 @@ final class CaptureShortcutRegistration {
         logger.info("Turned on the capture shortcut \(shortcut.symbols, privacy: .public)")
     }
 
+    /// Turns `shortcut` on in place of the one that's on, or turns that one
+    /// off when it's nil, and keeps it in the app's preferences for the next
+    /// launches. When macOS refuses it, `fallback` is turned on instead, as
+    /// it was, and the error says why.
+    func change(to shortcut: CaptureShortcut?, fallback: CaptureShortcut?) throws(CaptureShortcutError) {
+        guard let shortcut else {
+            turnOff()
+            Preferences.captureShortcut = nil
+            return
+        }
+        do {
+            try turnOn(shortcut)
+        } catch {
+            if let fallback {
+                do {
+                    try turnOn(fallback)
+                } catch {
+                    // `turnOn` logged why; the error Lucas sees is the new
+                    // shortcut's.
+                }
+            }
+            throw error
+        }
+        Preferences.captureShortcut = shortcut
+    }
+
     /// Turns the shortcut off, if one is on.
     func turnOff() {
         if let hotKey {
@@ -121,7 +208,10 @@ enum CaptureShortcutError: LocalizedError {
         switch self {
         case .taken:
             String(
-                localized: "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again.")
+                localized: """
+                    Another app already uses this shortcut. Pick another in Settings, or quit that app, or turn its \
+                    shortcut off, and try again.
+                    """)
         case .failed(let status):
             String(
                 localized: """

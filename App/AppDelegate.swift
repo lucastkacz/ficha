@@ -30,6 +30,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var captureWindow: CaptureWindow?
     /// The Diagnostics window, from the last time it showed.
     private var diagnosticsWindow: DiagnosticsWindow?
+    /// The Settings window, from the last time it showed.
+    private var settingsWindow: SettingsWindow?
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
@@ -62,6 +64,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         diagnosticsWindow = window
     }
 
+    /// Opens the Settings window, or brings it forward when it's open.
+    func openSettings() {
+        if let settingsWindow, settingsWindow.isVisible {
+            settingsWindow.bringForward()
+            return
+        }
+        guard let model else { return }
+        let window = SettingsWindow(model: model, captureShortcut: captureShortcut)
+        window.show()
+        settingsWindow = window
+    }
+
     /// Opens the review panel with the cards a review now brings, or brings
     /// it forward when it's open.
     func openReviewPanel() {
@@ -87,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appearances.start()
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
+            StartAtLogin.turnOnAtFirstLaunch()
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,
@@ -96,23 +111,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Turns on the shortcut that opens "Capture…" from launch: the real
-    /// Ficha's, or, in Ficha Dev, its debug menu's when it's on. When another
-    /// app has it, the menu shows no shortcut next to "Capture…", and the log
-    /// says why; when macOS refuses it for another reason, an alert says so.
+    /// Turns on the shortcut that opens "Capture…" from launch, as Lucas left
+    /// it in Settings. When another app has it, the menu and Settings show no
+    /// shortcut, and the log says why; when macOS refuses it for another
+    /// reason, an alert says so.
     private func turnOnCaptureShortcut() {
-        let shortcut =
-            if model?.debugTools?.capturesWithShortcut == true {
-                CaptureShortcut.fichaDev
-            } else {
-                AppVariant.current.captureShortcut
-            }
-        guard let shortcut else { return }
+        guard let shortcut = Preferences.captureShortcut else { return }
         do {
             try captureShortcut.turnOn(shortcut)
         } catch .taken {
-            // Expected when another app has it: Settings will let Lucas pick
-            // another (#18).
+            // Expected when another app has it: Lucas can pick another in
+            // Settings.
         } catch {
             showAlert(
                 String(localized: "\(AppVariant.current.name) couldn't turn on its capture shortcut"),

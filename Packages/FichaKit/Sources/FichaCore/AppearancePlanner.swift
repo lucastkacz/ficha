@@ -35,7 +35,7 @@ public enum NoAppearance: Sendable, Equatable {
     /// No card is due, and no new card may come in.
     case nothingDue
     /// An appearance would show up, but this suppression holds it back: the
-    /// first of them, in `Suppression`'s order, when there are several.
+    /// first of those on, in `Suppression`'s order, when there are several.
     case suppressed(Suppression)
     /// A suppression ended a moment ago, so an appearance waits until this
     /// time.
@@ -62,8 +62,8 @@ extension ReviewSettings {
     /// says. While the Mac and its screens are awake, within active hours, by
     /// `calendar`'s clock, and once `separation` has passed since that closing
     /// and `waitAfterWaking` since the Mac woke, it shows up once a card is
-    /// due, or, with nothing due, once a new card may come in, unless a
-    /// suppression holds it back, or one ended less than
+    /// due, or, with nothing due, once a new card may come in, unless one of
+    /// `suppressionsThatApply` holds it back, or one of them ended less than
     /// `waitAfterSuppression` ago. It brings the cards review now would, along
     /// with those due within `lookAhead`.
     public func appearance(
@@ -92,10 +92,13 @@ extension ReviewSettings {
         guard isAnyCardDue || picked.firstView != nil else {
             return .notNow(.nothingDue)
         }
-        if let suppression = Suppression.allCases.first(where: mac.suppressions.contains) {
+        let applying = Suppression.allCases.filter(suppressionsThatApply.contains)
+        if let suppression = applying.first(where: mac.suppressions.contains) {
             return .notNow(.suppressed(suppression))
         }
-        if let until = mac.lastSuppressionEnd?.adding(waitAfterSuppression), now < until {
+        if let lastEnd = applying.compactMap({ mac.suppressionEnds[$0] }).max(),
+            case let until = lastEnd.adding(waitAfterSuppression), now < until
+        {
             return .notNow(.tooSoonAfterSuppression(until: until))
         }
         return .show(picked)

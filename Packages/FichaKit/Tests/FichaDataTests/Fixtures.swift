@@ -82,7 +82,7 @@ struct FakeMac: MacSignals {
     var lastWake: Date? = nil
     var idleTime: Duration? = nil
     var suppressions: Set<Suppression> = []
-    var lastSuppressionEnd: Date? = nil
+    var suppressionEnds: [Suppression: Date] = [:]
 }
 
 /// The calendar of a Mac in Buenos Aires, whose days start at midnight there,

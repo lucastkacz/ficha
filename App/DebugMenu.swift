@@ -47,7 +47,7 @@ struct DebugMenu: View {
             }
             Divider()
             Toggle(
-                isOn: Binding(get: { captureShortcut.shortcut != nil }, set: { turnCaptureShortcut(on: $0) })
+                isOn: Binding(get: { captureShortcut.shortcut == .fichaDev }, set: { turnCaptureShortcut(on: $0) })
             ) {
                 Text(verbatim: "Capture shortcut \(CaptureShortcut.fichaDev.symbols)")
             }
@@ -126,17 +126,13 @@ struct DebugMenu: View {
         inWords(.seconds(time.timeIntervalSince(tools.engine.now)), units: [.hours, .minutes, .seconds])
     }
 
-    /// Turns Ficha Dev's capture shortcut on or off, which Ficha Dev keeps
-    /// for its next launches. It's not the real Ficha's, so both apps can run
-    /// side by side.
+    /// Turns Ficha Dev's capture shortcut on, in place of the one that's on,
+    /// or turns the shortcut off, as Settings does, which keeps it for the
+    /// next launches. It's not the real Ficha's, so both apps can run side by
+    /// side.
     private func turnCaptureShortcut(on: Bool) {
         attempt("Couldn't turn on the capture shortcut") {
-            if on {
-                try captureShortcut.turnOn(.fichaDev)
-            } else {
-                captureShortcut.turnOff()
-            }
-            tools.capturesWithShortcut = on
+            try captureShortcut.change(to: on ? .fichaDev : nil, fallback: captureShortcut.shortcut)
         }
     }
 

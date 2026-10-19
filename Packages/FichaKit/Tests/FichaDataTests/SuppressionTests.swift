@@ -38,7 +38,7 @@ struct SuppressionTests {
                 == .notNow(.suppressed(.meeting)))
         time.advance(by: minutes(40))
         let ended = time.now
-        let afterTheMeeting = FakeMac(lastSuppressionEnd: ended)
+        let afterTheMeeting = FakeMac(suppressionEnds: [.meeting: ended])
 
         time.advance(by: minutes(2) - 1)
         #expect(
@@ -63,14 +63,15 @@ struct SuppressionTests {
         let ended = time.now
         time.advance(by: minutes(2))
         let shownAt = time.now
-        var panel = try openAppearance(on: FakeMac(lastSuppressionEnd: ended))
+        var panel = try openAppearance(on: FakeMac(suppressionEnds: [.video: ended]))
         try panel.answer(.review(.good), responseTime: .seconds(3))
         time.advance(by: 4)
         panel.close(.byLucas)
         let closedAt = time.now
         time.advance(by: hours(4))
         #expect(
-            try engine.checkAppearance(settings, mac: FakeMac(suppressions: [.fullScreen], lastSuppressionEnd: ended))
+            try engine.checkAppearance(
+                settings, mac: FakeMac(suppressions: [.fullScreen], suppressionEnds: [.video: ended]))
                 == .notNow(.suppressed(.fullScreen)))
 
         #expect(

@@ -13,6 +13,8 @@ struct MenuContent: View {
     let openReviewPanel: () -> Void
     /// Opens the Diagnostics window.
     let openDiagnostics: () -> Void
+    /// Opens the Settings window.
+    let openSettings: () -> Void
     /// Asks right away whether the review panel shows up on its own, for
     /// Ficha Dev's debug menu.
     let checkAppearance: () -> AppearanceCheck?
@@ -24,6 +26,8 @@ struct MenuContent: View {
         Divider()
         Text(progressLine)
         Button("Diagnostics", action: openDiagnostics)
+        Button("Settings…", action: openSettings)
+            .keyboardShortcut(",")
         if let debugTools = model.debugTools {
             Divider()
             DebugMenu(
