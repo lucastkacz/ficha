@@ -84,14 +84,18 @@ targets:
         # Personal app: no sandbox.
         ENABLE_APP_SANDBOX: NO
       # Each configuration names its app and gives it a bundle identifier of
-      # its own, and so preferences of its own.
+      # its own, and so preferences of its own. It also picks the app's icon,
+      # an Icon Composer document in App/, named without its `.icon`: Ficha
+      # Dev's is Ficha's drawing in another color, to tell the two apart.
       configs:
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   # The `ficha` CLI (ADR 0008): its commands live in FichaKit, and this tool
   # only picks whose cards they open. It's built with each app, in the same
