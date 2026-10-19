@@ -99,6 +99,13 @@ enum Preferences {
         }
     }
 
+    /// The tab Settings opens on: the one Lucas left it on last, and at
+    /// first General.
+    static var settingsTab: SettingsTab {
+        get { read(.settingsTab, as: String.self, SettingsTab.init(rawValue:)) ?? .general }
+        set { write(newValue.rawValue, for: .settingsTab, unless: SettingsTab.general.rawValue) }
+    }
+
     /// Whether the real Ficha already turned on starting at login, its
     /// default, the first time it launched: from then on, it's as Lucas
     /// leaves it.
@@ -127,6 +134,8 @@ enum Preferences {
         case showsDueCount = "ShowsDueCount"
         case captureShortcut = "CaptureShortcut"
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
+        /// The raw value of the tab Settings opens on.
+        case settingsTab = "SettingsTab"
     }
 
     /// The setting stored for `key`, as `make` makes it out of the stored

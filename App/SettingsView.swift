@@ -3,11 +3,8 @@ import FichaCore
 import ServiceManagement
 import SwiftUI
 
-/// The Settings window's content: every default Lucas can change, each
-/// applied as he changes it, without restarting. Spans of time are picked
-/// from a list, which keeps every value one the engine can use, and a value
-/// stored outside the list still shows.
-struct SettingsView: View {
+/// The General tab of Settings: what the app does around the cards.
+struct GeneralSettings: View {
     @Bindable var model: AppModel
     /// The shortcut that opens "Capture…" from any app, which Settings changes.
     let captureShortcut: CaptureShortcutRegistration
@@ -22,8 +19,6 @@ struct SettingsView: View {
                 LabeledContent("Capture shortcut") {
                     CaptureShortcutRecorder(registration: captureShortcut)
                 }
-            } header: {
-                Text("General")
             } footer: {
                 Text(
                     """
@@ -32,7 +27,58 @@ struct SettingsView: View {
                     it off.
                     """)
             }
-            Section("Appearances") {
+        }
+        // Lucas may change it in System Settings meanwhile.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            startAtLogin = StartAtLogin.status
+        }
+    }
+
+    /// Whether the app starts at login, which only the real Ficha does.
+    @ViewBuilder private var startAtLoginToggle: some View {
+        if StartAtLogin.isAvailable {
+            Toggle(
+                isOn: Binding(
+                    get: { [.enabled, .requiresApproval].contains(startAtLogin) }, set: { turnStartAtLogin(on: $0) })
+            ) {
+                Text("Start at login")
+                if startAtLogin == .requiresApproval {
+                    Text("Allow it in System Settings, in Login Items.")
+                }
+            }
+            if startAtLogin == .requiresApproval {
+                Button("Open Login Items", action: StartAtLogin.openLoginItems)
+            }
+        } else {
+            Toggle(isOn: .constant(false)) {
+                Text("Start at login")
+                Text("\(AppVariant.current.name) never does, so it doesn't get in the real Ficha's way.")
+            }
+            .disabled(true)
+        }
+    }
+
+    /// Turns starting at login on or off, and says why when macOS refuses.
+    private func turnStartAtLogin(on: Bool) {
+        do {
+            try StartAtLogin.turn(on: on)
+        } catch {
+            showAlert(
+                String(localized: "Couldn't change whether \(AppVariant.current.name) starts at login"),
+                explaining: error, style: .warning, button: String(localized: "OK"))
+        }
+        startAtLogin = StartAtLogin.status
+    }
+}
+
+/// The Appearances tab of Settings: when the review panel shows up on its
+/// own, and what holds it back.
+struct AppearancesSettings: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        Form {
+            Section {
                 Picker(selection: activeHoursStart) {
                     ForEach(0..<model.settings.activeHours.upperBound, id: \.self) { hour in
                         Text(hourOfDay(hour)).tag(hour)
@@ -76,6 +122,64 @@ struct SettingsView: View {
                         comment: "Settings, under Appearances: how long an appearance waits once the Mac wakes.")
                 }
             }
+            Section("Hold appearances back during") {
+                Toggle(isOn: applies(.meeting)) {
+                    Text("Meetings")
+                    Text("The camera or the microphone in use")
+                }
+                Toggle(isOn: applies(.video)) {
+                    Text("Videos")
+                    Text("An app keeping the display awake")
+                }
+                Toggle("Full-screen apps", isOn: applies(.fullScreen))
+                Picker(selection: $model.settings.waitAfterSuppression) {
+                    spans(waitsAfterSuppression, including: model.settings.waitAfterSuppression)
+                } label: {
+                    Text(
+                        "Then wait",
+                        comment:
+                            "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
+                    )
+                }
+            }
+        }
+    }
+
+    /// The hour active hours start at, which stays before the one they end at.
+    private var activeHoursStart: Binding<Int> {
+        Binding(
+            get: { model.settings.activeHours.lowerBound },
+            set: { model.settings.activeHours = $0..<model.settings.activeHours.upperBound })
+    }
+
+    /// The hour active hours end at, which stays after the one they start at.
+    private var activeHoursEnd: Binding<Int> {
+        Binding(
+            get: { model.settings.activeHours.upperBound },
+            set: { model.settings.activeHours = model.settings.activeHours.lowerBound..<$0 })
+    }
+
+    /// Whether `suppression` holds appearances back.
+    private func applies(_ suppression: Suppression) -> Binding<Bool> {
+        Binding(
+            get: { model.settings.suppressionsThatApply.contains(suppression) },
+            set: { applies in
+                if applies {
+                    model.settings.suppressionsThatApply.insert(suppression)
+                } else {
+                    model.settings.suppressionsThatApply.remove(suppression)
+                }
+            })
+    }
+}
+
+/// The Review panel tab of Settings: how the panel behaves when it shows up
+/// on its own.
+struct ReviewPanelSettings: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        Form {
             Section {
                 Picker(selection: $model.settings.focusMode) {
                     Text("Never", comment: "Settings: the review panel never takes the keyboard on its own.")
@@ -113,102 +217,21 @@ struct SettingsView: View {
                             "Settings, under Review panel: how long it stays open untouched before it closes on its own."
                     )
                 }
-            } header: {
-                Text("Review panel")
             } footer: {
                 Text("When it shows up on its own. Opened with Review now, it takes the keyboard at once.")
             }
-            Section("Hold appearances back during") {
-                Toggle(isOn: applies(.meeting)) {
-                    Text("Meetings")
-                    Text("The camera or the microphone in use")
-                }
-                Toggle(isOn: applies(.video)) {
-                    Text("Videos")
-                    Text("An app keeping the display awake")
-                }
-                Toggle("Full-screen apps", isOn: applies(.fullScreen))
-                Picker(selection: $model.settings.waitAfterSuppression) {
-                    spans(waitsAfterSuppression, including: model.settings.waitAfterSuppression)
-                } label: {
-                    Text(
-                        "Then wait",
-                        comment:
-                            "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
-                    )
-                }
-            }
+        }
+    }
+}
+
+/// The Ladder tab of Settings: how long a card waits on each step.
+struct LadderSettings: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        Form {
             LadderSection(ladder: $model.settings.ladder)
         }
-        .formStyle(.grouped)
-        .frame(width: 500, height: 640)
-        // Lucas may change it in System Settings meanwhile.
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            startAtLogin = StartAtLogin.status
-        }
-    }
-
-    /// Whether the app starts at login, which only the real Ficha does.
-    @ViewBuilder private var startAtLoginToggle: some View {
-        if StartAtLogin.isAvailable {
-            Toggle(
-                isOn: Binding(
-                    get: { [.enabled, .requiresApproval].contains(startAtLogin) }, set: { turnStartAtLogin(on: $0) })
-            ) {
-                Text("Start at login")
-                if startAtLogin == .requiresApproval {
-                    Text("Allow it in System Settings, in Login Items.")
-                }
-            }
-            if startAtLogin == .requiresApproval {
-                Button("Open Login Items", action: StartAtLogin.openLoginItems)
-            }
-        } else {
-            Toggle(isOn: .constant(false)) {
-                Text("Start at login")
-                Text("\(AppVariant.current.name) never does, so it doesn't get in the real Ficha's way.")
-            }
-            .disabled(true)
-        }
-    }
-
-    /// Turns starting at login on or off, and says why when macOS refuses.
-    private func turnStartAtLogin(on: Bool) {
-        do {
-            try StartAtLogin.turn(on: on)
-        } catch {
-            showAlert(
-                String(localized: "Couldn't change whether \(AppVariant.current.name) starts at login"),
-                explaining: error, style: .warning, button: String(localized: "OK"))
-        }
-        startAtLogin = StartAtLogin.status
-    }
-
-    /// The hour active hours start at, which stays before the one they end at.
-    private var activeHoursStart: Binding<Int> {
-        Binding(
-            get: { model.settings.activeHours.lowerBound },
-            set: { model.settings.activeHours = $0..<model.settings.activeHours.upperBound })
-    }
-
-    /// The hour active hours end at, which stays after the one they start at.
-    private var activeHoursEnd: Binding<Int> {
-        Binding(
-            get: { model.settings.activeHours.upperBound },
-            set: { model.settings.activeHours = model.settings.activeHours.lowerBound..<$0 })
-    }
-
-    /// Whether `suppression` holds appearances back.
-    private func applies(_ suppression: Suppression) -> Binding<Bool> {
-        Binding(
-            get: { model.settings.suppressionsThatApply.contains(suppression) },
-            set: { applies in
-                if applies {
-                    model.settings.suppressionsThatApply.insert(suppression)
-                } else {
-                    model.settings.suppressionsThatApply.remove(suppression)
-                }
-            })
     }
 }
 
@@ -252,8 +275,6 @@ private struct LadderSection: View {
                 }
             }
             .disabled(nextStep == nil)
-        } header: {
-            Text("Ladder")
         } footer: {
             Text(
                 """

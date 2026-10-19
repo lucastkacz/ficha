@@ -148,7 +148,7 @@
 
     },
     "Appearances" : {
-
+      "comment" : "A tab of the Settings window."
     },
     "Apps using the microphone" : {
       "comment" : "In Diagnostics: which apps use a microphone."
@@ -280,7 +280,7 @@
 
     },
     "General" : {
-
+      "comment" : "A tab of the Settings window."
     },
     "Got it" : {
 
@@ -313,7 +313,7 @@
 
     },
     "Ladder" : {
-
+      "comment" : "A tab of the Settings window."
     },
     "Latest appearances" : {
 
@@ -411,7 +411,7 @@
 
     },
     "Review panel" : {
-
+      "comment" : "A tab of the Settings window."
     },
     "Right now" : {
 
@@ -424,9 +424,6 @@
     },
     "See more?" : {
 
-    },
-    "Settings" : {
-      "comment" : "The Settings window's title."
     },
     "Settings…" : {
 
