@@ -11,8 +11,9 @@ import SwiftUI
 /// if there are any, which Enter brings; review now with nothing due offers
 /// to review ahead the same way.
 struct ReviewPanelView: View {
-    /// The corner radius of the panel's glass, which the panel's window clips
-    /// its content to.
+    /// The corner radius of the panel's glass, with continuous corners. The
+    /// panel's window clips its content to it, which matches the glass while
+    /// the glass is the view's outermost modifier.
     static let cornerRadius: CGFloat = 24
 
     /// The cards a review now or an appearance brought, or why review now
@@ -51,7 +52,7 @@ struct ReviewPanelView: View {
         }
         .padding(20)
         .frame(width: 400, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: Self.cornerRadius))
+        .glassEffect(.regular, in: .rect(cornerRadius: Self.cornerRadius, style: .continuous))
     }
 
     @ViewBuilder

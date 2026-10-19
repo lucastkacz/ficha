@@ -49,10 +49,11 @@ final class ReviewPanelWindow: NSPanel {
                 self?.close()
             }
         )
-        // The panel is the glass's rounded rectangle, not its whole frame:
-        // while the panel has the keyboard, the glass's backdrop covers the
-        // whole frame, and the panel's shadow follows it, unless the content
-        // is clipped to the glass's shape (#64).
+        // The panel is the glass's rounded rectangle, not the window's whole
+        // frame: while the panel has the keyboard, the glass's backdrop
+        // covers the whole frame, and the window's shadow follows it, unless
+        // the content is clipped to the glass's shape. Dropping the shadow or
+        // invalidating it didn't help (#64).
         content.wantsLayer = true
         content.layer?.cornerRadius = ReviewPanelView.cornerRadius
         content.layer?.cornerCurve = .continuous
