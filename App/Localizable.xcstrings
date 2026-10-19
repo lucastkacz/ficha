@@ -126,8 +126,8 @@
     "A word, a concept, a quote or a question" : {
 
     },
-    "About %@" : {
-
+    "About" : {
+      "comment" : "A tab of the Settings window."
     },
     "Add Step" : {
 
@@ -490,6 +490,20 @@
     },
     "Undo (⌘Z)" : {
 
+    },
+    "Unknown version" : {
+      "comment" : "Settings' About tab, when the build doesn't say."
+    },
+    "Version %@ (%@)" : {
+      "comment" : "Settings' About tab: the release version, then the build number in parentheses.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        }
+      }
     },
     "Videos" : {
 

@@ -74,7 +74,8 @@ targets:
         # Menu bar only: no Dock icon and no main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
-        # The About panel's copyright line, which isn't translated.
+        # The copyright line, which Settings' About tab shows. It isn't
+        # translated.
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Lucas Ariel Tkacz"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         # Xcode 26's defaults for app targets: main actor by default.
