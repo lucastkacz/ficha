@@ -28,6 +28,10 @@ M flags a card with a note on what to fix: it leaves your reviews and waits in t
 
 The review panel also shows up on its own when cards are due, between 9:00 and 22:00, with the same cards plus those due within the next 20 minutes. With nothing due, one new card is enough. It comes at least 30 minutes after the last panel with cards closed, never while your Mac or its screens sleep, and 2 minutes after they wake. It shows up without the keyboard, so it doesn't catch what you're typing, and takes it once you've been idle for 5 seconds. Esc snoozes it, and left untouched for 10 minutes it closes on its own: either way, its cards stay due.
 
+## Refining
+
+What you capture waits in the inbox, with the cards you flag. To turn it into cards, open Claude Code in Ficha's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](docs/content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, and how to add each expansion to its card. It saves only what you approve, through the installed Ficha's `ficha` command.
+
 ## The `ficha` command
 
 Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards and to fix the cards you flag, and you can capture from a terminal with it:

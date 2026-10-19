@@ -30,7 +30,8 @@
       "Bash(make *)",
       "Bash(swift *)",
       "Bash(xcodebuild *)",
-      "Bash(xcodegen *)"
+      "Bash(xcodegen *)",
+      "Bash(/Applications/Ficha.app/Contents/Helpers/ficha *)"
     ],
     "ask": [
       "Bash(make install*)",
