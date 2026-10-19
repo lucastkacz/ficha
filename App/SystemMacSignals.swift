@@ -2,28 +2,90 @@ import AppKit
 import CoreGraphics
 import FichaCore
 import Foundation
+import os
+
+/// The suppressions' log, which says when they start and end.
+private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "suppressions")
 
 /// What Lucas's Mac tells Ficha, read from the OS without asking for any
-/// permission (#10's findings): whether it or its screens are asleep, when
-/// they last woke, and how long Lucas has been idle.
+/// permission (#10's and #12's findings): whether it or its screens are
+/// asleep, when they last woke, how long Lucas has been idle, and what holds
+/// appearances back.
 final class SystemMacSignals: MacSignals {
+    /// How often it looks at what holds appearances back: an appearance waits
+    /// 2 minutes after a suppression ends anyway, so a few seconds late is
+    /// fine, and polling is simpler than following each detector (#12).
+    private static let detectionInterval = Duration.seconds(5)
+
     private var isMacAsleep = false
     private var areScreensAsleep = false
     private(set) var lastWake: Date?
-    /// The engine's time, which the wakes are noted by.
+    private(set) var suppressions: Set<Suppression> = []
+    private(set) var lastSuppressionEnd: Date?
+    /// The engine's time, which the wakes and the suppressions' ends are
+    /// noted by.
     private let now: () -> Date
     /// What to do as the Mac or its screens go to sleep or wake up.
     var sleptOrWoke: (() -> Void)?
+    /// What to do as a suppression starts or ends.
+    var suppressionsChanged: (() -> Void)?
     /// What it follows of the Mac's sleep and wake, for as long as Ficha runs.
     private var observers: [any NSObjectProtocol] = []
+    /// The detectors' polling, for as long as Ficha runs.
+    private var detecting: Task<Void, Never>?
+    /// The suppressions whose detectors couldn't tell at the last look.
+    private var cantTell: Set<Suppression> = []
 
-    /// The Mac's signals, noting its wakes by `now`, the engine's time.
+    /// The Mac's signals, noting its wakes and its suppressions' ends by
+    /// `now`, the engine's time.
     init(now: @escaping () -> Date) {
         self.now = now
         observe(NSWorkspace.willSleepNotification, as: .macSleeps)
         observe(NSWorkspace.screensDidSleepNotification, as: .screensSleep)
         observe(NSWorkspace.didWakeNotification, as: .macWakes)
         observe(NSWorkspace.screensDidWakeNotification, as: .screensWake)
+    }
+
+    /// Starts looking at what holds appearances back, now and every few
+    /// seconds, for as long as Ficha runs.
+    func startDetecting() {
+        detecting?.cancel()
+        detectSuppressions()
+        detecting = Task { [weak self] in
+            while true {
+                do {
+                    try await Task.sleep(for: Self.detectionInterval)
+                } catch {
+                    return
+                }
+                guard let self else { return }
+                detectSuppressions()
+            }
+        }
+    }
+
+    /// Notes what holds appearances back now, and when the last of them
+    /// ended, and says when that changed. A suppression whose detector can't
+    /// tell stays as it was, so a failed reading neither starts nor ends one,
+    /// and the log says so.
+    private func detectSuppressions() {
+        let detection = Detection.read()
+        let unknown = Set(Suppression.allCases.filter { detection.isOn($0) == nil })
+        if unknown != cantTell {
+            let names = Suppression.allCases.filter(unknown.contains).map(\.rawValue).joined(separator: ", ")
+            logger.error(
+                "Can't tell whether these hold appearances back: \(names.isEmpty ? "none" : names, privacy: .public)")
+            cantTell = unknown
+        }
+        let detected = Set(Suppression.allCases.filter { detection.isOn($0) ?? suppressions.contains($0) })
+        guard detected != suppressions else { return }
+        if detected.isEmpty {
+            lastSuppressionEnd = now()
+        }
+        suppressions = detected
+        let names = Suppression.allCases.filter(detected.contains).map(\.rawValue).joined(separator: ", ")
+        logger.info("Holding appearances back now: \(names.isEmpty ? "nothing" : names, privacy: .public)")
+        suppressionsChanged?()
     }
 
     var isAsleep: Bool {

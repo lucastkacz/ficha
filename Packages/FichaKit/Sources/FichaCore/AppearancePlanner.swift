@@ -1,5 +1,16 @@
 import Foundation
 
+/// A situation in which Ficha holds appearances back so as not to interrupt
+/// Lucas. Each raw value is how the appearance log names it.
+public enum Suppression: String, CaseIterable, Sendable {
+    /// A meeting: the camera or the microphone is in use.
+    case meeting
+    /// A video is playing.
+    case video
+    /// The app in front is in full screen.
+    case fullScreen
+}
+
 /// What the appearance planner decides at a moment: whether the review panel
 /// shows up on its own, with which cards, by id, or why not (ADR 0003).
 public enum AppearancePlan: Sendable, Equatable {
@@ -23,15 +34,22 @@ public enum NoAppearance: Sendable, Equatable {
     case tooSoonAfterWaking(until: Date)
     /// No card is due, and no new card may come in.
     case nothingDue
+    /// An appearance would show up, but this suppression holds it back: the
+    /// first of them, in `Suppression`'s order, when there are several.
+    case suppressed(Suppression)
+    /// A suppression ended a moment ago, so an appearance waits until this
+    /// time.
+    case tooSoonAfterSuppression(until: Date)
 }
 
 extension NoAppearance {
     /// When an appearance may come, when it's known: once the separation, or
-    /// the wait after waking, is over.
+    /// the wait after waking or after a suppression, is over.
     public var until: Date? {
         switch self {
-        case .tooSoonAfterLastOne(let until), .tooSoonAfterWaking(let until): until
-        case .asleep, .outsideActiveHours, .nothingDue: nil
+        case .tooSoonAfterLastOne(let until), .tooSoonAfterWaking(let until), .tooSoonAfterSuppression(let until):
+            until
+        case .asleep, .outsideActiveHours, .nothingDue, .suppressed: nil
         }
     }
 }
@@ -44,8 +62,10 @@ extension ReviewSettings {
     /// says. While the Mac and its screens are awake, within active hours, by
     /// `calendar`'s clock, and once `separation` has passed since that closing
     /// and `waitAfterWaking` since the Mac woke, it shows up once a card is
-    /// due, or, with nothing due, once a new card may come in. It brings the
-    /// cards review now would, along with those due within `lookAhead`.
+    /// due, or, with nothing due, once a new card may come in, unless a
+    /// suppression holds it back, or one ended less than
+    /// `waitAfterSuppression` ago. It brings the cards review now would, along
+    /// with those due within `lookAhead`.
     public func appearance(
         cardIDs: [Int64],
         log: [ReviewLogEntry],
@@ -71,6 +91,12 @@ extension ReviewSettings {
         let isAnyCardDue = standings.contains { $0.standing.isDue(at: now) }
         guard isAnyCardDue || picked.firstView != nil else {
             return .notNow(.nothingDue)
+        }
+        if let suppression = Suppression.allCases.first(where: mac.suppressions.contains) {
+            return .notNow(.suppressed(suppression))
+        }
+        if let until = mac.lastSuppressionEnd?.adding(waitAfterSuppression), now < until {
+            return .notNow(.tooSoonAfterSuppression(until: until))
         }
         return .show(picked)
     }

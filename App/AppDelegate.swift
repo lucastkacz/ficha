@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let captureShortcut = CaptureShortcutRegistration()
     /// The capture window, from the last time it showed.
     private var captureWindow: CaptureWindow?
+    /// The Diagnostics window, from the last time it showed.
+    private var diagnosticsWindow: DiagnosticsWindow?
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
@@ -48,6 +50,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureWindow = window
     }
 
+    /// Opens the Diagnostics window, or brings it forward when it's open.
+    func openDiagnostics() {
+        if let diagnosticsWindow, diagnosticsWindow.isVisible {
+            diagnosticsWindow.bringForward()
+            return
+        }
+        guard let model else { return }
+        let window = DiagnosticsWindow(model: model)
+        window.show()
+        diagnosticsWindow = window
+    }
+
     /// Opens the review panel with the cards a review now brings, or brings
     /// it forward when it's open.
     func openReviewPanel() {
@@ -55,8 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Asks the engine right away whether the review panel shows up on its
-    /// own, for Ficha Dev's debug menu, and shows it if so: what the check came
-    /// to, or nil before the app launched with its cards.
+    /// own, for Ficha Dev's debug menu, and shows it if so, as every check
+    /// does, noting an appearance a suppression holds back: what the check
+    /// came to, or nil before the app launched with its cards.
     func checkAppearanceNow() -> AppearanceCheck? {
         appearances?.check()
     }

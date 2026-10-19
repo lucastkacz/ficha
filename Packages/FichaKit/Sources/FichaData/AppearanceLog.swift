@@ -4,11 +4,11 @@ internal import GRDB
 
 /// One entry in the appearance log: an appearance, or a review now that
 /// brought cards, from when the review panel showed to when it closed, and
-/// how it closed.
+/// how it closed; or an appearance a suppression held back, once, when it was
+/// held back.
 public struct AppearanceLogEntry: Sendable, Equatable {
-    /// How the review panel closed. Each raw value is how the appearance log
-    /// names it.
-    public enum Outcome: String, Sendable {
+    /// How the review panel closed, or what held the appearance back.
+    public enum Outcome: Sendable, Equatable {
         /// No card it brought was left: Lucas answered, flagged or buried
         /// each one, and maybe some that "See more" added.
         case finished
@@ -18,10 +18,17 @@ public struct AppearanceLogEntry: Sendable, Equatable {
         /// It closed on its own with cards left, untouched for a while or as
         /// the Mac or its screens went to sleep: it counts as a snooze.
         case autoClosed
+        /// It never showed: this suppression held it back. It comes once the
+        /// suppression is over, as another entry.
+        case heldBack(Suppression)
     }
 
     public let trigger: Trigger
+    /// When the review panel showed, or, held back, when the hold started.
     public let shownAt: Date
+    /// When the review panel closed, or, held back, when the hold ended: when
+    /// the panel showed, or the appearance couldn't come any more. A hold
+    /// that's still on has its shownAt here.
     public let closedAt: Date
     public let outcome: Outcome
 
@@ -40,7 +47,10 @@ extension AppearanceLogEntry {
         guard let trigger = Trigger(rawValue: try row.decode(forColumn: "trigger")) else {
             throw unreadable("Appearance log entry \(id) has an unknown trigger")
         }
-        guard let outcome = Outcome(rawValue: try row.decode(forColumn: "outcome")) else {
+        guard
+            let outcome = Outcome(
+                outcome: try row.decode(forColumn: "outcome"), heldBackBy: try row.decode(forColumn: "heldBackBy"))
+        else {
             throw unreadable("Appearance log entry \(id) has an unknown outcome")
         }
         self.init(
@@ -49,5 +59,36 @@ extension AppearanceLogEntry {
             closedAt: try row.decode(forColumn: "closedAt"),
             outcome: outcome
         )
+    }
+}
+
+/// How the `appearanceLog` table's `outcome` column names each outcome.
+enum OutcomeName: String {
+    case finished, snoozed, autoClosed, heldBack
+}
+
+extension AppearanceLogEntry.Outcome {
+    /// The outcome that the `appearanceLog` table's `outcome` and
+    /// `heldBackBy` columns name, or nil when this version of Ficha doesn't
+    /// know it.
+    fileprivate init?(outcome: String, heldBackBy: String?) {
+        switch (OutcomeName(rawValue: outcome), heldBackBy.map(Suppression.init(rawValue:))) {
+        case (.finished, nil): self = .finished
+        case (.snoozed, nil): self = .snoozed
+        case (.autoClosed, nil): self = .autoClosed
+        case (.heldBack, let suppression??): self = .heldBack(suppression)
+        default: return nil
+        }
+    }
+
+    /// The values of the `appearanceLog` table's `outcome` and `heldBackBy`
+    /// columns that name this outcome.
+    var columns: (outcome: String, heldBackBy: String?) {
+        switch self {
+        case .finished: (OutcomeName.finished.rawValue, nil)
+        case .snoozed: (OutcomeName.snoozed.rawValue, nil)
+        case .autoClosed: (OutcomeName.autoClosed.rawValue, nil)
+        case .heldBack(let suppression): (OutcomeName.heldBack.rawValue, suppression.rawValue)
+        }
     }
 }

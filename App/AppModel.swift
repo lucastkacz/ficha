@@ -77,9 +77,16 @@ final class AppModel {
     }
 
     /// Whether the review panel shows up on its own now, by what `mac` says,
-    /// and with which cards, or why not. The engine decides.
+    /// and with which cards, or why not. The engine decides, and notes an
+    /// appearance a suppression holds back in the appearance log.
     func checkAppearance(mac: some MacSignals) throws(EngineError) -> AppearanceDecision {
         try engine.checkAppearance(settings, mac: mac)
+    }
+
+    /// The latest entries of the appearance log, the latest first, up to
+    /// `count`, for Diagnostics.
+    func latestAppearances(_ count: Int) throws(EngineError) -> [AppearanceLogEntry] {
+        Array(try engine.appearanceLog().suffix(count).reversed())
     }
 
     /// Starts an appearance with the cards the engine picked, for the review

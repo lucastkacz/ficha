@@ -21,6 +21,9 @@ public struct ReviewSettings: Sendable, Equatable {
     public let separation: Duration
     /// How long an appearance waits at least after the Mac wakes.
     public let waitAfterWaking: Duration
+    /// How long an appearance waits at least after a suppression ends, so
+    /// Lucas has a moment to wrap up.
+    public let waitAfterSuppression: Duration
     /// How long the review panel stays open untouched before it closes on its
     /// own, which counts as a snooze.
     public let autoClose: Duration
@@ -41,6 +44,7 @@ public struct ReviewSettings: Sendable, Equatable {
         activeHours: 9..<22,
         separation: .seconds(30 * 60),
         waitAfterWaking: .seconds(2 * 60),
+        waitAfterSuppression: .seconds(2 * 60),
         autoClose: .seconds(10 * 60),
         focusMode: .onceIdle,
         idleBeforeTakingKeyboard: .seconds(5)

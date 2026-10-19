@@ -195,7 +195,8 @@ public struct ReviewPanelState: Sendable {
         do {
             try engine.recordClosing(of: trigger, shownAt: shownAt, outcome: outcome)
             let opener = trigger.rawValue
-            logger.info("The review panel (\(opener, privacy: .public)) closed: \(outcome.rawValue, privacy: .public)")
+            logger.info(
+                "The review panel (\(opener, privacy: .public)) closed: \(outcome.columns.outcome, privacy: .public)")
         } catch {
             logger.error("Couldn't record how the review panel closed: \(String(describing: error), privacy: .public)")
         }

@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ · %@" : {
+      "comment" : "An appearance log entry in Diagnostics: when it showed, or was held back, and what opened the review panel.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ can't open your cards" : {
 
     },
@@ -72,6 +83,12 @@
         }
       }
     },
+    "A camera" : {
+      "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
+    },
+    "A microphone" : {
+      "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
+    },
     "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
 
     },
@@ -87,11 +104,20 @@
     "Another app already uses this shortcut. Quit it, or turn its shortcut off, and try again." : {
 
     },
+    "Apps using the microphone" : {
+      "comment" : "In Diagnostics: which apps use a microphone."
+    },
     "Bury" : {
       "comment" : "A button that buries the card the review panel shows: it never shows up again."
     },
     "Bury (e)" : {
       "comment" : "The tooltip of the button that buries the card, with its key."
+    },
+    "Camera" : {
+      "comment" : "A detector in Diagnostics: the cameras in use."
+    },
+    "Can't tell" : {
+      "comment" : "A detector the OS didn't answer, in Diagnostics."
     },
     "Cancel" : {
 
@@ -113,6 +139,9 @@
     },
     "Close (esc)" : {
 
+    },
+    "Closed on its own" : {
+      "comment" : "How an appearance closed, in Diagnostics."
     },
     "Couldn't bury the card" : {
 
@@ -138,6 +167,9 @@
     "Couldn't undo" : {
 
     },
+    "Diagnostics" : {
+      "comment" : "The Diagnostics window's title."
+    },
     "Don't know" : {
 
     },
@@ -149,6 +181,9 @@
     },
     "Expand" : {
       "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
+    },
+    "Finished" : {
+      "comment" : "How an appearance closed, in Diagnostics."
     },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
@@ -162,26 +197,59 @@
     "Flip" : {
 
     },
+    "From the menu" : {
+      "comment" : "In Diagnostics: Lucas opened the review panel with Review now."
+    },
+    "Full screen" : {
+      "comment" : "A detector in Diagnostics: the app in front in full screen."
+    },
     "Got it" : {
 
+    },
+    "Held back by a full-screen app" : {
+      "comment" : "In Diagnostics: the app in front was in full screen."
+    },
+    "Held back by a meeting" : {
+      "comment" : "In Diagnostics: the camera or the microphone was in use."
+    },
+    "Held back by a video" : {
+      "comment" : "In Diagnostics: an app kept the display awake."
     },
     "Ignore" : {
       "comment" : "A button that drops a capture that repeats a card or a capture."
     },
+    "In use: %@" : {
+      "comment" : "What a detector sees in Diagnostics."
+    },
+    "Keeping the display awake" : {
+      "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
+    },
     "Know it" : {
+
+    },
+    "Latest appearances" : {
 
     },
     "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
 
     },
+    "Microphone" : {
+      "comment" : "A detector in Diagnostics: the microphones in use."
+    },
     "New" : {
       "comment" : "A badge on a card the review panel shows for the first time."
+    },
+    "No appearance yet." : {
+
     },
     "No cards are due right now." : {
 
     },
     "No cards to review right now." : {
 
+    },
+    "Not in use" : {
+      "comment" : "What a detector sees in Diagnostics."
     },
     "Note" : {
 
@@ -191,6 +259,12 @@
     },
     "OK" : {
 
+    },
+    "On its own" : {
+      "comment" : "In Diagnostics: the review panel showed up on its own."
+    },
+    "Process %d" : {
+      "comment" : "A process with no name, by its id, in Diagnostics: a noun."
     },
     "Quit" : {
 
@@ -207,6 +281,9 @@
     "Review now (%lld due)" : {
 
     },
+    "Right now" : {
+
+    },
     "Save" : {
 
     },
@@ -215,6 +292,9 @@
     },
     "See more?" : {
 
+    },
+    "Snoozed" : {
+      "comment" : "How an appearance closed, in Diagnostics."
     },
     "Sort of" : {
 
