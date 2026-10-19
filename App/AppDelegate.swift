@@ -63,14 +63,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Opens the Settings window: every default Lucas can change. When it's
-    /// open, it comes forward.
+    /// Opens the Settings window: every default Lucas can change, in tabs.
+    /// When it's open, it comes forward.
     func openSettings() {
         guard let model else { return }
         open(&settingsWindow) {
-            AppWindow(
-                title: String(localized: "Settings", comment: "The Settings window's title."),
-                content: SettingsView(model: model, captureShortcut: captureShortcut))
+            AppWindow(tabs: SettingsTabViewController(model: model, captureShortcut: captureShortcut))
         }
     }
 
