@@ -207,8 +207,15 @@ struct ReviewPanelView: View {
             String(
                 localized: "Flag…",
                 comment: "A button that flags the card the review panel shows, asking for a note on what to fix."),
-            systemImage: "flag", action: panel.startFlagging
-        )
+            systemImage: "flag"
+        ) {
+            panel.startFlagging()
+            // The note's field asks for the keyboard here, as it shows up:
+            // asked from the field's `onAppear`, in the update that M's key
+            // equivalent brings, SwiftUI drops the request while the panel
+            // has the keyboard (#61).
+            noteIsFocused = true
+        }
         .keyboardShortcut("m", modifiers: [])
         .help(Text("Flag… (m)", comment: "The tooltip of the button that flags the card, with its key."))
         Button(
@@ -262,9 +269,6 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.defaultAction)
                 .disabled(!panel.noteSaysWhatToFix)
             }
-        }
-        .onAppear {
-            noteIsFocused = true
         }
     }
 
