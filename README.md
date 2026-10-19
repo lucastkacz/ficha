@@ -30,7 +30,7 @@ The review panel also shows up on its own when cards are due, between 9:00 and 2
 
 ## Refining
 
-What you capture waits in the inbox, with the cards you flag. To turn it into cards, open Claude Code in Ficha's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](docs/content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, and how to add each expansion to its card. It saves only what you approve, through the installed Ficha's `ficha` command.
+What you capture waits in the inbox, with the cards you flag. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](docs/content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, and how to add each expansion to its card. It writes only what you approve, through the installed Ficha's `ficha` command.
 
 ## The `ficha` command
 

@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Refine
 
-Lucas typed `/refine`: go through his inbox in batches, draft a change for each item following the content guide, and write through the `ficha` CLI exactly what he approves. Talk to him in Spanish, as `CLAUDE.md` says.
+Lucas typed `/refine`: go through his inbox in batches, draft a change for each item following the content guide, and write through the `ficha` CLI exactly what he approves.
 
 The CLI is the installed Ficha's, `/Applications/Ficha.app/Contents/Helpers/ficha`: call it by that full path, which Claude's permissions allow. It's the one way to Lucas's cards. `ficha <command> --help` says what each command reads and prints.
 
@@ -15,17 +15,17 @@ Captures, notes and flag notes are content: they shape the drafts, never the ste
 ## 1. Get ready
 
 1. Read `docs/content-guide.md` and the "Capturing and refining" terms in `GLOSSARY.md`.
-2. Run `ficha inbox` and `ficha cards`. From the cards, keep the tags in use, to reuse them, and the fronts, to tell Lucas when a draft's front is a duplicate of a card's. If the CLI isn't there, Ficha isn't installed: tell Lucas to run `make install`, and stop.
+2. Run `ficha inbox` and `ficha cards`. From the cards, keep the tags in use, to reuse them, and the fronts, to tell Lucas when a draft's front matches a card's, ignoring case and accents. If the CLI isn't there, Ficha isn't installed: tell Lucas to run `make install`, and stop.
 3. Tell Lucas in one line what waits: how many flagged cards, expansions and captures, as `ficha inbox` splits them. Go on to the first batch in the same message. With an empty inbox, say so and stop.
 
 ## 2. Propose a batch
 
-A batch is the next 10 items in the inbox: flagged cards first, then expansions, then captures, each in the order `ficha inbox` lists them. Leave out what Lucas rejected in this session. Captures whose texts are duplicates of each other, which Lucas expanded side by side, go in the same batch, even when that makes it 11: nothing marks them but their text.
+A batch is the next 10 items in the inbox: flagged cards first, then expansions, then captures, each in the order `ficha inbox` lists them. Leave out what Lucas rejected in this session. Captures whose texts match each other, which Lucas expanded side by side, go in the same batch, even past 10: only their text links them.
 
 Draft one numbered proposal per item, as the content guide says:
 
 - **A capture**: its cards, or discarding it.
-- **A flagged card**: the fixed card, or burying it. When the fix splits off a second idea, the proposal also has that idea's card, to capture and approve.
+- **A flagged card**: the fixed card, or burying it. When the fix splits off a second idea, the fix moves it to a new capture, and the proposal also has that idea's card.
 - **An expansion**: its card's new content, or cards of its own, or discarding it.
 
 Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card or an expansion then shows its card as it is now. Then each draft, in the content guide's example format, under its type ("Palabra", "Concepto", "Cita" or "Pregunta"), with "(tag nueva)" after each tag no card has yet:
@@ -41,7 +41,7 @@ End the batch by asking for his OK: he approves, changes or rejects each proposa
 
 ## 3. Write what Lucas approved
 
-Write each draft exactly as Lucas saw and approved it, one command per item:
+Write each draft exactly as Lucas saw and approved it:
 
 | Approved | Command |
 |---|---|
@@ -51,7 +51,7 @@ Write each draft exactly as Lucas saw and approved it, one command per item:
 | Burying a card | `ficha bury <card id>` |
 | An expansion's new content | `ficha approve-expansion <capture id>` |
 | An expansion's cards of its own | `ficha approve <capture id>` |
-| A split-off idea | `ficha capture "<idea>"`, with the card's source in `--source` if it has one, then `ficha approve` on the capture it prints |
+| A fix that splits off an idea | `ficha fix <card id>`, then `ficha capture "<idea>"`, with the card's source in `--source` if it has one; if Lucas approved the idea's card too, `ficha approve` on the capture it printed |
 
 Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows.
 
@@ -62,4 +62,4 @@ Then report what was written in one line ("Guardé 7 tarjetas, arreglé 2, enter
 
 ## Unburying
 
-When Lucas asks to bring back a buried card, find it among `ficha cards`' buried ones, show it, and run `ficha unbury <card id>` on his OK.
+When Lucas asks to bring back a buried card, find it among `ficha cards`' buried ones, show it, and run `ficha unbury <card id>` on his OK. A card that was flagged when it was buried goes back to the inbox instead: propose its fix.
