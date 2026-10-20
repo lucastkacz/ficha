@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let captureShortcut = CaptureShortcutRegistration()
     /// The capture window, from the last time it showed.
     private var captureWindow: CaptureWindow?
+    /// The Cards window, once Lucas opened it.
+    private var cardsWindow: CardsWindow?
     /// The Diagnostics window, from the last time it showed.
     private var diagnosticsWindow: AppWindow?
     /// The Settings window, from the last time it showed.
@@ -50,6 +52,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let window = CaptureWindow(model: model)
         window.show()
         captureWindow = window
+    }
+
+    /// Opens the Cards window, or brings it forward when it's open: there's
+    /// only one.
+    func openCards() {
+        guard let model else { return }
+        let window = cardsWindow ?? CardsWindow(model: model)
+        window.open()
+        cardsWindow = window
     }
 
     /// Opens the Diagnostics window: what each detector sees right now, and

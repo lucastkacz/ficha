@@ -43,6 +43,17 @@
         }
       }
     },
+    "%lld · %@" : {
+      "comment" : "In the Cards window: the card's step on the ladder, counted from 1, and how long it waits, like 4 · 5d.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld · %2$@"
+          }
+        }
+      }
+    },
     "%lld cards learned · %lld in the inbox" : {
       "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait in the inbox.",
       "localizations" : {
@@ -138,6 +149,9 @@
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
     },
+    "All cards" : {
+
+    },
     "Allow it in System Settings, in Login Items." : {
 
     },
@@ -192,8 +206,14 @@
     "Card: “%@”\n\nExpand keeps your capture in the inbox, attached to that card, so that refining adds it to the card. Ignore drops it." : {
 
     },
+    "Cards" : {
+      "comment" : "The Cards window's title."
+    },
     "Cards per appearance" : {
 
+    },
+    "Cards…" : {
+      "comment" : "A menu item that opens the Cards window, where Lucas sees all his cards."
     },
     "Close" : {
 
@@ -206,6 +226,9 @@
     },
     "Closed on its own" : {
       "comment" : "How an appearance closed, in Diagnostics."
+    },
+    "Concept" : {
+      "comment" : "A card type."
     },
     "Couldn't bury the card" : {
 
@@ -220,6 +243,9 @@
 
     },
     "Couldn't load the cards" : {
+
+    },
+    "Couldn't load your cards" : {
 
     },
     "Couldn't look for more cards" : {
@@ -237,6 +263,9 @@
     "Couldn't undo" : {
 
     },
+    "Created" : {
+      "comment" : "In the Cards window's detail: when Lucas approved the card."
+    },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
     },
@@ -245,6 +274,9 @@
     },
     "Done" : {
       "comment" : "A button that closes the review panel once every card was gone through."
+    },
+    "Due" : {
+      "comment" : "A column of the Cards window: when the card is due.\nIn the Cards window's detail: when the card is due."
     },
     "Each time you know a card, it climbs a step and waits that long to be due again. A change re-times every card from its history, and a card beyond a shorter ladder's end sits on its last step." : {
 
@@ -270,11 +302,17 @@
     "Flag… (m)" : {
       "comment" : "The tooltip of the button that flags the card, with its key."
     },
+    "Flagged" : {
+      "comment" : "A mark on a flagged card, in the Cards window."
+    },
     "Flip" : {
 
     },
     "From the menu" : {
       "comment" : "In Diagnostics: Lucas opened the review panel with Review now."
+    },
+    "Front" : {
+      "comment" : "A column of the Cards window: the card's front."
     },
     "Full screen" : {
       "comment" : "A detector in Diagnostics: the app in front in full screen."
@@ -318,6 +356,9 @@
     "Ladder" : {
       "comment" : "A tab of the Settings window."
     },
+    "Last seen" : {
+      "comment" : "In the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+    },
     "Latest appearances" : {
 
     },
@@ -354,7 +395,7 @@
       "comment" : "Settings: the review panel never takes the keyboard on its own."
     },
     "New" : {
-      "comment" : "A badge on a card the review panel shows for the first time."
+      "comment" : "A badge on a card the review panel shows for the first time.\nIn the Cards window: a card that hasn't had its first view yet."
     },
     "New cards per day" : {
 
@@ -362,10 +403,16 @@
     "No appearance yet." : {
 
     },
+    "No card selected" : {
+
+    },
     "No cards are due right now." : {
 
     },
     "No cards to review right now." : {
+
+    },
+    "No cards yet" : {
 
     },
     "Not in use" : {
@@ -376,6 +423,9 @@
     },
     "Note (optional)" : {
 
+    },
+    "now" : {
+      "comment" : "In the Cards window's Due column: the card is due."
     },
     "OK" : {
 
@@ -392,8 +442,14 @@
     "Process %d" : {
       "comment" : "A process with no name, by its id, in Diagnostics: a noun."
     },
+    "Question" : {
+      "comment" : "A card type."
+    },
     "Quit" : {
 
+    },
+    "Quote" : {
+      "comment" : "A card type."
     },
     "Record Shortcut" : {
       "comment" : "Settings: the capture shortcut's button, while there's none."
@@ -458,6 +514,9 @@
     "Start at login" : {
 
     },
+    "Step" : {
+      "comment" : "A column of the Cards window: the card's step on the ladder, and its wait.\nIn the Cards window's detail: the card's step on the ladder, and its wait."
+    },
     "Step %lld" : {
       "comment" : "Settings: a step of the ladder, counted from 1."
     },
@@ -468,6 +527,9 @@
 
     },
     "The camera or the microphone in use" : {
+
+    },
+    "The cards you approve in a refine session show up here." : {
 
     },
     "Then wait" : {
@@ -513,6 +575,9 @@
     },
     "When it shows up on its own. Opened with Review now, it takes the keyboard at once." : {
 
+    },
+    "Word" : {
+      "comment" : "A card type."
     },
     "You went through every card." : {
 

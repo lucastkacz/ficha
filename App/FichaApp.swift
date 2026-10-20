@@ -15,7 +15,8 @@ struct FichaApp: App {
                 MenuContent(
                     model: model, openCapture: appDelegate.openCapture,
                     captureShortcut: appDelegate.captureShortcut, openReviewPanel: appDelegate.openReviewPanel,
-                    openDiagnostics: appDelegate.openDiagnostics, openSettings: appDelegate.openSettings,
+                    openCards: appDelegate.openCards, openDiagnostics: appDelegate.openDiagnostics,
+                    openSettings: appDelegate.openSettings,
                     checkAppearance: appDelegate.checkAppearanceNow)
             }
         } label: {
