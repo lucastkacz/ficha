@@ -48,13 +48,14 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 ## Shipping
 
 - Every change goes through a pull request from a branch named `<issue>-<short-name>`. Never commit on `main`: a hook blocks it, and GitHub rejects pushes to it.
+- Build each change in a worktree of its own: `EnterWorktree` named `<issue>-<short-name>`, then `git branch -m <issue>-<short-name>`, since the tool names the branch `worktree-<name>`. Lucas's folder stays on `main`, because other sessions work in it too.
 - Before opening the PR, `make check` passes and the `code-review` skill has run.
 - The PR body says `Closes #<n>` for each issue it resolves.
 - **Merging:**
   - A normal PR: once the review is addressed and the last push is done, Claude turns on auto-merge with `gh pr merge <n> --auto --squash`, alone on the line (a hook allows only that form). GitHub merges it when CI is green. To push again to a PR with auto-merge on, turn it off first (`gh pr merge <n> --disable-auto`), push, and turn it on again; a hook enforces it.
   - A `risk:high` PR: Lucas reviews and merges it. A PR is `risk:high` when it changes a path listed in `.claude/hooks/merge-gate.sh` (process files, CI, the build, and the project and package manifests) or touches the database schema or migrations, the scheduler or the content guide. Claude adds the label and never removes it. The PR that creates the schema, the scheduler or the content guide adds their paths to that list. The hook blocks Claude from merging either kind.
 - What only Lucas can check on his Mac (real meetings, full-screen apps, Spaces, how the panel feels) becomes a `ready-for-human` issue, linked from the PR.
-- After a merge, update Lucas's main folder with `git pull --ff-only` on `main`.
+- After a merge, update Lucas's main folder with `git pull --ff-only` on `main`, and remove the change's worktree and its branch.
 
 ## Map
 
