@@ -1,13 +1,14 @@
 import AppKit
+import Carbon.HIToolbox
 import FichaCore
 import FichaData
 
 // Draws one of the app's windows as a PNG, with Ficha Dev's sample cards,
 // without showing anything on screen: `make render ARGS="cards --dark"`. The
 // window goes below the desktop picture, where macOS still draws it but nobody
-// sees it and nothing takes the mouse or the keyboard; the tool clicks in it
-// where it's told, as Lucas would, and captures it with `screencapture`.
-// `docs/development.md` explains how to use it.
+// sees it and nothing takes the mouse or the keyboard; the tool clicks, presses
+// keys and types in it where it's told, as Lucas would, and captures it with
+// `screencapture`. `docs/development.md` explains how to use it.
 
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
@@ -18,12 +19,64 @@ enum Window: String {
 struct Request {
     var window: Window?
     var isDark = false
-    /// Where to click before the capture, in order: points from the window's
-    /// top-left corner.
-    var clicks: [CGPoint] = []
+    /// What to do in the window before the capture, in order.
+    var actions: [Action] = []
     /// Where the PNG goes.
     var output: URL?
 }
+
+/// Something the tool does in the window before the capture, as Lucas would.
+enum Action: CustomStringConvertible {
+    /// A click, in points from the window's top-left corner.
+    case click(CGPoint)
+    /// A key, pressed with its modifier keys held down.
+    case key(KeyPress)
+    /// Text, typed into what holds the focus.
+    case type(String)
+
+    /// The action as its arguments ask for it, like `--key cmd+f`.
+    var description: String {
+        switch self {
+        case .click(let point): "--click \(String(format: "%g,%g", point.x, point.y))"
+        case .key(let press): "--key \(press.name)"
+        case .type(let text): "--type \"\(text)\""
+        }
+    }
+}
+
+/// A press of a key, with the modifier keys held down, like `cmd+f`.
+struct KeyPress {
+    /// The press as its arguments name it.
+    let name: String
+    let modifiers: NSEvent.ModifierFlags
+    /// What the press types.
+    let characters: String
+    /// The key's code on a US keyboard, one of Carbon's `kVK_` constants.
+    let code: Int
+}
+
+/// The letters and digits the tool presses, with their keys' codes. Each one
+/// types itself.
+let characterKeyCodes = [
+    "a": kVK_ANSI_A, "b": kVK_ANSI_B, "c": kVK_ANSI_C, "d": kVK_ANSI_D, "e": kVK_ANSI_E, "f": kVK_ANSI_F,
+    "g": kVK_ANSI_G, "h": kVK_ANSI_H, "i": kVK_ANSI_I, "j": kVK_ANSI_J, "k": kVK_ANSI_K, "l": kVK_ANSI_L,
+    "m": kVK_ANSI_M, "n": kVK_ANSI_N, "o": kVK_ANSI_O, "p": kVK_ANSI_P, "q": kVK_ANSI_Q, "r": kVK_ANSI_R,
+    "s": kVK_ANSI_S, "t": kVK_ANSI_T, "u": kVK_ANSI_U, "v": kVK_ANSI_V, "w": kVK_ANSI_W, "x": kVK_ANSI_X,
+    "y": kVK_ANSI_Y, "z": kVK_ANSI_Z, "0": kVK_ANSI_0, "1": kVK_ANSI_1, "2": kVK_ANSI_2, "3": kVK_ANSI_3,
+    "4": kVK_ANSI_4, "5": kVK_ANSI_5, "6": kVK_ANSI_6, "7": kVK_ANSI_7, "8": kVK_ANSI_8, "9": kVK_ANSI_9,
+]
+
+/// The other keys the tool presses, by name: what each one types, and its
+/// key's code.
+let namedKeys: [String: (characters: String, code: Int)] = [
+    "return": ("\r", kVK_Return), "escape": ("\u{1B}", kVK_Escape), "tab": ("\t", kVK_Tab),
+    "space": (" ", kVK_Space), "delete": ("\u{7F}", kVK_Delete),
+]
+
+/// The modifier keys the tool holds down, by name. Option and Control are left
+/// out: what a key types with them depends on the keyboard, and no window's
+/// shortcut uses them.
+let modifiersByName: [String: NSEvent.ModifierFlags] = ["cmd": .command, "shift": .shift]
 
 /// A request the tool can't draw, with what to do about it.
 struct RenderError: Error, CustomStringConvertible {
@@ -31,12 +84,45 @@ struct RenderError: Error, CustomStringConvertible {
 }
 
 let usage = """
-    Usage: make render ARGS="<window> [--dark] [--click <x>,<y>]... [--out <file.png>]"
+    Usage: make render ARGS="<window> [--dark] [--click <x>,<y> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards
       --dark     dark mode instead of light
-      --click    a click on a table's row or column header, in points from the window's top-left corner
+      --click    a click on a table's or the sidebar's row, or on a column header, in points from the window's top-left corner
+      --key      a key, after the modifiers held down: cmd+f, cmd+s, escape, return, shift+tab
+                 keys: a-z, 0-9, return, escape, tab, space, delete; modifiers: cmd, shift
+      --type     text typed into what holds the focus, like a text field
       --out      the PNG, by default .build/render/<window>-<light|dark>.png
+    --click, --key and --type run in the order given, and after each one the tool prints what holds the focus.
     """
+
+/// The press `name` names, like `cmd+f` or `escape`.
+func keyPress(named name: String) throws(RenderError) -> KeyPress {
+    var parts = name.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
+    guard let key = parts.popLast(), !key.isEmpty else {
+        throw RenderError(description: "--key takes a key after its modifiers, like cmd+f or escape.\n\(usage)")
+    }
+    var modifiers: NSEvent.ModifierFlags = []
+    for part in parts {
+        guard let modifier = modifiersByName[part] else {
+            throw RenderError(description: "Unknown modifier \(part) in --key \(name).\n\(usage)")
+        }
+        modifiers.insert(modifier)
+    }
+    let shifted = modifiers.contains(.shift)
+    if let named = namedKeys[key] {
+        // Shift-Tab types the back tab, which moves the focus backward.
+        let characters = shifted && key == "tab" ? String(NSEvent.SpecialKey.backTab.unicodeScalar) : named.characters
+        return KeyPress(name: name, modifiers: modifiers, characters: characters, code: named.code)
+    }
+    guard let code = characterKeyCodes[key] else {
+        throw RenderError(description: "Unknown key \(key) in --key \(name).\n\(usage)")
+    }
+    guard !shifted || key.allSatisfy(\.isLetter) else {
+        throw RenderError(
+            description: "--key \(name): Shift with a digit types a symbol that depends on the keyboard.\n\(usage)")
+    }
+    return KeyPress(name: name, modifiers: modifiers, characters: shifted ? key.uppercased() : key, code: code)
+}
 
 /// The request in the tool's arguments.
 func request(from arguments: [String]) throws(RenderError) -> Request {
@@ -52,7 +138,14 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
             guard parts.count == 2, numbers.count == 2 else {
                 throw RenderError(description: "--click takes a point as <x>,<y>, like 300,120.\n\(usage)")
             }
-            request.clicks.append(CGPoint(x: numbers[0], y: numbers[1]))
+            request.actions.append(.click(CGPoint(x: numbers[0], y: numbers[1])))
+        case "--key":
+            request.actions.append(.key(try keyPress(named: arguments.popFirst() ?? "")))
+        case "--type":
+            guard let text = arguments.popFirst(), !text.isEmpty else {
+                throw RenderError(description: "--type takes the text to type.\n\(usage)")
+            }
+            request.actions.append(.type(text))
         case "--out":
             guard let path = arguments.popFirst() else {
                 throw RenderError(description: "--out takes the PNG's path.\n\(usage)")
@@ -173,6 +266,54 @@ func click(_ point: CGPoint, in window: NSWindow) throws {
     }
 }
 
+/// Makes `press` as AppKit sends it to the key window: first as a key
+/// equivalent, which a SwiftUI button's keyboard shortcut takes, and then, when
+/// nothing took it, to what holds the focus. The tool has no main menu, so the
+/// step between the two, which offers the press to the menu, is left out.
+func press(_ press: KeyPress, in window: NSWindow) throws(RenderError) {
+    guard let code = UInt16(exactly: press.code),
+        let event = NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: press.modifiers,
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
+            characters: press.characters, charactersIgnoringModifiers: press.characters, isARepeat: false,
+            keyCode: code)
+    else {
+        throw RenderError(description: "Couldn't make a press of \(press.name).")
+    }
+    if !window.performKeyEquivalent(with: event) {
+        (window.firstResponder ?? window).keyDown(with: event)
+    }
+}
+
+/// Types `text` into what holds the focus, as the keyboard's input does: in a
+/// text field, into its field editor.
+func typeText(_ text: String, in window: NSWindow) throws(RenderError) {
+    guard let input = window.firstResponder as? NSTextInputClient else {
+        throw RenderError(
+            description: """
+                Nothing to type "\(text)" into: the focus is on \(focus(in: window)). Click a text field, or press \
+                its shortcut, before --type.
+                """)
+    }
+    input.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+}
+
+/// What holds the focus in `window`, its first responder, by class. For a
+/// field editor, which types into a text field, also the field and its
+/// placeholder, which tell the fields apart.
+func focus(in window: NSWindow) -> String {
+    guard let responder = window.firstResponder, responder !== window else {
+        return "the window itself"
+    }
+    let name = String(describing: type(of: responder))
+    guard let editor = responder as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSTextField
+    else {
+        return name
+    }
+    let placeholder = field.placeholderString.map { " \"\($0)\"" } ?? ""
+    return "\(name), the field editor of \(type(of: field))\(placeholder)"
+}
+
 /// Makes `window` act and look as the key window, the one the keyboard and
 /// clicks go to: views check it before they react to a click, and macOS draws
 /// its title bar's buttons in color, though not its selections. This tool's app
@@ -239,9 +380,14 @@ do {
     try actAsKey(window)
     window.orderFrontRegardless()
     wait(1.5)
-    for point in request.clicks {
-        try click(point, in: window)
+    for action in request.actions {
+        switch action {
+        case .click(let point): try click(point, in: window)
+        case .key(let keyPress): try press(keyPress, in: window)
+        case .type(let text): try typeText(text, in: window)
+        }
         wait(0.5)
+        print("\(action): the focus is on \(focus(in: window))")
     }
     let output =
         request.output ?? URL(filePath: ".build/render/\(name.rawValue)-\(request.isDark ? "dark" : "light").png")
