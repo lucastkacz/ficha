@@ -53,8 +53,9 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - **Merging:**
   - A normal PR: once the review is addressed and the last push is done, Claude turns on auto-merge with `gh pr merge <n> --auto --squash`, alone on the line (a hook allows only that form). GitHub merges it when CI is green. To push again to a PR with auto-merge on, turn it off first (`gh pr merge <n> --disable-auto`), push, and turn it on again; a hook enforces it.
   - A `risk:high` PR: Lucas reviews and merges it. A PR is `risk:high` when it changes a path listed in `.claude/hooks/merge-gate.sh` (process files, CI, the build, and the project and package manifests) or touches the database schema or migrations, the scheduler or the content guide. Claude adds the label and never removes it. The PR that creates the schema, the scheduler or the content guide adds their paths to that list. The hook blocks Claude from merging either kind.
+- A PR that changes what Lucas sees shows it in pictures from `make render`, as "The PR's pictures" in `docs/development.md` describes.
 - What only Lucas can check on his Mac (real meetings, full-screen apps, Spaces, how the panel feels) becomes a `ready-for-human` issue, linked from the PR.
-- After a merge, update Lucas's main folder with `git -C <main folder> pull --ff-only` on `main`, then leave the worktree with `ExitWorktree` and `remove`. The squash merge leaves the branch's commits off `main`, so removing it needs `discard_changes`, which Lucas confirms.
+- After a merge, leave the worktree with `ExitWorktree` and `remove` first, since from inside it the harness blocks git in the main folder. Then, back in the main folder, run `git pull --ff-only` on `main` and delete the branch's local copy with `git branch -D`: `ExitWorktree` deletes only `worktree-<name>`. Both deletions drop commits the squash merge left off `main`, so Lucas confirms both: `ExitWorktree` takes `discard_changes`, and `git branch -D` asks for permission.
 
 ## Map
 
@@ -62,18 +63,20 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `App/`: the macOS app. Its Xcode project is generated from `project.yml`.
 - `CODING_STANDARDS.md`: how Swift is written here; `code-review` checks against it.
 - `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, Dependabot and issue forms.
-- `scripts/`: the hook tests.
+- `scripts/`: the hook tests and the render tool.
 
 ## Commands
 
-- `make check`: lint, package tests, the app build (warnings are errors) and the hook tests. CI runs the same.
+- `make check`: everything CI runs: lint, package tests, the builds (warnings are errors) and the hook tests.
 - `make fmt`, `make test`, `make build`, `make run` (build and open the app), `make bootstrap` (installs XcodeGen).
+- `make render ARGS="cards"`: an app window as a PNG, drawn below the desktop picture, so it shows nothing and takes neither the mouse nor the keyboard, and needs no OK from Lucas. "A window's picture" in `docs/development.md` explains it.
 - `make install`: copies a Release build to `/Applications`. It asks Lucas first.
 
 ## Known gotchas
 
 - `gh issue create` can't use the YAML issue forms: write their fields as `###` headings in the body and pass the labels.
 - Auto mode refuses Claude's edits to `CLAUDE.md` and `.claude/settings.json`. Ask Lucas to switch the session to manual mode for those edits; never get around it with Bash.
+- In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
 - Skills, hooks and settings load when a session starts. After changing them, check them in a new session.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
 
