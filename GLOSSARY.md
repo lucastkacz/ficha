@@ -111,18 +111,18 @@ _Avoid_: mark, report
 Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it was.
 _Avoid_: archive, suspend
 
-### Browsing
+### Managing cards
 
 **Cards window**:
-The window where Lucas sees every card, and what waits in the inbox, and changes them himself.
+The window where Lucas sees all his cards and everything in the inbox, and acts on them himself.
 _Avoid_: browser, card list
 
 **Edit**:
-Changing a card's type, front, back, tags or source, or a capture's text, note or source, in the Cards window. A card keeps its step and its review log, and editing a flagged one fixes it.
-_Avoid_: change, update
+Changing the content of a card or a capture. A card keeps its step and its review log.
+_Avoid_: modify, update
 
 **Delete**:
-Removing a card for good, with its review log. An expansion attached to it stays in the inbox as a capture. Unlike burying, it can't be undone.
+Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it stays in the inbox as a capture.
 _Avoid_: remove, erase
 
 ### Spacing
