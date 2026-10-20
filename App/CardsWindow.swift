@@ -16,6 +16,9 @@ final class CardsWindow: NSWindow {
     private static let firstSize = NSSize(width: 1120, height: 640)
 
     private let model: AppModel
+    /// Whether the window is open: on screen, minimized, or hidden with the
+    /// app.
+    private var isOpen = false
 
     /// The window, closed, for Lucas's cards in `model`.
     init(model: AppModel) {
@@ -41,10 +44,11 @@ final class CardsWindow: NSWindow {
     /// and shows the app in the Dock and in ⌘Tab. When it's open, it comes
     /// forward.
     func open() {
-        guard !isVisible, !isMiniaturized else {
+        guard !isOpen else {
             bringForward()
             return
         }
+        isOpen = true
         // The content is made each time the window opens, so it starts as the
         // window does the first time, and stops reading the cards once it
         // closes.
@@ -57,19 +61,24 @@ final class CardsWindow: NSWindow {
     }
 
     /// Brings the window in front of the other apps, out of the Dock when
-    /// it's minimized.
+    /// it's minimized, and with the app when it's hidden.
     private func bringForward() {
         if isMiniaturized {
             deminiaturize(nil)
         }
+        NSApplication.shared.unhide(nil)
         NSApplication.shared.activate()
-        makeKeyAndOrderFront(nil)
+        // As AppWindow does: in front even when macOS doesn't activate the
+        // app at once.
+        orderFrontRegardless()
+        makeKey()
     }
 
     /// Closes the window and its content, and takes the app out of the Dock
     /// and ⌘Tab.
     override func close() {
         super.close()
+        isOpen = false
         contentView = nil
         NSApplication.shared.setActivationPolicy(.accessory)
     }

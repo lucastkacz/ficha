@@ -19,10 +19,20 @@ public struct CardRow: Sendable, Equatable, Identifiable {
         card.id
     }
 
-    /// When the card is due, as the Cards window says it: nil while it's
-    /// new, flagged or buried, since it won't show up until then.
+    /// The step it stands on, counted from 0, the first step, or nil while
+    /// it's new.
+    public var step: Int? {
+        guard case .onLadder(let step, _) = standing else {
+            return nil
+        }
+        return step
+    }
+
+    /// When the card is due, as the Cards window says it: nil while it's new,
+    /// or out of Lucas's reviews, flagged or buried, since it won't show up
+    /// then.
     public var due: Date? {
-        guard card.flag == nil, card.buriedAt == nil else {
+        guard card.isInReviews else {
             return nil
         }
         return standing.due
@@ -36,25 +46,23 @@ extension Engine {
         try read { db in
             let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
             return try allCards(in: db).filter { $0.buriedAt == nil }.map { card in
-                let cardEntries = entries[card.id] ?? []
-                let standing = try ladder.standing(after: cardEntries)
-                return CardRow(
-                    card: card,
-                    standing: standing,
-                    wait: standing.step.map { ladder.waits[$0] },
-                    lastSeen: cardEntries.last?.answeredAt
-                )
+                try CardRow(card: card, after: entries[card.id] ?? [], on: ladder)
             }
         }
     }
 }
 
-extension CardStanding {
-    /// The step the card stands on, counted from 0, or nil while it's new.
-    fileprivate var step: Int? {
-        guard case .onLadder(let step, _) = self else {
-            return nil
+extension CardRow {
+    /// The row of `card`, standing on `ladder` after `entries`, its review
+    /// log's, in the order they happened.
+    fileprivate init(card: Card, after entries: [ReviewLogEntry], on ladder: Ladder) throws(UnexpectedReviewLog) {
+        self.card = card
+        standing = try ladder.standing(after: entries)
+        lastSeen = entries.last?.answeredAt
+        if case .onLadder(let step, _) = standing {
+            wait = ladder.waits[step]
+        } else {
+            wait = nil
         }
-        return step
     }
 }

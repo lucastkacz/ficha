@@ -7,7 +7,7 @@ import SwiftUI
 /// selected card whole beside it. It reads the cards again whenever the
 /// engine says they changed, from the app or the `ficha` CLI, when Lucas
 /// changes the ladder in Settings, and every minute, since cards come due as
-/// time passes.
+/// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// The cards the table lists, or why they couldn't be read.
@@ -59,6 +59,9 @@ struct CardsView: View {
             }
         }
         .onChange(of: model.settings.ladder) {
+            reload()
+        }
+        .onChange(of: model.debugTools?.timeShift) {
             reload()
         }
     }
@@ -190,28 +193,32 @@ extension CardRow {
     /// The card's step counted from 1, as Settings counts them, or 0 while
     /// it's new, before the first step.
     nonisolated fileprivate var stepNumber: Int {
-        guard case .onLadder(let step, _) = standing else {
-            return 0
-        }
-        return step + 1
+        step.map { $0 + 1 } ?? 0
     }
 }
 
-/// The card's front, after a mark when it's flagged.
+/// The card's front, after a flag when it's flagged.
 private struct FrontCell: View {
     let card: Card
 
     var body: some View {
         HStack(spacing: 4) {
             if card.flag != nil {
-                Image(systemName: "flag.fill")
-                    .foregroundStyle(.orange)
-                    .accessibilityLabel(Text("Flagged", comment: "A mark on a flagged card, in the Cards window."))
-                    .help(Text("Flagged", comment: "A mark on a flagged card, in the Cards window."))
+                FlagIcon()
             }
             Text(card.front)
                 .lineLimit(1)
         }
+    }
+}
+
+/// The flag beside a flagged card, in the table and the detail.
+private struct FlagIcon: View {
+    var body: some View {
+        Image(systemName: "flag.fill")
+            .foregroundStyle(.orange)
+            .accessibilityLabel(Text("Flagged", comment: "The flag icon beside a flagged card, in the Cards window."))
+            .help(Text("Flagged", comment: "The flag icon beside a flagged card, in the Cards window."))
     }
 }
 
@@ -230,10 +237,7 @@ private struct CardDetail: View {
                         Text(flag.note)
                             .fixedSize(horizontal: false, vertical: true)
                     } icon: {
-                        Image(systemName: "flag.fill")
-                            .foregroundStyle(.orange)
-                            .accessibilityLabel(
-                                Text("Flagged", comment: "A mark on a flagged card, in the Cards window."))
+                        FlagIcon()
                     }
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -319,7 +323,7 @@ private struct CardDetail: View {
 /// The card's step counted from 1, as Settings counts them, with its wait,
 /// like "4 · 5d", or "New" before its first view.
 private func stepText(_ row: CardRow) -> String {
-    guard case .onLadder(let step, _) = row.standing, let wait = row.wait else {
+    guard let step = row.step, let wait = row.wait else {
         return String(localized: "New", comment: "In the Cards window: a card that hasn't had its first view yet.")
     }
     let waitText = wait.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
@@ -331,8 +335,9 @@ private func stepText(_ row: CardRow) -> String {
 }
 
 /// When the card is due, counted from `now`: "now" once it's due, however
-/// long ago, "in 2h", "tomorrow" or "in 5d" before, and nothing while it's
-/// new or flagged, since it won't show up then.
+/// long ago, and before, as the Mac's locale words it, like "in 2h",
+/// "tomorrow" or "in 5d" in US English. Nothing while it's new or flagged,
+/// since it won't show up then.
 private func dueText(_ row: CardRow, at now: Date) -> String {
     guard let due = row.due else {
         return ""
@@ -340,8 +345,8 @@ private func dueText(_ row: CardRow, at now: Date) -> String {
     guard due > now else {
         return String(localized: "now", comment: "In the Cards window's Due column: the card is due.")
     }
-    // In the ladder's units, as Settings shows its waits: "in 8d", not
-    // "next week".
+    // In the ladder's units, days, hours and minutes, as Settings shows its
+    // waits: "in 8d", never "next week".
     var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
     style.allowedFields = [.day, .hour, .minute]
     return style.format(now)

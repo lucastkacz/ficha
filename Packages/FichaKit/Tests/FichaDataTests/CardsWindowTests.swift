@@ -37,24 +37,32 @@ struct CardsWindowTests {
         settings.ladder = try #require(Ladder(waits: [.seconds(minutes(10)), .seconds(days(1)), .seconds(days(3))]))
         let serendipia = try approveCard("serendipia", in: engine)
         try approveCard("ubuntu", in: engine)
+        let ojala = try approveCard("ojalá", in: engine)
         try engine.record(
             .firstView, of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
         time.advance(by: minutes(10))
         try engine.record(
             .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
         let climbedAt = time.now
+        time.advance(by: minutes(30))
+        try engine.record(.firstView, of: ojala.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
+        let metAt = time.now
         // A review ahead, whose good doesn't count, is still the last time
         // Lucas saw it.
-        time.advance(by: hours(1))
+        time.advance(by: minutes(30))
         try engine.record(
             .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings,
             reviewingAhead: true)
 
         let rows = try engine.cardRows(on: settings.ladder)
 
-        #expect(rows.map(\.standing) == [.onLadder(step: 1, due: climbedAt + days(1)), .new])
-        #expect(rows.map(\.wait) == [.seconds(days(1)), nil])
-        #expect(rows.map(\.lastSeen) == [time.now, nil])
+        #expect(
+            rows.map(\.standing) == [
+                .onLadder(step: 1, due: climbedAt + days(1)), .new, .onLadder(step: 0, due: metAt + minutes(10)),
+            ])
+        #expect(rows.map(\.step) == [1, nil, 0])
+        #expect(rows.map(\.wait) == [.seconds(days(1)), nil, .seconds(minutes(10))])
+        #expect(rows.map(\.lastSeen) == [time.now, nil, metAt])
     }
 
     @Test("a flagged card keeps its step but has no due time, since it won't show up until it's fixed")

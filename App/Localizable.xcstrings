@@ -303,7 +303,7 @@
       "comment" : "The tooltip of the button that flags the card, with its key."
     },
     "Flagged" : {
-      "comment" : "A mark on a flagged card, in the Cards window."
+      "comment" : "The flag icon beside a flagged card, in the Cards window."
     },
     "Flip" : {
 
