@@ -14,7 +14,13 @@ You don't sit down to study. When some of your cards are due, or a new one is wa
 
 It doesn't catch what you're typing: it waits until you stop for a moment, or until you click it. If now isn't a good time, press Esc, and the cards wait for the next one. Left alone, it closes after ten minutes.
 
-You can also open it yourself, whenever you like, with "Review now" in Ficha's menu. The menu also shows how many cards you've learned and how many wait in the inbox. In Settings you pick the hours, how many cards come at a time and how far apart, and whether Ficha starts when you log in.
+You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due. The menu also shows how many cards you've learned and how many wait in the inbox.
+
+<p align="center">
+  <img src="docs/images/menu.png" width="364" alt="Ficha's menu, with the items Capture…, Review now (3 due), a line saying 8 cards learned · 2 in the inbox, Diagnostics, Settings… and Quit.">
+</p>
+
+In Settings you pick the hours, how many cards come at a time and how far apart, and whether Ficha starts when you log in.
 
 ## Flip, then rate
 
