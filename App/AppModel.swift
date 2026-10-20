@@ -109,6 +109,18 @@ final class AppModel {
         ReviewPanelModel(engine.openPanel(.appearance, with: cards, settings: settings))
     }
 
+    /// Every card that isn't buried, as the Cards window lists them, each on
+    /// the ladder Lucas set in Settings.
+    func cardRows() throws(EngineError) -> [CardRow] {
+        try engine.cardRows(on: settings.ladder)
+    }
+
+    /// Every change to Lucas's cards from now on, by the app or by the
+    /// `ficha` CLI, for a window that shows them to read them again.
+    func changes() -> AsyncStream<Void> {
+        engine.changes()
+    }
+
     /// The engine's time: the system's, or, in Ficha Dev, the time its debug
     /// menu moves forward.
     var now: Date {

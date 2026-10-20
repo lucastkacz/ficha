@@ -1,0 +1,85 @@
+import AppKit
+import SwiftUI
+
+/// The Cards window: Lucas's cards in three panes, as Mail lays out its own.
+/// There's one, which he can resize down to what fits the three panes, and
+/// which opens where he left it. While it's open, the app shows in the Dock
+/// and in ⌘Tab, so he can switch back to it as to any app; once it closes,
+/// the app lives in the menu bar only again.
+final class CardsWindow: NSWindow {
+    /// The name the window's frame is kept under in the app's preferences.
+    private static let frameName = "Cards"
+    /// The least the window's content can be: enough for the sidebar, the
+    /// table and the detail side by side.
+    private static let minimumSize = NSSize(width: 880, height: 440)
+    /// The window's content the first time it opens.
+    private static let firstSize = NSSize(width: 1120, height: 640)
+
+    private let model: AppModel
+    /// Whether the window is open: on screen, minimized, or hidden with the
+    /// app.
+    private var isOpen = false
+
+    /// The window, closed, for Lucas's cards in `model`.
+    init(model: AppModel) {
+        self.model = model
+        super.init(
+            contentRect: NSRect(origin: .zero, size: Self.firstSize),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered, defer: true)
+        title = String(localized: "Cards", comment: "The Cards window's title.")
+        isReleasedWhenClosed = false
+        isRestorable = false
+        // The toolbar, where the split view puts its sidebar button.
+        toolbar = NSToolbar()
+        toolbarStyle = .unified
+        contentMinSize = Self.minimumSize
+        if !setFrameUsingName(Self.frameName) {
+            center()
+        }
+        setFrameAutosaveName(Self.frameName)
+    }
+
+    /// Opens the window where Lucas left it, with his cards as they are now,
+    /// and shows the app in the Dock and in ⌘Tab. When it's open, it comes
+    /// forward.
+    func open() {
+        guard !isOpen else {
+            bringForward()
+            return
+        }
+        isOpen = true
+        // The content is made each time the window opens, so it starts as the
+        // window does the first time, and stops reading the cards once it
+        // closes.
+        let content = NSHostingView(rootView: CardsView(model: model))
+        content.sceneBridgingOptions = [.toolbars]
+        content.sizingOptions = []
+        contentView = content
+        NSApplication.shared.setActivationPolicy(.regular)
+        bringForward()
+    }
+
+    /// Brings the window in front of the other apps, out of the Dock when
+    /// it's minimized, and with the app when it's hidden.
+    private func bringForward() {
+        if isMiniaturized {
+            deminiaturize(nil)
+        }
+        NSApplication.shared.unhide(nil)
+        NSApplication.shared.activate()
+        // As AppWindow does: in front even when macOS doesn't activate the
+        // app at once.
+        orderFrontRegardless()
+        makeKey()
+    }
+
+    /// Closes the window and its content, and takes the app out of the Dock
+    /// and ⌘Tab.
+    override func close() {
+        super.close()
+        isOpen = false
+        contentView = nil
+        NSApplication.shared.setActivationPolicy(.accessory)
+    }
+}

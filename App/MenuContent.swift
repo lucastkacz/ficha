@@ -11,6 +11,8 @@ struct MenuContent: View {
     let captureShortcut: CaptureShortcutRegistration
     /// Opens the review panel with the cards a review now brings.
     let openReviewPanel: () -> Void
+    /// Opens the Cards window.
+    let openCards: () -> Void
     /// Opens the Diagnostics window.
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
@@ -25,6 +27,11 @@ struct MenuContent: View {
         Button(reviewNowTitle, action: openReviewPanel)
         Divider()
         Text(progressLine)
+        Button(
+            String(
+                localized: "Cards…", comment: "A menu item that opens the Cards window, where Lucas sees all his cards."
+            ),
+            action: openCards)
         Button("Diagnostics", action: openDiagnostics)
         Button("Settings…", action: openSettings)
             .keyboardShortcut(",")
