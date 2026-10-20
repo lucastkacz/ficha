@@ -34,7 +34,7 @@ Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 1
 >
 > Palabra
 > **serendipia**
-> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa.
+> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».
 > _lenguaje_ (tag nueva) · Un podcast de etimología
 
 End the batch by asking for his OK: he approves, changes or rejects each proposal, or all of them at once. What he rejects stays in the inbox, untouched, unless he says what he wants instead: then redraft it.
