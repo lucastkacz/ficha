@@ -31,8 +31,8 @@ bootstrap: ## Install the tools the build needs.
 	@command -v xcodegen >/dev/null || brew install xcodegen
 
 xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-version names.
-	@version=$$(xcodebuild -version) || exit 1; \
-	mac=$$(echo "$$version" | sed -n 's/^Xcode //p'); ci=$$(cat .xcode-version); \
+	@output=$$(xcodebuild -version) || exit 1; \
+	mac=$$(echo "$$output" | sed -n 's/^Xcode //p'); ci=$$(cat .xcode-version); \
 	[ "$$mac" = "$$ci" ] || { \
 		echo "This Mac runs Xcode $$mac and CI runs $$ci, the one .xcode-version names: update the Mac's Xcode to $$ci, or the file to $$mac, which moves CI too." >&2; \
 		exit 1; }
