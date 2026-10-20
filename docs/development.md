@@ -38,7 +38,7 @@ The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Bui
 
 ## A window's picture
 
-`make render` draws one of the app's windows as a PNG, with Ficha Dev's sample cards, without showing anything on screen or taking the mouse or the keyboard, so it runs while Lucas uses his Mac:
+`make render` draws one of the app's windows as a PNG, with Ficha Dev's sample cards, without showing anything on screen or taking the mouse or the keyboard, so it runs while you use your Mac:
 
 ```bash
 make render ARGS="cards"
@@ -49,12 +49,13 @@ make render ARGS="cards --dark --click 482,66 --click 280,529 --out .build/rende
 - The cards are Ficha Dev's sample cards after twelve days of reviews, from 8 October 2026: some climbing at different paces, two sent back to the first step, one flagged with a note, one buried, and the rest new.
 - `--click <x>,<y>` clicks before the capture, in points from the window's top-left corner: on a row, to select it, or on a column's header, to sort by it. SwiftUI's buttons don't react to these clicks. To find a point, render once and read it off the PNG.
 - The window acts as the key window, with its title bar's buttons in color, but its selections stay gray.
-- Only the Cards window so far. Another window is one more case in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
+- The window is in English, the app's base language: the tool leaves the String Catalog out.
+- Only the Cards window so far. Another window is one more case in `Window` and in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
 - The tool compiles the app's own files, through `scripts/render/Sources/Render/App`, a link to `App/`, so `make check` builds it: a change to the app that breaks it fails the check.
 
 ## The PR's pictures
 
-A PR that changes what Lucas sees shows it in pictures, which `make render` draws, so he can decide from its body. They never reach `main`:
+A PR that changes what you see shows it in pictures, which `make render` draws, so you can decide from its body. They never reach `main`:
 
 1. Copy the PNGs to `pr-images/<issue>/` and commit them on the PR's branch.
 2. Remove the folder in the next commit.

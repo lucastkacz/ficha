@@ -55,5 +55,5 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 
 ## Dependencies
 
-- Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed.
+- Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed. The render tool (`scripts/render`) takes its dependencies through FichaKit's pins, so its own `Package.resolved` stays out.
 - A new dependency needs an ADR in `docs/adr/` and makes the PR `risk:high`.

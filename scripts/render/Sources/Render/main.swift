@@ -9,10 +9,14 @@ import FichaData
 // where it's told, as Lucas would, and captures it with `screencapture`.
 // `docs/development.md` explains how to use it.
 
+/// A window the tool can draw, by the name its arguments give it.
+enum Window: String {
+    case cards
+}
+
 /// What the tool was asked to draw.
 struct Request {
-    /// Which window: only `cards` so far.
-    var window = ""
+    var window: Window?
     var isDark = false
     /// Where to click before the capture, in order: points from the window's
     /// top-left corner.
@@ -43,8 +47,9 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
         case "--dark":
             request.isDark = true
         case "--click":
-            let numbers = (arguments.popFirst() ?? "").split(separator: ",").compactMap { Double($0) }
-            guard numbers.count == 2 else {
+            let parts = (arguments.popFirst() ?? "").split(separator: ",", omittingEmptySubsequences: false)
+            let numbers = parts.compactMap { Double($0) }
+            guard parts.count == 2, numbers.count == 2 else {
                 throw RenderError(description: "--click takes a point as <x>,<y>, like 300,120.\n\(usage)")
             }
             request.clicks.append(CGPoint(x: numbers[0], y: numbers[1]))
@@ -53,8 +58,11 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
                 throw RenderError(description: "--out takes the PNG's path.\n\(usage)")
             }
             request.output = URL(filePath: path)
-        case _ where request.window.isEmpty && !argument.hasPrefix("-"):
-            request.window = argument
+        case _ where request.window == nil && !argument.hasPrefix("-"):
+            guard let window = Window(rawValue: argument) else {
+                throw RenderError(description: "Unknown window \(argument).\n\(usage)")
+            }
+            request.window = window
         default:
             throw RenderError(description: "Unknown argument \(argument).\n\(usage)")
         }
@@ -116,15 +124,13 @@ func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
 }
 
-/// The window `name` names, closed, with its content.
-func window(_ name: String, model: AppModel) throws(RenderError) -> NSWindow {
+/// The app's window for `name`, closed, with its content.
+func window(_ name: Window, model: AppModel) -> NSWindow {
     switch name {
-    case "cards":
+    case .cards:
         let window = CardsWindow(model: model)
         window.makeContent()
         return window
-    default:
-        throw RenderError(description: "Unknown window \(name.isEmpty ? "(none)" : name).\n\(usage)")
     }
 }
 
@@ -206,15 +212,27 @@ func capture(_ window: NSWindow, to output: URL) throws {
     try screencapture.run()
     screencapture.waitUntilExit()
     guard screencapture.terminationStatus == 0 else {
-        throw RenderError(description: "screencapture couldn't capture the window.")
+        throw RenderError(
+            description: """
+                screencapture couldn't capture the window (exit \(screencapture.terminationStatus)). Check that the \
+                terminal running the tool has Screen & System Audio Recording in System Settings › Privacy & Security.
+                """)
     }
 }
 
 do {
+    // The app's preferences, such as the window's frame, go to a scratch home,
+    // never to Lucas's.
+    guard ProcessInfo.processInfo.environment["CFFIXED_USER_HOME"] != nil else {
+        throw RenderError(description: "Run the tool through make render, which gives it a scratch home.\n\(usage)")
+    }
     let request = try request(from: Array(CommandLine.arguments.dropFirst()))
+    guard let name = request.window else {
+        throw RenderError(description: "Which window? Name one.\n\(usage)")
+    }
     NSApplication.shared.setActivationPolicy(.accessory)
     let model = AppModel(engine: try sampleEngine())
-    let window = try window(request.window, model: model)
+    let window = window(name, model: model)
     window.appearance = NSAppearance(named: request.isDark ? .darkAqua : .aqua)
     window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) - 1)
     window.ignoresMouseEvents = true
@@ -226,7 +244,7 @@ do {
         wait(0.5)
     }
     let output =
-        request.output ?? URL(filePath: ".build/render/\(request.window)-\(request.isDark ? "dark" : "light").png")
+        request.output ?? URL(filePath: ".build/render/\(name.rawValue)-\(request.isDark ? "dark" : "light").png")
     try capture(window, to: output)
     print(
         "\(output.path(percentEncoded: false)): a \(Int(window.frame.width)) × \(Int(window.frame.height)) pt window"
