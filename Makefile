@@ -25,9 +25,22 @@ XCODEBUILD_IPHONE = xcodebuild -project Ficha.xcodeproj -scheme iPhone -configur
 IPHONES := .build/iphones.json
 PAIRED_IPHONE := hardwareProperties.deviceType == 'iPhone' AND hardwareProperties.reality == 'physical' \
 	AND connectionProperties.pairingState == 'paired'
+# The String Catalogs, one for each app, which the builds compile but never
+# fill. Xcode's export fills them all from the code: it adds the UI's new
+# texts, and drops the ones the code no longer has, or marks them stale when
+# they have plural variations. Whatever the scheme, it builds both apps on the
+# way, the iPhone's for an iPhone and unsigned, so it takes the build's derived
+# data and build number, and writes its own copy of the texts to a scratch
+# folder.
+CATALOGS := App/Localizable.xcstrings iPhone/Localizable.xcstrings
+STRINGS := .build/strings
+EXPORT_STRINGS = $(XCODEBUILD) -exportLocalizations -localizationPath $(STRINGS) -exportLanguage en
+# Where the check keeps the shell's `$catalog` as it was, named after its app's
+# folder: `.build/strings/App.xcstrings` for `App/Localizable.xcstrings`.
+BEFORE = $(STRINGS)/$${catalog%%/*}.xcstrings
 
-.PHONY: bootstrap project build build-iphone test lint fmt hooks-test render-build check run render install \
-	install-iphone
+.PHONY: bootstrap project build build-iphone strings strings-check test lint fmt hooks-test render-build check run \
+	render install install-iphone
 
 bootstrap: ## Install the tools the build needs.
 	@command -v xcodegen >/dev/null || brew install xcodegen
@@ -40,6 +53,18 @@ build: project ## Build the app; warnings are errors.
 
 build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI does; warnings are errors.
 	$(XCODEBUILD_IPHONE) -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
+strings: project ## Sync the String Catalogs with the code's UI texts.
+	$(EXPORT_STRINGS)
+
+strings-check: project ## Fail when a String Catalog is out of date, showing how, and leave each as it was.
+	@mkdir -p $(STRINGS)
+	@for catalog in $(CATALOGS); do cp $$catalog $(BEFORE); done
+	$(EXPORT_STRINGS) || { for catalog in $(CATALOGS); do cp $(BEFORE) $$catalog; done; exit 1; }
+	@stale=0; for catalog in $(CATALOGS); do cmp -s $(BEFORE) $$catalog || { diff -u $(BEFORE) $$catalog; \
+		cp $(BEFORE) $$catalog; stale=1; \
+		echo "$$catalog is out of date with the code's UI texts: run make strings and commit the catalog." >&2; }; \
+		done; exit $$stale
 
 test: ## Run the package tests.
 	swift test --package-path $(PACKAGE) --quiet
@@ -56,7 +81,7 @@ hooks-test: ## Test the Claude Code hooks.
 render-build: ## Build the render tool, so a change to the app's views can't break it unnoticed.
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
 
-check: lint test build build-iphone hooks-test render-build ## Everything CI runs.
+check: lint test build build-iphone strings-check hooks-test render-build ## Everything CI runs.
 
 run: build ## Build and open Ficha Dev, restarting it; the real Ficha keeps running.
 	@pkill -x "Ficha Dev" || true

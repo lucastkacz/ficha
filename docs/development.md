@@ -1,6 +1,6 @@
 # Developing Ficha
 
-How to build and run Ficha, try a change with Ficha Dev, put Ficha Dev on the iPhone, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
+How to build and run Ficha, try a change with Ficha Dev, put Ficha Dev on the iPhone, keep each app's texts in its String Catalog, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
 
 ## Run it
 
@@ -36,6 +36,12 @@ After the first install, trust the developer on the iPhone, in Settings › Gene
 
 A free Apple ID's apps run for 7 days. After that, iOS won't open Ficha Dev until you install it again, the same way, which keeps its cards. It also allows 3 such apps on the iPhone, and 10 App IDs a week: Ficha Dev takes one of each.
 
+## The apps' texts
+
+The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's and `iPhone/Localizable.xcstrings` for the iPhone's, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
+
+When a text with plural variations changes, the export brings the new text in plain, without them: move the variations over from the stale entry by hand, delete the stale entry, and run `make strings` again, which should change nothing.
+
 ## Refining
 
 What you capture waits in the inbox, with the cards you flag. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, and how to add each expansion to its card. It writes only what you approve, through the installed Ficha's `ficha` command.
@@ -63,11 +69,18 @@ The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Bui
 ```bash
 make render ARGS="cards"
 make render ARGS="cards --dark --click 482,66 --click 280,529 --out .build/render/by-due-dark.png"
+make render ARGS="cards --key cmd+f --type serendip --out .build/render/search.png"
 ```
 
 - The PNG goes to `.build/render/<window>-<light|dark>.png` unless `--out` says otherwise, at the display's scale.
 - The cards are Ficha Dev's sample cards after twelve days of reviews, from 8 October 2026: some climbing at different paces, two sent back to the first step, one flagged with a note, one buried, and the rest new.
-- `--click <x>,<y>` clicks before the capture, in points from the window's top-left corner: on a row, to select it, or on a column's header, to sort by it. SwiftUI's buttons don't react to these clicks. To find a point, render once and read it off the PNG.
+- Before the capture, the tool clicks, presses keys and types in the window, in the order its options give:
+  - `--click <x>,<y>` clicks in points from the window's top-left corner: on a row of the table or the sidebar, to select it, or on a column's header, to sort by it. To find a point, render once and read it off the PNG.
+  - `--key <keys>` presses a key, after the modifier keys it holds down: `cmd+f`, `cmd+s`, `escape`, `return`, `shift+tab`. The tool's usage lists the keys and modifiers it knows. As AppKit does, the key goes first to the window as a key equivalent, which a button's keyboard shortcut takes, and then, when nothing took it, to what holds the focus. A key that nothing takes plays the system's alert sound, as in the app.
+  - `--type <text>` types into what holds the focus, like a text field after its shortcut or a click: `--type 'una palabra'` for text with spaces.
+  - After each one, the tool prints what holds the focus, the window's first responder, so you can check that a shortcut went where it should: for a text field, its field editor, the field and its placeholder.
+- SwiftUI's buttons don't react to the tool's clicks: press one through its keyboard shortcut instead, with `--key`. Hidden buttons answer theirs too.
+- What the tool can't do yet, for a ticket that needs it to extend: reach a sheet, an alert or a confirmation the window opens, which is a window of its own and stays out of the PNG; press the main menu's shortcuts, like ⌘A, ⌘Z or ⌘V, since it has no main menu; and click with modifier keys held, to select several rows.
 - The window acts as the key window, with its title bar's buttons in color, but its selections stay gray.
 - The window is in English, the app's base language: the tool leaves the String Catalog out.
 - Only the Cards window so far. Another window is one more case in `Window` and in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
