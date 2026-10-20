@@ -150,7 +150,7 @@
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
     },
     "All cards" : {
-
+      "comment" : "An item of the Cards window's sidebar: every card but the buried ones."
     },
     "Allow it in System Settings, in Login Items." : {
 
@@ -175,6 +175,12 @@
     },
     "Bring along cards due within" : {
       "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
+    },
+    "Buried" : {
+      "comment" : "An item of the Cards window's sidebar: the buried cards.\nThe icon beside a buried card, in the Cards window."
+    },
+    "Buried on %@" : {
+      "comment" : "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
     },
     "Bury" : {
       "comment" : "A button that buries the card the review panel shows: it never shows up again."
@@ -230,6 +236,9 @@
     "Concept" : {
       "comment" : "A card type."
     },
+    "Concepts" : {
+      "comment" : "An item of the Cards window's sidebar: the concept cards."
+    },
     "Couldn't bury the card" : {
 
     },
@@ -276,7 +285,7 @@
       "comment" : "A button that closes the review panel once every card was gone through."
     },
     "Due" : {
-      "comment" : "A column of the Cards window: when the card is due.\nIn the Cards window's detail: when the card is due."
+      "comment" : "A column of the Cards window: when the card is due.\nAn item of the Cards window's sidebar: the cards due now.\nIn the Cards window's detail: when the card is due."
     },
     "Each time you know a card, it climbs a step and waits that long to be due again. A change re-times every card from its history, and a card beyond a shorter ladder's end sits on its last step." : {
 
@@ -289,6 +298,9 @@
     },
     "Expand" : {
       "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
+    },
+    "Find" : {
+      "comment" : "A hidden button of the Cards window: ⌘F, which goes to the search field."
     },
     "Finished" : {
       "comment" : "How an appearance closed, in Diagnostics."
@@ -303,7 +315,7 @@
       "comment" : "The tooltip of the button that flags the card, with its key."
     },
     "Flagged" : {
-      "comment" : "The flag icon beside a flagged card, in the Cards window."
+      "comment" : "An item of the Cards window's sidebar: the flagged cards.\nThe flag icon beside a flagged card, in the Cards window."
     },
     "Flip" : {
 
@@ -362,6 +374,9 @@
     "Latest appearances" : {
 
     },
+    "Learned" : {
+      "comment" : "An item of the Cards window's sidebar: the learned cards."
+    },
     "macOS didn't let %@ start at login (%@). Try again, or add it in System Settings > General > Login Items." : {
       "localizations" : {
         "en" : {
@@ -395,7 +410,7 @@
       "comment" : "Settings: the review panel never takes the keyboard on its own."
     },
     "New" : {
-      "comment" : "A badge on a card the review panel shows for the first time.\nIn the Cards window: a card that hasn't had its first view yet."
+      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first view yet."
     },
     "New cards per day" : {
 
@@ -403,17 +418,47 @@
     "No appearance yet." : {
 
     },
+    "No buried cards" : {
+      "comment" : "In the Cards window: no card is buried."
+    },
     "No card selected" : {
 
     },
     "No cards are due right now." : {
 
     },
+    "No cards due" : {
+      "comment" : "In the Cards window: no card is due now."
+    },
+    "No cards tagged %@" : {
+      "comment" : "In the Cards window: no card that isn't buried has this tag anymore."
+    },
     "No cards to review right now." : {
 
     },
     "No cards yet" : {
-
+      "comment" : "In the Cards window: there are no cards at all."
+    },
+    "No concepts" : {
+      "comment" : "In the Cards window: no concept card that isn't buried."
+    },
+    "No flagged cards" : {
+      "comment" : "In the Cards window: no card is flagged."
+    },
+    "No learned cards" : {
+      "comment" : "In the Cards window: no card is learned yet."
+    },
+    "No new cards" : {
+      "comment" : "In the Cards window: no card waits for its first view."
+    },
+    "No questions" : {
+      "comment" : "In the Cards window: no question card that isn't buried."
+    },
+    "No quotes" : {
+      "comment" : "In the Cards window: no quote card that isn't buried."
+    },
+    "No words" : {
+      "comment" : "In the Cards window: no word card that isn't buried."
     },
     "Not in use" : {
       "comment" : "What a detector sees in Diagnostics."
@@ -445,11 +490,17 @@
     "Question" : {
       "comment" : "A card type."
     },
+    "Questions" : {
+      "comment" : "An item of the Cards window's sidebar: the question cards."
+    },
     "Quit" : {
 
     },
     "Quote" : {
       "comment" : "A card type."
+    },
+    "Quotes" : {
+      "comment" : "An item of the Cards window's sidebar: the quote cards."
     },
     "Record Shortcut" : {
       "comment" : "Settings: the capture shortcut's button, while there's none."
@@ -520,6 +571,9 @@
     "Step %lld" : {
       "comment" : "Settings: a step of the ladder, counted from 1."
     },
+    "Tags" : {
+      "comment" : "A section of the Cards window's sidebar: the cards' tags."
+    },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
     },
@@ -546,6 +600,9 @@
     },
     "Type a shortcut…" : {
       "comment" : "Settings: the capture shortcut, while Lucas types a new one."
+    },
+    "Types" : {
+      "comment" : "A section of the Cards window's sidebar: the card types."
     },
     "Undo" : {
 
@@ -578,6 +635,9 @@
     },
     "Word" : {
       "comment" : "A card type."
+    },
+    "Words" : {
+      "comment" : "An item of the Cards window's sidebar: the word cards."
     },
     "You went through every card." : {
 

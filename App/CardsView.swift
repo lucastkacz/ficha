@@ -3,19 +3,26 @@ import FichaData
 import SwiftUI
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
-/// sidebar to choose what to see, a table with one row per card, and the
-/// selected card whole beside it. It reads the cards again whenever the
-/// engine says they changed, from the app or the `ficha` CLI, when Lucas
-/// changes the ladder in Settings, and every minute, since cards come due as
-/// time passes, or at once when Ficha Dev's debug menu moves the time.
+/// sidebar to choose a group of cards, a table with one row per card in it,
+/// narrowed by the toolbar's search field, and the selected card whole beside
+/// it. It reads the cards again whenever the engine says they changed, from
+/// the app or the `ficha` CLI, when Lucas changes the ladder in Settings, and
+/// every minute, since cards come due as time passes, or at once when Ficha
+/// Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// The cards the table lists, or why they couldn't be read.
     @State private var rows: Result<[CardRow], EngineError>?
+    /// The tags the sidebar offers: those of the cards that aren't buried.
+    @State private var tags: [String] = []
     /// The engine's time when the cards were read, which the Due column
     /// counts from.
     @State private var now: Date
-    @State private var sidebarSelection: SidebarItem? = .allCards
+    /// The group the sidebar chose: All cards, until Lucas picks another.
+    @State private var group = CardGroup.all
+    /// What Lucas looks for in the group's cards, from the search field.
+    @State private var search = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var selection: CardRow.ID?
     /// The table's order: the newest cards first, until Lucas clicks a
     /// column's header.
@@ -28,17 +35,33 @@ struct CardsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $sidebarSelection) {
-                Label("All cards", systemImage: "rectangle.stack")
-                    .tag(SidebarItem.allCards)
-            }
-            .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
+            sidebar
+                .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
         } content: {
             table
                 .navigationSplitViewColumnWidth(min: 380, ideal: 440)
         } detail: {
             detail
                 .navigationSplitViewColumnWidth(min: 300, ideal: 380)
+        }
+        .searchable(text: $search, placement: .toolbar)
+        .searchFocused($isSearchFocused)
+        .background {
+            // ⌘F puts Lucas in the search field, as in Mail and Finder. The
+            // search field doesn't take it on its own.
+            Button {
+                isSearchFocused = true
+            } label: {
+                Text("Find", comment: "A hidden button of the Cards window: ⌘F, which goes to the search field.")
+            }
+            .keyboardShortcut("f")
+            .hidden()
+        }
+        .onChange(of: group) {
+            reload()
+        }
+        .onChange(of: search) {
+            reload()
         }
         .task {
             // Listening before reading, so no change falls in between.
@@ -66,10 +89,74 @@ struct CardsView: View {
         }
     }
 
-    /// Reads the cards again, as they are now.
+    /// Reads the tags and the group's cards again, as they are now. When the
+    /// chosen tag is gone, because its last card was buried or edited, the
+    /// window goes back to All cards.
     private func reload() {
         now = model.now
-        rows = Result { () throws(EngineError) in try model.cardRows() }
+        do throws(EngineError) {
+            tags = try model.tags()
+            if case .tag(let tag) = group, !tags.contains(tag) {
+                group = .all
+            }
+            rows = .success(try model.cardRows(in: group, matching: search))
+        } catch {
+            rows = .failure(error)
+        }
+    }
+
+    /// The groups Lucas chooses from: the cards by where they stand, then by
+    /// tag, then by type. One is chosen at a time, always.
+    private var sidebar: some View {
+        List(selection: chosenGroup) {
+            Section {
+                ForEach([CardGroup.all, .new, .due, .learned, .flagged, .buried], id: \.self) { group in
+                    Label(group.title, systemImage: group.symbol)
+                        .tag(group)
+                }
+            }
+            if !tags.isEmpty {
+                Section {
+                    ForEach(tags, id: \.self) { tag in
+                        Label(tag, systemImage: "tag")
+                            .tag(CardGroup.tag(tag))
+                    }
+                } header: {
+                    Text("Tags", comment: "A section of the Cards window's sidebar: the cards' tags.")
+                }
+            }
+            Section {
+                ForEach(CardType.allCases, id: \.self) { type in
+                    Label(type.pluralName, systemImage: type.symbol)
+                        .tag(CardGroup.type(type))
+                }
+            } header: {
+                Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
+            }
+        }
+    }
+
+    /// The sidebar's selection: the chosen group, which Lucas can change but
+    /// not clear.
+    private var chosenGroup: Binding<CardGroup?> {
+        Binding {
+            group
+        } set: {
+            group = $0 ?? group
+        }
+    }
+
+    /// What the table says when the group, or the search in it, brings no
+    /// cards.
+    @ViewBuilder
+    private var noCards: some View {
+        if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            ContentUnavailableView.search(text: search)
+        } else {
+            ContentUnavailableView(
+                group.emptyTitle, systemImage: group.symbol,
+                description: group == .all ? Text("The cards you approve in a refine session show up here.") : nil)
+        }
     }
 
     @ViewBuilder
@@ -102,9 +189,7 @@ struct CardsView: View {
             }
             .overlay {
                 if rows.isEmpty {
-                    ContentUnavailableView(
-                        "No cards yet", systemImage: "rectangle.stack",
-                        description: Text("The cards you approve in a refine session show up here."))
+                    noCards
                 }
             }
         case .failure(let error):
@@ -128,10 +213,74 @@ struct CardsView: View {
     }
 }
 
-/// What the sidebar offers to see.
-private enum SidebarItem: Hashable {
-    /// Every card that isn't buried.
-    case allCards
+extension CardGroup {
+    /// The group's name in the sidebar.
+    fileprivate var title: String {
+        switch self {
+        case .all:
+            String(
+                localized: "All cards",
+                comment: "An item of the Cards window's sidebar: every card but the buried ones.")
+        case .new:
+            String(localized: "New", comment: "An item of the Cards window's sidebar: the cards not seen yet.")
+        case .due:
+            String(localized: "Due", comment: "An item of the Cards window's sidebar: the cards due now.")
+        case .learned:
+            String(localized: "Learned", comment: "An item of the Cards window's sidebar: the learned cards.")
+        case .flagged:
+            String(localized: "Flagged", comment: "An item of the Cards window's sidebar: the flagged cards.")
+        case .buried:
+            String(localized: "Buried", comment: "An item of the Cards window's sidebar: the buried cards.")
+        case .tag(let tag):
+            tag
+        case .type(let type):
+            type.pluralName
+        }
+    }
+
+    /// The group's icon, in the sidebar and when it has no cards.
+    fileprivate var symbol: String {
+        switch self {
+        case .all: "rectangle.stack"
+        case .new: "sparkles"
+        case .due: "clock"
+        case .learned: "checkmark.seal"
+        case .flagged: "flag"
+        case .buried: "eye.slash"
+        case .tag: "tag"
+        case .type(let type): type.symbol
+        }
+    }
+
+    /// What the table says when the group has no cards.
+    fileprivate var emptyTitle: String {
+        switch self {
+        case .all:
+            String(localized: "No cards yet", comment: "In the Cards window: there are no cards at all.")
+        case .new:
+            String(localized: "No new cards", comment: "In the Cards window: no card waits for its first view.")
+        case .due:
+            String(localized: "No cards due", comment: "In the Cards window: no card is due now.")
+        case .learned:
+            String(localized: "No learned cards", comment: "In the Cards window: no card is learned yet.")
+        case .flagged:
+            String(localized: "No flagged cards", comment: "In the Cards window: no card is flagged.")
+        case .buried:
+            String(localized: "No buried cards", comment: "In the Cards window: no card is buried.")
+        case .tag(let tag):
+            String(
+                localized: "No cards tagged \(tag)",
+                comment: "In the Cards window: no card that isn't buried has this tag anymore.")
+        case .type(.word):
+            String(localized: "No words", comment: "In the Cards window: no word card that isn't buried.")
+        case .type(.concept):
+            String(localized: "No concepts", comment: "In the Cards window: no concept card that isn't buried.")
+        case .type(.quote):
+            String(localized: "No quotes", comment: "In the Cards window: no quote card that isn't buried.")
+        case .type(.question):
+            String(localized: "No questions", comment: "In the Cards window: no question card that isn't buried.")
+        }
+    }
 }
 
 /// How the table orders its rows: by one column, either way. Cards without a
@@ -197,7 +346,8 @@ extension CardRow {
     }
 }
 
-/// The card's front, after a flag when it's flagged.
+/// The card's front, after a flag when it's flagged and a mark when it's
+/// buried.
 private struct FrontCell: View {
     let card: Card
 
@@ -205,6 +355,9 @@ private struct FrontCell: View {
         HStack(spacing: 4) {
             if card.flag != nil {
                 FlagIcon()
+            }
+            if card.buriedAt != nil {
+                BuriedIcon()
             }
             Text(card.front)
                 .lineLimit(1)
@@ -222,8 +375,20 @@ private struct FlagIcon: View {
     }
 }
 
-/// The selected card, whole: Lucas's note on top when it's flagged, its type
-/// and tags, its front, back and source, and where it stands.
+/// The mark beside a buried card, in the table and the detail: the icon the
+/// review panel's Bury button has.
+private struct BuriedIcon: View {
+    var body: some View {
+        Image(systemName: "eye.slash")
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
+            .help(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
+    }
+}
+
+/// The selected card, whole: Lucas's note on top when it's flagged, and when
+/// he buried it when it's buried, its type and tags, its front, back and
+/// source, and where it stands.
 private struct CardDetail: View {
     let row: CardRow
     /// The engine's time, which the due time counts from.
@@ -242,6 +407,20 @@ private struct CardDetail: View {
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
+                }
+                if let buriedAt = row.card.buriedAt {
+                    Label {
+                        Text(
+                            "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
+                            comment:
+                                "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
+                        )
+                    } icon: {
+                        BuriedIcon()
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 8))
                 }
                 HStack(spacing: 8) {
                     Text(row.card.type.name)
@@ -360,6 +539,28 @@ extension CardType {
         case .concept: String(localized: "Concept", comment: "A card type.")
         case .quote: String(localized: "Quote", comment: "A card type.")
         case .question: String(localized: "Question", comment: "A card type.")
+        }
+    }
+
+    /// The type's cards, as the Cards window's sidebar names them.
+    fileprivate var pluralName: String {
+        switch self {
+        case .word: String(localized: "Words", comment: "An item of the Cards window's sidebar: the word cards.")
+        case .concept:
+            String(localized: "Concepts", comment: "An item of the Cards window's sidebar: the concept cards.")
+        case .quote: String(localized: "Quotes", comment: "An item of the Cards window's sidebar: the quote cards.")
+        case .question:
+            String(localized: "Questions", comment: "An item of the Cards window's sidebar: the question cards.")
+        }
+    }
+
+    /// The type's icon, in the Cards window's sidebar.
+    fileprivate var symbol: String {
+        switch self {
+        case .word: "textformat"
+        case .concept: "lightbulb"
+        case .quote: "quote.opening"
+        case .question: "questionmark.bubble"
         }
     }
 }

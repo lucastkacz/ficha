@@ -79,8 +79,9 @@ public struct Ladder: Sendable, Equatable {
     }
 
     /// Whether a card that stands on this ladder is learned: on a step that
-    /// waits 30 days or more.
-    private func isLearned(_ standing: CardStanding) -> Bool {
+    /// waits 30 days or more. The menu counts these cards, and the Cards
+    /// window lists them.
+    public func isLearned(_ standing: CardStanding) -> Bool {
         guard case .onLadder(let step, _) = standing else {
             return false
         }

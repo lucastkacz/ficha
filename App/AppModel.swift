@@ -109,10 +109,16 @@ final class AppModel {
         ReviewPanelModel(engine.openPanel(.appearance, with: cards, settings: settings))
     }
 
-    /// Every card that isn't buried, as the Cards window lists them, each on
-    /// the ladder Lucas set in Settings.
-    func cardRows() throws(EngineError) -> [CardRow] {
-        try engine.cardRows(on: settings.ladder)
+    /// The cards in `group` that mention `search`, as the Cards window lists
+    /// them, each on the ladder Lucas set in Settings.
+    func cardRows(in group: CardGroup, matching search: String) throws(EngineError) -> [CardRow] {
+        try engine.cardRows(in: group, matching: search, on: settings.ladder)
+    }
+
+    /// Every tag of the cards that aren't buried, alphabetically, for the
+    /// Cards window's sidebar.
+    func tags() throws(EngineError) -> [String] {
+        try engine.tags()
     }
 
     /// Every change to Lucas's cards from now on, by the app or by the
