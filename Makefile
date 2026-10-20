@@ -39,11 +39,12 @@ build: project ## Build the app; warnings are errors.
 strings: project ## Sync the String Catalog with the code's UI texts.
 	$(EXPORT_STRINGS)
 
-strings-check: project ## Fail when the String Catalog is out of date, leaving it as it was.
+strings-check: project ## Fail when the String Catalog is out of date, showing how, and leave it as it was.
 	@mkdir -p $(STRINGS)
 	@cp $(CATALOG) $(STRINGS)/before.xcstrings
 	$(EXPORT_STRINGS) || { cp $(STRINGS)/before.xcstrings $(CATALOG); exit 1; }
-	@cmp -s $(CATALOG) $(STRINGS)/before.xcstrings || { cp $(STRINGS)/before.xcstrings $(CATALOG); \
+	@cmp -s $(STRINGS)/before.xcstrings $(CATALOG) || { diff -u $(STRINGS)/before.xcstrings $(CATALOG); \
+		cp $(STRINGS)/before.xcstrings $(CATALOG); \
 		echo "$(CATALOG) is out of date with the code's UI texts: run make strings and commit the catalog." >&2; \
 		exit 1; }
 
