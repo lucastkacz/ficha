@@ -15,6 +15,10 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 - What the OS tells us (camera or microphone in use, idle time, power assertions, full-screen apps) enters through protocols the app implements, so the logic that reacts to it is tested without the OS.
 - The Xcode project is generated from `project.yml`. Never edit `Ficha.xcodeproj`.
 
+## Which cards show up
+
+- Whether a card is in Lucas's reviews is read from `Card.isInReviews`, or from `cardsInReviews(in:)` and `cardInReviews(_:in:)`, in `FichaData/CardsInReviews.swift`, never worked out again from the card's flag and burial. The merge gate watches that file, so a change to which cards show up makes a pull request risk:high; the same rule written elsewhere would slip past it.
+
 ## Time
 
 - Logic gets the current time from a `TimeSource` (`now`), never from `Date()` or `Date.now`, so tests control time.
@@ -51,5 +55,5 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 
 ## Dependencies
 
-- Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed.
+- Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed. The render tool (`scripts/render`) takes its dependencies through FichaKit's pins, so its own `Package.resolved` stays out.
 - A new dependency needs an ADR in `docs/adr/` and makes the PR `risk:high`.

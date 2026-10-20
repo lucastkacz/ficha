@@ -49,15 +49,20 @@ final class CardsWindow: NSWindow {
             return
         }
         isOpen = true
-        // The content is made each time the window opens, so it starts as the
-        // window does the first time, and stops reading the cards once it
-        // closes.
+        makeContent()
+        NSApplication.shared.setActivationPolicy(.regular)
+        bringForward()
+    }
+
+    /// Gives the window its content, with Lucas's cards as they are now, as
+    /// it opens: the app opens it on screen, and `make render` offscreen. The
+    /// content is made each time the window opens, so it starts as the window
+    /// does the first time, and stops reading the cards once it closes.
+    func makeContent() {
         let content = NSHostingView(rootView: CardsView(model: model))
         content.sceneBridgingOptions = [.toolbars]
         content.sizingOptions = []
         contentView = content
-        NSApplication.shared.setActivationPolicy(.regular)
-        bringForward()
     }
 
     /// Brings the window in front of the other apps, out of the Dock when
