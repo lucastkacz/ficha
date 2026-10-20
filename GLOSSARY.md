@@ -62,8 +62,8 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Changing a flagged card's content as its note asks, which brings it back from the inbox to Lucas's reviews, where it stood.
-_Avoid_: edit, correct
+Editing a flagged card, as its note asks, in the Cards window or a refine session, which brings it back from the inbox to Lucas's reviews, where it stood.
+_Avoid_: correct
 
 **Content guide**:
 The written rules Claude follows to draft cards: what each type holds, how long it is and how it's worded.
@@ -108,8 +108,22 @@ Sending a card back to the inbox with a note on what to fix. It stays out of rev
 _Avoid_: mark, report
 
 **Bury**:
-Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in a refine session, puts it back where it was.
-_Avoid_: delete, archive, suspend
+Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it was.
+_Avoid_: archive, suspend
+
+### Managing cards
+
+**Cards window**:
+The window where Lucas sees all his cards and everything in the inbox, and acts on them himself.
+_Avoid_: browser, card list
+
+**Edit**:
+Changing the content of a card or a capture. A card keeps its step and its review log.
+_Avoid_: modify, update
+
+**Delete**:
+Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it stays in the inbox as a capture.
+_Avoid_: remove, erase
 
 ### Spacing
 
