@@ -23,13 +23,13 @@ The iPhone app is on its way ([#97](https://github.com/lucastkacz/ficha/issues/9
 It installs on your iPhone from the Mac, signed with your free Apple ID's Personal Team. The first time:
 
 1. Xcode › Settings › Accounts: sign in with your Apple ID, which makes the Personal Team.
-2. Write the team's ID in `iPhone/Local.xcconfig`, which git ignores, as a line like `DEVELOPMENT_TEAM = ABCDE12345`. `defaults read com.apple.dt.Xcode IDEProvisioningTeamByIdentifier` shows it as the `teamID` next to `isFreeProvisioningTeam = 1`.
+2. Write the team's ID in `iPhone/Local.xcconfig`, which git ignores, as a line like `DEVELOPMENT_TEAM = ABCDE12345`. The file is our own convention: `iPhone/Signing.xcconfig` includes it with Xcode's `#include?`, which skips a file that isn't there, as in CI. `defaults read com.apple.dt.Xcode IDEProvisioningTeamByIdentifier` shows the ID as the `teamID` next to `isFreeProvisioningTeam = 1`. That's an Xcode preference Apple doesn't document; if it's gone, Keychain Access shows the ID as the Organizational Unit of your "Apple Development" certificate.
 3. Connect the iPhone with a cable, unlock it and trust the Mac. On the iPhone, turn on Settings › Privacy & Security › Developer Mode, which restarts it.
 
-Then, each time:
+Then, each time, with the iPhone unlocked, on the cable or on the Mac's Wi-Fi, from the folder where you wrote `iPhone/Local.xcconfig`:
 
 ```bash
-make install-iphone   # builds Ficha Dev for the connected iPhone and installs it
+make install-iphone   # builds Ficha Dev for the iPhone paired with this Mac and installs it
 ```
 
 After the first install, trust the developer on the iPhone, in Settings › General › VPN & Device Management, before opening it. With `iPhone/Local.xcconfig` written, Xcode's Run button signs it too, with the `iPhone` scheme.

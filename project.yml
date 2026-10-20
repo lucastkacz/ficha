@@ -144,15 +144,10 @@ targets:
         product: FichaData
     settings:
       base:
-        # Ficha Dev's name, icon and bundle identifier, the same as on the Mac.
-        PRODUCT_NAME: Ficha Dev
-        PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
         # One module name, whatever the app's name, as the Mac app's.
         PRODUCT_MODULE_NAME: FichaPhone
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         # iPhone only, upright, as the prototype Lucas picked the screens from.
@@ -163,6 +158,13 @@ targets:
         SWIFT_APPROACHABLE_CONCURRENCY: YES
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: Apple Development
+      # Ficha Dev's name, icon and bundle identifier, the same as on the Mac.
+      # The real Ficha's Release settings come with stage 2.
+      configs:
+        Debug:
+          PRODUCT_NAME: Ficha Dev
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
 
 schemes:
   Ficha:

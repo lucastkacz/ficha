@@ -19,9 +19,12 @@ XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'pla
 # configuration (#97).
 XCODEBUILD_IPHONE = xcodebuild -project Ficha.xcodeproj -scheme iPhone -configuration Debug \
 	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
-# The iPhones connected to the Mac, as devicectl lists them: a JSON file is the
-# only output it supports for scripts.
+# The iPhones paired with the Mac, the connected ones first, as devicectl lists
+# them: a JSON file is the only output it supports for scripts. A paired iPhone
+# is reachable on the cable or the Mac's Wi-Fi even before devicectl connects.
 IPHONES := .build/iphones.json
+PAIRED_IPHONE := hardwareProperties.deviceType == 'iPhone' AND hardwareProperties.reality == 'physical' \
+	AND connectionProperties.pairingState == 'paired'
 
 .PHONY: bootstrap project build build-iphone test lint fmt hooks-test render-build check run render install \
 	install-iphone
@@ -72,10 +75,10 @@ install-iphone: project ## Build Ficha Dev for the connected iPhone, signed with
 	@grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig || { \
 		echo "No team: write your Personal Team's ID in iPhone/Local.xcconfig, as docs/development.md explains." >&2; exit 1; }
 	@mkdir -p .build
-	@xcrun devicectl list devices --quiet --json-output $(IPHONES) \
-		--filter "hardwareProperties.deviceType == 'iPhone' AND connectionProperties.tunnelState == 'connected'"
+	@xcrun devicectl list devices --quiet --json-output $(IPHONES) --sort-by connectionProperties.tunnelState \
+		--filter "$(PAIRED_IPHONE)"
 	@udid=$$(plutil -extract result.devices.0.hardwareProperties.udid raw -o - $(IPHONES) 2>/dev/null) || { \
-		echo "No iPhone connected: connect it with a cable, unlock it and trust this Mac." >&2; exit 1; } && \
+		echo "No iPhone paired with this Mac: connect it with a cable, unlock it and trust this Mac." >&2; exit 1; } && \
 	$(XCODEBUILD_IPHONE) -destination "id=$$udid" -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
 		build && \
 	xcrun devicectl device install app --device "$$udid" "$(DERIVED)/Build/Products/Debug-iphoneos/Ficha Dev.app"
