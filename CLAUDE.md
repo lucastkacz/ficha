@@ -1,6 +1,6 @@
 # Ficha
 
-A macOS menu-bar app that shows Lucas a tiny flashcard every so often (a word, a concept, a quote or a question) and spaces each card by how well he knows it. Zero friction: answering takes seconds, and everything stays on his Mac.
+A macOS menu-bar app that shows Lucas a tiny flashcard every so often (a word, a concept, a quote or a question) and spaces each card by how well he knows it. Zero friction: answering takes seconds, and everything stays on his Mac. An iPhone app is on its way (#97): for now it's only Ficha Dev, with the sample cards.
 
 Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claude/settings.json`. Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; the domain glossary is `GLOSSARY.md` (the name the plugin's skills read) and decisions are in `docs/adr/`.
 
@@ -59,18 +59,20 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 ## Map
 
-- `Packages/FichaKit/`: the core, as a Swift package. `FichaCore` is pure logic.
-- `App/`: the macOS app. Its Xcode project is generated from `project.yml`.
+- `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards.
+- `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
+- `iPhone/`: the iPhone app, for now only Ficha Dev (#97). It signs with Lucas's Personal Team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
 - `CODING_STANDARDS.md`: how Swift is written here; `code-review` checks against it.
 - `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, Dependabot and issue forms.
 - `scripts/`: the hook tests and the render tool.
 
 ## Commands
 
-- `make check`: everything CI runs: lint, package tests, the builds (warnings are errors) and the hook tests.
-- `make fmt`, `make test`, `make build`, `make run` (build and open the app), `make bootstrap` (installs XcodeGen).
+- `make check`: everything CI runs: lint, package tests, the builds, the iPhone app's for the simulator too (warnings are errors), and the hook tests.
+- `make fmt`, `make test`, `make build`, `make build-iphone` (for the simulator), `make run` (build and open the app), `make bootstrap` (installs XcodeGen).
 - `make render ARGS="cards"`: an app window as a PNG, drawn below the desktop picture, so it shows nothing and takes neither the mouse nor the keyboard, and needs no OK from Lucas. "A window's picture" in `docs/development.md` explains it.
 - `make install`: copies a Release build to `/Applications`. It asks Lucas first.
+- `make install-iphone`: builds Ficha Dev for Lucas's connected iPhone and installs it, as `docs/development.md` explains. It asks Lucas first too.
 
 ## Known gotchas
 

@@ -28,8 +28,10 @@ repo=${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$input")}
 #   stores;
 # - which cards are in Lucas's reviews, neither flagged nor buried
 #   (FichaData/CardsInReviews), the only ones that show up;
-# - the content guide, which every card Claude drafts follows.
-risky_paths='^(CLAUDE\.md|CODING_STANDARDS\.md|\.claude/|docs/agents/|docs/content-guide\.md|\.github/workflows/|\.github/dependabot\.yml|Makefile|scripts/|\.swift-format|project\.yml|Packages/FichaKit/Package\.(swift|resolved)|Packages/FichaKit/Sources/FichaData/Schema|Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift|Packages/FichaKit/Sources/FichaCore/Scheduler/|Packages/FichaKit/Sources/FichaCore/(AppearancePlanner|ReviewNow|ReviewSettings|Trigger)\.swift)'
+# - the content guide, which every card Claude drafts follows;
+# - the build's configuration files, such as the one the iPhone app signs
+#   with (iPhone/Signing.xcconfig).
+risky_paths='^(CLAUDE\.md|CODING_STANDARDS\.md|\.claude/|docs/agents/|docs/content-guide\.md|\.github/workflows/|\.github/dependabot\.yml|Makefile|scripts/|\.swift-format|project\.yml|.*\.xcconfig$|Packages/FichaKit/Package\.(swift|resolved)|Packages/FichaKit/Sources/FichaData/Schema|Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift|Packages/FichaKit/Sources/FichaCore/Scheduler/|Packages/FichaKit/Sources/FichaCore/(AppearancePlanner|ReviewNow|ReviewSettings|Trigger)\.swift)'
 
 # `gh` with `merge` later in the same command, in any form or place.
 merge_anywhere='(^|[^[:alnum:]_.-])gh[[:space:]]([^;&|]*[[:space:]])?merge([[:space:]]|$)'

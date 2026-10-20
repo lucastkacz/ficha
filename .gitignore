@@ -13,6 +13,9 @@ scripts/render/Package.resolved
 *.sqlite-shm
 *.sqlite-wal
 
+# Lucas's Personal Team, which signs the iPhone app (iPhone/Signing.xcconfig)
+iPhone/Local.xcconfig
+
 # Claude Code: per-machine settings and session worktrees
 .claude/settings.local.json
 .claude/worktrees/

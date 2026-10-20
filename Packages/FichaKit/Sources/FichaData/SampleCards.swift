@@ -1,19 +1,18 @@
 import FichaCore
-import FichaData
 import Foundation
 
-/// The cards Ficha Dev's debug menu loads, so Lucas and agents can try a change
-/// without capturing and refining first. They're written by hand, never taken
-/// from Lucas's cards, and follow the rules the content guide starts from:
-/// Rioplatense Spanish, one idea per card, a one-line front and a back of at
-/// most 40 words, and words from other languages explained in Spanish. There
-/// are 50, words most of all.
-enum SampleCards {
+/// Ficha Dev's cards, so Lucas and agents can try a change without capturing
+/// and refining first: the Mac's debug menu loads them, and so does the
+/// iPhone app. They're written by hand, never taken from Lucas's cards, and
+/// follow the rules the content guide starts from: Rioplatense Spanish, one
+/// idea per card, a one-line front and a back of at most 40 words, and words
+/// from other languages explained in Spanish. There are 50, words most of all.
+public enum SampleCards {
     /// Loads the sample cards into the engine's database as new cards, each
     /// approved from a capture of its own, the way refining leaves them, so the
     /// inbox stays as it was. Every sample is checked before any is saved, so a
     /// mistake in this file saves none. Loading them again adds them again.
-    static func load(into engine: Engine) throws {
+    public static func load(into engine: Engine) throws {
         let samples = try sampleCaptures.map { sample in (sample, try sample.cardContents()) }
         for (sample, cards) in samples {
             // Loaded again, a sample repeats the capture its cards were
@@ -22,6 +21,16 @@ enum SampleCards {
             let capture = try engine.expand(text: sample.text, note: nil, source: sample.source)
             try engine.approve(capture.id, into: cards)
         }
+    }
+
+    /// Loads the sample cards as `load(into:)` does, but only into a database
+    /// with no cards yet, as the iPhone app does each time it opens: the first
+    /// time, and never again once they're there.
+    public static func loadIfThereAreNoCards(into engine: Engine) throws {
+        guard try engine.cards().isEmpty else {
+            return
+        }
+        try load(into: engine)
     }
 }
 
@@ -65,11 +74,11 @@ private struct SampleCard {
 }
 
 /// A sample card written wrong in this file, so it can't be loaded.
-enum SampleCardsError: LocalizedError {
+public enum SampleCardsError: LocalizedError {
     /// A card of the sample capture with this text has a blank front or back.
     case blankSide(capture: String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .blankSide(let capture):
             "A sample card of “\(capture)” has a blank front or back: complete it in SampleCards.swift."

@@ -7,6 +7,7 @@ options:
   bundleIdPrefix: com.lucastkacz
   deploymentTarget:
     macOS: "26.0"
+    iOS: "26.0"
   # The app follows the Mac's language, with English as the base (ADR 0009).
   developmentLanguage: en
   createIntermediateGroups: true
@@ -28,16 +29,18 @@ settings:
     # The build number, CFBundleVersion. The Makefile sets it from git on
     # each build; this one is only for a build outside it.
     CURRENT_PROJECT_VERSION: "1"
-    # Personal apps: signed to run locally, not notarized.
+    # Personal apps: signed to run locally, not notarized. The iPhone app
+    # signs with Lucas's Personal Team instead.
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
     ENABLE_HARDENED_RUNTIME: NO
-  # Two apps that run side by side, each with its own `ficha` CLI. Each
+  # Two Mac apps that run side by side, each with its own `ficha` CLI. Each
   # configuration sets the flag that `AppVariant` reads, in the app and in its
   # CLI alike, for the menu-bar icon and the data folder.
   configs:
-    # Ficha Dev, for development: `make run` builds and opens it.
+    # Ficha Dev, for development: `make run` builds and opens it, and
+    # `make install-iphone` puts the iPhone app on Lucas's iPhone.
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
     # The real Ficha: `make install` puts it in /Applications.
@@ -116,6 +119,51 @@ targets:
         # Built into the app, never installed on its own.
         SKIP_INSTALL: YES
 
+  # Ficha on the iPhone (#97), with files of its own in iPhone/. Stage 1
+  # builds it only as Ficha Dev, in the Debug configuration, which its code
+  # checks: the real Ficha on the iPhone comes with stage 2. It compiles
+  # `AppVariant` too, for the same app name and data folder as the Mac's, in
+  # its own Application Support.
+  iPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: iPhone
+        excludes:
+          - "*.xcconfig"
+      - path: App/AppVariant.swift
+      - path: App/AppIcon-Dev.icon
+    # It signs automatically with Lucas's free Personal Team, whose ID this
+    # file takes from one that git ignores.
+    configFiles:
+      Debug: iPhone/Signing.xcconfig
+    dependencies:
+      - package: FichaKit
+        product: FichaCore
+      - package: FichaKit
+        product: FichaData
+    settings:
+      base:
+        # Ficha Dev's name, icon and bundle identifier, the same as on the Mac.
+        PRODUCT_NAME: Ficha Dev
+        PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
+        # One module name, whatever the app's name, as the Mac app's.
+        PRODUCT_MODULE_NAME: FichaPhone
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        # iPhone only, upright, as the prototype Lucas picked the screens from.
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # Xcode 26's defaults for app targets: main actor by default.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: Apple Development
+
 schemes:
   Ficha:
     build:
@@ -125,3 +173,11 @@ schemes:
       config: Debug
     archive:
       config: Release
+  # `make build-iphone` builds it for the simulator, and `make install-iphone`
+  # for Lucas's iPhone.
+  iPhone:
+    build:
+      targets:
+        iPhone: all
+    run:
+      config: Debug

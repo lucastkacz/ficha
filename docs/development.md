@@ -1,10 +1,10 @@
 # Developing Ficha
 
-How to build and run Ficha, try a change with Ficha Dev, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
+How to build and run Ficha, try a change with Ficha Dev, put Ficha Dev on the iPhone, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
 
 ## Run it
 
-Requires macOS 26 and Xcode 26.
+Requires macOS 26 and Xcode 26, with its iOS platform for the iPhone app (Xcode › Settings › Components).
 
 ```bash
 make bootstrap   # installs XcodeGen
@@ -15,6 +15,26 @@ make install     # installs Ficha in /Applications
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
 Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
+
+## On the iPhone
+
+The iPhone app is on its way ([#97](https://github.com/lucastkacz/ficha/issues/97)). For now it's only Ficha Dev, which loads the sample cards the first time it opens and shows how many cards there are and how many are due. It needs iOS 26, on an iPhone: there's no iPad version. Its files are in `iPhone/`, and `make check` builds it for the simulator, as CI does.
+
+It installs on your iPhone from the Mac, signed with your free Apple ID's Personal Team. The first time:
+
+1. Xcode › Settings › Accounts: sign in with your Apple ID, which makes the Personal Team.
+2. Write the team's ID in `iPhone/Local.xcconfig`, which git ignores, as a line like `DEVELOPMENT_TEAM = ABCDE12345`. `defaults read com.apple.dt.Xcode IDEProvisioningTeamByIdentifier` shows it as the `teamID` next to `isFreeProvisioningTeam = 1`.
+3. Connect the iPhone with a cable, unlock it and trust the Mac. On the iPhone, turn on Settings › Privacy & Security › Developer Mode, which restarts it.
+
+Then, each time:
+
+```bash
+make install-iphone   # builds Ficha Dev for the connected iPhone and installs it
+```
+
+After the first install, trust the developer on the iPhone, in Settings › General › VPN & Device Management, before opening it. With `iPhone/Local.xcconfig` written, Xcode's Run button signs it too, with the `iPhone` scheme.
+
+A free Apple ID's apps run for 7 days. After that, iOS won't open Ficha Dev until you install it again, the same way, which keeps its cards. It also allows 3 such apps on the iPhone, and 10 App IDs a week: Ficha Dev takes one of each.
 
 ## Refining
 
@@ -67,7 +87,7 @@ The squash merge leaves both commits off `main`, and GitHub keeps a PR's commits
 
 The pictures in `docs/images/` show the app's own views with Ficha Dev's sample cards, captured without showing anything on screen. After a change to the review panel or the capture window, capture them again the same way, with a throwaway Swift package outside the repo:
 
-1. The package depends on `Packages/FichaKit` by path and links in the `App/` files the views need, such as `ReviewPanelView.swift`, `ReviewPanelModel.swift`, `SampleCards.swift` and, for the capture window, `CaptureView.swift` with `AppModel.swift` and what it uses. Its target defines `FICHA_DEV` and is isolated to the main actor, as the app's is.
+1. The package depends on `Packages/FichaKit` by path, whose FichaData has the sample cards, and links in the `App/` files the views need, such as `ReviewPanelView.swift`, `ReviewPanelModel.swift` and, for the capture window, `CaptureView.swift` with `AppModel.swift` and what it uses. Its target defines `FICHA_DEV` and is isolated to the main actor, as the app's is.
 2. It opens an engine on an in-memory database and a `ManualTimeSource`, loads `SampleCards`, meets five new cards through review now, one each time, and moves the time an hour and a second forward, so they're due.
 3. Each picture is a borderless window with the review panel on a gradient, inside the same window so the Liquid Glass has something to show through. The card's front gets its back's height, the panel at the top, so the two pictures line up side by side. The capture window is a titled panel like `CaptureWindow`, captured with its shadow and drawn on the same gradient. So that it looks as it does with the keyboard, without taking it, the panel overrides `isKeyWindow` and AppKit's private `_hasActiveAppearance`: fine for a throwaway package, never for the app.
 4. Each window goes below the desktop picture (`CGWindowLevelForKey(.desktopWindow) - 1`, ignoring the mouse), where macOS still draws it but nobody sees it, and `screencapture -x -l <window number>` captures it at the display's scale, with `-o` when the window's shadow should stay out. Run it with `CFFIXED_USER_HOME` set to a scratch folder, so it doesn't touch Ficha Dev's preferences.
