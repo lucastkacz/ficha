@@ -4,12 +4,13 @@ How Claude drafts Lucas's cards in a refine session: what each card holds, how l
 
 Everything Claude drafts is a proposal: a card, a fix, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
 
-## The four rules
+## The five rules
 
 1. **Rioplatense Spanish, with "vos"**: "sabés", "mirá", "tenés".
 2. **One idea per card.** A capture with two ideas makes two cards, and so does a back that needs "y además".
 3. **A one-line front, and a back of at most 40 words.** The review panel shows both without scrolling. Count the back's words before proposing it.
-4. **Words from other languages, explained in Spanish.** The front keeps the word, or the quote, as it's written in its language; the back starts with the language and says what it means in Spanish ("Palabra alemana: …").
+4. **Plain, concrete backs.** A short story or a contrast, rather than a list or an abstract summary: Lucas reviews these cards for years, and a back he has to read twice doesn't stick.
+5. **Words from other languages, explained in Spanish.** The front keeps the word as it's written in its language; the back starts with the language and says what it means in Spanish ("Palabra alemana: …"). A quote from another language is the exception: its front is in Spanish (see Quote below).
 
 ## Captures
 
@@ -17,9 +18,9 @@ A capture becomes one card, several or none. Several when it holds more than one
 
 ## Each type
 
-- **Word** (`word`): the front is the word alone, in lowercase unless its language capitalizes it ("Schadenfreude"). The back is its meaning in plain words, and its etymology only when that helps remember it. A short etymology goes on the back ("Schadenfreude"); one that's a story of its own becomes a question card of its own ("¿De dónde viene la palabra «serendipia»?").
+- **Word** (`word`): the front is the word alone, in lowercase unless its language capitalizes it ("Schadenfreude"). The back is its meaning in plain words and then, always, an example of its use, written as `Por ejemplo: «…»`. Its etymology goes on the back only when it fits within the 40 words and helps remember the word ("Schadenfreude"); one that's a story of its own becomes a question card of its own ("¿De dónde viene la palabra «serendipia»?").
 - **Concept** (`concept`): the front is the concept's name, with its article when Spanish uses one ("La navaja de Ockham"). The back says what it is in a sentence or two, and then, if there's room, who came up with it or an example.
-- **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. A quote too long for one line is cut to its most memorable part, still word for word, with "…" where it's cut. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
+- **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. A quote from another language goes on the front in Spanish, as people say it ("La suerte está echada."), and the back ends with the original when that's famous too (in Latin, «alea iacta est»). A quote too long for one line is cut to its most memorable part, still word for word, with "…" where it's cut. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
 - **Question** (`question`): the front is a question with one answer. The back gives that answer first, and then why or how, in a sentence.
 
 ## Tags
@@ -37,16 +38,16 @@ A card takes its capture's source as Lucas wrote it, and the review panel shows 
 
 ## Examples
 
-Each example is a card: its front in bold, then its back, then its tags in italics and its source, if it has one, after a dot. They come from Ficha Dev's sample cards, some trimmed. After Lucas's first refine session, cards of his own replace them.
+Each example is a card: its front in bold, then its back, then its tags in italics and its source, if it has one, after a dot. Most come from Ficha Dev's sample cards, some trimmed or with an example added. After Lucas's first refine session, cards of his own replace them.
 
 ### Word
 
 > **serendipia**
-> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa.
+> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito.»
 > _lenguaje_ · Un podcast de etimología
 
 > **Schadenfreude**
-> Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», alegría.
+> Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», alegría. Por ejemplo: «Sentí un poco de Schadenfreude cuando al que se coló en la fila lo mandaron al final.»
 > _lenguaje_
 
 ### Concept
@@ -68,6 +69,10 @@ Each example is a card: its front in bold, then its back, then its tags in itali
 > **Solo sé que no sé nada.**
 > Se le atribuye a Sócrates, a partir de la «Apología» de Platón: reconocer lo que no sabés es el primer paso para aprender.
 > _filosofía_
+
+> **La suerte está echada.**
+> Julio César, al cruzar el Rubicón con su ejército y desatar una guerra civil: la decisión está tomada y ya no hay vuelta atrás. En latín, «alea iacta est».
+> _historia_ · Suetonio, Vidas de los doce césares
 
 ### Question
 
