@@ -47,13 +47,13 @@ Many flashcard apps work out a different wait for each card with a formula. Fich
 Ficha's cards come from what you come across: a word in a book, a line in a podcast, a question you couldn't answer.
 
 ```mermaid
-flowchart TD
-    capture["You capture something"] --> inbox["The inbox"]
-    inbox -- "Refine: Claude drafts the cards,<br/>you approve them" --> new["A new card"]
-    new -- "You meet it" --> reviews["Your reviews, each card<br/>spaced by how well you know it"]
-    reviews -- "Flag: something to fix" --> inbox
-    inbox -- "Fix: Claude fixes it,<br/>you approve" --> reviews
-    reviews -- "Bury: no longer wanted" --> buried["Out of your reviews"]
+flowchart LR
+    capture["You capture<br/>something"] --> inbox["Inbox"]
+    inbox -- "Refine" --> new["New card"]
+    new -- "You meet it" --> reviews["Your reviews"]
+    reviews -- "Flag" --> inbox
+    inbox -- "Fix" --> reviews
+    reviews -- "Bury" --> buried["Buried"]
 ```
 
 **Capture.** When something catches your eye, jot it down with "Capture…" in the menu, or with a keyboard shortcut from any app. Just the text, with a note or where you found it if you like. It waits in the inbox, and you go back to what you were doing. If it repeats a card you already have, Ficha asks whether to add it to that card.
