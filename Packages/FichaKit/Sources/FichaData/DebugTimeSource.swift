@@ -82,8 +82,8 @@ extension DebugTimeError: LocalizedError {
 /// The file in Ficha Dev's data folder that keeps how far its time moved.
 private let fileName = "Time shift.json"
 
-/// What to do when Ficha Dev's time can't go on, as the README says: start
-/// over, with no cards and on the system's time. Only taking the file away
+/// What to do when Ficha Dev's time can't go on, as docs/development.md says:
+/// start over, with no cards and on the system's time. Only taking the file away
 /// would leave what Ficha Dev saved ahead of its time.
 private let startingOver = """
     To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
