@@ -295,7 +295,7 @@ private let sampleCaptures = [
                 .concept,
                 front: "El efecto Dunning-Kruger",
                 back: """
-                    Cuanto menos sabés de un tema, más fácil es que creas que sabés mucho: te falta justo el saber que \
+                    Cuanto menos sabés de un tema, más sobreestimás lo que sabés: te falta justo el saber que \
                     necesitarías para ver tus errores. Como el que vio dos videos y le discute al médico.
                     """,
                 tags: ["psicología"]
@@ -311,7 +311,8 @@ private let sampleCaptures = [
                 front: "Pienso, luego existo.",
                 back: """
                     René Descartes: podés dudar de todo, menos de que estás dudando, y para dudar tenés que existir. \
-                    Es la primera certeza sobre la que construyó su filosofía. En latín, «cogito, ergo sum».
+                    Es la primera certeza sobre la que construyó su filosofía. Se hizo famosa en latín: «cogito, ergo \
+                    sum».
                     """,
                 tags: ["filosofía"]
             )
@@ -338,7 +339,7 @@ private let sampleCaptures = [
         cards: [
             SampleCard(
                 .question,
-                front: "¿Cuántos huesos tiene el cuerpo humano adulto?",
+                front: "¿Cuántos huesos tiene un adulto?",
                 back: """
                     206. Al nacer tenés unos 300, pero muchos se van soldando entre sí mientras crecés, como los del \
                     cráneo.
@@ -383,7 +384,7 @@ private let sampleCaptures = [
         cards: [
             SampleCard(
                 .quote,
-                front: "Yo soy yo y mi circunstancia.",
+                front: "Yo soy yo y mi circunstancia…",
                 back: """
                     José Ortega y Gasset: sos vos y también lo que te rodea, tu época, tu lugar y lo que te toca \
                     vivir; no se te puede entender por separado.
@@ -428,7 +429,7 @@ private let sampleCaptures = [
         cards: [
             SampleCard(
                 .question,
-                front: "¿Cuál es el planeta más caliente del sistema solar?",
+                front: "¿Cuál es el planeta más caliente?",
                 back: """
                     Venus, aunque Mercurio está más cerca del Sol. Su atmósfera espesa de dióxido de carbono atrapa el \
                     calor como un invernadero, y en la superficie hay unos 460 °C.
@@ -613,8 +614,8 @@ private let sampleCaptures = [
                 .question,
                 front: "¿En qué año cayó el Muro de Berlín?",
                 back: """
-                    En 1989, el 9 de noviembre. Lo habían levantado en 1961 para que los alemanes del este no pudieran \
-                    pasar al oeste, y esa noche la gente lo cruzó y empezó a derribarlo.
+                    En 1989, el 9 de noviembre. Un vocero de Alemania del Este anunció por error que se podía cruzar \
+                    ya mismo, y esa noche miles de berlineses lo pasaron y empezaron a derribarlo.
                     """,
                 tags: ["historia"]
             )
@@ -686,7 +687,7 @@ private let sampleCaptures = [
         cards: [
             SampleCard(
                 .question,
-                front: "¿Quién inventó la imprenta de tipos móviles en Europa?",
+                front: "¿Quién inventó la imprenta en Europa?",
                 back: """
                     Johannes Gutenberg, en Maguncia, hacia 1450. Con letras de metal que se reordenaban para cada \
                     página, los libros dejaron de copiarse a mano.
