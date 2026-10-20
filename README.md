@@ -1,53 +1,72 @@
 # Ficha
 
-A macOS menu-bar app that shows you a tiny flashcard every so often (a word, a concept, a quote or a question) and spaces each card by how well you know it. Answering takes seconds, and everything stays on your Mac.
+Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Everything stays on your Mac.
 
-Ficha follows your Mac's language. For now it's in English; Spanish comes later.
+<p align="center">
+  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned to its answer, with three buttons below: Don't know, Sort of and Know it.">
+</p>
 
-Status: early development.
+The cards in these pictures are samples. Ficha's cards are in Spanish.
 
-## Run it
+## A card every so often
 
-Requires macOS 26 and Xcode 26.
+You don't sit down to study. When some of your cards are due, a small panel shows up near the top of the screen with up to five cards: the ones due, and a new one when there's room. It only comes during the day, at least half an hour after the last one, and never during a meeting, a video or a full-screen app.
 
-```bash
-make bootstrap   # installs XcodeGen
-make run         # builds and opens Ficha Dev, the development app
-make install     # installs Ficha in /Applications
+It doesn't catch what you're typing: it waits until you stop for a moment, or until you click it. If now isn't a good time, press Esc, and the cards wait for the next one. Left alone, it closes after ten minutes.
+
+You can also open it yourself, whenever you like, with "Review now" in Ficha's menu. The menu also shows how many cards you've learned. In Settings you pick the hours, how many cards come at a time and how far apart, and whether Ficha starts when you log in.
+
+## Flip, then rate
+
+<p align="center">
+  <img src="docs/images/card-front.png" width="49%" alt="The review panel showing only the front of a card, the quote “Caminante, no hay camino, se hace camino al andar.”, with a Flip button.">
+  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Don't know, Sort of and Know it.">
+</p>
+
+A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did: 1 for "Don't know", 2 for "Sort of" or 3 for "Know it". It takes a few seconds, and every button has its key, so you never need the mouse. The first time you meet a card, it shows whole, marked "New": read it and press Enter.
+
+When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed. When you no longer want a card, press E to bury it, and it won't show up again. ⌘Z undoes what you did with the last card.
+
+## Why each card waits its own time
+
+Memory fades unless you go back to what you learned, and each time you recall something just as it's slipping away, it lasts longer. So reviewing a card you know well every day is wasted time, and leaving one you barely know for a month means starting over. This is spaced repetition, the idea behind many flashcard apps.
+
+Ficha spaces each card on a ladder of waits:
+
+```mermaid
+flowchart LR
+    s1["1 hour"] --> s2["4 hours"] --> s3["2 days"] --> s4["5 days"] --> s5["12 days"] --> s6["30 days"] --> s7["75 days"]
 ```
 
-Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
+A new card starts on the first step. "Know it" moves it one step up, so it waits longer before it comes back. "Sort of" keeps it where it is, and "Don't know" sends it back to the first step. A card that waits 30 days or more counts as learned, and still comes back now and then, so you keep it.
 
-Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
+Many flashcard apps work out a different wait for each card with a formula. Ficha's ladder is simpler: you can always tell why a card shows up today. Its steps can be changed in Settings.
 
-## Reviewing
+## From something you read to a card
 
-"Review now", in the menu, shows how many cards are due and opens the review panel with up to five cards: the due ones, lowest step first, and a new card when there's room, up to five new cards a day. A new card shows whole, marked "New": press Enter. Any other card shows its front: Space flips it, and 1, 2 or 3 rate it ("Don't know", "Sort of", "Know it"). Esc closes the panel, and every action can also be clicked. The menu also says how many cards you've learned and how much waits in the inbox.
+Ficha's cards come from what you come across: a word in a book, a line in a podcast, a question you couldn't answer.
 
-M flags a card with a note on what to fix: it leaves your reviews and waits in the inbox until a refine session fixes it, and then it goes back to its step. E buries a card: it never shows up again, and keeps its review log, and `ficha unbury` brings it back. ⌘Z undoes what you did with the last card, one card at a time, while the panel is open: a rating, a flag or a bury.
-
-The review panel also shows up on its own when cards are due, between 9:00 and 22:00, with the same cards plus those due within the next 20 minutes. With nothing due, one new card is enough. It comes at least 30 minutes after the last panel with cards closed, never while your Mac or its screens sleep, and 2 minutes after they wake. It shows up without the keyboard, so it doesn't catch what you're typing, and takes it once you've been idle for 5 seconds. Esc snoozes it, and left untouched for 10 minutes it closes on its own: either way, its cards stay due.
-
-## Refining
-
-What you capture waits in the inbox, with the cards you flag. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](docs/content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, and how to add each expansion to its card. It writes only what you approve, through the installed Ficha's `ficha` command.
-
-## The `ficha` command
-
-Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards and to fix the cards you flag, and you can capture from a terminal with it:
-
-```bash
-/Applications/Ficha.app/Contents/Helpers/ficha capture "serendipia" --source "Un ensayo de Borges"
+```mermaid
+flowchart TD
+    capture["You capture something"] --> inbox["The inbox"]
+    inbox -- "Refine: Claude drafts the cards,<br/>you approve them" --> new["A new card"]
+    new -- "You meet it" --> reviews["Your reviews, each card<br/>spaced by how well you know it"]
+    reviews -- "Flag: something to fix" --> inbox
+    reviews -- "Bury: no longer wanted" --> buried["Out of your reviews"]
 ```
 
-`ficha --help` lists its commands; each one prints JSON. To type just `ficha`, add an alias to `~/.zshrc`:
+**Capture.** When something catches your eye, jot it down with "Capture…" in the menu, or with a keyboard shortcut from any app. Just the text, with a note or where you found it if you like. It waits in the inbox, and you go back to what you were doing. If it repeats a card you already have, Ficha asks whether to add it to that card.
 
-```bash
-alias ficha="/Applications/Ficha.app/Contents/Helpers/ficha"
-```
+<p align="center">
+  <img src="docs/images/capture-window.png" width="564" alt="The Capture window, with three fields: “A word, a concept, a quote or a question”, “Note (optional)” and “Source (optional): a book, a podcast…”, and the buttons Cancel and Save.">
+</p>
 
-The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Build/Products/Debug/Ficha Dev.app/Contents/Helpers/`, works on Ficha Dev's cards.
+**Refine.** Now and then, you go through the inbox with Claude, Anthropic's AI assistant, in a session you start. Claude drafts cards for each capture, short and in plain Spanish, following [a guide](docs/content-guide.md) for how Ficha's cards are written. It also proposes a fix for each card you flagged, and can bring back a card you buried. You approve, change or turn down each proposal: nothing becomes a card without your OK.
 
-## How it's built
+## Everything stays on your Mac
 
-Ficha is built by AI agents (Claude Code) with [Matt Pocock's skills](https://github.com/mattpocock/skills). Lucas brings the ideas and the decisions; the agents turn them into specs, tickets, code and pull requests. [`CLAUDE.md`](CLAUDE.md) holds the rules they follow, and [`CODING_STANDARDS.md`](CODING_STANDARDS.md) how the code is written.
+Ficha has no account, no sync and no tracking, and it never connects to the internet. Your cards are kept on your Mac and nowhere else. There's no AI inside the app either: Claude only sees your cards in a refine session you start, and changes only what you approve.
+
+---
+
+To build and run Ficha from its source, see [docs/development.md](docs/development.md).
