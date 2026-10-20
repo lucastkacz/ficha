@@ -8,6 +8,16 @@ public func repeats(_ captureText: String, _ text: String) -> Bool {
     comparable(captureText) == comparable(text)
 }
 
+/// Whether `text`, a card's front, back or source, mentions `search`, what
+/// Lucas looks for in the Cards window: it contains it once both are compared
+/// as duplicates are, trimmed, ignoring case and accents, but not the ñ, so
+/// “fertil” is in “Muy fértil” and “ano” isn't in “año”. A blank search is in
+/// every text.
+public func mentions(_ text: String, _ search: String) -> Bool {
+    let search = comparable(search)
+    return search.isEmpty || comparable(text).contains(search)
+}
+
 /// The text as duplicates are compared: trimmed, in lowercase and without
 /// accents, but with its ñ.
 private func comparable(_ text: String) -> String {
