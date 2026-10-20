@@ -4,7 +4,10 @@
 
 PACKAGE := Packages/FichaKit
 DERIVED := .build/DerivedData
-SWIFT_SOURCES := App CLI $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests
+RENDER := scripts/render
+# The render tool's own files: its `Sources/Render/App` is a link to `App/`.
+SWIFT_SOURCES := App CLI $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
+	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift
 # The build number, the app's CFBundleVersion: how many commits the built
 # commit's history has, so each build after a merge shows a larger one. It's
 # passed to xcodebuild as a build setting, which overrides project.yml's.
@@ -13,7 +16,7 @@ BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: 
 XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
 	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 
-.PHONY: bootstrap project build test lint fmt hooks-test check run install
+.PHONY: bootstrap project build test lint fmt hooks-test render-build check run render install
 
 bootstrap: ## Install the tools the build needs.
 	@command -v xcodegen >/dev/null || brew install xcodegen
@@ -36,11 +39,17 @@ fmt: ## Format the Swift code in place.
 hooks-test: ## Test the Claude Code hooks.
 	scripts/test-hooks.sh
 
-check: lint test build hooks-test ## Everything CI runs.
+render-build: ## Build the render tool, so a change to the app's views can't break it unnoticed.
+	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
+
+check: lint test build hooks-test render-build ## Everything CI runs.
 
 run: build ## Build and open Ficha Dev, restarting it; the real Ficha keeps running.
 	@pkill -x "Ficha Dev" || true
 	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
+
+render: ## Draw an app window as a PNG, offscreen: make render ARGS="cards --dark".
+	CFFIXED_USER_HOME=$(CURDIR)/.build/render/home swift run --package-path $(RENDER) --quiet Render $(ARGS)
 
 install: project ## Build the real Ficha into /Applications, replacing the running one.
 	$(XCODEBUILD) -configuration Release build

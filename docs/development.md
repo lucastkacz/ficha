@@ -1,6 +1,6 @@
 # Developing Ficha
 
-How to build and run Ficha, try a change with Ficha Dev, refine cards with Claude, and use the `ficha` command. The [README](../README.md) explains the app itself.
+How to build and run Ficha, try a change with Ficha Dev, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
 
 ## Run it
 
@@ -35,6 +35,32 @@ alias ficha="/Applications/Ficha.app/Contents/Helpers/ficha"
 ```
 
 The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Build/Products/Debug/Ficha Dev.app/Contents/Helpers/`, works on Ficha Dev's cards.
+
+## A window's picture
+
+`make render` draws one of the app's windows as a PNG, with Ficha Dev's sample cards, without showing anything on screen or taking the mouse or the keyboard, so it runs while Lucas uses his Mac:
+
+```bash
+make render ARGS="cards"
+make render ARGS="cards --dark --click 482,66 --click 280,529 --out .build/render/by-due-dark.png"
+```
+
+- The PNG goes to `.build/render/<window>-<light|dark>.png` unless `--out` says otherwise, at the display's scale.
+- The cards are Ficha Dev's sample cards after twelve days of reviews, from 8 October 2026: some climbing at different paces, two sent back to the first step, one flagged with a note, one buried, and the rest new.
+- `--click <x>,<y>` clicks before the capture, in points from the window's top-left corner: on a row, to select it, or on a column's header, to sort by it. SwiftUI's buttons don't react to these clicks. To find a point, render once and read it off the PNG.
+- The window acts as the key window, with its title bar's buttons in color, but its selections stay gray.
+- Only the Cards window so far. Another window is one more case in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
+- The tool compiles the app's own files, through `scripts/render/Sources/Render/App`, a link to `App/`, so `make check` builds it: a change to the app that breaks it fails the check.
+
+## The PR's pictures
+
+A PR that changes what Lucas sees shows it in pictures, which `make render` draws, so he can decide from its body. They never reach `main`:
+
+1. Copy the PNGs to `pr-images/<issue>/` and commit them on the PR's branch.
+2. Remove the folder in the next commit.
+3. Link each picture from the PR's body by the first commit's full SHA, with a width that fits the body, like 560 for the Cards window: `<img alt="Sorted by Due, a card selected" width="560" src="https://raw.githubusercontent.com/lucastkacz/ficha/<sha>/pr-images/<issue>/by-due-light.png">`. Say under them which commit they come from and that the next one removes it.
+
+The squash merge leaves both commits off `main`, and GitHub keeps a PR's commits after its branch is deleted, so the links keep working.
 
 ## The README's pictures
 

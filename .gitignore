@@ -5,6 +5,8 @@ DerivedData/
 *.xcworkspace/
 .swiftpm/
 xcuserdata/
+# The render tool's: FichaKit's own pins its dependencies, which Dependabot updates
+scripts/render/Package.resolved
 
 # Lucas's cards live in ~/Library/Application Support/Ficha, never in the repo
 *.sqlite

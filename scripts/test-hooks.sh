@@ -112,12 +112,19 @@ rm "$tmp/gh/prs.json"
 expect 2 "a push is blocked when auto-merge can't be checked" merge-gate.sh "$(bash_input 'git push origin 8-other' "$tmp/branch")"
 
 echo "swift-format"
-printf 'let  x=1\n' >"$tmp/Sample.swift"
-jq -n --arg file "$tmp/Sample.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh"
-if [[ $(cat "$tmp/Sample.swift") == "let x = 1" ]]; then
+printf 'let  x=1\n' >"$tmp/branch/Sample.swift"
+jq -n --arg file "$tmp/branch/Sample.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh"
+if [[ $(cat "$tmp/branch/Sample.swift") == "let x = 1" ]]; then
   pass "an edited Swift file is formatted"
 else
-  fail "an edited Swift file is formatted (got: $(cat "$tmp/Sample.swift"))"
+  fail "an edited Swift file is formatted (got: $(cat "$tmp/branch/Sample.swift"))"
+fi
+printf 'let  x=1\n' >"$tmp/Scratch.swift"
+jq -n --arg file "$tmp/Scratch.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh"
+if [[ $(cat "$tmp/Scratch.swift") == "let  x=1" ]]; then
+  pass "a Swift file outside the project is left as it is"
+else
+  fail "a Swift file outside the project is left as it is (got: $(cat "$tmp/Scratch.swift"))"
 fi
 
 echo "session-start"
