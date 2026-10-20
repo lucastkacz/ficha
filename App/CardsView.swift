@@ -152,10 +152,14 @@ struct CardsView: View {
     private var noCards: some View {
         if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             ContentUnavailableView.search(text: search)
-        } else {
+        } else if group == .all {
             ContentUnavailableView(
                 group.emptyTitle, systemImage: group.symbol,
-                description: group == .all ? Text("The cards you approve in a refine session show up here.") : nil)
+                description: Text(
+                    "The cards you approve in a refine session show up here, and the ones you bury, in Buried.",
+                    comment: "In the Cards window, when All cards is empty."))
+        } else {
+            ContentUnavailableView(group.emptyTitle, systemImage: group.symbol)
         }
     }
 
@@ -256,7 +260,7 @@ extension CardGroup {
     fileprivate var emptyTitle: String {
         switch self {
         case .all:
-            String(localized: "No cards yet", comment: "In the Cards window: there are no cards at all.")
+            String(localized: "No cards", comment: "In the Cards window: no card that isn't buried.")
         case .new:
             String(localized: "No new cards", comment: "In the Cards window: no card waits for its first view.")
         case .due:

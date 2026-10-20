@@ -424,6 +424,9 @@
     "No card selected" : {
 
     },
+    "No cards" : {
+      "comment" : "In the Cards window: no card that isn't buried."
+    },
     "No cards are due right now." : {
 
     },
@@ -435,9 +438,6 @@
     },
     "No cards to review right now." : {
 
-    },
-    "No cards yet" : {
-      "comment" : "In the Cards window: there are no cards at all."
     },
     "No concepts" : {
       "comment" : "In the Cards window: no concept card that isn't buried."
@@ -583,8 +583,8 @@
     "The camera or the microphone in use" : {
 
     },
-    "The cards you approve in a refine session show up here." : {
-
+    "The cards you approve in a refine session show up here, and the ones you bury, in Buried." : {
+      "comment" : "In the Cards window, when All cards is empty."
     },
     "Then wait" : {
       "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."

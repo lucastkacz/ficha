@@ -104,7 +104,7 @@ extension CardGroup {
         case .new: row.card.isInReviews && row.standing == .new
         case .due: row.card.isInReviews && row.standing.isDue(at: now)
         case .learned: row.card.isInReviews && ladder.isLearned(row.standing)
-        case .flagged: row.card.flag != nil && row.card.buriedAt == nil
+        case .flagged: row.card.isInInbox
         case .buried: row.card.buriedAt != nil
         case .tag(let tag): row.card.tags.contains(tag) && row.card.buriedAt == nil
         case .type(let type): row.card.type == type && row.card.buriedAt == nil

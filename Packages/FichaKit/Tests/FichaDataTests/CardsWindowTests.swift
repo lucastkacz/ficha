@@ -71,11 +71,17 @@ struct CardsWindowTests {
         // Learned: on the sixth step, which waits 30 days.
         let ojala = try approveCard("ojalá", in: engine)
         try engine.climb(ojala, to: 5, movingForward: time)
+        let nunca = try approveCard("nunca", in: engine)
+        try engine.climb(nunca, to: 5, movingForward: time)
+        try engine.bury(nunca.id)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.meet(ubuntu)
         let quizas = try approveCard("quizás", in: engine)
         try engine.meet(quizas)
         try engine.bury(quizas.id)
+        let jamas = try approveCard("jamás", in: engine)
+        try engine.meet(jamas)
+        try engine.flag(jamas.id, note: note("El ejemplo no se entiende"))
         // On the first step, due in an hour, as ubuntu was.
         time.advance(by: hours(3))
         let efimero = try approveCard("efímero", in: engine)
@@ -92,8 +98,8 @@ struct CardsWindowTests {
         #expect(due.map(\.card.id) == [ubuntu.id])
         #expect(learned.map(\.card.id) == [ojala.id])
         let progress = try engine.progress(settings)
-        #expect(progress.due == due.count)
-        #expect(progress.learned == learned.count)
+        #expect(progress.due == 1)
+        #expect(progress.learned == 1)
         #expect(try engine.cardRows(in: .all, on: settings.ladder).map(\.card.id).contains(efimero.id))
     }
 
@@ -218,12 +224,4 @@ struct CardsWindowTests {
         #expect(rows.map(\.standing) == [serendipiaStanding, ubuntuStanding, .new])
         #expect(rows.map(\.due) == [serendipiaStanding.due, nil, nil])
     }
-}
-
-/// Approves a capture into a card with `content`, the way refining saves cards,
-/// and returns the card: a new card, after the ones approved before it.
-@discardableResult
-private func approve(_ content: CardContent, in engine: Engine) throws -> Card {
-    let capture = try engine.newCapture(content.front)
-    return try #require(try engine.approve(capture.id, into: [content]).first)
 }

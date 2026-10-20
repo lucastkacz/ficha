@@ -111,6 +111,14 @@ var flaggedCardsInInbox: QueryInterfaceRequest<Row> {
     Table("card").filter(Column("flaggedAt") != nil && Column("buriedAt") == nil)
 }
 
+extension Card {
+    /// Whether the card waits in the inbox to be fixed, as
+    /// `flaggedCardsInInbox` has it: flagged, and not buried.
+    var isInInbox: Bool {
+        flag != nil && buriedAt == nil
+    }
+}
+
 /// A card's tags as the `card` table keeps them: a JSON array, which
 /// `Card(row:)` reads back.
 func tagsJSON(_ tags: [String]) throws -> String {

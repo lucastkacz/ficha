@@ -25,10 +25,15 @@ func note(_ text: String) throws -> FlagNote {
 /// before it.
 @discardableResult
 func approveCard(_ front: String, in engine: Engine) throws -> Card {
-    let capture = try engine.newCapture(front)
-    let cards = try engine.approve(
-        capture.id, into: [card(.word, front: front, back: "Lo que quiere decir «\(front)».")])
-    return try #require(cards.first)
+    try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)»."), in: engine)
+}
+
+/// Approves a capture into one card with `content`, the way refining saves
+/// cards, and returns the card: a new card, after the ones approved before it.
+@discardableResult
+func approve(_ content: CardContent, in engine: Engine) throws -> Card {
+    let capture = try engine.newCapture(content.front)
+    return try #require(try engine.approve(capture.id, into: [content]).first)
 }
 
 extension Engine {
