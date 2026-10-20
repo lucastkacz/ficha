@@ -10,7 +10,7 @@ Everything Claude drafts is a proposal: a card, a fix, a discarded capture or a 
 2. **One idea per card.** A capture with two ideas makes two cards, and so does a back that needs "y además".
 3. **A one-line front, and a back of at most 40 words.** The review panel shows both without scrolling. Count the back's words before proposing it.
 4. **Plain, concrete backs.** A short story or a contrast, rather than a list or an abstract summary: Lucas reviews these cards for years, and a back he has to read twice doesn't stick.
-5. **Words from other languages, explained in Spanish.** The front keeps the word as it's written in its language; the back starts with the language and says what it means in Spanish ("Palabra alemana: …"). A quote from another language is the exception: its front is in Spanish (see Quote below).
+5. **Words from other languages, explained in Spanish.** The front keeps the word as it's written in its language; the back starts with the language and says what it means in Spanish ("Palabra alemana: …"). A quote from another language is the exception, on both sides: see Quote below.
 
 ## Captures
 
@@ -20,7 +20,7 @@ A capture becomes one card, several or none. Several when it holds more than one
 
 - **Word** (`word`): the front is the word alone, in lowercase unless its language capitalizes it ("Schadenfreude"). The back is its meaning in plain words and then, always, an example of its use, written as `Por ejemplo: «…»`. Its etymology goes on the back only when it fits within the 40 words and helps remember the word ("Schadenfreude"); one that's a story of its own becomes a question card of its own ("¿De dónde viene la palabra «serendipia»?").
 - **Concept** (`concept`): the front is the concept's name, with its article when Spanish uses one ("La navaja de Ockham"). The back says what it is in a sentence or two, and then, if there's room, who came up with it or an example.
-- **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. A quote from another language goes on the front in Spanish, as people say it ("La suerte está echada."), and the back ends with the original when that's famous too (in Latin, «alea iacta est»). A quote too long for one line is cut to its most memorable part, still word for word, with "…" where it's cut. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
+- **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. A quote from another language goes on the front in Spanish, word for word as people say it ("La suerte está echada."), and the back ends with the original when that's famous too (in Latin, «alea iacta est»). A quote too long for one line is cut to its most memorable part, still word for word, with "…" where it's cut. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
 - **Question** (`question`): the front is a question with one answer. The back gives that answer first, and then why or how, in a sentence.
 
 ## Tags
@@ -43,11 +43,11 @@ Each example is a card: its front in bold, then its back, then its tags in itali
 ### Word
 
 > **serendipia**
-> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito.»
+> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».
 > _lenguaje_ · Un podcast de etimología
 
 > **Schadenfreude**
-> Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», alegría. Por ejemplo: «Sentí un poco de Schadenfreude cuando al que se coló en la fila lo mandaron al final.»
+> Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», alegría. Por ejemplo: «Sentí un poco de Schadenfreude cuando al que se coló en la fila lo mandaron al final».
 > _lenguaje_
 
 ### Concept
