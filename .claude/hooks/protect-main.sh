@@ -48,9 +48,8 @@ block() {
 
 dirs=("$base")
 [[ -n $panel_dir ]] && dirs+=("$(resolve "$panel_dir")")
-set -f
-words=($cmd)
-set +f
+# The command's words, from all its lines: with -d '', read doesn't stop at the first newline.
+read -r -d '' -a words <<<"$cmd"
 for ((i = 0; i + 1 < ${#words[@]}; i++)); do
   case ${words[i]} in
     -C | cd) dirs+=("$(resolve "${words[i + 1]}")") ;;

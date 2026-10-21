@@ -41,8 +41,9 @@ jobs:
           sw_vers
           xcodebuild -version
           swift --version
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install the tools
+        # The ones `make bootstrap` installs on a Mac, which the image doesn't ship.
+        run: brew install xcodegen shellcheck actionlint
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"

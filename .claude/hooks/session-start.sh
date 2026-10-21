@@ -38,7 +38,7 @@ $(with_label needs-info)
 Not triaged yet (needs-triage):
 $(with_label needs-triage)
 Other open issues, with no state label:
-$(list "select([.labels[].name] | any(IN($states[])) | not)" "$issues")
+$(list "select([.labels[].name] | any(IN(${states}[])) | not)" "$issues")
 Open pull requests:
 $(list . "$prs")")
 fi
