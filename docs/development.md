@@ -4,7 +4,7 @@ How to build and run Ficha, try a change with Ficha Dev, put Ficha Dev on the iP
 
 ## Run it
 
-Requires macOS 26 and Xcode 26, with its iOS platform for the iPhone app (Xcode › Settings › Components).
+Requires macOS 26 and the Xcode that [`.xcode-version`](../.xcode-version) names, the one CI runs, so a `make check` that passes on your Mac passes on CI too. `make check` stops first when your Mac's Xcode is another one, as when the App Store updates it on its own. To move to a newer Xcode, update your Mac's Xcode and the file together. The iPhone app also needs that Xcode's iOS platform (Xcode › Settings › Components).
 
 ```bash
 make bootstrap   # installs XcodeGen

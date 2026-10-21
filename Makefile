@@ -39,11 +39,18 @@ EXPORT_STRINGS = $(XCODEBUILD) -exportLocalizations -localizationPath $(STRINGS)
 # folder: `.build/strings/App.xcstrings` for `App/Localizable.xcstrings`.
 BEFORE = $(STRINGS)/$${catalog%%/*}.xcstrings
 
-.PHONY: bootstrap project build build-iphone strings strings-check test lint fmt hooks-test render-build check run \
-	render install install-iphone
+.PHONY: bootstrap xcode-check project build build-iphone strings strings-check test lint fmt hooks-test render-build \
+	check run render install install-iphone
 
 bootstrap: ## Install the tools the build needs.
 	@command -v xcodegen >/dev/null || brew install xcodegen
+
+xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-version names.
+	@output=$$(xcodebuild -version) || exit 1; \
+	mac=$$(echo "$$output" | sed -n 's/^Xcode //p'); ci=$$(cat .xcode-version); \
+	[ "$$mac" = "$$ci" ] || { \
+		echo "This Mac runs Xcode $$mac and CI runs $$ci, the one .xcode-version names: update the Mac's Xcode to $$ci, or the file to $$mac, which moves CI too." >&2; \
+		exit 1; }
 
 project: ## Generate Ficha.xcodeproj from project.yml (never edit it by hand).
 	xcodegen generate --quiet
@@ -81,7 +88,7 @@ hooks-test: ## Test the Claude Code hooks.
 render-build: ## Build the render tool, so a change to the app's views can't break it unnoticed.
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
 
-check: lint test build build-iphone strings-check hooks-test render-build ## Everything CI runs.
+check: xcode-check lint test build build-iphone strings-check hooks-test render-build ## Everything CI runs, on CI's Xcode.
 
 run: build ## Build and open Ficha Dev, restarting it; the real Ficha keeps running.
 	@pkill -x "Ficha Dev" || true

@@ -24,14 +24,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The iPhone app builds for the simulator, which needs Xcode's iOS
-      # platform: the runner image comes with it.
+      - name: Select Xcode
+        # The one .xcode-version names, which Lucas's Mac runs too, so a
+        # `make check` that passes there passes here. The image installs each
+        # Xcode at /Applications/Xcode_<version>.app, and a new patch version
+        # replaces the previous one: then this fails, naming the ones it has.
+        run: |
+          xcode="/Applications/Xcode_$(cat .xcode-version).app"
+          if [[ ! -d $xcode ]]; then
+            echo "::error::The runner has no $xcode, the Xcode .xcode-version names. Move the Mac's Xcode and the file to one it has: $(cd /Applications && echo Xcode_*.app)"
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+      # The iPhone app builds with the selected Xcode's iOS SDKs, for the
+      # simulator and, in the String Catalog check, for an iPhone. This step
+      # lists the SDKs, so a missing one shows in the log.
       - name: Toolchain
         run: |
           sw_vers
           xcodebuild -version
           swift --version
-          xcrun simctl list runtimes
+          xcodebuild -showsdks
       - name: Install XcodeGen
         run: brew install xcodegen
         env:
