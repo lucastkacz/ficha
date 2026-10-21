@@ -19,7 +19,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 ## Skills: Claude suggests, Lucas types
 
 <!-- skill-map: mattpocock-skills 1.3.1 -->
-Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map is for the mattpocock-skills version in the marker above. When the session-start hook says the installed version changed, update the map, the marker and the glossary's file name from the installed `ask-matt` router and `claude plugin details mattpocock-skills@claude-plugins-official`.
+Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map is for the mattpocock-skills version in the marker above. When the session-start hook says the installed version changed, update the map, the marker and the glossary's file name from the installed `ask-matt` router and `claude plugin details mattpocock-skills@claude-plugins-official`, keeping the rows marked ours.
 
 - **Model-invoked skills** run on their own whenever they fit: `grilling`, `tdd`, `diagnosing-bugs`, `code-review`, `pr`, `domain-modeling`, `codebase-design`, `prototype`, `research`, `wizard` and `writing-for-agents`.
 - **User-invoked skills** run only when Lucas types them, and Claude can't see them. When one fits, suggest it in one line, with the exact command and why, e.g. "¿Corrés `/to-tickets`? Parte la spec en tickets." Never carry out a user-invoked skill's steps by hand instead.
@@ -31,9 +31,9 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 | A ticket is ready for an agent | `/implement #<ticket>`, then `/clear` before the next one |
 | All of a spec's tickets are ready, and Lucas would rather not drive each one | `/implement-spec #<spec>`: parallel agents build them on one branch, `<spec>-<short-name>`, behind one PR |
 | A small change that fits in this session | `/implement`, right here, without a spec or tickets |
-| A spec's ticket or a bug fix is done, and it went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007. Ours, narrower than the plugin's "after a build" (keep it when the map is updated): a retro of environment work turns up more of it |
+| A spec's ticket or a fix to a product bug is done, and it went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007. Ours, narrower than the plugin's: never after environment work, whose retro turns up more of it |
 | Raw issues are waiting: ideas from Lucas's phone, bug reports | `/triage` |
-| Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them | `/refine`, ours, not the plugin's (keep it when the map is updated): it proposes the cards, and Lucas approves them |
+| Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them | `/refine`, ours, not the plugin's: it proposes the cards, and Lucas approves them |
 | An effort too big and foggy for one session | `/wayfinder` |
 | The code feels hard to change, or there's a spare moment | `/improve-codebase-architecture` |
 | Lucas didn't follow a message | `/wait-what` |
@@ -83,7 +83,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
 - Skills, hooks, settings and `CLAUDE.md` load when a session starts, from the folder it started in, also when it then works in a worktree, and its subagents get that `CLAUDE.md` too. So a change to any of them can be checked in a new session once the main folder's `main` has it.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
-- Search the repo with `git grep -n <text> -- '<pathspec>'`, like `-- '*.swift'`: it skips `.build/` and everything git ignores, and the quotes keep zsh from expanding the pathspec. It reads only the files git tracks: add `--untracked` for new ones. For `\b`, pass `-P`: with `-E` it matches nothing, silently. Every option goes before `<text>`, as `-n` does: git reads one after it as a commit.
+- Search the repo with `git grep -n <text> -- '<pathspec>'`, like `-- '*.swift'`: it skips `.build/` and everything git ignores, and the quotes keep zsh from expanding the pathspec. It reads only the files git tracks: add `--untracked` for new ones. For `\b`, pass `-P`: with `-E` it matches nothing, silently. Every option goes before `<text>`, as `-n` does: git reads one after it as a revision.
 
 ## Agent skills
 
