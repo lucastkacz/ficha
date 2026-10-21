@@ -123,6 +123,7 @@ expect 2 "a push is blocked when auto-merge can't be checked" merge-gate.sh "$(b
 
 echo "issue-comments"
 expect 2 "an issue viewed without its comments is blocked" issue-comments.sh "$(bash_input 'gh issue view 140' "$tmp/branch")"
+expect 2 "an issue viewed with --repo before view is blocked" issue-comments.sh "$(bash_input 'gh issue --repo lucastkacz/ficha view 140' "$tmp/branch")"
 expect 0 "an issue viewed with comments in its --json list passes" issue-comments.sh "$(bash_input 'gh issue view 140 --json number,title,body,labels,comments' "$tmp/branch")"
 expect 2 "an issue viewed with a --json list that has its body and not its comments is blocked" issue-comments.sh "$(bash_input 'gh issue view 140 --json number,title,body' "$tmp/branch")"
 expect 0 "an issue viewed with a --json list without its body passes" issue-comments.sh "$(bash_input 'gh issue view 140 --json title,labels' "$tmp/branch")"
@@ -136,6 +137,7 @@ expect 0 "issues listed with a --json list without their bodies pass" issue-comm
 expect 0 "issues listed as the tracker doc lists them pass" issue-comments.sh "$(bash_input "gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'" "$tmp/branch")"
 expect 2 "an issue viewed in the terminal panel is checked too" issue-comments.sh "$(panel_input 'gh issue view 140' "$tmp/branch" "$tmp/branch")"
 expect 0 "a pull request viewed without its comments passes" issue-comments.sh "$(bash_input 'gh pr view 137 --json body' "$tmp/branch")"
+expect 0 "an issue read through the API passes" issue-comments.sh "$(bash_input 'gh api repos/lucastkacz/ficha/issues/140' "$tmp/branch")"
 expect 2 "an issue viewed on a later line is blocked" issue-comments.sh "$(bash_input "$(printf 'git status\ngh issue view 91 --json body --jq .body')" "$tmp/branch")"
 expect 2 "an issue viewed without its comments before another viewed with them is blocked" issue-comments.sh "$(bash_input 'gh issue view 141 && gh issue view 140 --json number,title,body,labels,comments' "$tmp/branch")"
 expect 0 "a body in quotes that mentions gh issue view passes" issue-comments.sh "$(bash_input 'gh issue comment 124 --body "Read it with gh issue view 124 --json body first"' "$tmp/branch")"
