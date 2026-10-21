@@ -318,6 +318,29 @@
     "Couldn't count your progress" : {
 
     },
+    "Couldn't delete %lld cards" : {
+      "comment" : "An alert's title in the Cards window.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't delete the card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't delete the %lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Couldn't discard the capture" : {
       "comment" : "An alert's title in the Cards window."
     },
@@ -373,6 +396,41 @@
     },
     "Created" : {
       "comment" : "In the Cards window's detail: when Lucas approved the card."
+    },
+    "Delete" : {
+      "comment" : "The button that deletes the cards the Cards window asks about."
+    },
+    "Delete “%@”?" : {
+      "comment" : "The title of the Cards window's question before it deletes a card, with its front."
+    },
+    "Delete %lld cards?" : {
+      "comment" : "The title of the Cards window's question before it deletes several cards, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld card?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld cards?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete…" : {
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first."
+    },
+    "Delete… (⌘⌫)" : {
+      "comment" : "The tooltip of the Cards window's button that deletes the cards."
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
@@ -529,6 +587,9 @@
     },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
+    },
+    "Its review log goes too, and you can't bring it back." : {
+      "comment" : "Under the title of the Cards window's question before it deletes a card."
     },
     "Keeping the display awake" : {
       "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
@@ -794,6 +855,9 @@
     },
     "The cards you approve in a refine session show up here, and the ones you bury, in Buried." : {
       "comment" : "In the Cards window, when All cards is empty."
+    },
+    "Their review logs go too, and you can't bring them back." : {
+      "comment" : "Under the title of the Cards window's question before it deletes several cards."
     },
     "Then wait" : {
       "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."

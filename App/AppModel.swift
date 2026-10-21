@@ -164,6 +164,14 @@ final class AppModel {
         try engine.unbury(cardIDs)
     }
 
+    /// Deletes the cards Lucas selected in the Cards window for good, with
+    /// their review logs, all at once, or none of them when one no longer
+    /// exists. An expansion attached to one of them stays in the inbox as a
+    /// plain capture.
+    func delete(_ cardIDs: Set<Int64>) throws(EngineError) {
+        try engine.delete(cardIDs)
+    }
+
     /// Every change to Lucas's cards from now on, by the app or by the
     /// `ficha` CLI, for a window that shows them to read them again.
     func changes() -> AsyncStream<Void> {

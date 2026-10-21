@@ -52,6 +52,8 @@ struct CardsView: View {
     @State private var flagging: CardRow?
     /// The capture Lucas is discarding, while the window asks whether to.
     @State private var discarding: Capture?
+    /// The cards Lucas is deleting, while the window asks whether to.
+    @State private var deleting: [CardRow]?
     /// What Lucas did that couldn't be saved, while an alert says so.
     @State private var failure: Failure?
 
@@ -111,6 +113,20 @@ struct CardsView: View {
                 "It leaves the inbox without becoming cards, and you can't bring it back.",
                 comment: "Under the title of the Cards window's question before it discards a capture.")
         }
+        .confirmationDialog(
+            deleting.map { deletionTitle(for: $0) } ?? Text(verbatim: ""),
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            titleVisibility: .visible,
+            presenting: deleting
+        ) { rows in
+            Button(role: .destructive) {
+                delete(rows)
+            } label: {
+                Text("Delete", comment: "The button that deletes the cards the Cards window asks about.")
+            }
+        } message: { rows in
+            deletionMessage(for: rows)
+        }
         .failureAlert($failure)
         .onChange(of: sidebarItem) {
             reload()
@@ -145,8 +161,8 @@ struct CardsView: View {
     }
 
     /// Reads the tags and what the sidebar chose again, as they are now. When
-    /// the chosen tag is gone, because its last card was buried or edited, the
-    /// window goes back to All cards.
+    /// the chosen tag is gone, because its last card was buried, edited or
+    /// deleted, the window goes back to All cards.
     private func reload() {
         now = model.now
         do throws(EngineError) {
@@ -470,8 +486,8 @@ struct CardsView: View {
     }
 
     /// What Lucas can do with the selected card, at the foot of its detail,
-    /// always in sight: edit it, flag it while it's in his reviews, and bury
-    /// it, or unbury it once it's buried.
+    /// always in sight: edit it, flag it while it's in his reviews, bury it,
+    /// or unbury it once it's buried, and delete it, which asks first.
     private func actions(for row: CardRow) -> some View {
         ActionBar {
             editButton
@@ -488,13 +504,15 @@ struct CardsView: View {
                 .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
             }
             buryButton(for: [row])
+            deleteButton
             Spacer()
         }
     }
 
     /// What the detail says when Lucas selected several cards: how many, with
-    /// Bury or Unbury when it works on all of them. No sidebar item lists
-    /// buried cards with others, so one of the two always does.
+    /// Bury or Unbury when it works on all of them, and Delete. No sidebar
+    /// item lists buried cards with others, so one of the first two always
+    /// does.
     private func selectionSummary(_ rows: [CardRow]) -> some View {
         ContentUnavailableView {
             Label(
@@ -504,7 +522,25 @@ struct CardsView: View {
                 systemImage: "rectangle.stack")
         } actions: {
             buryButton(for: rows)
+            deleteButton
         }
+    }
+
+    /// Delete…, which asks whether to delete the selected cards for good:
+    /// ⌘⌫, as Discard… for a capture, since a card's detail and a capture's
+    /// never show together. While Lucas is in the search field, ⌘⌫ is the
+    /// field's, as in any text field: it deletes what he typed.
+    private var deleteButton: some View {
+        Button(
+            String(
+                localized: "Delete…",
+                comment: "A button of the Cards window that deletes the selected cards for good, asking first."
+            )
+        ) {
+            startDeleting()
+        }
+        .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
+        .help(Text("Delete… (⌘⌫)", comment: "The tooltip of the Cards window's button that deletes the cards."))
     }
 
     /// Bury, when none of the cards in `rows` is buried, or Unbury, when all
@@ -613,6 +649,54 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't unbury \(rows.count) cards", comment: "An alert's title in the Cards window."),
                 message: error.messageInCardsWindow(actingOn: rows.count))
+        }
+    }
+
+    /// Asks whether to delete the selected cards.
+    private func startDeleting() {
+        let rows = selectedRows
+        guard !rows.isEmpty else { return }
+        deleting = rows
+    }
+
+    /// Deletes the cards in `rows`, which Lucas confirmed, all at once, or
+    /// says why it couldn't.
+    private func delete(_ rows: [CardRow]) {
+        do throws(EngineError) {
+            try model.delete(Set(rows.map(\.id)))
+        } catch {
+            failure = Failure(
+                title: LocalizedStringResource(
+                    "Couldn't delete \(rows.count) cards", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: rows.count))
+        }
+    }
+
+    /// The title of the question before Lucas deletes the cards in `rows`:
+    /// the card's front when it's one, or how many when they're several.
+    private func deletionTitle(for rows: [CardRow]) -> Text {
+        if rows.count == 1, let row = rows.first {
+            Text(
+                "Delete “\(row.card.front)”?",
+                comment: "The title of the Cards window's question before it deletes a card, with its front.")
+        } else {
+            Text(
+                "Delete \(rows.count) cards?",
+                comment: "The title of the Cards window's question before it deletes several cards, with how many.")
+        }
+    }
+
+    /// What the question before Lucas deletes the cards in `rows` says under
+    /// its title: that their review logs go too, and for good.
+    private func deletionMessage(for rows: [CardRow]) -> Text {
+        if rows.count == 1 {
+            Text(
+                "Its review log goes too, and you can't bring it back.",
+                comment: "Under the title of the Cards window's question before it deletes a card.")
+        } else {
+            Text(
+                "Their review logs go too, and you can't bring them back.",
+                comment: "Under the title of the Cards window's question before it deletes several cards.")
         }
     }
 }

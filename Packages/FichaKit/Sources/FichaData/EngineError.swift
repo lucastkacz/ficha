@@ -23,7 +23,7 @@ public enum EngineError: Error, Equatable {
     /// A capture was approved into no cards. One that becomes no cards is
     /// discarded instead.
     case noCards
-    /// There's no card with this id.
+    /// There's no card with this id: it was deleted, or it never existed.
     case cardNotFound(Int64)
     /// The card with this id already had its first view, so it can't have
     /// another.
@@ -87,7 +87,9 @@ extension EngineError: LocalizedError {
                     "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
             )
         case .cardNotFound(let id):
-            String(localized: "There's no card with the id \(id). Check the card's id.")
+            String(
+                localized:
+                    "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
         case .cardNotNew(let id):
             String(localized: "Card \(id) already had its first view. \(reopenReviewNow)")
         case .cardStillNew(let id):
