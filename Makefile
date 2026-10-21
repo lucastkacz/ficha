@@ -1,4 +1,4 @@
-# Ficha's commands. `make check` must pass before every pull request; CI runs it too.
+# Ficha's commands. CI runs `make check` on every pull request, and CLAUDE.md says when it runs on the Mac before one opens.
 
 .DEFAULT_GOAL := check
 

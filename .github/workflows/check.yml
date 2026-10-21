@@ -46,8 +46,22 @@ jobs:
         # Catalog check, for an iPhone, only with its iOS platform installed,
         # as on the Mac (Xcode › Settings › Components). The image installs it
         # only for its newest Xcodes (actions/runner-images#12541), so this
-        # downloads the selected Xcode's, as that announcement suggests.
-        run: xcodebuild -downloadPlatform iOS
+        # downloads the selected Xcode's, as that announcement suggests. The
+        # download can fail and then pass on a re-run (#129), so it tries three
+        # times, 30 seconds apart. The retry is our own: GitHub Actions has no
+        # option to retry a step.
+        run: |
+          for attempt in 1 2 3; do
+            if xcodebuild -downloadPlatform iOS; then
+              exit 0
+            fi
+            echo "Attempt $attempt of 3 to download the iOS platform failed."
+            if ((attempt < 3)); then
+              sleep 30
+            fi
+          done
+          echo "::error::Downloading the iOS platform failed three times, 30 seconds apart: re-run the job."
+          exit 1
       - name: Install the tools
         # The ones `make bootstrap` installs on a Mac, which the image doesn't ship.
         run: brew install xcodegen shellcheck actionlint
