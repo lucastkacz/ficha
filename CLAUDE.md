@@ -14,7 +14,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 - Nothing runs on its own: no scheduled tasks, routines, loops or agents working without Lucas; he starts every session. The one exception is Dependabot, which only opens monthly update PRs that Lucas merges.
 - Build only what Lucas asked for or a `ready-for-agent` issue describes.
 - Prefer standard, documented practices, and say which parts are our own.
-- Swift follows `CODING_STANDARDS.md`, and so do the failure messages of the scripts, the hooks, the `Makefile` and CI, and any change that renames a file or changes what it covers or does.
+- `CODING_STANDARDS.md` binds Swift; the failure messages of the scripts, the hooks, the `Makefile` and CI; any change that renames a file or changes what it covers or does; and the documents agents read.
 
 ## Skills: Claude suggests, Lucas types
 
@@ -48,7 +48,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 ## Shipping
 
 - Every change goes through a pull request from a branch named `<issue>-<short-name>`, built in a worktree of its own, so Lucas's main folder stays on `main` for the other sessions working in it. Before the first edit, call `EnterWorktree` with that name, which creates `.claude/worktrees/<name>`, then give the branch that name with `git branch -m`: the tool names it `worktree-<name>`, and the rename is our own. Never commit on `main`: a hook blocks it, and GitHub rejects pushes to it.
-- Before opening the PR, `make check` passes and the `code-review` skill has run.
+- Before opening the PR, `make check` passes and the `code-review` skill has run. A PR whose files are all Markdown leaves `make check` to CI, since none of its steps reads Markdown.
 - The PR body says `Closes #<n>` for each issue it resolves.
 - **Merging:**
   - A normal PR: once the review is addressed and the last push is done, Claude turns on auto-merge with `gh pr merge <n> --auto --squash`, alone on the line (a hook allows only that form). GitHub merges it when CI is green. To push again to a PR with auto-merge on, turn it off first (`gh pr merge <n> --disable-auto`), push, and turn it on again; a hook enforces it.
