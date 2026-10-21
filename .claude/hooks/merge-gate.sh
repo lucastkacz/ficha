@@ -20,19 +20,45 @@ cmd=${cmd##+([[:space:]])}
 cmd=${cmd%%+([[:space:]])}
 repo=${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$input")}
 
-# The risk:high paths. Among them:
-# - the database schema and its migrations, which all live in FichaData/Schema*;
-# - the scheduler, which moves cards on the ladder, in FichaCore/Scheduler/;
-# - which cards review now brings (ReviewNow), when the review panel shows up
-#   on its own and with which cards (AppearancePlanner), the settings'
-#   defaults (ReviewSettings) and the trigger's names, which the review log
-#   stores;
-# - which cards are in Lucas's reviews, neither flagged nor buried
-#   (FichaData/CardsInReviews), the only ones that show up;
-# - the content guide, which every card Claude drafts follows;
-# - the build's configuration files, such as the one the iPhone app signs
-#   with (iPhone/Signing.xcconfig).
-risky_paths='^(CLAUDE\.md|CODING_STANDARDS\.md|\.claude/|docs/agents/|docs/content-guide\.md|\.github/workflows/|\.github/dependabot\.yml|Makefile|scripts/|\.swift-format|\.xcode-version|project\.yml|.*\.xcconfig$|Packages/FichaKit/Package\.(swift|resolved)|Packages/FichaKit/Sources/FichaData/Schema|Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift|Packages/FichaKit/Sources/FichaCore/Scheduler/|Packages/FichaKit/Sources/FichaCore/(AppearancePlanner|ReviewNow|ReviewSettings|Trigger)\.swift)'
+# The risk:high paths, each an extended regular expression that a changed
+# file's path matches from its start. One per line, so two branches that each
+# add one change different lines: that layout is our own.
+risky_paths=(
+  # The process: what agents read, and what they may do.
+  'CLAUDE\.md'
+  'CODING_STANDARDS\.md'
+  '\.claude/'
+  'docs/agents/'
+  # The content guide, which every card Claude drafts follows.
+  'docs/content-guide\.md'
+  # CI and the build, with their configuration files, such as the one the
+  # iPhone app signs with (iPhone/Signing.xcconfig).
+  '\.github/workflows/'
+  '\.github/dependabot\.yml'
+  'Makefile'
+  'scripts/'
+  '\.swift-format'
+  '\.xcode-version'
+  'project\.yml'
+  '.*\.xcconfig$'
+  # The package's manifest, and the versions it pins.
+  'Packages/FichaKit/Package\.swift'
+  'Packages/FichaKit/Package\.resolved'
+  # The database schema and its migrations, which all live in FichaData/Schema*.
+  'Packages/FichaKit/Sources/FichaData/Schema'
+  # Which cards are in Lucas's reviews, neither flagged nor buried, the only
+  # ones that show up.
+  'Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift'
+  # The scheduler, which moves cards on the ladder.
+  'Packages/FichaKit/Sources/FichaCore/Scheduler/'
+  # Which cards review now brings, when the review panel shows up on its own
+  # and with which cards, the settings' defaults, and the trigger's names,
+  # which the review log stores.
+  'Packages/FichaKit/Sources/FichaCore/ReviewNow\.swift'
+  'Packages/FichaKit/Sources/FichaCore/AppearancePlanner\.swift'
+  'Packages/FichaKit/Sources/FichaCore/ReviewSettings\.swift'
+  'Packages/FichaKit/Sources/FichaCore/Trigger\.swift'
+)
 
 # `gh` with `merge` later in the same command, in any form or place.
 merge_anywhere='(^|[^[:alnum:]_.-])gh[[:space:]]([^;&|]*[[:space:]])?merge([[:space:]]|$)'
@@ -71,7 +97,7 @@ if [[ $cmd =~ $merge_anywhere ]]; then
   if ! jq -e '(.files | length) == .changedFiles' <<<"$info" >/dev/null; then
     block "Pull request #$pr changes more files than GitHub lists, so its risk can't be checked. $ready"
   fi
-  risky=$(jq -r '.files[].path' <<<"$info" | grep -E "$risky_paths")
+  risky=$(jq -r '.files[].path' <<<"$info" | grep -E -f <(printf '^(%s)\n' "${risky_paths[@]}"))
   [[ -z $risky ]] || block "Pull request #$pr changes risk:high files: $(tr '\n' ' ' <<<"$risky")$ready"
   exit 0
 fi
