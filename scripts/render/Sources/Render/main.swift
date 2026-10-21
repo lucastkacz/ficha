@@ -9,6 +9,12 @@ import FichaData
 // sees it and nothing takes the mouse or the keyboard; the tool clicks, presses
 // keys and types in it where it's told, as Lucas would, and captures it with
 // `screencapture`. `docs/development.md` explains how to use it.
+//
+// This file shares its module with `App/`'s files, which the target compiles
+// through `Sources/Render/App`, so a top-level name here that `App/` also uses
+// breaks the build, even when `App/`'s is `private`: in #116, a `modifierNames`
+// table here broke `CaptureShortcut.swift`. Give what you add at the top level
+// a name of its own.
 
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
@@ -27,8 +33,8 @@ struct Request {
 
 /// Something the tool does in the window before the capture, as Lucas would.
 enum Action: CustomStringConvertible {
-    /// A click, in points from the window's top-left corner.
-    case click(CGPoint)
+    /// A click, with its modifier keys held down.
+    case click(MouseClick)
     /// A key, pressed with its modifier keys held down.
     case key(KeyPress)
     /// Text, typed into what holds the focus.
@@ -37,11 +43,20 @@ enum Action: CustomStringConvertible {
     /// The action as its arguments ask for it, like `--key cmd+f`.
     var description: String {
         switch self {
-        case .click(let point): "--click \(String(format: "%g,%g", point.x, point.y))"
+        case .click(let mouseClick): "--click \(mouseClick.name)"
         case .key(let press): "--key \(press.name)"
         case .type(let text): "--type \"\(text)\""
         }
     }
+}
+
+/// A click, with the modifier keys held down, like `cmd+280,121`.
+struct MouseClick {
+    /// The click as its arguments name it.
+    let name: String
+    /// Where, in points from the window's top-left corner.
+    let point: CGPoint
+    let modifiers: NSEvent.ModifierFlags
 }
 
 /// A press of a key, with the modifier keys held down, like `cmd+f`.
@@ -49,14 +64,16 @@ struct KeyPress {
     /// The press as its arguments name it.
     let name: String
     let modifiers: NSEvent.ModifierFlags
-    /// What the press types.
-    let characters: String
     /// The key's code on a US keyboard, one of Carbon's `kVK_` constants.
     let code: Int
+    /// The letter or digit the key types on a US keyboard, which the Mac's
+    /// keyboard layout must type too, or nil for a key that types the same in
+    /// every layout, like Return.
+    let character: String?
 }
 
-/// The letters and digits the tool presses, with their keys' codes. Each one
-/// types itself.
+/// The letters and digits the tool presses, with their keys' codes on a US
+/// keyboard.
 let characterKeyCodes = [
     "a": kVK_ANSI_A, "b": kVK_ANSI_B, "c": kVK_ANSI_C, "d": kVK_ANSI_D, "e": kVK_ANSI_E, "f": kVK_ANSI_F,
     "g": kVK_ANSI_G, "h": kVK_ANSI_H, "i": kVK_ANSI_I, "j": kVK_ANSI_J, "k": kVK_ANSI_K, "l": kVK_ANSI_L,
@@ -66,62 +83,102 @@ let characterKeyCodes = [
     "4": kVK_ANSI_4, "5": kVK_ANSI_5, "6": kVK_ANSI_6, "7": kVK_ANSI_7, "8": kVK_ANSI_8, "9": kVK_ANSI_9,
 ]
 
-/// The other keys the tool presses, by name: what each one types, and its
-/// key's code.
-let namedKeys: [String: (characters: String, code: Int)] = [
-    "return": ("\r", kVK_Return), "escape": ("\u{1B}", kVK_Escape), "tab": ("\t", kVK_Tab),
-    "space": (" ", kVK_Space), "delete": ("\u{7F}", kVK_Delete),
+/// The other keys the tool presses, by name, with their keys' codes. Each one
+/// types the same in every keyboard layout.
+let namedKeys = [
+    "return": kVK_Return, "escape": kVK_Escape, "tab": kVK_Tab, "space": kVK_Space, "delete": kVK_Delete,
 ]
 
-/// The modifier keys the tool holds down, by name. Option and Control are left
-/// out: what a key types with them depends on the keyboard, and no window's
-/// shortcut uses them.
+/// The modifier keys the tool holds down for a key or a click, by name.
+/// Option and Control are left out: what a key types with them depends on the
+/// keyboard, and no window's shortcut uses them.
 let modifiersByName: [String: NSEvent.ModifierFlags] = ["cmd": .command, "shift": .shift]
+
+/// The Edit menu's items that have a shortcut, as SwiftUI gives them to the
+/// app on macOS 26: each one's title, action, key and the modifier keys held
+/// for it. It's our own copy, since the tool doesn't run the app's `App`, so a
+/// command the app adds with `.commands` needs adding here too. What AppKit
+/// adds to the app's menu, like Emoji & Symbols, stays out: its shortcuts take
+/// Control or fn, which the tool doesn't press, and open the system's windows.
+let editMenuItems: [(title: String, action: String, key: String, modifiers: NSEvent.ModifierFlags)] = [
+    ("Undo", "undo:", "z", .command), ("Redo", "redo:", "z", [.shift, .command]), ("Cut", "cut:", "x", .command),
+    ("Copy", "copy:", "c", .command), ("Paste", "paste:", "v", .command), ("Select All", "selectAll:", "a", .command),
+]
+
+/// The level below the desktop picture, where macOS still draws a window but
+/// nobody sees it: the window's, and each sheet's it opens.
+let belowDesktop = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) - 1)
 
 /// A request the tool can't draw, with what to do about it.
 struct RenderError: Error, CustomStringConvertible {
     let description: String
 }
 
+/// What to do when AppKit or the Objective-C runtime refuses what the tool
+/// asks, which they don't on the macOS the tool was written for.
+let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was written for: open an issue with this message."
+
 let usage = """
-    Usage: make render ARGS="<window> [--dark] [--click <x>,<y> | --key <keys> | --type <text>]... [--out <file.png>]"
+    Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards
       --dark     dark mode instead of light
-      --click    a click on a table's or the sidebar's row, or on a column header, in points from the window's top-left corner
-      --key      a key, after the modifiers held down: cmd+f, cmd+s, escape, return, shift+tab
+      --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
+                 cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
+      --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
                  keys: a-z, 0-9, return, escape, tab, space, delete; modifiers: cmd, shift
       --type     text typed into what holds the focus, like a text field
       --out      the PNG, by default .build/render/<window>-<light|dark>.png
     --click, --key and --type run in the order given, and after each one the tool prints what holds the focus.
+    While the window has a sheet, an alert or a confirmation open, they go to it.
     """
 
-/// The press `name` names, like `cmd+f` or `escape`.
-func keyPress(named name: String) throws(RenderError) -> KeyPress {
+/// Splits the modifier keys held down off `name`, an argument of `option`:
+/// for `--key cmd+f`, Command and `f`.
+func splitModifiers(off name: String, in option: String) throws(RenderError) -> (NSEvent.ModifierFlags, String) {
     var parts = name.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
-    guard let key = parts.popLast(), !key.isEmpty else {
-        throw RenderError(description: "--key takes a key after its modifiers, like cmd+f or escape.\n\(usage)")
-    }
+    let rest = parts.popLast() ?? ""
     var modifiers: NSEvent.ModifierFlags = []
     for part in parts {
         guard let modifier = modifiersByName[part] else {
-            throw RenderError(description: "Unknown modifier \(part) in --key \(name).\n\(usage)")
+            throw RenderError(description: "Unknown modifier \(part) in \(option) \(name).\n\(usage)")
         }
         modifiers.insert(modifier)
     }
-    let shifted = modifiers.contains(.shift)
-    if let named = namedKeys[key] {
-        // Shift-Tab types the back tab, which moves the focus backward.
-        let characters = shifted && key == "tab" ? String(NSEvent.SpecialKey.backTab.unicodeScalar) : named.characters
-        return KeyPress(name: name, modifiers: modifiers, characters: characters, code: named.code)
+    return (modifiers, rest)
+}
+
+/// The press `name` names, like `cmd+f` or `escape`.
+func keyPress(named name: String) throws(RenderError) -> KeyPress {
+    let (modifiers, key) = try splitModifiers(off: name, in: "--key")
+    guard !key.isEmpty else {
+        throw RenderError(description: "--key takes a key after its modifiers, like cmd+f or escape.\n\(usage)")
+    }
+    if let code = namedKeys[key] {
+        return KeyPress(name: name, modifiers: modifiers, code: code, character: nil)
     }
     guard let code = characterKeyCodes[key] else {
         throw RenderError(description: "Unknown key \(key) in --key \(name).\n\(usage)")
     }
-    guard !shifted || key.allSatisfy(\.isLetter) else {
+    guard !modifiers.contains(.shift) || key.allSatisfy(\.isLetter) else {
         throw RenderError(
             description: "--key \(name): Shift with a digit types a symbol that depends on the keyboard.\n\(usage)")
     }
-    return KeyPress(name: name, modifiers: modifiers, characters: shifted ? key.uppercased() : key, code: code)
+    return KeyPress(name: name, modifiers: modifiers, code: code, character: key)
+}
+
+/// The click `name` names, like `280,121` or `cmd+280,121`.
+func mouseClick(named name: String) throws(RenderError) -> MouseClick {
+    let (modifiers, point) = try splitModifiers(off: name, in: "--click")
+    let coordinates = point.split(separator: ",", omittingEmptySubsequences: false)
+    let numbers = coordinates.compactMap { Double($0) }
+    guard coordinates.count == 2, numbers.count == 2 else {
+        throw RenderError(
+            description: """
+                --click takes a point as <x>,<y>, after the modifiers held down, like 300,120 or cmd+300,120.
+                \(usage)
+                """)
+    }
+    return MouseClick(name: name, point: CGPoint(x: numbers[0], y: numbers[1]), modifiers: modifiers)
 }
 
 /// The request in the tool's arguments.
@@ -133,12 +190,7 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
         case "--dark":
             request.isDark = true
         case "--click":
-            let parts = (arguments.popFirst() ?? "").split(separator: ",", omittingEmptySubsequences: false)
-            let numbers = parts.compactMap { Double($0) }
-            guard parts.count == 2, numbers.count == 2 else {
-                throw RenderError(description: "--click takes a point as <x>,<y>, like 300,120.\n\(usage)")
-            }
-            request.actions.append(.click(CGPoint(x: numbers[0], y: numbers[1])))
+            request.actions.append(.click(try mouseClick(named: arguments.popFirst() ?? "")))
         case "--key":
             request.actions.append(.key(try keyPress(named: arguments.popFirst() ?? "")))
         case "--type":
@@ -227,21 +279,51 @@ func window(_ name: Window, model: AppModel) -> NSWindow {
     }
 }
 
-/// Clicks `point`, in points from the window's top-left corner, as the mouse
-/// would. The click goes straight to the view under it, which the window does
-/// only in the active app.
-func click(_ point: CGPoint, in window: NSWindow) throws {
-    let location = CGPoint(x: point.x, y: window.frame.height - point.y)
-    guard let frameView = window.contentView?.superview, let view = frameView.hitTest(location) else {
-        throw RenderError(description: "Nothing to click at \(point).")
+/// The window the keyboard goes to while `window` is open, as AppKit makes it
+/// the key window: the sheet `window` has open, or `window` itself.
+func keyWindow(of window: NSWindow) -> NSWindow {
+    var key = window
+    while let sheet = key.attachedSheet {
+        key = sheet
+    }
+    return key
+}
+
+/// Clicks `mouseClick`'s point, in points from the window's top-left corner,
+/// with its modifier keys held down, as the mouse would. The click goes to the
+/// sheet the window has open, which takes the clicks until it closes, or else
+/// to the window, and straight to the view under it, which a window does only
+/// in the active app.
+func click(_ mouseClick: MouseClick, in window: NSWindow) throws {
+    // On the screen, from its bottom-left corner, as windows' frames are.
+    let point = CGPoint(x: window.frame.minX + mouseClick.point.x, y: window.frame.maxY - mouseClick.point.y)
+    let target = keyWindow(of: window)
+    guard target === window || target.frame.contains(point) else {
+        let left = target.frame.minX - window.frame.minX
+        let top = window.frame.maxY - target.frame.maxY
+        throw RenderError(
+            description: """
+                --click \(mouseClick.name) misses the sheet the window has open, which takes the clicks until it \
+                closes: click inside it, at x \(String(format: "%g–%g", left, left + target.frame.width)) and y \
+                \(String(format: "%g–%g", top, top + target.frame.height)).
+                """)
+    }
+    let location = CGPoint(x: point.x - target.frame.minX, y: point.y - target.frame.minY)
+    guard let frameView = target.contentView?.superview, let view = frameView.hitTest(location) else {
+        throw RenderError(
+            description: """
+                --click \(mouseClick.name) lands outside the window, which is \
+                \(String(format: "%g × %g", window.frame.width, window.frame.height)) pt: click inside it.
+                """)
     }
     let events = try [NSEvent.EventType.leftMouseDown, .leftMouseUp].map { type in
         guard
             let event = NSEvent.mouseEvent(
-                with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)
+                with: type, location: location, modifierFlags: mouseClick.modifiers,
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: target.windowNumber, context: nil,
+                eventNumber: 0, clickCount: 1, pressure: 1)
         else {
-            throw RenderError(description: "Couldn't make a click at \(point).")
+            throw RenderError(description: "Couldn't make the click --click \(mouseClick.name). \(whenMacOSRefuses)")
         }
         return event
     }
@@ -252,11 +334,11 @@ func click(_ point: CGPoint, in window: NSWindow) throws {
         responder = candidate.superview
     }
     if let responder {
-        window.makeFirstResponder(responder)
+        target.makeFirstResponder(responder)
     }
     // AppKit's views, like the table's rows and headers, follow the mouse until
-    // it's released, reading the release from the app's queue; SwiftUI's
-    // buttons don't react to a click sent this way.
+    // it's released, reading the release from the app's queue; macOS 26's
+    // buttons, SwiftUI's and an alert's, don't react to a click sent this way.
     NSApplication.shared.postEvent(events[1], atStart: false)
     view.mouseDown(with: events[0])
     if let up = NSApplication.shared.nextEvent(
@@ -266,29 +348,60 @@ func click(_ point: CGPoint, in window: NSWindow) throws {
     }
 }
 
-/// Makes `press` as AppKit sends it to the key window: first as a key
-/// equivalent, which a SwiftUI button's keyboard shortcut takes, and then, when
-/// nothing took it, to what holds the focus. The tool has no main menu, so the
-/// step between the two, which offers the press to the menu, is left out.
+/// Makes `press` as AppKit sends it to the key window, the window or the sheet
+/// it has open: first as a key equivalent, which a SwiftUI button's keyboard
+/// shortcut takes; then to the main menu, whose Edit menu takes ⌘A, ⌘C or ⌘Z;
+/// and then, when nothing took it, to what holds the focus. The press is made
+/// as the keyboard makes it, from its key's code, and never posted: the Mac's
+/// keyboard layout says what it types, and AppKit matches it to the shortcuts
+/// as it does the keyboard's, which ⇧⌘Z needs to reach Redo.
 func press(_ press: KeyPress, in window: NSWindow) throws(RenderError) {
-    guard let code = UInt16(exactly: press.code),
+    let target = keyWindow(of: window)
+    guard let code = CGKeyCode(exactly: press.code),
+        let keyboardEvent = CGEvent(
+            keyboardEventSource: CGEventSource(stateID: .privateState), virtualKey: code, keyDown: true)
+    else {
+        throw RenderError(description: "Couldn't make a keyboard event for --key \(press.name). \(whenMacOSRefuses)")
+    }
+    // AppKit's modifier flags and Quartz's share their bits, IOKit's `NX_` masks.
+    keyboardEvent.flags = CGEventFlags(rawValue: UInt64(press.modifiers.rawValue))
+    guard let shortcut = NSEvent(cgEvent: keyboardEvent), let characters = shortcut.characters,
+        let unmodified = shortcut.charactersIgnoringModifiers
+    else {
+        throw RenderError(
+            description: "AppKit couldn't read the keyboard event for --key \(press.name). \(whenMacOSRefuses)")
+    }
+    if let character = press.character, unmodified.lowercased() != character {
+        throw RenderError(
+            description: """
+                This Mac's keyboard layout types "\(unmodified)" with the key that types "\(character)" on a US \
+                keyboard, and --key presses keys by their place on one: switch to a layout with its letters and \
+                digits, like ABC, Spanish or Latin American, in System Settings › Keyboard › Text Input.
+                """)
+    }
+    if target.performKeyEquivalent(with: shortcut)
+        || NSApplication.shared.mainMenu?.performKeyEquivalent(with: shortcut) == true
+    {
+        return
+    }
+    // What holds the focus gets the press as an event of the key window's,
+    // which a text field needs to move the focus with Tab.
+    guard
         let event = NSEvent.keyEvent(
             with: .keyDown, location: .zero, modifierFlags: press.modifiers,
-            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
-            characters: press.characters, charactersIgnoringModifiers: press.characters, isARepeat: false,
-            keyCode: code)
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: target.windowNumber, context: nil,
+            characters: characters, charactersIgnoringModifiers: unmodified, isARepeat: false, keyCode: code)
     else {
-        throw RenderError(description: "Couldn't make a press of \(press.name).")
+        throw RenderError(description: "Couldn't make the key event for --key \(press.name). \(whenMacOSRefuses)")
     }
-    if !window.performKeyEquivalent(with: event) {
-        (window.firstResponder ?? window).keyDown(with: event)
-    }
+    (target.firstResponder ?? target).keyDown(with: event)
 }
 
-/// Types `text` into what holds the focus, as the keyboard's input does: in a
-/// text field, into its field editor.
+/// Types `text` into what holds the focus in the key window, the window or the
+/// sheet it has open, as the keyboard's input does: in a text field, into its
+/// field editor.
 func typeText(_ text: String, in window: NSWindow) throws(RenderError) {
-    guard let input = window.firstResponder as? NSTextInputClient else {
+    guard let input = keyWindow(of: window).firstResponder as? NSTextInputClient else {
         throw RenderError(
             description: """
                 Nothing to type "\(text)" into: the focus is on \(focus(in: window)). Click a text field, or press \
@@ -298,53 +411,157 @@ func typeText(_ text: String, in window: NSWindow) throws(RenderError) {
     input.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
 }
 
-/// What holds the focus in `window`, its first responder, by class. For a
-/// field editor, which types into a text field, also the field and its
-/// placeholder, which tell the fields apart.
+/// What holds the focus in the key window, the window or the sheet it has
+/// open: its first responder, by class. For a field editor, which types into
+/// a text field, also the field and its placeholder, which tell the fields
+/// apart.
 func focus(in window: NSWindow) -> String {
-    guard let responder = window.firstResponder, responder !== window else {
-        return "the window itself"
+    let target = keyWindow(of: window)
+    let place = target === window ? "" : ", in the sheet"
+    guard let responder = target.firstResponder, responder !== target else {
+        return target === window ? "the window itself" : "the sheet itself"
     }
     let name = String(describing: type(of: responder))
     guard let editor = responder as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSTextField
     else {
-        return name
+        return name + place
     }
     let placeholder = field.placeholderString.map { " \"\($0)\"" } ?? ""
-    return "\(name), the field editor of \(type(of: field))\(placeholder)"
+    return "\(name), the field editor of \(type(of: field))\(placeholder)\(place)"
 }
+
+/// AppKit's `beginSheet(_:completionHandler:)` and
+/// `beginCriticalSheet(_:completionHandler:)`, called by their address.
+typealias SheetOpening = @convention(c) (NSWindow, Selector, NSWindow, AnyObject?) -> Void
+
+/// The subclasses the tool made as it ran, by the window class each one
+/// subclasses.
+var keyWindowClasses: [ObjectIdentifier: AnyClass] = [:]
+
+/// Why a sheet the window opened couldn't act as the key window, if one
+/// couldn't: the action that opened it fails with it.
+var sheetError: RenderError?
 
 /// Makes `window` act and look as the key window, the one the keyboard and
 /// clicks go to: views check it before they react to a click, and macOS draws
 /// its title bar's buttons in color, though not its selections. This tool's app
 /// never becomes active, so it doesn't take Lucas's keyboard, and none of its
 /// windows can become key. The window becomes an instance of a subclass, made
-/// as the tool runs, that says it's the key and main window and overrides
-/// AppKit's private `_hasActiveAppearance`: fine for a tool that draws
-/// pictures, never for the app.
-func actAsKey(_ window: NSWindow) throws {
-    guard let subclass: AnyClass = objc_allocateClassPair(type(of: window), "RenderKeyWindow", 0) else {
-        throw RenderError(description: "Couldn't make the window act as the key window.")
+/// as the tool runs, that says it's the key window, and the main one when
+/// `isMain`, and overrides AppKit's private `_hasActiveAppearance`: fine for a
+/// tool that draws pictures, never for the app. A sheet the window opens, as
+/// SwiftUI's sheets, alerts and confirmations are, goes below the desktop
+/// picture with it before macOS shows it, and acts as the key window the same
+/// way, as AppKit makes it while it's open.
+func actAsKey(_ window: NSWindow, isMain: Bool) throws(RenderError) {
+    let base: AnyClass = type(of: window)
+    if let subclass = keyWindowClasses[ObjectIdentifier(base)] {
+        object_setClass(window, subclass)
+        return
     }
-    let yes: @convention(block) (AnyObject) -> Bool = { _ in true }
-    let getters = [
-        #selector(getter: NSWindow.isKeyWindow), #selector(getter: NSWindow.isMainWindow),
-        NSSelectorFromString("_hasActiveAppearance"),
-    ]
+    guard let subclass: AnyClass = objc_allocateClassPair(base, "RenderKeyWindow\(keyWindowClasses.count + 1)", 0)
+    else {
+        throw RenderError(description: "Couldn't make the window act as the key window. \(whenMacOSRefuses)")
+    }
+    let yes: @convention(block) (NSWindow) -> Bool = { _ in true }
+    var getters = [#selector(getter: NSWindow.isKeyWindow), NSSelectorFromString("_hasActiveAppearance")]
+    if isMain {
+        getters.append(#selector(getter: NSWindow.isMainWindow))
+    }
     for getter in getters {
         class_addMethod(subclass, getter, imp_implementationWithBlock(yes), "B@:")
     }
+    let openings = [
+        #selector(NSWindow.beginSheet(_:completionHandler:)),
+        #selector(NSWindow.beginCriticalSheet(_:completionHandler:)),
+    ]
+    for opening in openings {
+        guard let inherited = class_getMethodImplementation(base, opening) else {
+            throw RenderError(description: "Couldn't keep the window's sheets offscreen. \(whenMacOSRefuses)")
+        }
+        let open = unsafeBitCast(inherited, to: SheetOpening.self)
+        let keepingOffscreen: @convention(block) (NSWindow, NSWindow, AnyObject?) -> Void = { parent, sheet, handler in
+            sheet.level = belowDesktop
+            sheet.ignoresMouseEvents = true
+            do throws(RenderError) {
+                try actAsKey(sheet, isMain: false)
+            } catch {
+                sheetError = error
+            }
+            open(parent, opening, sheet, handler)
+        }
+        class_addMethod(subclass, opening, imp_implementationWithBlock(keepingOffscreen), "v@:@@?")
+    }
     objc_registerClassPair(subclass)
+    keyWindowClasses[ObjectIdentifier(base)] = subclass
     object_setClass(window, subclass)
 }
 
-/// Lets the window draw and react for `seconds`.
-func wait(_ seconds: TimeInterval) {
+/// Makes the app say `window` is its main window, and that its key window is
+/// the sheet `window` has open, or `window` itself, though the app never
+/// becomes active: the Edit menu's actions, which go to what holds the focus
+/// in the key window, reach it as in the app. The app becomes an instance of a
+/// subclass made as the tool runs, as the window does.
+func makeKeyWindowOfApp(_ window: NSWindow) throws(RenderError) {
+    let app = NSApplication.shared
+    guard let subclass: AnyClass = objc_allocateClassPair(type(of: app), "RenderApplication", 0) else {
+        throw RenderError(description: "Couldn't make the window the app's key window. \(whenMacOSRefuses)")
+    }
+    let key: @convention(block) (NSApplication) -> NSWindow = { _ in keyWindow(of: window) }
+    let main: @convention(block) (NSApplication) -> NSWindow = { _ in window }
+    class_addMethod(subclass, #selector(getter: NSApplication.keyWindow), imp_implementationWithBlock(key), "@@:")
+    class_addMethod(subclass, #selector(getter: NSApplication.mainWindow), imp_implementationWithBlock(main), "@@:")
+    objc_registerClassPair(subclass)
+    object_setClass(app, subclass)
+}
+
+/// Gives the app the Edit menu's shortcuts SwiftUI gives it, in the main
+/// menu's only menu: the app's others hold shortcuts that quit it or hide or
+/// minimize its windows.
+func installEditMenu() {
+    let edit = NSMenu(title: "Edit")
+    for item in editMenuItems {
+        let menuItem = NSMenuItem(title: item.title, action: NSSelectorFromString(item.action), keyEquivalent: item.key)
+        menuItem.keyEquivalentModifierMask = item.modifiers
+        edit.addItem(menuItem)
+    }
+    let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+    editItem.submenu = edit
+    let menuBar = NSMenu(title: "Main")
+    menuBar.addItem(editItem)
+    NSApplication.shared.mainMenu = menuBar
+}
+
+/// Gives the app a pasteboard of its own in place of the general one, which
+/// the Edit menu's Cut, Copy and Paste use, so the tool never pastes Lucas's
+/// clipboard into a picture, nor changes it while he works. The tool releases
+/// it when it's done.
+func usePasteboardOfItsOwn() throws(RenderError) -> NSPasteboard {
+    let pasteboard = NSPasteboard.withUniqueName()
+    guard let general = class_getClassMethod(NSPasteboard.self, #selector(getter: NSPasteboard.general)) else {
+        throw RenderError(
+            description: """
+                Couldn't give the tool a pasteboard of its own, so it stopped before Cut, Copy or Paste could reach \
+                yours. \(whenMacOSRefuses)
+                """)
+    }
+    let own: @convention(block) (AnyObject) -> NSPasteboard = { _ in pasteboard }
+    method_setImplementation(general, imp_implementationWithBlock(own))
+    return pasteboard
+}
+
+/// Lets the window draw and react for `seconds`. A sheet it opens meanwhile
+/// that couldn't act as the key window fails the tool.
+func wait(_ seconds: TimeInterval) throws(RenderError) {
     RunLoop.main.run(until: Date.now.addingTimeInterval(seconds))
+    if let sheetError {
+        throw sheetError
+    }
 }
 
 /// Saves the window as a PNG at `output`, as the screen draws it, without
-/// its shadow.
+/// its shadow. On macOS 26, `screencapture -l` captures a window with the
+/// sheet it has open, over it where macOS puts it.
 func capture(_ window: NSWindow, to output: URL) throws {
     try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
     let screencapture = Process()
@@ -371,22 +588,27 @@ do {
     guard let name = request.window else {
         throw RenderError(description: "Which window? Name one.\n\(usage)")
     }
+    let pasteboard = try usePasteboardOfItsOwn()
+    defer { pasteboard.releaseGlobally() }
     NSApplication.shared.setActivationPolicy(.accessory)
+    // The app's appearance, which its sheets take too.
+    NSApplication.shared.appearance = NSAppearance(named: request.isDark ? .darkAqua : .aqua)
+    installEditMenu()
     let model = AppModel(engine: try sampleEngine())
     let window = window(name, model: model)
-    window.appearance = NSAppearance(named: request.isDark ? .darkAqua : .aqua)
-    window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) - 1)
+    window.level = belowDesktop
     window.ignoresMouseEvents = true
-    try actAsKey(window)
+    try actAsKey(window, isMain: true)
+    try makeKeyWindowOfApp(window)
     window.orderFrontRegardless()
-    wait(1.5)
+    try wait(1.5)
     for action in request.actions {
         switch action {
-        case .click(let point): try click(point, in: window)
+        case .click(let mouseClick): try click(mouseClick, in: window)
         case .key(let keyPress): try press(keyPress, in: window)
         case .type(let text): try typeText(text, in: window)
         }
-        wait(0.5)
+        try wait(0.5)
         print("\(action): the focus is on \(focus(in: window))")
     }
     let output =
