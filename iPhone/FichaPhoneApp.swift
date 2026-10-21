@@ -9,23 +9,31 @@ import SwiftUI
 #endif
 
 /// Ficha on the iPhone, for now Ficha Dev with the sample cards (#97). It opens
-/// the engine in a data folder in its own Application Support, loads the sample
-/// cards the first time it opens with no cards, and shows how many cards there
-/// are and how many are due. Its appearances arrive as card notifications,
-/// whose buttons answer the cards, and which it plans again each time it opens
-/// or comes back to the foreground. When it can't open the cards, it says why.
+/// the engine in a data folder in its own Application Support, on Ficha Dev's
+/// time, which its debug tools move forward, loads the sample cards the first
+/// time it opens with no cards, and shows how many cards there are and how
+/// many are due. Its appearances arrive as card notifications, whose buttons
+/// answer the cards, and which it plans again each time it opens or comes back
+/// to the foreground. When it can't open the cards, it says why.
 @main
 struct FichaPhoneApp: App {
-    /// The open database, with the sample cards, and the notifications of its
-    /// appearances, or why it couldn't be opened. It runs on the system's time
-    /// until Ficha Dev can move its time forward (#105).
+    /// The open database, with the sample cards, on Ficha Dev's time, and the
+    /// notifications of its appearances, or why it couldn't be opened, which
+    /// includes not knowing how far its debug tools moved its time.
     private let opening = Result { () throws -> Opened in
-        // The database keeps iOS's default file protection, which opens it
-        // from the first unlock after the iPhone starts, so a card
-        // notification's buttons reach it while the iPhone is locked.
-        let engine = try Engine(location: .folder(AppVariant.current.dataFolder), time: SystemTimeSource())
+        let variant = AppVariant.current
+        // Ficha Dev's engine runs on the time its debug tools move forward, as
+        // on the Mac (#147), kept in its data folder, so it stays moved when
+        // the app opens again. The real Ficha always runs on the system's
+        // time.
+        let debugTime = try variant.hasDebugMenu ? DebugTimeSource(savedIn: variant.dataFolder) : nil
+        // The database and the time's file keep iOS's default file
+        // protection, which opens them from the first unlock after the iPhone
+        // starts, so a card notification's buttons reach them while the
+        // iPhone is locked.
+        let engine = try Engine(location: .folder(variant.dataFolder), time: debugTime ?? SystemTimeSource())
         try SampleCards.loadIfThereAreNoCards(into: engine)
-        return Opened(engine: engine, notifications: CardNotifications(engine: engine))
+        return Opened(engine: engine, notifications: CardNotifications(engine: engine), debugTime: debugTime)
     }
     @Environment(\.scenePhase) private var scenePhase
 
@@ -33,7 +41,7 @@ struct FichaPhoneApp: App {
         WindowGroup {
             switch opening {
             case .success(let opened):
-                CountsView(engine: opened.engine, notifications: opened.notifications)
+                CountsView(engine: opened.engine, notifications: opened.notifications, debugTime: opened.debugTime)
             case .failure(let error):
                 ContentUnavailableView {
                     Label("\(AppVariant.current.name) can't open your cards", systemImage: "exclamationmark.triangle")
@@ -52,8 +60,10 @@ struct FichaPhoneApp: App {
     }
 }
 
-/// The open database, and the notifications of its appearances.
+/// The open database, the notifications of its appearances, and Ficha Dev's
+/// time, which the engine runs on, or nil in the real Ficha.
 private struct Opened {
     let engine: Engine
     let notifications: CardNotifications
+    let debugTime: DebugTimeSource?
 }

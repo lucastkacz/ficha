@@ -70,7 +70,7 @@ public struct Engine: Sendable {
     }
 
     /// The current time the engine works with: the system's, except in tests
-    /// and in Ficha Dev, whose debug menu moves it forward.
+    /// and in Ficha Dev, whose debug tools move it forward.
     public var now: Date {
         time.now
     }

@@ -2,13 +2,22 @@ import FichaCore
 import Foundation
 import Synchronization
 
-/// Ficha Dev's time: the system's, moved forward by its debug menu, so Lucas
-/// and agents can try in minutes what takes hours or days. How far it moved is
-/// kept in a file next to Ficha Dev's database, whose times depend on it, so
-/// restarting the app doesn't take its time back, and Ficha Dev's CLI runs on
-/// the same time. The real Ficha never opens one: it always runs on the
-/// system's time.
+/// Ficha Dev's time: the system's, moved forward by its debug tools, on the
+/// Mac and on the iPhone, so Lucas and agents can try in minutes what takes
+/// hours or days. How far it moved is kept in a file next to Ficha Dev's
+/// database, whose times depend on it, so restarting the app doesn't take its
+/// time back, and on the Mac, Ficha Dev's CLI runs on the same time. The real
+/// Ficha never opens one: it always runs on the system's time.
 public final class DebugTimeSource: TimeSource {
+    /// How far Ficha Dev's debug tools move time forward at a time, on the Mac
+    /// and on the iPhone: from 10 minutes, how long an untouched review panel
+    /// stays open on the Mac, to the 30-day step, from which a card is
+    /// learned.
+    public static let steps: [Duration] = [
+        .seconds(10 * 60), .seconds(60 * 60), .seconds(24 * 60 * 60), .seconds(7 * 24 * 60 * 60),
+        .seconds(30 * 24 * 60 * 60),
+    ]
+
     private let base: any TimeSource
     private let file: URL
     /// How far ahead of `base` it is, in whole seconds.
@@ -52,9 +61,9 @@ public final class DebugTimeSource: TimeSource {
 
 /// What can go wrong with Ficha Dev's time. Each message says what happened
 /// and what to do about it, in English and verbatim: like Ficha Dev's debug
-/// menu, it isn't translated (ADR 0009).
+/// tools, it isn't translated (ADR 0009).
 public enum DebugTimeError: Error, Equatable {
-    /// The file next to the database doesn't hold a shift the debug menu
+    /// The file next to the database doesn't hold a shift the debug tools
     /// could have saved, so it isn't known what time it is.
     case unreadable
     /// A move would take the time back, or more than 100 years ahead.
@@ -83,15 +92,22 @@ extension DebugTimeError: LocalizedError {
 private let fileName = "Time shift.json"
 
 /// What to do when Ficha Dev's time can't go on, as docs/development.md says:
-/// start over, with no cards and on the system's time. Only taking the file away
-/// would leave what Ficha Dev saved ahead of its time.
-private let startingOver = """
-    To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
-    """
+/// start over, on the system's time, with no cards on the Mac and with the
+/// sample cards on the iPhone. Only taking the file away would leave what
+/// Ficha Dev saved ahead of its time.
+private var startingOver: String {
+    #if os(iOS)
+        return "To start over, delete Ficha Dev from the iPhone and install it again."
+    #else
+        return """
+            To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
+            """
+    #endif
+}
 
 /// How far ahead Ficha Dev's time can be, in seconds: up to 100 years, far
 /// beyond any test. A file with a shift outside them wasn't saved by the
-/// debug menu.
+/// debug tools.
 private let validShifts: ClosedRange<Int64> = 0...(100 * 365 * 24 * 60 * 60)
 
 /// The file's contents, like `{"seconds":90000}`.
@@ -119,7 +135,7 @@ private func savedShift(in file: URL) throws(DebugTimeError) -> Int64 {
         throw .unreadable
     }
     guard validShifts.contains(saved.seconds) else {
-        logger.error("Refused Ficha Dev's time shift of \(saved.seconds) seconds, which the debug menu can't save")
+        logger.error("Refused Ficha Dev's time shift of \(saved.seconds) seconds, which the debug tools can't save")
         throw .unreadable
     }
     return saved.seconds

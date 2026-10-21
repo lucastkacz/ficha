@@ -3,7 +3,7 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on Ficha Dev's time, which its debug menu moves forward and keeps
+/// Tests on Ficha Dev's time, which its debug tools move forward and keep
 /// next to its database, in a data folder of the test's own.
 final class DebugTimeTests {
     let base = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
@@ -46,7 +46,7 @@ final class DebugTimeTests {
     // Without knowing how far ahead it was, Ficha Dev could stamp what it
     // saves behind what its database already holds.
     @Test(
-        "a saved time shift the debug menu couldn't have saved is refused",
+        "a saved time shift the debug tools couldn't have saved is refused",
         arguments: [
             "", "mañana", #"{}"#, #"{"seconds": "mañana"}"#, #"{"seconds": 1.5}"#, #"{"seconds": -60}"#,
             #"{"seconds": 9223372036854775807}"#,
