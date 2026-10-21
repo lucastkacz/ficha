@@ -131,10 +131,11 @@ extension ReviewSettings {
         upTo count: Int
     ) throws(UnexpectedReviewLog) -> [PlannedAppearance] {
         // With nothing rated, the cards keep their due times, and a new card
-        // waits for a day whose new cards Lucas hasn't met.
+        // waits for a day whose new cards Lucas hasn't met, if one ever comes
+        // in: when none may, a new day changes nothing, and the plan ends.
         let standings = try ladder.standings(of: cardIDs, after: log).map(\.standing)
         let dueTimes = standings.compactMap(\.due)
-        let mayMeetNewCards = standings.contains(.new) && newCardsPerDay > 0 && cardsPerAppearance > 0
+        let mayMeetNewCards = standings.contains(.new) && bringsNewCard(after: 0, metToday: 0)
         var plan: [PlannedAppearance] = []
         var lastClosing = lastClosing
         var next: Date? = now
@@ -183,8 +184,8 @@ extension ReviewSettings {
 }
 
 /// What the iPhone tells Ficha, which never holds an appearance back: waking,
-/// idle time and suppressions don't apply there, and iOS's Focus modes
-/// silence notifications on their own (#97).
+/// idle time and suppressions don't apply there, and iOS's Focus silences
+/// notifications on its own (#97).
 private struct PhoneSignals: DeviceSignals {
     let isAsleep = false
     let lastWake: Date? = nil

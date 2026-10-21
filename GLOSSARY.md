@@ -1,6 +1,6 @@
 # Ficha
 
-A macOS menu-bar app that shows Lucas small cards to remember, every so often, and spaces each one out by how well he knows it. Terms are in English, as the code and the app name them.
+An app that shows Lucas small cards to remember, every so often, on his Mac, from the menu bar, and on his iPhone, and spaces each one out by how well he knows it. Terms are in English, as the code and the app name them.
 
 ## Language
 
@@ -72,7 +72,7 @@ _Avoid_: style guide, template, prompt
 ### Reviewing
 
 **Review panel**:
-The small floating window where cards show up and Lucas goes through them.
+The small floating window on the Mac where cards show up and Lucas goes through them.
 _Avoid_: popup, window, notification
 
 **Review**:
@@ -92,7 +92,7 @@ Every first view and review, with when Lucas answered, what opened the review pa
 _Avoid_: history, review history
 
 **Review now**:
-Lucas opening the review panel himself, from the menu bar, outside an appearance.
+Lucas reviewing on his own, outside an appearance: from the menu bar on the Mac, or the Review tab on the iPhone.
 _Avoid_: manual session, study mode
 
 **See more**:
@@ -150,8 +150,12 @@ _Avoid_: mastered, known, mature
 ### Appearances
 
 **Appearance**:
-A time the review panel shows up on its own, with the cards that are due or about to be.
+A time Ficha shows up on its own, with the cards that are due or about to be: the review panel on the Mac, a card notification for each card on the iPhone.
 _Avoid_: session, prompt, popup, presentation
+
+**Card notification**:
+A notification on the iPhone with one card of an appearance: its front, and its back when Lucas presses and holds it, with the buttons to rate it.
+_Avoid_: alert, push, banner
 
 **Look-ahead**:
 How far ahead an appearance looks: it brings along the cards due within it, whose reviews count as on time.
@@ -170,15 +174,15 @@ Putting off an appearance, or what's left of a review now, without rating its ca
 _Avoid_: dismiss, skip, postpone
 
 **Auto-close**:
-The review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze, unless Lucas had gone through every card it brought.
+The Mac's review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze, unless Lucas had gone through every card it brought.
 _Avoid_: timeout, expiry
 
 **Suppression**:
-A situation in which Ficha holds back appearances so as not to interrupt: a meeting, a video or a full-screen app.
+A situation in which Ficha holds back appearances on the Mac so as not to interrupt: a meeting, a video or a full-screen app.
 _Avoid_: exception, block, do not disturb
 
 **Focus mode**:
-Whether the review panel takes the keyboard when it shows up on its own: never, once Lucas is idle, or always. It has nothing to do with macOS's Focus.
+Whether the Mac's review panel takes the keyboard when it shows up on its own: never, once Lucas is idle, or always. It has nothing to do with the Focus of macOS or iOS.
 _Avoid_: Focus, keyboard grab
 
 **Appearance log**:

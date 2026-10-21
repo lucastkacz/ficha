@@ -20,6 +20,8 @@ Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample c
 
 The iPhone app is on its way ([#97](https://github.com/lucastkacz/ficha/issues/97)). For now it's only Ficha Dev, which loads the sample cards the first time it opens and shows how many cards there are and how many are due. It needs iOS 26, on an iPhone: there's no iPad version. Its files are in `iPhone/`, and `make check` builds it for the simulator, as CI does.
 
+Its appearances arrive as card notifications, which the app plans ahead ([ADR 0010](adr/0010-iphone-appearances-are-notifications-planned-ahead.md)): it asks whether it may send them the first time it opens, and plans again each time it opens or comes back to the foreground. To watch one arrive without waiting, press "Bring the next appearance now", under Debug, and lock the iPhone, or the simulator with ⌘L: the next planned appearance arrives 5 seconds later. While the app is in front, iOS doesn't show its notifications.
+
 It installs on your iPhone from the Mac, signed with your free Apple ID's Personal Team. The first time:
 
 1. Xcode › Settings › Accounts: sign in with your Apple ID, which makes the Personal Team.
