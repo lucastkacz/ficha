@@ -15,6 +15,29 @@ extension Engine {
             try editCard(cardID, with: content, in: db)
         }
     }
+
+    /// Edits a capture in the inbox, as Lucas does in the Cards window:
+    /// replaces its text, note and source, cleaned up as `CaptureContent`
+    /// says, and keeps when he captured it and, for an expansion, the card it
+    /// expands. Unlike capturing, it doesn't check whether the text repeats a
+    /// card or a capture. A capture without text isn't saved, nor one that
+    /// already left the inbox. Returns the capture.
+    @discardableResult
+    public func editCapture(_ captureID: Int64, text: String, note: String?, source: String?) throws(EngineError)
+        -> Capture
+    {
+        guard let content = CaptureContent(text: text, note: note, source: source) else {
+            throw .emptyCapture
+        }
+        return try write { db in
+            _ = try captureInInbox(captureID, in: db)
+            try db.execute(
+                sql: "UPDATE capture SET text = ?, note = ?, source = ? WHERE id = ?",
+                arguments: [content.text, content.note, content.source, captureID]
+            )
+            return try captureInInbox(captureID, in: db)
+        }
+    }
 }
 
 /// Gives the card with this id `content` and takes its flag away, keeping the

@@ -68,6 +68,47 @@ public enum CardGroup: Sendable, Hashable {
     case type(CardType)
 }
 
+/// Something that waits in the inbox, as the Cards window lists it, with when
+/// it came there.
+public struct InboxRow: Sendable, Equatable, Identifiable {
+    /// What waits in the inbox.
+    public enum Item: Sendable, Equatable {
+        /// A capture that expands no card.
+        case capture(Capture)
+        /// A capture attached to the card it repeats, with the card.
+        case expansion(Expansion)
+        /// A flagged card that isn't buried, with where it stands.
+        case flaggedCard(CardRow)
+    }
+
+    /// A row's id: its capture's, or its card's, which are numbered apart.
+    public enum ID: Sendable, Hashable {
+        case capture(Int64)
+        case card(Int64)
+    }
+
+    public let item: Item
+    /// When it came to the inbox: when Lucas captured it, or flagged the card.
+    public let addedAt: Date
+
+    public var id: ID {
+        switch item {
+        case .capture(let capture): .capture(capture.id)
+        case .expansion(let expansion): .capture(expansion.capture.id)
+        case .flaggedCard(let row): .card(row.id)
+        }
+    }
+
+    /// What the row says it is: a capture's text, or a flagged card's front.
+    public var text: String {
+        switch item {
+        case .capture(let capture): capture.text
+        case .expansion(let expansion): expansion.capture.text
+        case .flaggedCard(let row): row.card.front
+        }
+    }
+}
+
 extension Engine {
     /// The cards in `group` that mention `search` in their front, back or
     /// source, as the Cards window lists them, in the order Lucas approved
@@ -77,11 +118,31 @@ extension Engine {
     {
         let now = time.now
         return try read { db in
-            let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
-            return try allCards(in: db).filter { $0.matches(search) }.map { card in
-                try CardRow(card: card, after: entries[card.id] ?? [], on: ladder)
+            try FichaData.cardRows(in: group, matching: search, on: ladder, at: now, in: db)
+        }
+    }
+
+    /// What waits in the inbox that mentions `search`, as the Cards window
+    /// lists it, the latest added first: the captures and the expansions that
+    /// mention it in their text or source, and the flagged cards that
+    /// mention it in their front, back or source, as Flagged lists them, each
+    /// standing on `ladder`. A blank search narrows nothing.
+    public func inboxRows(matching search: String = "", on ladder: Ladder) throws(EngineError) -> [InboxRow] {
+        let now = time.now
+        return try read { db in
+            let captures = try capturesWaiting(in: db).filter { $0.matches(search) }.map { capture in
+                guard let cardID = capture.expandsCardID else {
+                    return InboxRow(item: .capture(capture), addedAt: capture.createdAt)
+                }
+                return InboxRow(
+                    item: .expansion(Expansion(capture: capture, card: try existingCard(cardID, in: db))),
+                    addedAt: capture.createdAt)
             }
-            .filter { group.holds($0, at: now, on: ladder) }
+            let flaggedCards = try FichaData.cardRows(in: .flagged, matching: search, on: ladder, at: now, in: db)
+                .compactMap { row in
+                    row.card.flag.map { InboxRow(item: .flaggedCard(row), addedAt: $0.flaggedAt) }
+                }
+            return (captures + flaggedCards).sorted { $0.addedAt > $1.addedAt }
         }
     }
 
@@ -95,10 +156,33 @@ extension Engine {
     }
 }
 
+/// The cards in `group` that mention `search` in their front, back or source,
+/// in the order Lucas approved them, each standing on `ladder` at `now`.
+private func cardRows(
+    in group: CardGroup,
+    matching search: String,
+    on ladder: Ladder,
+    at now: Date,
+    in db: Database
+) throws -> [CardRow] {
+    let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
+    return try allCards(in: db).filter { $0.matches(search) }.map { card in
+        try CardRow(card: card, after: entries[card.id] ?? [], on: ladder)
+    }
+    .filter { group.holds($0, at: now, on: ladder) }
+}
+
 extension Card {
     /// Whether the card's front, back or source mentions `search`.
     fileprivate func matches(_ search: String) -> Bool {
         [front, back, source].compactMap(\.self).contains { mentions($0, search) }
+    }
+}
+
+extension Capture {
+    /// Whether the capture's text or source mentions `search`.
+    fileprivate func matches(_ search: String) -> Bool {
+        [text, source].compactMap(\.self).contains { mentions($0, search) }
     }
 }
 

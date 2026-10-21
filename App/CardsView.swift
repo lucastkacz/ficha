@@ -3,9 +3,10 @@ import FichaData
 import SwiftUI
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
-/// sidebar to choose a group of cards, a table with one row per card in it,
-/// narrowed by the toolbar's search field, and the selected card whole beside
-/// it, with what Lucas can do with it at its foot. He edits a card right
+/// sidebar to choose a group of cards or the inbox, a table with one row per
+/// card in it, or per capture and flagged card in the inbox, narrowed by the
+/// toolbar's search field, and the selected row whole beside it, with what
+/// Lucas can do with it at its foot. He edits a card or a capture right
 /// there, in fields that take the detail's place while the sidebar and the
 /// table wait. He selects several cards with ⌘ or Shift, as in Finder, and
 /// then the detail says how many, with what he can do with all of them. It
@@ -15,33 +16,42 @@ import SwiftUI
 /// debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
-    /// The cards the table lists, or why they couldn't be read.
-    @State private var rows: Result<[CardRow], EngineError>?
+    /// What the table lists, or why it couldn't be read.
+    @State private var rows: Result<Rows, EngineError>?
     /// The tags the sidebar offers: those of the cards that aren't buried.
     @State private var tags: [String] = []
     /// The engine's time when the cards were read, which the Due column
     /// counts from.
     @State private var now: Date
-    /// The group the sidebar chose: All cards, until Lucas picks another.
-    @State private var group = CardGroup.all
-    /// What Lucas looks for in the group's cards, from the search field.
+    /// What the sidebar chose: All cards, until Lucas picks another group or
+    /// the inbox.
+    @State private var sidebarItem = SidebarItem.cards(.all)
+    /// What Lucas looks for in what the sidebar chose, from the search field.
     @State private var search = ""
     @FocusState private var isSearchFocused: Bool
-    /// The rows Lucas selected, which can include cards the table no longer
+    /// The cards Lucas selected, which can include cards the table no longer
     /// lists: the detail and its actions take only those it lists.
     @State private var selection: Set<CardRow.ID> = []
     /// The table's order: the newest cards first, until Lucas clicks a
     /// column's header.
     @State private var sortOrder = [CardRowOrder(.created, order: .reverse)]
-    /// The card Lucas is editing, as it was when he started, while the detail
+    /// The row Lucas selected in the inbox, one at a time, which the table
+    /// may no longer list, as with the cards.
+    @State private var inboxSelection: InboxRow.ID?
+    /// The inbox's order: the latest added first, until Lucas clicks a
+    /// column's header.
+    @State private var inboxSortOrder = [InboxRowOrder(.added, order: .reverse)]
+    /// What Lucas is editing, as it was when he started, while the detail
     /// shows its fields. The sidebar and the table wait until he saves or
     /// cancels, so that a click elsewhere can't drop what he typed.
-    @State private var editing: Card?
+    @State private var editing: Editing?
     /// Whether the table has the keyboard, which it gets back once Lucas
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
     /// The card Lucas is flagging, while the sheet asks for his note.
     @State private var flagging: CardRow?
+    /// The capture Lucas is discarding, while the window asks whether to.
+    @State private var discarding: Capture?
     /// What Lucas did that couldn't be saved, while an alert says so.
     @State private var failure: Failure?
 
@@ -81,8 +91,28 @@ struct CardsView: View {
                 try model.flag(row.id, note: note)
             }
         }
+        .confirmationDialog(
+            discarding.map {
+                Text(
+                    "Discard “\($0.text)”?",
+                    comment: "The title of the Cards window's question before it discards a capture, with its text.")
+            } ?? Text(verbatim: ""),
+            isPresented: Binding(get: { discarding != nil }, set: { if !$0 { discarding = nil } }),
+            titleVisibility: .visible,
+            presenting: discarding
+        ) { capture in
+            Button(role: .destructive) {
+                discard(capture)
+            } label: {
+                Text("Discard", comment: "The button that discards the capture the Cards window asks about.")
+            }
+        } message: { _ in
+            Text(
+                "It leaves the inbox without becoming cards, and you can't bring it back.",
+                comment: "Under the title of the Cards window's question before it discards a capture.")
+        }
         .failureAlert($failure)
-        .onChange(of: group) {
+        .onChange(of: sidebarItem) {
             reload()
         }
         .onChange(of: search) {
@@ -114,37 +144,52 @@ struct CardsView: View {
         }
     }
 
-    /// Reads the tags and the group's cards again, as they are now. When the
-    /// chosen tag is gone, because its last card was buried or edited, the
+    /// Reads the tags and what the sidebar chose again, as they are now. When
+    /// the chosen tag is gone, because its last card was buried or edited, the
     /// window goes back to All cards.
     private func reload() {
         now = model.now
         do throws(EngineError) {
             tags = try model.tags()
-            if case .tag(let tag) = group, !tags.contains(tag) {
-                group = .all
+            if case .cards(.tag(let tag)) = sidebarItem, !tags.contains(tag) {
+                sidebarItem = .cards(.all)
             }
-            rows = .success(try model.cardRows(in: group, matching: search))
+            switch sidebarItem {
+            case .cards(let group):
+                rows = .success(.cards(try model.cardRows(in: group, matching: search)))
+            case .inbox:
+                rows = .success(.inbox(try model.inboxRows(matching: search)))
+            }
         } catch {
             rows = .failure(error)
         }
     }
 
-    /// The groups Lucas chooses from: the cards by where they stand, then by
-    /// tag, then by type. One is chosen at a time, always.
+    /// What Lucas chooses from: the cards by where they stand, then the
+    /// inbox, with how many things wait in it, as the menu counts them, then
+    /// the cards by tag, then by type. One is chosen at a time, always.
     private var sidebar: some View {
-        List(selection: chosenGroup) {
+        List(selection: chosenItem) {
             Section {
                 ForEach([CardGroup.all, .new, .due, .learned, .flagged, .buried], id: \.self) { group in
                     Label(group.title, systemImage: group.symbol)
-                        .tag(group)
+                        .tag(SidebarItem.cards(group))
                 }
+            }
+            Section {
+                Label(
+                    String(
+                        localized: "Inbox", comment: "An item of the Cards window's sidebar: what waits to be refined."),
+                    systemImage: "tray"
+                )
+                .badge(model.progress?.inInbox ?? 0)
+                .tag(SidebarItem.inbox)
             }
             if !tags.isEmpty {
                 Section {
                     ForEach(tags, id: \.self) { tag in
                         Label(tag, systemImage: "tag")
-                            .tag(CardGroup.tag(tag))
+                            .tag(SidebarItem.cards(.tag(tag)))
                     }
                 } header: {
                     Text("Tags", comment: "A section of the Cards window's sidebar: the cards' tags.")
@@ -153,7 +198,7 @@ struct CardsView: View {
             Section {
                 ForEach(CardType.allCases, id: \.self) { type in
                     Label(type.pluralName, systemImage: type.symbol)
-                        .tag(CardGroup.type(type))
+                        .tag(SidebarItem.cards(.type(type)))
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
@@ -161,21 +206,26 @@ struct CardsView: View {
         }
     }
 
-    /// The sidebar's selection: the chosen group, which Lucas can change but
-    /// not clear.
-    private var chosenGroup: Binding<CardGroup?> {
+    /// The sidebar's selection: what it chose, which Lucas can change but not
+    /// clear.
+    private var chosenItem: Binding<SidebarItem?> {
         Binding {
-            group
+            sidebarItem
         } set: {
-            group = $0 ?? group
+            sidebarItem = $0 ?? sidebarItem
         }
     }
 
-    /// What the table says when the group, or the search in it, brings no
+    /// Whether Lucas is looking for something, which narrows the table.
+    private var hasSearch: Bool {
+        !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// What the table says when `group`, or the search in it, brings no
     /// cards.
     @ViewBuilder
-    private var noCards: some View {
-        if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+    private func noCards(in group: CardGroup) -> some View {
+        if hasSearch {
             ContentUnavailableView.search(text: search)
         } else if group == .all {
             ContentUnavailableView(
@@ -188,40 +238,29 @@ struct CardsView: View {
         }
     }
 
+    /// What the table says when the inbox, or the search in it, brings
+    /// nothing.
+    @ViewBuilder
+    private var emptyInbox: some View {
+        if hasSearch {
+            ContentUnavailableView.search(text: search)
+        } else {
+            ContentUnavailableView(
+                String(localized: "Nothing in the inbox", comment: "In the Cards window, when the inbox is empty."),
+                systemImage: "tray",
+                description: Text(
+                    "What you capture, and the cards you flag, wait here to be refined.",
+                    comment: "In the Cards window, when the inbox is empty."))
+        }
+    }
+
     @ViewBuilder
     private var table: some View {
         switch rows {
-        case .success(let rows):
-            Table(rows.sorted(using: sortOrder), selection: $selection, sortOrder: $sortOrder) {
-                TableColumn(
-                    Text("Front", comment: "A column of the Cards window: the card's front."),
-                    sortUsing: CardRowOrder(.front)
-                ) {
-                    row in
-                    FrontCell(card: row.card)
-                }
-                .width(min: 120)
-                TableColumn(
-                    Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
-                    sortUsing: CardRowOrder(.step)
-                ) { row in
-                    Text(stepText(row))
-                }
-                .width(min: 56, ideal: 64, max: 100)
-                TableColumn(
-                    Text("Due", comment: "A column of the Cards window: when the card is due."),
-                    sortUsing: CardRowOrder(.due)
-                ) { row in
-                    Text(dueText(row, at: now))
-                }
-                .width(min: 60, ideal: 72, max: 110)
-            }
-            .focused($isTableFocused)
-            .overlay {
-                if rows.isEmpty {
-                    noCards
-                }
-            }
+        case .success(.cards(let rows)):
+            cardTable(rows)
+        case .success(.inbox(let rows)):
+            inboxTable(rows)
         case .failure(let error):
             ContentUnavailableView {
                 Label("Couldn't load your cards", systemImage: "exclamationmark.triangle")
@@ -233,40 +272,210 @@ struct CardsView: View {
         }
     }
 
+    /// The cards of the group the sidebar chose, one per row.
+    private func cardTable(_ rows: [CardRow]) -> some View {
+        Table(rows.sorted(using: sortOrder), selection: $selection, sortOrder: $sortOrder) {
+            TableColumn(
+                Text("Front", comment: "A column of the Cards window: the card's front."),
+                sortUsing: CardRowOrder(.front)
+            ) {
+                row in
+                FrontCell(card: row.card)
+            }
+            .width(min: 120)
+            TableColumn(
+                Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
+                sortUsing: CardRowOrder(.step)
+            ) { row in
+                Text(stepText(row))
+            }
+            .width(min: 56, ideal: 64, max: 100)
+            TableColumn(
+                Text("Due", comment: "A column of the Cards window: when the card is due."),
+                sortUsing: CardRowOrder(.due)
+            ) { row in
+                Text(dueText(row, at: now))
+            }
+            .width(min: 60, ideal: 72, max: 110)
+        }
+        .focused($isTableFocused)
+        .overlay {
+            if rows.isEmpty, case .cards(let group) = sidebarItem {
+                noCards(in: group)
+            }
+        }
+    }
+
+    /// What waits in the inbox, one row each: the captures, the expansions
+    /// and the flagged cards, which Lucas selects one at a time.
+    private func inboxTable(_ rows: [InboxRow]) -> some View {
+        Table(rows.sorted(using: inboxSortOrder), selection: $inboxSelection, sortOrder: $inboxSortOrder) {
+            TableColumn(
+                Text(
+                    "Text",
+                    comment: "A column of the Cards window's inbox: a capture's text, or a flagged card's front."),
+                sortUsing: InboxRowOrder(.text)
+            ) { row in
+                if case .flaggedCard(let cardRow) = row.item {
+                    FrontCell(card: cardRow.card)
+                } else {
+                    Text(row.text)
+                        .lineLimit(1)
+                }
+            }
+            .width(min: 120)
+            TableColumn(
+                Text(
+                    "Kind",
+                    comment: "A column of the Cards window's inbox: whether a row is a capture, an expansion or a card."
+                ),
+                sortUsing: InboxRowOrder(.kind)
+            ) { row in
+                Text(row.kindName)
+            }
+            .width(min: 64, ideal: 76, max: 110)
+            TableColumn(
+                Text(
+                    "Added",
+                    comment: "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."),
+                sortUsing: InboxRowOrder(.added)
+            ) { row in
+                // Without the time, to leave the Text column its room.
+                Text(row.addedAt.formatted(date: .abbreviated, time: .omitted))
+            }
+            .width(min: 80, ideal: 96, max: 140)
+        }
+        .focused($isTableFocused)
+        .overlay {
+            if rows.isEmpty {
+                emptyInbox
+            }
+        }
+    }
+
     /// The selected cards the table lists, which the detail shows and its
-    /// actions act on. The actions read them as they are when Lucas acts,
-    /// never as their buttons had them: SwiftUI keeps the action a keyboard
-    /// shortcut had when its button first showed, so ⌘E would bury the cards
-    /// selected back then.
+    /// actions act on: those Lucas selected in a group of cards, or the
+    /// flagged card he selected in the inbox. The actions read them as they
+    /// are when Lucas acts, never as their buttons had them: SwiftUI keeps the
+    /// action a keyboard shortcut had when its button first showed, so ⌘E
+    /// would bury the cards selected back then.
     private var selectedRows: [CardRow] {
-        guard case .success(let rows) = rows else {
+        switch rows {
+        case .success(.cards(let rows)):
+            return rows.filter { selection.contains($0.id) }
+        case .success(.inbox):
+            guard case .flaggedCard(let row) = selectedInboxRow?.item else {
+                return []
+            }
+            return [row]
+        case .failure, nil:
             return []
         }
-        return rows.filter { selection.contains($0.id) }
+    }
+
+    /// The row Lucas selected in the inbox, while the table lists it.
+    private var selectedInboxRow: InboxRow? {
+        guard case .success(.inbox(let rows)) = rows else {
+            return nil
+        }
+        return rows.first { $0.id == inboxSelection }
+    }
+
+    /// The capture Lucas selected in the inbox, or the expansion's, while the
+    /// table lists it.
+    private var selectedCapture: Capture? {
+        switch selectedInboxRow?.item {
+        case .capture(let capture): capture
+        case .expansion(let expansion): expansion.capture
+        case .flaggedCard, nil: nil
+        }
     }
 
     @ViewBuilder
     private var detail: some View {
         let selected = selectedRows
-        if let card = editing {
+        switch editing {
+        case .card(let card):
             CardEditor(card: card, isSearching: isSearchFocused) { content throws(EngineError) in
                 try model.edit(card.id, with: content)
                 // The detail shows the card as saved at once, without waiting
                 // for the engine to say it changed.
                 reload()
             } close: {
-                editing = nil
-                isTableFocused = true
+                stopEditing()
             }
-        } else if selected.count > 1 {
-            selectionSummary(selected)
-        } else if let row = selected.first {
-            CardDetail(row: row, now: now)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    actions(for: row)
-                }
-        } else {
-            ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+        case .capture(let capture):
+            CaptureEditor(capture: capture, isSearching: isSearchFocused) { text, note, source throws(EngineError) in
+                try model.editCapture(capture.id, text: text, note: note, source: source)
+                // As a card's: the detail shows the capture as saved at once.
+                reload()
+            } close: {
+                stopEditing()
+            }
+        case nil:
+            if let row = selectedInboxRow, let capture = selectedCapture {
+                CaptureDetail(capture: capture, kind: row.kindName, expandedCard: row.expandedCard)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        captureActions
+                    }
+            } else if selected.count > 1 {
+                selectionSummary(selected)
+            } else if let row = selected.first {
+                CardDetail(row: row, now: now)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        actions(for: row)
+                    }
+            } else if case .inbox = sidebarItem {
+                ContentUnavailableView(
+                    String(
+                        localized: "Nothing selected",
+                        comment: "In the Cards window's detail, when nothing in the inbox is selected."),
+                    systemImage: "tray")
+            } else {
+                ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+            }
+        }
+    }
+
+    /// Ends an edit, saved or not, and gives the table the keyboard back.
+    private func stopEditing() {
+        editing = nil
+        isTableFocused = true
+    }
+
+    /// Edit, which turns the detail of the selected card or capture into
+    /// fields: ⌘L for either, since only one detail shows at a time.
+    private var editButton: some View {
+        Button(
+            String(
+                localized: "Edit",
+                comment: "A button of the Cards window that turns the card's detail into fields to edit it."
+            )
+        ) {
+            startEditing()
+        }
+        .keyboardShortcut("l", modifiers: .command)
+        .help(Text("Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card."))
+    }
+
+    /// What Lucas can do with the capture selected in the inbox, at the foot
+    /// of its detail, always in sight: edit it, and discard it, which asks
+    /// first. While he's in the search field, ⌘⌫ is the field's, as in any
+    /// text field: it deletes what he typed.
+    private var captureActions: some View {
+        ActionBar {
+            editButton
+            Button(
+                String(
+                    localized: "Discard…",
+                    comment: "A button of the Cards window that discards the capture, asking first."
+                )
+            ) {
+                startDiscarding()
+            }
+            .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
+            .help(Text("Discard… (⌘⌫)", comment: "The tooltip of the Cards window's button that discards the capture."))
+            Spacer()
         }
     }
 
@@ -275,16 +484,7 @@ struct CardsView: View {
     /// it, or unbury it once it's buried.
     private func actions(for row: CardRow) -> some View {
         ActionBar {
-            Button(
-                String(
-                    localized: "Edit",
-                    comment: "A button of the Cards window that turns the card's detail into fields to edit it."
-                )
-            ) {
-                startEditing()
-            }
-            .keyboardShortcut("l", modifiers: .command)
-            .help(Text("Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card."))
+            editButton
             if row.isInReviews {
                 Button(
                     String(
@@ -353,11 +553,32 @@ struct CardsView: View {
         return rows.count == 1 ? rows.first : nil
     }
 
-    /// Turns the detail into fields to edit the selected card, while it's the
-    /// only one selected.
+    /// Turns the detail into fields to edit the capture selected in the inbox,
+    /// or the selected card, while it's the only one selected.
     private func startEditing() {
-        guard let row = singleSelectedRow else { return }
-        editing = row.card
+        if let capture = selectedCapture {
+            editing = .capture(capture)
+        } else if let row = singleSelectedRow {
+            editing = .card(row.card)
+        }
+    }
+
+    /// Asks whether to discard the capture selected in the inbox.
+    private func startDiscarding() {
+        guard let capture = selectedCapture else { return }
+        discarding = capture
+    }
+
+    /// Discards `capture`, which Lucas confirmed, or says why it couldn't.
+    private func discard(_ capture: Capture) {
+        do throws(EngineError) {
+            try model.discard(capture.id)
+        } catch {
+            failure = Failure(
+                title: LocalizedStringResource(
+                    "Couldn't discard the capture", comment: "An alert's title in the Cards window."),
+                message: error.messageForCaptureInCardsWindow)
+        }
     }
 
     /// Asks for a note to flag the selected card, while it's the only one
@@ -398,6 +619,26 @@ struct CardsView: View {
     }
 }
 
+/// What the Cards window's sidebar offers, one at a time: a group of cards,
+/// or the inbox.
+private enum SidebarItem: Hashable {
+    case cards(CardGroup)
+    case inbox
+}
+
+/// What the Cards window's table lists: the cards of a group, or what waits
+/// in the inbox.
+private enum Rows {
+    case cards([CardRow])
+    case inbox([InboxRow])
+}
+
+/// What Lucas edits in the Cards window: a card, or a capture in the inbox.
+private enum Editing {
+    case card(Card)
+    case capture(Capture)
+}
+
 extension [CardRow] {
     /// Whether Bury works on all these cards: none of them is buried.
     fileprivate var canBeBuried: Bool {
@@ -430,6 +671,29 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cannotUndo, .unreadableReviewLog, .storage:
+            localizedDescription
+        }
+    }
+
+    /// Why an action on a capture in the Cards window's inbox failed, as its
+    /// alert says it. An error that says the capture isn't in the inbox means
+    /// a refine session took it out meanwhile, since the window offers its
+    /// actions only to what waits there. The engine's message for it names
+    /// the capture by its id, which the window doesn't show.
+    fileprivate var messageForCaptureInCardsWindow: String {
+        switch self {
+        case .captureNotInInbox:
+            String(
+                localized: """
+                    This capture left the inbox outside this window meanwhile, approved or discarded in a refine \
+                    session, so nothing was saved. The window now shows the inbox as it is.
+                    """,
+                comment:
+                    "An alert's message in the Cards window, under what couldn't be done with the selected capture."
+            )
+        case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
+            .cardNotBuried, .cannotUndo, .unreadableReviewLog, .storage:
             localizedDescription
         }
     }
@@ -575,10 +839,29 @@ extension CardGroup {
     }
 }
 
-/// How the table orders its rows: by one column, either way. Cards without a
+/// How one of the window's tables orders its rows: by one column, either way.
+nonisolated private protocol ColumnOrder: SortComparator {}
+
+nonisolated extension ColumnOrder {
+    /// How two values compare, the table's way.
+    fileprivate func ordered<Value: Comparable>(_ lhs: Value, _ rhs: Value) -> ComparisonResult {
+        ordered(lhs < rhs ? .orderedAscending : lhs > rhs ? .orderedDescending : .orderedSame)
+    }
+
+    /// How two values that compare as `result` do, the table's way.
+    fileprivate func ordered(_ result: ComparisonResult) -> ComparisonResult {
+        switch (result, order) {
+        case (.orderedAscending, .reverse): .orderedDescending
+        case (.orderedDescending, .reverse): .orderedAscending
+        default: result
+        }
+    }
+}
+
+/// How the table orders its cards: by one column, either way. Cards without a
 /// due time go after those with one, whichever way the table is ordered by
 /// Due.
-nonisolated private struct CardRowOrder: SortComparator {
+nonisolated private struct CardRowOrder: ColumnOrder {
     enum Column: Hashable {
         /// When Lucas approved the card, which no column shows yet, and then,
         /// for cards approved together, the order he approved them in.
@@ -614,20 +897,6 @@ nonisolated private struct CardRowOrder: SortComparator {
             }
         }
     }
-
-    /// How two values compare, the table's way.
-    private func ordered<Value: Comparable>(_ lhs: Value, _ rhs: Value) -> ComparisonResult {
-        ordered(lhs < rhs ? .orderedAscending : lhs > rhs ? .orderedDescending : .orderedSame)
-    }
-
-    /// How two values that compare as `result` do, the table's way.
-    private func ordered(_ result: ComparisonResult) -> ComparisonResult {
-        switch (result, order) {
-        case (.orderedAscending, .reverse): .orderedDescending
-        case (.orderedDescending, .reverse): .orderedAscending
-        default: result
-        }
-    }
 }
 
 extension CardRow {
@@ -635,6 +904,66 @@ extension CardRow {
     /// it's new, before the first step.
     nonisolated fileprivate var stepNumber: Int {
         step.map { $0 + 1 } ?? 0
+    }
+}
+
+/// How the inbox's table orders its rows: by one column, either way.
+nonisolated private struct InboxRowOrder: ColumnOrder {
+    enum Column: Hashable {
+        case text
+        /// Captures first, then expansions, then flagged cards, as the Kind
+        /// column names them.
+        case kind
+        case added
+    }
+
+    let column: Column
+    var order: SortOrder
+
+    init(_ column: Column, order: SortOrder = .forward) {
+        self.column = column
+        self.order = order
+    }
+
+    func compare(_ lhs: InboxRow, _ rhs: InboxRow) -> ComparisonResult {
+        switch column {
+        case .text: ordered(lhs.text.localizedStandardCompare(rhs.text))
+        case .kind: ordered(lhs.kindRank, rhs.kindRank)
+        case .added: ordered(lhs.addedAt, rhs.addedAt)
+        }
+    }
+}
+
+extension InboxRow {
+    /// What kind of row it is, as the inbox's Kind column says it.
+    fileprivate var kindName: String {
+        switch item {
+        case .capture:
+            String(localized: "Capture", comment: "In the Cards window's inbox, the kind of a row: a capture.")
+        case .expansion:
+            String(
+                localized: "Expansion",
+                comment: "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.")
+        case .flaggedCard:
+            String(localized: "Flagged", comment: "In the Cards window's inbox, the kind of a row: a flagged card.")
+        }
+    }
+
+    /// Where its kind goes when the inbox is ordered by Kind.
+    nonisolated fileprivate var kindRank: Int {
+        switch item {
+        case .capture: 0
+        case .expansion: 1
+        case .flaggedCard: 2
+        }
+    }
+
+    /// The card it expands, when it's an expansion.
+    fileprivate var expandedCard: Card? {
+        guard case .expansion(let expansion) = item else {
+            return nil
+        }
+        return expansion.card
     }
 }
 
@@ -690,19 +1019,7 @@ private struct CardDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 FlagAndBurial(card: row.card)
-                HStack(spacing: 8) {
-                    Text(row.card.type.name)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tint)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(.tint.opacity(0.15), in: .capsule)
-                    if !row.card.tags.isEmpty {
-                        Label(row.card.tags.formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                TypeAndTags(card: row.card)
                 Text(row.card.front)
                     .font(.title2.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
@@ -758,6 +1075,116 @@ private struct CardDetail: View {
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
         }
+    }
+}
+
+/// A word in a capsule of the window's tint, on top of a detail: a card's
+/// type, or what kind of capture it is.
+private struct Chip: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(.tint.opacity(0.15), in: .capsule)
+    }
+}
+
+/// A card's type, and its tags after it when it has any.
+private struct TypeAndTags: View {
+    let card: Card
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Chip(text: card.type.name)
+            if !card.tags.isEmpty {
+                Label(card.tags.formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// The capture selected in the inbox, whole: what kind it is, its text, its
+/// note and source, when Lucas captured it, and, for an expansion, the card
+/// it expands.
+private struct CaptureDetail: View {
+    let capture: Capture
+    /// What kind it is, as the inbox's Kind column says it.
+    let kind: String
+    /// The card it expands, when it's an expansion.
+    let expandedCard: Card?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Chip(text: kind)
+                Text(capture.text)
+                    .font(.title2.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+                    if let note = capture.note {
+                        GridRow {
+                            gridLabel(
+                                Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
+                            Text(note)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    if let source = capture.source {
+                        GridRow {
+                            gridLabel(
+                                Text(
+                                    "Source",
+                                    comment: "In the Cards window's detail: where Lucas came across a capture's text."))
+                            Text(source)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    GridRow {
+                        gridLabel(Text("Captured", comment: "In the Cards window's detail: when Lucas captured it."))
+                        Text(capture.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
+                if let expandedCard {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(
+                            "Expands this card",
+                            comment: "In the Cards window's detail of an expansion, above the card it's attached to."
+                        )
+                        .foregroundStyle(.secondary)
+                        ExpandedCard(card: expandedCard)
+                    }
+                }
+            }
+            .textSelection(.enabled)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// The card an expansion expands, in the expansion's detail: its type and
+/// tags, its front, with the marks the table gives it, and its back.
+private struct ExpandedCard: View {
+    let card: Card
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TypeAndTags(card: card)
+            FrontCell(card: card)
+                .font(.headline)
+            Text(card.back)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.fill.quaternary, in: .rect(cornerRadius: 8))
     }
 }
 
@@ -956,13 +1383,6 @@ private struct CardEditor: View {
         .onSubmit(submit)
     }
 
-    /// What's missing, under a field Lucas left blank.
-    private func missing(_ text: Text) -> some View {
-        text
-            .font(.caption)
-            .foregroundStyle(.red)
-    }
-
     /// The tags in the Tags field, which `CardContent` cleans up as it does
     /// wherever a card comes from.
     private var tags: [String] {
@@ -988,6 +1408,143 @@ private struct CardEditor: View {
     }
 }
 
+/// The fields Lucas edits a capture in, in place of its detail: its text,
+/// note and source, as the capture window has them. Return saves,
+/// Option-Return starts a new line, and Escape cancels, as in the capture
+/// window, unless he's in the window's search field. Saving with the text
+/// blank says, under it, that it's missing. When the capture can't be saved,
+/// an alert says why, and the fields stay as Lucas left them.
+private struct CaptureEditor: View {
+    /// The capture as it was when Lucas started editing it.
+    let capture: Capture
+    /// Whether Lucas is in the window's search field, which then keeps Return
+    /// and Escape, as `CardEditor` says.
+    let isSearching: Bool
+    /// Saves the capture with what the fields hold, its text, note and
+    /// source, or throws why it couldn't.
+    let save: (String, String, String) throws(EngineError) -> Void
+    /// Ends the edit, once the capture is saved or without saving it.
+    let close: () -> Void
+    @State private var text: String
+    @State private var note: String
+    @State private var source: String
+    /// Whether Lucas tried to save with the text blank, so that it says it's
+    /// missing.
+    @State private var showsMissingText = false
+    @State private var failure: Failure?
+    @FocusState private var isTextFocused: Bool
+
+    init(
+        capture: Capture,
+        isSearching: Bool,
+        save: @escaping (String, String, String) throws(EngineError) -> Void,
+        close: @escaping () -> Void
+    ) {
+        self.capture = capture
+        self.isSearching = isSearching
+        self.save = save
+        self.close = close
+        _text = State(initialValue: capture.text)
+        _note = State(initialValue: capture.note ?? "")
+        _source = State(initialValue: capture.source ?? "")
+    }
+
+    var body: some View {
+        ScrollView {
+            fields
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            ActionBar {
+                Spacer()
+                Button("Cancel", action: close)
+                    .keyboardShortcut(isSearching ? nil : .cancelAction)
+                Button("Save", action: submit)
+                    .keyboardShortcut(isSearching ? nil : .defaultAction)
+            }
+        }
+        .onAppear {
+            isTextFocused = true
+        }
+        .failureAlert($failure)
+    }
+
+    private var fields: some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
+            GridRow {
+                gridLabel(
+                    Text("Text", comment: "In the Cards window, the label of a capture's text, while Lucas edits it."))
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Text", text: $text, axis: .vertical)
+                        .lineLimit(3...8)
+                        .focused($isTextFocused)
+                    if showsMissingText && !fieldsMakeACapture {
+                        missing(
+                            Text(
+                                "A capture needs a text.",
+                                comment: "In the Cards window, under a capture's text, when Lucas saves it blank."))
+                    }
+                }
+            }
+            GridRow {
+                gridLabel(
+                    Text("Note", comment: "In the Cards window, the label of a capture's note, while Lucas edits it."))
+                TextField("Note", text: $note, axis: .vertical)
+                    .lineLimit(1...4)
+            }
+            GridRow {
+                gridLabel(
+                    Text(
+                        "Source", comment: "In the Cards window, the label of a capture's source, while Lucas edits it."
+                    ))
+                TextField(
+                    "Source", text: $source,
+                    prompt: Text(
+                        "A book, a podcast…",
+                        comment: "In the Cards window, in a capture's empty source, while Lucas edits it."),
+                    axis: .vertical
+                )
+                .lineLimit(1...3)
+            }
+        }
+        .textFieldStyle(.roundedBorder)
+        // A focused text field keeps Return from reaching the default button.
+        .onSubmit(submit)
+    }
+
+    /// Whether the fields hold a capture, by the rule the engine saves it
+    /// with: until there's text, they don't.
+    private var fieldsMakeACapture: Bool {
+        CaptureContent(text: text, note: note, source: source) != nil
+    }
+
+    /// Saves the capture with what the fields hold, unless the text is blank,
+    /// and ends the edit.
+    private func submit() {
+        guard fieldsMakeACapture else {
+            showsMissingText = true
+            return
+        }
+        do throws(EngineError) {
+            try save(text, note, source)
+            close()
+        } catch {
+            failure = Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save the capture", comment: "An alert's title in the Cards window."),
+                message: error.messageForCaptureInCardsWindow)
+        }
+    }
+}
+
+/// What's missing, under a field Lucas left blank in one of the editors.
+private func missing(_ text: Text) -> some View {
+    text
+        .font(.caption)
+        .foregroundStyle(.red)
+}
+
 /// The bar at the foot of the detail, always in sight, with what Lucas can
 /// do there.
 private struct ActionBar<Buttons: View>: View {
@@ -1006,9 +1563,17 @@ private struct ActionBar<Buttons: View>: View {
     }
 }
 
+extension KeyEquivalent {
+    /// The Delete key, ⌫, as macOS says it types: U+007F. A button's shortcut
+    /// takes a key only as its event spells it, and SwiftUI's own `.delete` is
+    /// U+0008, so ⌘⌫ never reached Discard with it in `make render`, which
+    /// makes keys as the keyboard does.
+    fileprivate static let deleteKey = KeyEquivalent("\u{7F}")
+}
+
 extension View {
     /// The view, dimmed and taking no clicks while `isWaiting`: the sidebar
-    /// and the table, while Lucas edits a card.
+    /// and the table, while Lucas edits a card or a capture.
     fileprivate func waiting(while isWaiting: Bool) -> some View {
         disabled(isWaiting)
             .opacity(isWaiting ? 0.5 : 1)
