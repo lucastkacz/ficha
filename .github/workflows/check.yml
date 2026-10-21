@@ -48,8 +48,9 @@ jobs:
         # only for its newest Xcodes (actions/runner-images#12541), so this
         # downloads the selected Xcode's, as that announcement suggests.
         run: xcodebuild -downloadPlatform iOS
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install the tools
+        # The ones `make bootstrap` installs on a Mac, which the image doesn't ship.
+        run: brew install xcodegen shellcheck actionlint
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"

@@ -61,6 +61,7 @@ expect 2 "a commit on main is blocked" protect-main.sh "$(bash_input 'git commit
 expect 2 "a commit through git -C into main is blocked" protect-main.sh "$(bash_input "git -C $tmp/repo commit -m change" "$tmp")"
 expect 2 "a commit with git options before it is blocked" protect-main.sh "$(bash_input 'git -c user.name=x --no-pager commit -m change' "$tmp/repo")"
 expect 2 "a commit after cd into main is blocked" protect-main.sh "$(bash_input "cd $tmp/repo && git commit -m change" "$tmp/branch")"
+expect 2 "a commit after cd into main on a later line is blocked" protect-main.sh "$(bash_input "$(printf 'git status\ncd %s && git commit -m change' "$tmp/repo")" "$tmp/branch")"
 expect 2 "a merge after switching to main is blocked" protect-main.sh "$(bash_input 'git switch main && git merge 7-feature' "$tmp/branch")"
 expect 2 "a pull that merges on main is blocked" protect-main.sh "$(bash_input 'git pull --no-ff origin 7-feature' "$tmp/repo")"
 expect 2 "a fast-forward pull followed by a commit on main is blocked" protect-main.sh "$(bash_input 'git pull --ff-only && git commit -m change' "$tmp/repo")"

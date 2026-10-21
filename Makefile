@@ -8,6 +8,9 @@ RENDER := scripts/render
 # The render tool's own files: its `Sources/Render/App` is a link to `App/`.
 SWIFT_SOURCES := App CLI iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
 	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift
+# The shell scripts, for shellcheck. actionlint finds the workflows on its own,
+# in .github/workflows, and runs shellcheck on each step's `run:` script too.
+SHELL_SCRIPTS := .claude/hooks/*.sh scripts/*.sh
 # The build number, the app's CFBundleVersion: how many commits the built
 # commit's history has, so each build after a merge shows a larger one. It's
 # passed to xcodebuild as a build setting, which overrides project.yml's.
@@ -42,8 +45,10 @@ BEFORE = $(STRINGS)/$${catalog%%/*}.xcstrings
 .PHONY: bootstrap xcode-check project build build-iphone strings strings-check test lint fmt hooks-test render-build \
 	check run render install install-iphone
 
-bootstrap: ## Install the tools the build needs.
+bootstrap: ## Install the tools the build and the lint need.
 	@command -v xcodegen >/dev/null || brew install xcodegen
+	@command -v shellcheck >/dev/null || brew install shellcheck
+	@command -v actionlint >/dev/null || brew install actionlint
 
 xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-version names.
 	@output=$$(xcodebuild -version) || exit 1; \
@@ -76,8 +81,10 @@ strings-check: project ## Fail when a String Catalog is out of date, showing how
 test: ## Run the package tests.
 	swift test --package-path $(PACKAGE) --quiet
 
-lint: ## Check formatting and style.
+lint: ## Check the Swift code's formatting and style, and lint the shell scripts and the workflows.
 	swift format lint --strict --recursive --parallel $(SWIFT_SOURCES)
+	shellcheck $(SHELL_SCRIPTS)
+	actionlint
 
 fmt: ## Format the Swift code in place.
 	swift format --in-place --recursive --parallel $(SWIFT_SOURCES)
