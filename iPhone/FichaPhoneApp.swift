@@ -43,7 +43,9 @@ struct FichaPhoneApp: App {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active, case .success(let opened) = opening {
+            guard phase == .active else { return }
+            Rendering.sayScreenIsUp()
+            if case .success(let opened) = opening {
                 opened.notifications.clearAndPlanAgain()
             }
         }

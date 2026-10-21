@@ -18,7 +18,8 @@ private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", categ
 /// away the next cards that answers before it sent. It asks Lucas whether
 /// Ficha may send notifications before it plans for the first time, and plans
 /// again whenever the engine's data changes, and when the app asks, as it
-/// comes back to the foreground.
+/// comes back to the foreground. In the app `make render-iphone` opens
+/// (`Rendering`), it neither asks nor plans.
 final class CardNotifications: NSObject {
     /// How long "Bring the next appearance now" waits: enough to lock the
     /// iPhone and watch the notification arrive.
@@ -46,6 +47,8 @@ final class CardNotifications: NSObject {
         // Before the app finishes launching, as iOS asks, so that a button's
         // answer reaches it when iOS launches it in the background for it.
         center.delegate = self
+        // iOS's alert would cover the screen in `make render-iphone`'s pictures.
+        guard !Rendering.isOn else { return }
         let center = center
         let changes = engine.changes()
         Task { [weak self] in

@@ -71,6 +71,11 @@ expect 0 "a fast-forward pull on main passes" protect-main.sh "$(bash_input 'git
 expect 0 "git status on main passes" protect-main.sh "$(bash_input 'git status' "$tmp/repo")"
 
 echo "merge-gate"
+# The fake pull requests. A new one takes the number of the issue that adds
+# it, as 124 for #124, so two branches never add the same one, and another
+# one from the same issue adds two digits, as 12401, which only an issue past
+# #10000 could take too. Those up to 24 are older and were numbered in a row.
+# The numbering is our own.
 echo '{"number":12,"labels":[],"changedFiles":1,"files":[{"path":"App/MenuContent.swift"}]}' >"$tmp/gh/pr-12.json"
 echo '{"number":13,"labels":[{"name":"risk:high"}],"changedFiles":1,"files":[{"path":"App/FichaApp.swift"}]}' >"$tmp/gh/pr-13.json"
 echo '{"number":14,"labels":[],"changedFiles":1,"files":[{"path":"CLAUDE.md"}]}' >"$tmp/gh/pr-14.json"
