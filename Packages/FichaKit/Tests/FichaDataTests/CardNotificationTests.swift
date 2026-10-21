@@ -1,0 +1,155 @@
+import FichaCore
+import FichaData
+import Foundation
+import Testing
+
+/// Tests on answering cards from their card notifications on the iPhone (ADR
+/// 0010), with the default settings: rating a card, or ending a new card's
+/// first view, which moves its appearance on to the next card. They start at
+/// 9 in the morning in Buenos Aires, when active hours start.
+struct CardNotificationTests {
+    let calendar: Calendar
+    let time: ManualTimeSource
+    let engine: Engine
+    let settings = ReviewSettings.defaults
+
+    init() throws {
+        calendar = try buenosAiresCalendar()
+        time = ManualTimeSource(now: try morning(of: 14, in: calendar))
+        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+    }
+
+    // Nothing measures how long Lucas looked at a card notification.
+    @Test(
+        "a rating or a first view from a card notification goes into the review log as an appearance's, with no response time"
+    )
+    func answersFromCardNotificationsGoIntoTheReviewLog() throws {
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 1))
+        _ = try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
+        time.move(to: try at(10, 2))
+        _ = try engine.answerFromNotification(.firstView, of: ubuntu.id, in: appearance, settings: settings)
+
+        #expect(
+            try engine.reviewLog().suffix(2) == [
+                ReviewLogEntry(
+                    cardID: serendipia.id, kind: .review(.good), answeredAt: try at(10, 1), responseTime: nil,
+                    trigger: .appearance),
+                ReviewLogEntry(
+                    cardID: ubuntu.id, kind: .firstView, answeredAt: try at(10, 2), responseTime: nil,
+                    trigger: .appearance),
+            ])
+    }
+
+    @Test("the next card of an appearance is its next one still due, skipping one Lucas rated or buried meanwhile")
+    func theNextCardSkipsOnesRatedOrBuriedMeanwhile() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        let petricor = try meetCard("petricor", dueAt: try at(10, 0))
+        let schadenfreude = try meetCard("Schadenfreude", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+        // In the app, before he answers the first card notification.
+        try engine.review(serendipia, .good)
+        try engine.bury(petricor.id)
+
+        time.move(to: try at(10, 2))
+        let next = try engine.answerFromNotification(.review(.hard), of: ubuntu.id, in: appearance, settings: settings)
+
+        #expect(next == .review(schadenfreude))
+    }
+
+    // A card notification carries its card with its appearance, so only a
+    // mistake could mix them up, and it would log a card that never showed.
+    @Test("an answer to a card its appearance didn't bring is refused, and neither log changes")
+    func anAnswerToACardFromAnotherAppearanceIsRefused() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = NotifiedAppearance(shownAt: try at(10, 0), cardIDs: [ubuntu.id])
+        let reviewLog = try engine.reviewLog()
+
+        time.move(to: try at(10, 1))
+        #expect(throws: EngineError.cardNotInAppearance(serendipia.id)) {
+            try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
+        }
+
+        #expect(try engine.reviewLog() == reviewLog)
+        #expect(try engine.appearanceLog().isEmpty)
+    }
+
+    // Left partway, an appearance is a snooze, as on the Mac (#97).
+    @Test(
+        "an appearance goes into the appearance log from the time it showed, as a snooze until its last card's answer finishes it"
+    )
+    func answeringTheLastCardFinishesTheAppearance() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 1))
+        _ = try engine.answerFromNotification(.review(.good), of: ubuntu.id, in: appearance, settings: settings)
+        let partway = try engine.appearanceLog()
+        time.move(to: try at(10, 3))
+        let next = try engine.answerFromNotification(
+            .review(.again), of: serendipia.id, in: appearance, settings: settings)
+
+        #expect(
+            partway == [
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(10, 0), closedAt: try at(10, 1), outcome: .snoozed)
+            ])
+        #expect(next == nil)
+        #expect(
+            try engine.appearanceLog() == [
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(10, 0), closedAt: try at(10, 3), outcome: .finished)
+            ])
+    }
+
+    // Otherwise, the app would plan the cards left as an appearance right
+    // away, with its sound, over the next card's notification.
+    @Test(
+        "while Lucas goes through an appearance's card notifications, the next appearance waits 30 minutes from his last answer"
+    )
+    func theNextAppearanceWaitsFromTheLastAnswer() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 5))
+        _ = try engine.answerFromNotification(.review(.good), of: ubuntu.id, in: appearance, settings: settings)
+
+        #expect(
+            try engine.upcomingAppearances(settings).first
+                == UpcomingAppearance(time: try at(10, 35), cards: [.review(serendipia)]))
+    }
+
+    /// The next appearance the engine plans, as its card notifications carry
+    /// it.
+    private func nextAppearance() throws -> NotifiedAppearance {
+        let upcoming = try #require(try engine.upcomingAppearances(settings).first)
+        return NotifiedAppearance(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
+    }
+
+    /// Approves a card with this front and meets it, an hour before `due`, so
+    /// that it's due then, after the first step's wait. Each card is met after
+    /// the ones before it, so they come due in order.
+    private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
+        let card = try approveCard(front, in: engine)
+        time.move(to: due - hours(1))
+        try engine.meet(card)
+        return card
+    }
+
+    /// A time of day on October 14, 2026, by the tests' calendar.
+    private func at(_ hour: Int, _ minute: Int) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: hour, minute: minute)))
+    }
+}

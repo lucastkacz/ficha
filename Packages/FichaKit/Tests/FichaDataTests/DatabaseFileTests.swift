@@ -1,8 +1,11 @@
 import FichaCore
-import FichaData
 import Foundation
 import GRDB
 import Testing
+
+// For the schema's migrations, which save databases as older versions of
+// Ficha left them.
+@testable import FichaData
 
 /// Tests on a database file in a data folder, the way the app opens it.
 final class DatabaseFileTests {
@@ -56,6 +59,28 @@ final class DatabaseFileTests {
         }
         #expect(captures == ["serendipia"])
         #expect(!hasCards)
+    }
+
+    // The review log's table is made again for answers from card
+    // notifications, which have no response time.
+    @Test("a database from before card notifications migrates, and its review log keeps every entry as it was")
+    func reviewLogKeepsItsEntriesThroughTheMigration() throws {
+        try saveDatabaseBeforeCardNotifications()
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(
+            try engine.reviewLog() == [
+                ReviewLogEntry(
+                    cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.hard), answeredAt: time.now + hours(1),
+                    responseTime: .milliseconds(2_500), trigger: .appearance),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.good), answeredAt: time.now + hours(2), responseTime: .seconds(4),
+                    trigger: .reviewNow, isAhead: true),
+            ])
     }
 
     // Ficha opens its database every time it starts, and the CLI on every
@@ -122,6 +147,36 @@ final class DatabaseFileTests {
         try firstVersion.migrate(database)
         try database.write { db in
             try db.execute(sql: "INSERT INTO capture (text, createdAt) VALUES (?, ?)", arguments: [text, time.now])
+        }
+        try database.close()
+    }
+
+    /// Saves a database as Ficha left it before card notifications, through
+    /// the schema's migrations up to the one before them, with a card that
+    /// has a first view, a review from an appearance and a review ahead.
+    private func saveDatabaseBeforeCardNotifications() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let database = try DatabasePool(path: path(of: "Ficha.sqlite"))
+        try Schema.migrator.migrate(database, upTo: "v8 held-back appearances")
+        let now = time.now
+        try database.write { db in
+            try db.execute(
+                sql: "INSERT INTO capture (id, text, createdAt, refinedAt) VALUES (1, 'serendipia', ?, ?)",
+                arguments: [now, now])
+            try db.execute(
+                sql: """
+                    INSERT INTO card (id, type, front, back, tags, createdAt, captureId)
+                    VALUES (1, 'word', 'serendipia', 'Un hallazgo valioso por casualidad.', '[]', ?, 1)
+                    """,
+                arguments: [now])
+            try db.execute(
+                sql: """
+                    INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                    VALUES (1, 'firstView', NULL, ?, 8.25, 'reviewNow', 0),
+                        (1, 'review', 'hard', ?, 2.5, 'appearance', 0),
+                        (1, 'review', 'good', ?, 4, 'reviewNow', 1)
+                    """,
+                arguments: [now, now + hours(1), now + hours(2)])
         }
         try database.close()
     }

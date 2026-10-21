@@ -164,6 +164,37 @@ extension ReviewSettings {
         return plan
     }
 
+    /// The card that comes after `cardID` in an appearance on the iPhone,
+    /// which brought the cards in `appearance`, by id in the order they show,
+    /// once Lucas answered it from its card notification (ADR 0010): the first
+    /// of the cards after it that he can still answer at `now`, out of the
+    /// cards in his reviews, neither flagged nor buried, by id, and the whole
+    /// review log, in the order it was written. As in any appearance, a new
+    /// card comes for its first view, and one due within `lookAhead` for a
+    /// review, so one he rated meanwhile, or that left his reviews, is
+    /// skipped. None comes once none is left.
+    public func nextCard(
+        after cardID: Int64,
+        in appearance: [Int64],
+        cardIDs: [Int64],
+        log: [ReviewLogEntry],
+        now: Date
+    ) throws(UnexpectedReviewLog) -> PanelCardIDs {
+        let inReviews = Set(cardIDs)
+        let later = appearance.drop { $0 != cardID }.dropFirst().filter(inReviews.contains)
+        for (id, standing) in try ladder.standings(of: later, after: log) {
+            switch standing {
+            case .new:
+                return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: id)
+            case .onLadder where standing.isDue(at: now.adding(lookAhead)):
+                return PanelCardIDs(reviews: [id], reviewsAhead: [], firstView: nil)
+            case .onLadder:
+                continue
+            }
+        }
+        return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: nil)
+    }
+
     /// When active hours start after `time`, a time outside them: the start
     /// of the next hour within them, by `calendar`'s clock, or nil when none
     /// of a day's hours is.

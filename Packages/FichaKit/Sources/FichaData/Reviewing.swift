@@ -34,23 +34,10 @@ extension Engine {
         reviewingAhead: Bool = false
     ) throws(EngineError) {
         let answeredAt = time.now
-        let lookAhead = trigger.lookAhead(in: settings)
         try write { db in
-            _ = try cardInReviews(cardID, in: db)
-            let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
-            let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
-            if !isAhead {
-                do throws(RefusedAnswer) {
-                    try standing.check(kind, at: answeredAt, lookingAhead: lookAhead)
-                } catch {
-                    throw EngineError(refused: error, cardID: cardID)
-                }
-            }
-            try insert(
-                ReviewLogEntry(
-                    cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
-                    isAhead: isAhead),
-                in: db)
+            try recordAnswer(
+                kind, of: cardID, at: answeredAt, responseTime: responseTime, trigger: trigger, settings: settings,
+                reviewingAhead: reviewingAhead, in: db)
         }
     }
 
@@ -134,6 +121,37 @@ private func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [Re
         .map(ReviewLogEntry.init(row:))
 }
 
+/// Adds Lucas's answer to a card in his reviews, given at `answeredAt`, at the
+/// end of the review log, as `Engine.record` says, with how long he took when
+/// something measured it, or throws when the card can't take the answer.
+func recordAnswer(
+    _ kind: ReviewLogEntry.Kind,
+    of cardID: Int64,
+    at answeredAt: Date,
+    responseTime: Duration?,
+    trigger: Trigger,
+    settings: ReviewSettings,
+    reviewingAhead: Bool,
+    in db: Database
+) throws {
+    let lookAhead = trigger.lookAhead(in: settings)
+    _ = try cardInReviews(cardID, in: db)
+    let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
+    let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
+    if !isAhead {
+        do throws(RefusedAnswer) {
+            try standing.check(kind, at: answeredAt, lookingAhead: lookAhead)
+        } catch {
+            throw EngineError(refused: error, cardID: cardID)
+        }
+    }
+    try insert(
+        ReviewLogEntry(
+            cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
+            isAhead: isAhead),
+        in: db)
+}
+
 /// Adds an entry at the end of the review log.
 private func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let (kind, rating) = entry.kind.columns
@@ -143,8 +161,8 @@ private func insert(_ entry: ReviewLogEntry, in db: Database) throws {
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
-            entry.cardID, kind, rating, entry.answeredAt, entry.responseTime / .seconds(1), entry.trigger.rawValue,
-            entry.isAhead,
+            entry.cardID, kind, rating, entry.answeredAt, entry.responseTime.map { $0 / .seconds(1) },
+            entry.trigger.rawValue, entry.isAhead,
         ]
     )
 }
@@ -161,12 +179,12 @@ extension ReviewLogEntry {
         guard let trigger = Trigger(rawValue: triggerName) else {
             throw unreadable("Card \(cardID) has a review log entry with an unknown trigger")
         }
-        let responseTime: Double = try row.decode(forColumn: "responseTime")
+        let responseTime: Double? = try row.decode(forColumn: "responseTime")
         self.init(
             cardID: cardID,
             kind: kind,
             answeredAt: try row.decode(forColumn: "answeredAt"),
-            responseTime: .seconds(responseTime),
+            responseTime: responseTime.map { .seconds($0) },
             trigger: trigger,
             isAhead: try row.decode(forColumn: "isAhead")
         )
