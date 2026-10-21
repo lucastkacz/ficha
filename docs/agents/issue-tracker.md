@@ -5,10 +5,12 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Create a detour**: an issue that comes up while building another, such as a retro's environment changes or a tool a ticket needs, is a detour. Its body starts with the issue it came up in and the spec being built at the time, if any, so GitHub lists it in the spec's timeline: "Came up in the retro of #127, a detour from the Cards window (#87)." A ticket that waits for a detour gets both GitHub's native link, as **Blocking** below shows, and a line in its "Blocked by" section, since **Read an issue** doesn't show the links.
 - **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments`.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Make an issue a sub-issue of a parent**: `gh issue create --parent <parent> ...`, or `gh issue edit <parent> --add-sub-issue <child>` afterwards (`gh` 2.94+). Older `gh`: `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>` (database id, as in **Blocking** below). Without sub-issues, put `Part of #<parent>` at the top of the child body.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
+- **Leave work to another issue**: when an issue, or its PR, leaves part of its work to another open issue, a comment on the other issue says what is left to it and why: the agent that builds the other issue reads only its body and comments (**Read an issue**).
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: an issue closes through the pull request that resolves it: the PR body says `Closes #<n>`, and GitHub closes the issue on merge. Use `gh issue close <number> --comment "..."` only for an issue no PR resolves, such as a duplicate or `wontfix`.
 

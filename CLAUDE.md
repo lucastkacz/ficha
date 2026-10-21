@@ -39,7 +39,7 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 | Lucas didn't follow a message | `/wait-what` |
 | The work moves to another directory or harness, or a side task should split off mid-phase | `/handoff` |
 | Lucas isn't sure what comes next | `/ask-matt` |
-| The repo's skill configuration is missing or outdated | `/setup-matt-pocock-skills` |
+| The repo's skill configuration is missing or outdated | `/setup-matt-pocock-skills`, keeping our own lines in `docs/agents/` and under `## Agent skills`, which its templates lack |
 
 Not used here: `/grill-me` (`/grill-with-docs` does the same and keeps the glossary and the ADRs), `/teach` (Ficha teaches in the app, not in the repo) and `/to-questionnaire` (there's no one else to send questions to). Worth watching in Matt's beta, not installed yet: `/chief-of-staff` (one long goal in one session, worked through subagents; it also suggests recurring schedules, which Ficha doesn't run).
 
@@ -87,7 +87,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 ### Issue tracker
 
-Issues and specs live in GitHub Issues (`lucastkacz/ficha`), through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues and specs live in GitHub Issues (`lucastkacz/ficha`), through the `gh` CLI. Before reading or creating an issue, or leaving work to another issue, read `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
