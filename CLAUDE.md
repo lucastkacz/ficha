@@ -87,7 +87,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 ### Issue tracker
 
-Issues and specs live in GitHub Issues (`lucastkacz/ficha`), through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues and specs live in GitHub Issues (`lucastkacz/ficha`), through the `gh` CLI. Before creating an issue or leaving work to another, read `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
