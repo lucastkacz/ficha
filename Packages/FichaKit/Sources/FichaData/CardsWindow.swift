@@ -107,6 +107,24 @@ public struct InboxRow: Sendable, Equatable, Identifiable {
         case .flaggedCard(let row): row.card.front
         }
     }
+
+    /// The capture it is, or the expansion's, or nil for a flagged card.
+    public var capture: Capture? {
+        switch item {
+        case .capture(let capture): capture
+        case .expansion(let expansion): expansion.capture
+        case .flaggedCard: nil
+        }
+    }
+
+    /// The flagged card it is, with where it stands, or nil for a capture or
+    /// an expansion.
+    public var flaggedCard: CardRow? {
+        guard case .flaggedCard(let row) = item else {
+            return nil
+        }
+        return row
+    }
 }
 
 extension Engine {
@@ -131,16 +149,17 @@ extension Engine {
         let now = time.now
         return try read { db in
             let captures = try capturesWaiting(in: db).filter { $0.matches(search) }.map { capture in
-                guard let cardID = capture.expandsCardID else {
-                    return InboxRow(item: .capture(capture), addedAt: capture.createdAt)
-                }
-                return InboxRow(
-                    item: .expansion(Expansion(capture: capture, card: try existingCard(cardID, in: db))),
+                InboxRow(
+                    item: try capture.expansion(in: db).map(InboxRow.Item.expansion) ?? .capture(capture),
                     addedAt: capture.createdAt)
             }
             let flaggedCards = try FichaData.cardRows(in: .flagged, matching: search, on: ladder, at: now, in: db)
-                .compactMap { row in
-                    row.card.flag.map { InboxRow(item: .flaggedCard(row), addedAt: $0.flaggedAt) }
+                .map { row in
+                    // Flagged lists flagged cards only.
+                    guard let flag = row.card.flag else {
+                        throw EngineError.cardNotFlagged(row.id)
+                    }
+                    return InboxRow(item: .flaggedCard(row), addedAt: flag.flaggedAt)
                 }
             return (captures + flaggedCards).sorted { $0.addedAt > $1.addedAt }
         }

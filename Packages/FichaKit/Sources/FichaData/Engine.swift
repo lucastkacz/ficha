@@ -99,9 +99,7 @@ public struct Engine: Sendable {
             let captures = try capturesWaiting(in: db)
             return Inbox(
                 captures: captures.filter { $0.expandsCardID == nil },
-                expansions: try captures.compactMap { capture in
-                    try capture.expandsCardID.map { Expansion(capture: capture, card: try existingCard($0, in: db)) }
-                },
+                expansions: try captures.compactMap { try $0.expansion(in: db) },
                 flaggedCards: try flaggedCardsInInbox.order(Column("flaggedAt"), Column("id")).fetchAll(db)
                     .map(Card.init(row:))
             )

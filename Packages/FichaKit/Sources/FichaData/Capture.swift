@@ -84,3 +84,11 @@ func repeated(by text: String, in db: Database) throws -> Repeated? {
 func capturesWaiting(in db: Database) throws -> [Capture] {
     try capturesInInbox.order(Column("id")).fetchAll(db).map(Capture.init(row:))
 }
+
+extension Capture {
+    /// The capture as an expansion, with the card it expands as it is now, or
+    /// nil when it expands no card.
+    func expansion(in db: Database) throws -> Expansion? {
+        try expandsCardID.map { Expansion(capture: self, card: try existingCard($0, in: db)) }
+    }
+}

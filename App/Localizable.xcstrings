@@ -242,7 +242,7 @@
 
     },
     "Capture" : {
-      "comment" : "In the Cards window's inbox, the kind of a row: a capture.\nThe capture window's title."
+      "comment" : "The capture window's title."
     },
     "Capture shortcut" : {
 
@@ -402,10 +402,10 @@
 
     },
     "Edit" : {
-      "comment" : "A button of the Cards window that turns the card's detail into fields to edit it."
+      "comment" : "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
     },
     "Edit (⌘L)" : {
-      "comment" : "The tooltip of the Cards window's button that edits the card."
+      "comment" : "The tooltip of the Cards window's button that edits the card or the capture."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -418,9 +418,6 @@
     },
     "Expands this card" : {
       "comment" : "In the Cards window's detail of an expansion, above the card it's attached to."
-    },
-    "Expansion" : {
-      "comment" : "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats."
     },
     "Find" : {
       "comment" : "A hidden button of the Cards window: ⌘F, which goes to the search field."
@@ -444,7 +441,7 @@
       "comment" : "The tooltip of the button that flags the card, with its key."
     },
     "Flagged" : {
-      "comment" : "An item of the Cards window's sidebar: the flagged cards.\nIn the Cards window's inbox, the kind of a row: a flagged card.\nThe flag icon beside a flagged card, in the Cards window."
+      "comment" : "An item of the Cards window's sidebar: the flagged cards.\nThe flag icon beside a flagged card, in the Cards window."
     },
     "Flip" : {
 
@@ -490,6 +487,42 @@
     },
     "Inbox" : {
       "comment" : "An item of the Cards window's sidebar: what waits to be refined."
+    },
+    "inbox-kind.capture" : {
+      "comment" : "In the Cards window's inbox, the kind of a row: a capture.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Capture"
+          }
+        }
+      }
+    },
+    "inbox-kind.expansion" : {
+      "comment" : "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Expansion"
+          }
+        }
+      }
+    },
+    "inbox-kind.flagged" : {
+      "comment" : "In the Cards window's inbox, the kind of a row: a flagged card.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Flagged"
+          }
+        }
+      }
     },
     "It leaves the inbox without becoming cards, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it discards a capture."
@@ -765,8 +798,11 @@
     "Then wait" : {
       "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
     },
-    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so nothing was saved. The window now shows the inbox as it is." : {
-      "comment" : "An alert's message in the Cards window, under what couldn't be done with the selected capture."
+    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so nothing was saved. To keep what you typed, copy it before you cancel." : {
+      "comment" : "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
+    },
+    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so there's nothing to discard. The window now shows the inbox as it is." : {
+      "comment" : "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
     },
     "This is already in the inbox" : {
 

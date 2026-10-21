@@ -17,7 +17,7 @@ import SwiftUI
 struct CardsView: View {
     let model: AppModel
     /// What the table lists, or why it couldn't be read.
-    @State private var rows: Result<Rows, EngineError>?
+    @State private var listing: Result<Listing, EngineError>?
     /// The tags the sidebar offers: those of the cards that aren't buried.
     @State private var tags: [String] = []
     /// The engine's time when the cards were read, which the Due column
@@ -156,12 +156,12 @@ struct CardsView: View {
             }
             switch sidebarItem {
             case .cards(let group):
-                rows = .success(.cards(try model.cardRows(in: group, matching: search)))
+                listing = .success(.cards(try model.cardRows(in: group, matching: search)))
             case .inbox:
-                rows = .success(.inbox(try model.inboxRows(matching: search)))
+                listing = .success(.inbox(try model.inboxRows(matching: search)))
             }
         } catch {
-            rows = .failure(error)
+            listing = .failure(error)
         }
     }
 
@@ -256,7 +256,7 @@ struct CardsView: View {
 
     @ViewBuilder
     private var table: some View {
-        switch rows {
+        switch listing {
         case .success(.cards(let rows)):
             cardTable(rows)
         case .success(.inbox(let rows)):
@@ -316,7 +316,7 @@ struct CardsView: View {
                     comment: "A column of the Cards window's inbox: a capture's text, or a flagged card's front."),
                 sortUsing: InboxRowOrder(.text)
             ) { row in
-                if case .flaggedCard(let cardRow) = row.item {
+                if let cardRow = row.flaggedCard {
                     FrontCell(card: cardRow.card)
                 } else {
                     Text(row.text)
@@ -360,14 +360,11 @@ struct CardsView: View {
     /// action a keyboard shortcut had when its button first showed, so ⌘E
     /// would bury the cards selected back then.
     private var selectedRows: [CardRow] {
-        switch rows {
+        switch listing {
         case .success(.cards(let rows)):
             return rows.filter { selection.contains($0.id) }
         case .success(.inbox):
-            guard case .flaggedCard(let row) = selectedInboxRow?.item else {
-                return []
-            }
-            return [row]
+            return selectedInboxRow?.flaggedCard.map { [$0] } ?? []
         case .failure, nil:
             return []
         }
@@ -375,20 +372,10 @@ struct CardsView: View {
 
     /// The row Lucas selected in the inbox, while the table lists it.
     private var selectedInboxRow: InboxRow? {
-        guard case .success(.inbox(let rows)) = rows else {
+        guard case .success(.inbox(let rows)) = listing else {
             return nil
         }
         return rows.first { $0.id == inboxSelection }
-    }
-
-    /// The capture Lucas selected in the inbox, or the expansion's, while the
-    /// table lists it.
-    private var selectedCapture: Capture? {
-        switch selectedInboxRow?.item {
-        case .capture(let capture): capture
-        case .expansion(let expansion): expansion.capture
-        case .flaggedCard, nil: nil
-        }
     }
 
     @ViewBuilder
@@ -413,7 +400,7 @@ struct CardsView: View {
                 stopEditing()
             }
         case nil:
-            if let row = selectedInboxRow, let capture = selectedCapture {
+            if let row = selectedInboxRow, let capture = row.capture {
                 CaptureDetail(capture: capture, kind: row.kindName, expandedCard: row.expandedCard)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         captureActions
@@ -449,13 +436,16 @@ struct CardsView: View {
         Button(
             String(
                 localized: "Edit",
-                comment: "A button of the Cards window that turns the card's detail into fields to edit it."
+                comment:
+                    "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
             )
         ) {
             startEditing()
         }
         .keyboardShortcut("l", modifiers: .command)
-        .help(Text("Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card."))
+        .help(
+            Text(
+                "Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card or the capture."))
     }
 
     /// What Lucas can do with the capture selected in the inbox, at the foot
@@ -556,7 +546,7 @@ struct CardsView: View {
     /// Turns the detail into fields to edit the capture selected in the inbox,
     /// or the selected card, while it's the only one selected.
     private func startEditing() {
-        if let capture = selectedCapture {
+        if let capture = selectedInboxRow?.capture {
             editing = .capture(capture)
         } else if let row = singleSelectedRow {
             editing = .card(row.card)
@@ -565,7 +555,7 @@ struct CardsView: View {
 
     /// Asks whether to discard the capture selected in the inbox.
     private func startDiscarding() {
-        guard let capture = selectedCapture else { return }
+        guard let capture = selectedInboxRow?.capture else { return }
         discarding = capture
     }
 
@@ -577,7 +567,15 @@ struct CardsView: View {
             failure = Failure(
                 title: LocalizedStringResource(
                     "Couldn't discard the capture", comment: "An alert's title in the Cards window."),
-                message: error.messageForCaptureInCardsWindow)
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
+                            refine session, so there's nothing to discard. The window now shows the inbox as it is.
+                            """,
+                        comment:
+                            "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
+                    )))
         }
     }
 
@@ -628,7 +626,7 @@ private enum SidebarItem: Hashable {
 
 /// What the Cards window's table lists: the cards of a group, or what waits
 /// in the inbox.
-private enum Rows {
+private enum Listing {
     case cards([CardRow])
     case inbox([InboxRow])
 }
@@ -676,21 +674,15 @@ extension EngineError {
     }
 
     /// Why an action on a capture in the Cards window's inbox failed, as its
-    /// alert says it. An error that says the capture isn't in the inbox means
-    /// a refine session took it out meanwhile, since the window offers its
-    /// actions only to what waits there. The engine's message for it names
-    /// the capture by its id, which the window doesn't show.
-    fileprivate var messageForCaptureInCardsWindow: String {
+    /// alert says it: `message` when the error says the capture isn't in the
+    /// inbox, which means a refine session took it out meanwhile, since the
+    /// window offers its actions only to what waits there. The engine's
+    /// message for it names the capture by its id, which the window doesn't
+    /// show.
+    fileprivate func messageForCaptureInCardsWindow(ifItLeft message: String) -> String {
         switch self {
         case .captureNotInInbox:
-            String(
-                localized: """
-                    This capture left the inbox outside this window meanwhile, approved or discarded in a refine \
-                    session, so nothing was saved. The window now shows the inbox as it is.
-                    """,
-                comment:
-                    "An alert's message in the Cards window, under what couldn't be done with the selected capture."
-            )
+            message
         case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
             .cardNotBuried, .cannotUndo, .unreadableReviewLog, .storage:
@@ -911,8 +903,7 @@ extension CardRow {
 nonisolated private struct InboxRowOrder: ColumnOrder {
     enum Column: Hashable {
         case text
-        /// Captures first, then expansions, then flagged cards, as the Kind
-        /// column names them.
+        /// By what the Kind column says, alphabetically.
         case kind
         case added
     }
@@ -928,33 +919,31 @@ nonisolated private struct InboxRowOrder: ColumnOrder {
     func compare(_ lhs: InboxRow, _ rhs: InboxRow) -> ComparisonResult {
         switch column {
         case .text: ordered(lhs.text.localizedStandardCompare(rhs.text))
-        case .kind: ordered(lhs.kindRank, rhs.kindRank)
+        case .kind: ordered(lhs.kindName.localizedStandardCompare(rhs.kindName))
         case .added: ordered(lhs.addedAt, rhs.addedAt)
         }
     }
 }
 
 extension InboxRow {
-    /// What kind of row it is, as the inbox's Kind column says it.
-    fileprivate var kindName: String {
+    /// What kind of row it is, as the inbox's Kind column says it. Each kind
+    /// has a key of its own, since "Capture" is also the capture window's
+    /// title, and "Flagged" the sidebar's group, which a translation may word
+    /// apart.
+    nonisolated fileprivate var kindName: String {
         switch item {
         case .capture:
-            String(localized: "Capture", comment: "In the Cards window's inbox, the kind of a row: a capture.")
+            String(
+                localized: "inbox-kind.capture", defaultValue: "Capture",
+                comment: "In the Cards window's inbox, the kind of a row: a capture.")
         case .expansion:
             String(
-                localized: "Expansion",
+                localized: "inbox-kind.expansion", defaultValue: "Expansion",
                 comment: "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.")
         case .flaggedCard:
-            String(localized: "Flagged", comment: "In the Cards window's inbox, the kind of a row: a flagged card.")
-        }
-    }
-
-    /// Where its kind goes when the inbox is ordered by Kind.
-    nonisolated fileprivate var kindRank: Int {
-        switch item {
-        case .capture: 0
-        case .expansion: 1
-        case .flaggedCard: 2
+            String(
+                localized: "inbox-kind.flagged", defaultValue: "Flagged",
+                comment: "In the Cards window's inbox, the kind of a row: a flagged card.")
         }
     }
 
@@ -1292,13 +1281,7 @@ private struct CardEditor: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            ActionBar {
-                Spacer()
-                Button("Cancel", action: close)
-                    .keyboardShortcut(isSearching ? nil : .cancelAction)
-                Button("Save", action: submit)
-                    .keyboardShortcut(isSearching ? nil : .defaultAction)
-            }
+            EditorActions(isSearching: isSearching, cancel: close, save: submit)
         }
         .onAppear {
             isFrontFocused = true
@@ -1456,13 +1439,7 @@ private struct CaptureEditor: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            ActionBar {
-                Spacer()
-                Button("Cancel", action: close)
-                    .keyboardShortcut(isSearching ? nil : .cancelAction)
-                Button("Save", action: submit)
-                    .keyboardShortcut(isSearching ? nil : .defaultAction)
-            }
+            EditorActions(isSearching: isSearching, cancel: close, save: submit)
         }
         .onAppear {
             isTextFocused = true
@@ -1533,7 +1510,15 @@ private struct CaptureEditor: View {
             failure = Failure(
                 title: LocalizedStringResource(
                     "Couldn't save the capture", comment: "An alert's title in the Cards window."),
-                message: error.messageForCaptureInCardsWindow)
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
+                            refine session, so nothing was saved. To keep what you typed, copy it before you cancel.
+                            """,
+                        comment:
+                            "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
+                    )))
         }
     }
 }
@@ -1543,6 +1528,26 @@ private func missing(_ text: Text) -> some View {
     text
         .font(.caption)
         .foregroundStyle(.red)
+}
+
+/// Cancel and Save, at the foot of an editor: Escape cancels and Return saves,
+/// unless Lucas is in the window's search field, which then keeps them, so
+/// that Escape there clears the search and leaves his edit alone.
+private struct EditorActions: View {
+    /// Whether Lucas is in the window's search field.
+    let isSearching: Bool
+    let cancel: () -> Void
+    let save: () -> Void
+
+    var body: some View {
+        ActionBar {
+            Spacer()
+            Button("Cancel", action: cancel)
+                .keyboardShortcut(isSearching ? nil : .cancelAction)
+            Button("Save", action: save)
+                .keyboardShortcut(isSearching ? nil : .defaultAction)
+        }
+    }
 }
 
 /// The bar at the foot of the detail, always in sight, with what Lucas can
