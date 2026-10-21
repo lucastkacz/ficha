@@ -1,6 +1,6 @@
 # Developing Ficha
 
-How to build and run Ficha, try a change with Ficha Dev, put Ficha Dev on the iPhone, keep each app's texts in its String Catalog, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
+How to build and run Ficha, try a change with Ficha Dev, put Ficha Dev on the iPhone and watch it in the simulator, keep each app's texts in its String Catalog, refine cards with Claude, use the `ficha` command, and draw the app's windows as pictures. The [README](../README.md) explains the app itself.
 
 ## Run it
 
@@ -37,6 +37,22 @@ make install-iphone   # builds Ficha Dev for the iPhone paired with this Mac and
 After the first install, trust the developer on the iPhone, in Settings › General › VPN & Device Management, before opening it. With `iPhone/Local.xcconfig` written, Xcode's Run button signs it too, with the `iPhone` scheme.
 
 A free Apple ID's apps run for 7 days. After that, iOS won't open Ficha Dev until you install it again, the same way, which keeps its cards. It also allows 3 such apps on the iPhone, and 10 App IDs a week: Ficha Dev takes one of each.
+
+### In the simulator
+
+After `make build-iphone`, these commands install Ficha Dev in the simulator that's running, open it, and show what it logged in the last 5 minutes:
+
+```bash
+xcrun simctl install booted ".build/DerivedData/Build/Products/Debug-iphonesimulator/Ficha Dev.app"
+xcrun simctl launch booted com.lucastkacz.ficha.dev
+xcrun simctl spawn booted log show --last 5m --info --predicate 'subsystem == "com.lucastkacz.ficha"'
+```
+
+- `booted` is the simulator that's running, which the Simulator app boots. With more than one running, simctl picks one of them, so name the one you want by its UDID instead, from `xcrun simctl list devices booted`.
+- Without `--info`, the log leaves out the app's info lines, such as how many appearances it planned. Its first line, `getpwuid_r did not find a match for uid 501`, comes from the simulator and is harmless.
+- The same command with `--predicate 'process == "usernotificationsd"'` shows iOS's side of the card notifications, among every app's. Each of Ficha Dev's requests that reached iOS is a `Forwarding addRequest: com.lucastkacz.ficha.dev` line, so `| grep -c 'Forwarding addRequest: com.lucastkacz.ficha.dev'` counts the notifications the plans scheduled, which should match the app's "Planned … appearances" lines.
+- Locking the simulator, with ⌘L, makes the app active for a moment before it goes to the background, so what it does as it becomes active runs then too, such as planning again.
+- Claude's Bash commands can't reach the app's data in the simulator. Its folder there has `Application Support/Ficha Dev/` in its path, and so has the name of the notification the engine posts when the database changes, which `notifyutil` would post to make the app plan again. `.claude/settings.json` denies any Bash command with `Application Support/Ficha` in it, to keep Lucas's cards out of reach (CLAUDE.md), and that covers these too. That's on purpose: to watch the app react to a change in its data, use one of its own debug tools, such as "Load the sample cards again", which [#107](https://github.com/lucastkacz/ficha/issues/107) adds.
 
 ## The apps' texts
 

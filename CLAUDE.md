@@ -69,7 +69,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 ## Commands
 
 - `make check`: everything CI runs, and warnings are errors. The `Makefile`'s `check` target lists its steps.
-- `make fmt`, `make test`, `make build`, `make build-iphone` (for the simulator), `make run` (build and open the app), `make bootstrap` (installs the tools the build and the lint need).
+- `make fmt`, `make test`, `make build`, `make build-iphone` (for the simulator: to run it there, read its logs or reach its data, see "In the simulator" in `docs/development.md`), `make run` (build and open the app), `make bootstrap` (installs the tools the build and the lint need).
 - `make render ARGS="cards"`: an app window as a PNG, drawn below the desktop picture, so it shows nothing and takes neither the mouse nor the keyboard, and needs no OK from Lucas. "A window's picture" in `docs/development.md` explains it.
 - `make install`: copies a Release build to `/Applications`. It asks Lucas first.
 - `make install-iphone`: builds Ficha Dev for Lucas's connected iPhone and installs it, as `docs/development.md` explains. It asks Lucas first too.
