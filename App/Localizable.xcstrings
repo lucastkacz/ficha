@@ -562,6 +562,29 @@
     "Once you're idle" : {
       "comment" : "Settings: the review panel takes the keyboard once Lucas is idle."
     },
+    "One of the %lld cards changed outside this window meanwhile, in the review panel or a refine session, so nothing was saved. The window now shows them as they are: check them and try again." : {
+      "comment" : "An alert's message in the Cards window, under what couldn't be done with the selected cards.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The card changed outside this window meanwhile, in the review panel or a refine session, so nothing was saved. The window now shows it as it is: check it and try again."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "One of the %lld cards changed outside this window meanwhile, in the review panel or a refine session, so nothing was saved. The window now shows them as they are: check them and try again."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Open Login Items" : {
 
     },

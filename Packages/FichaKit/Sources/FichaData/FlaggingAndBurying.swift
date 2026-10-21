@@ -44,9 +44,9 @@ extension Engine {
         }
     }
 
-    /// Buries several cards in one write, as `bury(_:)` buries one, or none
-    /// of them when one is already buried or doesn't exist. Returns the
-    /// cards, in the order Lucas approved them.
+    /// Buries the cards with these ids in one write, each as burying one card
+    /// does, or none of them when one is already buried or doesn't exist.
+    /// Returns the cards, in the order Lucas approved them.
     @discardableResult
     public func bury(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         let buriedAt = time.now
@@ -65,9 +65,9 @@ extension Engine {
         }
     }
 
-    /// Unburies several cards in one write, as `unbury(_:)` unburies one, or
-    /// none of them when one isn't buried or doesn't exist. Returns the cards,
-    /// in the order Lucas approved them.
+    /// Unburies the cards with these ids in one write, each as unburying one
+    /// card does, or none of them when one isn't buried or doesn't exist.
+    /// Returns the cards, in the order Lucas approved them.
     @discardableResult
     public func unbury(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         try write { db in

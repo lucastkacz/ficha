@@ -237,7 +237,7 @@ struct CardsView: View {
     private var detail: some View {
         let selected = selectedRows
         if selected.count > 1 {
-            severalSelected(selected)
+            selectionSummary(selected)
         } else if let row = selected.first {
             CardDetail(row: row, now: now)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -280,7 +280,7 @@ struct CardsView: View {
     /// What the detail says when Lucas selected several cards: how many, with
     /// Bury or Unbury when it works on all of them. No sidebar item lists
     /// buried cards with others, so one of the two always does.
-    private func severalSelected(_ rows: [CardRow]) -> some View {
+    private func selectionSummary(_ rows: [CardRow]) -> some View {
         ContentUnavailableView {
             Label(
                 String(
@@ -341,7 +341,7 @@ struct CardsView: View {
             failure = Failure(
                 title: LocalizedStringResource(
                     "Couldn't bury \(rows.count) cards", comment: "An alert's title in the Cards window."),
-                error: error)
+                message: error.messageInCardsWindow(actingOn: rows.count))
         }
     }
 
@@ -356,7 +356,7 @@ struct CardsView: View {
             failure = Failure(
                 title: LocalizedStringResource(
                     "Couldn't unbury \(rows.count) cards", comment: "An alert's title in the Cards window."),
-                error: error)
+                message: error.messageInCardsWindow(actingOn: rows.count))
         }
     }
 }
@@ -370,6 +370,31 @@ extension [CardRow] {
     /// Whether Unbury works on all these cards: every one of them is buried.
     fileprivate var canBeUnburied: Bool {
         allSatisfy { $0.card.buriedAt != nil }
+    }
+}
+
+extension EngineError {
+    /// Why an action on `count` cards in the Cards window failed, as its alert
+    /// says it. An error that says a card isn't as the window showed it means
+    /// the card changed outside the window meanwhile, since the window offers
+    /// each action only to the cards it works on. The engine's message for it
+    /// names the card by its id, which the window doesn't show, and says what
+    /// to do in the CLI or the review panel.
+    fileprivate func messageInCardsWindow(actingOn count: Int) -> String {
+        switch self {
+        case .cardNotFound, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried:
+            String(
+                localized: """
+                    One of the \(count) cards changed outside this window meanwhile, in the review panel or a \
+                    refine session, so nothing was saved. The window now shows them as they are: check them and \
+                    try again.
+                    """,
+                comment: "An alert's message in the Cards window, under what couldn't be done with the selected cards."
+            )
+        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
+            .cardStillNew, .cardNotDue, .cannotUndo, .unreadableReviewLog, .storage:
+            localizedDescription
+        }
     }
 }
 
@@ -438,7 +463,7 @@ private struct FlagSheet: View {
             try flag(note)
             dismiss()
         } catch {
-            failure = Failure(title: "Couldn't flag the card", error: error)
+            failure = Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
         }
     }
 }
