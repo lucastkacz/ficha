@@ -392,7 +392,7 @@ extension EngineError {
                 comment: "An alert's message in the Cards window, under what couldn't be done with the selected cards."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cannotUndo, .unreadableReviewLog, .storage:
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cannotUndo, .unreadableReviewLog, .storage:
             localizedDescription
         }
     }
