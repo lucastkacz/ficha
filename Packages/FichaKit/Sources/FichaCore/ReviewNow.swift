@@ -41,11 +41,17 @@ extension ReviewSettings {
     ) -> PanelCardIDs {
         let sorted = SortedStandings(standings, dueBy: horizon)
         let reviews = Array(sorted.due.prefix(cardsPerAppearance))
-        let hasRoom = reviews.count < cardsPerAppearance
         let metToday = log.count { $0.kind == .firstView && calendar.isDate($0.answeredAt, inSameDayAs: now) }
-        let mayMeetMore = metToday < newCardsPerDay
         return PanelCardIDs(
-            reviews: reviews, reviewsAhead: [], firstView: hasRoom && mayMeetMore ? sorted.new.first : nil)
+            reviews: reviews, reviewsAhead: [],
+            firstView: bringsNewCard(after: reviews.count, metToday: metToday) ? sorted.new.first : nil)
+    }
+
+    /// Whether the review panel brings a new card after `reviews` cards to
+    /// review, once Lucas met `metToday` new cards today: when there's room for
+    /// it (ADR 0003) and he hasn't met `newCardsPerDay`.
+    func bringsNewCard(after reviews: Int, metToday: Int) -> Bool {
+        reviews < cardsPerAppearance && metToday < newCardsPerDay
     }
 
     /// The cards "See more" brings at `now`, once Lucas went through the

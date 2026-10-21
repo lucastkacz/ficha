@@ -18,7 +18,7 @@ extension Engine {
     /// again while a suppression, or the wait after one, goes on, it's the
     /// same appearance. Its hold ends, in its entry, at the first check that
     /// decides anything else: the panel shows, or it can't come any more.
-    public func checkAppearance(_ settings: ReviewSettings, mac: some MacSignals) throws(EngineError)
+    public func checkAppearance(_ settings: ReviewSettings, mac: some DeviceSignals) throws(EngineError)
         -> AppearanceDecision
     {
         let decision = try decideAppearance(settings, mac: mac)
@@ -28,19 +28,15 @@ extension Engine {
 
     /// Whether the review panel shows up on its own now, as
     /// `checkAppearance` says.
-    private func decideAppearance(_ settings: ReviewSettings, mac: some MacSignals) throws(EngineError)
+    private func decideAppearance(_ settings: ReviewSettings, mac: some DeviceSignals) throws(EngineError)
         -> AppearanceDecision
     {
         let now = time.now
         return try read { db in
             let cards = try cardsInReviews(in: db)
-            // A held-back appearance never showed, so it never closed.
-            let lastClosing = try Date.fetchOne(
-                db, sql: "SELECT closedAt FROM appearanceLog WHERE outcome != ? ORDER BY id DESC LIMIT 1",
-                arguments: [OutcomeName.heldBack.rawValue])
             switch try settings.appearance(
-                cardIDs: cards.map(\.id), log: logEntries(in: db), lastClosing: lastClosing, mac: mac, now: now,
-                calendar: calendar)
+                cardIDs: cards.map(\.id), log: logEntries(in: db), lastClosing: lastClosing(in: db), signals: mac,
+                now: now, calendar: calendar)
             {
             case .show(let picked):
                 return .show(try panelCards(picked, from: cards))
@@ -99,6 +95,14 @@ extension Engine {
             return
         }
     }
+}
+
+/// When the last appearance or review now closed, if any did, by the
+/// appearance log. A held-back appearance never showed, so it never closed.
+func lastClosing(in db: Database) throws -> Date? {
+    try Date.fetchOne(
+        db, sql: "SELECT closedAt FROM appearanceLog WHERE outcome != ? ORDER BY id DESC LIMIT 1",
+        arguments: [OutcomeName.heldBack.rawValue])
 }
 
 /// The appearance log's hold that's on, by its entry's id, if one is: the

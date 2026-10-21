@@ -42,6 +42,13 @@ public enum NoAppearance: Sendable, Equatable {
     case tooSoonAfterSuppression(until: Date)
 }
 
+/// An appearance planned ahead, as the iPhone schedules it (ADR 0010): when it
+/// comes, and the cards it brings, by id.
+public struct PlannedAppearance: Sendable, Equatable {
+    public let time: Date
+    public let cardIDs: PanelCardIDs
+}
+
 extension NoAppearance {
     /// When an appearance may come, when it's known: once the separation, or
     /// the wait after waking or after a suppression, is over.
@@ -58,23 +65,23 @@ extension ReviewSettings {
     /// Whether the review panel shows up on its own at `now`, out of the cards
     /// in Lucas's reviews, neither flagged nor buried, by id in the order he
     /// approved them, the whole review log, in the order it was written, when
-    /// the last appearance or review now closed, if any did, and what `mac`
-    /// says. While the Mac and its screens are awake, within active hours, by
-    /// `calendar`'s clock, and once `separation` has passed since that closing
-    /// and `waitAfterWaking` since the Mac woke, it shows up once a card is
-    /// due, or, with nothing due, once a new card may come in, unless one of
-    /// `suppressionsThatApply` holds it back, or one of them ended less than
-    /// `waitAfterSuppression` ago. It brings the cards review now would, along
-    /// with those due within `lookAhead`.
+    /// the last appearance or review now closed, if any did, and what
+    /// `signals` says of the device. While it's awake, within active hours,
+    /// by `calendar`'s clock, and once `separation` has passed since that
+    /// closing and `waitAfterWaking` since the device woke, it shows up once a
+    /// card is due, or, with nothing due, once a new card may come in, unless
+    /// one of `suppressionsThatApply` holds it back, or one of them ended less
+    /// than `waitAfterSuppression` ago. It brings the cards review now would,
+    /// along with those due within `lookAhead`.
     public func appearance(
         cardIDs: [Int64],
         log: [ReviewLogEntry],
         lastClosing: Date?,
-        mac: some MacSignals,
+        signals: some DeviceSignals,
         now: Date,
         calendar: Calendar
     ) throws(UnexpectedReviewLog) -> AppearancePlan {
-        guard !mac.isAsleep else {
+        guard !signals.isAsleep else {
             return .notNow(.asleep)
         }
         guard activeHours.contains(calendar.component(.hour, from: now)) else {
@@ -83,7 +90,7 @@ extension ReviewSettings {
         if let until = lastClosing?.adding(separation), now < until {
             return .notNow(.tooSoonAfterLastOne(until: until))
         }
-        if let until = mac.lastWake?.adding(waitAfterWaking), now < until {
+        if let until = signals.lastWake?.adding(waitAfterWaking), now < until {
             return .notNow(.tooSoonAfterWaking(until: until))
         }
         let standings = try ladder.standings(of: cardIDs, after: log)
@@ -93,14 +100,96 @@ extension ReviewSettings {
             return .notNow(.nothingDue)
         }
         let applying = Suppression.allCases.filter(suppressionsThatApply.contains)
-        if let suppression = applying.first(where: mac.suppressions.contains) {
+        if let suppression = applying.first(where: signals.suppressions.contains) {
             return .notNow(.suppressed(suppression))
         }
-        if let lastEnd = applying.compactMap({ mac.suppressionEnds[$0] }).max(),
+        if let lastEnd = applying.compactMap({ signals.suppressionEnds[$0] }).max(),
             case let until = lastEnd.adding(waitAfterSuppression), now < until
         {
             return .notNow(.tooSoonAfterSuppression(until: until))
         }
         return .show(picked)
     }
+
+    /// The appearances that come from `now` on, as if Lucas rated nothing in
+    /// between, up to `count`, for the iPhone to schedule as notifications
+    /// (ADR 0010). Out of the cards in his reviews, neither flagged nor
+    /// buried, by id in the order he approved them, the whole review log, in
+    /// the order it was written, and when the last appearance or review now
+    /// closed, if any did. Walking time forward from `now`, each appearance
+    /// comes at the first time `appearance` says it shows up, on a device that
+    /// never holds one back, with the cards it says. Left alone, a planned
+    /// appearance closes as it shows, and its cards stay as they were, so the
+    /// next one comes once `separation` passed. The plan ends after `count`,
+    /// or once no appearance would come without Lucas doing something.
+    public func plannedAppearances(
+        cardIDs: [Int64],
+        log: [ReviewLogEntry],
+        lastClosing: Date?,
+        from now: Date,
+        calendar: Calendar,
+        upTo count: Int
+    ) throws(UnexpectedReviewLog) -> [PlannedAppearance] {
+        // With nothing rated, the cards keep their due times, and a new card
+        // waits for a day whose new cards Lucas hasn't met, if one ever comes
+        // in: when none may, a new day changes nothing, and the plan ends.
+        let standings = try ladder.standings(of: cardIDs, after: log).map(\.standing)
+        let dueTimes = standings.compactMap(\.due)
+        let mayMeetNewCards = standings.contains(.new) && bringsNewCard(after: 0, metToday: 0)
+        var plan: [PlannedAppearance] = []
+        var lastClosing = lastClosing
+        var next: Date? = now
+        while plan.count < count, let time = next {
+            switch try appearance(
+                cardIDs: cardIDs, log: log, lastClosing: lastClosing, signals: PhoneSignals(), now: time,
+                calendar: calendar)
+            {
+            case .show(let picked):
+                plan.append(PlannedAppearance(time: time, cardIDs: picked))
+                // Left alone, it closes as it shows.
+                lastClosing = time
+                next = time.adding(separation)
+            case .notNow(.outsideActiveHours):
+                next = startOfActiveHours(after: time, calendar: calendar)
+            case .notNow(.nothingDue):
+                var changes = dueTimes.filter { $0 > time }
+                if mayMeetNewCards, let nextDay = calendar.dateInterval(of: .day, for: time)?.end {
+                    changes.append(nextDay)
+                }
+                next = changes.min()
+            case .notNow(let reason):
+                next = reason.until
+            }
+        }
+        return plan
+    }
+
+    /// When active hours start after `time`, a time outside them: the start
+    /// of the next hour within them, by `calendar`'s clock, or nil when none
+    /// of a day's hours is.
+    private func startOfActiveHours(after time: Date, calendar: Calendar) -> Date? {
+        var hour = time
+        // A day has 25 hours at most, on the day the clock goes back.
+        for _ in 0..<25 {
+            guard let nextHour = calendar.dateInterval(of: .hour, for: hour)?.end else {
+                return nil
+            }
+            if activeHours.contains(calendar.component(.hour, from: nextHour)) {
+                return nextHour
+            }
+            hour = nextHour
+        }
+        return nil
+    }
+}
+
+/// What the iPhone tells Ficha, which never holds an appearance back: waking,
+/// idle time and suppressions don't apply there, and iOS's Focus silences
+/// notifications on its own (#97).
+private struct PhoneSignals: DeviceSignals {
+    let isAsleep = false
+    let lastWake: Date? = nil
+    let idleTime: Duration? = nil
+    let suppressions: Set<Suppression> = []
+    let suppressionEnds: [Suppression: Date] = [:]
 }

@@ -89,7 +89,7 @@ public struct ReviewPanelState: Sendable {
     /// Whether the panel takes the keyboard now, by how long `mac` says Lucas
     /// has been idle: an appearance's panel takes it once, when the focus mode
     /// says so, unless Lucas gave it the keyboard first.
-    public mutating func takesKeyboard(on mac: some MacSignals) -> Bool {
+    public mutating func takesKeyboard(on mac: some DeviceSignals) -> Bool {
         guard !mayHaveKeyboard,
             settings.focusMode.takesKeyboard(idle: mac.idleTime, after: settings.idleBeforeTakingKeyboard)
         else {
