@@ -2,13 +2,21 @@ import FichaCore
 import Foundation
 import Synchronization
 
-/// Ficha Dev's time: the system's, moved forward by its debug menu, so Lucas
-/// and agents can try in minutes what takes hours or days. How far it moved is
-/// kept in a file next to Ficha Dev's database, whose times depend on it, so
-/// restarting the app doesn't take its time back, and Ficha Dev's CLI runs on
-/// the same time. The real Ficha never opens one: it always runs on the
-/// system's time.
+/// Ficha Dev's time: the system's, moved forward by its debug tools, on the
+/// Mac and on the iPhone, so Lucas and agents can try in minutes what takes
+/// hours or days. How far it moved is kept in a file next to Ficha Dev's
+/// database, whose times depend on it, so restarting the app doesn't take its
+/// time back, and on the Mac, Ficha Dev's CLI runs on the same time. The real
+/// Ficha never opens one: it always runs on the system's time.
 public final class DebugTimeSource: TimeSource {
+    /// How far Ficha Dev's debug tools move time forward at a time, on the Mac
+    /// and on the iPhone: from the 10 minutes an untouched review panel stays
+    /// open to the 30-day step, from which a card is learned.
+    public static let steps: [Duration] = [
+        .seconds(10 * 60), .seconds(60 * 60), .seconds(24 * 60 * 60), .seconds(7 * 24 * 60 * 60),
+        .seconds(30 * 24 * 60 * 60),
+    ]
+
     private let base: any TimeSource
     private let file: URL
     /// How far ahead of `base` it is, in whole seconds.
@@ -83,11 +91,16 @@ extension DebugTimeError: LocalizedError {
 private let fileName = "Time shift.json"
 
 /// What to do when Ficha Dev's time can't go on, as docs/development.md says:
-/// start over, with no cards and on the system's time. Only taking the file away
-/// would leave what Ficha Dev saved ahead of its time.
-private let startingOver = """
-    To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
-    """
+/// start over, on the system's time, with no cards on the Mac and with the
+/// sample cards on the iPhone. Only taking the file away would leave what
+/// Ficha Dev saved ahead of its time.
+#if os(iOS)
+    private let startingOver = "To start over, delete Ficha Dev from the iPhone and install it again."
+#else
+    private let startingOver = """
+        To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
+        """
+#endif
 
 /// How far ahead Ficha Dev's time can be, in seconds: up to 100 years, far
 /// beyond any test. A file with a shift outside them wasn't saved by the

@@ -1,5 +1,6 @@
 import AppKit
 import FichaCore
+import FichaData
 import SwiftUI
 
 /// Ficha Dev's debug menu, in the menu under its icon, so Lucas and agents can
@@ -31,7 +32,7 @@ struct DebugMenu: View {
                 Text(verbatim: "Load sample cards")
             }
             Divider()
-            ForEach(timeSteps, id: \.self) { step in
+            ForEach(DebugTimeSource.steps, id: \.self) { step in
                 Button {
                     attempt("Couldn't move the time forward") {
                         try tools.moveTimeForward(by: step)
@@ -146,14 +147,6 @@ struct DebugMenu: View {
         }
     }
 }
-
-/// How far the debug menu moves time forward at a time: from the 10 minutes an
-/// untouched review panel stays open to the 30-day step, from which a card is
-/// learned.
-private let timeSteps: [Duration] = [
-    .seconds(10 * 60), .seconds(60 * 60), .seconds(24 * 60 * 60), .seconds(7 * 24 * 60 * 60),
-    .seconds(30 * 24 * 60 * 60),
-]
 
 /// A span of time in words, in English, like "1 day, 2 hours".
 private func inWords(
