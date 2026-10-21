@@ -11,7 +11,7 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "suppre
 /// permission (#10's and #12's findings): whether it or its screens are
 /// asleep, when they last woke, how long Lucas has been idle, and what holds
 /// appearances back.
-final class SystemMacSignals: MacSignals {
+final class SystemMacSignals: DeviceSignals {
     /// How often it looks at what holds appearances back: an appearance waits
     /// 2 minutes after a suppression ends anyway, so a few seconds late is
     /// fine, and polling is simpler than following each detector (#12).

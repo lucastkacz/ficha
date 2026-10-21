@@ -205,7 +205,7 @@ final class ReviewPanelModel {
 
     /// Whether the panel takes the keyboard now, as the focus mode says, by
     /// how long `mac` says Lucas has been idle.
-    func takesKeyboard(on mac: some MacSignals) -> Bool {
+    func takesKeyboard(on mac: some DeviceSignals) -> Bool {
         state.takesKeyboard(on: mac)
     }
 

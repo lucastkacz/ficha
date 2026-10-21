@@ -1,9 +1,11 @@
 import Foundation
 
-/// What Lucas's Mac tells Ficha, which the app reads from the OS and tests
-/// fake, so the rules that react to it are tested without the OS
-/// (`CODING_STANDARDS.md`).
-public protocol MacSignals {
+/// What Lucas's device tells Ficha. The Mac's app reads it from the OS and
+/// tests fake it, so the rules that react to it are tested without the OS
+/// (`CODING_STANDARDS.md`). The iPhone's never holds an appearance back:
+/// waking, idle time and suppressions don't apply there, and iOS's Focus
+/// modes silence notifications on their own (#97).
+public protocol DeviceSignals {
     /// Whether the Mac or its screens are asleep, so there's no one to show
     /// the review panel to.
     var isAsleep: Bool { get }
