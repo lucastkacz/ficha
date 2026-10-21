@@ -249,7 +249,7 @@ struct CardsView: View {
     private var detail: some View {
         let selected = selectedRows
         if let card = editing {
-            CardEditor(card: card) { content throws(EngineError) in
+            CardEditor(card: card, isSearching: isSearchFocused) { content throws(EngineError) in
                 try model.edit(card.id, with: content)
                 // The detail shows the card as saved at once, without waiting
                 // for the engine to say it changed.
@@ -347,19 +347,23 @@ struct CardsView: View {
         }
     }
 
+    /// The selected card, while it's the only one selected.
+    private var singleSelectedRow: CardRow? {
+        let rows = selectedRows
+        return rows.count == 1 ? rows.first : nil
+    }
+
     /// Turns the detail into fields to edit the selected card, while it's the
     /// only one selected.
     private func startEditing() {
-        let rows = selectedRows
-        guard rows.count == 1, let row = rows.first else { return }
+        guard let row = singleSelectedRow else { return }
         editing = row.card
     }
 
     /// Asks for a note to flag the selected card, while it's the only one
     /// selected and it's in Lucas's reviews.
     private func startFlagging() {
-        let rows = selectedRows
-        guard rows.count == 1, let row = rows.first, row.isInReviews else { return }
+        guard let row = singleSelectedRow, row.isInReviews else { return }
         flagging = row
     }
 
@@ -685,7 +689,7 @@ private struct CardDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CardBanners(card: row.card)
+                FlagAndBurial(card: row.card)
                 HStack(spacing: 8) {
                     Text(row.card.type.name)
                         .font(.caption.weight(.semibold))
@@ -760,7 +764,7 @@ private struct CardDetail: View {
 /// What the detail says on top of a card that's out of Lucas's reviews: his
 /// note when it's flagged, and when he buried it when it's buried. While he
 /// edits a flagged card, the note also says that saving fixes it.
-private struct CardBanners: View {
+private struct FlagAndBurial: View {
     let card: Card
     /// Whether Lucas is editing the card.
     var isEditing = false
@@ -771,9 +775,15 @@ private struct CardBanners: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(flag.note)
                     if isEditing {
-                        fixing
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                        // The same whether the card is buried or not: whether
+                        // it goes back to Lucas's reviews is FichaData's to
+                        // say, and the burial shows below.
+                        Text(
+                            "Saving fixes it, and it keeps its step.",
+                            comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+                        )
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -798,31 +808,20 @@ private struct CardBanners: View {
             .background(.fill.tertiary, in: .rect(cornerRadius: 8))
         }
     }
-
-    /// What saving the edit does to the flagged card: it fixes it, which
-    /// brings it back to Lucas's reviews unless it's buried.
-    private var fixing: Text {
-        if card.buriedAt == nil {
-            Text(
-                "Saving fixes it: it goes back to your reviews, on its step.",
-                comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it.")
-        } else {
-            Text(
-                "Saving fixes it, and it stays buried.",
-                comment: "In the Cards window, under Lucas's note on a flagged card he buried, while he edits it.")
-        }
-    }
 }
 
 /// The fields Lucas edits a card in, in place of its detail: its type,
 /// front, back, tags and source, under his note when it's flagged. Return
 /// saves, Option-Return starts a new line, and Escape cancels, as in the
-/// capture window. Saving with the front or the back blank says, under it,
-/// what's missing. When the card can't be saved, an alert says why, and the
-/// fields stay as Lucas left them.
+/// capture window, unless he's in the window's search field. Saving with the
+/// front or the back blank says, under it, what's missing. When the card
+/// can't be saved, an alert says why, and the fields stay as Lucas left them.
 private struct CardEditor: View {
     /// The card as it was when Lucas started editing it.
     let card: Card
+    /// Whether Lucas is in the window's search field, which then keeps Return
+    /// and Escape: Escape there clears the search, and leaves his edit alone.
+    let isSearching: Bool
     /// Saves the card with `content`, or throws why it couldn't.
     let save: (CardContent) throws(EngineError) -> Void
     /// Ends the edit, once the card is saved or without saving it.
@@ -830,8 +829,8 @@ private struct CardEditor: View {
     @State private var type: CardType
     @State private var front: String
     @State private var back: String
-    /// The card's tags, separated by commas.
-    @State private var tags: String
+    /// The card's tags as the Tags field holds them, separated by commas.
+    @State private var tagsText: String
     @State private var source: String
     /// Whether Lucas tried to save with the front or the back blank, so that
     /// the blank one says it's missing.
@@ -841,23 +840,25 @@ private struct CardEditor: View {
 
     init(
         card: Card,
+        isSearching: Bool,
         save: @escaping (CardContent) throws(EngineError) -> Void,
         close: @escaping () -> Void
     ) {
         self.card = card
+        self.isSearching = isSearching
         self.save = save
         self.close = close
         _type = State(initialValue: card.type)
         _front = State(initialValue: card.front)
         _back = State(initialValue: card.back)
-        _tags = State(initialValue: card.tags.joined(separator: ", "))
+        _tagsText = State(initialValue: card.tags.joined(separator: ", "))
         _source = State(initialValue: card.source ?? "")
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CardBanners(card: card, isEditing: true)
+                FlagAndBurial(card: card, isEditing: true)
                 fields
             }
             .padding(20)
@@ -867,9 +868,9 @@ private struct CardEditor: View {
             ActionBar {
                 Spacer()
                 Button("Cancel", action: close)
-                    .keyboardShortcut(.cancelAction)
+                    .keyboardShortcut(isSearching ? nil : .cancelAction)
                 Button("Save", action: submit)
-                    .keyboardShortcut(.defaultAction)
+                    .keyboardShortcut(isSearching ? nil : .defaultAction)
             }
         }
         .onAppear {
@@ -881,15 +882,16 @@ private struct CardEditor: View {
     private var fields: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
             GridRow {
-                gridLabel(
-                    Text("Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it."))
+                let label = Text(
+                    "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
+                gridLabel(label)
                 Picker(selection: $type) {
                     ForEach(CardType.allCases, id: \.self) { type in
                         Text(type.name)
                             .tag(type)
                     }
                 } label: {
-                    Text("Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
+                    label
                 }
                 .labelsHidden()
                 .fixedSize()
@@ -901,7 +903,7 @@ private struct CardEditor: View {
                     TextField("Front", text: $front, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($isFrontFocused)
-                    if showsMissingSides && isBlank(front) {
+                    if showsMissingSides && CardContent.isBlank(front) {
                         missing(
                             Text(
                                 "A card needs a front.",
@@ -915,7 +917,7 @@ private struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Back", text: $back, axis: .vertical)
                         .lineLimit(4...12)
-                    if showsMissingSides && isBlank(back) {
+                    if showsMissingSides && CardContent.isBlank(back) {
                         missing(
                             Text(
                                 "A card needs a back.",
@@ -927,7 +929,7 @@ private struct CardEditor: View {
                 gridLabel(
                     Text("Tags", comment: "In the Cards window, the label of a card's tags, while Lucas edits it."))
                 VStack(alignment: .leading, spacing: 4) {
-                    TextField("Tags", text: $tags)
+                    TextField("Tags", text: $tagsText)
                     Text(
                         "Separate tags with commas.",
                         comment: "In the Cards window, under a card's tags, while Lucas edits it."
@@ -961,18 +963,16 @@ private struct CardEditor: View {
             .foregroundStyle(.red)
     }
 
-    /// The tags in the Tags field, once each, in the order Lucas wrote them.
-    private var tagList: [String] {
-        var seen: Set<String> = []
-        return tags.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { seen.insert($0).inserted }
+    /// The tags in the Tags field, which `CardContent` cleans up as it does
+    /// wherever a card comes from.
+    private var tags: [String] {
+        tagsText.split(separator: ",").map(String.init)
     }
 
     /// Saves the card with what the fields hold, unless the front or the back
     /// is blank, and ends the edit.
     private func submit() {
-        guard let content = CardContent(type: type, front: front, back: back, tags: tagList, source: source) else {
+        guard let content = CardContent(type: type, front: front, back: back, tags: tags, source: source) else {
             showsMissingSides = true
             return
         }
@@ -1021,11 +1021,6 @@ private func gridLabel(_ text: Text) -> some View {
     text
         .foregroundStyle(.secondary)
         .gridColumnAlignment(.trailing)
-}
-
-/// Whether the text has nothing but spaces and line breaks.
-private func isBlank(_ text: String) -> Bool {
-    text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 }
 
 /// The card's step counted from 1, as Settings counts them, with its wait,

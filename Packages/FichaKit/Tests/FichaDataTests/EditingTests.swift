@@ -75,7 +75,7 @@ struct EditingTests {
         #expect(try engine.reviewNow(settings) == [.review(edited)])
     }
 
-    // Lucas can correct a buried card before deciding whether to unbury it.
+    // Lucas can edit a buried card before deciding whether to unbury it.
     @Test("an edited buried card stays buried, and once unburied it's back in Lucas's reviews, fixed if it was flagged")
     func anEditedBuriedCardStaysBuried() throws {
         // serendipia and ubuntu are due on the first step, and ubuntu was

@@ -22,4 +22,10 @@ public struct CardContent: Sendable {
         self.tags = tags.compactMap(nonBlank)
         self.source = nonBlank(source)
     }
+
+    /// Whether `side`, a front or a back, is blank by the rule `init` follows,
+    /// for fields to say which side keeps them from making a card.
+    public static func isBlank(_ side: String) -> Bool {
+        nonBlank(side) == nil
+    }
 }

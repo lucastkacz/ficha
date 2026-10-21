@@ -12,7 +12,14 @@ extension Engine {
     @discardableResult
     public func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
         try write { db in
-            try replaceContent(of: cardID, with: content, alsoSetting: "flagNote = NULL, flaggedAt = NULL", in: db)
+            try editCard(cardID, with: content, in: db)
         }
     }
+}
+
+/// Gives the card with this id `content` and takes its flag away, keeping the
+/// rest: an edit in the Cards window, and the fix a refine session makes once
+/// it checked the card is flagged and not buried.
+func editCard(_ cardID: Int64, with content: CardContent, in db: Database) throws -> Card {
+    try replaceContent(of: cardID, with: content, alsoSetting: "flagNote = NULL, flaggedAt = NULL", in: db)
 }

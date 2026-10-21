@@ -29,8 +29,7 @@ extension Engine {
             guard card.flag != nil else {
                 throw EngineError.cardNotFlagged(cardID)
             }
-            return try replaceContent(
-                of: cardID, with: content, alsoSetting: "flagNote = NULL, flaggedAt = NULL", in: db)
+            return try editCard(cardID, with: content, in: db)
         }
     }
 
