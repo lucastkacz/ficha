@@ -190,7 +190,7 @@ final class ReviewPanelModel {
         do {
             try state.undo()
         } catch {
-            failure = Failure(title: "Couldn't undo", error: error)
+            failure = Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
             return
         }
         guard let card = state.current?.card, let visit = visits[card.id] else { return }
@@ -245,7 +245,7 @@ final class ReviewPanelModel {
         do {
             try action(timeOnCard)
         } catch {
-            failure = Failure(title: title, error: error)
+            failure = Failure(title: title, message: error.messageInReviewPanel)
             return
         }
         visits[card.id] = Visit(showedBack: isFlipped, timeOnCard: timeOnCard)
@@ -268,4 +268,28 @@ final class ReviewPanelModel {
 private struct Visit {
     let showedBack: Bool
     let timeOnCard: Duration
+}
+
+extension EngineError {
+    /// Why what Lucas did with a card in the review panel couldn't be saved,
+    /// as its alert says it. A card that isn't found was deleted in the Cards
+    /// window while the panel showed it: the engine's message for it names
+    /// the card by its id, which the panel doesn't show, and says to check
+    /// the id, as the CLI needs.
+    fileprivate var messageInReviewPanel: String {
+        switch self {
+        case .cardNotFound:
+            String(
+                localized: """
+                    This card was deleted meanwhile, in the Cards window. Close the review panel and open \
+                    “Review now” again.
+                    """,
+                comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
+            )
+        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
+            .cardNotBuried, .cannotUndo, .unreadableReviewLog, .storage:
+            localizedDescription
+        }
+    }
 }
