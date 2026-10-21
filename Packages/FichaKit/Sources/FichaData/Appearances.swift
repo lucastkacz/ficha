@@ -46,9 +46,10 @@ extension Engine {
         }
     }
 
-    /// Every appearance, and every review now that brought cards, in the
-    /// order the review panel closed, and every appearance a suppression held
-    /// back, as its hold started.
+    /// Every appearance, and every review now that brought cards, and every
+    /// appearance a suppression held back, in the order each went in: as the
+    /// review panel closed, at Lucas's first answer from one of its card
+    /// notifications on the iPhone, or as its hold started.
     public func appearanceLog() throws(EngineError) -> [AppearanceLogEntry] {
         try read { db in
             try Row.fetchAll(db, sql: "SELECT * FROM appearanceLog ORDER BY id").map(AppearanceLogEntry.init(row:))
@@ -105,6 +106,28 @@ func lastClosing(in db: Database) throws -> Date? {
         arguments: [OutcomeName.heldBack.rawValue])
 }
 
+/// Notes in the appearance log that `appearance`, on the iPhone, closes at
+/// `closedAt`, as Lucas answers one of its card notifications: as finished
+/// once he went through its cards, and as a snooze otherwise. The first
+/// answer adds its entry, and each one after it moves the entry's closing
+/// on.
+func noteClosing(of appearance: NotifiedAppearance, at closedAt: Date, finished: Bool, in db: Database) throws {
+    let outcome: AppearanceLogEntry.Outcome = finished ? .finished : .snoozed
+    let entry = try Int64.fetchOne(
+        db,
+        sql: "SELECT id FROM appearanceLog WHERE trigger = ? AND shownAt = ? AND outcome != ? ORDER BY id DESC LIMIT 1",
+        arguments: [Trigger.appearance.rawValue, appearance.shownAt, OutcomeName.heldBack.rawValue])
+    guard let entry else {
+        try insert(
+            AppearanceLogEntry(trigger: .appearance, shownAt: appearance.shownAt, closedAt: closedAt, outcome: outcome),
+            in: db)
+        return
+    }
+    try db.execute(
+        sql: "UPDATE appearanceLog SET closedAt = ?, outcome = ? WHERE id = ?",
+        arguments: [closedAt, outcome.columns.outcome, entry])
+}
+
 /// The appearance log's hold that's on, by its entry's id, if one is: the
 /// last entry, when it's an appearance held back whose hold hasn't ended, as
 /// its closedAt still being its shownAt says.
@@ -121,7 +144,7 @@ private func holdThatIsOn(in db: Database) throws -> Int64? {
 }
 
 /// Adds an entry at the end of the appearance log.
-func insert(_ entry: AppearanceLogEntry, in db: Database) throws {
+private func insert(_ entry: AppearanceLogEntry, in db: Database) throws {
     let (outcome, heldBackBy) = entry.outcome.columns
     try db.execute(
         sql: "INSERT INTO appearanceLog (trigger, shownAt, closedAt, outcome, heldBackBy) VALUES (?, ?, ?, ?, ?)",

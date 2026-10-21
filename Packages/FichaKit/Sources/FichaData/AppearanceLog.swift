@@ -8,7 +8,9 @@ internal import GRDB
 /// notification to the last card Lucas went through; or an appearance a
 /// suppression held back, once, when it was held back.
 public struct AppearanceLogEntry: Sendable, Equatable {
-    /// How the review panel closed, or what held the appearance back.
+    /// How the review panel closed, how far Lucas went through an
+    /// appearance's card notifications on the iPhone, or what held the
+    /// appearance back.
     public enum Outcome: Sendable, Equatable {
         /// No card it brought was left: Lucas answered, flagged or buried
         /// each one, and maybe some that "See more" added.

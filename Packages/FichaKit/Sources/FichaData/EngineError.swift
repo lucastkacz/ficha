@@ -33,6 +33,9 @@ public enum EngineError: Error, Equatable {
     case cardStillNew(Int64)
     /// The card with this id isn't due yet, so it can't be reviewed.
     case cardNotDue(Int64)
+    /// The card with this id isn't one of the cards its appearance brought,
+    /// so its answer from a card notification can't be recorded.
+    case cardNotInAppearance(Int64)
     /// The card with this id is flagged, so it waits in the inbox: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
@@ -91,6 +94,13 @@ extension EngineError: LocalizedError {
                 localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")
         case .cardNotDue(let id):
             String(localized: "Card \(id) isn't due yet, so it can't be reviewed. \(reopenReviewNow)")
+        case .cardNotInAppearance(let id):
+            String(
+                localized: """
+                    Card \(id) isn't one of the cards its appearance brought, so its answer wasn't recorded. \
+                    Report it.
+                    """
+            )
         case .cardFlagged(let id):
             String(localized: "Card \(id) is flagged: it waits in the inbox to be fixed. \(reopenReviewNow)")
         case .cardNotFlagged(let id):

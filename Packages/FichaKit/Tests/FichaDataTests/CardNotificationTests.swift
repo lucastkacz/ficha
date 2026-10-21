@@ -63,6 +63,25 @@ struct CardNotificationTests {
         #expect(next == .review(schadenfreude))
     }
 
+    // A card notification carries its card with its appearance, so only a
+    // mistake could mix them up, and it would log a card that never showed.
+    @Test("an answer to a card its appearance didn't bring is refused, and neither log changes")
+    func anAnswerToACardFromAnotherAppearanceIsRefused() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = NotifiedAppearance(shownAt: try at(10, 0), cardIDs: [ubuntu.id])
+        let reviewLog = try engine.reviewLog()
+
+        time.move(to: try at(10, 1))
+        #expect(throws: EngineError.cardNotInAppearance(serendipia.id)) {
+            try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
+        }
+
+        #expect(try engine.reviewLog() == reviewLog)
+        #expect(try engine.appearanceLog().isEmpty)
+    }
+
     // Left partway, an appearance is a snooze, as on the Mac (#97).
     @Test(
         "an appearance goes into the appearance log from the time it showed, as a snooze until its last card's answer finishes it"
@@ -122,7 +141,6 @@ struct CardNotificationTests {
     /// Approves a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.
-    @discardableResult
     private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
         let card = try approveCard(front, in: engine)
         time.move(to: due - hours(1))
@@ -130,9 +148,8 @@ struct CardNotificationTests {
         return card
     }
 
-    /// A time of day on a day in October 2026 by the tests' calendar: the
-    /// 14th, unless another day is given.
-    private func at(_ hour: Int, _ minute: Int, day: Int = 14) throws -> Date {
-        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute)))
+    /// A time of day on October 14, 2026, by the tests' calendar.
+    private func at(_ hour: Int, _ minute: Int) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: hour, minute: minute)))
     }
 }

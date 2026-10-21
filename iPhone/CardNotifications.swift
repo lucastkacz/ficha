@@ -14,7 +14,8 @@ private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", categ
 /// the background, without unlocking the iPhone, and the appearance's next
 /// card comes right away, without sound, until none is left. Each time it
 /// plans, the notifications it planned before, scheduled or shown, give way
-/// to the new plan's, so they always match the cards. It asks Lucas whether
+/// to the new plan's, so they always match the cards, and each answer takes
+/// away the next cards that answers before it sent. It asks Lucas whether
 /// Ficha may send notifications before it plans for the first time, and plans
 /// again whenever the engine's data changes, and when the app asks, as it
 /// comes back to the foreground.
@@ -22,9 +23,11 @@ final class CardNotifications: NSObject {
     /// How long "Bring the next appearance now" waits: enough to lock the
     /// iPhone and watch the notification arrive.
     private static let debugWait = Duration.seconds(5)
-    /// Every identifier a plan's notifications can have: iOS keeps at most 64
-    /// pending notifications for an app (#97), so no plan numbers more.
-    private static let plannedIdentifiers = (0..<64).map(identifier(ofAppearance:))
+    /// Every identifier a plan's notifications can have: no plan has more
+    /// appearances than the engine plans ahead.
+    private static let plannedIdentifiers = (0..<Engine.mostUpcomingAppearances).map(identifier(ofAppearance:))
+    /// How the identifier of every next card's notification starts.
+    private static let nextCardPrefix = "next card "
 
     private let engine: Engine
     private let center = UNUserNotificationCenter.current()
@@ -98,9 +101,11 @@ final class CardNotifications: NSObject {
 
     /// Records Lucas's answer to a card of `appearance`, given with one of its
     /// notification's buttons, sends the notification of the appearance's
-    /// next card, while it has one, and plans the appearances again. When it
-    /// can't record the answer, the log says why.
-    fileprivate func record(_ answer: ReviewLogEntry.Kind, of cardID: Int64, in appearance: NotifiedAppearance) {
+    /// next card, while it has one, and plans the appearances again. The next
+    /// cards that answers before it sent go: the answer leaves them behind. It
+    /// returns once iOS has the next card's notification. When it can't
+    /// record the answer, the log says why.
+    private func record(_ answer: ReviewLogEntry.Kind, of cardID: Int64, in appearance: NotifiedAppearance) async {
         let next: PanelCard?
         do {
             next = try engine.answerFromNotification(answer, of: cardID, in: appearance, settings: .defaults)
@@ -109,9 +114,10 @@ final class CardNotifications: NSObject {
                 "Couldn't record an answer from a card notification: \(String(describing: error), privacy: .public)")
             return
         }
+        await clearNextCards(but: next)
         if let next {
             logger.info("Recorded an answer from a card notification, and the appearance goes on")
-            send(next, in: appearance)
+            await send(next, in: appearance)
         } else {
             logger.info("Recorded an answer from a card notification, and the appearance is over")
         }
@@ -122,7 +128,19 @@ final class CardNotifications: NSObject {
         planNow()
     }
 
-    /// Plans the appearances again now. When it can't, the log says why.
+    /// Takes away the notifications of next cards that iOS still shows, but
+    /// `next`'s, which comes right after: one shown with its identifier, from
+    /// an earlier appearance, gives way to it as it's sent.
+    private func clearNextCards(but next: PanelCard?) async {
+        let kept = next.map { Self.identifier(ofNextCard: $0.card.id) }
+        let earlier = await center.deliveredNotifications().map(\.request.identifier).filter {
+            $0.hasPrefix(Self.nextCardPrefix) && $0 != kept
+        }
+        center.removeDeliveredNotifications(withIdentifiers: earlier)
+    }
+
+    /// Plans the appearances again now, whether or not Lucas was asked yet
+    /// whether Ficha may send notifications. When it can't, the log says why.
     private func planNow() {
         do {
             try schedule()
@@ -133,8 +151,9 @@ final class CardNotifications: NSObject {
 
     /// Sends the notification of `card`, the next of `appearance`'s, right
     /// away and without sound, since Lucas is going through the appearance's
-    /// card notifications.
-    private func send(_ card: PanelCard, in appearance: NotifiedAppearance) {
+    /// card notifications, and returns once iOS has it: iOS may stop the app
+    /// as soon as it's done with his answer.
+    private func send(_ card: PanelCard, in appearance: NotifiedAppearance) async {
         guard let content = content(of: card, in: appearance) else {
             logger.error("The next card of an appearance is a review ahead, which no card notification shows")
             return
@@ -142,13 +161,18 @@ final class CardNotifications: NSObject {
         // With no trigger, iOS shows it at once.
         let request = UNNotificationRequest(
             identifier: Self.identifier(ofNextCard: card.card.id), content: content, trigger: nil)
-        center.add(request, withCompletionHandler: logFailureToSchedule)
+        do {
+            try await center.add(request)
+        } catch {
+            logFailureToSchedule(error)
+        }
     }
 
     /// Replaces every notification a plan scheduled or showed so far with
     /// those of the appearances the engine plans now, and returns them. The
-    /// notifications of next cards stay. When it can't plan, no planned
-    /// notification is left, so none brings cards the engine wouldn't.
+    /// notifications of next cards stay, for the answers to take away. When
+    /// it can't plan, no planned notification is left, so none brings cards
+    /// the engine wouldn't.
     @discardableResult
     private func schedule() throws(EngineError) -> [UpcomingAppearance] {
         center.removePendingNotificationRequests(withIdentifiers: Self.plannedIdentifiers)
@@ -190,15 +214,18 @@ final class CardNotifications: NSObject {
     /// own: as the notification he answered closes, iOS takes away every
     /// notification with its identifier, even one sent meanwhile.
     private static func identifier(ofNextCard cardID: Int64) -> String {
-        "next card \(cardID)"
+        "\(nextCardPrefix)\(cardID)"
     }
 }
 
-extension CardNotifications: nonisolated UNUserNotificationCenterDelegate {
+extension CardNotifications: @MainActor UNUserNotificationCenterDelegate {
     /// Answers the card when Lucas presses one of its notification's buttons.
-    /// iOS calls it on a queue of its own, and keeps the app running until it
-    /// returns. Tapping the notification itself only opens the app.
-    nonisolated func userNotificationCenter(
+    /// iOS keeps the app running until it returns, once iOS has the next
+    /// card's notification. It runs on the main actor whatever queue iOS
+    /// calls it on, since iOS's completion handler, which Swift calls as it
+    /// returns, updates the app's snapshot, which UIKit allows only on the
+    /// main thread. Tapping the notification itself only opens the app.
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
@@ -311,7 +338,7 @@ private func categories() -> Set<UNNotificationCategory> {
 /// The answer a card notification's button gives: a review with its rating,
 /// for a button named by the rating's raw value, or the end of a new card's
 /// first view, for "Got it". Nil for any other button.
-private nonisolated func answer(ofButton identifier: String) -> ReviewLogEntry.Kind? {
+private func answer(ofButton identifier: String) -> ReviewLogEntry.Kind? {
     if identifier == Identifiers.gotIt {
         return .firstView
     }
@@ -319,7 +346,7 @@ private nonisolated func answer(ofButton identifier: String) -> ReviewLogEntry.K
 }
 
 /// The identifiers of the card notifications' categories, and of "Got it".
-private nonisolated enum Identifiers {
+private enum Identifiers {
     /// A due card's notification, with its ratings.
     static let review = "review"
     /// A new card's notification, with "Got it".
@@ -331,7 +358,7 @@ private nonisolated enum Identifiers {
 /// What a card notification carries for its buttons, in its `userInfo`: its
 /// card, and its appearance, by when it showed, in seconds since 1970, and
 /// its cards.
-private nonisolated struct Payload {
+private struct Payload {
     let cardID: Int64
     let appearance: NotifiedAppearance
 
