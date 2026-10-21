@@ -37,10 +37,13 @@ jobs:
           fetch-depth: 2
       - id: files
         # The files the merge commit changes from its first parent, the base
-        # branch. A rename counts both names, and when git fails the step
-        # fails, so `check` runs.
+        # branch. A rename counts both names, and when git can't list them,
+        # `check` runs.
         run: |
-          files=$(git diff --name-only --no-renames HEAD^1 HEAD)
+          if ! files=$(git diff --name-only --no-renames HEAD^1 HEAD); then
+            echo "::warning::git couldn't list the files this pull request changes, as it says above, so check runs as for any pull request."
+            exit 0
+          fi
           echo "$files"
           if [[ -n $files ]] && ! grep -qv '\.md$' <<<"$files"; then
             echo "markdown-only=true" >>"$GITHUB_OUTPUT"
@@ -112,12 +115,13 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
       - name: Restore the builds
-        # The ones a push to main saved, with actions/cache's restore and save
-        # actions, as its caching strategies show them. A pull request reads
-        # main's cache but saves none, since only its own runs could read it
-        # and it would crowd out main's, as "Caching dependencies to speed up
-        # workflows" in GitHub's docs says. A new Xcode, or new versions of the
-        # package's dependencies, start from no cache.
+        # The ones a run on main saved, with actions/cache's restore and save
+        # actions, as its caching strategies show them. Other runs, pull
+        # requests among them, read main's cache and save none: only runs of
+        # their own branch could read what they saved, and it would crowd out
+        # main's, as "Caching dependencies to speed up workflows" in GitHub's
+        # docs says. A new Xcode, or new versions of the package's
+        # dependencies, start from no cache.
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -125,9 +129,9 @@ jobs:
           key: builds-${{ runner.os }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
       - run: make check
       - name: Save the builds
-        # After a push to main or a run started by hand, unless the cache had
-        # them already: a key, once saved, can't be saved again.
-        if: github.event_name != 'pull_request' && steps.cache.outputs.cache-hit != 'true'
+        # After a run on main, unless the cache had them already: a key, once
+        # saved, can't be saved again.
+        if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILDS }}

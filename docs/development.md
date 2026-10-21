@@ -108,7 +108,7 @@ make render ARGS="cards --key cmd+f --type serendip --out .build/render/search.p
 
 ### The iPhone's screen
 
-`make render-iphone` takes the iPhone app's opening screen as PNGs, light and dark. It builds Ficha Dev for the simulator, as `make build-iphone` does, makes a simulator of the newest iPhone of the newest iOS the Mac has, boots it without the Simulator app, takes the pictures in it, and deletes it, so the simulators you and other sessions use stay as they were. It takes about a minute, and shows nothing on screen:
+`make render-iphone` takes the iPhone app's opening screen as PNGs, light and dark. It builds Ficha Dev for the simulator, as `make build-iphone` does, makes a simulator of the newest iOS the Mac has and the first iPhone it offers, which simctl lists by generation, newest first, boots it without the Simulator app, takes the pictures in it, and deletes it, so the simulators you and other sessions use stay as they were. It takes about a minute, and shows nothing on screen:
 
 ```bash
 make render-iphone
@@ -118,8 +118,9 @@ make render-iphone ARGS="--out .build/render/counts"
 - The PNGs go to `.build/render/iphone-light.png` and `iphone-dark.png`, or `<path>-light.png` and `<path>-dark.png` with `--out <path>`, at the iPhone's scale: 1206 by 2622 pixels for an iPhone 17 Pro. The status bar shows 9:41 and a full battery, as Apple's pictures do.
 - The tool opens Ficha Dev with `-FichaRendering`, which only Ficha Dev takes (`iPhone/Rendering.swift`). Then the app doesn't ask whether it may send notifications, since iOS's alert would cover its screen, and plans none, and once its screen is up it says so on its standard output. The tool waits for that, and then for the screen to stay the same for more than seven seconds, longer than a notification's banner stays: a new simulator shows one, "Ready for Apple Intelligence", in its first half minute.
 - The simulator has `/tmp` and `/var/folders` of its own, so simctl writes the app's standard output to a scratch folder in `.build/render`, which the tool deletes with the simulator.
-- When the app doesn't say its screen is up within a minute, or the screen doesn't settle within another, the tool stops, says so, and keeps `<path>-<light|dark>-failed.png`, the screen then, and `-failed.log`, what the app logged.
+- When Ficha Dev doesn't open, doesn't say its screen is up within a minute, or its screen doesn't settle within another, the tool stops, says so, and keeps `<path>-<light|dark>-failed.png`, the screen then, and `-failed.log`, what the app logged. When another simctl command fails, it says what it couldn't do after simctl's own message. Either way, it deletes its simulator.
 - Only the opening screen so far: the tool doesn't tap or type yet. `make check` doesn't run it, since a new simulator takes most of its minute.
+- The commands are simctl's, which `xcrun simctl help` documents. A simulator for each run, the line the app says once its screen is up, and the wait for a still screen are our own: Apple's own way to drive an app and wait for its screen is a UI test target, with XCTest.
 
 ## The PR's pictures
 

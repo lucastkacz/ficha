@@ -39,7 +39,7 @@
       "Bash(git branch *-D*)",
       "Bash(git worktree remove *--force*)",
       "Bash(git grep *-O*)",
-      "Bash(git grep *--open-files-in-pager*)",
+      "Bash(git grep *--op*)",
       "Bash(gh api graphql*)",
       "Bash(gh api *-X DELETE*)",
       "Bash(gh api *-X PATCH*)",

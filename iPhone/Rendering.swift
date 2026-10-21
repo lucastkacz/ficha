@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "rendering")
 
 /// `make render-iphone`, which takes the app's pictures in a simulator of its
 /// own (`scripts/render-iphone.sh`), opens Ficha Dev with `launchArgument`.
@@ -14,10 +17,14 @@ enum Rendering {
     static let isOn = AppVariant.current == .dev && ProcessInfo.processInfo.arguments.contains(launchArgument)
 
     /// Says on the standard output that the app's screen is up, when the tool
-    /// opened it, in the line the tool waits for.
+    /// opened it, in the line the tool waits for. When it can't, the log says
+    /// why, which the tool keeps when it gives up waiting.
     static func sayScreenIsUp() {
-        if isOn {
-            FileHandle.standardOutput.write(Data("The screen is up\n".utf8))
+        guard isOn else { return }
+        do {
+            try FileHandle.standardOutput.write(contentsOf: Data("The screen is up\n".utf8))
+        } catch {
+            logger.error("Couldn't say the screen is up: \(String(describing: error), privacy: .public)")
         }
     }
 }

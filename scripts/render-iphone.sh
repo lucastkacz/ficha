@@ -1,16 +1,21 @@
 #!/bin/bash
 # Takes the iPhone app's pictures, light and dark, on the screen it opens on:
 # `make render-iphone`, which builds Ficha Dev for the simulator first and
-# passes its path. The pictures come from an iPhone simulator of its own, the
-# newest iPhone of the newest iOS the Mac has, which it boots without the
-# Simulator app and deletes after them, so the simulators that other sessions
-# and the Simulator app use stay as they were. The commands are simctl's,
-# which `xcrun simctl help` documents; a simulator of its own for each run is
-# our own.
+# passes its path. The pictures come from an iPhone simulator of its own, of
+# the newest iOS the Mac has and the first iPhone it offers, which it boots
+# without the Simulator app and deletes after them, so the simulators that
+# other sessions and the Simulator app use stay as they were. The commands are
+# simctl's, which `xcrun simctl help` documents. Our own are a simulator for
+# each run, the line the app says on its standard output once its screen is up
+# (iPhone/Rendering.swift), and the wait for a still screen after it.
 
 set -euo pipefail
 
 usage='Usage: make render-iphone ARGS="--out <path>", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without it.'
+(($# > 0)) || {
+  echo "There's no app to take pictures of: run the tool through make render-iphone, which builds Ficha Dev and passes its path. $usage" >&2
+  exit 1
+}
 app=$1
 shift
 out=.build/render/iphone
@@ -45,7 +50,8 @@ bundle=$(plutil -extract CFBundleIdentifier raw "$app/Info.plist" 2>/dev/null) |
   exit 1
 }
 
-# The newest iOS the Mac has, and the first iPhone it lists, its newest.
+# The newest iOS the Mac has, and the first iPhone it offers: simctl lists them
+# by generation, newest first.
 newest=$(xcrun simctl list runtimes available --json | jq -r '
   [.runtimes[] | select(.platform == "iOS")]
   | max_by(.version | split(".") | map(tonumber))
@@ -75,12 +81,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Stops the tool after a simctl command that failed, whose message comes
+# first, saying what the tool couldn't do, $1, and what to do, $2, by default
+# trying again.
+couldnt() {
+  echo "Couldn't $1, as simctl says above, so there are no pictures: ${2:-run make render-iphone again.}" >&2
+  exit 1
+}
+
 # Saves the simulator's screen as the PNG $1. simctl says what it did on
 # standard error, as it says what went wrong, so that's shown only then.
 screenshot() {
-  local said
-  said=$(xcrun simctl io "$device" screenshot "$1" 2>&1) || {
-    echo "$said" >&2
+  local message
+  message=$(xcrun simctl io "$device" screenshot "$1" 2>&1) || {
+    echo "$message" >&2
     return 1
   }
 }
@@ -103,10 +117,11 @@ give_up() {
 # Intelligence", at some point in its first half minute. SECONDS counts whole
 # seconds, so 8 of them are more than seven.
 take_picture() {
-  local said=$scratch/$1.txt shot=$scratch/shot.png last=$scratch/last.png still_since deadline
-  xcrun simctl launch --terminate-running-process --stdout="$said" "$device" "$bundle" "$launch_argument" >/dev/null
+  local app_output=$scratch/$1-output.txt shot=$scratch/shot.png last=$scratch/last.png still_since deadline
+  xcrun simctl launch --terminate-running-process --stdout="$app_output" "$device" "$bundle" "$launch_argument" \
+    >/dev/null || give_up "$1" "Ficha Dev didn't open, as simctl says above"
   deadline=$((SECONDS + 60))
-  until grep -qxF "$screen_is_up" "$said" 2>/dev/null; do
+  until grep -qxF "$screen_is_up" "$app_output" 2>/dev/null; do
     ((SECONDS < deadline)) || give_up "$1" "Ficha Dev didn't say its screen was up within a minute"
     sleep 0.1
   done
@@ -116,7 +131,7 @@ take_picture() {
   until [[ -f $last ]] && ((SECONDS - still_since >= 8)); do
     ((SECONDS < deadline)) || give_up "$1" "The screen kept changing for a minute after Ficha Dev said it was up"
     sleep 0.25
-    screenshot "$shot"
+    screenshot "$shot" || couldnt "take a screenshot of the simulator"
     if [[ ! -f $last ]] || ! cmp -s "$shot" "$last"; then
       still_since=$SECONDS
     fi
@@ -127,14 +142,15 @@ take_picture() {
 }
 
 echo "Taking the pictures in a simulator of its own, an $iphone_name on iOS $version"
-device=$(xcrun simctl create "Ficha render" "$iphone" "$runtime")
-xcrun simctl bootstatus "$device" -b >/dev/null
+device=$(xcrun simctl create "Ficha render" "$iphone" "$runtime") || couldnt "make a simulator"
+xcrun simctl bootstatus "$device" -b >/dev/null || couldnt "boot the simulator"
 # The time and the battery the pictures show, as in Apple's: the same in every
 # picture, and a minute going by doesn't change the screen.
-xcrun simctl status_bar "$device" override --time 9:41 --batteryState discharging --batteryLevel 100
-xcrun simctl install "$device" "$app"
+xcrun simctl status_bar "$device" override --time 9:41 --batteryState discharging --batteryLevel 100 ||
+  couldnt "set the simulator's status bar"
+xcrun simctl install "$device" "$app" || couldnt "install Ficha Dev in the simulator" "build it again with make build-iphone."
 mkdir -p "$(dirname "$out")"
 for appearance in light dark; do
-  xcrun simctl ui "$device" appearance "$appearance"
+  xcrun simctl ui "$device" appearance "$appearance" || couldnt "switch the simulator to $appearance"
   take_picture "$appearance"
 done
