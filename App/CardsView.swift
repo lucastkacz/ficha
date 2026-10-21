@@ -6,14 +6,15 @@ import SwiftUI
 /// sidebar to choose a group of cards or the inbox, a table with one row per
 /// card in it, or per capture and flagged card in the inbox, narrowed by the
 /// toolbar's search field, and the selected row whole beside it, with what
-/// Lucas can do with it at its foot. He edits a card or a capture right
-/// there, in fields that take the detail's place while the sidebar and the
-/// table wait. He selects several cards with ⌘ or Shift, as in Finder, and
-/// then the detail says how many, with what he can do with all of them. It
-/// reads the cards again whenever the engine says they changed, from the app
-/// or the `ficha` CLI, when Lucas changes the ladder in Settings, and every
-/// minute, since cards come due as time passes, or at once when Ficha Dev's
-/// debug menu moves the time.
+/// Lucas can do with it at its foot. The cards' table opens with the columns
+/// and the order Lucas left it with, which he changes in its headers. He
+/// edits a card or a capture right there, in fields that take the detail's
+/// place while the sidebar and the table wait. He selects several cards with
+/// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
+/// can do with all of them. It reads the cards again whenever the engine says
+/// they changed, from the app or the `ficha` CLI, when Lucas changes the
+/// ladder in Settings, and every minute, since cards come due as time passes,
+/// or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// What the table lists, or why it couldn't be read.
@@ -32,9 +33,13 @@ struct CardsView: View {
     /// The cards Lucas selected, which can include cards the table no longer
     /// lists: the detail and its actions take only those it lists.
     @State private var selection: Set<CardRow.ID> = []
-    /// The table's order: the newest cards first, until Lucas clicks a
-    /// column's header.
-    @State private var sortOrder = [CardRowOrder(.created, order: .reverse)]
+    /// The table's order: the one Lucas left it in with a click on a column's
+    /// header, and at first the newest cards first.
+    @State private var sortOrder = Preferences.cardsSortOrder
+    /// The table's columns as Lucas left them: which ones show, in what order
+    /// and how wide. At first Front, Step and Due, until he adds others from
+    /// the headers' menu.
+    @State private var columns = Preferences.cardsColumns
     /// The row Lucas selected in the inbox, one at a time, which the table
     /// may no longer list, as with the cards.
     @State private var inboxSelection: InboxRow.ID?
@@ -319,9 +324,13 @@ struct CardsView: View {
         }
     }
 
-    /// The cards of the group the sidebar chose, one per row.
+    /// The cards of the group the sidebar chose, one per row. A right click on
+    /// the headers shows SwiftUI's menu of the columns, as in Finder, which
+    /// adds or removes all of them but Front.
     private func cardTable(_ rows: [CardRow]) -> some View {
-        Table(rows.sorted(using: sortOrder), selection: $selection, sortOrder: $sortOrder) {
+        Table(
+            rows.sorted(using: sortOrder), selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns
+        ) {
             TableColumn(
                 Text("Front", comment: "A column of the Cards window: the card's front."),
                 sortUsing: CardRowOrder(.front)
@@ -330,6 +339,9 @@ struct CardsView: View {
                 FrontCell(card: row.card)
             }
             .width(min: 120)
+            .customizationID("front")
+            // Always there, as Finder's Name: it says which card a row is.
+            .disabledCustomizationBehavior(.visibility)
             TableColumn(
                 Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
                 sortUsing: CardRowOrder(.step)
@@ -337,6 +349,7 @@ struct CardsView: View {
                 Text(stepText(row))
             }
             .width(min: 56, ideal: 64, max: 100)
+            .customizationID("step")
             TableColumn(
                 Text("Due", comment: "A column of the Cards window: when the card is due."),
                 sortUsing: CardRowOrder(.due)
@@ -344,12 +357,70 @@ struct CardsView: View {
                 Text(dueText(row, at: now))
             }
             .width(min: 60, ideal: 72, max: 110)
+            .customizationID("due")
+            TableColumn(
+                Text("Type", comment: "A column of the Cards window: the card's type."),
+                sortUsing: CardRowOrder(.type)
+            ) { row in
+                Text(row.card.type.name)
+            }
+            .width(min: 60, ideal: 76, max: 110)
+            .customizationID("type")
+            .defaultVisibility(.hidden)
+            TableColumn(
+                Text("Tags", comment: "A column of the Cards window: the card's tags."),
+                sortUsing: CardRowOrder(.tags)
+            ) { row in
+                Text(row.card.tags.formatted(.list(type: .and, width: .narrow)))
+                    .lineLimit(1)
+            }
+            .width(min: 60, ideal: 120)
+            .customizationID("tags")
+            .defaultVisibility(.hidden)
+            TableColumn(
+                Text("Source", comment: "A column of the Cards window: where Lucas came across the card's content."),
+                sortUsing: CardRowOrder(.source)
+            ) { row in
+                Text(row.card.source ?? "")
+                    .lineLimit(1)
+            }
+            .width(min: 60, ideal: 120)
+            .customizationID("source")
+            .defaultVisibility(.hidden)
+            TableColumn(
+                Text(
+                    "Last seen",
+                    comment: "A column of the Cards window: when Lucas last saw the card, in a first view or a review."),
+                sortUsing: CardRowOrder(.lastSeen)
+            ) { row in
+                // Without the time, as the inbox's Added column.
+                Text(row.lastSeen?.formatted(date: .abbreviated, time: .omitted) ?? "")
+            }
+            .width(min: 80, ideal: 96, max: 140)
+            .customizationID("lastSeen")
+            .defaultVisibility(.hidden)
+            TableColumn(
+                Text("Created", comment: "A column of the Cards window: when Lucas approved the card."),
+                sortUsing: CardRowOrder(.created)
+            ) { row in
+                Text(row.card.createdAt.formatted(date: .abbreviated, time: .omitted))
+            }
+            .width(min: 80, ideal: 96, max: 140)
+            .customizationID("created")
+            .defaultVisibility(.hidden)
         }
         .focused($isTableFocused)
         .overlay {
             if rows.isEmpty, case .cards(let group) = sidebarItem {
                 noCards(in: group)
             }
+        }
+        // The window opens the next time with the table as Lucas leaves it.
+        .onChange(of: sortOrder) {
+            Preferences.cardsSortOrder = sortOrder
+        }
+        .onChange(of: columns) {
+            Preferences.cardsColumns = columns
         }
     }
 
@@ -970,20 +1041,48 @@ nonisolated extension ColumnOrder {
         default: result
         }
     }
+
+    /// How two values that may be missing compare, the table's way, as
+    /// `compare` says once both are there: a missing one goes after one
+    /// that's there, whichever way the table is ordered.
+    fileprivate func ordered<Value>(
+        _ lhs: Value?, _ rhs: Value?, by compare: (Value, Value) -> ComparisonResult
+    ) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case (nil, nil): .orderedSame
+        case (nil, _): .orderedDescending
+        case (_, nil): .orderedAscending
+        case (let lhs?, let rhs?): compare(lhs, rhs)
+        }
+    }
 }
 
-/// How the table orders its cards: by one column, either way. Cards without a
-/// due time go after those with one, whichever way the table is ordered by
-/// Due.
-nonisolated private struct CardRowOrder: ColumnOrder {
-    enum Column: Hashable {
-        /// When Lucas approved the card, which no column shows yet, and then,
-        /// for cards approved together, the order he approved them in.
+/// How the table orders its cards: by one column, either way. Cards with
+/// nothing in the column, no due time, tags, source or last view, go after
+/// the others, whichever way the table is ordered. The app's preferences
+/// keep it by its column's name, so the window opens in the order Lucas left
+/// it in.
+nonisolated struct CardRowOrder: ColumnOrder, Codable {
+    enum Column: String, Codable {
+        /// When Lucas approved the card, and then, for cards approved
+        /// together, the order he approved them in.
         case created
         case front
         case step
         case due
+        /// By what the Type column says, alphabetically.
+        case type
+        /// By the card's tags, alphabetically: by their first tags, then by
+        /// their second ones, and so on.
+        case tags
+        case source
+        case lastSeen
     }
+
+    /// The table's order until Lucas clicks a column's header: the newest
+    /// cards first, so that after a refine session he sees what he just
+    /// approved.
+    static let newestFirst = [CardRowOrder(.created, order: .reverse)]
 
     let column: Column
     var order: SortOrder
@@ -1003,12 +1102,15 @@ nonisolated private struct CardRowOrder: ColumnOrder {
         case .step:
             ordered(lhs.stepNumber, rhs.stepNumber)
         case .due:
-            switch (lhs.due, rhs.due) {
-            case (nil, nil): .orderedSame
-            case (nil, _): .orderedDescending
-            case (_, nil): .orderedAscending
-            case (let lhs?, let rhs?): ordered(lhs, rhs)
-            }
+            ordered(lhs.due, rhs.due) { ordered($0, $1) }
+        case .type:
+            ordered(lhs.card.type.name.localizedStandardCompare(rhs.card.type.name))
+        case .tags:
+            ordered(lhs.tags, rhs.tags) { ordered(alphabetically($0, $1)) }
+        case .source:
+            ordered(lhs.card.source, rhs.card.source) { ordered($0.localizedStandardCompare($1)) }
+        case .lastSeen:
+            ordered(lhs.lastSeen, rhs.lastSeen) { ordered($0, $1) }
         }
     }
 }
@@ -1019,6 +1121,23 @@ extension CardRow {
     nonisolated fileprivate var stepNumber: Int {
         step.map { $0 + 1 } ?? 0
     }
+
+    /// The card's tags, or nil when it has none.
+    nonisolated fileprivate var tags: [String]? {
+        card.tags.isEmpty ? nil : card.tags
+    }
+}
+
+/// How two lists of tags compare, alphabetically: by their first tags, then
+/// by their second ones, and so on, a list that starts another going first.
+nonisolated private func alphabetically(_ lhs: [String], _ rhs: [String]) -> ComparisonResult {
+    for (left, right) in zip(lhs, rhs) {
+        let result = left.localizedStandardCompare(right)
+        if result != .orderedSame {
+            return result
+        }
+    }
+    return lhs.count == rhs.count ? .orderedSame : lhs.count < rhs.count ? .orderedAscending : .orderedDescending
 }
 
 /// How the inbox's table orders its rows: by one column, either way.
@@ -1764,8 +1883,9 @@ private func dueText(_ row: CardRow, at now: Date) -> String {
 }
 
 extension CardType {
-    /// The type's name, as the Cards window shows it.
-    fileprivate var name: String {
+    /// The type's name, as the Cards window shows it, and as its table sorts
+    /// by it.
+    nonisolated fileprivate var name: String {
         switch self {
         case .word: String(localized: "Word", comment: "A card type.")
         case .concept: String(localized: "Concept", comment: "A card type.")
