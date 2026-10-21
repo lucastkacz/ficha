@@ -868,6 +868,9 @@
     "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so there's nothing to discard. The window now shows the inbox as it is." : {
       "comment" : "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
     },
+    "This card was deleted meanwhile, in the Cards window. Close the review panel and open “Review now” again." : {
+      "comment" : "An alert's message in the review panel, when the card it shows was deleted meanwhile."
+    },
     "This is already in the inbox" : {
 
     },

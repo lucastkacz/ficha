@@ -90,8 +90,8 @@ struct DeletingTests {
         #expect(try engine.reviewNow(settings) == [.review(ubuntu)])
     }
 
-    // The Cards window offers Delete only for the cards it lists, but they
-    // can change outside it meanwhile.
+    // Lucas confirms the cards together, so they're deleted together or not
+    // at all.
     @Test("deleting several cards deletes none of them when one doesn't exist")
     func deletingSeveralCardsIsAllOrNothing() throws {
         let serendipia = try approveCard("serendipia", in: engine)
