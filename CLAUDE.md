@@ -31,7 +31,7 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 | A ticket is ready for an agent | `/implement #<ticket>`, then `/clear` before the next one |
 | All of a spec's tickets are ready, and Lucas would rather not drive each one | `/implement-spec #<spec>`: parallel agents build them on one branch, `<spec>-<short-name>`, behind one PR |
 | A small change that fits in this session | `/implement`, right here, without a spec or tickets |
-| A build or a bug fix is done, above all one that went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007 |
+| A spec's ticket or a bug fix is done, and it went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007. Ours, narrower than the plugin's "after a build" (keep it when the map is updated): a retro of environment work turns up more of it |
 | Raw issues are waiting: ideas from Lucas's phone, bug reports | `/triage` |
 | Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them | `/refine`, ours, not the plugin's (keep it when the map is updated): it proposes the cards, and Lucas approves them |
 | An effort too big and foggy for one session | `/wayfinder` |
@@ -83,7 +83,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
 - Skills, hooks, settings and `CLAUDE.md` load when a session starts, from the folder it started in, also when it then works in a worktree, and its subagents get that `CLAUDE.md` too. So a change to any of them can be checked in a new session once the main folder's `main` has it.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
-- Search the repo with `git grep -n <text> -- '<pathspec>'`, like `-- '*.swift'`: it skips `.build/` and everything git ignores, and the quotes keep zsh from expanding the pathspec. It reads only the files git tracks: add `--untracked` for new ones. For `\b`, pass `-P`: with `-E` it matches nothing, silently.
+- Search the repo with `git grep -n <text> -- '<pathspec>'`, like `-- '*.swift'`: it skips `.build/` and everything git ignores, and the quotes keep zsh from expanding the pathspec. It reads only the files git tracks: add `--untracked` for new ones. For `\b`, pass `-P`: with `-E` it matches nothing, silently. Every option goes before `<text>`, as `-n` does: git reads one after it as a commit.
 
 ## Agent skills
 
