@@ -39,11 +39,12 @@ merge_anywhere='(^|[^[:alnum:]_.-])gh[[:space:]]([^;&|]*[[:space:]])?merge([[:sp
 merge_alone='^gh pr merge ([0-9]+)( --[a-z-]+)*$'
 # `git push`, also with options before `push` (`git -C <dir> push`).
 push_anywhere='(^|[^[:alnum:]_.-])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)'
+# A folder or a branch written out, with no quotes, spaces or expansions,
+# which could hide a command, as `x;{git,push,origin,<branch>};cd` would.
+plain='[[:alnum:]._/-]+'
 # The push that names its branch, also from another folder (`git -C <dir>
-# push`), since `-C` doesn't change which branch is pushed. The folder takes only
-# the characters the branch does, so it can't hide a command, as
-# `x;{git,push,origin,<branch>};cd` would.
-push_alone='^git (-C [[:alnum:]._/-]+ )?push( -u)? origin ([[:alnum:]._/-]+)$'
+# push`): `-C` changes the folder git runs in, not the branch a name pushes.
+push_alone="^git (-C $plain )?push( -u)? origin ($plain)\$"
 
 block() {
   echo "$1" >&2
@@ -82,8 +83,12 @@ if [[ $cmd =~ $push_anywhere ]]; then
     block "Couldn't check which pull requests have auto-merge on, so nothing is pushed. Tell Lucas."
   [[ -z $armed ]] && exit 0
   [[ $cmd =~ $push_alone ]] ||
-    block "Some pull requests have auto-merge on ($armed): push with \`git push origin <branch>\` on its own, or \`git -C <dir> push origin <branch>\` with a plain path, so this hook can check the branch."
-  branch=${BASH_REMATCH[3]}
+    block "Some pull requests have auto-merge on ($armed): push with \`git push origin <branch>\` on its own, or \`git -C <dir> push origin <branch>\` with <dir> written out, without quotes, spaces or variables, so this hook can check the branch."
+  branch=${BASH_REMATCH[3]#refs/heads/}
+  # `HEAD`, in whatever case, is whichever branch git finds checked out, which
+  # the hook can't see: in a worktree, on macOS, `head` finds the main folder's.
+  [[ $branch == [Hh][Ee][Aa][Dd] ]] &&
+    block "Some pull requests have auto-merge on ($armed): name the branch instead of HEAD, as in \`git push origin <branch>\`, so this hook can check it."
   for armed_branch in $armed; do
     [[ $armed_branch == "$branch" ]] &&
       block "The pull request for $branch has auto-merge on, so a push could merge files nobody checked. Turn it off with \`gh pr merge <number> --disable-auto\`, push, and turn it on again with \`gh pr merge <number> --auto --squash\`, which checks the PR again (CLAUDE.md)."

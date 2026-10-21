@@ -115,6 +115,8 @@ expect 0 "a push to a PR without auto-merge passes" merge-gate.sh "$(bash_input 
 expect 2 "a push through git -C to a PR with auto-merge on is blocked" merge-gate.sh "$(bash_input "git -C $tmp/branch push origin 7-feature" "$tmp/branch")"
 expect 0 "a push through git -C to a PR without auto-merge passes" merge-gate.sh "$(bash_input "git -C $tmp/branch push -u origin 8-other" "$tmp/branch")"
 expect 2 "a push through git -C that hides a command in its folder is blocked while a PR has auto-merge on" merge-gate.sh "$(bash_input 'git -C x;{git,push,origin,7-feature};cd push origin 8-other' "$tmp/branch")"
+expect 2 "a push of HEAD through git -C is blocked while a PR has auto-merge on" merge-gate.sh "$(bash_input "git -C $tmp/branch push origin HEAD" "$tmp/branch")"
+expect 2 "a push of a branch's full ref is checked as the branch" merge-gate.sh "$(bash_input 'git push origin refs/heads/7-feature' "$tmp/branch")"
 expect 2 "a push that doesn't name its branch is blocked while a PR has auto-merge on" merge-gate.sh "$(bash_input 'git push' "$tmp/branch")"
 rm "$tmp/gh/prs.json"
 expect 2 "a push is blocked when auto-merge can't be checked" merge-gate.sh "$(bash_input 'git push origin 8-other' "$tmp/branch")"
