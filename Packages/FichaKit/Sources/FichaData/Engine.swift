@@ -99,9 +99,7 @@ public struct Engine: Sendable {
             let captures = try capturesWaiting(in: db)
             return Inbox(
                 captures: captures.filter { $0.expandsCardID == nil },
-                expansions: try captures.compactMap { capture in
-                    try capture.expandsCardID.map { Expansion(capture: capture, card: try existingCard($0, in: db)) }
-                },
+                expansions: try captures.compactMap { try $0.expansion(in: db) },
                 flaggedCards: try flaggedCardsInInbox.order(Column("flaggedAt"), Column("id")).fetchAll(db)
                     .map(Card.init(row:))
             )
@@ -231,15 +229,22 @@ var capturesInInbox: QueryInterfaceRequest<Row> {
     Table("capture").filter(Column("refinedAt") == nil)
 }
 
+/// The capture with this id, as it is now, or an error when it isn't in the
+/// inbox.
+func captureInInbox(_ captureID: Int64, in db: Database) throws -> Capture {
+    guard let row = try capturesInInbox.filter(Column("id") == captureID).fetchOne(db) else {
+        throw EngineError.captureNotInInbox(captureID)
+    }
+    return try Capture(row: row)
+}
+
 /// Takes a capture out of the inbox, as refined at `time`, and returns it, or
 /// throws when it isn't in the inbox.
 @discardableResult
 func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) throws -> Capture {
-    guard let row = try capturesInInbox.filter(Column("id") == captureID).fetchOne(db) else {
-        throw EngineError.captureNotInInbox(captureID)
-    }
+    let capture = try captureInInbox(captureID, in: db)
     try db.execute(sql: "UPDATE capture SET refinedAt = ? WHERE id = ?", arguments: [time, captureID])
-    return try Capture(row: row)
+    return capture
 }
 
 /// Runs work on the database. The engine's own errors pass through as they

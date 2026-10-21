@@ -3,8 +3,9 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on editing a card in the Cards window, which changes its content and
-/// keeps its place on the ladder, and fixes it when it's flagged.
+/// Tests on editing in the Cards window: a card changes its content and keeps
+/// its place on the ladder, and is fixed when it's flagged; a capture in the
+/// inbox changes its text, note and source, and stays in the inbox.
 struct EditingTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -103,5 +104,74 @@ struct EditingTests {
         try engine.unbury([serendipia.id, ubuntu.id])
         #expect(try engine.reviewNow(settings).map(\.card.front) == ["serendipia", "ubuntu"])
         #expect(try engine.inbox().flaggedCards.isEmpty)
+    }
+
+    // The Cards window passes what each field holds, as the capture window
+    // does, so a field left empty arrives as a blank string.
+    @Test(
+        "editing a capture replaces its text, note and source, cleaned up as capturing does, and keeps when it was captured"
+    )
+    func editingACaptureReplacesItsContent() throws {
+        let capture = try engine.newCapture("navaja de okham", note: "Algo de filosofía", source: "Un podcast")
+        time.advance(by: hours(1))
+
+        let edited = try engine.editCapture(
+            capture.id, text: "  Navaja de Ockham\n", note: "La explicación más simple suele ser la mejor.",
+            source: "  ")
+
+        #expect(edited.id == capture.id)
+        #expect(edited.text == "Navaja de Ockham")
+        #expect(edited.note == "La explicación más simple suele ser la mejor.")
+        #expect(edited.source == nil)
+        #expect(edited.createdAt == capture.createdAt)
+        #expect(try engine.inbox().captures == [edited])
+    }
+
+    // A refine session can approve or discard a capture while Lucas edits it
+    // in the Cards window.
+    @Test("only a capture in the inbox can be edited: one approved, discarded or that doesn't exist is refused")
+    func onlyACaptureInTheInboxCanBeEdited() throws {
+        let approved = try engine.newCapture("serendipia")
+        try engine.approve(
+            approved.id, into: [card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad.")])
+        let discarded = try engine.newCapture("algo que ya no me interesa")
+        try engine.discard(discarded.id)
+
+        #expect(throws: EngineError.captureNotInInbox(approved.id)) {
+            try engine.editCapture(approved.id, text: "serendipia", note: "Otra acepción", source: nil)
+        }
+        #expect(throws: EngineError.captureNotInInbox(discarded.id)) {
+            try engine.editCapture(discarded.id, text: "algo que sí me interesa", note: nil, source: nil)
+        }
+        #expect(throws: EngineError.captureNotInInbox(99)) {
+            try engine.editCapture(99, text: "ubuntu", note: nil, source: nil)
+        }
+    }
+
+    // Editing doesn't check for duplicates, as capturing does: an expansion
+    // waits attached to the card it repeated when Lucas expanded it.
+    @Test("an edited expansion stays attached to its card, even when its text now repeats another card's front")
+    func anEditedExpansionStaysAttachedToItsCard() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try approveCard("ubuntu", in: engine)
+        let expansion = try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
+
+        let edited = try engine.editCapture(expansion.id, text: "ubuntu", note: "Otra acepción", source: "Una charla")
+
+        #expect(edited.expandsCardID == serendipia.id)
+        let inbox = try engine.inbox()
+        #expect(inbox.captures.isEmpty)
+        #expect(inbox.expansions.map(\.capture) == [edited])
+        #expect(inbox.expansions.map(\.card) == [serendipia])
+    }
+
+    @Test("editing a capture with a blank text is refused, and the capture stays as it was")
+    func editingACaptureWithABlankTextIsRefused() throws {
+        let capture = try engine.newCapture("serendipia", note: "Lo opuesto a buscar algo")
+
+        #expect(throws: EngineError.emptyCapture) {
+            try engine.editCapture(capture.id, text: " \n", note: "Una nota sin texto", source: nil)
+        }
+        #expect(try engine.inbox().captures == [capture])
     }
 }

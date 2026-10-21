@@ -1,11 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// The Cards window: Lucas's cards in three panes, as Mail lays out its own.
-/// There's one, which he can resize down to what fits the three panes, and
-/// which opens where he left it. While it's open, the app shows in the Dock
-/// and in ⌘Tab, so he can switch back to it as to any app; once it closes,
-/// the app lives in the menu bar only again.
+/// The Cards window: Lucas's cards and his inbox in three panes, as Mail lays
+/// out its own. There's one, which he can resize down to what fits the three
+/// panes, and which opens where he left it. While it's open, the app shows in
+/// the Dock and in ⌘Tab, so he can switch back to it as to any app; once it
+/// closes, the app lives in the menu bar only again.
 final class CardsWindow: NSWindow {
     /// The name the window's frame is kept under in the app's preferences.
     private static let frameName = "Cards"

@@ -143,10 +143,13 @@
       }
     },
     "A book, a podcast…" : {
-      "comment" : "In the Cards window, in a card's empty source, while Lucas edits it."
+      "comment" : "In the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
     },
     "A camera" : {
       "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
+    },
+    "A capture needs a text." : {
+      "comment" : "In the Cards window, under a capture's text, when Lucas saves it blank."
     },
     "A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns it off." : {
 
@@ -174,6 +177,9 @@
     },
     "Add Step" : {
 
+    },
+    "Added" : {
+      "comment" : "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."
     },
     "After the Mac wakes, wait" : {
       "comment" : "Settings, under Appearances: how long an appearance waits once the Mac wakes."
@@ -247,6 +253,9 @@
     "Capture…" : {
 
     },
+    "Captured" : {
+      "comment" : "In the Cards window's detail: when Lucas captured it."
+    },
     "Card: “%@”\n\nExpand keeps your capture in the inbox, attached to that card, so that refining adds it to the card. Ignore drops it." : {
 
     },
@@ -309,6 +318,9 @@
     "Couldn't count your progress" : {
 
     },
+    "Couldn't discard the capture" : {
+      "comment" : "An alert's title in the Cards window."
+    },
     "Couldn't flag the card" : {
 
     },
@@ -322,7 +334,7 @@
 
     },
     "Couldn't save the capture" : {
-
+      "comment" : "An alert's title in the Cards window."
     },
     "Couldn't save the card" : {
       "comment" : "An alert's title in the Cards window."
@@ -365,6 +377,18 @@
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
     },
+    "Discard" : {
+      "comment" : "The button that discards the capture the Cards window asks about."
+    },
+    "Discard “%@”?" : {
+      "comment" : "The title of the Cards window's question before it discards a capture, with its text."
+    },
+    "Discard…" : {
+      "comment" : "A button of the Cards window that discards the capture, asking first."
+    },
+    "Discard… (⌘⌫)" : {
+      "comment" : "The tooltip of the Cards window's button that discards the capture."
+    },
     "Don't know" : {
 
     },
@@ -378,10 +402,10 @@
 
     },
     "Edit" : {
-      "comment" : "A button of the Cards window that turns the card's detail into fields to edit it."
+      "comment" : "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
     },
     "Edit (⌘L)" : {
-      "comment" : "The tooltip of the Cards window's button that edits the card."
+      "comment" : "The tooltip of the Cards window's button that edits the card or the capture."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -391,6 +415,9 @@
     },
     "Expand" : {
       "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
+    },
+    "Expands this card" : {
+      "comment" : "In the Cards window's detail of an expansion, above the card it's attached to."
     },
     "Find" : {
       "comment" : "A hidden button of the Cards window: ⌘F, which goes to the search field."
@@ -458,11 +485,56 @@
     "In use: %@" : {
       "comment" : "What a detector sees in Diagnostics."
     },
+    "Inbox" : {
+      "comment" : "An item of the Cards window's sidebar: what waits to be refined."
+    },
+    "inbox-kind.capture" : {
+      "comment" : "In the Cards window's inbox, the kind of a row: a capture.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Capture"
+          }
+        }
+      }
+    },
+    "inbox-kind.expansion" : {
+      "comment" : "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Expansion"
+          }
+        }
+      }
+    },
+    "inbox-kind.flagged" : {
+      "comment" : "In the Cards window's inbox, the kind of a row: a flagged card.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Flagged"
+          }
+        }
+      }
+    },
+    "It leaves the inbox without becoming cards, and you can't bring it back." : {
+      "comment" : "Under the title of the Cards window's question before it discards a capture."
+    },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
     },
     "Keeping the display awake" : {
       "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
+    },
+    "Kind" : {
+      "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion or a card."
     },
     "Know it" : {
 
@@ -566,10 +638,16 @@
       "comment" : "What a detector sees in Diagnostics."
     },
     "Note" : {
-
+      "comment" : "In the Cards window's detail: what Lucas noted with a capture.\nIn the Cards window, the label of a capture's note, while Lucas edits it."
     },
     "Note (optional)" : {
 
+    },
+    "Nothing in the inbox" : {
+      "comment" : "In the Cards window, when the inbox is empty."
+    },
+    "Nothing selected" : {
+      "comment" : "In the Cards window's detail, when nothing in the inbox is selected."
     },
     "now" : {
       "comment" : "In the Cards window's Due column: the card is due."
@@ -682,7 +760,7 @@
 
     },
     "Source" : {
-      "comment" : "In the Cards window, the label of a card's source, while Lucas edits it."
+      "comment" : "In the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
     },
     "Source (optional): a book, a podcast…" : {
 
@@ -709,7 +787,7 @@
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
     },
     "Text" : {
-
+      "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
     },
     "The camera or the microphone in use" : {
 
@@ -719,6 +797,12 @@
     },
     "Then wait" : {
       "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
+    },
+    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so nothing was saved. To keep what you typed, copy it before you cancel." : {
+      "comment" : "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
+    },
+    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so there's nothing to discard. The window now shows the inbox as it is." : {
+      "comment" : "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
     },
     "This is already in the inbox" : {
 
@@ -769,6 +853,9 @@
     },
     "What needs fixing?" : {
 
+    },
+    "What you capture, and the cards you flag, wait here to be refined." : {
+      "comment" : "In the Cards window, when the inbox is empty."
     },
     "When it shows up on its own. Opened with Review now, it takes the keyboard at once." : {
 

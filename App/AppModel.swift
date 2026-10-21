@@ -115,6 +115,12 @@ final class AppModel {
         try engine.cardRows(in: group, matching: search, on: settings.ladder)
     }
 
+    /// What waits in the inbox that mentions `search`, as the Cards window
+    /// lists it, with the flagged cards on the ladder Lucas set in Settings.
+    func inboxRows(matching search: String) throws(EngineError) -> [InboxRow] {
+        try engine.inboxRows(matching: search, on: settings.ladder)
+    }
+
     /// Every tag of the cards that aren't buried, alphabetically, for the
     /// Cards window's sidebar.
     func tags() throws(EngineError) -> [String] {
@@ -126,6 +132,18 @@ final class AppModel {
     /// reviews unless it's buried.
     func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) {
         try engine.edit(cardID, with: content)
+    }
+
+    /// Edits a capture in the inbox from the Cards window, as its fields hold
+    /// it: its text, note and source. An expansion stays attached to its card.
+    func editCapture(_ captureID: Int64, text: String, note: String, source: String) throws(EngineError) {
+        try engine.editCapture(captureID, text: text, note: note, source: source)
+    }
+
+    /// Discards a capture in the inbox from the Cards window: it leaves the
+    /// inbox without becoming cards.
+    func discard(_ captureID: Int64) throws(EngineError) {
+        try engine.discard(captureID)
     }
 
     /// Flags a card in Lucas's reviews from the Cards window, with his note

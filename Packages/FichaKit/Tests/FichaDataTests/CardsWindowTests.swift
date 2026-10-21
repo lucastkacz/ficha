@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 /// Tests on what the Cards window lists: Lucas's cards, each with where it
-/// stands on his ladder and when he last saw it.
+/// stands on his ladder and when he last saw it, and what waits in his inbox.
 struct CardsWindowTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -223,5 +223,68 @@ struct CardsWindowTests {
 
         #expect(rows.map(\.standing) == [serendipiaStanding, ubuntuStanding, .new])
         #expect(rows.map(\.due) == [serendipiaStanding.due, nil, nil])
+    }
+
+    @Test(
+        "the inbox lists the captures, the expansions and the flagged cards that aren't buried, the latest added first, as many as the menu counts"
+    )
+    func theInboxListsWhatWaitsToBeRefined() throws {
+        let ladder = ReviewSettings.defaults.ladder
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ojala = try approveCard("ojalá", in: engine)
+        time.advance(by: hours(1))
+        let navaja = try engine.newCapture("Navaja de Ockham", note: "Algo de filosofía")
+        time.advance(by: hours(1))
+        try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
+        time.advance(by: hours(1))
+        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
+        let flaggedAt = time.now
+        time.advance(by: hours(1))
+        try engine.flag(ojala.id, note: note("El dorso es confuso"))
+        try engine.bury(ojala.id)
+        time.advance(by: hours(1))
+        let bostezo = try engine.newCapture("¿Por qué bostezamos?")
+        try engine.discard(try engine.newCapture("algo que ya no me interesa").id)
+
+        let rows = try engine.inboxRows(on: ladder)
+
+        let expansion = try #require(try engine.inbox().expansions.first)
+        let flagged = try #require(try engine.cardRows(in: .flagged, on: ladder).first)
+        #expect(expansion.card == serendipia)
+        #expect(flagged.card.id == ubuntu.id)
+        #expect(
+            rows.map(\.item) == [.capture(bostezo), .flaggedCard(flagged), .expansion(expansion), .capture(navaja)])
+        #expect(rows.map(\.text) == ["¿Por qué bostezamos?", "ubuntu", "Serendipia", "Navaja de Ockham"])
+        #expect(rows.map(\.addedAt) == [bostezo.createdAt, flaggedAt, expansion.capture.createdAt, navaja.createdAt])
+        #expect(rows.count == (try engine.progress(.defaults).inInbox))
+    }
+
+    @Test(
+        "a search narrows the inbox: a capture by its text or source, and a flagged card by its front, back or source")
+    func aSearchNarrowsTheInbox() throws {
+        let ladder = ReviewSettings.defaults.ladder
+        let uberrimo = try approve(card(.word, front: "Ubérrimo", back: "Muy fértil y abundante."), in: engine)
+        let estoicismo = try approve(
+            card(
+                .concept, front: "Estoicismo", back: "Aceptar lo que no depende de uno.", source: "Meditaciones"),
+            in: engine)
+        try engine.flag(uberrimo.id, note: note("Falta un ejemplo"))
+        time.advance(by: hours(1))
+        try engine.flag(estoicismo.id, note: note("El dorso es confuso"))
+        time.advance(by: hours(1))
+        try engine.newCapture("Navaja de Ockham", source: "Un podcast de filosofía")
+        time.advance(by: hours(1))
+        try engine.newCapture("ubuntu")
+
+        #expect(try engine.inboxRows(matching: "OCKHAM", on: ladder).map(\.text) == ["Navaja de Ockham"])
+        #expect(try engine.inboxRows(matching: "filosofia", on: ladder).map(\.text) == ["Navaja de Ockham"])
+        #expect(try engine.inboxRows(matching: "uberrimo", on: ladder).map(\.text) == ["Ubérrimo"])
+        #expect(try engine.inboxRows(matching: "fertil", on: ladder).map(\.text) == ["Ubérrimo"])
+        #expect(try engine.inboxRows(matching: "meditaciones", on: ladder).map(\.text) == ["Estoicismo"])
+        #expect(
+            try engine.inboxRows(matching: "  ", on: ladder).map(\.text) == [
+                "ubuntu", "Navaja de Ockham", "Estoicismo", "Ubérrimo",
+            ])
     }
 }
