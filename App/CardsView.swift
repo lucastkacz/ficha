@@ -5,12 +5,14 @@ import SwiftUI
 /// The Cards window's content, in three panes as Mail lays out its own: a
 /// sidebar to choose a group of cards, a table with one row per card in it,
 /// narrowed by the toolbar's search field, and the selected card whole beside
-/// it, with what Lucas can do with it at its foot. He selects several cards
-/// with ⌘ or Shift, as in Finder, and then the detail says how many, with what
-/// he can do with all of them. It reads the cards again whenever the engine
-/// says they changed, from the app or the `ficha` CLI, when Lucas changes the
-/// ladder in Settings, and every minute, since cards come due as time passes,
-/// or at once when Ficha Dev's debug menu moves the time.
+/// it, with what Lucas can do with it at its foot. He edits a card right
+/// there, in fields that take the detail's place while the sidebar and the
+/// table wait. He selects several cards with ⌘ or Shift, as in Finder, and
+/// then the detail says how many, with what he can do with all of them. It
+/// reads the cards again whenever the engine says they changed, from the app
+/// or the `ficha` CLI, when Lucas changes the ladder in Settings, and every
+/// minute, since cards come due as time passes, or at once when Ficha Dev's
+/// debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// The cards the table lists, or why they couldn't be read.
@@ -31,6 +33,13 @@ struct CardsView: View {
     /// The table's order: the newest cards first, until Lucas clicks a
     /// column's header.
     @State private var sortOrder = [CardRowOrder(.created, order: .reverse)]
+    /// The card Lucas is editing, as it was when he started, while the detail
+    /// shows its fields. The sidebar and the table wait until he saves or
+    /// cancels, so that a click elsewhere can't drop what he typed.
+    @State private var editing: Card?
+    /// Whether the table has the keyboard, which it gets back once Lucas
+    /// saves or cancels an edit, for him to go on with the arrow keys.
+    @FocusState private var isTableFocused: Bool
     /// The card Lucas is flagging, while the sheet asks for his note.
     @State private var flagging: CardRow?
     /// What Lucas did that couldn't be saved, while an alert says so.
@@ -45,9 +54,11 @@ struct CardsView: View {
         NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
+                .waiting(while: editing != nil)
         } content: {
             table
                 .navigationSplitViewColumnWidth(min: 380, ideal: 440)
+                .waiting(while: editing != nil)
         } detail: {
             detail
                 .navigationSplitViewColumnWidth(min: 300, ideal: 380)
@@ -205,6 +216,7 @@ struct CardsView: View {
                 }
                 .width(min: 60, ideal: 72, max: 110)
             }
+            .focused($isTableFocused)
             .overlay {
                 if rows.isEmpty {
                     noCards
@@ -236,7 +248,17 @@ struct CardsView: View {
     @ViewBuilder
     private var detail: some View {
         let selected = selectedRows
-        if selected.count > 1 {
+        if let card = editing {
+            CardEditor(card: card, isSearching: isSearchFocused) { content throws(EngineError) in
+                try model.edit(card.id, with: content)
+                // The detail shows the card as saved at once, without waiting
+                // for the engine to say it changed.
+                reload()
+            } close: {
+                editing = nil
+                isTableFocused = true
+            }
+        } else if selected.count > 1 {
             selectionSummary(selected)
         } else if let row = selected.first {
             CardDetail(row: row, now: now)
@@ -249,32 +271,35 @@ struct CardsView: View {
     }
 
     /// What Lucas can do with the selected card, at the foot of its detail,
-    /// always in sight: flag it while it's in his reviews, and bury it, or
-    /// unbury it once it's buried.
+    /// always in sight: edit it, flag it while it's in his reviews, and bury
+    /// it, or unbury it once it's buried.
     private func actions(for row: CardRow) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack(spacing: 8) {
-                if row.isInReviews {
-                    Button(
-                        String(
-                            localized: "Flag…",
-                            comment:
-                                "A button of the Cards window that flags the card, asking for a note on what to fix."
-                        )
-                    ) {
-                        startFlagging()
-                    }
-                    .keyboardShortcut("l", modifiers: [.command, .shift])
-                    .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
-                }
-                buryButton(for: [row])
-                Spacer()
+        ActionBar {
+            Button(
+                String(
+                    localized: "Edit",
+                    comment: "A button of the Cards window that turns the card's detail into fields to edit it."
+                )
+            ) {
+                startEditing()
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .keyboardShortcut("l", modifiers: .command)
+            .help(Text("Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card."))
+            if row.isInReviews {
+                Button(
+                    String(
+                        localized: "Flag…",
+                        comment: "A button of the Cards window that flags the card, asking for a note on what to fix."
+                    )
+                ) {
+                    startFlagging()
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+                .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
+            }
+            buryButton(for: [row])
+            Spacer()
         }
-        .background(.bar)
     }
 
     /// What the detail says when Lucas selected several cards: how many, with
@@ -322,11 +347,23 @@ struct CardsView: View {
         }
     }
 
+    /// The selected card, while it's the only one selected.
+    private var singleSelectedRow: CardRow? {
+        let rows = selectedRows
+        return rows.count == 1 ? rows.first : nil
+    }
+
+    /// Turns the detail into fields to edit the selected card, while it's the
+    /// only one selected.
+    private func startEditing() {
+        guard let row = singleSelectedRow else { return }
+        editing = row.card
+    }
+
     /// Asks for a note to flag the selected card, while it's the only one
     /// selected and it's in Lucas's reviews.
     private func startFlagging() {
-        let rows = selectedRows
-        guard rows.count == 1, let row = rows.first, row.isInReviews else { return }
+        guard let row = singleSelectedRow, row.isInReviews else { return }
         flagging = row
     }
 
@@ -652,31 +689,7 @@ private struct CardDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let flag = row.card.flag {
-                    Label {
-                        Text(flag.note)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        FlagIcon()
-                    }
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
-                }
-                if let buriedAt = row.card.buriedAt {
-                    Label {
-                        Text(
-                            "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
-                            comment:
-                                "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
-                        )
-                    } icon: {
-                        BuriedIcon()
-                    }
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.fill.tertiary, in: .rect(cornerRadius: 8))
-                }
+                FlagAndBurial(card: row.card)
                 HStack(spacing: 8) {
                     Text(row.card.type.name)
                         .font(.caption.weight(.semibold))
@@ -715,13 +728,13 @@ private struct CardDetail: View {
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             GridRow {
-                label(
+                gridLabel(
                     Text("Step", comment: "In the Cards window's detail: the card's step on the ladder, and its wait."))
                 Text(stepText(row))
             }
             if let due = row.due {
                 GridRow {
-                    label(Text("Due", comment: "In the Cards window's detail: when the card is due."))
+                    gridLabel(Text("Due", comment: "In the Cards window's detail: when the card is due."))
                     HStack(spacing: 6) {
                         Text(dueText(row, at: now))
                         Text(due.formatted(date: .abbreviated, time: .shortened))
@@ -731,7 +744,7 @@ private struct CardDetail: View {
             }
             if let lastSeen = row.lastSeen {
                 GridRow {
-                    label(
+                    gridLabel(
                         Text(
                             "Last seen",
                             comment:
@@ -741,17 +754,273 @@ private struct CardDetail: View {
                 }
             }
             GridRow {
-                label(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
+                gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
         }
     }
+}
 
-    private func label(_ text: Text) -> some View {
-        text
-            .foregroundStyle(.secondary)
-            .gridColumnAlignment(.trailing)
+/// What the detail says on top of a card that's out of Lucas's reviews: his
+/// note when it's flagged, and when he buried it when it's buried. While he
+/// edits a flagged card, the note also says that saving fixes it.
+private struct FlagAndBurial: View {
+    let card: Card
+    /// Whether Lucas is editing the card.
+    var isEditing = false
+
+    var body: some View {
+        if let flag = card.flag {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(flag.note)
+                    if isEditing {
+                        // The same whether the card is buried or not: whether
+                        // it goes back to Lucas's reviews is FichaData's to
+                        // say, and the burial shows below.
+                        Text(
+                            "Saving fixes it, and it keeps its step.",
+                            comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+                        )
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                FlagIcon()
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
+        }
+        if let buriedAt = card.buriedAt {
+            Label {
+                Text(
+                    "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
+                    comment: "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
+                )
+            } icon: {
+                BuriedIcon()
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.fill.tertiary, in: .rect(cornerRadius: 8))
+        }
     }
+}
+
+/// The fields Lucas edits a card in, in place of its detail: its type,
+/// front, back, tags and source, under his note when it's flagged. Return
+/// saves, Option-Return starts a new line, and Escape cancels, as in the
+/// capture window, unless he's in the window's search field. Saving with the
+/// front or the back blank says, under it, what's missing. When the card
+/// can't be saved, an alert says why, and the fields stay as Lucas left them.
+private struct CardEditor: View {
+    /// The card as it was when Lucas started editing it.
+    let card: Card
+    /// Whether Lucas is in the window's search field, which then keeps Return
+    /// and Escape: Escape there clears the search, and leaves his edit alone.
+    let isSearching: Bool
+    /// Saves the card with `content`, or throws why it couldn't.
+    let save: (CardContent) throws(EngineError) -> Void
+    /// Ends the edit, once the card is saved or without saving it.
+    let close: () -> Void
+    @State private var type: CardType
+    @State private var front: String
+    @State private var back: String
+    /// The card's tags as the Tags field holds them, separated by commas.
+    @State private var tagsText: String
+    @State private var source: String
+    /// Whether Lucas tried to save with the front or the back blank, so that
+    /// the blank one says it's missing.
+    @State private var showsMissingSides = false
+    @State private var failure: Failure?
+    @FocusState private var isFrontFocused: Bool
+
+    init(
+        card: Card,
+        isSearching: Bool,
+        save: @escaping (CardContent) throws(EngineError) -> Void,
+        close: @escaping () -> Void
+    ) {
+        self.card = card
+        self.isSearching = isSearching
+        self.save = save
+        self.close = close
+        _type = State(initialValue: card.type)
+        _front = State(initialValue: card.front)
+        _back = State(initialValue: card.back)
+        _tagsText = State(initialValue: card.tags.joined(separator: ", "))
+        _source = State(initialValue: card.source ?? "")
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                FlagAndBurial(card: card, isEditing: true)
+                fields
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            ActionBar {
+                Spacer()
+                Button("Cancel", action: close)
+                    .keyboardShortcut(isSearching ? nil : .cancelAction)
+                Button("Save", action: submit)
+                    .keyboardShortcut(isSearching ? nil : .defaultAction)
+            }
+        }
+        .onAppear {
+            isFrontFocused = true
+        }
+        .failureAlert($failure)
+    }
+
+    private var fields: some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
+            GridRow {
+                let label = Text(
+                    "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
+                gridLabel(label)
+                Picker(selection: $type) {
+                    ForEach(CardType.allCases, id: \.self) { type in
+                        Text(type.name)
+                            .tag(type)
+                    }
+                } label: {
+                    label
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            GridRow {
+                gridLabel(
+                    Text("Front", comment: "In the Cards window, the label of a card's front, while Lucas edits it."))
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Front", text: $front, axis: .vertical)
+                        .lineLimit(1...4)
+                        .focused($isFrontFocused)
+                    if showsMissingSides && CardContent.isBlank(front) {
+                        missing(
+                            Text(
+                                "A card needs a front.",
+                                comment: "In the Cards window, under a card's front, when Lucas saves it blank."))
+                    }
+                }
+            }
+            GridRow {
+                gridLabel(
+                    Text("Back", comment: "In the Cards window, the label of a card's back, while Lucas edits it."))
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Back", text: $back, axis: .vertical)
+                        .lineLimit(4...12)
+                    if showsMissingSides && CardContent.isBlank(back) {
+                        missing(
+                            Text(
+                                "A card needs a back.",
+                                comment: "In the Cards window, under a card's back, when Lucas saves it blank."))
+                    }
+                }
+            }
+            GridRow {
+                gridLabel(
+                    Text("Tags", comment: "In the Cards window, the label of a card's tags, while Lucas edits it."))
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Tags", text: $tagsText)
+                    Text(
+                        "Separate tags with commas.",
+                        comment: "In the Cards window, under a card's tags, while Lucas edits it."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            GridRow {
+                gridLabel(
+                    Text("Source", comment: "In the Cards window, the label of a card's source, while Lucas edits it."))
+                TextField(
+                    "Source", text: $source,
+                    prompt: Text(
+                        "A book, a podcast…",
+                        comment: "In the Cards window, in a card's empty source, while Lucas edits it."),
+                    axis: .vertical
+                )
+                .lineLimit(1...3)
+            }
+        }
+        .textFieldStyle(.roundedBorder)
+        // A focused text field keeps Return from reaching the default button.
+        .onSubmit(submit)
+    }
+
+    /// What's missing, under a field Lucas left blank.
+    private func missing(_ text: Text) -> some View {
+        text
+            .font(.caption)
+            .foregroundStyle(.red)
+    }
+
+    /// The tags in the Tags field, which `CardContent` cleans up as it does
+    /// wherever a card comes from.
+    private var tags: [String] {
+        tagsText.split(separator: ",").map(String.init)
+    }
+
+    /// Saves the card with what the fields hold, unless the front or the back
+    /// is blank, and ends the edit.
+    private func submit() {
+        guard let content = CardContent(type: type, front: front, back: back, tags: tags, source: source) else {
+            showsMissingSides = true
+            return
+        }
+        do throws(EngineError) {
+            try save(content)
+            close()
+        } catch {
+            failure = Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save the card", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: 1))
+        }
+    }
+}
+
+/// The bar at the foot of the detail, always in sight, with what Lucas can
+/// do there.
+private struct ActionBar<Buttons: View>: View {
+    @ViewBuilder let buttons: Buttons
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 8) {
+                buttons
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+        }
+        .background(.bar)
+    }
+}
+
+extension View {
+    /// The view, dimmed and taking no clicks while `isWaiting`: the sidebar
+    /// and the table, while Lucas edits a card.
+    fileprivate func waiting(while isWaiting: Bool) -> some View {
+        disabled(isWaiting)
+            .opacity(isWaiting ? 0.5 : 1)
+    }
+}
+
+/// A label in one of the detail's grids, before what it names: secondary, and
+/// aligned to the trailing edge of its column.
+private func gridLabel(_ text: Text) -> some View {
+    text
+        .foregroundStyle(.secondary)
+        .gridColumnAlignment(.trailing)
 }
 
 /// The card's step counted from 1, as Settings counts them, with its wait,
