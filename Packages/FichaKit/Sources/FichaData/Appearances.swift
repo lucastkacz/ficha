@@ -121,7 +121,7 @@ private func holdThatIsOn(in db: Database) throws -> Int64? {
 }
 
 /// Adds an entry at the end of the appearance log.
-private func insert(_ entry: AppearanceLogEntry, in db: Database) throws {
+func insert(_ entry: AppearanceLogEntry, in db: Database) throws {
     let (outcome, heldBackBy) = entry.outcome.columns
     try db.execute(
         sql: "INSERT INTO appearanceLog (trigger, shownAt, closedAt, outcome, heldBackBy) VALUES (?, ?, ?, ?, ?)",
