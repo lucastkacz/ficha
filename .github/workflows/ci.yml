@@ -36,15 +36,18 @@ jobs:
             exit 1
           fi
           sudo xcode-select -s "$xcode"
-      # The iPhone app builds with the selected Xcode's iOS SDKs, for the
-      # simulator and, in the String Catalog check, for an iPhone. This step
-      # lists the SDKs, so a missing one shows in the log.
       - name: Toolchain
         run: |
           sw_vers
           xcodebuild -version
           swift --version
-          xcodebuild -showsdks
+      - name: Install the iOS platform
+        # Xcode builds the iPhone app, for the simulator and, in the String
+        # Catalog check, for an iPhone, only with its iOS platform installed,
+        # as on the Mac (Xcode › Settings › Components). The image installs it
+        # only for its newest Xcodes (actions/runner-images#12541), so this
+        # downloads the selected Xcode's, as that announcement suggests.
+        run: xcodebuild -downloadPlatform iOS
       - name: Install XcodeGen
         run: brew install xcodegen
         env:
