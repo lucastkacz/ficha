@@ -122,7 +122,9 @@ enum Preferences {
     /// in what order and how wide, as SwiftUI keeps them. At first the
     /// table's own: Front, Step and Due. One that can't be read is only
     /// logged, as the tab Settings opens on: the window opens with its first
-    /// columns, and Lucas's next change to them replaces it.
+    /// columns, and Lucas's next change to them replaces it. Keeping them
+    /// here, with the other preferences, rather than through SwiftUI's
+    /// `@AppStorage`, is our own.
     static var cardsColumns: TableColumnCustomization<CardRow> {
         get { read(.cardsColumns, decoding: TableColumnCustomization<CardRow>.self) ?? TableColumnCustomization() }
         set { write(newValue, encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
@@ -218,14 +220,15 @@ enum Preferences {
     private static func write<Value: Encodable & Equatable>(
         _ value: Value, encodedFor key: Key, unless defaultValue: Value
     ) {
-        guard value != defaultValue else {
+        if value == defaultValue {
             UserDefaults.standard.removeObject(forKey: key.rawValue)
-            return
-        }
-        do {
-            UserDefaults.standard.set(try JSONEncoder().encode(value), forKey: key.rawValue)
-        } catch {
-            logger.error("Couldn't encode the setting \(key.rawValue, privacy: .public): \(error, privacy: .public)")
+        } else {
+            do {
+                UserDefaults.standard.set(try JSONEncoder().encode(value), forKey: key.rawValue)
+            } catch {
+                logger.error(
+                    "Couldn't encode the setting \(key.rawValue, privacy: .public): \(error, privacy: .public)")
+            }
         }
     }
 }

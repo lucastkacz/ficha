@@ -588,9 +588,9 @@ do {
     // Library/Preferences/Render.plist, whatever CFFIXED_USER_HOME says. The
     // tool empties them as it starts, so the window opens as it does the first
     // time, and as it ends, so none is left there.
-    let preferences = ProcessInfo.processInfo.processName
-    UserDefaults.standard.removePersistentDomain(forName: preferences)
-    defer { UserDefaults.standard.removePersistentDomain(forName: preferences) }
+    let preferencesDomain = ProcessInfo.processInfo.processName
+    UserDefaults.standard.removePersistentDomain(forName: preferencesDomain)
+    defer { UserDefaults.standard.removePersistentDomain(forName: preferencesDomain) }
     let request = try request(from: Array(CommandLine.arguments.dropFirst()))
     guard let name = request.window else {
         throw RenderError(description: "Which window? Name one.\n\(usage)")

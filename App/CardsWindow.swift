@@ -56,8 +56,9 @@ final class CardsWindow: NSWindow {
 
     /// Gives the window its content, with Lucas's cards as they are now, as
     /// it opens: the app opens it on screen, and `make render` offscreen. The
-    /// content is made each time the window opens, so it starts as the window
-    /// does the first time, and stops reading the cards once it closes.
+    /// content is made each time the window opens, so it starts on All cards
+    /// with nothing selected or searched, its table as Lucas left it, and
+    /// stops reading the cards once it closes.
     func makeContent() {
         let content = NSHostingView(rootView: CardsView(model: model))
         content.sceneBridgingOptions = [.toolbars]

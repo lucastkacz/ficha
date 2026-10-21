@@ -339,7 +339,7 @@ struct CardsView: View {
                 FrontCell(card: row.card)
             }
             .width(min: 120)
-            .customizationID("front")
+            .customizationID(CardRowOrder.Column.front.rawValue)
             // Always there, as Finder's Name: it says which card a row is.
             .disabledCustomizationBehavior(.visibility)
             TableColumn(
@@ -349,7 +349,7 @@ struct CardsView: View {
                 Text(stepText(row))
             }
             .width(min: 56, ideal: 64, max: 100)
-            .customizationID("step")
+            .customizationID(CardRowOrder.Column.step.rawValue)
             TableColumn(
                 Text("Due", comment: "A column of the Cards window: when the card is due."),
                 sortUsing: CardRowOrder(.due)
@@ -357,7 +357,7 @@ struct CardsView: View {
                 Text(dueText(row, at: now))
             }
             .width(min: 60, ideal: 72, max: 110)
-            .customizationID("due")
+            .customizationID(CardRowOrder.Column.due.rawValue)
             TableColumn(
                 Text("Type", comment: "A column of the Cards window: the card's type."),
                 sortUsing: CardRowOrder(.type)
@@ -365,7 +365,7 @@ struct CardsView: View {
                 Text(row.card.type.name)
             }
             .width(min: 60, ideal: 76, max: 110)
-            .customizationID("type")
+            .customizationID(CardRowOrder.Column.type.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(
                 Text("Tags", comment: "A column of the Cards window: the card's tags."),
@@ -375,7 +375,7 @@ struct CardsView: View {
                     .lineLimit(1)
             }
             .width(min: 60, ideal: 120)
-            .customizationID("tags")
+            .customizationID(CardRowOrder.Column.tags.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(
                 Text("Source", comment: "A column of the Cards window: where Lucas came across the card's content."),
@@ -385,7 +385,7 @@ struct CardsView: View {
                     .lineLimit(1)
             }
             .width(min: 60, ideal: 120)
-            .customizationID("source")
+            .customizationID(CardRowOrder.Column.source.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(
                 Text(
@@ -397,7 +397,7 @@ struct CardsView: View {
                 Text(row.lastSeen?.formatted(date: .abbreviated, time: .omitted) ?? "")
             }
             .width(min: 80, ideal: 96, max: 140)
-            .customizationID("lastSeen")
+            .customizationID(CardRowOrder.Column.lastSeen.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(
                 Text("Created", comment: "A column of the Cards window: when Lucas approved the card."),
@@ -406,7 +406,7 @@ struct CardsView: View {
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .omitted))
             }
             .width(min: 80, ideal: 96, max: 140)
-            .customizationID("created")
+            .customizationID(CardRowOrder.Column.created.rawValue)
             .defaultVisibility(.hidden)
         }
         .focused($isTableFocused)
@@ -1042,8 +1042,8 @@ nonisolated extension ColumnOrder {
         }
     }
 
-    /// How two values that may be missing compare, the table's way, as
-    /// `compare` says once both are there: a missing one goes after one
+    /// How two values that may be missing compare, the table's way: as
+    /// `compare` says once both are there, and a missing one after one
     /// that's there, whichever way the table is ordered.
     fileprivate func ordered<Value>(
         _ lhs: Value?, _ rhs: Value?, by compare: (Value, Value) -> ComparisonResult
@@ -1052,17 +1052,19 @@ nonisolated extension ColumnOrder {
         case (nil, nil): .orderedSame
         case (nil, _): .orderedDescending
         case (_, nil): .orderedAscending
-        case (let lhs?, let rhs?): compare(lhs, rhs)
+        case (let lhs?, let rhs?): ordered(compare(lhs, rhs))
         }
     }
 }
 
 /// How the table orders its cards: by one column, either way. Cards with
-/// nothing in the column, no due time, tags, source or last view, go after
-/// the others, whichever way the table is ordered. The app's preferences
-/// keep it by its column's name, so the window opens in the order Lucas left
-/// it in.
+/// nothing in the column, like a new card in Due and Last seen, go after the
+/// others, whichever way the table is ordered. The app's preferences keep it
+/// by its column's name, so the window opens in the order Lucas left it in.
 nonisolated struct CardRowOrder: ColumnOrder, Codable {
+    /// A column the table sorts by. Its raw value is how the preferences keep
+    /// the order, and its table column's customization ID, so it never
+    /// changes.
     enum Column: String, Codable {
         /// When Lucas approved the card, and then, for cards approved
         /// together, the order he approved them in.
@@ -1102,15 +1104,15 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .step:
             ordered(lhs.stepNumber, rhs.stepNumber)
         case .due:
-            ordered(lhs.due, rhs.due) { ordered($0, $1) }
+            ordered(lhs.due, rhs.due) { $0.compare($1) }
         case .type:
             ordered(lhs.card.type.name.localizedStandardCompare(rhs.card.type.name))
         case .tags:
-            ordered(lhs.tags, rhs.tags) { ordered(alphabetically($0, $1)) }
+            ordered(lhs.tagsIfAny, rhs.tagsIfAny, by: alphabetically)
         case .source:
-            ordered(lhs.card.source, rhs.card.source) { ordered($0.localizedStandardCompare($1)) }
+            ordered(lhs.card.source, rhs.card.source) { $0.localizedStandardCompare($1) }
         case .lastSeen:
-            ordered(lhs.lastSeen, rhs.lastSeen) { ordered($0, $1) }
+            ordered(lhs.lastSeen, rhs.lastSeen) { $0.compare($1) }
         }
     }
 }
@@ -1123,7 +1125,7 @@ extension CardRow {
     }
 
     /// The card's tags, or nil when it has none.
-    nonisolated fileprivate var tags: [String]? {
+    nonisolated fileprivate var tagsIfAny: [String]? {
         card.tags.isEmpty ? nil : card.tags
     }
 }
