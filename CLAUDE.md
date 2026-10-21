@@ -6,7 +6,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 
 ## Rules
 
-- Talk to Lucas in Spanish (Rioplatense), in short messages with one topic each, leading with a recommendation. He often dictates: read for intent.
+- Talk to Lucas in Spanish (Rioplatense), in short messages with one topic each, leading with a recommendation. He often dictates: read for intent. A task ends on its next step alone: what Lucas does or decides. What changed, the evidence and the costs go in the PR body, or wait until he asks.
 - Everything written to the repo and to GitHub is in English. The app's UI follows the Mac's language, with English as its base (ADR 0009). The cards' content is in Spanish.
 - The app is 100% local: no network calls, telemetry or accounts.
 - Lucas's cards live in `~/Library/Application Support/Ficha/`, never in the repo. Claude reads or writes them only through the `ficha` CLI, in a session where Lucas asked for it, and writes only what he approved.
@@ -80,7 +80,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `gh issue create` can't use the YAML issue forms: write their fields as `###` headings in the body and pass the labels.
 - Auto mode can refuse Claude's edits to `CLAUDE.md` and `.claude/settings.json`. Try the edit first; if auto mode refuses it, ask Lucas to switch the session to manual mode, and never get around it with Bash.
 - In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
-- Skills, hooks and settings load when a session starts. After changing them, check them in a new session.
+- Skills, hooks, settings and `CLAUDE.md` load when a session starts, from the folder it started in, also when it then works in a worktree, and its subagents get that `CLAUDE.md` too. So a change to any of them can be checked in a new session once the main folder's `main` has it.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
 
 ## Agent skills
