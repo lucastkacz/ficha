@@ -11,8 +11,8 @@ struct CountsView: View {
     private let engine: Engine
     private let notifications: CardNotifications
     /// Ficha Dev's time, which the engine runs on and the debug buttons move
-    /// forward.
-    private let time: DebugTimeSource
+    /// forward, or nil in the real Ficha, which has no debug tools.
+    private let debugTime: DebugTimeSource?
     @Environment(\.scenePhase) private var scenePhase
     @State private var counts: Result<Counts, EngineError>
     /// How far ahead of the system's time Ficha Dev's time is.
@@ -21,12 +21,12 @@ struct CountsView: View {
     /// pressed.
     @State private var debugOutcome: String?
 
-    init(engine: Engine, notifications: CardNotifications, time: DebugTimeSource) {
+    init(engine: Engine, notifications: CardNotifications, debugTime: DebugTimeSource?) {
         self.engine = engine
         self.notifications = notifications
-        self.time = time
+        self.debugTime = debugTime
         _counts = State(initialValue: Counts.counting(engine))
-        _timeShift = State(initialValue: time.shift)
+        _timeShift = State(initialValue: debugTime?.shift ?? .zero)
     }
 
     var body: some View {
@@ -45,8 +45,8 @@ struct CountsView: View {
                         } label: {
                             Text("Due", comment: "On the iPhone's placeholder screen: how many cards are due.")
                         }
-                        if AppVariant.current.hasDebugMenu {
-                            debugSection
+                        if let debugTime {
+                            debugSection(debugTime)
                         }
                     }
                 case .failure(let error):
@@ -66,18 +66,18 @@ struct CountsView: View {
         }
     }
 
-    /// Ficha Dev's debug tools, in English and verbatim, as on the Mac: they
-    /// aren't translated (ADR 0009). How far its time moved comes first, then
-    /// the steps that move it, the Mac's debug menu's, and then the button
-    /// that brings the next appearance, which comes after moving the time to
-    /// bring cards that came due.
-    private var debugSection: some View {
+    /// Ficha Dev's debug tools, on its `time`, in English and verbatim, as on
+    /// the Mac: they aren't translated (ADR 0009). How far its time moved
+    /// comes first, then the steps that move it, the Mac's debug menu's, and
+    /// then the button that brings the next appearance, which comes after
+    /// moving the time to bring cards that came due.
+    private func debugSection(_ time: DebugTimeSource) -> some View {
         Section {
             Text(verbatim: timeShift == .zero ? "On the system's time" : "Time moved forward by \(inWords(timeShift))")
                 .foregroundStyle(.secondary)
             ForEach(DebugTimeSource.steps, id: \.self) { step in
                 Button {
-                    moveTimeForward(by: step)
+                    move(time, forwardBy: step)
                 } label: {
                     Text(verbatim: "Move forward \(inWords(step))")
                 }
@@ -96,11 +96,11 @@ struct CountsView: View {
         }
     }
 
-    /// Moves Ficha Dev's time forward by `step`, for good, as the Mac's debug
-    /// menu does. Cards may come due, so it counts them again and plans the
-    /// appearances again, whose notifications come at the real times that
+    /// Moves Ficha Dev's `time` forward by `step`, for good, as the Mac's
+    /// debug menu does. Cards may come due, so it counts them again and plans
+    /// the appearances again, whose notifications come at the real times that
     /// match the moved time. When it can't, it says why under the buttons.
-    private func moveTimeForward(by step: Duration) {
+    private func move(_ time: DebugTimeSource, forwardBy step: Duration) {
         do {
             try time.moveForward(by: step)
         } catch {

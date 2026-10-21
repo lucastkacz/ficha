@@ -1,3 +1,4 @@
+import FichaCore
 import FichaData
 import SwiftUI
 
@@ -20,19 +21,19 @@ struct FichaPhoneApp: App {
     /// notifications of its appearances, or why it couldn't be opened, which
     /// includes not knowing how far its debug tools moved its time.
     private let opening = Result { () throws -> Opened in
-        let folder = AppVariant.current.dataFolder
+        let variant = AppVariant.current
         // Ficha Dev's engine runs on the time its debug tools move forward, as
         // on the Mac (#147), kept in its data folder, so it stays moved when
-        // the app opens again. The real Ficha, in stage 2, runs on the
-        // system's time.
-        let time = try DebugTimeSource(savedIn: folder)
+        // the app opens again. The real Ficha always runs on the system's
+        // time.
+        let debugTime = try variant.hasDebugMenu ? DebugTimeSource(savedIn: variant.dataFolder) : nil
         // The database and the time's file keep iOS's default file
         // protection, which opens them from the first unlock after the iPhone
         // starts, so a card notification's buttons reach them while the
         // iPhone is locked.
-        let engine = try Engine(location: .folder(folder), time: time)
+        let engine = try Engine(location: .folder(variant.dataFolder), time: debugTime ?? SystemTimeSource())
         try SampleCards.loadIfThereAreNoCards(into: engine)
-        return Opened(engine: engine, notifications: CardNotifications(engine: engine), time: time)
+        return Opened(engine: engine, notifications: CardNotifications(engine: engine), debugTime: debugTime)
     }
     @Environment(\.scenePhase) private var scenePhase
 
@@ -40,7 +41,7 @@ struct FichaPhoneApp: App {
         WindowGroup {
             switch opening {
             case .success(let opened):
-                CountsView(engine: opened.engine, notifications: opened.notifications, time: opened.time)
+                CountsView(engine: opened.engine, notifications: opened.notifications, debugTime: opened.debugTime)
             case .failure(let error):
                 ContentUnavailableView {
                     Label("\(AppVariant.current.name) can't open your cards", systemImage: "exclamationmark.triangle")
@@ -60,9 +61,9 @@ struct FichaPhoneApp: App {
 }
 
 /// The open database, the notifications of its appearances, and Ficha Dev's
-/// time, which the engine runs on.
+/// time, which the engine runs on, or nil in the real Ficha.
 private struct Opened {
     let engine: Engine
     let notifications: CardNotifications
-    let time: DebugTimeSource
+    let debugTime: DebugTimeSource?
 }
