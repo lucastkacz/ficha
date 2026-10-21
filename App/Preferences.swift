@@ -1,17 +1,19 @@
 import FichaCore
+import FichaData
 import Foundation
+import SwiftUI
 import os
 
 /// The settings' log, which says when a stored setting can't be read.
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "settings")
 
-/// Where the app keeps what Lucas changes in Settings: its preferences, which
-/// are its own for each app (`AppVariant`), so Ficha Dev's never touch the
-/// real Ficha's. Only what differs from a default is stored, so a setting
-/// Lucas never changed follows its default. A stored value the app can't
-/// read, as when it was edited by hand, goes into `unreadable`, for the app
-/// to say so: a setting reads as its default meanwhile, and a capture
-/// shortcut as off.
+/// Where the app keeps what Lucas changes in Settings, and how he leaves the
+/// Cards window's table: its preferences, which are its own for each app
+/// (`AppVariant`), so Ficha Dev's never touch the real Ficha's. Only what
+/// differs from a default is stored, so a setting Lucas never changed follows
+/// its default. A stored value the app can't read, as when it was edited by
+/// hand, goes into `unreadable`, for the app to say so: a setting reads as
+/// its default meanwhile, and a capture shortcut as off.
 enum Preferences {
     /// The names of the stored settings that couldn't be read so far.
     private(set) static var unreadable: Set<String> = []
@@ -107,6 +109,27 @@ enum Preferences {
         set { write(newValue.rawValue, for: .settingsTab, unless: SettingsTab.general.rawValue) }
     }
 
+    /// The order the Cards window's table lists the cards in: the one Lucas
+    /// left it in, and at first the newest cards first. One that can't be
+    /// read is only logged, as the tab Settings opens on: the window opens
+    /// with the newest first, and the next column Lucas sorts by replaces it.
+    static var cardsSortOrder: [CardRowOrder] {
+        get { read(.cardsSortOrder, decoding: [CardRowOrder].self) ?? CardRowOrder.newestFirst }
+        set { write(newValue, encodedFor: .cardsSortOrder, unless: CardRowOrder.newestFirst) }
+    }
+
+    /// The Cards window's table columns as Lucas left them: which ones show,
+    /// in what order and how wide, as SwiftUI keeps them. At first the
+    /// table's own: Front, Step and Due. One that can't be read is only
+    /// logged, as the tab Settings opens on: the window opens with its first
+    /// columns, and Lucas's next change to them replaces it. Keeping them
+    /// here, with the other preferences, rather than through SwiftUI's
+    /// `@AppStorage`, is our own.
+    static var cardsColumns: TableColumnCustomization<CardRow> {
+        get { read(.cardsColumns, decoding: TableColumnCustomization<CardRow>.self) ?? TableColumnCustomization() }
+        set { write(newValue, encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
+    }
+
     /// Whether the real Ficha already turned on starting at login, its
     /// default, the first time it launched: from then on, it's as Lucas
     /// leaves it.
@@ -137,6 +160,10 @@ enum Preferences {
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
         /// The raw value of the tab Settings opens on.
         case settingsTab = "SettingsTab"
+        /// The columns the Cards window's table sorts by, in JSON.
+        case cardsSortOrder = "CardsSortOrder"
+        /// The Cards window's table columns, in JSON, as SwiftUI encodes them.
+        case cardsColumns = "CardsColumns"
     }
 
     /// The setting stored for `key`, as `make` makes it out of the stored
@@ -162,6 +189,21 @@ enum Preferences {
         read(key, as: stored) { (least...longest).contains($0) ? .minutes($0) : nil }
     }
 
+    /// The value stored for `key` in JSON, or nil when none is stored, or
+    /// when it can't be decoded: then the log says why, and it goes into
+    /// `unreadable`.
+    private static func read<Value: Decodable>(_ key: Key, decoding type: Value.Type) -> Value? {
+        read(key, as: Data.self) { data in
+            do {
+                return try JSONDecoder().decode(type, from: data)
+            } catch {
+                logger.error(
+                    "Couldn't decode the setting \(key.rawValue, privacy: .public): \(error, privacy: .public)")
+                return nil
+            }
+        }
+    }
+
     /// Stores `value` for `key`, unless it's the default, `defaultValue`:
     /// then it removes what's stored, so the setting follows its default.
     private static func write<Value: Equatable>(_ value: Value, for key: Key, unless defaultValue: Value) {
@@ -169,6 +211,24 @@ enum Preferences {
             UserDefaults.standard.removeObject(forKey: key.rawValue)
         } else {
             UserDefaults.standard.set(value, forKey: key.rawValue)
+        }
+    }
+
+    /// Stores `value` for `key` in JSON, unless it's the default,
+    /// `defaultValue`: then it removes what's stored, as `write` does. When
+    /// it can't be encoded, what's stored stays, and the log says why.
+    private static func write<Value: Encodable & Equatable>(
+        _ value: Value, encodedFor key: Key, unless defaultValue: Value
+    ) {
+        if value == defaultValue {
+            UserDefaults.standard.removeObject(forKey: key.rawValue)
+        } else {
+            do {
+                UserDefaults.standard.set(try JSONEncoder().encode(value), forKey: key.rawValue)
+            } catch {
+                logger.error(
+                    "Couldn't encode the setting \(key.rawValue, privacy: .public): \(error, privacy: .public)")
+            }
         }
     }
 }

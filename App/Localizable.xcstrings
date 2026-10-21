@@ -401,7 +401,7 @@
 
     },
     "Created" : {
-      "comment" : "In the Cards window's detail: when Lucas approved the card."
+      "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
     "Delete" : {
       "comment" : "The button that deletes the cards the Cards window asks about."
@@ -616,7 +616,7 @@
       "comment" : "A tab of the Settings window."
     },
     "Last seen" : {
-      "comment" : "In the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+      "comment" : "A column of the Cards window: when Lucas last saw the card, in a first view or a review.\nIn the Cards window's detail: when Lucas last saw the card, in a first view or a review."
     },
     "Latest appearances" : {
 
@@ -842,7 +842,7 @@
       "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
     "Source" : {
-      "comment" : "In the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
+      "comment" : "A column of the Cards window: where Lucas came across the card's content.\nIn the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
     },
     "Source (optional): a book, a podcast…" : {
 
@@ -863,7 +863,7 @@
       "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings: a step of the ladder, counted from 1."
     },
     "Tags" : {
-      "comment" : "A section of the Cards window's sidebar: the cards' tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
+      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the cards' tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
@@ -902,7 +902,7 @@
 
     },
     "Type" : {
-      "comment" : "In the Cards window, the label of a card's type, while Lucas edits it."
+      "comment" : "A column of the Cards window: the card's type.\nIn the Cards window, the label of a card's type, while Lucas edits it."
     },
     "Type a shortcut…" : {
       "comment" : "Settings: the capture shortcut, while Lucas types a new one."

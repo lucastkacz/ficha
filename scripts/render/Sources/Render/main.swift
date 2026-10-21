@@ -579,11 +579,18 @@ func capture(_ window: NSWindow, to output: URL) throws {
 }
 
 do {
-    // The app's preferences, such as the window's frame, go to a scratch home,
-    // never to Lucas's.
+    // The app's files go to a scratch home, never to Lucas's.
     guard ProcessInfo.processInfo.environment["CFFIXED_USER_HOME"] != nil else {
         throw RenderError(description: "Run the tool through make render, which gives it a scratch home.\n\(usage)")
     }
+    // Its preferences don't: macOS keeps the tool's, such as the window's
+    // frame and the Cards window's columns and order, in your home's
+    // Library/Preferences/Render.plist, whatever CFFIXED_USER_HOME says. The
+    // tool empties them as it starts, so the window opens as it does the first
+    // time, and as it ends, so none is left there.
+    let preferencesDomain = ProcessInfo.processInfo.processName
+    UserDefaults.standard.removePersistentDomain(forName: preferencesDomain)
+    defer { UserDefaults.standard.removePersistentDomain(forName: preferencesDomain) }
     let request = try request(from: Array(CommandLine.arguments.dropFirst()))
     guard let name = request.window else {
         throw RenderError(description: "Which window? Name one.\n\(usage)")
