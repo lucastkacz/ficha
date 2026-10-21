@@ -1,0 +1,18 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ can't open your cards" : {
+
+    },
+    "Cards" : {
+      "comment" : "On the iPhone's placeholder screen: how many cards there are."
+    },
+    "Couldn't count your cards" : {
+
+    },
+    "Due" : {
+      "comment" : "On the iPhone's placeholder screen: how many cards are due."
+    }
+  },
+  "version" : "1.0"
+}

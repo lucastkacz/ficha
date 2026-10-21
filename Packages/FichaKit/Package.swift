@@ -4,7 +4,8 @@ import PackageDescription
 
 let package = Package(
     name: "FichaKit",
-    platforms: [.macOS(.v26)],
+    // The iPhone app links FichaCore and FichaData. The CLI is the Mac's only.
+    platforms: [.macOS(.v26), .iOS(.v26)],
     products: [
         .library(name: "FichaCore", targets: ["FichaCore"]),
         .library(name: "FichaData", targets: ["FichaData"]),

@@ -41,6 +41,13 @@ jobs:
           sw_vers
           xcodebuild -version
           swift --version
+      - name: Install the iOS platform
+        # Xcode builds the iPhone app, for the simulator and, in the String
+        # Catalog check, for an iPhone, only with its iOS platform installed,
+        # as on the Mac (Xcode › Settings › Components). The image installs it
+        # only for its newest Xcodes (actions/runner-images#12541), so this
+        # downloads the selected Xcode's, as that announcement suggests.
+        run: xcodebuild -downloadPlatform iOS
       - name: Install the tools
         # The ones `make bootstrap` installs on a Mac, which the image doesn't ship.
         run: brew install xcodegen shellcheck actionlint

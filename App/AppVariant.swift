@@ -5,7 +5,8 @@ import Foundation
 /// configuration in `project.yml` names its app, gives it its own bundle
 /// identifier (and so its own preferences) and sets the flag `current` reads.
 /// The `ficha` CLI compiles this file too, so the CLI built with each app
-/// opens that app's cards.
+/// opens that app's cards, and so does the iPhone app, which is only Ficha
+/// Dev for now.
 enum AppVariant {
     /// Ficha Dev, which `make run` builds and opens.
     case dev
@@ -52,8 +53,8 @@ enum AppVariant {
     }
 
     /// Where the app keeps its data, such as its database: a folder of its own in
-    /// Application Support. It's named apart from `name`, so renaming an app never
-    /// moves its cards.
+    /// Application Support, which on the iPhone is the app's own. It's named apart
+    /// from `name`, so renaming an app never moves its cards.
     var dataFolder: URL {
         let folderName =
             switch self {
