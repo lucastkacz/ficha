@@ -64,5 +64,5 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 ## Docs
 
-- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and comments. `git grep` with the file's name finds them. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
-- No linter can tell that a file's scope changed, so the reviewer judges it. A line the change left stale is a violation, and the PR fixes it.
+- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
+- No linter can tell that a file's scope changed, so the reviewer looks beyond the diff for these lines. A line the change left stale is a violation.

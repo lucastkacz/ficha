@@ -14,7 +14,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 - Nothing runs on its own: no scheduled tasks, routines, loops or agents working without Lucas; he starts every session. The one exception is Dependabot, which only opens monthly update PRs that Lucas merges.
 - Build only what Lucas asked for or a `ready-for-agent` issue describes.
 - Prefer standard, documented practices, and say which parts are our own.
-- Swift follows `CODING_STANDARDS.md`, and so do the failure messages of the scripts, the hooks, the `Makefile` and CI, and the docs that describe the repo's files.
+- Swift follows `CODING_STANDARDS.md`, and so do the failure messages of the scripts, the hooks, the `Makefile` and CI, and any change that renames a file or changes what it covers or does.
 
 ## Skills: Claude suggests, Lucas types
 
