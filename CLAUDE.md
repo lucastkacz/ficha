@@ -14,7 +14,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 - Nothing runs on its own: no scheduled tasks, routines, loops or agents working without Lucas; he starts every session. The one exception is Dependabot, which only opens monthly update PRs that Lucas merges.
 - Build only what Lucas asked for or a `ready-for-agent` issue describes.
 - Prefer standard, documented practices, and say which parts are our own.
-- Swift follows `CODING_STANDARDS.md`.
+- Swift follows `CODING_STANDARDS.md`, and so do the failure messages of the scripts, the hooks, the `Makefile` and CI.
 
 ## Skills: Claude suggests, Lucas types
 
@@ -62,7 +62,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards.
 - `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
 - `iPhone/`: the iPhone app, for now only Ficha Dev (#97). It signs with Lucas's Personal Team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
-- `CODING_STANDARDS.md`: how Swift is written here; `code-review` checks against it.
+- `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, Dependabot and issue forms.
 - `scripts/`: the hook tests and the render tool.
 
