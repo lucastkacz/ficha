@@ -51,16 +51,18 @@ jobs:
         # times, 30 seconds apart. The retry is our own: GitHub Actions has no
         # option to retry a step.
         run: |
-          for attempt in 1 2 3; do
+          attempts=3
+          delay=30
+          for ((attempt = 1; attempt <= attempts; attempt++)); do
             if xcodebuild -downloadPlatform iOS; then
               exit 0
             fi
-            echo "Attempt $attempt of 3 to download the iOS platform failed."
-            if ((attempt < 3)); then
-              sleep 30
+            if ((attempt < attempts)); then
+              echo "Attempt $attempt of $attempts to download the iOS platform failed: trying again in $delay seconds."
+              sleep "$delay"
             fi
           done
-          echo "::error::Downloading the iOS platform failed three times, 30 seconds apart: re-run the job."
+          echo "::error::Downloading the iOS platform failed $attempts times, $delay seconds apart: re-run the job."
           exit 1
       - name: Install the tools
         # The ones `make bootstrap` installs on a Mac, which the image doesn't ship.
