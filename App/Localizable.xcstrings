@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "—" : {
+      "comment" : "In the Cards window's review log, in place of the seconds Lucas took, when nothing measured them."
+    },
     "%@ · %@" : {
       "comment" : "An appearance log entry in Diagnostics: when it showed, or was held back, and what opened the review panel.",
       "localizations" : {
@@ -185,7 +188,7 @@
       "comment" : "Settings, under Appearances: how long an appearance waits once the Mac wakes."
     },
     "Ahead" : {
-      "comment" : "A badge on a card the review panel brings before it's due, in a review ahead."
+      "comment" : "A badge on a card the review panel brings before it's due, in a review ahead, and beside such a review in the Cards window's review log."
     },
     "All cards" : {
       "comment" : "An item of the Cards window's sidebar: every card but the buried ones."
@@ -201,6 +204,9 @@
     },
     "Another app already uses this shortcut. Pick another in Settings, or quit that app, or turn its shortcut off, and try again." : {
 
+    },
+    "Answer" : {
+      "comment" : "For VoiceOver, the Cards window's chart: what Lucas answered, which colors each point."
     },
     "Appearances" : {
       "comment" : "A tab of the Settings window."
@@ -448,7 +454,7 @@
       "comment" : "The tooltip of the Cards window's button that discards the capture."
     },
     "Don't know" : {
-
+      "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
     "Done" : {
       "comment" : "A button that closes the review panel once every card was gone through."
@@ -468,6 +474,9 @@
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
     },
+    "Entry" : {
+      "comment" : "For VoiceOver, the Cards window's chart: an entry of the review log, by its place in it."
+    },
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
@@ -482,6 +491,9 @@
     },
     "Finished" : {
       "comment" : "How an appearance closed, in Diagnostics."
+    },
+    "First view" : {
+      "comment" : "In the Cards window's review log and its chart's key: the first time Lucas saw the card."
     },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
@@ -598,7 +610,7 @@
       "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion or a card."
     },
     "Know it" : {
-
+      "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
     "Ladder" : {
       "comment" : "A tab of the Settings window."
@@ -692,11 +704,20 @@
     "No quotes" : {
       "comment" : "In the Cards window: no quote card that isn't buried."
     },
+    "No reviews yet" : {
+      "comment" : "In the Cards window's detail, in place of the review log of a card not seen yet."
+    },
     "No words" : {
       "comment" : "In the Cards window: no word card that isn't buried."
     },
     "Not in use" : {
       "comment" : "What a detector sees in Diagnostics."
+    },
+    "Not measured" : {
+      "comment" : "For VoiceOver, the dash in place of the seconds in the Cards window's review log."
+    },
+    "Not measured: you answered from a card notification." : {
+      "comment" : "The tooltip of the dash in place of the seconds in the Cards window's review log."
     },
     "Note" : {
       "comment" : "In the Cards window's detail: what Lucas noted with a capture.\nIn the Cards window, the label of a capture's note, while Lucas edits it."
@@ -818,7 +839,7 @@
 
     },
     "Sort of" : {
-
+      "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
     "Source" : {
       "comment" : "In the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
@@ -836,10 +857,10 @@
 
     },
     "Step" : {
-      "comment" : "A column of the Cards window: the card's step on the ladder, and its wait.\nIn the Cards window's detail: the card's step on the ladder, and its wait."
+      "comment" : "A column of the Cards window: the card's step on the ladder, and its wait.\nFor VoiceOver, the Cards window's chart: the card's step after each entry.\nIn the Cards window's detail: the card's step on the ladder, and its wait."
     },
     "Step %lld" : {
-      "comment" : "Settings: a step of the ladder, counted from 1."
+      "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings: a step of the ladder, counted from 1."
     },
     "Tags" : {
       "comment" : "A section of the Cards window's sidebar: the cards' tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."

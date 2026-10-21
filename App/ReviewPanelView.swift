@@ -287,24 +287,11 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    private var aheadBadge: some View {
-        Text(
-            "Ahead",
-            comment: "A badge on a card the review panel brings before it's due, in a review ahead."
-        )
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 2)
-        .background(.secondary.opacity(0.15), in: .capsule)
-        .help(Text("A review ahead: only “Don't know” moves the card."))
-    }
-
     /// The card's front, under the badge of a review ahead when it's one.
     private func front(of card: Card, isAhead: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if isAhead {
-                aheadBadge
+                AheadBadge()
             }
             front(of: card)
         }
@@ -342,6 +329,25 @@ struct ReviewPanelView: View {
         }
         .buttonStyle(.bordered)
         .keyboardShortcut(KeyEquivalent(key), modifiers: [])
+    }
+}
+
+/// The badge of a review ahead, on the card the review panel brings before
+/// it's due and beside the review in the Cards window's review log, with a
+/// tooltip on what a review ahead moves.
+struct AheadBadge: View {
+    var body: some View {
+        Text(
+            "Ahead",
+            comment:
+                "A badge on a card the review panel brings before it's due, in a review ahead, and beside such a review in the Cards window's review log."
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(.secondary.opacity(0.15), in: .capsule)
+        .help(Text("A review ahead: only “Don't know” moves the card."))
     }
 }
 

@@ -41,6 +41,9 @@ struct CardsView: View {
     /// The inbox's order: the latest added first, until Lucas clicks a
     /// column's header.
     @State private var inboxSortOrder = [InboxRowOrder(.added, order: .reverse)]
+    /// The review log of the card the detail shows, or why it couldn't be
+    /// read: read with the cards, and again when Lucas selects another card.
+    @State private var reviewLog: CardReviewLog?
     /// What Lucas is editing, as it was when he started, while the detail
     /// shows its fields. The sidebar and the table wait until he saves or
     /// cancels, so that a click elsewhere can't drop what he typed.
@@ -134,6 +137,12 @@ struct CardsView: View {
         .onChange(of: search) {
             reload()
         }
+        .onChange(of: selection) {
+            readReviewLog()
+        }
+        .onChange(of: inboxSelection) {
+            readReviewLog()
+        }
         .task {
             // Listening before reading, so no change falls in between.
             let changes = model.changes()
@@ -160,9 +169,10 @@ struct CardsView: View {
         }
     }
 
-    /// Reads the tags and what the sidebar chose again, as they are now. When
-    /// the chosen tag is gone, because its last card was buried, edited or
-    /// deleted, the window goes back to All cards.
+    /// Reads the tags and what the sidebar chose again, as they are now, and
+    /// the review log of the card the detail shows. When the chosen tag is
+    /// gone, because its last card was buried, edited or deleted, the window
+    /// goes back to All cards.
     private func reload() {
         now = model.now
         do throws(EngineError) {
@@ -179,6 +189,27 @@ struct CardsView: View {
         } catch {
             listing = .failure(error)
         }
+        readReviewLog()
+    }
+
+    /// Reads the review log of the card the detail shows, while it shows one:
+    /// the only card selected, or the flagged card selected in the inbox.
+    private func readReviewLog() {
+        guard let row = singleSelectedRow else {
+            reviewLog = nil
+            return
+        }
+        reviewLog = CardReviewLog(
+            cardID: row.id, rows: Result { () throws(EngineError) in try model.reviewLogRows(of: row.id) })
+    }
+
+    /// The review log of the card in `row`, once it's read: nil while the
+    /// one read is another card's.
+    private func reviewLogRows(of row: CardRow) -> Result<[ReviewLogRow], EngineError>? {
+        guard let reviewLog, reviewLog.cardID == row.id else {
+            return nil
+        }
+        return reviewLog.rows
     }
 
     /// What Lucas chooses from: the cards by where they stand, then the
@@ -424,7 +455,7 @@ struct CardsView: View {
             } else if selected.count > 1 {
                 selectionSummary(selected)
             } else if let row = selected.first {
-                CardDetail(row: row, now: now)
+                CardDetail(row: row, now: now, reviewLog: reviewLogRows(of: row), ladder: model.settings.ladder)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         actions(for: row)
                     }
@@ -719,6 +750,13 @@ private enum Listing {
 private enum Editing {
     case card(Card)
     case capture(Capture)
+}
+
+/// A card's review log, as the Cards window's detail shows it under the
+/// card, or why it couldn't be read.
+private struct CardReviewLog {
+    let cardID: Int64
+    let rows: Result<[ReviewLogRow], EngineError>
 }
 
 extension [CardRow] {
@@ -1082,11 +1120,16 @@ private struct BuriedIcon: View {
 
 /// The selected card, whole: Lucas's note on top when it's flagged, and when
 /// he buried it when it's buried, its type and tags, its front, back and
-/// source, and where it stands.
+/// source, where it stands, and its review log, in a chart and in full.
 private struct CardDetail: View {
     let row: CardRow
     /// The engine's time, which the due time counts from.
     let now: Date
+    /// The card's review log, oldest first, or why it couldn't be read, or
+    /// nil until it's read.
+    let reviewLog: Result<[ReviewLogRow], EngineError>?
+    /// The ladder Lucas set, whose steps the chart spans.
+    let ladder: Ladder
 
     var body: some View {
         ScrollView {
@@ -1106,6 +1149,17 @@ private struct CardDetail: View {
                 }
                 Divider()
                 standing
+                switch reviewLog {
+                case .success(let rows):
+                    Divider()
+                    ReviewLogView(rows: rows, ladder: ladder)
+                case .failure(let error):
+                    Divider()
+                    Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                case nil:
+                    EmptyView()
+                }
             }
             .textSelection(.enabled)
             .padding(20)

@@ -127,6 +127,13 @@ final class AppModel {
         try engine.tags()
     }
 
+    /// A card's review log, oldest first, as the Cards window shows it under
+    /// the card: each entry with the step the card stood on after it, on the
+    /// ladder Lucas set in Settings.
+    func reviewLogRows(of cardID: Int64) throws(EngineError) -> [ReviewLogRow] {
+        try engine.reviewLogRows(of: cardID, on: settings.ladder)
+    }
+
     /// Edits a card from the Cards window: it gets `content`, and keeps its
     /// step and its review log. A flagged card is fixed, back in Lucas's
     /// reviews unless it's buried.
