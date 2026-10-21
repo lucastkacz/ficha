@@ -10,8 +10,20 @@
     "Couldn't count your cards" : {
 
     },
+    "Don't know" : {
+      "comment" : "A due card's notification's button: Lucas didn't know the card."
+    },
     "Due" : {
       "comment" : "On the iPhone's placeholder screen: how many cards are due."
+    },
+    "Got it" : {
+      "comment" : "A new card's notification's button: Lucas read the card."
+    },
+    "Know it" : {
+      "comment" : "A due card's notification's button: Lucas knew the card."
+    },
+    "Sort of" : {
+      "comment" : "A due card's notification's button: Lucas sort of knew the card."
     }
   },
   "version" : "1.0"

@@ -12,14 +12,17 @@ import SwiftUI
 /// the engine in a data folder in its own Application Support, loads the sample
 /// cards the first time it opens with no cards, and shows how many cards there
 /// are and how many are due. Its appearances arrive as card notifications,
-/// which it plans again each time it opens or comes back to the foreground.
-/// When it can't open the cards, it says why.
+/// whose buttons answer the cards, and which it plans again each time it opens
+/// or comes back to the foreground. When it can't open the cards, it says why.
 @main
 struct FichaPhoneApp: App {
     /// The open database, with the sample cards, and the notifications of its
     /// appearances, or why it couldn't be opened. It runs on the system's time
     /// until Ficha Dev can move its time forward (#105).
     private let opening = Result { () throws -> Opened in
+        // The database keeps iOS's default file protection, which opens it
+        // from the first unlock after the iPhone starts, so a card
+        // notification's buttons reach it while the iPhone is locked.
         let engine = try Engine(location: .folder(AppVariant.current.dataFolder), time: SystemTimeSource())
         try SampleCards.loadIfThereAreNoCards(into: engine)
         return Opened(engine: engine, notifications: CardNotifications(engine: engine))
@@ -39,12 +42,9 @@ struct FichaPhoneApp: App {
                 }
             }
         }
-        // The notifications iOS showed meanwhile are old news once Lucas is
-        // back in the app, and a new plan reaches further ahead than the one
-        // iOS holds.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, case .success(let opened) = opening {
-                opened.notifications.planAgain()
+                opened.notifications.clearAndPlanAgain()
             }
         }
     }

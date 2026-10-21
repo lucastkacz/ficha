@@ -112,6 +112,45 @@ enum Schema {
                     .check(sql: "(outcome = 'heldBack') = (heldBackBy IS NOT NULL)")
             }
         }
+        migrator.registerMigration("v9 answers from card notifications") { db in
+            // An answer from a card notification, on the iPhone, has no
+            // response time: nothing measures how long Lucas looked at the
+            // card. SQLite can't drop a column's NOT NULL, so the review log
+            // is made again, with every entry as it was, the way GRDB's guide
+            // to migrations recreates a table.
+            try db.create(table: "new_reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                // Its index comes once the table has its name.
+                table.belongsTo("card", indexed: false).notNull()
+                // "firstView" or "review".
+                table.column("kind", .text).notNull()
+                // A review's rating: "again", "hard" or "good".
+                table.column("rating", .text)
+                table.column("answeredAt", .datetime).notNull()
+                // From showing the card to the answer, in seconds, when
+                // something measured it.
+                table.column("responseTime", .double)
+                // What brought the card, as `Trigger` names it.
+                table.column("trigger", .text).notNull()
+                table.column("isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+                table.check(
+                    sql: """
+                        (kind = 'firstView' AND rating IS NULL)
+                        OR (kind = 'review' AND rating IN ('again', 'hard', 'good'))
+                        """
+                )
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_reviewLog (id, cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                    SELECT id, cardId, kind, rating, answeredAt, responseTime, trigger, isAhead FROM reviewLog
+                    """
+            )
+            try db.drop(table: "reviewLog")
+            try db.rename(table: "new_reviewLog", to: "reviewLog")
+            try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
+        }
         return migrator
     }()
 }

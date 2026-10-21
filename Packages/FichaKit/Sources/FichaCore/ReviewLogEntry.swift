@@ -17,8 +17,10 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// When he answered: when he ended the first view, or when he rated the
     /// card.
     public let answeredAt: Date
-    /// How long he took, from the panel showing the card to his answer.
-    public let responseTime: Duration
+    /// How long he took, from the panel showing the card to his answer, or
+    /// nil when he answered from a card notification, where nothing measures
+    /// it.
+    public let responseTime: Duration?
     public let trigger: Trigger
     /// Whether it was a review ahead: of a card that wasn't due yet, which
     /// Lucas asked for. Only its again counts (ADR 0002).
@@ -28,7 +30,7 @@ public struct ReviewLogEntry: Sendable, Equatable {
         cardID: Int64,
         kind: Kind,
         answeredAt: Date,
-        responseTime: Duration,
+        responseTime: Duration?,
         trigger: Trigger,
         isAhead: Bool = false
     ) {

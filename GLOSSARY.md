@@ -88,7 +88,7 @@ The first time Lucas sees a card, whole, before it's on the ladder. It isn't a r
 _Avoid_: introduction, first review, learning step
 
 **Review log**:
-Every first view and review, with when Lucas answered, what opened the review panel, how long he took and his rating. A card's step and due time are worked out from it.
+Every first view and review, with when Lucas answered, whether an appearance or a review now brought the card, his rating, and how long he took, except from a card notification. A card's step and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
@@ -154,7 +154,7 @@ A time Ficha shows up on its own, with the cards that are due or about to be: th
 _Avoid_: session, prompt, popup, presentation
 
 **Card notification**:
-A notification on the iPhone with one card of an appearance: its front, and its back when Lucas presses and holds it, with the buttons to rate it.
+A notification on the iPhone with one card of an appearance, and the buttons to go through it: a new card whole, for its first view, or a due card's front, and its back when Lucas presses and holds it, to rate it.
 _Avoid_: alert, push, banner
 
 **Look-ahead**:
@@ -186,5 +186,5 @@ Whether the Mac's review panel takes the keyboard when it shows up on its own: n
 _Avoid_: Focus, keyboard grab
 
 **Appearance log**:
-Every appearance, and every review now that brought cards, with what opened the review panel, when it showed and closed, and how it closed: finished, snoozed or auto-closed. An appearance a suppression held back goes in once too, with the suppression.
+Every appearance, and every review now that brought cards, with when it showed and closed and how: finished, snoozed or auto-closed; on the iPhone, from its first card notification to the last card Lucas went through, snoozed until none is left. An appearance a suppression held back goes in once too, with the suppression.
 _Avoid_: history, session log

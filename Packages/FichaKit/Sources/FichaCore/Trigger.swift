@@ -1,9 +1,10 @@
-/// What opened the review panel. Each raw value is how the review log names
-/// it.
+/// What opened the review panel, or sent the card notifications on the
+/// iPhone. Each raw value is how the review log names it.
 public enum Trigger: String, Sendable {
     /// Lucas opened it himself: a review now.
     case reviewNow
-    /// It showed up on its own: an appearance.
+    /// It showed up on its own: an appearance, in the review panel or as card
+    /// notifications.
     case appearance
 }
 
