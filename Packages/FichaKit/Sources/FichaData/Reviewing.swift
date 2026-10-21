@@ -113,7 +113,7 @@ func logEntries(in db: Database) throws -> [ReviewLogEntry] {
 
 /// A card's entries in the review log, in the order they happened, or an
 /// error when there's no such card.
-private func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogEntry] {
+func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogEntry] {
     guard try Row.fetchOne(db, sql: "SELECT id FROM card WHERE id = ?", arguments: [cardID]) != nil else {
         throw EngineError.cardNotFound(cardID)
     }
