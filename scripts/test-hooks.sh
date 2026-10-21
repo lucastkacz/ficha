@@ -121,6 +121,46 @@ expect 2 "a push that doesn't name its branch is blocked while a PR has auto-mer
 rm "$tmp/gh/prs.json"
 expect 2 "a push is blocked when auto-merge can't be checked" merge-gate.sh "$(bash_input 'git push origin 8-other' "$tmp/branch")"
 
+echo "issue-comments"
+expect 2 "an issue viewed without its comments is blocked" issue-comments.sh "$(bash_input 'gh issue view 140' "$tmp/branch")"
+expect 2 "an issue viewed with --repo before view is blocked" issue-comments.sh "$(bash_input 'gh issue --repo lucastkacz/ficha view 140' "$tmp/branch")"
+expect 0 "an issue viewed with comments in its --json list passes" issue-comments.sh "$(bash_input 'gh issue view 140 --json number,title,body,labels,comments' "$tmp/branch")"
+expect 2 "an issue viewed with a --json list that has its body and not its comments is blocked" issue-comments.sh "$(bash_input 'gh issue view 140 --json number,title,body' "$tmp/branch")"
+expect 0 "an issue viewed with a --json list without its body passes" issue-comments.sh "$(bash_input 'gh issue view 140 --json title,labels' "$tmp/branch")"
+expect 0 "an issue's comments viewed with --comments pass" issue-comments.sh "$(bash_input 'gh issue view 140 --comments' "$tmp/branch")"
+expect 0 "an issue's comments viewed with -c pass" issue-comments.sh "$(bash_input 'gh issue view -c 140' "$tmp/branch")"
+expect 0 "an issue opened in the browser passes" issue-comments.sh "$(bash_input 'gh issue view 140 --web' "$tmp/branch")"
+expect 0 "gh issue view's help passes" issue-comments.sh "$(bash_input 'gh issue view --help' "$tmp/branch")"
+expect 2 "issues listed with a --json list that has their bodies and not their comments are blocked" issue-comments.sh "$(bash_input 'gh issue list --label ready-for-agent --json number,title,body' "$tmp/branch")"
+expect 0 "issues listed without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --label ready-for-agent' "$tmp/branch")"
+expect 0 "issues listed with a --json list without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --json number,title,labels' "$tmp/branch")"
+expect 0 "issues listed as the tracker doc lists them pass" issue-comments.sh "$(bash_input "gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'" "$tmp/branch")"
+expect 2 "an issue viewed in the terminal panel is checked too" issue-comments.sh "$(panel_input 'gh issue view 140' "$tmp/branch" "$tmp/branch")"
+expect 0 "a pull request viewed without its comments passes" issue-comments.sh "$(bash_input 'gh pr view 137 --json body' "$tmp/branch")"
+expect 0 "an issue read through the API passes" issue-comments.sh "$(bash_input 'gh api repos/lucastkacz/ficha/issues/140' "$tmp/branch")"
+expect 2 "an issue viewed on a later line is blocked" issue-comments.sh "$(bash_input "$(printf 'git status\ngh issue view 91 --json body --jq .body')" "$tmp/branch")"
+expect 2 "an issue viewed without its comments before another viewed with them is blocked" issue-comments.sh "$(bash_input 'gh issue view 141 && gh issue view 140 --json number,title,body,labels,comments' "$tmp/branch")"
+expect 0 "a body in quotes that mentions gh issue view passes" issue-comments.sh "$(bash_input 'gh issue comment 124 --body "Read it with gh issue view 124 --json body first"' "$tmp/branch")"
+expect 0 "a shell comment that mentions gh issue view passes" issue-comments.sh "$(bash_input "$(printf '# not gh issue view 140, which hides comments\ngh issue view 140 --json number,title,body,labels,comments')" "$tmp/branch")"
+# Commands with here-documents, read with `read` and not `$(cat …)`: the Mac's
+# bash 3.2 can't parse a stray quote in a here-document inside `$( )`.
+read -r -d '' body_from_heredoc <<'EOF'
+gh issue create --title Retro --body-file - <<'BODY'
+The review ran
+gh issue view 124
+with no terminal.
+BODY
+EOF
+expect 0 "a here-document's body that mentions gh issue view passes" issue-comments.sh "$(bash_input "$body_from_heredoc" "$tmp/branch")"
+read -r -d '' body_from_substitution <<'EOF'
+gh issue create --title Retro --body "$(cat <<'BODY'
+On a 13" screen, the review ran
+gh issue view 124
+BODY
+)"
+EOF
+expect 0 "a here-document's body inside quotes passes, even with a stray quote" issue-comments.sh "$(bash_input "$body_from_substitution" "$tmp/branch")"
+
 echo "swift-format"
 printf 'let  x=1\n' >"$tmp/branch/Sample.swift"
 jq -n --arg file "$tmp/branch/Sample.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh"
