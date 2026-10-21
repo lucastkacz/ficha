@@ -1,6 +1,6 @@
 # Coding standards
 
-How Swift is written in Ficha. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`); this file covers what a formatter can't.
+How Swift is written in Ficha, and what the scripts, the hooks, the `Makefile` and CI say when they fail. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`), and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
 
 ## Language and concurrency
 
@@ -57,3 +57,7 @@ How Swift is written in Ficha. The `code-review` skill checks every change again
 
 - Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed. The render tool (`scripts/render`) takes its dependencies through FichaKit's pins, so its own `Package.resolved` stays out.
 - A new dependency needs an ADR in `docs/adr/` and makes the PR `risk:high`.
+
+## Scripts, hooks, the Makefile and CI
+
+- A failure message says what happened and what to do about it, as an error's message does in Swift: "App/Localizable.xcstrings is out of date with the code's UI texts: run make strings and commit the catalog."
