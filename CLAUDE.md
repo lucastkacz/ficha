@@ -14,7 +14,7 @@ Ficha is built by agents with the `mattpocock-skills` plugin, enabled in `.claud
 - Nothing runs on its own: no scheduled tasks, routines, loops or agents working without Lucas; he starts every session. The one exception is Dependabot, which only opens monthly update PRs that Lucas merges.
 - Build only what Lucas asked for or a `ready-for-agent` issue describes.
 - Prefer standard, documented practices, and say which parts are our own.
-- Swift follows `CODING_STANDARDS.md`, and so do the failure messages of the scripts, the hooks, the `Makefile` and CI.
+- Swift follows `CODING_STANDARDS.md`, and so do the failure messages of the scripts, the hooks, the `Makefile` and CI, and any change that renames a file or changes what it covers or does.
 
 ## Skills: Claude suggests, Lucas types
 
@@ -77,7 +77,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 ## Known gotchas
 
 - `gh issue create` can't use the YAML issue forms: write their fields as `###` headings in the body and pass the labels.
-- Auto mode refuses Claude's edits to `CLAUDE.md` and `.claude/settings.json`. Ask Lucas to switch the session to manual mode for those edits; never get around it with Bash.
+- Auto mode can refuse Claude's edits to `CLAUDE.md` and `.claude/settings.json`. Try the edit first; if auto mode refuses it, ask Lucas to switch the session to manual mode, and never get around it with Bash.
 - In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
 - Skills, hooks and settings load when a session starts. After changing them, check them in a new session.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.

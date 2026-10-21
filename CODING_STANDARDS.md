@@ -1,6 +1,6 @@
 # Coding standards
 
-How Swift is written in Ficha, and what the scripts, the hooks, the `Makefile` and CI say when they fail. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`), and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
+How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and CI say when they fail, and how the docs keep up with the files they describe. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`), and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
 
 ## Language and concurrency
 
@@ -61,3 +61,8 @@ How Swift is written in Ficha, and what the scripts, the hooks, the `Makefile` a
 ## Scripts, hooks, the Makefile and CI
 
 - A failure message says what happened and what to do about it, as an error's message does in Swift: "App/Localizable.xcstrings is out of date with the code's UI texts: run make strings and commit the catalog."
+
+## Docs
+
+- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
+- No linter can tell that a file's scope changed, so the reviewer looks beyond the diff for these lines. A line the change left stale is a violation.
