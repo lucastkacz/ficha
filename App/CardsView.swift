@@ -5,10 +5,12 @@ import SwiftUI
 /// The Cards window's content, in three panes as Mail lays out its own: a
 /// sidebar to choose a group of cards, a table with one row per card in it,
 /// narrowed by the toolbar's search field, and the selected card whole beside
-/// it. It reads the cards again whenever the engine says they changed, from
-/// the app or the `ficha` CLI, when Lucas changes the ladder in Settings, and
-/// every minute, since cards come due as time passes, or at once when Ficha
-/// Dev's debug menu moves the time.
+/// it, with what Lucas can do with it at its foot. He selects several cards
+/// with ⌘ or Shift, as in Finder, and then the detail says how many, with what
+/// he can do with all of them. It reads the cards again whenever the engine
+/// says they changed, from the app or the `ficha` CLI, when Lucas changes the
+/// ladder in Settings, and every minute, since cards come due as time passes,
+/// or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// The cards the table lists, or why they couldn't be read.
@@ -23,10 +25,16 @@ struct CardsView: View {
     /// What Lucas looks for in the group's cards, from the search field.
     @State private var search = ""
     @FocusState private var isSearchFocused: Bool
-    @State private var selection: CardRow.ID?
+    /// The rows Lucas selected, which can include cards the table no longer
+    /// lists: the detail and its actions take only those it lists.
+    @State private var selection: Set<CardRow.ID> = []
     /// The table's order: the newest cards first, until Lucas clicks a
     /// column's header.
     @State private var sortOrder = [CardRowOrder(.created, order: .reverse)]
+    /// The card Lucas is flagging, while the sheet asks for his note.
+    @State private var flagging: CardRow?
+    /// What Lucas did that couldn't be saved, while an alert says so.
+    @State private var failure: Failure?
 
     init(model: AppModel) {
         self.model = model
@@ -57,6 +65,12 @@ struct CardsView: View {
             .keyboardShortcut("f")
             .hidden()
         }
+        .sheet(item: $flagging) { row in
+            FlagSheet(card: row.card) { note throws(EngineError) in
+                try model.flag(row.id, note: note)
+            }
+        }
+        .failureAlert($failure)
         .onChange(of: group) {
             reload()
         }
@@ -207,12 +221,224 @@ struct CardsView: View {
         }
     }
 
+    /// The selected cards the table lists, which the detail shows and its
+    /// actions act on. The actions read them as they are when Lucas acts,
+    /// never as their buttons had them: SwiftUI keeps the action a keyboard
+    /// shortcut had when its button first showed, so ⌘E would bury the cards
+    /// selected back then.
+    private var selectedRows: [CardRow] {
+        guard case .success(let rows) = rows else {
+            return []
+        }
+        return rows.filter { selection.contains($0.id) }
+    }
+
     @ViewBuilder
     private var detail: some View {
-        if case .success(let rows) = rows, let row = rows.first(where: { $0.id == selection }) {
+        let selected = selectedRows
+        if selected.count > 1 {
+            severalSelected(selected)
+        } else if let row = selected.first {
             CardDetail(row: row, now: now)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    actions(for: row)
+                }
         } else {
             ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+        }
+    }
+
+    /// What Lucas can do with the selected card, at the foot of its detail,
+    /// always in sight: flag it while it's in his reviews, and bury it, or
+    /// unbury it once it's buried.
+    private func actions(for row: CardRow) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 8) {
+                if row.isInReviews {
+                    Button(
+                        String(
+                            localized: "Flag…",
+                            comment:
+                                "A button of the Cards window that flags the card, asking for a note on what to fix."
+                        )
+                    ) {
+                        startFlagging()
+                    }
+                    .keyboardShortcut("l", modifiers: [.command, .shift])
+                    .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
+                }
+                buryButton(for: [row])
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+        }
+        .background(.bar)
+    }
+
+    /// What the detail says when Lucas selected several cards: how many, with
+    /// Bury or Unbury when it works on all of them. No sidebar item lists
+    /// buried cards with others, so one of the two always does.
+    private func severalSelected(_ rows: [CardRow]) -> some View {
+        ContentUnavailableView {
+            Label(
+                String(
+                    localized: "\(rows.count) cards selected",
+                    comment: "In the Cards window's detail, when Lucas selected several cards in the table."),
+                systemImage: "rectangle.stack")
+        } actions: {
+            buryButton(for: rows)
+        }
+    }
+
+    /// Bury, when none of the cards in `rows` is buried, or Unbury, when all
+    /// of them are: ⌘E either way, since the two never show together.
+    @ViewBuilder
+    private func buryButton(for rows: [CardRow]) -> some View {
+        if rows.canBeBuried {
+            Button(
+                String(
+                    localized: "Bury",
+                    comment: "A button of the Cards window that buries the selected cards: they leave Lucas's reviews."
+                )
+            ) {
+                burySelection()
+            }
+            .keyboardShortcut("e", modifiers: .command)
+            .help(Text("Bury (⌘E)", comment: "The tooltip of the Cards window's button that buries the cards."))
+        } else if rows.canBeUnburied {
+            Button(
+                String(
+                    localized: "Unbury",
+                    comment:
+                        "A button of the Cards window that unburies the selected cards: each goes back where it was."
+                )
+            ) {
+                unburySelection()
+            }
+            .keyboardShortcut("e", modifiers: .command)
+            .help(Text("Unbury (⌘E)", comment: "The tooltip of the Cards window's button that unburies the cards."))
+        }
+    }
+
+    /// Asks for a note to flag the selected card, while it's the only one
+    /// selected and it's in Lucas's reviews.
+    private func startFlagging() {
+        let rows = selectedRows
+        guard rows.count == 1, let row = rows.first, row.isInReviews else { return }
+        flagging = row
+    }
+
+    /// Buries the selected cards, all at once, while none of them is buried,
+    /// or says why it couldn't.
+    private func burySelection() {
+        let rows = selectedRows
+        guard !rows.isEmpty, rows.canBeBuried else { return }
+        do throws(EngineError) {
+            try model.bury(Set(rows.map(\.id)))
+        } catch {
+            failure = Failure(
+                title: LocalizedStringResource(
+                    "Couldn't bury \(rows.count) cards", comment: "An alert's title in the Cards window."),
+                error: error)
+        }
+    }
+
+    /// Unburies the selected cards, all at once, while all of them are
+    /// buried, or says why it couldn't.
+    private func unburySelection() {
+        let rows = selectedRows
+        guard !rows.isEmpty, rows.canBeUnburied else { return }
+        do throws(EngineError) {
+            try model.unbury(Set(rows.map(\.id)))
+        } catch {
+            failure = Failure(
+                title: LocalizedStringResource(
+                    "Couldn't unbury \(rows.count) cards", comment: "An alert's title in the Cards window."),
+                error: error)
+        }
+    }
+}
+
+extension [CardRow] {
+    /// Whether Bury works on all these cards: none of them is buried.
+    fileprivate var canBeBuried: Bool {
+        allSatisfy { $0.card.buriedAt == nil }
+    }
+
+    /// Whether Unbury works on all these cards: every one of them is buried.
+    fileprivate var canBeUnburied: Bool {
+        allSatisfy { $0.card.buriedAt != nil }
+    }
+}
+
+/// The sheet that asks for Lucas's note on what to fix in the card he flags,
+/// as the review panel asks for it: Return flags the card, Option-Return
+/// starts a new line, and Escape cancels. A blank note can't flag it. When
+/// the card can't be flagged, an alert says why, and the sheet keeps the note.
+private struct FlagSheet: View {
+    let card: Card
+    /// Flags the card with the note, or throws why it couldn't.
+    let flag: (FlagNote) throws(EngineError) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var note = ""
+    @State private var failure: Failure?
+    @FocusState private var noteIsFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(
+                    "Flag “\(card.front)”",
+                    comment: "The title of the Cards window's sheet that flags a card, with the card's front."
+                )
+                .font(.headline)
+                Text(
+                    "It waits in the inbox, out of your reviews, until it's fixed.",
+                    comment: "Under the title of the Cards window's sheet that flags a card."
+                )
+                .foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            TextField("Note", text: $note, prompt: Text("What needs fixing?"), axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(3...6)
+                .focused($noteIsFocused)
+                // A focused text field keeps Return from reaching the default
+                // button.
+                .onSubmit(submit)
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+                Button {
+                    submit()
+                } label: {
+                    Text("Flag", comment: "The button that flags the card with the note written above it.")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(FlagNote(note) == nil)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+        .onAppear {
+            noteIsFocused = true
+        }
+        .failureAlert($failure)
+    }
+
+    /// Flags the card with the note, unless it's blank, and closes the sheet.
+    private func submit() {
+        guard let note = FlagNote(note) else { return }
+        do throws(EngineError) {
+            try flag(note)
+            dismiss()
+        } catch {
+            failure = Failure(title: "Couldn't flag the card", error: error)
         }
     }
 }

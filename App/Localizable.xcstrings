@@ -119,6 +119,29 @@
         }
       }
     },
+    "%lld cards selected" : {
+      "comment" : "In the Cards window's detail, when Lucas selected several cards in the table.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card selected"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards selected"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "A camera" : {
       "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
     },
@@ -183,7 +206,10 @@
       "comment" : "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
     },
     "Bury" : {
-      "comment" : "A button that buries the card the review panel shows: it never shows up again."
+      "comment" : "A button of the Cards window that buries the selected cards: they leave Lucas's reviews.\nA button that buries the card the review panel shows: it never shows up again."
+    },
+    "Bury (⌘E)" : {
+      "comment" : "The tooltip of the Cards window's button that buries the cards."
     },
     "Bury (e)" : {
       "comment" : "The tooltip of the button that buries the card, with its key."
@@ -239,6 +265,29 @@
     "Concepts" : {
       "comment" : "An item of the Cards window's sidebar: the concept cards."
     },
+    "Couldn't bury %lld cards" : {
+      "comment" : "An alert's title in the Cards window.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't bury the card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't bury the %lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Couldn't bury the card" : {
 
     },
@@ -268,6 +317,29 @@
     },
     "Couldn't turn on the capture shortcut" : {
 
+    },
+    "Couldn't unbury %lld cards" : {
+      "comment" : "An alert's title in the Cards window.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't unbury the card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't unbury the %lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Couldn't undo" : {
 
@@ -308,8 +380,14 @@
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
     },
+    "Flag “%@”" : {
+      "comment" : "The title of the Cards window's sheet that flags a card, with the card's front."
+    },
     "Flag…" : {
-      "comment" : "A button that flags the card the review panel shows, asking for a note on what to fix."
+      "comment" : "A button of the Cards window that flags the card, asking for a note on what to fix.\nA button that flags the card the review panel shows, asking for a note on what to fix."
+    },
+    "Flag… (⇧⌘L)" : {
+      "comment" : "The tooltip of the Cards window's button that flags the card."
     },
     "Flag… (m)" : {
       "comment" : "The tooltip of the button that flags the card, with its key."
@@ -358,6 +436,9 @@
     },
     "In use: %@" : {
       "comment" : "What a detector sees in Diagnostics."
+    },
+    "It waits in the inbox, out of your reviews, until it's fixed." : {
+      "comment" : "Under the title of the Cards window's sheet that flags a card."
     },
     "Keeping the display awake" : {
       "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
@@ -603,6 +684,12 @@
     },
     "Types" : {
       "comment" : "A section of the Cards window's sidebar: the card types."
+    },
+    "Unbury" : {
+      "comment" : "A button of the Cards window that unburies the selected cards: each goes back where it was."
+    },
+    "Unbury (⌘E)" : {
+      "comment" : "The tooltip of the Cards window's button that unburies the cards."
     },
     "Undo" : {
 

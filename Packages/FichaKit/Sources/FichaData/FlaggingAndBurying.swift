@@ -40,10 +40,18 @@ extension Engine {
     public func bury(_ cardID: Int64) throws(EngineError) -> Card {
         let buriedAt = time.now
         return try write { db in
-            guard try existingCard(cardID, in: db).buriedAt == nil else {
-                throw EngineError.cardBuried(cardID)
-            }
-            return try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
+            try bury(cardID, at: buriedAt, in: db)
+        }
+    }
+
+    /// Buries several cards in one write, as `bury(_:)` buries one, or none
+    /// of them when one is already buried or doesn't exist. Returns the
+    /// cards, in the order Lucas approved them.
+    @discardableResult
+    public func bury(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
+        let buriedAt = time.now
+        return try write { db in
+            try cardIDs.sorted().map { try bury($0, at: buriedAt, in: db) }
         }
     }
 
@@ -53,10 +61,35 @@ extension Engine {
     @discardableResult
     public func unbury(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in
-            guard try existingCard(cardID, in: db).buriedAt != nil else {
-                throw EngineError.cardNotBuried(cardID)
-            }
-            return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
+            try unbury(cardID, in: db)
         }
+    }
+
+    /// Unburies several cards in one write, as `unbury(_:)` unburies one, or
+    /// none of them when one isn't buried or doesn't exist. Returns the cards,
+    /// in the order Lucas approved them.
+    @discardableResult
+    public func unbury(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
+        try write { db in
+            try cardIDs.sorted().map { try unbury($0, in: db) }
+        }
+    }
+
+    /// Buries the card with this id, as buried at `buriedAt`, and returns it,
+    /// or throws when it's already buried or doesn't exist.
+    private func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
+        guard try existingCard(cardID, in: db).buriedAt == nil else {
+            throw EngineError.cardBuried(cardID)
+        }
+        return try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
+    }
+
+    /// Unburies the card with this id, and returns it, or throws when it isn't
+    /// buried or doesn't exist.
+    private func unbury(_ cardID: Int64, in db: Database) throws -> Card {
+        guard try existingCard(cardID, in: db).buriedAt != nil else {
+            throw EngineError.cardNotBuried(cardID)
+        }
+        return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
     }
 }

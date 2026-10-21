@@ -32,10 +32,16 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// or out of Lucas's reviews, flagged or buried, since it won't show up
     /// then.
     public var due: Date? {
-        guard card.isInReviews else {
+        guard isInReviews else {
             return nil
         }
         return standing.due
+    }
+
+    /// Whether the card is in Lucas's reviews, neither flagged nor buried, so
+    /// he can flag it, as in the review panel.
+    public var isInReviews: Bool {
+        card.isInReviews
     }
 }
 
