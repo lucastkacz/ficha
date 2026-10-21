@@ -39,11 +39,13 @@ struct FichaPhoneApp: App {
                 }
             }
         }
-        // The notifications iOS showed meanwhile are old news once Lucas is
-        // back in the app, and a new plan reaches further ahead than the one
-        // iOS holds.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active, case .success(let opened) = opening {
+            guard phase == .active else { return }
+            Rendering.sayScreenIsUp()
+            // The notifications iOS showed meanwhile are old news once Lucas
+            // is back in the app, and a new plan reaches further ahead than
+            // the one iOS holds.
+            if case .success(let opened) = opening {
                 opened.notifications.planAgain()
             }
         }

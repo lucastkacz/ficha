@@ -14,7 +14,8 @@ private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", categ
 /// way to the new plan's, so they always match the cards. It asks Lucas
 /// whether Ficha may send notifications before it plans for the first time,
 /// and plans again whenever the engine's data changes, and when the app asks,
-/// as it comes back to the foreground.
+/// as it comes back to the foreground. In the app `make render-iphone` opens
+/// (`Rendering`), it neither asks nor plans.
 final class CardNotifications {
     /// How long "Bring the next appearance now" waits: enough to lock the
     /// iPhone and watch the notification arrive.
@@ -32,6 +33,8 @@ final class CardNotifications {
 
     init(engine: Engine) {
         self.engine = engine
+        // iOS's alert would cover the screen in `make render-iphone`'s pictures.
+        guard !Rendering.isOn else { return }
         let center = center
         let changes = engine.changes()
         Task { [weak self] in
