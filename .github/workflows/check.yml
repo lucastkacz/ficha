@@ -57,13 +57,32 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.markdown-only != 'true' }}
     runs-on: macos-26
     timeout-minutes: 30
+    # TEMPORARY, reverted before the pull request: which build folders pay
+    # off (#124). Each one restores and saves its own cache.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cache: all
+            prefix: builds
+            builds: |
+              Packages/FichaKit/.build
+              scripts/render/.build
+              .build/DerivedData
+          - cache: swiftpm
+            prefix: builds-swiftpm
+            builds: |
+              Packages/FichaKit/.build
+              scripts/render/.build
+          - cache: fichakit
+            prefix: builds-fichakit
+            builds: |
+              Packages/FichaKit/.build
+          - cache: none
+            prefix: none
+            builds: ""
     env:
-      # What `make check`'s builds leave, which the next run builds from: the
-      # package's, the render tool's, and Xcode's derived data.
-      BUILDS: |
-        Packages/FichaKit/.build
-        scripts/render/.build
-        .build/DerivedData
+      BUILDS: ${{ matrix.builds }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -122,16 +141,17 @@ jobs:
         # main's, as "Caching dependencies to speed up workflows" in GitHub's
         # docs says. A new Xcode, or new versions of the package's
         # dependencies, start from no cache.
+        if: matrix.cache != 'none'
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILDS }}
-          key: builds-${{ runner.os }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
+          key: ${{ matrix.prefix }}-${{ runner.os }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
       - run: make check
       - name: Save the builds
         # After a run on main, unless the cache had them already: a key, once
         # saved, can't be saved again.
-        if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+        if: matrix.cache != 'none' && steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILDS }}
