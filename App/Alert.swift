@@ -26,7 +26,19 @@ struct Failure {
     /// What couldn't be done, which heads the alert.
     let title: LocalizedStringResource
     /// Why, which the alert says under it.
-    let error: EngineError
+    let message: String
+
+    /// A failure that `error`'s message explains.
+    init(title: LocalizedStringResource, error: EngineError) {
+        self.init(title: title, message: error.localizedDescription)
+    }
+
+    /// A failure that a window explains in its own words, where the engine's
+    /// message doesn't fit.
+    init(title: LocalizedStringResource, message: String) {
+        self.title = title
+        self.message = message
+    }
 }
 
 extension View {
@@ -40,7 +52,7 @@ extension View {
         ) { _ in
             Button("OK") {}
         } message: { failure in
-            Text(failure.error.localizedDescription)
+            Text(failure.message)
         }
     }
 }

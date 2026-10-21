@@ -3,8 +3,9 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on burying a card, which takes it out of Lucas's reviews for good
-/// without deleting it, and on unburying it in a refine session.
+/// Tests on burying cards, which takes them out of Lucas's reviews for good
+/// without deleting them, one in the review panel or several at once in the
+/// Cards window, and on unburying them, there or in a refine session.
 struct BuryingTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -95,6 +96,88 @@ struct BuryingTests {
         }
         #expect(throws: EngineError.cardNotFound(99)) {
             try engine.unbury(99)
+        }
+        #expect(try engine.cards() == [buried, ubuntu])
+    }
+
+    // The Cards window buries the cards Lucas selected, at once.
+    @Test("burying several cards takes each out of Lucas's reviews, or out of the inbox when it's flagged")
+    func buryingSeveralCardsTakesThemAllOut() throws {
+        // serendipia and ojalá come due on the first step, and ubuntu is
+        // flagged.
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ojala = try approveCard("ojalá", in: engine)
+        try engine.meet(serendipia)
+        try engine.meet(ojala)
+        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
+        time.advance(by: hours(1))
+
+        let buried = try engine.bury([serendipia.id, ubuntu.id])
+
+        #expect(buried.map(\.front) == ["serendipia", "ubuntu"])
+        #expect(try engine.cards().map(\.buriedAt) == [time.now, time.now, nil])
+        #expect(try engine.reviewNow(settings).map(\.card.id) == [ojala.id])
+        let progress = try engine.progress(settings)
+        #expect(progress.due == 1)
+        #expect(progress.inInbox == 0)
+    }
+
+    // The Cards window offers Bury only when no selected card is buried, but
+    // a refine session can bury one of them meanwhile.
+    @Test("burying several cards buries none of them when one is already buried, or doesn't exist")
+    func buryingSeveralCardsIsAllOrNothing() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let buried = try engine.bury(ubuntu.id)
+        time.advance(by: hours(1))
+
+        #expect(throws: EngineError.cardBuried(ubuntu.id)) {
+            try engine.bury([serendipia.id, ubuntu.id])
+        }
+        #expect(throws: EngineError.cardNotFound(99)) {
+            try engine.bury([serendipia.id, 99])
+        }
+        #expect(try engine.cards() == [serendipia, buried])
+    }
+
+    @Test("unburying several cards puts each back where it was: in Lucas's reviews on its step, or in the inbox")
+    func unburyingSeveralCardsPutsEachBack() throws {
+        // serendipia gets to the 30-day step, from which a card is learned,
+        // and ubuntu is flagged.
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.climb(serendipia, to: 5, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
+        try engine.bury([serendipia.id, ubuntu.id])
+        time.advance(by: days(30))
+
+        let unburied = try engine.unbury([serendipia.id, ubuntu.id])
+
+        #expect(unburied.map(\.buriedAt) == [nil, nil])
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.reviewNow(settings).map(\.card.id) == [serendipia.id])
+        #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Falta un ejemplo"])
+        let progress = try engine.progress(settings)
+        #expect(progress.due == 1)
+        #expect(progress.learned == 1)
+        #expect(progress.inInbox == 1)
+    }
+
+    // The Cards window offers Unbury only when every selected card is buried,
+    // but a refine session can unbury one of them meanwhile.
+    @Test("unburying several cards unburies none of them when one isn't buried, or doesn't exist")
+    func unburyingSeveralCardsIsAllOrNothing() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let buried = try engine.bury(serendipia.id)
+
+        #expect(throws: EngineError.cardNotBuried(ubuntu.id)) {
+            try engine.unbury([serendipia.id, ubuntu.id])
+        }
+        #expect(throws: EngineError.cardNotFound(99)) {
+            try engine.unbury([serendipia.id, 99])
         }
         #expect(try engine.cards() == [buried, ubuntu])
     }

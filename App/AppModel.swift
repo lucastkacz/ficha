@@ -121,6 +121,24 @@ final class AppModel {
         try engine.tags()
     }
 
+    /// Flags a card in Lucas's reviews from the Cards window, with his note
+    /// on what to fix: it leaves his reviews and waits in the inbox.
+    func flag(_ cardID: Int64, note: FlagNote) throws(EngineError) {
+        try engine.flag(cardID, note: note)
+    }
+
+    /// Buries the cards Lucas selected in the Cards window, all at once, or
+    /// none of them when one is already buried.
+    func bury(_ cardIDs: Set<Int64>) throws(EngineError) {
+        try engine.bury(cardIDs)
+    }
+
+    /// Unburies the cards Lucas selected in the Cards window, all at once, or
+    /// none of them when one isn't buried: each goes back where it was.
+    func unbury(_ cardIDs: Set<Int64>) throws(EngineError) {
+        try engine.unbury(cardIDs)
+    }
+
     /// Every change to Lucas's cards from now on, by the app or by the
     /// `ficha` CLI, for a window that shows them to read them again.
     func changes() -> AsyncStream<Void> {
