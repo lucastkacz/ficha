@@ -4,8 +4,8 @@ internal import GRDB
 
 extension Engine {
     /// Flags a card in Lucas's reviews with his note on what to fix: it
-    /// leaves his reviews and waits in the inbox until a refine session fixes
-    /// it. Returns the card.
+    /// leaves his reviews and waits in the inbox until it's fixed, in a refine
+    /// session or in the Cards window. Returns the card.
     @discardableResult
     public func flag(_ cardID: Int64, note: FlagNote) throws(EngineError) -> Card {
         let flaggedAt = time.now

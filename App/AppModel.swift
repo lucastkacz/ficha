@@ -121,6 +121,13 @@ final class AppModel {
         try engine.tags()
     }
 
+    /// Edits a card from the Cards window: it gets `content`, and keeps its
+    /// step and its review log. A flagged card is fixed, back in Lucas's
+    /// reviews unless it's buried.
+    func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) {
+        try engine.edit(cardID, with: content)
+    }
+
     /// Flags a card in Lucas's reviews from the Cards window, with his note
     /// on what to fix: it leaves his reviews and waits in the inbox.
     func flag(_ cardID: Int64, note: FlagNote) throws(EngineError) {

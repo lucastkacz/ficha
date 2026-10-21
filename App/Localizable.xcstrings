@@ -142,11 +142,20 @@
         }
       }
     },
+    "A book, a podcast…" : {
+      "comment" : "In the Cards window, in a card's empty source, while Lucas edits it."
+    },
     "A camera" : {
       "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
     },
     "A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns it off." : {
 
+    },
+    "A card needs a back." : {
+      "comment" : "In the Cards window, under a card's back, when Lucas saves it blank."
+    },
+    "A card needs a front." : {
+      "comment" : "In the Cards window, under a card's front, when Lucas saves it blank."
     },
     "A microphone" : {
       "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
@@ -195,6 +204,9 @@
     },
     "At least this long apart" : {
       "comment" : "Settings, under Appearances: the least time between two appearances."
+    },
+    "Back" : {
+      "comment" : "In the Cards window, the label of a card's back, while Lucas edits it."
     },
     "Bring along cards due within" : {
       "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
@@ -312,6 +324,9 @@
     "Couldn't save the capture" : {
 
     },
+    "Couldn't save the card" : {
+      "comment" : "An alert's title in the Cards window."
+    },
     "Couldn't save your answer" : {
 
     },
@@ -362,6 +377,12 @@
     "Each time you know a card, it climbs a step and waits that long to be due again. A change re-times every card from its history, and a card beyond a shorter ladder's end sits on its last step." : {
 
     },
+    "Edit" : {
+      "comment" : "A button of the Cards window that turns the card's detail into fields to edit it."
+    },
+    "Edit (⌘L)" : {
+      "comment" : "The tooltip of the Cards window's button that edits the card."
+    },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
     },
@@ -402,7 +423,7 @@
       "comment" : "In Diagnostics: Lucas opened the review panel with Review now."
     },
     "Front" : {
-      "comment" : "A column of the Cards window: the card's front."
+      "comment" : "A column of the Cards window: the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
     },
     "Full screen" : {
       "comment" : "A detector in Diagnostics: the app in front in full screen."
@@ -633,11 +654,20 @@
     "Save" : {
 
     },
+    "Saving fixes it, and it stays buried." : {
+      "comment" : "In the Cards window, under Lucas's note on a flagged card he buried, while he edits it."
+    },
+    "Saving fixes it: it goes back to your reviews, on its step." : {
+      "comment" : "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+    },
     "See more" : {
 
     },
     "See more?" : {
 
+    },
+    "Separate tags with commas." : {
+      "comment" : "In the Cards window, under a card's tags, while Lucas edits it."
     },
     "Settings…" : {
 
@@ -655,7 +685,7 @@
 
     },
     "Source" : {
-
+      "comment" : "In the Cards window, the label of a card's source, while Lucas edits it."
     },
     "Source (optional): a book, a podcast…" : {
 
@@ -676,7 +706,7 @@
       "comment" : "Settings: a step of the ladder, counted from 1."
     },
     "Tags" : {
-      "comment" : "A section of the Cards window's sidebar: the cards' tags."
+      "comment" : "A section of the Cards window's sidebar: the cards' tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
@@ -701,6 +731,9 @@
     },
     "Turn Off the Capture Shortcut" : {
 
+    },
+    "Type" : {
+      "comment" : "In the Cards window, the label of a card's type, while Lucas edits it."
     },
     "Type a shortcut…" : {
       "comment" : "Settings: the capture shortcut, while Lucas types a new one."

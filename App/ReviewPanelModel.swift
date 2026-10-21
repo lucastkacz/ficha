@@ -165,8 +165,8 @@ final class ReviewPanelModel {
         state.touch()
     }
 
-    /// Flags the card with the note, which sends it to the inbox until a
-    /// refine session fixes it, and moves on to the next card.
+    /// Flags the card with the note, which sends it to the inbox until it's
+    /// fixed, and moves on to the next card.
     func flag() {
         guard let flagging, let note = FlagNote(flagging.note) else { return }
         goThrough(failing: "Couldn't flag the card", after: flagging.timeOnCard) { _ throws(EngineError) in
