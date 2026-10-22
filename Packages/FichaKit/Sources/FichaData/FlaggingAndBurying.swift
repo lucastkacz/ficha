@@ -22,12 +22,10 @@ extension Engine {
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
         try write { db in
-            let card = try existingCard(cardID, in: db)
-            guard card.buriedAt == nil else {
-                throw EngineError.cardBuried(cardID)
-            }
-            guard card.flag != nil else {
-                throw EngineError.cardNotFlagged(cardID)
+            switch try existingCard(cardID, in: db).standing {
+            case .inInbox: break
+            case .inReviews: throw EngineError.cardNotFlagged(cardID)
+            case .buried: throw EngineError.cardBuried(cardID)
             }
             return try editCard(cardID, with: content, in: db)
         }
@@ -77,8 +75,9 @@ extension Engine {
     /// Buries the card with this id, as buried at `buriedAt`, and returns it,
     /// or throws when it's already buried or doesn't exist.
     private func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
-        guard try existingCard(cardID, in: db).buriedAt == nil else {
-            throw EngineError.cardBuried(cardID)
+        switch try existingCard(cardID, in: db).standing {
+        case .inReviews, .inInbox: break
+        case .buried: throw EngineError.cardBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
     }
@@ -86,8 +85,9 @@ extension Engine {
     /// Unburies the card with this id, and returns it, or throws when it isn't
     /// buried or doesn't exist.
     private func unbury(_ cardID: Int64, in db: Database) throws -> Card {
-        guard try existingCard(cardID, in: db).buriedAt != nil else {
-            throw EngineError.cardNotBuried(cardID)
+        switch try existingCard(cardID, in: db).standing {
+        case .buried: break
+        case .inReviews, .inInbox: throw EngineError.cardNotBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
     }

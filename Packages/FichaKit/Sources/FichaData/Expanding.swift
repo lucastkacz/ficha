@@ -38,8 +38,9 @@ extension Engine {
             guard let cardID = try takeOutOfInbox(captureID, at: refinedAt, in: db).expandsCardID else {
                 throw EngineError.notAnExpansion(captureID)
             }
-            guard try existingCard(cardID, in: db).buriedAt == nil else {
-                throw EngineError.cardBuried(cardID)
+            switch try existingCard(cardID, in: db).standing {
+            case .inReviews, .inInbox: break
+            case .buried: throw EngineError.cardBuried(cardID)
             }
             return try replaceContent(of: cardID, with: content, in: db)
         }

@@ -51,7 +51,7 @@ extension Engine {
             let counts = try settings.ladder.counts(of: cardIDs, after: logEntries(in: db), at: now)
             return ProgressCounts(
                 due: counts.due, learned: counts.learned,
-                inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsInInbox.fetchCount(db))
+                inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsWaiting(in: db).count)
         }
     }
 
@@ -76,9 +76,9 @@ extension Engine {
         try read(logEntries(in:))
     }
 
-    /// Where a card stands: new, or on a step of `ladder` until it's due,
-    /// worked out from its review log.
-    public func standing(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> CardStanding {
+    /// Where a card stands on `ladder`: new, or on a step until it's due,
+    /// worked out from its review log, also while it's flagged or buried.
+    public func standing(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> LadderStanding {
         try read { db in
             try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
         }

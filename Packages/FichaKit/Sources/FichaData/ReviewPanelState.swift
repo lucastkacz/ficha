@@ -489,13 +489,15 @@ extension Engine {
                     throw EngineError.cannotUndo(cardID)
                 }
             case .flagged:
-                guard card.flag != nil, card.buriedAt == nil else {
-                    throw EngineError.cannotUndo(cardID)
+                switch card.standing {
+                case .inInbox: break
+                case .inReviews, .buried: throw EngineError.cannotUndo(cardID)
                 }
                 _ = try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
             case .buried:
-                guard card.buriedAt != nil else {
-                    throw EngineError.cannotUndo(cardID)
+                switch card.standing {
+                case .buried: break
+                case .inReviews, .inInbox: throw EngineError.cannotUndo(cardID)
                 }
                 _ = try updateCard(cardID, setting: "buriedAt = NULL", in: db)
             }
