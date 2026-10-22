@@ -66,7 +66,7 @@ struct UpcomingAppearanceTests {
         #expect(next == UpcomingAppearance(time: try at(10, 30), cards: [.review(serendipia)]))
     }
 
-    // Ficha Dev's "Bring the next appearance now" (#147).
+    // Ficha Dev's "Bring the next appearance now" (#101).
     @Test("a first appearance brought forward is planned then, and once it comes untouched, it's a snooze from then")
     func aFirstAppearanceBroughtForwardStaysThere() throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(12, 0))

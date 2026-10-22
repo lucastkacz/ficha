@@ -13,6 +13,13 @@ public struct NotifiedAppearance: Sendable, Equatable {
         self.shownAt = shownAt
         self.cardIDs = cardIDs
     }
+
+    /// `upcoming`, as its card notifications carry it: shown at its time, as
+    /// the engine keeps it in its plan, which is how the appearance log finds
+    /// it.
+    public init(_ upcoming: UpcomingAppearance) {
+        self.init(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
+    }
 }
 
 extension Engine {

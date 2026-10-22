@@ -118,11 +118,7 @@ func lastClosing(in db: Database) throws -> Date? {
 /// entry's closing on.
 func noteClosing(of appearance: NotifiedAppearance, at closedAt: Date, finished: Bool, in db: Database) throws {
     let outcome: AppearanceLogEntry.Outcome = finished ? .finished : .snoozed
-    let entry = try Int64.fetchOne(
-        db,
-        sql: "SELECT id FROM appearanceLog WHERE trigger = ? AND shownAt = ? AND outcome != ? ORDER BY id DESC LIMIT 1",
-        arguments: [Trigger.appearance.rawValue, appearance.shownAt, OutcomeName.heldBack.rawValue])
-    guard let entry else {
+    guard let entry = try entryOfAppearance(shownAt: appearance.shownAt, in: db) else {
         try insert(
             AppearanceLogEntry(trigger: .appearance, shownAt: appearance.shownAt, closedAt: closedAt, outcome: outcome),
             in: db)
@@ -137,24 +133,33 @@ func noteClosing(of appearance: NotifiedAppearance, at closedAt: Date, finished:
 /// the engine handed out whose time came by `now` and that Lucas never
 /// touched, which have no entry: none of their card notifications' answers
 /// gave them one. Each closes as it showed, its cards left as they were
-/// (#97). An appearance on the iPhone that showed within a second of one's
-/// time is that one, since its card notifications carry the time in seconds
-/// since 1970, which can come back a hair off: a second is our own pick, far
-/// below any separation.
+/// (#97).
 func noteUntouchedAppearances(by now: Date, in db: Database) throws {
     let times = try Date.fetchAll(
         db, sql: "SELECT time FROM plannedAppearance WHERE time <= ? ORDER BY time", arguments: [now])
-    for time in times {
-        let entry = try Int64.fetchOne(
-            db,
-            sql: "SELECT id FROM appearanceLog WHERE trigger = ? AND outcome != ? AND shownAt BETWEEN ? AND ? LIMIT 1",
-            arguments: [
-                Trigger.appearance.rawValue, OutcomeName.heldBack.rawValue, time.addingTimeInterval(-1),
-                time.addingTimeInterval(1),
-            ])
-        guard entry == nil else { continue }
+    for time in times where try entryOfAppearance(shownAt: time, in: db) == nil {
         try insert(AppearanceLogEntry(trigger: .appearance, shownAt: time, closedAt: time, outcome: .snoozed), in: db)
     }
+}
+
+/// The appearance log's entry of the appearance on the iPhone that showed at
+/// `shownAt`, by its id, once it has one. An entry that showed within a
+/// second of it is its own, since its card notifications carry the time in
+/// seconds since 1970, which can come back a hair off, and the plan keeps it
+/// as the database rounds it: a second is our own pick, far below any
+/// separation.
+private func entryOfAppearance(shownAt: Date, in db: Database) throws -> Int64? {
+    try Int64.fetchOne(
+        db,
+        sql: """
+            SELECT id FROM appearanceLog
+            WHERE trigger = ? AND outcome != ? AND shownAt BETWEEN ? AND ?
+            ORDER BY id DESC LIMIT 1
+            """,
+        arguments: [
+            Trigger.appearance.rawValue, OutcomeName.heldBack.rawValue, shownAt.addingTimeInterval(-1),
+            shownAt.addingTimeInterval(1),
+        ])
 }
 
 /// The appearance log's hold that's on, by its entry's id, if one is: the

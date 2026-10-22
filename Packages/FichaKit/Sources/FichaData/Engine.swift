@@ -63,8 +63,9 @@ public struct Engine: Sendable {
     }
 
     /// Every change to the database from now on, by this engine or by another
-    /// one on the same database, such as the CLI's while the app runs. Changes
-    /// that come while one waits to be handled are merged into it.
+    /// one on the same database, such as the CLI's while the app runs, but
+    /// the plan of appearances the engine keeps, which changes no card.
+    /// Changes that come while one waits to be handled are merged into it.
     public func changes() -> AsyncStream<Void> {
         databaseChanges.stream()
     }

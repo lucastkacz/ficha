@@ -210,8 +210,7 @@ struct CardNotificationTests {
     /// The next appearance the engine plans, as its card notifications carry
     /// it.
     private func nextAppearance() throws -> NotifiedAppearance {
-        let upcoming = try #require(try engine.upcomingAppearances(settings).first)
-        return NotifiedAppearance(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
+        NotifiedAppearance(try #require(try engine.upcomingAppearances(settings).first))
     }
 
     /// Approves a card with this front and meets it, an hour before `due`, so
