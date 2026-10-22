@@ -50,7 +50,7 @@ struct CardEditor: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                FlagAndBurial(card: card, isEditing: true)
+                FlagAndBurial(standing: card.standing, isEditing: true)
                 fields
             }
             .padding(20)

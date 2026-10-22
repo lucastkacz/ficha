@@ -228,11 +228,7 @@ public struct CardsWindowState: Sendable {
         case .capture, .expansion:
             return [.edit, .discard]
         case .card(let row, _):
-            var actions = buryOrUnbury([row]).union([.edit, .delete])
-            if row.isInReviews {
-                actions.insert(.flag)
-            }
-            return actions
+            return Self.actions(for: row.cardStanding).union([.edit, .delete])
         case .cards(let rows):
             return buryOrUnbury(rows).union([.delete])
         case .nothingSelectedInInbox, .noCardSelected:
@@ -240,16 +236,23 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Bury, when none of the cards in `rows` is buried, or Unbury, when all
-    /// of them are, or neither, so that one action never does half its job.
-    private func buryOrUnbury(_ rows: [CardRow]) -> Set<Action> {
-        if rows.allSatisfy({ $0.card.buriedAt == nil }) {
-            [.bury]
-        } else if rows.allSatisfy({ $0.card.buriedAt != nil }) {
-            [.unbury]
-        } else {
-            []
+    /// What Lucas can do with one card standing where `standing` says, beyond
+    /// editing and deleting it: flag it while it's in his reviews, as in the
+    /// review panel, bury it unless it's buried, and unbury it when it is.
+    private static func actions(for standing: CardStanding) -> Set<Action> {
+        switch standing {
+        case .inReviews: [.flag, .bury]
+        case .inInbox: [.bury]
+        case .buried: [.unbury]
         }
+    }
+
+    /// Bury, when every card in `rows` can be buried, or Unbury, when every
+    /// one can be unburied, or neither, so that one action never does half
+    /// its job.
+    private func buryOrUnbury(_ rows: [CardRow]) -> Set<Action> {
+        let actions = rows.map { Self.actions(for: $0.cardStanding) }
+        return Set([Action.bury, .unbury].filter { action in actions.allSatisfy { $0.contains(action) } })
     }
 
     /// Lists what Lucas chose in the sidebar.

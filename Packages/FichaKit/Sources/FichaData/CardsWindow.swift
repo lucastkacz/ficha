@@ -2,12 +2,16 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// A card as the Cards window lists it: the card, where it stands on Lucas's
-/// ladder, and when he last saw it.
+/// A card as the Cards window lists it: the card, where it stands, in Lucas's
+/// reviews and on his ladder, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
+    /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
+    /// fixed, or buried.
+    public let cardStanding: CardStanding
     /// Where it stands on the ladder: new, or on a step until it's due,
-    /// worked out from its review log.
+    /// worked out from its review log. A flagged or buried card keeps it, and
+    /// `cardStanding` says whether the card is in Lucas's reviews.
     public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
@@ -32,16 +36,25 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// or out of Lucas's reviews, flagged or buried, since it won't show up
     /// then.
     public var due: Date? {
-        guard isInReviews else {
-            return nil
-        }
-        return standing.due
+        cardStanding.due(given: standing)
     }
 
-    /// Whether the card is in Lucas's reviews, neither flagged nor buried, so
-    /// he can flag it, as in the review panel.
-    public var isInReviews: Bool {
-        card.standing == .inReviews
+    /// Whether the card is due at `time`: in Lucas's reviews, with its wait
+    /// over.
+    public func isDue(at time: Date) -> Bool {
+        cardStanding.isDue(at: time, given: standing)
+    }
+
+    /// Whether the card is new in Lucas's reviews: it hasn't had its first
+    /// view yet.
+    var isNew: Bool {
+        cardStanding.isNew(given: standing)
+    }
+
+    /// Whether the card is learned in Lucas's reviews, standing on `ladder`:
+    /// on a step that waits 30 days or more.
+    func isLearned(on ladder: Ladder) -> Bool {
+        cardStanding.isLearned(given: standing, on: ladder)
     }
 }
 
@@ -165,8 +178,8 @@ extension Engine {
             }
             let flaggedCards = try FichaData.cardRows(in: .flagged, matching: search, on: ladder, at: now, in: db)
                 .map { row in
-                    // Flagged lists flagged cards only.
-                    guard let flag = row.card.flag else {
+                    // Flagged lists only cards waiting in the inbox.
+                    guard case .inInbox(let flag) = row.cardStanding else {
                         throw EngineError.cardNotFlagged(row.id)
                     }
                     return InboxRow(item: .flaggedCard(row), addedAt: flag.flaggedAt)
@@ -179,7 +192,7 @@ extension Engine {
     /// order, as the Cards window's sidebar lists them.
     public func tags() throws(EngineError) -> [String] {
         try read { db in
-            Set(try allCards(in: db).filter { $0.buriedAt == nil }.flatMap(\.tags))
+            Set(try allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags))
                 .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         }
     }
@@ -241,14 +254,33 @@ extension CardGroup {
     /// Whether the group holds the card in `row`, at `now`, on `ladder`.
     fileprivate func holds(_ row: CardRow, at now: Date, on ladder: Ladder) -> Bool {
         switch self {
-        case .all: row.card.buriedAt == nil
-        case .new: row.card.standing.isNew(given: row.standing)
-        case .due: row.card.standing.isDue(at: now, given: row.standing)
-        case .learned: row.card.standing.isLearned(given: row.standing, on: ladder)
-        case .flagged: if case .inInbox = row.card.standing { true } else { false }
-        case .buried: row.card.buriedAt != nil
-        case .tag(let tag): row.card.tags.contains(tag) && row.card.buriedAt == nil
-        case .type(let type): row.card.type == type && row.card.buriedAt == nil
+        case .all: row.cardStanding.isInAllCards
+        case .new: row.isNew
+        case .due: row.isDue(at: now)
+        case .learned: row.isLearned(on: ladder)
+        case .flagged:
+            switch row.cardStanding {
+            case .inInbox: true
+            case .inReviews, .buried: false
+            }
+        case .buried:
+            switch row.cardStanding {
+            case .buried: true
+            case .inReviews, .inInbox: false
+            }
+        case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
+        case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
+        }
+    }
+}
+
+extension CardStanding {
+    /// Whether All cards holds a card standing here, as each tag and type do
+    /// for theirs: unless it's buried, since only Buried holds those.
+    fileprivate var isInAllCards: Bool {
+        switch self {
+        case .inReviews, .inInbox: true
+        case .buried: false
         }
     }
 }
@@ -258,6 +290,7 @@ extension CardRow {
     /// log's, in the order they happened.
     fileprivate init(card: Card, after entries: [ReviewLogEntry], on ladder: Ladder) throws(UnexpectedReviewLog) {
         self.card = card
+        cardStanding = card.standing
         standing = try ladder.standing(after: entries)
         lastSeen = entries.last?.answeredAt
         if case .onLadder(let step, _) = standing {
