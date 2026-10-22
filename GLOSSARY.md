@@ -25,6 +25,14 @@ _Avoid_: answer, solution
 A subject a card belongs to, like "historia" or "filosofía". A card can have several.
 _Avoid_: topic, category, deck
 
+**Priority tag**:
+A tag Lucas chose so that its cards come first when cards show up, as while he prepares for an exam. It changes which cards come first, never when a card is due.
+_Avoid_: focus, exam mode, filter
+
+**Set aside**:
+Taking a tag's cards out of Lucas's reviews for now, as when he's done with a subject, without burying them: every card with the tag, also those that get it later, even if their other tags aren't set aside. Bringing the tag back puts them in his reviews again, on their steps, and those whose wait ran out meanwhile come back due.
+_Avoid_: pause, suspend, archive, hide
+
 **Source**:
 Where Lucas came across what a capture or a card holds, like a book or a podcast.
 _Avoid_: origin, reference, citation
@@ -112,7 +120,7 @@ Taking a card Lucas no longer wants out of reviews for good, and out of the inbo
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands: in Lucas's reviews, new or on a ladder step until it's due; waiting in the inbox to be fixed; or buried. A flagged or buried card keeps its step, and comes back on it when it's fixed or unburied.
+Where a card stands: in Lucas's reviews, new or on a ladder step until it's due; waiting in the inbox to be fixed; set aside with one of its tags; or buried. A buried card stays buried, and a flagged one waits in the inbox, whatever their tags; a flagged card fixed while one of its tags is set aside is set aside. A card out of his reviews keeps its step, and comes back on it when it's fixed, brought back or unburied.
 _Avoid_: status, state
 
 ### Managing cards
