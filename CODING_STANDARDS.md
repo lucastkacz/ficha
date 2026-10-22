@@ -13,6 +13,11 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - `FichaCore` holds the logic as pure functions and value types. It imports only Foundation and the standard library's modules (such as `Synchronization`): no AppKit, SwiftUI, GRDB or OS services.
 - Storage, the CLI and the app stay thin at the edges and call into `FichaCore`.
+- The app stays thin in its windows too: what a window decides lives in `FichaData`, in a `Sendable` state shaped like `ReviewPanelState`. The engine opens it, its operations call the engine and change it, and `swift test` tests it through that interface against an engine in memory.
+  - What a window decides is what it lists, what is selected, what it shows, what it offers, what it asks before acting, and what happens when Lucas acts, such as narrowing a table to a search, offering Bury only when none of the selected cards is buried, or recording which action failed.
+  - The window's view draws the state and turns it into translated text, an engine error's message included. It keeps the drawing, the keyboard shortcuts, which control has the focus, and the text. It also keeps the fields Lucas types into, and a table's columns and the order its rows sort in, since a column can sort by translated names.
+  - A decision worked out in the app instead, in a view or in an app-side model that holds the state, breaks this rule, however small: the app may hold the state, but never decides for it.
+  - Showing what the engine returned is drawing, not deciding. Capture asks about the duplicate the engine found, and Diagnostics lists what the engine and the Mac's detectors report, so neither needs a state of its own.
 - What the OS tells us (camera or microphone in use, idle time, power assertions, full-screen apps) enters through protocols the app implements, so the logic that reacts to it is tested without the OS.
 - The Xcode project is generated from `project.yml`. Never edit `Ficha.xcodeproj`.
 
