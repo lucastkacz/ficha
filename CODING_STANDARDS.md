@@ -13,6 +13,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - `FichaCore` holds the logic as pure functions and value types. It imports only Foundation and the standard library's modules (such as `Synchronization`): no AppKit, SwiftUI, GRDB or OS services.
 - Storage, the CLI and the app stay thin at the edges and call into `FichaCore`.
+- What a window decides lives in FichaData, in a `Sendable` state shaped like `ReviewPanelState`: the engine opens it, the window's view holds it, its operations call the engine and change it, and `swift test` tests it through that interface against an engine in memory. What a window decides is what it lists, what is selected, what it shows, what it offers, what it asks before acting, and what happens when Lucas acts: narrowing a table to a search, offering Bury only when none of the selected cards is buried, or recording which action failed. The view draws the state and turns it into translated text: it keeps the drawing, the keyboard, the focus and the text. A decision worked out in the app instead, in a view or in a model of the app's around it, breaks this rule, however small. A window that only shows what the engine returns, such as Capture and Diagnostics, has nothing of its own to decide.
 - What the OS tells us (camera or microphone in use, idle time, power assertions, full-screen apps) enters through protocols the app implements, so the logic that reacts to it is tested without the OS.
 - The Xcode project is generated from `project.yml`. Never edit `Ficha.xcodeproj`.
 
