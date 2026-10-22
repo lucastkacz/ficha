@@ -145,6 +145,39 @@
         }
       }
     },
+    "%lld copies, %@ in all" : {
+      "comment" : "Settings, under Backups: how many copies there are, and what they weigh in all.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@copies@, %2$@ in all"
+          },
+          "substitutions" : {
+            "copies" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg copy"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg copies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "A book, a podcast…" : {
       "comment" : "In the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
     },
@@ -214,11 +247,35 @@
     "Apps using the microphone" : {
       "comment" : "In Diagnostics: which apps use a microphone."
     },
+    "As each backup is saved, the oldest ones beyond that number go. Copies before an update or a restore stay until you delete them." : {
+      "comment" : "Settings, under Backups, below its settings: \"that number\" is the one in Backups to keep, just above."
+    },
     "At least this long apart" : {
       "comment" : "Settings, under Appearances: the least time between two appearances."
     },
     "Back" : {
       "comment" : "In the Cards window, the label of a card's back, while Lucas edits it."
+    },
+    "Back up" : {
+      "comment" : "Settings, under Backups: how often Ficha backs up on its own."
+    },
+    "Back Up Now" : {
+      "comment" : "Settings, under Backups: saves a backup now."
+    },
+    "Backup" : {
+      "comment" : "Settings, under Backups: a copy's kind, a backup."
+    },
+    "Backups" : {
+      "comment" : "A tab of the Settings window."
+    },
+    "Backups to keep" : {
+      "comment" : "Settings, under Backups: how many backups Ficha keeps, the newest ones."
+    },
+    "Before a restore" : {
+      "comment" : "Settings, under Backups: a copy's kind, saved before a restore."
+    },
+    "Before an update" : {
+      "comment" : "Settings, under Backups: a copy's kind, saved before a new version changed the database."
     },
     "Bring along cards due within" : {
       "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
@@ -362,6 +419,32 @@
     "Couldn't look for more cards" : {
 
     },
+    "Couldn't move %lld copies to the Trash" : {
+      "comment" : "An alert's title in Settings' Backups tab, with how many copies.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't move the copy to the Trash"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't move %lld copies to the Trash"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn't restore the copy" : {
+      "comment" : "An alert's title in Settings' Backups tab."
+    },
     "Couldn't save the capture" : {
       "comment" : "An alert's title in the Cards window."
     },
@@ -433,10 +516,10 @@
       }
     },
     "Delete…" : {
-      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first."
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
-      "comment" : "The tooltip of the Cards window's button that deletes the cards."
+      "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards."
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
@@ -480,11 +563,26 @@
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
+    "Every day" : {
+      "comment" : "Settings, under Backups: Ficha backs up once a day."
+    },
+    "Every hour" : {
+      "comment" : "Settings, under Backups: Ficha backs up once an hour."
+    },
+    "Every week" : {
+      "comment" : "Settings, under Backups: Ficha backs up once a week."
+    },
     "Expand" : {
       "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
     },
     "Expands this card" : {
       "comment" : "In the Cards window's detail of an expansion, above the card it's attached to."
+    },
+    "Failed: %@" : {
+      "comment" : "Settings, under Backups: the last backup failed, and why."
+    },
+    "Ficha first saves everything as it is now in a copy before a restore, which the list then shows: restoring that copy undoes this one." : {
+      "comment" : "Under the title of the Backups tab's question before it restores a copy."
     },
     "Find" : {
       "comment" : "A hidden button of the Cards window: ⌘F, which goes to the search field."
@@ -515,6 +613,9 @@
     },
     "Flip" : {
 
+    },
+    "Folder" : {
+      "comment" : "Settings, under Backups: the folder the copies are in."
     },
     "From the menu" : {
       "comment" : "In Diagnostics: Lucas opened the review panel with Review now."
@@ -607,13 +708,19 @@
       "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
     },
     "Kind" : {
-      "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion or a card."
+      "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion or a card.\nSettings, under Backups: the column of each copy's kind."
     },
     "Know it" : {
       "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
     "Ladder" : {
       "comment" : "A tab of the Settings window."
+    },
+    "Last backup" : {
+      "comment" : "Settings, under Backups: when the last backup was saved."
+    },
+    "Last backup failed" : {
+      "comment" : "A menu item while the last backup failed, which opens Settings' Backups tab, where it says why."
     },
     "Last seen" : {
       "comment" : "A column of the Cards window: when Lucas last saw the card, in a first view or a review.\nIn the Cards window's detail: when Lucas last saw the card, in a first view or a review."
@@ -652,6 +759,32 @@
     },
     "Microphone" : {
       "comment" : "A detector in Diagnostics: the microphones in use."
+    },
+    "Move %lld copies to the Trash?" : {
+      "comment" : "The title of the Backups tab's question before it moves copies to the Trash, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Move the copy to the Trash?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Move %lld copies to the Trash?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Move to Trash" : {
+      "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -709,6 +842,9 @@
     },
     "No words" : {
       "comment" : "In the Cards window: no word card that isn't buried."
+    },
+    "None yet" : {
+      "comment" : "Settings, under Backups: no backup was saved yet."
     },
     "Not in use" : {
       "comment" : "What a detector sees in Diagnostics."
@@ -793,6 +929,18 @@
     "Remove Step %lld" : {
       "comment" : "Settings: removes a step of the ladder."
     },
+    "Restore" : {
+      "comment" : "The button that restores the copy Settings' Backups tab asks about."
+    },
+    "Restore the copy from %@?" : {
+      "comment" : "The title of the Backups tab's question before it restores a copy, with when it was saved."
+    },
+    "Restore…" : {
+      "comment" : "Settings, under Backups: restores the selected copy, asking first."
+    },
+    "Restore… (⌘R)" : {
+      "comment" : "The tooltip of the Backups tab's button that restores a copy."
+    },
     "Review" : {
       "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
     },
@@ -814,6 +962,9 @@
     "Save" : {
 
     },
+    "Saved" : {
+      "comment" : "Settings, under Backups: the column of when a copy was saved."
+    },
     "Saving fixes it, and it keeps its step." : {
       "comment" : "In the Cards window, under Lucas's note on a flagged card, while he edits it."
     },
@@ -831,6 +982,12 @@
     },
     "Show how many cards are due in the menu bar" : {
 
+    },
+    "Show in Finder" : {
+      "comment" : "Settings, under Backups: shows the Backups folder in Finder."
+    },
+    "Size" : {
+      "comment" : "Settings, under Backups: the column of what each copy weighs."
     },
     "Snoozed" : {
       "comment" : "How an appearance closed, in Diagnostics."
@@ -924,6 +1081,9 @@
     },
     "Unknown version" : {
       "comment" : "Settings' About tab, when the build doesn't say."
+    },
+    "Until you empty the Trash, you can put back what you move there." : {
+      "comment" : "Under the title of the Backups tab's question before it moves copies to the Trash."
     },
     "Version %@ (%@)" : {
       "comment" : "Settings' About tab: the release version, then the build number in parentheses.",

@@ -14,6 +14,7 @@ public struct FichaCommand: ParsableCommand {
         subcommands: [
             CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
             DiscardCommand.self, FixCommand.self, BuryCommand.self, UnburyCommand.self, CardsCommand.self,
+            RestoreCommand.self,
         ]
     )
 
@@ -23,14 +24,21 @@ public struct FichaCommand: ParsableCommand {
     /// `dataFolder`, prints its result as JSON, and exits. A command that
     /// fails says why on standard error and exits with an error code. It runs
     /// on the system's time or, for Ficha Dev's CLI, on the time Ficha Dev's
-    /// debug menu moved forward, as Ficha Dev does.
-    public static func main(dataFolder: URL, runsOnDebugTime: Bool) -> Never {
+    /// debug menu moved forward, as Ficha Dev does. A restore, which would
+    /// change the cards under the app that the CLI belongs to, `appName`, is
+    /// refused while `appIsRunning` says it runs, before the database opens.
+    public static func main(
+        dataFolder: URL, runsOnDebugTime: Bool, appName: String, appIsRunning: () -> Bool
+    ) -> Never {
         do {
             var command = try parseAsRoot()
             guard let engineCommand = command as? any EngineCommand else {
                 // `ficha` on its own, which prints the help.
                 try command.run()
                 Self.exit()
+            }
+            if let restore = engineCommand as? RestoreCommand, restore.copy != nil, appIsRunning() {
+                throw AppIsRunningError(appName: appName)
             }
             let time: any TimeSource =
                 if runsOnDebugTime {

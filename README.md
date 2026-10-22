@@ -72,7 +72,7 @@ flowchart LR
 
 ## Everything stays on your Mac
 
-Ficha has no account, no sync and no tracking, and it never connects to the internet. Your cards are kept on your Mac and nowhere else. There's no AI inside the app either: Claude only sees your cards in a refine session you start, and changes only what you approve.
+Ficha has no account, no sync and no tracking, and it never connects to the internet. Your cards are kept on your Mac and nowhere else. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Backups tab lists the copies and restores any of them. There's no AI inside the app either: Claude only sees your cards in a refine session you start, and changes only what you approve.
 
 ---
 

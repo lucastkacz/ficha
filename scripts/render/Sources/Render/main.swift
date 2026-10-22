@@ -19,6 +19,10 @@ import FichaData
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
     case cards
+    /// Settings, on its Backups tab.
+    case backups
+    /// Settings, on its Backups tab, once a backup failed.
+    case backupsFailed = "backups-failed"
 }
 
 /// What the tool was asked to draw.
@@ -120,7 +124,7 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
-      <window>   cards
+      <window>   cards, backups (Settings, on its Backups tab) or backups-failed (once a backup failed)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -215,11 +219,12 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
     return request
 }
 
-/// An engine on an in-memory database with Ficha Dev's sample cards, as Lucas
-/// would have them after twelve days of reviews, starting on 8 October 2026:
-/// twenty met the first day and climbing at different paces, two sent back to
-/// the first step, one flagged with a note and one buried, and the rest new.
-func sampleEngine() throws -> Engine {
+/// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
+/// them after twelve days of reviews, starting on 8 October 2026: twenty met
+/// the first day and climbing at different paces, two sent back to the first
+/// step, one flagged with a note and one buried, and the rest new. The time
+/// it's on stays where the twelve days left it.
+func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
         throw RenderError(description: "This Mac doesn't know Buenos Aires's time zone.")
@@ -229,7 +234,7 @@ func sampleEngine() throws -> Engine {
         throw RenderError(description: "Couldn't make the sample's start date.")
     }
     let time = ManualTimeSource(now: start)
-    let engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+    let engine = try Engine(location: location, time: time, calendar: calendar)
     let settings = ReviewSettings.defaults
     try SampleCards.load(into: engine)
     let cards = try engine.cards()
@@ -261,6 +266,37 @@ func sampleEngine() throws -> Engine {
     }
     try engine.flag(cards[2].id, note: note)
     try engine.bury(cards[5].id)
+    return (engine, time)
+}
+
+/// Ficha Dev's data folder in the tool's scratch home, which the Backups tab
+/// shows as `~/Library/Application Support/Ficha Dev/Backups`, as on a Mac.
+let renderDataFolder = URL.applicationSupportDirectory.appending(path: "Ficha Dev", directoryHint: .isDirectory)
+
+/// An engine with the sample cards in `renderDataFolder`, and copies of
+/// every kind in its Backups folder: a backup each of the last 8 days, of
+/// which Ficha kept 7, a copy before a restore of the last one, and a copy
+/// before an update from before them.
+func backupsEngine() throws -> Engine {
+    try? FileManager.default.removeItem(at: renderDataFolder)
+    let (engine, time) = try sampleEngine(at: .folder(renderDataFolder))
+    let today = time.now
+    time.advance(by: -hours(8 * 24))
+    let firstBackup = try engine.backUpNow(.defaults)
+    guard let backups = engine.backupsFolder else {
+        throw RenderError(description: "The sample's engine has no Backups folder.")
+    }
+    try FileManager.default.copyItem(
+        at: backups.appending(path: firstBackup.name),
+        to: backups.appending(path: "Before update 2026-10-09T231512Z.sqlite"))
+    for _ in 0..<7 {
+        time.advance(by: hours(24))
+        try engine.backUpIfDue(.defaults)
+    }
+    time.advance(by: today.timeIntervalSince(time.now))
+    if let newest = try engine.copies().first {
+        try engine.restore(newest.name)
+    }
     return engine
 }
 
@@ -269,12 +305,39 @@ func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
 }
 
-/// The app's window for `name`, closed, with its content.
+/// The app's model for `name`'s window: on the sample cards in memory, and
+/// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
+func model(for name: Window) throws -> AppModel {
+    switch name {
+    case .cards: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .backups: return AppModel(engine: try backupsEngine())
+    case .backupsFailed:
+        let model = AppModel(engine: try backupsEngine())
+        // A file where the Backups folder goes, so no backup can be saved.
+        let backups = renderDataFolder.appending(path: "Backups")
+        try FileManager.default.removeItem(at: backups)
+        try Data().write(to: backups)
+        model.backups.backUpNow(model.backupSettings)
+        return model
+    }
+}
+
+/// The app's window for `name`, closed, with its content, at the size it
+/// opens at.
 func window(_ name: Window, model: AppModel) -> NSWindow {
     switch name {
     case .cards:
         let window = CardsWindow(model: model)
         window.makeContent()
+        return window
+    case .backups, .backupsFailed:
+        let window = AppWindow(
+            tabs: SettingsTabViewController(
+                model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {},
+                openingOn: .backups))
+        if let content = window.contentView {
+            window.setContentSize(content.fittingSize)
+        }
         return window
     }
 }
@@ -601,7 +664,10 @@ do {
     // The app's appearance, which its sheets take too.
     NSApplication.shared.appearance = NSAppearance(named: request.isDark ? .darkAqua : .aqua)
     installEditMenu()
-    let model = AppModel(engine: try sampleEngine())
+    // The data folder a window may leave in the scratch home goes as the
+    // tool ends.
+    defer { try? FileManager.default.removeItem(at: renderDataFolder) }
+    let model = try model(for: name)
     let window = window(name, model: model)
     window.level = belowDesktop
     window.ignoresMouseEvents = true

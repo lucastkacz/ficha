@@ -17,11 +17,28 @@ struct MenuContent: View {
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
     let openSettings: () -> Void
+    /// Opens the Settings window on its Backups tab.
+    let openBackupSettings: () -> Void
     /// Asks right away whether the review panel shows up on its own, for
     /// Ficha Dev's debug menu.
     let checkAppearance: () -> AppearanceCheck?
 
     var body: some View {
+        if model.backups.lastBackupFailed {
+            Button(action: openBackupSettings) {
+                Label {
+                    Text(
+                        "Last backup failed",
+                        comment: """
+                            A menu item while the last backup failed, which opens Settings' Backups tab, where it says \
+                            why.
+                            """)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
+            }
+            Divider()
+        }
         Button("Capture…", action: openCapture)
             .keyboardShortcut(captureShortcut.shortcut?.keyboardShortcut)
         Button(reviewNowTitle, action: openReviewPanel)

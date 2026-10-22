@@ -33,6 +33,15 @@ enum AppVariant {
         }
     }
 
+    /// The app's bundle identifier, the same as its `PRODUCT_BUNDLE_IDENTIFIER`
+    /// in `project.yml`, by which the CLI asks macOS whether its app runs.
+    var bundleIdentifier: String {
+        switch self {
+        case .dev: "com.lucastkacz.ficha.dev"
+        case .real: "com.lucastkacz.ficha"
+        }
+    }
+
     /// The menu-bar icon, an SF Symbol: different for each app, so Lucas can tell them apart.
     var menuBarSymbol: String {
         switch self {

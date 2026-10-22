@@ -192,3 +192,19 @@ _Avoid_: Focus, keyboard grab
 **Appearance log**:
 Every appearance, and every review now that brought cards, with when it showed and closed and how: finished, snoozed or auto-closed; on the iPhone, from its first card notification to the last card Lucas went through or the one he swiped away, snoozed until none is left, and closed as it showed when he never touched them. An appearance a suppression held back goes in once too, with the suppression.
 _Avoid_: history, session log
+
+### Backups
+
+**Backup**:
+A copy of everything Ficha keeps, as it was at one moment, which Ficha saves on its own every day, or as often as Lucas sets, or when he asks. Ficha keeps the last 7, or as many as he sets.
+_Avoid_: snapshot, export
+
+**Copy before an update**:
+A copy Ficha saves before a new version changes the database. Ficha never deletes it on its own.
+
+**Copy before a restore**:
+A copy of everything as it was just before a restore, so restoring it undoes the restore. Ficha never deletes it on its own.
+
+**Restore**:
+Bringing back a backup, or another copy Ficha saved, in place of everything as it is now.
+_Avoid_: revert, roll back

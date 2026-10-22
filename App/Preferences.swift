@@ -68,6 +68,22 @@ enum Preferences {
             unless: defaults.idleBeforeTakingKeyboard.components.seconds)
     }
 
+    /// How often Ficha backs up on its own, and how many backups it keeps, as
+    /// Lucas left them in Settings.
+    static func backupSettings() -> BackupSettings {
+        var settings = BackupSettings.defaults
+        settings.frequency =
+            read(.backupFrequency, as: String.self, BackupSettings.Frequency.init(rawValue:)) ?? settings.frequency
+        return read(.backupsKept, as: Int.self) { BackupSettings(frequency: settings.frequency, kept: $0) } ?? settings
+    }
+
+    /// Keeps `settings`, as Lucas changed them in Settings' Backups tab.
+    static func save(_ settings: BackupSettings) {
+        let defaults = BackupSettings.defaults
+        write(settings.frequency.rawValue, for: .backupFrequency, unless: defaults.frequency.rawValue)
+        write(settings.keptCount, for: .backupsKept, unless: defaults.keptCount)
+    }
+
     /// Whether the menu-bar icon shows how many cards are due: off by
     /// default, so Ficha doesn't pressure Lucas.
     static var showsDueCount: Bool {
@@ -155,6 +171,9 @@ enum Preferences {
         case autoClose = "AutoCloseMinutes"
         case focusMode = "FocusMode"
         case idleBeforeTakingKeyboard = "IdleBeforeTakingKeyboardSeconds"
+        /// The raw value of how often Ficha backs up on its own.
+        case backupFrequency = "BackupFrequency"
+        case backupsKept = "BackupsKept"
         case showsDueCount = "ShowsDueCount"
         case captureShortcut = "CaptureShortcut"
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
