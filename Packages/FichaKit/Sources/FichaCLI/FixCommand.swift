@@ -12,7 +12,7 @@ struct FixCommand: EngineCommand {
 
               ficha fix 7 <<'EOF'
               {"type": "word", "front": "serendipia",
-               "back": "Un hallazgo valioso que se da por casualidad.",
+               "back": "Un hallazgo valioso que se da por casualidad. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».",
                "tags": ["lenguaje"], "source": "Un ensayo de Borges"}
               EOF
 
