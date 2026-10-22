@@ -1,0 +1,329 @@
+import FichaCore
+import FichaData
+import SwiftUI
+
+/// The card's front, after a flag when it's flagged and a mark when it's
+/// buried.
+struct FrontCell: View {
+    let card: Card
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if card.flag != nil {
+                FlagIcon()
+            }
+            if card.buriedAt != nil {
+                BuriedIcon()
+            }
+            Text(card.front)
+                .lineLimit(1)
+        }
+    }
+}
+
+/// The flag beside a flagged card, in the table and the detail.
+private struct FlagIcon: View {
+    var body: some View {
+        Image(systemName: "flag.fill")
+            .foregroundStyle(.orange)
+            .accessibilityLabel(Text("Flagged", comment: "The flag icon beside a flagged card, in the Cards window."))
+            .help(Text("Flagged", comment: "The flag icon beside a flagged card, in the Cards window."))
+    }
+}
+
+/// The mark beside a buried card, in the table and the detail: the icon the
+/// review panel's Bury button has.
+private struct BuriedIcon: View {
+    var body: some View {
+        Image(systemName: "eye.slash")
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
+            .help(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
+    }
+}
+
+/// The selected card, whole: Lucas's note on top when it's flagged, and when
+/// he buried it when it's buried, its type and tags, its front, back and
+/// source, where it stands, and its review log, in a chart and in full.
+struct CardDetail: View {
+    let row: CardRow
+    /// The engine's time, which the due time counts from.
+    let now: Date
+    /// The card's review log, oldest first, or why it couldn't be read, or
+    /// nil until it's read.
+    let reviewLog: Result<[ReviewLogRow], EngineError>?
+    /// The ladder Lucas set, whose steps the chart spans.
+    let ladder: Ladder
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                FlagAndBurial(card: row.card)
+                TypeAndTags(card: row.card)
+                Text(row.card.front)
+                    .font(.title2.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(row.card.back)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let source = row.card.source {
+                    Text(source)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Divider()
+                standing
+                switch reviewLog {
+                case .success(let rows):
+                    Divider()
+                    ReviewLogView(rows: rows, ladder: ladder)
+                case .failure(let error):
+                    Divider()
+                    Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                case nil:
+                    EmptyView()
+                }
+            }
+            .textSelection(.enabled)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Where the card stands: its step and wait, when it's due, when Lucas
+    /// last saw it and when he approved it.
+    private var standing: some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+            GridRow {
+                gridLabel(
+                    Text("Step", comment: "In the Cards window's detail: the card's step on the ladder, and its wait."))
+                Text(stepText(row))
+            }
+            if let due = row.due {
+                GridRow {
+                    gridLabel(Text("Due", comment: "In the Cards window's detail: when the card is due."))
+                    HStack(spacing: 6) {
+                        Text(dueText(row, at: now))
+                        Text(due.formatted(date: .abbreviated, time: .shortened))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if let lastSeen = row.lastSeen {
+                GridRow {
+                    gridLabel(
+                        Text(
+                            "Last seen",
+                            comment:
+                                "In the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+                        ))
+                    Text(lastSeen.formatted(date: .abbreviated, time: .shortened))
+                }
+            }
+            GridRow {
+                gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
+                Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
+            }
+        }
+    }
+}
+
+/// A word in a capsule of the window's tint, on top of a detail: a card's
+/// type, or what kind of capture it is.
+private struct Chip: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(.tint.opacity(0.15), in: .capsule)
+    }
+}
+
+/// A card's type, and its tags after it when it has any.
+private struct TypeAndTags: View {
+    let card: Card
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Chip(text: card.type.name)
+            if !card.tags.isEmpty {
+                Label(card.tags.formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// The capture selected in the inbox, whole: what kind it is, its text, its
+/// note and source, when Lucas captured it, and, for an expansion, the card
+/// it expands.
+struct CaptureDetail: View {
+    let capture: Capture
+    /// What kind it is, as the inbox's Kind column says it.
+    let kind: String
+    /// The card it expands, when it's an expansion.
+    let expandedCard: Card?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Chip(text: kind)
+                Text(capture.text)
+                    .font(.title2.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+                    if let note = capture.note {
+                        GridRow {
+                            gridLabel(
+                                Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
+                            Text(note)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    if let source = capture.source {
+                        GridRow {
+                            gridLabel(
+                                Text(
+                                    "Source",
+                                    comment: "In the Cards window's detail: where Lucas came across a capture's text."))
+                            Text(source)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    GridRow {
+                        gridLabel(Text("Captured", comment: "In the Cards window's detail: when Lucas captured it."))
+                        Text(capture.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
+                if let expandedCard {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(
+                            "Expands this card",
+                            comment: "In the Cards window's detail of an expansion, above the card it's attached to."
+                        )
+                        .foregroundStyle(.secondary)
+                        ExpandedCard(card: expandedCard)
+                    }
+                }
+            }
+            .textSelection(.enabled)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// The card an expansion expands, in the expansion's detail: its type and
+/// tags, its front, with the marks the table gives it, and its back.
+private struct ExpandedCard: View {
+    let card: Card
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TypeAndTags(card: card)
+            FrontCell(card: card)
+                .font(.headline)
+            Text(card.back)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.fill.quaternary, in: .rect(cornerRadius: 8))
+    }
+}
+
+/// What the detail says on top of a card that's out of Lucas's reviews: his
+/// note when it's flagged, and when he buried it when it's buried. While he
+/// edits a flagged card, the note also says that saving fixes it.
+struct FlagAndBurial: View {
+    let card: Card
+    /// Whether Lucas is editing the card.
+    var isEditing = false
+
+    var body: some View {
+        if let flag = card.flag {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(flag.note)
+                    if isEditing {
+                        // The same whether the card is buried or not: whether
+                        // it goes back to Lucas's reviews is FichaData's to
+                        // say, and the burial shows below.
+                        Text(
+                            "Saving fixes it, and it keeps its step.",
+                            comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+                        )
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                FlagIcon()
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
+        }
+        if let buriedAt = card.buriedAt {
+            Label {
+                Text(
+                    "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
+                    comment: "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
+                )
+            } icon: {
+                BuriedIcon()
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.fill.tertiary, in: .rect(cornerRadius: 8))
+        }
+    }
+}
+
+/// A label in one of the detail's grids, before what it names: secondary, and
+/// aligned to the trailing edge of its column.
+func gridLabel(_ text: Text) -> some View {
+    text
+        .foregroundStyle(.secondary)
+        .gridColumnAlignment(.trailing)
+}
+
+/// The card's step counted from 1, as Settings counts them, with its wait,
+/// like "4 · 5d", or "New" before its first view.
+func stepText(_ row: CardRow) -> String {
+    guard let step = row.step, let wait = row.wait else {
+        return String(localized: "New", comment: "In the Cards window: a card that hasn't had its first view yet.")
+    }
+    let waitText = wait.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
+    return String(
+        localized: "\(step + 1) · \(waitText)",
+        comment:
+            "In the Cards window: the card's step on the ladder, counted from 1, and how long it waits, like 4 · 5d."
+    )
+}
+
+/// When the card is due, counted from `now`: "now" once it's due, however
+/// long ago, and before, as the Mac's locale words it, like "in 2h",
+/// "tomorrow" or "in 5d" in US English. Nothing while it's new or flagged,
+/// since it won't show up then.
+func dueText(_ row: CardRow, at now: Date) -> String {
+    guard let due = row.due else {
+        return ""
+    }
+    guard due > now else {
+        return String(localized: "now", comment: "In the Cards window's Due column: the card is due.")
+    }
+    // In the ladder's units, days, hours and minutes, as Settings shows its
+    // waits: "in 8d", never "next week".
+    var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
+    style.allowedFields = [.day, .hour, .minute]
+    return style.format(now)
+}
