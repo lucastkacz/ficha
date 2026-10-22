@@ -14,7 +14,7 @@ struct ApproveExpansionCommand: EngineCommand {
 
               ficha approve-expansion 15 <<'EOF'
               {"type": "word", "front": "serendipia",
-               "back": "Un hallazgo valioso que se da por casualidad. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».",
+               "back": "Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».",
                "tags": ["lenguaje"], "source": "Un podcast de etimología"}
               EOF
 
