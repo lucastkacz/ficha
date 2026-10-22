@@ -14,12 +14,12 @@ struct ApproveExpansionCommand: EngineCommand {
 
               ficha approve-expansion 15 <<'EOF'
               {"type": "word", "front": "serendipia",
-               "back": "Un hallazgo valioso que se da por casualidad. También, una película de 2001.",
-               "tags": ["lenguaje", "cine"], "source": "Un ensayo de Borges"}
+               "back": "Un hallazgo valioso que se da por casualidad. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».",
+               "tags": ["lenguaje"], "source": "Un podcast de etimología"}
               EOF
 
             The expansion leaves the inbox, and the command prints the card. To make new cards out of an expansion \
-            instead, approve it with `ficha approve`.
+            instead, such as one for another meaning of the word, approve it with `ficha approve`.
             """
     )
 
