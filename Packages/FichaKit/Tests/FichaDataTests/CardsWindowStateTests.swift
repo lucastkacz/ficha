@@ -55,7 +55,7 @@ struct CardsWindowStateTests {
 
         #expect(window.selection == [serendipia.id, ubuntu.id])
         #expect(window.selectedRows.map(\.id) == [serendipia.id])
-        #expect(window.detail == .card(try #require(window.selectedRows.first)))
+        #expect(window.shownCard?.row.id == serendipia.id)
     }
 
     @Test("selecting a flagged card in the inbox shows the card, with its review log, and offers what a card offers")
@@ -69,16 +69,16 @@ struct CardsWindowStateTests {
 
         window.selectInInbox(.card(ubuntu.id))
 
-        let row = try #require(window.selectedRows.first)
+        let shown = try #require(window.shownCard)
         #expect(window.selectedRows.map(\.id) == [ubuntu.id])
-        #expect(window.detail == .card(row))
-        #expect(try window.reviewLog?.get().map(\.entry.kind) == [.firstView, .review(.good)])
+        #expect(shown.row.id == ubuntu.id)
+        #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.firstView, .review(.good)])
         #expect(window.actions == [.edit, .bury, .delete])
     }
 
-    @Test("selecting a capture in the inbox shows it, with the card it expands, and offers Edit and Discard")
-    func aCaptureInTheInboxOffersEditAndDiscard() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+    @Test("selecting an expansion in the inbox shows it, with the card it expands, and offers Edit and Discard")
+    func anExpansionInTheInboxOffersEditAndDiscard() throws {
+        try approveCard("serendipia", in: engine)
         try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
         let expansion = try #require(try engine.inbox().expansions.first)
         var window = openWindow()
@@ -87,8 +87,7 @@ struct CardsWindowStateTests {
         window.selectInInbox(.capture(expansion.capture.id))
 
         #expect(window.selectedRows.isEmpty)
-        #expect(window.detail == .capture(expansion.capture, expanding: serendipia))
-        #expect(window.reviewLog == nil)
+        #expect(window.detail == .expansion(expansion))
         #expect(window.actions == [.edit, .discard])
     }
 
@@ -149,5 +148,14 @@ extension CardsWindowState {
             return nil
         }
         return rows.map(\.id)
+    }
+
+    /// The card the detail shows whole, with its review log, or nil when it
+    /// shows something else.
+    fileprivate var shownCard: (row: CardRow, reviewLog: Result<[ReviewLogRow], EngineError>?)? {
+        guard case .card(let row, let reviewLog) = detail else {
+            return nil
+        }
+        return (row, reviewLog)
     }
 }

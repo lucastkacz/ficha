@@ -452,18 +452,23 @@ struct CardsView: View {
             }
         case nil:
             switch state.detail {
-            case .capture(let capture, let expandedCard):
+            case .capture(let capture):
+                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, expandedCard: nil)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        actionBar
+                    }
+            case .expansion(let expansion):
                 CaptureDetail(
-                    capture: capture, kind: InboxRow.kindName(ofCaptureExpanding: expandedCard),
-                    expandedCard: expandedCard
+                    capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
+                    expandedCard: expansion.card
                 )
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     actionBar
                 }
             case .cards(let rows):
                 selectionSummary(rows)
-            case .card(let row):
-                CardDetail(row: row, now: state.now, reviewLog: state.reviewLog, ladder: state.ladder)
+            case .card(let row, let reviewLog):
+                CardDetail(row: row, now: state.now, reviewLog: reviewLog, ladder: state.ladder)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         actionBar
                     }
@@ -639,9 +644,11 @@ struct CardsView: View {
     private func startEditing() {
         guard state.actions.contains(.edit) else { return }
         switch state.detail {
-        case .capture(let capture, _):
+        case .capture(let capture):
             editing = .capture(capture)
-        case .card(let row):
+        case .expansion(let expansion):
+            editing = .capture(expansion.capture)
+        case .card(let row, _):
             editing = .card(row.card)
         case .cards, .nothingSelectedInInbox, .noCardSelected:
             break
@@ -651,8 +658,15 @@ struct CardsView: View {
     /// Asks whether to discard the capture selected in the inbox, while the
     /// state offers Discard.
     private func startDiscarding() {
-        guard state.actions.contains(.discard), case .capture(let capture, _) = state.detail else { return }
-        discarding = capture
+        guard state.actions.contains(.discard) else { return }
+        switch state.detail {
+        case .capture(let capture):
+            discarding = capture
+        case .expansion(let expansion):
+            discarding = expansion.capture
+        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+            break
+        }
     }
 
     /// Discards `capture`, which Lucas confirmed, or says why it couldn't.
@@ -678,7 +692,7 @@ struct CardsView: View {
     /// Asks for a note to flag the selected card, while the state offers
     /// Flag.
     private func startFlagging() {
-        guard state.actions.contains(.flag), case .card(let row) = state.detail else { return }
+        guard state.actions.contains(.flag), case .card(let row, _) = state.detail else { return }
         flagging = row
     }
 
@@ -1096,34 +1110,31 @@ nonisolated private struct InboxRowOrder: ColumnOrder {
 }
 
 extension InboxRow {
-    /// What kind of row it is, as the inbox's Kind column says it. Each kind
-    /// has a key of its own, since "Capture" is also the capture window's
-    /// title, and "Flagged" the sidebar's group, which a translation may word
-    /// apart.
+    /// What kind of row it is, as the inbox's Kind column says it.
     nonisolated fileprivate var kindName: String {
-        switch item {
+        item.kindName
+    }
+}
+
+extension InboxRow.Item {
+    /// What kind it is, as the inbox's Kind column and the capture's detail
+    /// say it. Each kind has a key of its own, since "Capture" is also the
+    /// capture window's title, and "Flagged" the sidebar's group, which a
+    /// translation may word apart.
+    nonisolated fileprivate var kindName: String {
+        switch self {
         case .capture:
-            Self.kindName(ofCaptureExpanding: nil)
-        case .expansion(let expansion):
-            Self.kindName(ofCaptureExpanding: expansion.card)
+            String(
+                localized: "inbox-kind.capture", defaultValue: "Capture",
+                comment: "In the Cards window's inbox, the kind of a row: a capture.")
+        case .expansion:
+            String(
+                localized: "inbox-kind.expansion", defaultValue: "Expansion",
+                comment: "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.")
         case .flaggedCard:
             String(
                 localized: "inbox-kind.flagged", defaultValue: "Flagged",
                 comment: "In the Cards window's inbox, the kind of a row: a flagged card.")
-        }
-    }
-
-    /// What kind a capture is, as the inbox's Kind column says it: an
-    /// expansion when it expands `card`, or else a capture.
-    nonisolated fileprivate static func kindName(ofCaptureExpanding card: Card?) -> String {
-        if card == nil {
-            String(
-                localized: "inbox-kind.capture", defaultValue: "Capture",
-                comment: "In the Cards window's inbox, the kind of a row: a capture.")
-        } else {
-            String(
-                localized: "inbox-kind.expansion", defaultValue: "Expansion",
-                comment: "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.")
         }
     }
 }

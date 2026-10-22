@@ -25,12 +25,17 @@ public struct CardsWindowState: Sendable {
 
     /// What the detail shows.
     public enum Detail: Sendable, Equatable {
-        /// The capture selected in the inbox, whole, and the card it expands
-        /// when it's an expansion.
-        case capture(Capture, expanding: Card?)
-        /// The selected card, whole, while it's the only one selected.
-        case card(CardRow)
-        /// How many cards Lucas selected, when they're several.
+        /// The capture selected in the inbox, whole.
+        case capture(Capture)
+        /// The expansion selected in the inbox, whole, with the card it
+        /// expands.
+        case expansion(Expansion)
+        /// The selected card, whole, while it's the only one selected, with
+        /// its review log, oldest first, or why it couldn't be read: nil only
+        /// until it's read.
+        case card(CardRow, reviewLog: Result<[ReviewLogRow], EngineError>?)
+        /// The cards Lucas selected, when they're several, which the detail
+        /// counts.
         case cards([CardRow])
         /// That nothing in the inbox is selected.
         case nothingSelectedInInbox
@@ -66,10 +71,9 @@ public struct CardsWindowState: Sendable {
     /// The row Lucas selected in the inbox, one at a time, which the table
     /// may no longer list, as with the cards.
     public private(set) var inboxSelection: InboxRow.ID?
-    /// The review log of the card the detail shows, oldest first, or why it
-    /// couldn't be read, or nil while it shows none: read with the cards, and
-    /// again when Lucas selects another card.
-    public private(set) var reviewLog: Result<[ReviewLogRow], EngineError>?
+    /// The review log of the card the detail shows, while it shows one: read
+    /// with the cards, and again when Lucas selects another card.
+    private var reviewLog: CardReviewLog?
     /// What the table lists, or why it couldn't be read: nil until the window
     /// first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
@@ -117,25 +121,31 @@ public struct CardsWindowState: Sendable {
         return rows.first { $0.id == inboxSelection }
     }
 
-    /// What the detail shows: the capture selected in the inbox, the selected
-    /// cards the table lists, or that nothing is selected.
+    /// The selected card the table lists, while it's the only one.
+    private var shownCard: CardRow? {
+        let rows = selectedRows
+        return rows.count == 1 ? rows.first : nil
+    }
+
+    /// What the detail shows: the capture or the expansion selected in the
+    /// inbox, the selected cards the table lists, or that nothing is
+    /// selected.
     public var detail: Detail {
-        if let row = selectedInboxRow {
-            switch row.item {
-            case .capture(let capture):
-                return .capture(capture, expanding: nil)
-            case .expansion(let expansion):
-                return .capture(expansion.capture, expanding: expansion.card)
-            case .flaggedCard:
-                // As a card, below.
-                break
-            }
+        switch selectedInboxRow?.item {
+        case .capture(let capture):
+            return .capture(capture)
+        case .expansion(let expansion):
+            return .expansion(expansion)
+        case .flaggedCard, nil:
+            // A flagged card shows as a card, below.
+            break
         }
         let rows = selectedRows
         if rows.count > 1 {
             return .cards(rows)
-        } else if let row = rows.first {
-            return .card(row)
+        } else if let row = shownCard {
+            // Never another card's review log.
+            return .card(row, reviewLog: reviewLog?.cardID == row.id ? reviewLog?.rows : nil)
         } else if case .inbox = sidebarItem {
             return .nothingSelectedInInbox
         } else {
@@ -143,15 +153,15 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// What Lucas can do with what the detail shows: with a capture, edit it
-    /// and discard it; with one card, edit it, flag it while it's in his
-    /// reviews, bury or unbury it, and delete it; with several, bury or
-    /// unbury them and delete them.
+    /// What Lucas can do with what the detail shows: with a capture or an
+    /// expansion, edit it and discard it; with one card, edit it, flag it
+    /// while it's in his reviews, bury or unbury it, and delete it; with
+    /// several, bury or unbury them and delete them.
     public var actions: Set<Action> {
         switch detail {
-        case .capture:
+        case .capture, .expansion:
             return [.edit, .discard]
-        case .card(let row):
+        case .card(let row, _):
             var actions = buryOrUnbury([row]).union([.edit, .delete])
             if row.isInReviews {
                 actions.insert(.flag)
@@ -232,12 +242,20 @@ public struct CardsWindowState: Sendable {
 
     /// Reads the review log of the card the detail shows, while it shows one.
     private mutating func readReviewLog() {
-        guard case .card(let row) = detail else {
+        guard let row = shownCard else {
             reviewLog = nil
             return
         }
-        reviewLog = Result { () throws(EngineError) in try engine.reviewLogRows(of: row.id, on: ladder) }
+        reviewLog = CardReviewLog(
+            cardID: row.id, rows: Result { () throws(EngineError) in try engine.reviewLogRows(of: row.id, on: ladder) })
     }
+}
+
+/// A card's review log, as the Cards window's detail shows it under the
+/// card, or why it couldn't be read.
+private struct CardReviewLog: Sendable {
+    let cardID: Int64
+    let rows: Result<[ReviewLogRow], EngineError>
 }
 
 extension Engine {
