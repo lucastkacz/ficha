@@ -175,6 +175,18 @@ public struct CardsWindowState: Sendable {
         return rows.first { $0.id == inboxSelection }
     }
 
+    /// The capture the detail shows, on its own or as an expansion.
+    private var shownCapture: Capture? {
+        switch detail {
+        case .capture(let capture):
+            capture
+        case .expansion(let expansion):
+            expansion.capture
+        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+            nil
+        }
+    }
+
     /// The selected card the table lists, while it's the only one.
     private var shownCard: CardRow? {
         let rows = selectedRows
@@ -273,15 +285,10 @@ public struct CardsWindowState: Sendable {
     /// offered.
     public mutating func startEditing() {
         guard actions.contains(.edit) else { return }
-        switch detail {
-        case .capture(let capture):
+        if let capture = shownCapture {
             editing = .capture(capture)
-        case .expansion(let expansion):
-            editing = .capture(expansion.capture)
-        case .card(let row, _):
+        } else if case .card(let row, _) = detail {
             editing = .card(row.card)
-        case .cards, .nothingSelectedInInbox, .noCardSelected:
-            break
         }
     }
 
@@ -292,14 +299,11 @@ public struct CardsWindowState: Sendable {
     /// waiting for the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing else { return }
-        do throws(EngineError) {
-            try engine.edit(card.id, with: content)
-        } catch {
-            failure = Failure(action: .saveCard, error: error)
-            return
+        let saved = perform(.saveCard) { engine throws(EngineError) in try engine.edit(card.id, with: content) }
+        if saved {
+            editing = nil
+            read(on: ladder)
         }
-        editing = nil
-        read(on: ladder)
     }
 
     /// Saves the capture Lucas edits with its text, note and source, as its
@@ -308,14 +312,13 @@ public struct CardsWindowState: Sendable {
     /// card, the detail shows it as saved at once.
     public mutating func saveCapture(text: String, note: String, source: String) {
         guard case .capture(let capture) = editing else { return }
-        do throws(EngineError) {
+        let saved = perform(.saveCapture) { engine throws(EngineError) in
             try engine.editCapture(capture.id, text: text, note: note, source: source)
-        } catch {
-            failure = Failure(action: .saveCapture, error: error)
-            return
         }
-        editing = nil
-        read(on: ladder)
+        if saved {
+            editing = nil
+            read(on: ladder)
+        }
     }
 
     /// Ends the edit without saving it.
@@ -330,43 +333,31 @@ public struct CardsWindowState: Sendable {
         question = .flag(row)
     }
 
-    /// Flags the card in `row`, which the window asked about, with Lucas's
-    /// note on what to fix: it leaves his reviews and waits in the inbox. When
-    /// it can't, it records why and goes on asking, so the note he wrote
-    /// stays. The sheet that asks hands `row` back, as Delete's dialog hands
-    /// its cards.
-    public mutating func flag(_ row: CardRow, note: FlagNote) {
-        do throws(EngineError) {
-            try engine.flag(row.id, note: note)
-        } catch {
-            failure = Failure(action: .flag, error: error)
-            return
+    /// Flags the card the window asks about with Lucas's note on what to
+    /// fix: it leaves his reviews and waits in the inbox. When it can't, it
+    /// records why and goes on asking, so the note he wrote stays.
+    public mutating func flag(note: FlagNote) {
+        guard case .flag(let row) = question else { return }
+        let flagged = perform(.flag) { engine throws(EngineError) in try engine.flag(row.id, note: note) }
+        if flagged {
+            question = nil
         }
-        question = nil
     }
 
     /// Buries the selected cards the table lists, all at once, while Bury is
     /// offered, or records why it couldn't.
     public mutating func bury() {
         guard actions.contains(.bury) else { return }
-        let rows = selectedRows
-        do throws(EngineError) {
-            try engine.bury(Set(rows.map(\.id)))
-        } catch {
-            failure = Failure(action: .bury(cardCount: rows.count), error: error)
-        }
+        let cardIDs = Set(selectedRows.map(\.id))
+        perform(.bury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.bury(cardIDs) }
     }
 
     /// Unburies the selected cards the table lists, all at once, while
     /// Unbury is offered, or records why it couldn't.
     public mutating func unbury() {
         guard actions.contains(.unbury) else { return }
-        let rows = selectedRows
-        do throws(EngineError) {
-            try engine.unbury(Set(rows.map(\.id)))
-        } catch {
-            failure = Failure(action: .unbury(cardCount: rows.count), error: error)
-        }
+        let cardIDs = Set(selectedRows.map(\.id))
+        perform(.unbury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.unbury(cardIDs) }
     }
 
     /// Asks whether to delete the selected cards the table lists, while Delete
@@ -382,25 +373,15 @@ public struct CardsWindowState: Sendable {
     /// the question, before its button acts.
     public mutating func delete(_ rows: [CardRow]) {
         question = nil
-        do throws(EngineError) {
-            try engine.delete(Set(rows.map(\.id)))
-        } catch {
-            failure = Failure(action: .delete(cardCount: rows.count), error: error)
-        }
+        let cardIDs = Set(rows.map(\.id))
+        perform(.delete(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.delete(cardIDs) }
     }
 
     /// Asks whether to discard the capture or the expansion the detail shows,
     /// while Discard is offered.
     public mutating func askToDiscard() {
-        guard actions.contains(.discard) else { return }
-        switch detail {
-        case .capture(let capture):
-            question = .discard(capture)
-        case .expansion(let expansion):
-            question = .discard(expansion.capture)
-        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
-            break
-        }
+        guard actions.contains(.discard), let capture = shownCapture else { return }
+        question = .discard(capture)
     }
 
     /// Discards `capture`, which the window asked about and Lucas confirmed,
@@ -408,11 +389,7 @@ public struct CardsWindowState: Sendable {
     /// couldn't. The dialog hands `capture` back, as Delete's hands its cards.
     public mutating func discard(_ capture: Capture) {
         question = nil
-        do throws(EngineError) {
-            try engine.discard(capture.id)
-        } catch {
-            failure = Failure(action: .discard, error: error)
-        }
+        perform(.discard) { engine throws(EngineError) in try engine.discard(capture.id) }
     }
 
     /// Drops what the window asks, which Lucas cancelled.
@@ -423,6 +400,19 @@ public struct CardsWindowState: Sendable {
     /// Clears what failed, once the window said so and Lucas closed it.
     public mutating func dismissFailure() {
         failure = nil
+    }
+
+    /// Does the engine's part of `action` with `work`, or records why it
+    /// couldn't: whether it did.
+    @discardableResult
+    private mutating func perform(_ action: FailedAction, _ work: (Engine) throws(EngineError) -> Void) -> Bool {
+        do throws(EngineError) {
+            try work(engine)
+            return true
+        } catch {
+            failure = Failure(action: action, error: error)
+            return false
+        }
     }
 
     /// Reads the tags and what the sidebar chose, as they are now, on

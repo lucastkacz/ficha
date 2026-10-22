@@ -71,7 +71,7 @@ struct CardsView: View {
         }
         .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
             FlagSheet(card: row.card, failure: failure(overFlagSheet: true)) { note in
-                state.flag(row, note: note)
+                state.flag(note: note)
             }
         }
         // Each button acts on what its dialog presents, which SwiftUI hands

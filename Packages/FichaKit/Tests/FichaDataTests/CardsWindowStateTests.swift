@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on the Cards window while it's open: what it lists, shows and offers
 /// as Lucas chooses, searches and selects, and as it reads his cards again,
-/// on the default ladder.
+/// and what it asks and does as he acts, on the default ladder.
 struct CardsWindowStateTests {
     let calendar: Calendar
     let time: ManualTimeSource
