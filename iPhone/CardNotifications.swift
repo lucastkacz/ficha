@@ -12,17 +12,18 @@ private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", categ
 /// sound. A new card's notification shows it whole, with "Got it", and a due
 /// card's shows its front, with its ratings. Their buttons answer the card in
 /// the background, without unlocking the iPhone, and the appearance's next
-/// card comes right away, without sound, until none is left. Each time it
-/// plans, the notifications it planned before, scheduled or shown, give way
-/// to the new plan's, so they always match the cards, and each answer takes
-/// away the next cards that answers before it sent. It asks Lucas whether
-/// Ficha may send notifications before it plans for the first time, and plans
-/// again whenever the engine's data changes, and when the app asks, as it
-/// comes back to the foreground or Ficha Dev's time moves forward. It plans
-/// by the engine's time, so with Ficha Dev's time moved forward, each
-/// notification comes at the real time that matches its appearance's time.
-/// In the app `make render-iphone` opens (`Rendering`), it neither asks nor
-/// plans.
+/// card comes right away, without sound, until none is left. Swiping one away
+/// snoozes its appearance, and so does leaving them alone, which the engine
+/// notes as it plans again. Each time it plans, the notifications it planned
+/// before, scheduled or shown, give way to the new plan's, so they always
+/// match the cards, and each answer takes away the next cards that answers
+/// before it sent. It asks Lucas whether Ficha may send notifications before
+/// it plans for the first time, and plans again whenever the engine's data
+/// changes, after a swipe, and when the app asks, as it comes back to the
+/// foreground or Ficha Dev's time moves forward. It plans by the engine's
+/// time, so with Ficha Dev's time moved forward, each notification comes at
+/// the real time that matches its appearance's time. In the app
+/// `make render-iphone` opens (`Rendering`), it neither asks nor plans.
 final class CardNotifications: NSObject {
     /// How long "Bring the next appearance now" waits: enough to lock the
     /// iPhone and watch the notification arrive.
@@ -145,6 +146,23 @@ final class CardNotifications: NSObject {
         center.removeDeliveredNotifications(withIdentifiers: earlier)
     }
 
+    /// Records that Lucas swiped away one of `appearance`'s card
+    /// notifications, a snooze, and plans the appearances again, which wait
+    /// from now. When it can't record it, the log says why.
+    private func snooze(_ appearance: NotifiedAppearance) {
+        do {
+            try engine.snoozeFromNotification(appearance)
+        } catch {
+            logger.error(
+                "Couldn't record a card notification swiped away: \(String(describing: error), privacy: .public)")
+            return
+        }
+        logger.info("Recorded a card notification swiped away, which snoozes its appearance")
+        // As after an answer, a launch in the background for it may not have
+        // asked yet.
+        planNow()
+    }
+
     /// Plans the appearances again now, whether or not Lucas was asked yet
     /// whether Ficha may send notifications. When it can't, the log says why.
     private func planNow() {
@@ -183,17 +201,14 @@ final class CardNotifications: NSObject {
     private func schedule() throws(EngineError) -> [UpcomingAppearance] {
         center.removePendingNotificationRequests(withIdentifiers: Self.plannedIdentifiers)
         center.removeDeliveredNotifications(withIdentifiers: Self.plannedIdentifiers)
-        let upcoming = try engine.upcomingAppearances(.defaults)
         let now = engine.now
         if let broughtTo = nextAppearanceBroughtTo, broughtTo <= now {
             nextAppearanceBroughtTo = nil
         }
+        let upcoming = try engine.upcomingAppearances(.defaults, bringingTheFirstTo: nextAppearanceBroughtTo)
         for (number, appearance) in upcoming.enumerated() {
-            let time = number == 0 ? nextAppearanceBroughtTo ?? appearance.time : appearance.time
             guard
-                let request = request(
-                    for: appearance, identifier: Self.identifier(ofAppearance: number),
-                    in: time.timeIntervalSince(now), after: now)
+                let request = request(for: appearance, identifier: Self.identifier(ofAppearance: number), after: now)
             else {
                 logger.error("Planned an appearance whose first card no card notification shows")
                 continue
@@ -225,26 +240,30 @@ final class CardNotifications: NSObject {
 }
 
 extension CardNotifications: @MainActor UNUserNotificationCenterDelegate {
-    /// Answers the card when Lucas presses one of its notification's buttons.
-    /// iOS keeps the app running until it returns, once iOS has the next
-    /// card's notification. It runs on the main actor whatever queue iOS
-    /// calls it on, since iOS's completion handler, which Swift calls as it
-    /// returns, updates the app's snapshot, which UIKit allows only on the
-    /// main thread. Tapping the notification itself only opens the app.
+    /// Answers the card when Lucas presses one of its notification's buttons,
+    /// and snoozes its appearance when he swipes it away. iOS keeps the app
+    /// running until it returns, once iOS has the next card's notification.
+    /// It runs on the main actor whatever queue iOS calls it on, since iOS's
+    /// completion handler, which Swift calls as it returns, updates the app's
+    /// snapshot, which UIKit allows only on the main thread. Tapping the
+    /// notification itself only opens the app.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
         let button = response.actionIdentifier
         guard button != UNNotificationDefaultActionIdentifier else { return }
-        guard
-            let answer = answer(ofButton: button),
-            let payload = Payload(userInfo: response.notification.request.content.userInfo)
-        else {
-            logger.error("A card notification's button, \(button, privacy: .public), didn't answer a card it carries")
+        guard let payload = Payload(userInfo: response.notification.request.content.userInfo) else {
+            logger.error("A card notification's button, \(button, privacy: .public), came from one with no card")
             return
         }
-        await record(answer, of: payload.cardID, in: payload.appearance)
+        if button == UNNotificationDismissActionIdentifier {
+            snooze(payload.appearance)
+        } else if let answer = answer(ofButton: button) {
+            await record(answer, of: payload.cardID, in: payload.appearance)
+        } else {
+            logger.error("A card notification's button, \(button, privacy: .public), didn't answer its card")
+        }
     }
 }
 
@@ -257,23 +276,24 @@ private nonisolated func logFailureToSchedule(_ error: (any Error)?) {
 }
 
 /// The card notification of an appearance, with this identifier, which iOS
-/// delivers `wait` seconds after `now`, or a second after when its time came
-/// already: its first card's, with iOS's default sound. Nil when no card
-/// notification shows its first card.
+/// delivers at its time, by the engine's time, which is `now`, or a second
+/// after `now` when its time came already: its first card's, with iOS's
+/// default sound. It carries the appearance's time as when it showed, as the
+/// engine keeps it in its plan, by which the appearance log finds it. Nil
+/// when no card notification shows its first card.
 private func request(
     for appearance: UpcomingAppearance,
     identifier: String,
-    in wait: TimeInterval,
     after now: Date
 ) -> UNNotificationRequest? {
-    // iOS takes only waits above 0, so one whose time came already waits a
-    // second, which is our own pick.
-    let wait = max(1, wait)
-    let notified = NotifiedAppearance(shownAt: now.addingTimeInterval(wait), cardIDs: appearance.cards.map(\.card.id))
-    guard let first = appearance.cards.first, let content = content(of: first, in: notified) else {
+    guard let first = appearance.cards.first, let content = content(of: first, in: NotifiedAppearance(appearance))
+    else {
         return nil
     }
     content.sound = .default
+    // iOS takes only waits above 0, so one whose time came already waits a
+    // second, which is our own pick.
+    let wait = max(1, appearance.time.timeIntervalSince(now))
     let trigger = UNTimeIntervalNotificationTrigger(timeInterval: wait, repeats: false)
     return UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 }
@@ -305,7 +325,8 @@ private func content(of card: PanelCard, in appearance: NotifiedAppearance) -> U
 /// The card notifications' categories, each with its buttons, which answer
 /// the card in the background, without unlocking the iPhone: a due card's,
 /// whose buttons rate it, each named by its rating's raw value, and a new
-/// card's, with "Got it".
+/// card's, with "Got it". Both ask iOS to tell the app when Lucas swipes one
+/// away.
 private func categories() -> Set<UNNotificationCategory> {
     let review = UNNotificationCategory(
         identifier: Identifiers.review,
@@ -327,7 +348,7 @@ private func categories() -> Set<UNNotificationCategory> {
                 options: []),
         ],
         intentIdentifiers: [],
-        options: [])
+        options: [.customDismissAction])
     let firstView = UNNotificationCategory(
         identifier: Identifiers.firstView,
         actions: [
@@ -337,7 +358,7 @@ private func categories() -> Set<UNNotificationCategory> {
                 options: [])
         ],
         intentIdentifiers: [],
-        options: [])
+        options: [.customDismissAction])
     return [review, firstView]
 }
 

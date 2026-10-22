@@ -5,8 +5,9 @@ import Testing
 
 /// Tests on answering cards from their card notifications on the iPhone (ADR
 /// 0010), with the default settings: rating a card, or ending a new card's
-/// first view, which moves its appearance on to the next card. They start at
-/// 9 in the morning in Buenos Aires, when active hours start.
+/// first view, which moves its appearance on to the next card, and leaving
+/// them alone or swiping them away, which snoozes it. They start at 9 in the
+/// morning in Buenos Aires, when active hours start.
 struct CardNotificationTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -131,16 +132,91 @@ struct CardNotificationTests {
                 == UpcomingAppearance(time: try at(10, 35), cards: [.review(serendipia)]))
     }
 
+    // A card notification Lucas leaves alone is a snooze, as on the Mac
+    // (#97). Only the last plan counts: the one it replaced never came.
+    @Test(
+        "planned appearances whose time came and that Lucas never touched go into the appearance log as snoozes, closed as they showed, the next time the engine plans"
+    )
+    func untouchedAppearancesAreSnoozes() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 1))
+        _ = try engine.answerFromNotification(.review(.good), of: ubuntu.id, in: appearance, settings: settings)
+        // As the app does after each answer, which plans one at 10:31.
+        _ = try engine.upcomingAppearances(settings)
+        time.move(to: try at(11, 15))
+        _ = try engine.upcomingAppearances(settings)
+
+        #expect(
+            try engine.appearanceLog() == [
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(10, 0), closedAt: try at(10, 1), outcome: .snoozed),
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(10, 31), closedAt: try at(10, 31), outcome: .snoozed),
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(11, 1), closedAt: try at(11, 1), outcome: .snoozed),
+            ])
+    }
+
+    // Swiping a card notification away is a plain "not now" (#97).
+    @Test(
+        "swiping a card notification away snoozes its appearance, closed then, and its cards come back 30 minutes later"
+    )
+    func swipingACardNotificationAwayIsASnooze() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 5))
+        try engine.snoozeFromNotification(appearance)
+        // As the app does after the swipe.
+        let next = try engine.upcomingAppearances(settings).first
+
+        #expect(
+            try engine.appearanceLog() == [
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(10, 0), closedAt: try at(10, 5), outcome: .snoozed)
+            ])
+        #expect(next == UpcomingAppearance(time: try at(10, 35), cards: [.review(ubuntu)]))
+    }
+
+    // A next card's notification stays on the lock screen while later
+    // appearances come, and its answer counts for its own appearance, whose
+    // entry is older than theirs.
+    @Test(
+        "an answer from an appearance's next card, after a later one came untouched, makes the next wait 30 minutes from the answer"
+    )
+    func theNextAppearanceWaitsFromTheLatestClosing() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        let petricor = try meetCard("petricor", dueAt: try at(10, 45))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+        time.move(to: try at(10, 1))
+        _ = try engine.answerFromNotification(.review(.good), of: ubuntu.id, in: appearance, settings: settings)
+        // As the app does after each answer, which plans one at 10:31.
+        _ = try engine.upcomingAppearances(settings)
+
+        time.move(to: try at(10, 40))
+        _ = try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
+        let next = try engine.upcomingAppearances(settings).first
+
+        #expect(next == UpcomingAppearance(time: try at(11, 10), cards: [.review(petricor)]))
+    }
+
     /// The next appearance the engine plans, as its card notifications carry
     /// it.
     private func nextAppearance() throws -> NotifiedAppearance {
-        let upcoming = try #require(try engine.upcomingAppearances(settings).first)
-        return NotifiedAppearance(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
+        NotifiedAppearance(try #require(try engine.upcomingAppearances(settings).first))
     }
 
     /// Approves a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.
+    @discardableResult
     private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
         let card = try approveCard(front, in: engine)
         time.move(to: due - hours(1))

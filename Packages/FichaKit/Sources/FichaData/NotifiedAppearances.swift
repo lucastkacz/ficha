@@ -13,6 +13,13 @@ public struct NotifiedAppearance: Sendable, Equatable {
         self.shownAt = shownAt
         self.cardIDs = cardIDs
     }
+
+    /// `upcoming`, as its card notifications carry it: shown at its time, as
+    /// the engine keeps it in its plan, which is how the appearance log finds
+    /// it.
+    public init(_ upcoming: UpcomingAppearance) {
+        self.init(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
+    }
 }
 
 extension Engine {
@@ -50,6 +57,18 @@ extension Engine {
             let nextCard = try panelCards(next, from: cards).first
             try noteClosing(of: appearance, at: answeredAt, finished: nextCard == nil, in: db)
             return nextCard
+        }
+    }
+
+    /// Records that Lucas swiped away one of `appearance`'s card
+    /// notifications, a plain "not now" that leaves its cards as they were
+    /// (#97): the appearance goes into the appearance log as a snooze, closed
+    /// now, as the Mac's review panel does when he closes it with cards left.
+    /// The next appearance waits from now.
+    public func snoozeFromNotification(_ appearance: NotifiedAppearance) throws(EngineError) {
+        let snoozedAt = time.now
+        try write { db in
+            try noteClosing(of: appearance, at: snoozedAt, finished: false, in: db)
         }
     }
 }

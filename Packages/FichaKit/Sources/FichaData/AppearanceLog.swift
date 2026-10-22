@@ -5,8 +5,9 @@ internal import GRDB
 /// One entry in the appearance log: an appearance, or a review now that
 /// brought cards, from when the review panel showed to when it closed, and
 /// how it closed; an appearance on the iPhone, from its first card
-/// notification to the last card Lucas went through; or an appearance a
-/// suppression held back, once, when it was held back.
+/// notification to the last card Lucas went through, or to when he swiped
+/// one away, or only as it showed, when he never touched them; or an
+/// appearance a suppression held back, once, when it was held back.
 public struct AppearanceLogEntry: Sendable, Equatable {
     /// How the review panel closed, how far Lucas went through an
     /// appearance's card notifications on the iPhone, or what held the
@@ -17,7 +18,8 @@ public struct AppearanceLogEntry: Sendable, Equatable {
         case finished
         /// Lucas closed it with cards left, which stay as they were: a
         /// snooze. An appearance on the iPhone is one until he goes through
-        /// its last card.
+        /// its last card, and also when he swipes one of its card
+        /// notifications away or never touches them.
         case snoozed
         /// It closed on its own with cards left, untouched for a while or as
         /// the Mac or its screens went to sleep: it counts as a snooze.
@@ -32,7 +34,8 @@ public struct AppearanceLogEntry: Sendable, Equatable {
     /// iPhone, or, held back, when the hold started.
     public let shownAt: Date
     /// When the review panel closed, or, on the iPhone, when Lucas last went
-    /// through one of its cards, or, held back, when the hold ended: when the
+    /// through one of its cards or swiped one away, or when it showed, if he
+    /// never touched them, or, held back, when the hold ended: when the
     /// panel showed, or the appearance couldn't come any more. A hold that's
     /// still on has its shownAt here.
     public let closedAt: Date

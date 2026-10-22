@@ -48,8 +48,10 @@ extension Engine {
 
     /// Every appearance, and every review now that brought cards, and every
     /// appearance a suppression held back, in the order each went in: as the
-    /// review panel closed, at Lucas's first answer from one of its card
-    /// notifications on the iPhone, or as its hold started.
+    /// review panel closed; on the iPhone, at Lucas's first answer from one of
+    /// its card notifications or as he swiped one away, or, when he never
+    /// touched them, the next time the engine planned; or as its hold
+    /// started.
     public func appearanceLog() throws(EngineError) -> [AppearanceLogEntry] {
         try read { db in
             try Row.fetchAll(db, sql: "SELECT * FROM appearanceLog ORDER BY id").map(AppearanceLogEntry.init(row:))
@@ -99,25 +101,24 @@ extension Engine {
 }
 
 /// When the last appearance or review now closed, if any did, by the
-/// appearance log. A held-back appearance never showed, so it never closed.
+/// appearance log: its latest closing, which on the iPhone may be an older
+/// entry's, since an answer from a card notification left on the lock screen
+/// moves its appearance's closing past later ones. A held-back appearance
+/// never showed, so it never closed.
 func lastClosing(in db: Database) throws -> Date? {
     try Date.fetchOne(
-        db, sql: "SELECT closedAt FROM appearanceLog WHERE outcome != ? ORDER BY id DESC LIMIT 1",
+        db, sql: "SELECT closedAt FROM appearanceLog WHERE outcome != ? ORDER BY closedAt DESC LIMIT 1",
         arguments: [OutcomeName.heldBack.rawValue])
 }
 
 /// Notes in the appearance log that `appearance`, on the iPhone, closes at
-/// `closedAt`, as Lucas answers one of its card notifications: as finished
-/// once he went through its cards, and as a snooze otherwise. The first
-/// answer adds its entry, and each one after it moves the entry's closing
-/// on.
+/// `closedAt`, as Lucas answers one of its card notifications or swipes one
+/// away: as finished once he went through its cards, and as a snooze
+/// otherwise. The first adds its entry, and each one after it moves the
+/// entry's closing on.
 func noteClosing(of appearance: NotifiedAppearance, at closedAt: Date, finished: Bool, in db: Database) throws {
     let outcome: AppearanceLogEntry.Outcome = finished ? .finished : .snoozed
-    let entry = try Int64.fetchOne(
-        db,
-        sql: "SELECT id FROM appearanceLog WHERE trigger = ? AND shownAt = ? AND outcome != ? ORDER BY id DESC LIMIT 1",
-        arguments: [Trigger.appearance.rawValue, appearance.shownAt, OutcomeName.heldBack.rawValue])
-    guard let entry else {
+    guard let entry = try entryOfAppearance(shownAt: appearance.shownAt, in: db) else {
         try insert(
             AppearanceLogEntry(trigger: .appearance, shownAt: appearance.shownAt, closedAt: closedAt, outcome: outcome),
             in: db)
@@ -126,6 +127,39 @@ func noteClosing(of appearance: NotifiedAppearance, at closedAt: Date, finished:
     try db.execute(
         sql: "UPDATE appearanceLog SET closedAt = ?, outcome = ? WHERE id = ?",
         arguments: [closedAt, outcome.columns.outcome, entry])
+}
+
+/// Notes in the appearance log, as snoozes, the appearances of the last plan
+/// the engine handed out whose time came by `now` and that Lucas never
+/// touched, which have no entry: none of their card notifications' answers
+/// gave them one. Each closes as it showed, its cards left as they were
+/// (#97).
+func noteUntouchedAppearances(by now: Date, in db: Database) throws {
+    let times = try Date.fetchAll(
+        db, sql: "SELECT time FROM plannedAppearance WHERE time <= ? ORDER BY time", arguments: [now])
+    for time in times where try entryOfAppearance(shownAt: time, in: db) == nil {
+        try insert(AppearanceLogEntry(trigger: .appearance, shownAt: time, closedAt: time, outcome: .snoozed), in: db)
+    }
+}
+
+/// The appearance log's entry of the appearance on the iPhone that showed at
+/// `shownAt`, by its id, once it has one. An entry that showed within a
+/// second of it is its own, since its card notifications carry the time in
+/// seconds since 1970, which can come back a hair off, and the plan keeps it
+/// as the database rounds it: a second is our own pick, far below any
+/// separation.
+private func entryOfAppearance(shownAt: Date, in db: Database) throws -> Int64? {
+    try Int64.fetchOne(
+        db,
+        sql: """
+            SELECT id FROM appearanceLog
+            WHERE trigger = ? AND outcome != ? AND shownAt BETWEEN ? AND ?
+            ORDER BY id DESC LIMIT 1
+            """,
+        arguments: [
+            Trigger.appearance.rawValue, OutcomeName.heldBack.rawValue, shownAt.addingTimeInterval(-1),
+            shownAt.addingTimeInterval(1),
+        ])
 }
 
 /// The appearance log's hold that's on, by its entry's id, if one is: the

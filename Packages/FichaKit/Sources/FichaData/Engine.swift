@@ -63,8 +63,9 @@ public struct Engine: Sendable {
     }
 
     /// Every change to the database from now on, by this engine or by another
-    /// one on the same database, such as the CLI's while the app runs. Changes
-    /// that come while one waits to be handled are merged into it.
+    /// one on the same database, such as the CLI's while the app runs, but
+    /// the plan of appearances the engine keeps, which changes no card.
+    /// Changes that come while one waits to be handled are merged into it.
     public func changes() -> AsyncStream<Void> {
         databaseChanges.stream()
     }
@@ -159,9 +160,16 @@ public struct Engine: Sendable {
     /// Runs `updates` in one transaction, then tells every engine on the
     /// database that it changed.
     func write<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
-        let value = try reportingStorageErrors { try database.write(updates) }
+        let value = try writeWithoutTelling(updates)
         databaseChanges.post()
         return value
+    }
+
+    /// Runs `updates` in one transaction, as `write` does, but tells no
+    /// engine that the database changed: for a write that changes no card,
+    /// which an engine listening for changes would answer with another one.
+    func writeWithoutTelling<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
+        try reportingStorageErrors { try database.write(updates) }
     }
 }
 
