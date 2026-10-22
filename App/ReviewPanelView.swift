@@ -9,7 +9,8 @@ import SwiftUI
 /// Esc closes the panel, which snoozes an appearance. Once Lucas went through
 /// every card, the panel stays open until he closes it, and offers more cards
 /// if there are any, which Enter brings; review now with nothing due offers
-/// to review ahead the same way.
+/// to review ahead the same way. `ReviewPanelState` decides what the panel
+/// shows and what happens when Lucas acts, and the view draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
@@ -30,12 +31,12 @@ struct ReviewPanelView: View {
             switch model {
             case .success(let panel):
                 content(of: panel)
-                    .onChange(of: panel.isClosed) { _, isClosed in
+                    .onChange(of: panel.state.outcome != nil) { _, isClosed in
                         if isClosed {
                             closeWindow()
                         }
                     }
-                    .failureAlert(Bindable(panel).failure)
+                    .failureAlert(failure(of: panel))
             case .failure(let failure):
                 header {
                     VStack(alignment: .leading, spacing: 6) {
@@ -55,11 +56,36 @@ struct ReviewPanelView: View {
         .glassEffect(.regular, in: .rect(cornerRadius: Self.cornerRadius, style: .continuous))
     }
 
+    /// What Lucas did in the panel that couldn't be saved, as an alert says
+    /// it, which closing it clears.
+    private func failure(of panel: ReviewPanelModel) -> Binding<Failure?> {
+        Binding {
+            panel.state.failure.map(alert(for:))
+        } set: {
+            if $0 == nil {
+                panel.state.dismissFailure()
+            }
+        }
+    }
+
+    /// What the alert says when `failure` happened: what Lucas did that
+    /// couldn't be saved, and why, in the panel's words.
+    private func alert(for failure: ReviewPanelState.Failure) -> Failure {
+        let error = failure.error
+        return switch failure.action {
+        case .answer: Failure(title: "Couldn't save your answer", message: error.messageInReviewPanel)
+        case .flag: Failure(title: "Couldn't flag the card", message: error.messageInReviewPanel)
+        case .bury: Failure(title: "Couldn't bury the card", message: error.messageInReviewPanel)
+        case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
+        case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
+        }
+    }
+
     @ViewBuilder
     private func content(of panel: ReviewPanelModel) -> some View {
-        let closeByLucas = { panel.close(.byLucas) }
-        switch panel.content {
-        case .nothingToReview where panel.canSeeMore:
+        let closeByLucas = { panel.state.close(.byLucas) }
+        switch panel.state.content {
+        case .nothingToReview where panel.state.canSeeMore:
             header {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("No cards are due right now.")
@@ -71,8 +97,10 @@ struct ReviewPanelView: View {
             }
             enterButton(
                 Text(
-                    "Review ahead", comment: "A button that brings the cards closest to being due, to review them now."),
-                action: panel.seeMore)
+                    "Review ahead", comment: "A button that brings the cards closest to being due, to review them now.")
+            ) {
+                panel.state.seeMore()
+            }
         case .nothingToReview:
             header {
                 Text("No cards to review right now.")
@@ -91,7 +119,9 @@ struct ReviewPanelView: View {
                 closeButton(closeByLucas)
             }
             back(of: card)
-            enterButton(Text("Got it"), action: panel.endFirstView)
+            enterButton(Text("Got it")) {
+                panel.state.endFirstView()
+            }
         case .front(let card, let isAhead):
             header {
                 front(of: card, isAhead: isAhead)
@@ -101,7 +131,9 @@ struct ReviewPanelView: View {
             }
             HStack {
                 Spacer()
-                Button(action: panel.flip) {
+                Button {
+                    panel.state.flip()
+                } label: {
                     KeyLabel(
                         title: Text("Flip"),
                         key: String(localized: "space", comment: "The Space key's name, next to the button it presses.")
@@ -135,7 +167,7 @@ struct ReviewPanelView: View {
                 back(of: card)
             }
             noteEditor(of: panel)
-        case .done where panel.canSeeMore:
+        case .done where panel.state.canSeeMore:
             header {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("See more?")
@@ -150,7 +182,9 @@ struct ReviewPanelView: View {
                 undoButton(of: panel)
                 closeButton(closeByLucas)
             }
-            enterButton(Text("See more"), action: panel.seeMore)
+            enterButton(Text("See more")) {
+                panel.state.seeMore()
+            }
         case .done:
             header {
                 Text("You went through every card.")
@@ -216,7 +250,7 @@ struct ReviewPanelView: View {
                 comment: "A button that flags the card the review panel shows, asking for a note on what to fix."),
             systemImage: "flag"
         ) {
-            panel.startFlagging()
+            panel.state.startFlagging()
             // The note's field gets the keyboard in the same action that
             // shows it. Asked from the field's `onAppear` instead, after M,
             // SwiftUI never focused it while the panel had the keyboard (#61).
@@ -228,18 +262,22 @@ struct ReviewPanelView: View {
             String(
                 localized: "Bury",
                 comment: "A button that buries the card the review panel shows: it never shows up again."),
-            systemImage: "eye.slash", action: panel.bury
-        )
+            systemImage: "eye.slash"
+        ) {
+            panel.state.buryCard()
+        }
         .keyboardShortcut("e", modifiers: [])
         .help(Text("Bury (e)", comment: "The tooltip of the button that buries the card, with its key."))
     }
 
     /// The button that undoes what Lucas did with the last card: ⌘Z.
     private func undoButton(of panel: ReviewPanelModel) -> some View {
-        Button("Undo", systemImage: "arrow.uturn.backward", action: panel.undo)
-            .keyboardShortcut("z", modifiers: .command)
-            .disabled(!panel.canUndo)
-            .help("Undo (⌘Z)")
+        Button("Undo", systemImage: "arrow.uturn.backward") {
+            panel.state.undoLastCard()
+        }
+        .keyboardShortcut("z", modifiers: .command)
+        .disabled(!panel.state.canUndo)
+        .help("Undo (⌘Z)")
     }
 
     /// Where Lucas writes what to fix in the card he flags: Enter flags it,
@@ -248,7 +286,7 @@ struct ReviewPanelView: View {
         VStack(alignment: .trailing, spacing: 12) {
             TextField(
                 "Note",
-                text: Binding(get: { panel.note ?? "" }, set: { panel.write(note: $0) }),
+                text: Binding(get: { panel.state.note ?? "" }, set: { panel.state.write(note: $0) }),
                 prompt: Text("What needs fixing?"),
                 axis: .vertical
             )
@@ -257,23 +295,29 @@ struct ReviewPanelView: View {
             .focused($noteIsFocused)
             // A focused text field keeps Return from reaching the default
             // button.
-            .onSubmit(panel.flag)
+            .onSubmit {
+                panel.state.finishFlagging()
+            }
             HStack {
-                Button(action: panel.cancelFlagging) {
+                Button {
+                    panel.state.cancelFlagging()
+                } label: {
                     KeyLabel(
                         title: Text("Cancel"),
                         key: String(localized: "esc", comment: "The Esc key's name, next to the button it presses.")
                     )
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(action: panel.flag) {
+                Button {
+                    panel.state.finishFlagging()
+                } label: {
                     KeyLabel(
                         title: Text("Flag", comment: "The button that flags the card with the note written above it."),
                         key: "↩")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(!panel.noteSaysWhatToFix)
+                .disabled(!panel.state.noteSaysWhatToFix)
             }
         }
     }
@@ -322,7 +366,7 @@ struct ReviewPanelView: View {
         _ title: LocalizedStringKey, key: Character, rating: Rating, in panel: ReviewPanelModel
     ) -> some View {
         Button {
-            panel.rate(rating)
+            panel.state.rate(rating)
         } label: {
             KeyLabel(title: Text(title), key: String(key))
                 .frame(maxWidth: .infinity)
@@ -364,6 +408,30 @@ private struct KeyLabel: View {
             Text(key)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+extension EngineError {
+    /// Why what Lucas did with a card in the review panel couldn't be saved,
+    /// as its alert says it. A card that isn't found was deleted in the Cards
+    /// window while the panel showed it: the engine's message for it names
+    /// the card by its id, which the panel doesn't show, and says to check
+    /// the id, as the CLI needs.
+    fileprivate var messageInReviewPanel: String {
+        switch self {
+        case .cardNotFound:
+            String(
+                localized: """
+                    This card was deleted meanwhile, in the Cards window. Close the review panel and open \
+                    “Review now” again.
+                    """,
+                comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
+            )
+        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
+            .cardNotBuried, .cannotUndo, .unreadableReviewLog, .storage:
+            localizedDescription
         }
     }
 }

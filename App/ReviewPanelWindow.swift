@@ -71,7 +71,7 @@ final class ReviewPanelWindow: NSPanel {
     // it.
     override var canBecomeKey: Bool {
         switch model {
-        case .success(let panel): panel.mayHaveKeyboard
+        case .success(let panel): panel.state.mayHaveKeyboard
         case .failure: failureMayHaveKeyboard
         }
     }
@@ -119,7 +119,7 @@ final class ReviewPanelWindow: NSPanel {
     /// Closes the panel: Lucas closes it, or it closes on its own.
     func close(_ closing: ReviewPanelState.Closing) {
         if case .success(let panel) = model {
-            panel.close(closing)
+            panel.state.close(closing)
         }
         close()
     }
@@ -133,7 +133,7 @@ final class ReviewPanelWindow: NSPanel {
     /// Lets the panel have the keyboard, since Lucas asked for it.
     private func giveKeyboard() {
         switch model {
-        case .success(let panel): panel.clicked()
+        case .success(let panel): panel.state.clicked()
         case .failure: failureMayHaveKeyboard = true
         }
     }
@@ -168,14 +168,14 @@ final class ReviewPanelWindow: NSPanel {
                     return
                 }
                 self?.takeKeyboardIfItsTime()
-                panel.closeIfUntouched()
+                panel.state.closeIfUntouched()
             }
         }
     }
 
     /// Gives the panel the keyboard when the focus mode says so.
     private func takeKeyboardIfItsTime() {
-        guard let mac, case .success(let panel) = model, panel.takesKeyboard(on: mac) else { return }
+        guard let mac, case .success(let panel) = model, panel.state.takesKeyboard(on: mac) else { return }
         makeKey()
         logger.info("The review panel took the keyboard")
     }

@@ -3,13 +3,16 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on the review panel while it's open: how it closes, and when an
-/// appearance's panel takes the keyboard, with the default settings. Left
-/// untouched for 10 minutes, the panel closes on its own, and an appearance's
-/// panel takes the keyboard once Lucas has been idle for 5 seconds.
+/// Tests on the review panel while it's open: how it closes, when an
+/// appearance's panel takes the keyboard, and how long Lucas takes on a card,
+/// with the default settings. Left untouched for 10 minutes, the panel closes
+/// on its own, and an appearance's panel takes the keyboard once Lucas has
+/// been idle for 5 seconds.
 struct ReviewPanelTests {
     let calendar: Calendar
     let time: ManualTimeSource
+    /// The steady clock the panel times Lucas on.
+    let clock = ManualClock()
     let engine: Engine
     let settings = ReviewSettings.defaults
 
@@ -139,6 +142,41 @@ struct ReviewPanelTests {
         let panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
 
         #expect(panel.mayHaveKeyboard)
+    }
+
+    @Test(
+        "writing a flag's note leaves its time out of the card's response time, and cancelling it goes on from where it waited"
+    )
+    func writingANoteWaits() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.meet(ubuntu)
+        time.advance(by: hours(1))
+        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+
+        clock.advance(by: .seconds(3))
+        panel.startFlagging()
+        panel.write(note: "Falta un ejemplo")
+        clock.advance(by: .seconds(20))
+        panel.cancelFlagging()
+        clock.advance(by: .seconds(2))
+        panel.flip()
+        panel.rate(.good)
+
+        #expect(try engine.reviewLog().last?.responseTime == .seconds(5))
+    }
+
+    // Ficha Dev's debug menu moves the engine's time forward, as this test's
+    // time does.
+    @Test("Ficha Dev moving the time doesn't change how long Lucas took on a card")
+    func movingTheTimeLeavesTheResponseTime() throws {
+        try approveCard("serendipia", in: engine)
+        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+
+        clock.advance(by: .seconds(8))
+        time.advance(by: hours(3))
+        panel.endFirstView()
+
+        #expect(try engine.reviewLog().map(\.responseTime) == [.seconds(8)])
     }
 
     // Lucas, 2026-10-15: nothing was reviewed, so there's nothing to wait

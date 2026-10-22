@@ -8,6 +8,8 @@ import Testing
 struct UndoTests {
     let calendar: Calendar
     let time: ManualTimeSource
+    /// The steady clock the panel times Lucas on.
+    let clock = ManualClock()
     let engine: Engine
     let settings = ReviewSettings.defaults
 
@@ -81,6 +83,26 @@ struct UndoTests {
         #expect(panel.current == .review(cards[0]))
         #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
         #expect(try engine.reviewNow(settings) == cards.map(PanelCard.review))
+    }
+
+    @Test("⌘Z shows the last card again as Lucas left it, its back showing or not, with its time going on")
+    func undoShowsTheCardAsLucasLeftIt() throws {
+        let cards = try dueCards("ubuntu", "petricor", "serendipia")
+        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+        clock.advance(by: .seconds(4))
+        panel.flip()
+        panel.rate(.good)
+        clock.advance(by: .seconds(2))
+        panel.buryCard()
+
+        panel.undoLastCard()
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        panel.undoLastCard()
+        #expect(panel.content == .back(cards[0], isAhead: false))
+        clock.advance(by: .seconds(1))
+        panel.rate(.good)
+
+        #expect(try engine.reviewLog().last?.responseTime == .seconds(5))
     }
 
     // Closing the panel writes it into the appearance log, as finished or
