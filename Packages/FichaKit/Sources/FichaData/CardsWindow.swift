@@ -47,13 +47,13 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 
     /// Whether the card is new in Lucas's reviews: it hasn't had its first
     /// view yet.
-    public var isNew: Bool {
+    var isNew: Bool {
         cardStanding.isNew(given: standing)
     }
 
     /// Whether the card is learned in Lucas's reviews, standing on `ladder`:
     /// on a step that waits 30 days or more.
-    public func isLearned(on ladder: Ladder) -> Bool {
+    func isLearned(on ladder: Ladder) -> Bool {
         cardStanding.isLearned(given: standing, on: ladder)
     }
 }
@@ -258,8 +258,16 @@ extension CardGroup {
         case .new: row.isNew
         case .due: row.isDue(at: now)
         case .learned: row.isLearned(on: ladder)
-        case .flagged: if case .inInbox = row.cardStanding { true } else { false }
-        case .buried: if case .buried = row.cardStanding { true } else { false }
+        case .flagged:
+            switch row.cardStanding {
+            case .inInbox: true
+            case .inReviews, .buried: false
+            }
+        case .buried:
+            switch row.cardStanding {
+            case .buried: true
+            case .inReviews, .inInbox: false
+            }
         case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
         }
