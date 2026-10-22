@@ -24,7 +24,7 @@ public struct FichaCommand: ParsableCommand {
     /// `dataFolder`, prints its result as JSON, and exits. A command that
     /// fails says why on standard error and exits with an error code. It runs
     /// on the system's time or, for Ficha Dev's CLI, on the time Ficha Dev's
-    /// debug menu moved forward, as Ficha Dev does. A command that would
+    /// debug menu moved forward, as Ficha Dev does. A restore, which would
     /// change the cards under the app that the CLI belongs to, `appName`, is
     /// refused while `appIsRunning` says it runs, before the database opens.
     public static func main(
@@ -37,9 +37,7 @@ public struct FichaCommand: ParsableCommand {
                 try command.run()
                 Self.exit()
             }
-            if let refused = engineCommand as? any RefusedWhileTheAppRuns, refused.isRefusedWhileTheAppRuns,
-                appIsRunning()
-            {
+            if let restore = engineCommand as? RestoreCommand, restore.copy != nil, appIsRunning() {
                 throw AppIsRunningError(appName: appName)
             }
             let time: any TimeSource =

@@ -71,12 +71,10 @@ enum Preferences {
     /// How often Ficha backs up on its own, and how many backups it keeps, as
     /// Lucas left them in Settings.
     static func backupSettings() -> BackupSettings {
-        let defaults = BackupSettings.defaults
-        let frequency =
-            read(.backupFrequency, as: String.self, BackupSettings.Frequency.init(rawValue:)) ?? defaults.frequency
-        let kept =
-            read(.backupsKept, as: Int.self) { BackupSettings.keptRange.contains($0) ? $0 : nil } ?? defaults.keptCount
-        return BackupSettings(frequency: frequency, kept: kept) ?? defaults
+        var settings = BackupSettings.defaults
+        settings.frequency =
+            read(.backupFrequency, as: String.self, BackupSettings.Frequency.init(rawValue:)) ?? settings.frequency
+        return read(.backupsKept, as: Int.self) { BackupSettings(frequency: settings.frequency, kept: $0) } ?? settings
     }
 
     /// Keeps `settings`, as Lucas changed them in Settings' Backups tab.

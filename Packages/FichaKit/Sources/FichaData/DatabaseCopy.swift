@@ -76,11 +76,11 @@ public struct DatabaseCopy: Sendable, Hashable, Identifiable, Encodable {
     }
 }
 
-/// A copy's file name: its kind, its time, and a number after it when there
-/// were others in the same second. A regex isn't `Sendable`, so each use
-/// makes its own.
+/// A copy's file name: how its kind's names start, its time, and a number
+/// after it when there were others in the same second. A regex isn't
+/// `Sendable`, so each use makes its own.
 private var copyName: Regex<(Substring, Substring, Substring, Substring?)> {
-    /(Backup|Before update|Before restore) (\d{4}-\d{2}-\d{2}T\d{6}Z)(?: ([2-9]|[1-9]\d+))?\.sqlite/
+    /(.+) (\d{4}-\d{2}-\d{2}T\d{6}Z)(?: ([2-9]|[1-9]\d+))?\.sqlite/
 }
 
 /// A copy's time in its file's name: ISO 8601's basic format for the time,

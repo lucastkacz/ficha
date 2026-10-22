@@ -141,6 +141,25 @@ final class BackupsStateTests {
         #expect(backups.lastBackup == .saved(time.now))
     }
 
+    @Test("a failed backup still shows after a check that finds none due")
+    func failedBackupShowsAfterACheckWithNoneDue() throws {
+        var backups = engine.openBackups()
+        backups.backUpNow(.defaults)
+        let backupsFolder = try #require(engine.backupsFolder).path(percentEncoded: false)
+        // A Backups folder Ficha can list but not write in, so no copy can be
+        // saved, and the check finds today's backup.
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: backupsFolder)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: backupsFolder) }
+        time.advance(by: hours(1))
+        backups.backUpNow(.defaults)
+        let failed = backups.lastBackupFailed
+
+        backups.backUpIfDue(.defaults)
+
+        #expect(failed)
+        #expect(backups.lastBackupFailed)
+    }
+
     @Test("a restore that fails says why, and the list shows the copies as they are")
     func failedRestoreSaysWhy() throws {
         var backups = engine.openBackups()

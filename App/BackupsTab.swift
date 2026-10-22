@@ -45,7 +45,11 @@ struct BackupsTab: View {
                     """
                     As each backup is saved, the oldest ones beyond that number go. Copies before an update or a \
                     restore stay until you delete them.
-                    """)
+                    """,
+                    comment: """
+                        Settings, under Backups, below its settings: "that number" is the one in Backups to keep, \
+                        just above.
+                        """)
             }
             Section {
                 copiesTable
@@ -99,7 +103,7 @@ struct BackupsTab: View {
             }
         } message: { _ in
             Text(
-                "You can bring them back from the Trash.",
+                "Until you empty the Trash, you can put back what you move there.",
                 comment: "Under the title of the Backups tab's question before it moves copies to the Trash.")
         }
         .failureAlert(failure)

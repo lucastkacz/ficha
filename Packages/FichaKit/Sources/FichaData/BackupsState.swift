@@ -203,11 +203,13 @@ public struct BackupsState: Sendable {
     }
 
     /// Backs up with `work`, noting whether it failed, and reads the copies
-    /// again.
+    /// again. A failure stays until a backup is saved, not only tried: a
+    /// check that finds none due doesn't clear it.
     private mutating func backUp(_ work: (Engine) throws(EngineError) -> DatabaseCopy?) {
         do throws(EngineError) {
-            _ = try work(engine)
-            lastAttemptFailure = nil
+            if try work(engine) != nil {
+                lastAttemptFailure = nil
+            }
         } catch {
             lastAttemptFailure = error
         }

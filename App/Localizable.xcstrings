@@ -248,7 +248,7 @@
       "comment" : "In Diagnostics: which apps use a microphone."
     },
     "As each backup is saved, the oldest ones beyond that number go. Copies before an update or a restore stay until you delete them." : {
-
+      "comment" : "Settings, under Backups, below its settings: \"that number\" is the one in Backups to keep, just above."
     },
     "At least this long apart" : {
       "comment" : "Settings, under Appearances: the least time between two appearances."
@@ -1082,6 +1082,9 @@
     "Unknown version" : {
       "comment" : "Settings' About tab, when the build doesn't say."
     },
+    "Until you empty the Trash, you can put back what you move there." : {
+      "comment" : "Under the title of the Backups tab's question before it moves copies to the Trash."
+    },
     "Version %@ (%@)" : {
       "comment" : "Settings' About tab: the release version, then the build number in parentheses.",
       "localizations" : {
@@ -1110,9 +1113,6 @@
     },
     "Words" : {
       "comment" : "An item of the Cards window's sidebar: the word cards."
-    },
-    "You can bring them back from the Trash." : {
-      "comment" : "Under the title of the Backups tab's question before it moves copies to the Trash."
     },
     "You went through every card." : {
 
