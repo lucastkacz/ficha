@@ -109,29 +109,10 @@ final class AppModel {
         ReviewPanelModel(engine.openPanel(.appearance, with: cards, settings: settings))
     }
 
-    /// The cards in `group` that mention `search`, as the Cards window lists
-    /// them, each on the ladder Lucas set in Settings.
-    func cardRows(in group: CardGroup, matching search: String) throws(EngineError) -> [CardRow] {
-        try engine.cardRows(in: group, matching: search, on: settings.ladder)
-    }
-
-    /// What waits in the inbox that mentions `search`, as the Cards window
-    /// lists it, with the flagged cards on the ladder Lucas set in Settings.
-    func inboxRows(matching search: String) throws(EngineError) -> [InboxRow] {
-        try engine.inboxRows(matching: search, on: settings.ladder)
-    }
-
-    /// Every tag of the cards that aren't buried, alphabetically, for the
-    /// Cards window's sidebar.
-    func tags() throws(EngineError) -> [String] {
-        try engine.tags()
-    }
-
-    /// A card's review log, oldest first, as the Cards window shows it under
-    /// the card: each entry with the step the card stood on after it, on the
-    /// ladder Lucas set in Settings.
-    func reviewLogRows(of cardID: Int64) throws(EngineError) -> [ReviewLogRow] {
-        try engine.reviewLogRows(of: cardID, on: settings.ladder)
+    /// Opens the Cards window on Lucas's cards as they are now, on the ladder
+    /// he set in Settings.
+    func openCardsWindow() -> CardsWindowState {
+        engine.openCardsWindow(on: settings.ladder)
     }
 
     /// Edits a card from the Cards window: it gets `content`, and keeps its
