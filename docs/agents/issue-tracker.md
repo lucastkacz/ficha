@@ -4,7 +4,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies. A ticket or a spec opens with **Where this sits** below.
 - **Create a detour**: an issue that comes up while building another, such as a retro's environment changes or a tool a ticket needs, is a detour. Its body starts with the issue it came up in and the spec being built at the time, if any, so GitHub lists it in the spec's timeline: "Came up in the retro of #127, a detour from the Cards window (#87)." A ticket that waits for a detour gets both GitHub's native link, as **Blocking** below shows, and a line in its "Blocked by" section, since **Read an issue** doesn't show the links.
 - **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments`.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
@@ -15,6 +15,18 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Close**: an issue closes through the pull request that resolves it: the PR body says `Closes #<n>`, and GitHub closes the issue on merge. Use `gh issue close <number> --comment "..."` only for an issue no PR resolves, such as a duplicate or `wontfix`.
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
+
+## Where this sits
+
+Lucas reads each ticket and spec before an agent builds it, and the rest of the body is written for that agent, in the code's names. So a ticket written for a spec, by `/to-tickets` or by hand, opens with a `## Where this sits` section, above its template's first section, as #183 shows. Its three parts use Lucas's words, those of `GLOSSARY.md`, and a code name such as `CardsWindowState` only after them:
+
+1. **The thread**, in one or two sentences from the roadmap down: the step of the open roadmap issue (its title starts with `Roadmap:`) that the work belongs to, or that it's outside the roadmap; where the spec came from, such as a grilling, a review or a bug; and the spec, by number.
+2. **The spec's tickets**, as a table, `| Step | Ticket | What it does |`, one row per ticket in the order they're built. A ticket that can run beside others gets a step such as "any time after 1". This ticket's row is in bold, with `#<n>, this one` in its Ticket cell. The table shows order alone: GitHub shows each linked issue's state.
+3. **In plain words**, a paragraph that starts "In plain words:": what the ticket changes, why, and what Lucas sees change, or that nothing does.
+
+The table is complete only once every ticket has its number, so publish the tickets first, then give each its section (`gh issue edit <n> --body-file <file>`). A ticket added to the spec later gets a row in each sibling's table too.
+
+A spec opens with the thread alone, under the same heading: its Problem Statement already speaks from Lucas's side, and its tickets come later.
 
 ## Pull requests as a triage surface
 
