@@ -3,16 +3,21 @@ import FichaData
 import SwiftUI
 
 /// The card's front, after a flag when it's flagged and a mark when it's
-/// buried.
+/// buried, as where it stands says: a buried card keeps its flag.
 struct FrontCell: View {
     let card: Card
 
     var body: some View {
         HStack(spacing: 4) {
-            if card.flag != nil {
+            switch card.standing {
+            case .inReviews:
+                EmptyView()
+            case .inInbox:
                 FlagIcon()
-            }
-            if card.buriedAt != nil {
+            case .buried(_, let flag):
+                if flag != nil {
+                    FlagIcon()
+                }
                 BuriedIcon()
             }
             Text(card.front)
@@ -58,7 +63,7 @@ struct CardDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                FlagAndBurial(card: row.card)
+                FlagAndBurial(standing: row.cardStanding)
                 TypeAndTags(card: row.card)
                 Text(row.card.front)
                     .font(.title2.weight(.semibold))
@@ -239,52 +244,68 @@ private struct ExpandedCard: View {
     }
 }
 
-/// What the detail says on top of a card that's out of Lucas's reviews: his
-/// note when it's flagged, and when he buried it when it's buried. While he
-/// edits a flagged card, the note also says that saving fixes it.
+/// What the detail says on top of a card that's out of Lucas's reviews, as
+/// where it stands says: his note when it's flagged, and when he buried it
+/// when it's buried, after the note it keeps. While he edits a flagged card,
+/// the note also says that saving fixes it.
 struct FlagAndBurial: View {
-    let card: Card
+    let standing: CardStanding
     /// Whether Lucas is editing the card.
     var isEditing = false
 
     var body: some View {
-        if let flag = card.flag {
-            Label {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(flag.note)
-                    if isEditing {
-                        // The same whether the card is buried or not: whether
-                        // it goes back to Lucas's reviews is FichaData's to
-                        // say, and the burial shows below.
-                        Text(
-                            "Saving fixes it, and it keeps its step.",
-                            comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
-                        )
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    }
+        switch standing {
+        case .inReviews:
+            EmptyView()
+        case .inInbox(let flag):
+            note(flag)
+        case .buried(let buriedAt, let flag):
+            if let flag {
+                note(flag)
+            }
+            burial(at: buriedAt)
+        }
+    }
+
+    /// Lucas's note on the flagged card.
+    private func note(_ flag: Flag) -> some View {
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(flag.note)
+                if isEditing {
+                    // The same whether the card is buried or not: whether it
+                    // goes back to Lucas's reviews is FichaData's to say, and
+                    // the burial shows below.
+                    Text(
+                        "Saving fixes it, and it keeps its step.",
+                        comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                 }
-                .fixedSize(horizontal: false, vertical: true)
-            } icon: {
-                FlagIcon()
             }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            FlagIcon()
         }
-        if let buriedAt = card.buriedAt {
-            Label {
-                Text(
-                    "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
-                    comment: "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
-                )
-            } icon: {
-                BuriedIcon()
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.fill.tertiary, in: .rect(cornerRadius: 8))
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
+    }
+
+    /// When Lucas buried the card.
+    private func burial(at buriedAt: Date) -> some View {
+        Label {
+            Text(
+                "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
+                comment: "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
+            )
+        } icon: {
+            BuriedIcon()
         }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.fill.tertiary, in: .rect(cornerRadius: 8))
     }
 }
 
@@ -312,13 +333,13 @@ func stepText(_ row: CardRow) -> String {
 
 /// When the card is due, counted from `now`: "now" once it's due, however
 /// long ago, and before, as the Mac's locale words it, like "in 2h",
-/// "tomorrow" or "in 5d" in US English. Nothing while it's new or flagged,
-/// since it won't show up then.
+/// "tomorrow" or "in 5d" in US English. Nothing while it's new, or out of
+/// Lucas's reviews, flagged or buried, since it won't show up then.
 func dueText(_ row: CardRow, at now: Date) -> String {
     guard let due = row.due else {
         return ""
     }
-    guard due > now else {
+    guard !row.isDue(at: now) else {
         return String(localized: "now", comment: "In the Cards window's Due column: the card is due.")
     }
     // In the ladder's units, days, hours and minutes, as Settings shows its
