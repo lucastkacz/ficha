@@ -6,6 +6,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - Swift 6 language mode with complete concurrency checking. Warnings are errors.
 - The app target is isolated to the main actor by default (Xcode 26's default). Work that must leave the main actor says so explicitly (`nonisolated`, `@concurrent`).
+- A delegate method that iOS or macOS calls with a completion handler, which Swift imports as an `async` method, runs on the main actor (`extension Type: @MainActor Delegate`), even when the framework calls it on a queue of its own, unless the framework's documentation says the handler may run on any thread. Swift calls the handler where the method returns, and UIKit's handlers can need the main thread.
 - Package targets aren't main-actor isolated: their types are `Sendable` values (structs and enums) wherever possible.
 
 ## Layers
