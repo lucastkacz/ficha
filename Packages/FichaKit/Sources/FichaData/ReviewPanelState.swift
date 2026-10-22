@@ -200,10 +200,8 @@ public struct ReviewPanelState: Sendable {
     /// it". When it can't be saved, the card stays, and the panel says why.
     public mutating func endFirstView() {
         guard case .firstView = content else { return }
-        do throws(EngineError) {
-            try answer(.firstView, responseTime: timeOnCard)
-        } catch {
-            failure = Failure(action: .answer, error: error)
+        perform(.answer) { panel throws(EngineError) in
+            try panel.answer(.firstView, responseTime: panel.timeOnCard)
         }
     }
 
@@ -213,10 +211,8 @@ public struct ReviewPanelState: Sendable {
     /// stays, and the panel says why.
     public mutating func rate(_ rating: Rating) {
         guard case .back = content else { return }
-        do throws(EngineError) {
-            try answer(.review(rating), responseTime: timeOnCard)
-        } catch {
-            failure = Failure(action: .answer, error: error)
+        perform(.answer) { panel throws(EngineError) in
+            try panel.answer(.review(rating), responseTime: panel.timeOnCard)
         }
     }
 
@@ -240,7 +236,7 @@ public struct ReviewPanelState: Sendable {
     public mutating func cancelFlagging() {
         guard let flagging else { return }
         self.flagging = nil
-        cardShownAt = sinceOpening() - flagging.timeOnCard
+        startTiming(from: flagging.timeOnCard)
         touch()
     }
 
@@ -249,11 +245,7 @@ public struct ReviewPanelState: Sendable {
     /// saved, the card stays, with the note, and the panel says why.
     public mutating func finishFlagging() {
         guard let note = note.flatMap(FlagNote.init) else { return }
-        do throws(EngineError) {
-            try flag(note: note)
-        } catch {
-            failure = Failure(action: .flag, error: error)
-        }
+        perform(.flag) { panel throws(EngineError) in try panel.flag(note: note) }
     }
 
     /// Buries the card Lucas is on, which takes it out of his reviews for
@@ -261,11 +253,7 @@ public struct ReviewPanelState: Sendable {
     /// stays, and the panel says why.
     public mutating func buryCard() {
         guard isOnACard else { return }
-        do throws(EngineError) {
-            try bury()
-        } catch {
-            failure = Failure(action: .bury, error: error)
-        }
+        perform(.bury) { panel throws(EngineError) in try panel.bury() }
     }
 
     /// Undoes what Lucas did with the last card he went through, and shows it
@@ -273,16 +261,30 @@ public struct ReviewPanelState: Sendable {
     /// where it is, and says why.
     public mutating func undoLastCard() {
         guard canUndo else { return }
-        do throws(EngineError) {
-            try undo()
-        } catch {
-            failure = Failure(action: .undo, error: error)
-        }
+        perform(.undo) { panel throws(EngineError) in try panel.undo() }
     }
 
     /// Clears what failed, once the panel said so and Lucas closed it.
     public mutating func dismissFailure() {
         failure = nil
+    }
+
+    /// Does what Lucas asked with `work`, or records why it couldn't, as a
+    /// failure of `action`.
+    private mutating func perform(
+        _ action: FailedAction, _ work: (inout ReviewPanelState) throws(EngineError) -> Void
+    ) {
+        do throws(EngineError) {
+            try work(&self)
+        } catch {
+            failure = Failure(action: action, error: error)
+        }
+    }
+
+    /// Starts timing the card Lucas is on, from `timeOnCard`, how long he had
+    /// already been on it: none for a card that just showed.
+    private mutating func startTiming(from timeOnCard: Duration = .zero) {
+        cardShownAt = sinceOpening() - timeOnCard
     }
 
     /// Notes that Lucas did something in the panel, like flipping a card: the
@@ -329,7 +331,7 @@ public struct ReviewPanelState: Sendable {
         guard outcome == nil, current == nil else { return }
         cards += moreCards
         moreCards = []
-        cardShownAt = sinceOpening()
+        startTiming()
         touch()
     }
 
@@ -339,6 +341,7 @@ public struct ReviewPanelState: Sendable {
     /// says what failed.
     public mutating func flag(note: FlagNote) throws(EngineError) {
         guard outcome == nil, let flagging = current else { return }
+        let timeOnCard = self.timeOnCard
         try engine.flag(flagging.card.id, note: note)
         moveOn(after: .flagged, timeOnCard: timeOnCard)
     }
@@ -348,6 +351,7 @@ public struct ReviewPanelState: Sendable {
     /// through `buryCard()`, which says what failed.
     public mutating func bury() throws(EngineError) {
         guard outcome == nil, let burying = current else { return }
+        let timeOnCard = self.timeOnCard
         try engine.bury(burying.card.id)
         moveOn(after: .buried, timeOnCard: timeOnCard)
     }
@@ -364,7 +368,7 @@ public struct ReviewPanelState: Sendable {
         wentThrough.removeLast()
         moreCards = []
         isFlipped = last.showedBack
-        cardShownAt = sinceOpening() - last.timeOnCard
+        startTiming(from: last.timeOnCard)
         touch()
     }
 
@@ -375,7 +379,7 @@ public struct ReviewPanelState: Sendable {
         wentThrough.append(Visit(action: action, showedBack: isFlipped, timeOnCard: timeOnCard))
         isFlipped = false
         flagging = nil
-        cardShownAt = sinceOpening()
+        startTiming()
         touch()
         if current == nil {
             lookForMore()

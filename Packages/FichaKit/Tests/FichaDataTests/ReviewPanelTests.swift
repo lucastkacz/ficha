@@ -165,6 +165,22 @@ struct ReviewPanelTests {
         #expect(try engine.reviewLog().last?.responseTime == .seconds(5))
     }
 
+    // The Cards window can delete the card the panel shows.
+    @Test("burying a card that was deleted meanwhile leaves the panel on it, and records that the bury failed")
+    func aFailedBuryLeavesTheCard() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+        try engine.delete([serendipia.id])
+
+        panel.buryCard()
+
+        #expect(panel.failure?.action == .bury)
+        #expect(panel.failure?.error == .cardNotFound(serendipia.id))
+        #expect(panel.content == .firstView(serendipia))
+        panel.dismissFailure()
+        #expect(panel.failure == nil)
+    }
+
     // Ficha Dev's debug menu moves the engine's time forward, as this test's
     // time does.
     @Test("Ficha Dev moving the time doesn't change how long Lucas took on a card")
