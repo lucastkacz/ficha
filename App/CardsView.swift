@@ -12,14 +12,16 @@ import SwiftUI
 /// place while the sidebar and the table wait. He selects several cards with
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
 /// can do with all of them. `CardsWindowState` decides what the window lists,
-/// shows and offers, and the view draws it. It reads the cards again whenever
+/// shows, offers and asks, and what happens when Lucas acts, and the view
+/// draws it. It reads the cards again whenever
 /// the engine says they changed, from the app or the `ficha` CLI, when Lucas
 /// changes the ladder in Settings, and every minute, since cards come due as
 /// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// What the sidebar chose, what Lucas looks for and selected, and so what
-    /// the table lists, the detail shows and its actions offer.
+    /// the table lists, the detail shows and its actions offer, and what he
+    /// edits, what the window asks and what failed.
     @State private var state: CardsWindowState
     @FocusState private var isSearchFocused: Bool
     /// The table's order: the one Lucas left it in with a click on a column's
@@ -32,21 +34,9 @@ struct CardsView: View {
     /// The inbox's order: the latest added first, until Lucas clicks a
     /// column's header.
     @State private var inboxSortOrder = [InboxRowOrder(.added, order: .reverse)]
-    /// What Lucas is editing, as it was when he started, while the detail
-    /// shows its fields. The sidebar and the table wait until he saves or
-    /// cancels, so that a click elsewhere can't drop what he typed.
-    @State private var editing: Editing?
     /// Whether the table has the keyboard, which it gets back once Lucas
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
-    /// The card Lucas is flagging, while the sheet asks for his note.
-    @State private var flagging: CardRow?
-    /// The capture Lucas is discarding, while the window asks whether to.
-    @State private var discarding: Capture?
-    /// The cards Lucas is deleting, while the window asks whether to.
-    @State private var deleting: [CardRow]?
-    /// What Lucas did that couldn't be saved, while an alert says so.
-    @State private var failure: Failure?
 
     init(model: AppModel) {
         self.model = model
@@ -57,11 +47,11 @@ struct CardsView: View {
         NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
-                .waiting(while: editing != nil)
+                .waiting(while: state.editing != nil)
         } content: {
             table
                 .navigationSplitViewColumnWidth(min: 380, ideal: 440)
-                .waiting(while: editing != nil)
+                .waiting(while: state.editing != nil)
         } detail: {
             detail
                 .navigationSplitViewColumnWidth(min: 300, ideal: 380)
@@ -79,23 +69,26 @@ struct CardsView: View {
             .keyboardShortcut("f")
             .hidden()
         }
-        .sheet(item: $flagging) { row in
-            FlagSheet(card: row.card) { note throws(EngineError) in
-                try model.flag(row.id, note: note)
+        .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
+            FlagSheet(card: row.card, failure: failure(overFlagSheet: true)) { note in
+                state.flag(note: note)
             }
         }
+        // Each button acts on what its dialog presents, which SwiftUI hands
+        // it: closing the dialog may drop the state's question before the
+        // button acts.
         .confirmationDialog(
-            discarding.map {
+            captureToDiscard.map {
                 Text(
                     "Discard “\($0.text)”?",
                     comment: "The title of the Cards window's question before it discards a capture, with its text.")
             } ?? Text(verbatim: ""),
-            isPresented: Binding(get: { discarding != nil }, set: { if !$0 { discarding = nil } }),
+            isPresented: Binding(get: { captureToDiscard != nil }, set: { if !$0 { state.cancelQuestion() } }),
             titleVisibility: .visible,
-            presenting: discarding
+            presenting: captureToDiscard
         ) { capture in
             Button(role: .destructive) {
-                discard(capture)
+                state.discard(capture)
             } label: {
                 Text("Discard", comment: "The button that discards the capture the Cards window asks about.")
             }
@@ -105,20 +98,20 @@ struct CardsView: View {
                 comment: "Under the title of the Cards window's question before it discards a capture.")
         }
         .confirmationDialog(
-            deleting.map { deletionTitle(for: $0) } ?? Text(verbatim: ""),
-            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            cardsToDelete.map { deletionTitle(for: $0) } ?? Text(verbatim: ""),
+            isPresented: Binding(get: { cardsToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
             titleVisibility: .visible,
-            presenting: deleting
+            presenting: cardsToDelete
         ) { rows in
             Button(role: .destructive) {
-                delete(rows)
+                state.delete(rows)
             } label: {
                 Text("Delete", comment: "The button that deletes the cards the Cards window asks about.")
             }
         } message: { rows in
             deletionMessage(for: rows)
         }
-        .failureAlert($failure)
+        .failureAlert(failure(overFlagSheet: false))
         .task {
             // Listening before reading, so no change falls in between.
             let changes = model.changes()
@@ -149,6 +142,96 @@ struct CardsView: View {
     /// Settings.
     private func readCards() {
         state.read(on: model.settings.ladder)
+    }
+
+    /// The card the window asks Lucas to flag, while the flag sheet asks for
+    /// his note.
+    private var cardToFlag: CardRow? {
+        guard case .flag(let row) = state.question else { return nil }
+        return row
+    }
+
+    /// The capture the window asks whether to discard, while it asks.
+    private var captureToDiscard: Capture? {
+        guard case .discard(let capture) = state.question else { return nil }
+        return capture
+    }
+
+    /// The cards the window asks whether to delete, while it asks.
+    private var cardsToDelete: [CardRow]? {
+        guard case .delete(let rows) = state.question else { return nil }
+        return rows
+    }
+
+    /// What Lucas did that couldn't be saved, as an alert says it, which
+    /// closing it clears: over the flag sheet while it's open, since the
+    /// window's own alert can't show over its sheet, and over the window
+    /// otherwise. `overFlagSheet` says which of the two alerts this is for.
+    private func failure(overFlagSheet: Bool) -> Binding<Failure?> {
+        Binding {
+            guard overFlagSheet == (cardToFlag != nil) else { return nil }
+            return state.failure.map(alert(for:))
+        } set: {
+            if $0 == nil {
+                state.dismissFailure()
+            }
+        }
+    }
+
+    /// What the alert says when `failure` happened: what Lucas did that
+    /// couldn't be saved, and why, in the window's words.
+    private func alert(for failure: CardsWindowState.Failure) -> Failure {
+        let error = failure.error
+        switch failure.action {
+        case .saveCard:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save the card", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: 1))
+        case .saveCapture:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save the capture", comment: "An alert's title in the Cards window."),
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
+                            refine session, so nothing was saved. To keep what you typed, copy it before you cancel.
+                            """,
+                        comment:
+                            "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
+                    )))
+        case .discard:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't discard the capture", comment: "An alert's title in the Cards window."),
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
+                            refine session, so there's nothing to discard. The window now shows the inbox as it is.
+                            """,
+                        comment:
+                            "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
+                    )))
+        case .flag:
+            return Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
+        case .bury(let count):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't bury \(count) cards", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: count))
+        case .unbury(let count):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't unbury \(count) cards", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: count))
+        case .delete(let count):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't delete \(count) cards", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: count))
+        }
     }
 
     /// What Lucas chooses from: the cards by where they stand, then the
@@ -432,23 +515,22 @@ struct CardsView: View {
 
     @ViewBuilder
     private var detail: some View {
-        switch editing {
+        switch state.editing {
         case .card(let card):
-            CardEditor(card: card, isSearching: isSearchFocused) { content throws(EngineError) in
-                try model.edit(card.id, with: content)
-                // The detail shows the card as saved at once, without waiting
-                // for the engine to say it changed.
-                readCards()
-            } close: {
-                stopEditing()
+            CardEditor(card: card, isSearching: isSearchFocused) { content in
+                state.saveCard(content)
+                focusTableOnceEditEnds()
+            } cancel: {
+                state.cancelEditing()
+                focusTableOnceEditEnds()
             }
         case .capture(let capture):
-            CaptureEditor(capture: capture, isSearching: isSearchFocused) { text, note, source throws(EngineError) in
-                try model.editCapture(capture.id, text: text, note: note, source: source)
-                // As a card's: the detail shows the capture as saved at once.
-                readCards()
-            } close: {
-                stopEditing()
+            CaptureEditor(capture: capture, isSearching: isSearchFocused) { text, note, source in
+                state.saveCapture(text: text, note: note, source: source)
+                focusTableOnceEditEnds()
+            } cancel: {
+                state.cancelEditing()
+                focusTableOnceEditEnds()
             }
         case nil:
             switch state.detail {
@@ -484,10 +566,13 @@ struct CardsView: View {
         }
     }
 
-    /// Ends an edit, saved or not, and gives the table the keyboard back.
-    private func stopEditing() {
-        editing = nil
-        isTableFocused = true
+    /// Gives the table the keyboard back once Lucas's edit ended, saved or
+    /// not. A save that failed goes on with the edit, and the keyboard stays
+    /// in its fields.
+    private func focusTableOnceEditEnds() {
+        if state.editing == nil {
+            isTableFocused = true
+        }
     }
 
     /// Edit, which turns the detail of the selected card or capture into
@@ -500,7 +585,7 @@ struct CardsView: View {
                     "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
             )
         ) {
-            startEditing()
+            state.startEditing()
         }
         .keyboardShortcut("l", modifiers: .command)
         .help(
@@ -533,10 +618,10 @@ struct CardsView: View {
 
     /// A button for each thing Lucas can do with what the detail shows, as
     /// the state offers them: Edit, Flag…, Bury or Unbury, Delete… and
-    /// Discard…, in that order. Each button's action reads the state as it is
-    /// when Lucas acts, never as the button had it: SwiftUI keeps the action a
-    /// keyboard shortcut had when its button first showed, so ⌘E would bury
-    /// the cards selected back then.
+    /// Discard…, in that order. Each button calls the state, which reads the
+    /// selection as it is when Lucas acts, never as the button had it: SwiftUI
+    /// keeps the action a keyboard shortcut had when its button first showed,
+    /// so ⌘E would bury the cards selected back then.
     @ViewBuilder
     private var actionButtons: some View {
         let actions = state.actions
@@ -569,7 +654,7 @@ struct CardsView: View {
                 comment: "A button of the Cards window that flags the card, asking for a note on what to fix."
             )
         ) {
-            startFlagging()
+            state.askToFlag()
         }
         .keyboardShortcut("l", modifiers: [.command, .shift])
         .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
@@ -586,7 +671,7 @@ struct CardsView: View {
                 comment: "A button of the Cards window that discards the capture, asking first."
             )
         ) {
-            startDiscarding()
+            state.askToDiscard()
         }
         .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
         .help(Text("Discard… (⌘⌫)", comment: "The tooltip of the Cards window's button that discards the capture."))
@@ -603,7 +688,7 @@ struct CardsView: View {
                 comment: "A button of the Cards window that deletes the selected cards for good, asking first."
             )
         ) {
-            startDeleting()
+            state.askToDelete()
         }
         .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
         .help(Text("Delete… (⌘⌫)", comment: "The tooltip of the Cards window's button that deletes the cards."))
@@ -618,7 +703,7 @@ struct CardsView: View {
                 comment: "A button of the Cards window that buries the selected cards: they leave Lucas's reviews."
             )
         ) {
-            burySelection()
+            state.bury()
         }
         .keyboardShortcut("e", modifiers: .command)
         .help(Text("Bury (⌘E)", comment: "The tooltip of the Cards window's button that buries the cards."))
@@ -633,117 +718,10 @@ struct CardsView: View {
                     "A button of the Cards window that unburies the selected cards: each goes back where it was."
             )
         ) {
-            unburySelection()
+            state.unbury()
         }
         .keyboardShortcut("e", modifiers: .command)
         .help(Text("Unbury (⌘E)", comment: "The tooltip of the Cards window's button that unburies the cards."))
-    }
-
-    /// Turns the detail into fields to edit the capture or the card it shows,
-    /// while the state offers Edit.
-    private func startEditing() {
-        guard state.actions.contains(.edit) else { return }
-        switch state.detail {
-        case .capture(let capture):
-            editing = .capture(capture)
-        case .expansion(let expansion):
-            editing = .capture(expansion.capture)
-        case .card(let row, _):
-            editing = .card(row.card)
-        case .cards, .nothingSelectedInInbox, .noCardSelected:
-            break
-        }
-    }
-
-    /// Asks whether to discard the capture selected in the inbox, while the
-    /// state offers Discard.
-    private func startDiscarding() {
-        guard state.actions.contains(.discard) else { return }
-        switch state.detail {
-        case .capture(let capture):
-            discarding = capture
-        case .expansion(let expansion):
-            discarding = expansion.capture
-        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
-            break
-        }
-    }
-
-    /// Discards `capture`, which Lucas confirmed, or says why it couldn't.
-    private func discard(_ capture: Capture) {
-        do throws(EngineError) {
-            try model.discard(capture.id)
-        } catch {
-            failure = Failure(
-                title: LocalizedStringResource(
-                    "Couldn't discard the capture", comment: "An alert's title in the Cards window."),
-                message: error.messageForCaptureInCardsWindow(
-                    ifItLeft: String(
-                        localized: """
-                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
-                            refine session, so there's nothing to discard. The window now shows the inbox as it is.
-                            """,
-                        comment:
-                            "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
-                    )))
-        }
-    }
-
-    /// Asks for a note to flag the selected card, while the state offers
-    /// Flag.
-    private func startFlagging() {
-        guard state.actions.contains(.flag), case .card(let row, _) = state.detail else { return }
-        flagging = row
-    }
-
-    /// Buries the selected cards, all at once, while the state offers Bury,
-    /// or says why it couldn't.
-    private func burySelection() {
-        guard state.actions.contains(.bury) else { return }
-        let rows = state.selectedRows
-        do throws(EngineError) {
-            try model.bury(Set(rows.map(\.id)))
-        } catch {
-            failure = Failure(
-                title: LocalizedStringResource(
-                    "Couldn't bury \(rows.count) cards", comment: "An alert's title in the Cards window."),
-                message: error.messageInCardsWindow(actingOn: rows.count))
-        }
-    }
-
-    /// Unburies the selected cards, all at once, while the state offers
-    /// Unbury, or says why it couldn't.
-    private func unburySelection() {
-        guard state.actions.contains(.unbury) else { return }
-        let rows = state.selectedRows
-        do throws(EngineError) {
-            try model.unbury(Set(rows.map(\.id)))
-        } catch {
-            failure = Failure(
-                title: LocalizedStringResource(
-                    "Couldn't unbury \(rows.count) cards", comment: "An alert's title in the Cards window."),
-                message: error.messageInCardsWindow(actingOn: rows.count))
-        }
-    }
-
-    /// Asks whether to delete the selected cards, while the state offers
-    /// Delete.
-    private func startDeleting() {
-        guard state.actions.contains(.delete) else { return }
-        deleting = state.selectedRows
-    }
-
-    /// Deletes the cards in `rows`, which Lucas confirmed, all at once, or
-    /// says why it couldn't.
-    private func delete(_ rows: [CardRow]) {
-        do throws(EngineError) {
-            try model.delete(Set(rows.map(\.id)))
-        } catch {
-            failure = Failure(
-                title: LocalizedStringResource(
-                    "Couldn't delete \(rows.count) cards", comment: "An alert's title in the Cards window."),
-                message: error.messageInCardsWindow(actingOn: rows.count))
-        }
     }
 
     /// The title of the question before Lucas deletes the cards in `rows`:
@@ -776,12 +754,6 @@ struct CardsView: View {
 }
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
-
-/// What Lucas edits in the Cards window: a card, or a capture in the inbox.
-private enum Editing {
-    case card(Card)
-    case capture(Capture)
-}
 
 extension EngineError {
     /// Why an action on `count` cards in the Cards window failed, as its alert
@@ -827,15 +799,17 @@ extension EngineError {
 
 /// The sheet that asks for Lucas's note on what to fix in the card he flags,
 /// as the review panel asks for it: Return flags the card, Option-Return
-/// starts a new line, and Escape cancels. A blank note can't flag it. When
-/// the card can't be flagged, an alert says why, and the sheet keeps the note.
+/// starts a new line, and Escape cancels. A blank note can't flag it. The
+/// window closes it once the card is flagged. When the card can't be flagged,
+/// an alert says why, and the sheet keeps the note.
 private struct FlagSheet: View {
     let card: Card
-    /// Flags the card with the note, or throws why it couldn't.
-    let flag: (FlagNote) throws(EngineError) -> Void
+    /// What couldn't be saved, as the alert over the sheet says it.
+    let failure: Binding<Failure?>
+    /// Flags the card with the note.
+    let flag: (FlagNote) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var note = ""
-    @State private var failure: Failure?
     @FocusState private var noteIsFocused: Bool
 
     var body: some View {
@@ -880,18 +854,13 @@ private struct FlagSheet: View {
         .onAppear {
             noteIsFocused = true
         }
-        .failureAlert($failure)
+        .failureAlert(failure)
     }
 
-    /// Flags the card with the note, unless it's blank, and closes the sheet.
+    /// Flags the card with the note, unless it's blank.
     private func submit() {
         guard let note = FlagNote(note) else { return }
-        do throws(EngineError) {
-            try flag(note)
-            dismiss()
-        } catch {
-            failure = Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
-        }
+        flag(note)
     }
 }
 
@@ -1430,17 +1399,18 @@ private struct FlagAndBurial: View {
 /// saves, Option-Return starts a new line, and Escape cancels, as in the
 /// capture window, unless he's in the window's search field. Saving with the
 /// front or the back blank says, under it, what's missing. When the card
-/// can't be saved, an alert says why, and the fields stay as Lucas left them.
+/// can't be saved, the window's alert says why, and the fields stay as Lucas
+/// left them.
 private struct CardEditor: View {
     /// The card as it was when Lucas started editing it.
     let card: Card
     /// Whether Lucas is in the window's search field, which then keeps Return
     /// and Escape: Escape there clears the search, and leaves his edit alone.
     let isSearching: Bool
-    /// Saves the card with `content`, or throws why it couldn't.
-    let save: (CardContent) throws(EngineError) -> Void
-    /// Ends the edit, once the card is saved or without saving it.
-    let close: () -> Void
+    /// Saves the card with `content`, which ends the edit once it's saved.
+    let save: (CardContent) -> Void
+    /// Ends the edit without saving it.
+    let cancel: () -> Void
     @State private var type: CardType
     @State private var front: String
     @State private var back: String
@@ -1450,19 +1420,18 @@ private struct CardEditor: View {
     /// Whether Lucas tried to save with the front or the back blank, so that
     /// the blank one says it's missing.
     @State private var showsMissingSides = false
-    @State private var failure: Failure?
     @FocusState private var isFrontFocused: Bool
 
     init(
         card: Card,
         isSearching: Bool,
-        save: @escaping (CardContent) throws(EngineError) -> Void,
-        close: @escaping () -> Void
+        save: @escaping (CardContent) -> Void,
+        cancel: @escaping () -> Void
     ) {
         self.card = card
         self.isSearching = isSearching
         self.save = save
-        self.close = close
+        self.cancel = cancel
         _type = State(initialValue: card.type)
         _front = State(initialValue: card.front)
         _back = State(initialValue: card.back)
@@ -1480,12 +1449,11 @@ private struct CardEditor: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            EditorActions(isSearching: isSearching, cancel: close, save: submit)
+            EditorActions(isSearching: isSearching, cancel: cancel, save: submit)
         }
         .onAppear {
             isFrontFocused = true
         }
-        .failureAlert($failure)
     }
 
     private var fields: some View {
@@ -1572,21 +1540,13 @@ private struct CardEditor: View {
     }
 
     /// Saves the card with what the fields hold, unless the front or the back
-    /// is blank, and ends the edit.
+    /// is blank.
     private func submit() {
         guard let content = CardContent(type: type, front: front, back: back, tags: tags, source: source) else {
             showsMissingSides = true
             return
         }
-        do throws(EngineError) {
-            try save(content)
-            close()
-        } catch {
-            failure = Failure(
-                title: LocalizedStringResource(
-                    "Couldn't save the card", comment: "An alert's title in the Cards window."),
-                message: error.messageInCardsWindow(actingOn: 1))
-        }
+        save(content)
     }
 }
 
@@ -1595,7 +1555,7 @@ private struct CardEditor: View {
 /// Option-Return starts a new line, and Escape cancels, as in the capture
 /// window, unless he's in the window's search field. Saving with the text
 /// blank says, under it, that it's missing. When the capture can't be saved,
-/// an alert says why, and the fields stay as Lucas left them.
+/// the window's alert says why, and the fields stay as Lucas left them.
 private struct CaptureEditor: View {
     /// The capture as it was when Lucas started editing it.
     let capture: Capture
@@ -1603,29 +1563,28 @@ private struct CaptureEditor: View {
     /// and Escape, as `CardEditor` says.
     let isSearching: Bool
     /// Saves the capture with what the fields hold, its text, note and
-    /// source, or throws why it couldn't.
-    let save: (String, String, String) throws(EngineError) -> Void
-    /// Ends the edit, once the capture is saved or without saving it.
-    let close: () -> Void
+    /// source, which ends the edit once it's saved.
+    let save: (String, String, String) -> Void
+    /// Ends the edit without saving it.
+    let cancel: () -> Void
     @State private var text: String
     @State private var note: String
     @State private var source: String
     /// Whether Lucas tried to save with the text blank, so that it says it's
     /// missing.
     @State private var showsMissingText = false
-    @State private var failure: Failure?
     @FocusState private var isTextFocused: Bool
 
     init(
         capture: Capture,
         isSearching: Bool,
-        save: @escaping (String, String, String) throws(EngineError) -> Void,
-        close: @escaping () -> Void
+        save: @escaping (String, String, String) -> Void,
+        cancel: @escaping () -> Void
     ) {
         self.capture = capture
         self.isSearching = isSearching
         self.save = save
-        self.close = close
+        self.cancel = cancel
         _text = State(initialValue: capture.text)
         _note = State(initialValue: capture.note ?? "")
         _source = State(initialValue: capture.source ?? "")
@@ -1638,12 +1597,11 @@ private struct CaptureEditor: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            EditorActions(isSearching: isSearching, cancel: close, save: submit)
+            EditorActions(isSearching: isSearching, cancel: cancel, save: submit)
         }
         .onAppear {
             isTextFocused = true
         }
-        .failureAlert($failure)
     }
 
     private var fields: some View {
@@ -1695,30 +1653,13 @@ private struct CaptureEditor: View {
         CaptureContent(text: text, note: note, source: source) != nil
     }
 
-    /// Saves the capture with what the fields hold, unless the text is blank,
-    /// and ends the edit.
+    /// Saves the capture with what the fields hold, unless the text is blank.
     private func submit() {
         guard fieldsMakeACapture else {
             showsMissingText = true
             return
         }
-        do throws(EngineError) {
-            try save(text, note, source)
-            close()
-        } catch {
-            failure = Failure(
-                title: LocalizedStringResource(
-                    "Couldn't save the capture", comment: "An alert's title in the Cards window."),
-                message: error.messageForCaptureInCardsWindow(
-                    ifItLeft: String(
-                        localized: """
-                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
-                            refine session, so nothing was saved. To keep what you typed, copy it before you cancel.
-                            """,
-                        comment:
-                            "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
-                    )))
-        }
+        save(text, note, source)
     }
 }
 

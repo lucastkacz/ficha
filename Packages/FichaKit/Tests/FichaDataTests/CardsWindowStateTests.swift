@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on the Cards window while it's open: what it lists, shows and offers
 /// as Lucas chooses, searches and selects, and as it reads his cards again,
-/// on the default ladder.
+/// and what it asks and does as he acts, on the default ladder.
 struct CardsWindowStateTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -138,6 +138,54 @@ struct CardsWindowStateTests {
         #expect(!offeredForAFlaggedOne)
         #expect(!offeredForABuriedOne)
     }
+
+    @Test("Delete asks only about the selected cards the table lists")
+    func deleteAsksOnlyAboutTheSelectedCardsTheTableLists() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        var window = openWindow()
+        window.select([serendipia.id, ubuntu.id])
+        window.search(for: "seren")
+
+        window.askToDelete()
+        let asked = try #require(window.cardsToDelete)
+        window.delete(asked)
+        window.search(for: "")
+
+        #expect(asked.map(\.id) == [serendipia.id])
+        #expect(window.question == nil)
+        #expect(window.listedCardIDs == [ubuntu.id])
+    }
+
+    @Test("an action that fails records the action and how many cards it was on")
+    func anActionThatFailsRecordsTheActionAndHowManyCards() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        var window = openWindow()
+        window.select([serendipia.id, ubuntu.id])
+        // Deleted outside the window, before it reads the cards again.
+        try engine.delete([ubuntu.id])
+
+        window.bury()
+
+        #expect(window.failure?.action == .bury(cardCount: 2))
+        #expect(window.failure?.error == .cardNotFound(ubuntu.id))
+    }
+
+    @Test("saving an edit ends it, and the detail shows the card as saved at once")
+    func savingAnEditShowsTheCardAsSavedAtOnce() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var window = openWindow()
+        window.select([serendipia.id])
+
+        window.startEditing()
+        let editing = window.editing
+        window.saveCard(try card(.word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente."))
+
+        #expect(editing == .card(serendipia))
+        #expect(window.editing == nil)
+        #expect(window.shownCard?.row.card.back == "Un hallazgo valioso que se da por accidente.")
+    }
 }
 
 extension CardsWindowState {
@@ -157,5 +205,14 @@ extension CardsWindowState {
             return nil
         }
         return (row, reviewLog)
+    }
+
+    /// The cards the window asks whether to delete, or nil when it asks
+    /// nothing about deleting.
+    fileprivate var cardsToDelete: [CardRow]? {
+        guard case .delete(let rows) = question else {
+            return nil
+        }
+        return rows
     }
 }
