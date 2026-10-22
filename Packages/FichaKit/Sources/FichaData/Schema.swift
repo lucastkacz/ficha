@@ -151,6 +151,17 @@ enum Schema {
             try db.rename(table: "new_reviewLog", to: "reviewLog")
             try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
         }
+        migrator.registerMigration("v10 planned appearances") { db in
+            // The appearances the engine last planned ahead for the iPhone,
+            // which schedules them as card notifications (ADR 0010), by when
+            // each comes. The next plan replaces them, once those whose time
+            // came and that Lucas never touched are in the appearance log, as
+            // snoozes.
+            try db.create(table: "plannedAppearance") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("time", .datetime).notNull()
+            }
+        }
         return migrator
     }()
 }

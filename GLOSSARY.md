@@ -170,7 +170,7 @@ The least time between appearances, counted from when the last appearance or rev
 _Avoid_: cooldown, gap, interval
 
 **Snooze**:
-Putting off an appearance, or what's left of a review now, without rating its cards, which stay due.
+Putting off an appearance, or what's left of a review now, without rating its cards, which stay due. On the iPhone, it's also leaving a card notification without rating it, or swiping it away.
 _Avoid_: dismiss, skip, postpone
 
 **Auto-close**:
@@ -186,5 +186,5 @@ Whether the Mac's review panel takes the keyboard when it shows up on its own: n
 _Avoid_: Focus, keyboard grab
 
 **Appearance log**:
-Every appearance, and every review now that brought cards, with when it showed and closed and how: finished, snoozed or auto-closed; on the iPhone, from its first card notification to the last card Lucas went through, snoozed until none is left. An appearance a suppression held back goes in once too, with the suppression.
+Every appearance, and every review now that brought cards, with when it showed and closed and how: finished, snoozed or auto-closed; on the iPhone, from its first card notification to the last card Lucas went through or the one he swiped away, snoozed until none is left, and closed as it showed when he never touched them. An appearance a suppression held back goes in once too, with the suppression.
 _Avoid_: history, session log

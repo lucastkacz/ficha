@@ -52,4 +52,16 @@ extension Engine {
             return nextCard
         }
     }
+
+    /// Records that Lucas swiped away one of `appearance`'s card
+    /// notifications, a plain "not now" that leaves its cards as they were
+    /// (#97): the appearance goes into the appearance log as a snooze, closed
+    /// now, as the Mac's review panel does when he closes it with cards left.
+    /// The next appearance waits from now.
+    public func snoozeFromNotification(_ appearance: NotifiedAppearance) throws(EngineError) {
+        let snoozedAt = time.now
+        try write { db in
+            try noteClosing(of: appearance, at: snoozedAt, finished: false, in: db)
+        }
+    }
 }

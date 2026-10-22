@@ -52,6 +52,38 @@ struct UpcomingAppearanceTests {
         #expect(times == [try at(21, 30), try at(9, 0, day: 15), try at(9, 30, day: 15)])
     }
 
+    // Otherwise, the app would plan the cards left alone as an appearance
+    // right away.
+    @Test("an appearance Lucas never touched makes the next one wait 30 minutes from when it showed")
+    func theNextAppearanceWaitsFromAnUntouchedOne() throws {
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        _ = try engine.upcomingAppearances(settings)
+
+        time.move(to: try at(10, 20))
+        let next = try engine.upcomingAppearances(settings).first
+
+        #expect(next == UpcomingAppearance(time: try at(10, 30), cards: [.review(serendipia)]))
+    }
+
+    // Ficha Dev's "Bring the next appearance now" (#147).
+    @Test("a first appearance brought forward is planned then, and once it comes untouched, it's a snooze from then")
+    func aFirstAppearanceBroughtForwardStaysThere() throws {
+        let serendipia = try meetCard("serendipia", dueAt: try at(12, 0))
+        time.move(to: try at(10, 0))
+        let broughtForward = try engine.upcomingAppearances(settings, bringingTheFirstTo: try at(10, 1)).first
+
+        time.move(to: try at(10, 10))
+        _ = try engine.upcomingAppearances(settings)
+
+        #expect(broughtForward == UpcomingAppearance(time: try at(10, 1), cards: [.review(serendipia)]))
+        #expect(
+            try engine.appearanceLog() == [
+                AppearanceLogEntry(
+                    trigger: .appearance, shownAt: try at(10, 1), closedAt: try at(10, 1), outcome: .snoozed)
+            ])
+    }
+
     @Test("each planned appearance comes once a card is due, with at most 5, along with those due within 20 minutes")
     func eachAppearanceBringsTheCardsDueWithinTheLookAhead() throws {
         let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
