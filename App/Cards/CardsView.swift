@@ -760,7 +760,7 @@ extension KeyEquivalent {
     /// takes a key only as its event spells it, and SwiftUI's own `.delete` is
     /// U+0008, so ⌘⌫ never reached Discard with it in `make render`, which
     /// makes keys as the keyboard does.
-    fileprivate static let deleteKey = KeyEquivalent("\u{7F}")
+    static let deleteKey = KeyEquivalent("\u{7F}")
 }
 
 extension View {

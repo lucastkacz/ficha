@@ -19,17 +19,21 @@ public enum DatabaseLocation: Sendable {
 /// writes each change in one transaction. The app and the CLI each open their
 /// own engine on the same database, and each hears about the other's changes.
 public struct Engine: Sendable {
-    private let database: any DatabaseWriter
-    private let databaseChanges: DatabaseChanges
+    let database: any DatabaseWriter
+    let databaseChanges: DatabaseChanges
+    /// The data folder the database is in, or nil when it's in memory.
+    let dataFolder: URL?
     let time: any TimeSource
     /// The Mac's calendar, whose days the new cards are counted by.
     let calendar: Calendar
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
-    /// that an older version of Ficha left, it saves a copy of it next to it.
-    /// A database that a newer version migrated is refused, and left as it was.
-    /// Days start at midnight by `calendar`: the Mac's, except in tests.
+    /// that an older version of Ficha left, it saves a copy before an update
+    /// in the Backups folder, where it first moves those that versions before
+    /// backups left next to the database. A database that a newer version
+    /// migrated is refused, and left as it was. Days start at midnight by
+    /// `calendar`: the Mac's, except in tests.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
@@ -48,15 +52,19 @@ public struct Engine: Sendable {
                     configuration.busyMode = .timeout(5)
                     return try DatabasePool(path: file.path(percentEncoded: false), configuration: configuration)
                 }
-                try migrate(pool, savingACopyIn: folder)
+                let backups = folderOfBackups(in: folder)
+                moveOldCopiesBeforeAnUpdate(from: folder, into: backups)
+                try migrate(pool, savingACopyIn: backups, at: time.now)
                 return pool
             }
             databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
+            dataFolder = folder
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
-            try migrate(queue, savingACopyIn: nil)
+            try migrate(queue, savingACopyIn: nil, at: time.now)
             database = queue
             databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
+            dataFolder = nil
         }
         self.time = time
         self.calendar = calendar
@@ -176,7 +184,7 @@ public struct Engine: Sendable {
 /// Runs `work` on `file` while no other process does the same, as GRDB's guide
 /// to sharing a database says: Ficha and its CLI may open the database at the
 /// same time, and both could migrate it, or copy it once it's migrated.
-private func whileNoOtherProcessOpens<Value>(
+func whileNoOtherProcessOpens<Value>(
     _ file: URL,
     _ work: () throws(EngineError) -> Value
 ) throws(EngineError) -> Value {
@@ -197,15 +205,17 @@ private func whileNoOtherProcessOpens<Value>(
 }
 
 /// Migrates the database to this version's schema. A database that a newer
-/// version migrated is refused, and one that an older version left is copied
-/// into `folder` first, if there's one.
-private func migrate(_ database: any DatabaseWriter, savingACopyIn folder: URL?) throws(EngineError) {
+/// version migrated is refused, and one that an older version left is saved
+/// first, at `time`, as a copy before an update in `backups`, the Backups
+/// folder, if there's one.
+func migrate(_ database: any DatabaseWriter, savingACopyIn backups: URL?, at time: Date) throws(EngineError) {
     if try reportingStorageErrors({ try database.read(Schema.migrator.hasBeenSuperseded) }) {
         logger.error("Refused a database that a newer version of Ficha migrated")
         throw .migratedByNewerVersion
     }
-    if let folder, let migration = try reportingStorageErrors({ try database.read(firstMigrationToApply) }) {
-        try saveCopy(of: database, in: folder, before: migration)
+    if let backups, let migration = try reportingStorageErrors({ try database.read(firstMigrationToApply) }) {
+        try saveCopy(of: database, as: .beforeUpdate, at: time, in: backups)
+        logger.notice("Saved a copy of the database before the migration \(migration, privacy: .public)")
     }
     try reportingStorageErrors { try Schema.migrator.migrate(database) }
 }
@@ -218,17 +228,6 @@ private func firstMigrationToApply(_ db: Database) throws -> String? {
         return nil
     }
     return Schema.migrator.migrations.first { !applied.contains($0) }
-}
-
-/// Saves a copy of the database as it is in its data folder, named after the
-/// migration it's about to get, so a bad update can't lose Lucas's cards.
-private func saveCopy(of database: any DatabaseWriter, in folder: URL, before migration: String) throws(EngineError) {
-    try reportingStorageErrors {
-        let copy = try DatabaseQueue(
-            path: folder.appending(path: "Ficha before \(migration).sqlite").path(percentEncoded: false))
-        try database.backup(to: copy)
-    }
-    logger.notice("Saved a copy of the database before the migration \(migration, privacy: .public)")
 }
 
 /// The captures that wait in the inbox: those not refined yet, into cards or
@@ -258,7 +257,7 @@ func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) throws -
 /// Runs work on the database. The engine's own errors pass through as they
 /// are; when a card's review log can't be followed, or SQLite fails, it logs
 /// why and throws the engine's error, whose message Lucas can read.
-private func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
+func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
     do {
         return try work()
     } catch let error as EngineError {

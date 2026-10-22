@@ -45,20 +45,44 @@ final class DatabaseFileTests {
         }
     }
 
-    @Test("before migrating a database from an older version, the engine saves a copy of it as it was, next to it")
+    @Test("before migrating a database from an older version, the engine saves a copy before an update in Backups")
     func olderDatabaseIsCopiedBeforeMigrating() throws {
         try saveFirstVersionDatabase(capturing: "serendipia")
 
         let engine = try Engine(location: .folder(folder), time: time)
 
         #expect(try engine.inbox().captures.map(\.text) == ["serendipia"])
-        let copyPath = path(of: "Ficha before v2 cards.sqlite")
-        try #require(FileManager.default.fileExists(atPath: copyPath))
-        let (captures, hasCards) = try DatabaseQueue(path: copyPath).read { db in
+        let copy = try #require(try engine.copies().first)
+        #expect(try engine.copies().map(\.kind) == [.beforeUpdate])
+        #expect(copy.savedAt == time.now)
+        let backups = try #require(engine.backupsFolder)
+        let (captures, hasCards) = try DatabaseQueue(
+            path: backups.appending(path: copy.name).path(percentEncoded: false)
+        ).read { db in
             (try String.fetchAll(db, sql: "SELECT text FROM capture"), try db.tableExists("card"))
         }
         #expect(captures == ["serendipia"])
         #expect(!hasCards)
+    }
+
+    // Before backups, the copy before a migration was saved next to the
+    // database, named after the migration.
+    @Test("the copies before an update that older versions left next to the database move into Backups")
+    func oldCopiesBeforeAnUpdateMoveIntoBackups() throws {
+        try saveFirstVersionDatabase(capturing: "serendipia")
+        let oldCopy = folder.appending(path: "Ficha before v2 cards.sqlite")
+        try FileManager.default.copyItem(at: folder.appending(path: "Ficha.sqlite"), to: oldCopy)
+        let savedAt = time.now - days(30)
+        try FileManager.default.setAttributes(
+            [.modificationDate: savedAt], ofItemAtPath: oldCopy.path(percentEncoded: false))
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(!FileManager.default.fileExists(atPath: oldCopy.path(percentEncoded: false)))
+        let moved = try #require(try engine.copies().last)
+        #expect(moved.kind == .beforeUpdate)
+        #expect(moved.savedAt == savedAt)
+        #expect(try engine.copies().count == 2)
     }
 
     // The review log's table is made again for answers from card
@@ -88,10 +112,9 @@ final class DatabaseFileTests {
     @Test("a new database, or one already up to date, isn't copied")
     func newOrUpToDateDatabaseIsNotCopied() throws {
         _ = try Engine(location: .folder(folder), time: time)
-        _ = try Engine(location: .folder(folder), time: time)
+        let engine = try Engine(location: .folder(folder), time: time)
 
-        let files = try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
-        #expect(files.filter { $0.hasSuffix(".sqlite") } == ["Ficha.sqlite"])
+        #expect(try engine.copies().isEmpty)
     }
 
     @Test("two engines on the same database, as the app and the CLI are, each see what the other writes")
@@ -129,26 +152,12 @@ final class DatabaseFileTests {
         folder.appending(path: file).path(percentEncoded: false)
     }
 
-    /// Saves a database as the first version of Ficha left it, written by hand
-    /// with that version's only migration and one capture.
+    /// Saves a database as the first version of Ficha left it, with one
+    /// capture, in the data folder.
     private func saveFirstVersionDatabase(capturing text: String) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        var firstVersion = DatabaseMigrator()
-        firstVersion.registerMigration("v1 captures") { db in
-            try db.create(table: "capture") { table in
-                table.autoIncrementedPrimaryKey("id")
-                table.column("text", .text).notNull()
-                table.column("note", .text)
-                table.column("source", .text)
-                table.column("createdAt", .datetime).notNull()
-            }
-        }
-        let database = try DatabasePool(path: path(of: "Ficha.sqlite"))
-        try firstVersion.migrate(database)
-        try database.write { db in
-            try db.execute(sql: "INSERT INTO capture (text, createdAt) VALUES (?, ?)", arguments: [text, time.now])
-        }
-        try database.close()
+        try FichaDataTests.saveFirstVersionDatabase(
+            at: folder.appending(path: "Ficha.sqlite"), capturing: text, at: time.now)
     }
 
     /// Saves a database as Ficha left it before card notifications, through
@@ -180,4 +189,26 @@ final class DatabaseFileTests {
         }
         try database.close()
     }
+}
+
+/// Saves a database at `file` as the first version of Ficha left it, written
+/// by hand with that version's only migration and one capture, captured at
+/// `time`.
+func saveFirstVersionDatabase(at file: URL, capturing text: String, at time: Date) throws {
+    var firstVersion = DatabaseMigrator()
+    firstVersion.registerMigration("v1 captures") { db in
+        try db.create(table: "capture") { table in
+            table.autoIncrementedPrimaryKey("id")
+            table.column("text", .text).notNull()
+            table.column("note", .text)
+            table.column("source", .text)
+            table.column("createdAt", .datetime).notNull()
+        }
+    }
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try firstVersion.migrate(database)
+    try database.write { db in
+        try db.execute(sql: "INSERT INTO capture (text, createdAt) VALUES (?, ?)", arguments: [text, time])
+    }
+    try database.close()
 }

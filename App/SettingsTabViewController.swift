@@ -8,6 +8,7 @@ enum SettingsTab: String {
     case appearances
     case reviewPanel
     case ladder
+    case backups
     case about
 
     /// The tab `item` shows, if it's one of these.
@@ -23,6 +24,7 @@ enum SettingsTab: String {
         case .appearances: String(localized: "Appearances", comment: "A tab of the Settings window.")
         case .reviewPanel: String(localized: "Review panel", comment: "A tab of the Settings window.")
         case .ladder: String(localized: "Ladder", comment: "A tab of the Settings window.")
+        case .backups: String(localized: "Backups", comment: "A tab of the Settings window.")
         case .about: String(localized: "About", comment: "A tab of the Settings window.")
         }
     }
@@ -34,6 +36,7 @@ enum SettingsTab: String {
         case .appearances: "clock"
         case .reviewPanel: "macwindow"
         case .ladder: "stairs"
+        case .backups: "clock.arrow.circlepath"
         case .about: "info.circle"
         }
     }
@@ -42,21 +45,33 @@ enum SettingsTab: String {
 /// The Settings window's content, as a Mac's usual settings window: its tabs
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
 /// window as tall as the selected tab. The last tab says which version of the
-/// app this is. It opens on the tab Lucas left it on last.
+/// app this is. It opens on the tab Lucas left it on last, unless it's asked
+/// to open on another.
 final class SettingsTabViewController: NSTabViewController {
     /// The tabs of every default Lucas can change in `model`, and of the
-    /// capture shortcut, `captureShortcut`, then the About tab.
-    convenience init(model: AppModel, captureShortcut: CaptureShortcutRegistration) {
+    /// capture shortcut, `captureShortcut`, then the Backups tab, which closes
+    /// the review panel with `closeReviewPanel` before a restore, and the
+    /// About tab. It opens on `tab`, or on the tab Lucas left it on last.
+    convenience init(
+        model: AppModel, captureShortcut: CaptureShortcutRegistration, closeReviewPanel: @escaping () -> Void,
+        openingOn tab: SettingsTab? = nil
+    ) {
         self.init(nibName: nil, bundle: nil)
         // Read before adding the tabs, since adding the first one selects it.
-        let lastTab = Preferences.settingsTab
+        let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
         add(.general, settings: GeneralSettings(model: model, captureShortcut: captureShortcut))
         add(.appearances, settings: AppearancesSettings(model: model))
         add(.reviewPanel, settings: ReviewPanelSettings(model: model))
         add(.ladder, settings: LadderSettings(ladder: Bindable(model).settings.ladder))
+        add(.backups, content: BackupsTab(model: model, closeReviewPanel: closeReviewPanel))
         add(.about, content: AboutTab())
-        if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == lastTab }) {
+        select(firstTab)
+    }
+
+    /// Shows `tab`.
+    func select(_ tab: SettingsTab) {
+        if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == tab }) {
             selectedTabViewItemIndex = index
         }
     }

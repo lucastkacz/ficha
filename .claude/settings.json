@@ -36,6 +36,8 @@
     ],
     "ask": [
       "Bash(make install*)",
+      "Bash(/Applications/Ficha.app/Contents/Helpers/ficha restore*)",
+      "Bash(ficha restore*)",
       "Bash(git branch *-D*)",
       "Bash(git worktree remove *--force*)",
       "Bash(git grep *-O*)",

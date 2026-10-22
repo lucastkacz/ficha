@@ -77,7 +77,7 @@ Ficha ships with a command-line tool inside the app. Claude uses it to turn your
 /Applications/Ficha.app/Contents/Helpers/ficha capture "serendipia" --source "Un ensayo de Borges"
 ```
 
-`ficha --help` lists its commands; each one prints JSON. `ficha unbury` brings back a card you buried. To type just `ficha`, add an alias to `~/.zshrc`:
+`ficha --help` lists its commands; each one prints JSON. `ficha unbury` brings back a card you buried. `ficha restore` lists the copies in Ficha's Backups folder, newest first, and `ficha restore <copy>`, with a copy's name, restores it, as the Backups tab in Settings does: only while Ficha isn't running, since it would go on with the cards it has open. To type just `ficha`, add an alias to `~/.zshrc`:
 
 ```bash
 alias ficha="/Applications/Ficha.app/Contents/Helpers/ficha"
@@ -109,7 +109,7 @@ make render ARGS="cards --key cmd+f --type serendip --out .build/render/search.p
 - What the tool can't do yet, for a ticket that needs it to extend: right-click, as on a table's headers for their menu, or double-click; and keep a menu or a popover the window opens, like a picker's, below the desktop picture, as it does sheets.
 - The window and its sheet act as the key window, with the title bar's buttons in color, but their selections and default buttons stay gray.
 - The window is in English, the app's base language: the tool leaves the String Catalog out.
-- Only the Cards window so far. Another window is one more case in `Window` and in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
+- The windows so far: `cards`, `backups`, Settings on its Backups tab, and `backups-failed`, the same once a backup failed. For the Backups tab, the sample cards go in Ficha Dev's data folder in the tool's scratch home, with a backup each of the last eight days, of which it keeps seven, a copy before an update and a copy before a restore; the tool deletes the folder as it ends, so render these one at a time. Another window is one more case in `Window`, in `model(for:)` and in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
 - The tool compiles the app's own files, through `scripts/render/Sources/Render/App`, a link to `App/`, so `make check` builds it: a change to the app that breaks it fails the check.
 
 ### The iPhone's screen

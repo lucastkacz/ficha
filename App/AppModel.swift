@@ -28,6 +28,18 @@ final class AppModel {
             Preferences.showsDueCount = showsDueCount
         }
     }
+    /// How often Ficha backs up on its own, and how many backups it keeps, as
+    /// Lucas left them in Settings, which keeps them in the app's
+    /// preferences. A change applies from the next backup on.
+    var backupSettings = Preferences.backupSettings() {
+        didSet {
+            Preferences.save(backupSettings)
+        }
+    }
+    /// The backups the app saves on its own, once they started, and Settings'
+    /// Backups tab, which lists the copies and acts on them: the menu says
+    /// when the last backup failed.
+    var backups: BackupsState
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
     private(set) var progress: ProgressCounts?
@@ -45,6 +57,7 @@ final class AppModel {
     private init(engine: Engine, debugTools: DebugTools?) {
         self.engine = engine
         self.debugTools = debugTools
+        backups = engine.openBackups()
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
         countProgress()
@@ -127,6 +140,24 @@ final class AppModel {
     /// menu moves forward.
     var now: Date {
         engine.now
+    }
+
+    /// Starts the backups the app saves on its own: one now, when it's due,
+    /// and then a check every minute, which saves one as the hour, day or week
+    /// changes, also when Ficha Dev's debug menu moves the time.
+    func startBackups() {
+        backups.backUpIfDue(backupSettings)
+        Task { [weak self] in
+            while true {
+                do {
+                    try await Task.sleep(for: .seconds(60))
+                } catch {
+                    return
+                }
+                guard let self else { return }
+                backups.backUpIfDue(backupSettings)
+            }
+        }
     }
 
     /// Counts again what the menu shows of Lucas's progress. Changes to the

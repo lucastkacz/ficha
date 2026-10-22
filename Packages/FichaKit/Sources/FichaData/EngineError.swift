@@ -57,6 +57,15 @@ public enum EngineError: Error, Equatable {
     case unreadableReviewLog(Int64)
     /// SQLite couldn't open, read or write the database. The engine logs why.
     case storage
+    /// There's no copy with this name in the Backups folder, so it can't be
+    /// restored or moved to the Trash: it was, or it was moved by hand.
+    case copyNotFound(String)
+    /// A newer version of Ficha migrated the copy with this name, so this one
+    /// refuses to restore it, as it refuses such a database.
+    case copyMigratedByNewerVersion(String)
+    /// A copy in the Backups folder couldn't be listed, named, moved or
+    /// removed. The engine logs why.
+    case backupsFolder
 }
 
 extension EngineError: LocalizedError {
@@ -130,6 +139,27 @@ extension EngineError: LocalizedError {
         case .storage:
             String(
                 localized: "Ficha couldn't read or save its database. Try again, and if it keeps happening, report it.")
+        case .copyNotFound(let name):
+            String(
+                localized: """
+                    There's no copy named “\(name)” in Ficha's Backups folder: it was moved or deleted. Check which \
+                    copies are there.
+                    """
+            )
+        case .copyMigratedByNewerVersion(let name):
+            String(
+                localized: """
+                    A newer version of Ficha saved the copy “\(name)”, and this version won't restore it, so as \
+                    not to damage your cards. Restore it with that version, or a newer one.
+                    """
+            )
+        case .backupsFolder:
+            String(
+                localized: """
+                    Ficha couldn't read or change its Backups folder. Check that the disk has room and try again, \
+                    and if it keeps happening, report it.
+                    """
+            )
         }
     }
 }

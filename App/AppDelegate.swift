@@ -77,9 +77,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Opens the Settings window: every default Lucas can change, in tabs.
     /// When it's open, it comes forward.
     func openSettings() {
+        openSettings(on: nil)
+    }
+
+    /// Opens the Settings window on its Backups tab, as "Last backup failed"
+    /// in the menu does. When it's open, it comes forward on that tab.
+    func openBackupSettings() {
+        openSettings(on: .backups)
+    }
+
+    /// Opens the Settings window on `tab`, or on the tab Lucas left it on
+    /// last. When it's open, it comes forward, on `tab` if there's one.
+    private func openSettings(on tab: SettingsTab?) {
         guard let model else { return }
+        if let tab, let tabs = settingsWindow?.contentViewController as? SettingsTabViewController {
+            tabs.select(tab)
+        }
         open(&settingsWindow) {
-            AppWindow(tabs: SettingsTabViewController(model: model, captureShortcut: captureShortcut))
+            AppWindow(
+                tabs: SettingsTabViewController(
+                    model: model, captureShortcut: captureShortcut,
+                    closeReviewPanel: { [weak self] in self?.panel?.close(.byLucas) }, openingOn: tab))
         }
     }
 
@@ -118,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.panel = panel
             self.appearances = appearances
             appearances.start()
+            model.startBackups()
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.turnOnAtFirstLaunch()
