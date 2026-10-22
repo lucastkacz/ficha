@@ -11,28 +11,17 @@ import SwiftUI
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the table wait. He selects several cards with
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
-/// can do with all of them. It reads the cards again whenever the engine says
-/// they changed, from the app or the `ficha` CLI, when Lucas changes the
-/// ladder in Settings, and every minute, since cards come due as time passes,
-/// or at once when Ficha Dev's debug menu moves the time.
+/// can do with all of them. `CardsWindowState` decides what the window lists,
+/// shows and offers, and the view draws it. It reads the cards again whenever
+/// the engine says they changed, from the app or the `ficha` CLI, when Lucas
+/// changes the ladder in Settings, and every minute, since cards come due as
+/// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
-    /// What the table lists, or why it couldn't be read.
-    @State private var listing: Result<Listing, EngineError>?
-    /// The tags the sidebar offers: those of the cards that aren't buried.
-    @State private var tags: [String] = []
-    /// The engine's time when the cards were read, which the Due column
-    /// counts from.
-    @State private var now: Date
-    /// What the sidebar chose: All cards, until Lucas picks another group or
-    /// the inbox.
-    @State private var sidebarItem = SidebarItem.cards(.all)
-    /// What Lucas looks for in what the sidebar chose, from the search field.
-    @State private var search = ""
+    /// What the sidebar chose, what Lucas looks for and selected, and so what
+    /// the table lists, the detail shows and its actions offer.
+    @State private var state: CardsWindowState
     @FocusState private var isSearchFocused: Bool
-    /// The cards Lucas selected, which can include cards the table no longer
-    /// lists: the detail and its actions take only those it lists.
-    @State private var selection: Set<CardRow.ID> = []
     /// The table's order: the one Lucas left it in with a click on a column's
     /// header, and at first the newest cards first.
     @State private var sortOrder = Preferences.cardsSortOrder
@@ -40,15 +29,9 @@ struct CardsView: View {
     /// and how wide. At first Front, Step and Due, until he adds others from
     /// the headers' menu.
     @State private var columns = Preferences.cardsColumns
-    /// The row Lucas selected in the inbox, one at a time, which the table
-    /// may no longer list, as with the cards.
-    @State private var inboxSelection: InboxRow.ID?
     /// The inbox's order: the latest added first, until Lucas clicks a
     /// column's header.
     @State private var inboxSortOrder = [InboxRowOrder(.added, order: .reverse)]
-    /// The review log of the card the detail shows, or why it couldn't be
-    /// read: read with the cards, and again when Lucas selects another card.
-    @State private var reviewLog: CardReviewLog?
     /// What Lucas is editing, as it was when he started, while the detail
     /// shows its fields. The sidebar and the table wait until he saves or
     /// cancels, so that a click elsewhere can't drop what he typed.
@@ -67,7 +50,7 @@ struct CardsView: View {
 
     init(model: AppModel) {
         self.model = model
-        _now = State(initialValue: model.now)
+        _state = State(initialValue: model.openCardsWindow())
     }
 
     var body: some View {
@@ -83,7 +66,7 @@ struct CardsView: View {
             detail
                 .navigationSplitViewColumnWidth(min: 300, ideal: 380)
         }
-        .searchable(text: $search, placement: .toolbar)
+        .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
         .background {
             // ⌘F puts Lucas in the search field, as in Mail and Finder. The
@@ -136,24 +119,12 @@ struct CardsView: View {
             deletionMessage(for: rows)
         }
         .failureAlert($failure)
-        .onChange(of: sidebarItem) {
-            reload()
-        }
-        .onChange(of: search) {
-            reload()
-        }
-        .onChange(of: selection) {
-            readReviewLog()
-        }
-        .onChange(of: inboxSelection) {
-            readReviewLog()
-        }
         .task {
             // Listening before reading, so no change falls in between.
             let changes = model.changes()
-            reload()
+            readCards()
             for await _ in changes {
-                reload()
+                readCards()
             }
         }
         .task {
@@ -163,58 +134,21 @@ struct CardsView: View {
                 } catch {
                     return
                 }
-                reload()
+                readCards()
             }
         }
         .onChange(of: model.settings.ladder) {
-            reload()
+            readCards()
         }
         .onChange(of: model.debugTools?.timeShift) {
-            reload()
+            readCards()
         }
     }
 
-    /// Reads the tags and what the sidebar chose again, as they are now, and
-    /// the review log of the card the detail shows. When the chosen tag is
-    /// gone, because its last card was buried, edited or deleted, the window
-    /// goes back to All cards.
-    private func reload() {
-        now = model.now
-        do throws(EngineError) {
-            tags = try model.tags()
-            if case .cards(.tag(let tag)) = sidebarItem, !tags.contains(tag) {
-                sidebarItem = .cards(.all)
-            }
-            switch sidebarItem {
-            case .cards(let group):
-                listing = .success(.cards(try model.cardRows(in: group, matching: search)))
-            case .inbox:
-                listing = .success(.inbox(try model.inboxRows(matching: search)))
-            }
-        } catch {
-            listing = .failure(error)
-        }
-        readReviewLog()
-    }
-
-    /// Reads the review log of the card the detail shows, while it shows one:
-    /// the only card selected, or the flagged card selected in the inbox.
-    private func readReviewLog() {
-        guard let row = singleSelectedRow else {
-            reviewLog = nil
-            return
-        }
-        reviewLog = CardReviewLog(
-            cardID: row.id, rows: Result { () throws(EngineError) in try model.reviewLogRows(of: row.id) })
-    }
-
-    /// The review log of the card in `row`, once it's read: nil while the
-    /// one read is another card's.
-    private func reviewLogRows(of row: CardRow) -> Result<[ReviewLogRow], EngineError>? {
-        guard let reviewLog, reviewLog.cardID == row.id else {
-            return nil
-        }
-        return reviewLog.rows
+    /// Reads Lucas's cards, as they are now, on the ladder he set in
+    /// Settings.
+    private func readCards() {
+        state.read(on: model.settings.ladder)
     }
 
     /// What Lucas chooses from: the cards by where they stand, then the
@@ -237,9 +171,9 @@ struct CardsView: View {
                 .badge(model.progress?.inInbox ?? 0)
                 .tag(SidebarItem.inbox)
             }
-            if !tags.isEmpty {
+            if !state.tags.isEmpty {
                 Section {
-                    ForEach(tags, id: \.self) { tag in
+                    ForEach(state.tags, id: \.self) { tag in
                         Label(tag, systemImage: "tag")
                             .tag(SidebarItem.cards(.tag(tag)))
                     }
@@ -262,23 +196,29 @@ struct CardsView: View {
     /// clear.
     private var chosenItem: Binding<SidebarItem?> {
         Binding {
-            sidebarItem
+            state.sidebarItem
         } set: {
-            sidebarItem = $0 ?? sidebarItem
+            if let item = $0 {
+                state.choose(item)
+            }
         }
     }
 
-    /// Whether Lucas is looking for something, which narrows the table.
-    private var hasSearch: Bool {
-        !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    /// The search field's text: what Lucas looks for.
+    private var searchText: Binding<String> {
+        Binding {
+            state.search
+        } set: {
+            state.search(for: $0)
+        }
     }
 
     /// What the table says when `group`, or the search in it, brings no
     /// cards.
     @ViewBuilder
     private func noCards(in group: CardGroup) -> some View {
-        if hasSearch {
-            ContentUnavailableView.search(text: search)
+        if state.hasSearch {
+            ContentUnavailableView.search(text: state.search)
         } else if group == .all {
             ContentUnavailableView(
                 group.emptyTitle, systemImage: group.symbol,
@@ -294,8 +234,8 @@ struct CardsView: View {
     /// nothing.
     @ViewBuilder
     private var emptyInbox: some View {
-        if hasSearch {
-            ContentUnavailableView.search(text: search)
+        if state.hasSearch {
+            ContentUnavailableView.search(text: state.search)
         } else {
             ContentUnavailableView(
                 String(localized: "Nothing in the inbox", comment: "In the Cards window, when the inbox is empty."),
@@ -308,7 +248,7 @@ struct CardsView: View {
 
     @ViewBuilder
     private var table: some View {
-        switch listing {
+        switch state.listing {
         case .success(.cards(let rows)):
             cardTable(rows)
         case .success(.inbox(let rows)):
@@ -329,7 +269,8 @@ struct CardsView: View {
     /// adds or removes all of them but Front.
     private func cardTable(_ rows: [CardRow]) -> some View {
         Table(
-            rows.sorted(using: sortOrder), selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns
+            rows.sorted(using: sortOrder), selection: selectedCards, sortOrder: $sortOrder,
+            columnCustomization: $columns
         ) {
             TableColumn(
                 Text("Front", comment: "A column of the Cards window: the card's front."),
@@ -354,7 +295,7 @@ struct CardsView: View {
                 Text("Due", comment: "A column of the Cards window: when the card is due."),
                 sortUsing: CardRowOrder(.due)
             ) { row in
-                Text(dueText(row, at: now))
+                Text(dueText(row, at: state.now))
             }
             .width(min: 60, ideal: 72, max: 110)
             .customizationID(CardRowOrder.Column.due.rawValue)
@@ -411,7 +352,7 @@ struct CardsView: View {
         }
         .focused($isTableFocused)
         .overlay {
-            if rows.isEmpty, case .cards(let group) = sidebarItem {
+            if rows.isEmpty, case .cards(let group) = state.sidebarItem {
                 noCards(in: group)
             }
         }
@@ -427,7 +368,7 @@ struct CardsView: View {
     /// What waits in the inbox, one row each: the captures, the expansions
     /// and the flagged cards, which Lucas selects one at a time.
     private func inboxTable(_ rows: [InboxRow]) -> some View {
-        Table(rows.sorted(using: inboxSortOrder), selection: $inboxSelection, sortOrder: $inboxSortOrder) {
+        Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
             TableColumn(
                 Text(
                     "Text",
@@ -471,41 +412,33 @@ struct CardsView: View {
         }
     }
 
-    /// The selected cards the table lists, which the detail shows and its
-    /// actions act on: those Lucas selected in a group of cards, or the
-    /// flagged card he selected in the inbox. The actions read them as they
-    /// are when Lucas acts, never as their buttons had them: SwiftUI keeps the
-    /// action a keyboard shortcut had when its button first showed, so ⌘E
-    /// would bury the cards selected back then.
-    private var selectedRows: [CardRow] {
-        switch listing {
-        case .success(.cards(let rows)):
-            return rows.filter { selection.contains($0.id) }
-        case .success(.inbox):
-            return selectedInboxRow?.flaggedCard.map { [$0] } ?? []
-        case .failure, nil:
-            return []
+    /// The cards' table's selection: the cards Lucas selected.
+    private var selectedCards: Binding<Set<CardRow.ID>> {
+        Binding {
+            state.selection
+        } set: {
+            state.select($0)
         }
     }
 
-    /// The row Lucas selected in the inbox, while the table lists it.
-    private var selectedInboxRow: InboxRow? {
-        guard case .success(.inbox(let rows)) = listing else {
-            return nil
+    /// The inbox's table's selection: the row Lucas selected, one at a time.
+    private var selectedInInbox: Binding<InboxRow.ID?> {
+        Binding {
+            state.inboxSelection
+        } set: {
+            state.selectInInbox($0)
         }
-        return rows.first { $0.id == inboxSelection }
     }
 
     @ViewBuilder
     private var detail: some View {
-        let selected = selectedRows
         switch editing {
         case .card(let card):
             CardEditor(card: card, isSearching: isSearchFocused) { content throws(EngineError) in
                 try model.edit(card.id, with: content)
                 // The detail shows the card as saved at once, without waiting
                 // for the engine to say it changed.
-                reload()
+                readCards()
             } close: {
                 stopEditing()
             }
@@ -513,30 +446,39 @@ struct CardsView: View {
             CaptureEditor(capture: capture, isSearching: isSearchFocused) { text, note, source throws(EngineError) in
                 try model.editCapture(capture.id, text: text, note: note, source: source)
                 // As a card's: the detail shows the capture as saved at once.
-                reload()
+                readCards()
             } close: {
                 stopEditing()
             }
         case nil:
-            if let row = selectedInboxRow, let capture = row.capture {
-                CaptureDetail(capture: capture, kind: row.kindName, expandedCard: row.expandedCard)
+            switch state.detail {
+            case .capture(let capture):
+                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, expandedCard: nil)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
-                        captureActions
+                        actionBar
                     }
-            } else if selected.count > 1 {
-                selectionSummary(selected)
-            } else if let row = selected.first {
-                CardDetail(row: row, now: now, reviewLog: reviewLogRows(of: row), ladder: model.settings.ladder)
+            case .expansion(let expansion):
+                CaptureDetail(
+                    capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
+                    expandedCard: expansion.card
+                )
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    actionBar
+                }
+            case .cards(let rows):
+                selectionSummary(rows)
+            case .card(let row, let reviewLog):
+                CardDetail(row: row, now: state.now, reviewLog: reviewLog, ladder: state.ladder)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
-                        actions(for: row)
+                        actionBar
                     }
-            } else if case .inbox = sidebarItem {
+            case .nothingSelectedInInbox:
                 ContentUnavailableView(
                     String(
                         localized: "Nothing selected",
                         comment: "In the Cards window's detail, when nothing in the inbox is selected."),
                     systemImage: "tray")
-            } else {
+            case .noCardSelected:
                 ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
             }
         }
@@ -566,55 +508,17 @@ struct CardsView: View {
                 "Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card or the capture."))
     }
 
-    /// What Lucas can do with the capture selected in the inbox, at the foot
-    /// of its detail, always in sight: edit it, and discard it, which asks
-    /// first. While he's in the search field, ⌘⌫ is the field's, as in any
-    /// text field: it deletes what he typed.
-    private var captureActions: some View {
+    /// What Lucas can do with the capture or the card the detail shows, at
+    /// its foot, always in sight.
+    private var actionBar: some View {
         ActionBar {
-            editButton
-            Button(
-                String(
-                    localized: "Discard…",
-                    comment: "A button of the Cards window that discards the capture, asking first."
-                )
-            ) {
-                startDiscarding()
-            }
-            .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
-            .help(Text("Discard… (⌘⌫)", comment: "The tooltip of the Cards window's button that discards the capture."))
-            Spacer()
-        }
-    }
-
-    /// What Lucas can do with the selected card, at the foot of its detail,
-    /// always in sight: edit it, flag it while it's in his reviews, bury it,
-    /// or unbury it once it's buried, and delete it, which asks first.
-    private func actions(for row: CardRow) -> some View {
-        ActionBar {
-            editButton
-            if row.isInReviews {
-                Button(
-                    String(
-                        localized: "Flag…",
-                        comment: "A button of the Cards window that flags the card, asking for a note on what to fix."
-                    )
-                ) {
-                    startFlagging()
-                }
-                .keyboardShortcut("l", modifiers: [.command, .shift])
-                .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
-            }
-            buryButton(for: [row])
-            deleteButton
+            actionButtons
             Spacer()
         }
     }
 
     /// What the detail says when Lucas selected several cards: how many, with
-    /// Bury or Unbury when it works on all of them, and Delete. No sidebar
-    /// item lists buried cards with others, so one of the first two always
-    /// does.
+    /// what he can do with all of them.
     private func selectionSummary(_ rows: [CardRow]) -> some View {
         ContentUnavailableView {
             Label(
@@ -623,9 +527,69 @@ struct CardsView: View {
                     comment: "In the Cards window's detail, when Lucas selected several cards in the table."),
                 systemImage: "rectangle.stack")
         } actions: {
-            buryButton(for: rows)
+            actionButtons
+        }
+    }
+
+    /// A button for each thing Lucas can do with what the detail shows, as
+    /// the state offers them: Edit, Flag…, Bury or Unbury, Delete… and
+    /// Discard…, in that order. Each button's action reads the state as it is
+    /// when Lucas acts, never as the button had it: SwiftUI keeps the action a
+    /// keyboard shortcut had when its button first showed, so ⌘E would bury
+    /// the cards selected back then.
+    @ViewBuilder
+    private var actionButtons: some View {
+        let actions = state.actions
+        if actions.contains(.edit) {
+            editButton
+        }
+        if actions.contains(.flag) {
+            flagButton
+        }
+        if actions.contains(.bury) {
+            buryButton
+        }
+        if actions.contains(.unbury) {
+            unburyButton
+        }
+        if actions.contains(.delete) {
             deleteButton
         }
+        if actions.contains(.discard) {
+            discardButton
+        }
+    }
+
+    /// Flag…, which asks for Lucas's note on what to fix in the selected
+    /// card.
+    private var flagButton: some View {
+        Button(
+            String(
+                localized: "Flag…",
+                comment: "A button of the Cards window that flags the card, asking for a note on what to fix."
+            )
+        ) {
+            startFlagging()
+        }
+        .keyboardShortcut("l", modifiers: [.command, .shift])
+        .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
+    }
+
+    /// Discard…, which asks whether to discard the capture selected in the
+    /// inbox: ⌘⌫, as Delete… for cards, since a card's detail and a
+    /// capture's never show together. While Lucas is in the search field, ⌘⌫
+    /// is the field's, as in any text field: it deletes what he typed.
+    private var discardButton: some View {
+        Button(
+            String(
+                localized: "Discard…",
+                comment: "A button of the Cards window that discards the capture, asking first."
+            )
+        ) {
+            startDiscarding()
+        }
+        .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
+        .help(Text("Discard… (⌘⌫)", comment: "The tooltip of the Cards window's button that discards the capture."))
     }
 
     /// Delete…, which asks whether to delete the selected cards for good:
@@ -645,56 +609,64 @@ struct CardsView: View {
         .help(Text("Delete… (⌘⌫)", comment: "The tooltip of the Cards window's button that deletes the cards."))
     }
 
-    /// Bury, when none of the cards in `rows` is buried, or Unbury, when all
-    /// of them are: ⌘E either way, since the two never show together.
-    @ViewBuilder
-    private func buryButton(for rows: [CardRow]) -> some View {
-        if rows.canBeBuried {
-            Button(
-                String(
-                    localized: "Bury",
-                    comment: "A button of the Cards window that buries the selected cards: they leave Lucas's reviews."
-                )
-            ) {
-                burySelection()
-            }
-            .keyboardShortcut("e", modifiers: .command)
-            .help(Text("Bury (⌘E)", comment: "The tooltip of the Cards window's button that buries the cards."))
-        } else if rows.canBeUnburied {
-            Button(
-                String(
-                    localized: "Unbury",
-                    comment:
-                        "A button of the Cards window that unburies the selected cards: each goes back where it was."
-                )
-            ) {
-                unburySelection()
-            }
-            .keyboardShortcut("e", modifiers: .command)
-            .help(Text("Unbury (⌘E)", comment: "The tooltip of the Cards window's button that unburies the cards."))
+    /// Bury, which takes the selected cards out of Lucas's reviews: ⌘E, as
+    /// Unbury, since the two never show together.
+    private var buryButton: some View {
+        Button(
+            String(
+                localized: "Bury",
+                comment: "A button of the Cards window that buries the selected cards: they leave Lucas's reviews."
+            )
+        ) {
+            burySelection()
         }
+        .keyboardShortcut("e", modifiers: .command)
+        .help(Text("Bury (⌘E)", comment: "The tooltip of the Cards window's button that buries the cards."))
     }
 
-    /// The selected card, while it's the only one selected.
-    private var singleSelectedRow: CardRow? {
-        let rows = selectedRows
-        return rows.count == 1 ? rows.first : nil
+    /// Unbury, which puts each selected card back where it was: ⌘E, as Bury.
+    private var unburyButton: some View {
+        Button(
+            String(
+                localized: "Unbury",
+                comment:
+                    "A button of the Cards window that unburies the selected cards: each goes back where it was."
+            )
+        ) {
+            unburySelection()
+        }
+        .keyboardShortcut("e", modifiers: .command)
+        .help(Text("Unbury (⌘E)", comment: "The tooltip of the Cards window's button that unburies the cards."))
     }
 
-    /// Turns the detail into fields to edit the capture selected in the inbox,
-    /// or the selected card, while it's the only one selected.
+    /// Turns the detail into fields to edit the capture or the card it shows,
+    /// while the state offers Edit.
     private func startEditing() {
-        if let capture = selectedInboxRow?.capture {
+        guard state.actions.contains(.edit) else { return }
+        switch state.detail {
+        case .capture(let capture):
             editing = .capture(capture)
-        } else if let row = singleSelectedRow {
+        case .expansion(let expansion):
+            editing = .capture(expansion.capture)
+        case .card(let row, _):
             editing = .card(row.card)
+        case .cards, .nothingSelectedInInbox, .noCardSelected:
+            break
         }
     }
 
-    /// Asks whether to discard the capture selected in the inbox.
+    /// Asks whether to discard the capture selected in the inbox, while the
+    /// state offers Discard.
     private func startDiscarding() {
-        guard let capture = selectedInboxRow?.capture else { return }
-        discarding = capture
+        guard state.actions.contains(.discard) else { return }
+        switch state.detail {
+        case .capture(let capture):
+            discarding = capture
+        case .expansion(let expansion):
+            discarding = expansion.capture
+        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+            break
+        }
     }
 
     /// Discards `capture`, which Lucas confirmed, or says why it couldn't.
@@ -717,18 +689,18 @@ struct CardsView: View {
         }
     }
 
-    /// Asks for a note to flag the selected card, while it's the only one
-    /// selected and it's in Lucas's reviews.
+    /// Asks for a note to flag the selected card, while the state offers
+    /// Flag.
     private func startFlagging() {
-        guard let row = singleSelectedRow, row.isInReviews else { return }
+        guard state.actions.contains(.flag), case .card(let row, _) = state.detail else { return }
         flagging = row
     }
 
-    /// Buries the selected cards, all at once, while none of them is buried,
+    /// Buries the selected cards, all at once, while the state offers Bury,
     /// or says why it couldn't.
     private func burySelection() {
-        let rows = selectedRows
-        guard !rows.isEmpty, rows.canBeBuried else { return }
+        guard state.actions.contains(.bury) else { return }
+        let rows = state.selectedRows
         do throws(EngineError) {
             try model.bury(Set(rows.map(\.id)))
         } catch {
@@ -739,11 +711,11 @@ struct CardsView: View {
         }
     }
 
-    /// Unburies the selected cards, all at once, while all of them are
-    /// buried, or says why it couldn't.
+    /// Unburies the selected cards, all at once, while the state offers
+    /// Unbury, or says why it couldn't.
     private func unburySelection() {
-        let rows = selectedRows
-        guard !rows.isEmpty, rows.canBeUnburied else { return }
+        guard state.actions.contains(.unbury) else { return }
+        let rows = state.selectedRows
         do throws(EngineError) {
             try model.unbury(Set(rows.map(\.id)))
         } catch {
@@ -754,11 +726,11 @@ struct CardsView: View {
         }
     }
 
-    /// Asks whether to delete the selected cards.
+    /// Asks whether to delete the selected cards, while the state offers
+    /// Delete.
     private func startDeleting() {
-        let rows = selectedRows
-        guard !rows.isEmpty else { return }
-        deleting = rows
+        guard state.actions.contains(.delete) else { return }
+        deleting = state.selectedRows
     }
 
     /// Deletes the cards in `rows`, which Lucas confirmed, all at once, or
@@ -803,43 +775,12 @@ struct CardsView: View {
     }
 }
 
-/// What the Cards window's sidebar offers, one at a time: a group of cards,
-/// or the inbox.
-private enum SidebarItem: Hashable {
-    case cards(CardGroup)
-    case inbox
-}
-
-/// What the Cards window's table lists: the cards of a group, or what waits
-/// in the inbox.
-private enum Listing {
-    case cards([CardRow])
-    case inbox([InboxRow])
-}
+private typealias SidebarItem = CardsWindowState.SidebarItem
 
 /// What Lucas edits in the Cards window: a card, or a capture in the inbox.
 private enum Editing {
     case card(Card)
     case capture(Capture)
-}
-
-/// A card's review log, as the Cards window's detail shows it under the
-/// card, or why it couldn't be read.
-private struct CardReviewLog {
-    let cardID: Int64
-    let rows: Result<[ReviewLogRow], EngineError>
-}
-
-extension [CardRow] {
-    /// Whether Bury works on all these cards: none of them is buried.
-    fileprivate var canBeBuried: Bool {
-        allSatisfy { $0.card.buriedAt == nil }
-    }
-
-    /// Whether Unbury works on all these cards: every one of them is buried.
-    fileprivate var canBeUnburied: Bool {
-        allSatisfy { $0.card.buriedAt != nil }
-    }
 }
 
 extension EngineError {
@@ -1169,12 +1110,19 @@ nonisolated private struct InboxRowOrder: ColumnOrder {
 }
 
 extension InboxRow {
-    /// What kind of row it is, as the inbox's Kind column says it. Each kind
-    /// has a key of its own, since "Capture" is also the capture window's
-    /// title, and "Flagged" the sidebar's group, which a translation may word
-    /// apart.
+    /// What kind of row it is, as the inbox's Kind column says it.
     nonisolated fileprivate var kindName: String {
-        switch item {
+        item.kindName
+    }
+}
+
+extension InboxRow.Item {
+    /// What kind it is, as the inbox's Kind column and the capture's detail
+    /// say it. Each kind has a key of its own, since "Capture" is also the
+    /// capture window's title, and "Flagged" the sidebar's group, which a
+    /// translation may word apart.
+    nonisolated fileprivate var kindName: String {
+        switch self {
         case .capture:
             String(
                 localized: "inbox-kind.capture", defaultValue: "Capture",
@@ -1188,14 +1136,6 @@ extension InboxRow {
                 localized: "inbox-kind.flagged", defaultValue: "Flagged",
                 comment: "In the Cards window's inbox, the kind of a row: a flagged card.")
         }
-    }
-
-    /// The card it expands, when it's an expansion.
-    fileprivate var expandedCard: Card? {
-        guard case .expansion(let expansion) = item else {
-            return nil
-        }
-        return expansion.card
     }
 }
 
