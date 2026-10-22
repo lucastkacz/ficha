@@ -7,7 +7,11 @@ import Foundation
 /// do with it. It reads his cards whenever the window asks: once the window
 /// listens for the reasons to read them again, and then for each of them, the
 /// engine's changes, the passing of time, a new ladder in Settings, and Ficha
-/// Dev moving the time.
+/// Dev moving the time. What Lucas does in the window goes through it too,
+/// on what he selected as he acts: he edits the card or the capture the
+/// detail shows, the window asks before it discards, deletes or flags, it
+/// buries and unburies at once, and it records what couldn't be saved, for
+/// the window to say.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, or the
     /// inbox.
@@ -60,6 +64,50 @@ public struct CardsWindowState: Sendable {
         case discard
     }
 
+    /// What Lucas edits, in fields that take the detail's place, as it was
+    /// when he started: a card, or a capture in the inbox.
+    public enum Editing: Sendable, Equatable {
+        case card(Card)
+        case capture(Capture)
+    }
+
+    /// What the window asks before it acts, until Lucas confirms or cancels.
+    public enum Question: Sendable, Equatable {
+        /// Whether to discard this capture in the inbox.
+        case discard(Capture)
+        /// Whether to delete these cards for good.
+        case delete([CardRow])
+        /// What needs fixing in this card, to flag it with that note.
+        case flag(CardRow)
+    }
+
+    /// What Lucas did in the window that couldn't be saved, and why, which
+    /// the window says until he closes it.
+    public struct Failure: Sendable, Equatable {
+        /// What he did.
+        public let action: FailedAction
+        /// Why the engine couldn't do it.
+        public let error: EngineError
+    }
+
+    /// What Lucas did that couldn't be saved, on how many cards.
+    public enum FailedAction: Sendable, Equatable {
+        /// He saved the card he edited.
+        case saveCard
+        /// He saved the capture he edited.
+        case saveCapture
+        /// He discarded a capture.
+        case discard
+        /// He flagged a card.
+        case flag
+        /// He buried this many cards.
+        case bury(cardCount: Int)
+        /// He unburied this many cards.
+        case unbury(cardCount: Int)
+        /// He deleted this many cards.
+        case delete(cardCount: Int)
+    }
+
     /// What the sidebar chose: All cards, until Lucas picks another group or
     /// the inbox.
     public private(set) var sidebarItem = SidebarItem.cards(.all)
@@ -85,6 +133,12 @@ public struct CardsWindowState: Sendable {
     /// The ladder Lucas set in Settings, which the cards stand on, and whose
     /// steps a card's review log spans.
     public private(set) var ladder: Ladder
+    /// What Lucas edits, until he saves or cancels.
+    public private(set) var editing: Editing?
+    /// What the window asks before it acts, while it asks.
+    public private(set) var question: Question?
+    /// What Lucas did that couldn't be saved, while the window says so.
+    public private(set) var failure: Failure?
     private let engine: Engine
 
     init(engine: Engine, ladder: Ladder) {
@@ -213,6 +267,162 @@ public struct CardsWindowState: Sendable {
         guard id != inboxSelection else { return }
         inboxSelection = id
         readReviewLog()
+    }
+
+    /// Starts editing the card or the capture the detail shows, while Edit is
+    /// offered.
+    public mutating func startEditing() {
+        guard actions.contains(.edit) else { return }
+        switch detail {
+        case .capture(let capture):
+            editing = .capture(capture)
+        case .expansion(let expansion):
+            editing = .capture(expansion.capture)
+        case .card(let row, _):
+            editing = .card(row.card)
+        case .cards, .nothingSelectedInInbox, .noCardSelected:
+            break
+        }
+    }
+
+    /// Saves the card Lucas edits with `content`, and ends the edit, or
+    /// records why it couldn't and goes on with it. The card keeps its step
+    /// and its review log, and a flagged one is fixed, back in his reviews
+    /// unless it's buried. The detail shows it as saved at once, without
+    /// waiting for the engine to say it changed.
+    public mutating func saveCard(_ content: CardContent) {
+        guard case .card(let card) = editing else { return }
+        do throws(EngineError) {
+            try engine.edit(card.id, with: content)
+        } catch {
+            failure = Failure(action: .saveCard, error: error)
+            return
+        }
+        editing = nil
+        read(on: ladder)
+    }
+
+    /// Saves the capture Lucas edits with its text, note and source, as its
+    /// fields hold them, and ends the edit, or records why it couldn't and
+    /// goes on with it. An expansion stays attached to its card. As with a
+    /// card, the detail shows it as saved at once.
+    public mutating func saveCapture(text: String, note: String, source: String) {
+        guard case .capture(let capture) = editing else { return }
+        do throws(EngineError) {
+            try engine.editCapture(capture.id, text: text, note: note, source: source)
+        } catch {
+            failure = Failure(action: .saveCapture, error: error)
+            return
+        }
+        editing = nil
+        read(on: ladder)
+    }
+
+    /// Ends the edit without saving it.
+    public mutating func cancelEditing() {
+        editing = nil
+    }
+
+    /// Asks what needs fixing in the card the detail shows, to flag it, while
+    /// Flag is offered.
+    public mutating func askToFlag() {
+        guard actions.contains(.flag), case .card(let row, _) = detail else { return }
+        question = .flag(row)
+    }
+
+    /// Flags the card in `row`, which the window asked about, with Lucas's
+    /// note on what to fix: it leaves his reviews and waits in the inbox. When
+    /// it can't, it records why and goes on asking, so the note he wrote
+    /// stays. The sheet that asks hands `row` back, as Delete's dialog hands
+    /// its cards.
+    public mutating func flag(_ row: CardRow, note: FlagNote) {
+        do throws(EngineError) {
+            try engine.flag(row.id, note: note)
+        } catch {
+            failure = Failure(action: .flag, error: error)
+            return
+        }
+        question = nil
+    }
+
+    /// Buries the selected cards the table lists, all at once, while Bury is
+    /// offered, or records why it couldn't.
+    public mutating func bury() {
+        guard actions.contains(.bury) else { return }
+        let rows = selectedRows
+        do throws(EngineError) {
+            try engine.bury(Set(rows.map(\.id)))
+        } catch {
+            failure = Failure(action: .bury(cardCount: rows.count), error: error)
+        }
+    }
+
+    /// Unburies the selected cards the table lists, all at once, while
+    /// Unbury is offered, or records why it couldn't.
+    public mutating func unbury() {
+        guard actions.contains(.unbury) else { return }
+        let rows = selectedRows
+        do throws(EngineError) {
+            try engine.unbury(Set(rows.map(\.id)))
+        } catch {
+            failure = Failure(action: .unbury(cardCount: rows.count), error: error)
+        }
+    }
+
+    /// Asks whether to delete the selected cards the table lists, while Delete
+    /// is offered.
+    public mutating func askToDelete() {
+        guard actions.contains(.delete) else { return }
+        question = .delete(selectedRows)
+    }
+
+    /// Deletes the cards in `rows` for good, which the window asked about and
+    /// Lucas confirmed, all at once, or records why it couldn't. The dialog
+    /// that asked hands `rows` back, since SwiftUI may close it, which drops
+    /// the question, before its button acts.
+    public mutating func delete(_ rows: [CardRow]) {
+        question = nil
+        do throws(EngineError) {
+            try engine.delete(Set(rows.map(\.id)))
+        } catch {
+            failure = Failure(action: .delete(cardCount: rows.count), error: error)
+        }
+    }
+
+    /// Asks whether to discard the capture or the expansion the detail shows,
+    /// while Discard is offered.
+    public mutating func askToDiscard() {
+        guard actions.contains(.discard) else { return }
+        switch detail {
+        case .capture(let capture):
+            question = .discard(capture)
+        case .expansion(let expansion):
+            question = .discard(expansion.capture)
+        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+            break
+        }
+    }
+
+    /// Discards `capture`, which the window asked about and Lucas confirmed,
+    /// so it leaves the inbox without becoming cards, or records why it
+    /// couldn't. The dialog hands `capture` back, as Delete's hands its cards.
+    public mutating func discard(_ capture: Capture) {
+        question = nil
+        do throws(EngineError) {
+            try engine.discard(capture.id)
+        } catch {
+            failure = Failure(action: .discard, error: error)
+        }
+    }
+
+    /// Drops what the window asks, which Lucas cancelled.
+    public mutating func cancelQuestion() {
+        question = nil
+    }
+
+    /// Clears what failed, once the window said so and Lucas closed it.
+    public mutating func dismissFailure() {
+        failure = nil
     }
 
     /// Reads the tags and what the sidebar chose, as they are now, on

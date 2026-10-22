@@ -110,54 +110,9 @@ final class AppModel {
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder
-    /// he set in Settings.
+    /// he set in Settings: what he does in it goes through the state.
     func openCardsWindow() -> CardsWindowState {
         engine.openCardsWindow(on: settings.ladder)
-    }
-
-    /// Edits a card from the Cards window: it gets `content`, and keeps its
-    /// step and its review log. A flagged card is fixed, back in Lucas's
-    /// reviews unless it's buried.
-    func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) {
-        try engine.edit(cardID, with: content)
-    }
-
-    /// Edits a capture in the inbox from the Cards window, as its fields hold
-    /// it: its text, note and source. An expansion stays attached to its card.
-    func editCapture(_ captureID: Int64, text: String, note: String, source: String) throws(EngineError) {
-        try engine.editCapture(captureID, text: text, note: note, source: source)
-    }
-
-    /// Discards a capture in the inbox from the Cards window: it leaves the
-    /// inbox without becoming cards.
-    func discard(_ captureID: Int64) throws(EngineError) {
-        try engine.discard(captureID)
-    }
-
-    /// Flags a card in Lucas's reviews from the Cards window, with his note
-    /// on what to fix: it leaves his reviews and waits in the inbox.
-    func flag(_ cardID: Int64, note: FlagNote) throws(EngineError) {
-        try engine.flag(cardID, note: note)
-    }
-
-    /// Buries the cards Lucas selected in the Cards window, all at once, or
-    /// none of them when one is already buried.
-    func bury(_ cardIDs: Set<Int64>) throws(EngineError) {
-        try engine.bury(cardIDs)
-    }
-
-    /// Unburies the cards Lucas selected in the Cards window, all at once, or
-    /// none of them when one isn't buried: each goes back where it was.
-    func unbury(_ cardIDs: Set<Int64>) throws(EngineError) {
-        try engine.unbury(cardIDs)
-    }
-
-    /// Deletes the cards Lucas selected in the Cards window for good, with
-    /// their review logs, all at once, or none of them when one no longer
-    /// exists. An expansion attached to one of them stays in the inbox as a
-    /// plain capture.
-    func delete(_ cardIDs: Set<Int64>) throws(EngineError) {
-        try engine.delete(cardIDs)
     }
 
     /// Every change to Lucas's cards from now on, by the app or by the
