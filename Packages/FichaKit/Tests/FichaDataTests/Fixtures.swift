@@ -70,6 +70,13 @@ extension Engine {
         time.move(to: try #require(try standing(of: card.id, on: ReviewSettings.defaults.ladder).due))
         try review(card, rating)
     }
+
+    /// Opens the review panel with `cards` on a clock that never moves, for a
+    /// test that doesn't time Lucas: it answers with a response time of its
+    /// own.
+    func openPanel(_ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings) -> ReviewPanelState {
+        openPanel(trigger, with: cards, settings: settings, clock: ManualClock())
+    }
 }
 
 extension ManualTimeSource {
