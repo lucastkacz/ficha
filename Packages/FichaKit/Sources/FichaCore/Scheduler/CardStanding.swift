@@ -1,72 +1,68 @@
 import Foundation
 
-/// Where a card stands in Lucas's reviews: new until its first view, and on a
-/// step of the ladder from then on.
+/// Where a card stands: in Lucas's reviews, waiting in the inbox to be fixed,
+/// or buried. Out of his reviews, it keeps its `LadderStanding`, so it comes
+/// back on its step when it's fixed or unburied.
 public enum CardStanding: Sendable, Equatable {
-    /// It hasn't had its first view yet.
-    case new
-    /// It's on this step of the ladder, counted from 0, the first step, and
-    /// it's due once `due` comes.
-    case onLadder(step: Int, due: Date)
+    /// In Lucas's reviews: new, or on a ladder step until it's due.
+    case inReviews
+    /// Waiting in the inbox to be fixed, as Lucas's flag says.
+    case inInbox(Flag)
+    /// Buried since `at`: out of Lucas's reviews for good, and out of the
+    /// inbox. With the flag it had, if any, since unburying it brings it back
+    /// to the inbox.
+    case buried(at: Date, flag: Flag?)
 }
 
 extension CardStanding {
-    /// When the card is due, or nil while it's new.
-    public var due: Date? {
-        guard case .onLadder(_, let due) = self else {
+    /// Where a card with this flag and burial date stands. A burial wins over
+    /// a flag: a flagged card Lucas buries leaves the inbox.
+    public init(flag: Flag?, buriedAt: Date?) {
+        if let buriedAt {
+            self = .buried(at: buriedAt, flag: flag)
+        } else if let flag {
+            self = .inInbox(flag)
+        } else {
+            self = .inReviews
+        }
+    }
+}
+
+// What a card's place on the ladder means depends on where it stands: out of
+// Lucas's reviews, it keeps its step, but it won't show up.
+extension CardStanding {
+    /// When the card is due, standing on the ladder as `ladderStanding` says:
+    /// nil unless it's in Lucas's reviews and on the ladder.
+    public func due(given ladderStanding: LadderStanding) -> Date? {
+        guard case .inReviews = self else {
             return nil
         }
-        return due
+        return ladderStanding.due
     }
 
-    /// Whether the card is due at `time`: on the ladder, with its wait over.
-    public func isDue(at time: Date) -> Bool {
-        guard let due else {
+    /// Whether the card is due at `time`, standing on the ladder as
+    /// `ladderStanding` says: in Lucas's reviews, with its wait over.
+    public func isDue(at time: Date, given ladderStanding: LadderStanding) -> Bool {
+        guard case .inReviews = self else {
             return false
         }
-        return due <= time
+        return ladderStanding.isDue(at: time)
     }
 
-    /// Checks that Lucas can answer the card with `kind` at `time`: a first
-    /// view only while it's new, and a review only once it's due, or due
-    /// within `lookAhead`, as when an appearance brings it along. That way a
-    /// review ahead never counts as one on time (ADR 0002).
-    public func check(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration)
-        throws(RefusedAnswer)
-    {
-        switch (kind, self) {
-        case (.firstView, .new):
-            return
-        case (.firstView, .onLadder):
-            throw .notNew
-        case (.review, .new):
-            throw .stillNew
-        case (.review, .onLadder):
-            guard isDue(at: time.adding(lookAhead)) else {
-                throw .notDue
-            }
-        }
-    }
-}
-
-extension CardStanding {
-    /// Whether answering the card with `kind` at `time` is a review ahead: a
-    /// review of a card on the ladder that isn't due yet, not even within
-    /// `lookAhead`.
-    public func isReviewAhead(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration) -> Bool {
-        guard case .review = kind, case .onLadder = self else {
+    /// Whether the card is new in Lucas's reviews, as `ladderStanding` says.
+    public func isNew(given ladderStanding: LadderStanding) -> Bool {
+        guard case .inReviews = self else {
             return false
         }
-        return !isDue(at: time.adding(lookAhead))
+        return ladderStanding == .new
     }
-}
 
-/// Why an answer can't go into a card's review log.
-public enum RefusedAnswer: Error, Equatable {
-    /// A first view, for a card that already had one.
-    case notNew
-    /// A review, for a card that hasn't had its first view yet.
-    case stillNew
-    /// A review, for a card that isn't due yet.
-    case notDue
+    /// Whether the card is learned in Lucas's reviews, standing on `ladder` as
+    /// `ladderStanding` says: on a step that waits 30 days or more.
+    public func isLearned(given ladderStanding: LadderStanding, on ladder: Ladder) -> Bool {
+        guard case .inReviews = self else {
+            return false
+        }
+        return ladder.isLearned(ladderStanding)
+    }
 }

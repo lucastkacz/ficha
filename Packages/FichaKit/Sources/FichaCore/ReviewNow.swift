@@ -33,7 +33,7 @@ extension ReviewSettings {
     /// new card he approved, if there's room (ADR 0003) and he hasn't met
     /// `newCardsPerDay` today, by `calendar`'s day.
     func pickCards(
-        after standings: [(cardID: Int64, standing: CardStanding)],
+        after standings: [(cardID: Int64, standing: LadderStanding)],
         log: [ReviewLogEntry],
         dueBy horizon: Date,
         now: Date,
@@ -86,7 +86,7 @@ private struct SortedStandings {
 
     /// The cards that stand as `standings` say, by id in the order Lucas
     /// approved them, sorted by whether they're due by `horizon`.
-    init(_ standings: [(cardID: Int64, standing: CardStanding)], dueBy horizon: Date) {
+    init(_ standings: [(cardID: Int64, standing: LadderStanding)], dueBy horizon: Date) {
         var due: [(id: Int64, step: Int, due: Date)] = []
         var notDue: [(id: Int64, due: Date)] = []
         var new: [Int64] = []

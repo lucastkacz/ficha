@@ -111,6 +111,10 @@ _Avoid_: mark, report
 Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it was.
 _Avoid_: archive, suspend
 
+**Standing**:
+Where a card stands: in Lucas's reviews, new or on a ladder step until it's due; waiting in the inbox to be fixed; or buried. A flagged or buried card keeps its step, and comes back on it when it's fixed or unburied.
+_Avoid_: status, state
+
 ### Managing cards
 
 **Cards window**:

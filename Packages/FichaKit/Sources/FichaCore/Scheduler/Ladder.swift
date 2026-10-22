@@ -28,14 +28,15 @@ public struct Ladder: Sendable, Equatable {
         self.waits = waits
     }
 
-    /// Where a card stands after the entries of its review log, in the order
-    /// they happened. Without entries it's new. Its first view puts it on the
-    /// first step; then good moves it up one step, hard keeps it on its step
-    /// and again sends it back to the first. The last step repeats for good.
-    /// After each entry, the card waits its step's wait from when Lucas
-    /// answered. A review ahead only counts when it's an again: hard and good
-    /// leave the card's step and due time as they were (ADR 0002).
-    public func standing(after entries: [ReviewLogEntry]) throws(UnexpectedReviewLog) -> CardStanding {
+    /// Where a card stands on the ladder after the entries of its review log,
+    /// in the order they happened. Without entries it's new. Its first view
+    /// puts it on the first step; then good moves it up one step, hard keeps
+    /// it on its step and again sends it back to the first. The last step
+    /// repeats for good. After each entry, the card waits its step's wait from
+    /// when Lucas answered. A review ahead only counts when it's an again:
+    /// hard and good leave the card's step and due time as they were
+    /// (ADR 0002).
+    public func standing(after entries: [ReviewLogEntry]) throws(UnexpectedReviewLog) -> LadderStanding {
         guard let first = entries.first else {
             return .new
         }
@@ -72,7 +73,7 @@ public struct Ladder: Sendable, Equatable {
     /// Where each card stands, by id in the order given, after the review
     /// log's entries, in the order they were written.
     func standings(of cardIDs: [Int64], after log: [ReviewLogEntry]) throws(UnexpectedReviewLog)
-        -> [(cardID: Int64, standing: CardStanding)]
+        -> [(cardID: Int64, standing: LadderStanding)]
     {
         let entries = Dictionary(grouping: log, by: \.cardID)
         return try cardIDs.map { id throws(UnexpectedReviewLog) in (id, try standing(after: entries[id] ?? [])) }
@@ -81,7 +82,7 @@ public struct Ladder: Sendable, Equatable {
     /// Whether a card that stands on this ladder is learned: on a step that
     /// waits 30 days or more. The menu counts these cards, and the Cards
     /// window lists them.
-    public func isLearned(_ standing: CardStanding) -> Bool {
+    public func isLearned(_ standing: LadderStanding) -> Bool {
         guard case .onLadder(let step, _) = standing else {
             return false
         }

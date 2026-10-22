@@ -6,9 +6,9 @@ internal import GRDB
 /// ladder, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
-    /// Where it stands: new, or on a step until it's due, worked out from its
-    /// review log.
-    public let standing: CardStanding
+    /// Where it stands on the ladder: new, or on a step until it's due,
+    /// worked out from its review log.
+    public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
     /// When Lucas last saw it: its review log's latest entry, its first view
@@ -41,7 +41,7 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// Whether the card is in Lucas's reviews, neither flagged nor buried, so
     /// he can flag it, as in the review panel.
     public var isInReviews: Bool {
-        card.isInReviews
+        card.standing == .inReviews
     }
 }
 
@@ -242,10 +242,10 @@ extension CardGroup {
     fileprivate func holds(_ row: CardRow, at now: Date, on ladder: Ladder) -> Bool {
         switch self {
         case .all: row.card.buriedAt == nil
-        case .new: row.card.isInReviews && row.standing == .new
-        case .due: row.card.isInReviews && row.standing.isDue(at: now)
-        case .learned: row.card.isInReviews && ladder.isLearned(row.standing)
-        case .flagged: row.card.isInInbox
+        case .new: row.card.standing.isNew(given: row.standing)
+        case .due: row.card.standing.isDue(at: now, given: row.standing)
+        case .learned: row.card.standing.isLearned(given: row.standing, on: ladder)
+        case .flagged: if case .inInbox = row.card.standing { true } else { false }
         case .buried: row.card.buriedAt != nil
         case .tag(let tag): row.card.tags.contains(tag) && row.card.buriedAt == nil
         case .type(let type): row.card.type == type && row.card.buriedAt == nil

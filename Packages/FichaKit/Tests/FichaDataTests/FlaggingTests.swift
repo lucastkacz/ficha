@@ -98,6 +98,24 @@ struct FlaggingTests {
         #expect(try engine.reviewLog().map(\.kind) == [.firstView, .firstView])
     }
 
+    // A burial wins over a flag: the card is out of the inbox too.
+    @Test("a card that's both flagged and buried is refused as buried")
+    func aFlaggedBuriedCardIsRefusedAsBuried() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.meet(serendipia)
+        time.advance(by: hours(1))
+        try engine.flag(serendipia.id, note: note("Falta un ejemplo"))
+        try engine.bury(serendipia.id)
+
+        #expect(throws: EngineError.cardBuried(serendipia.id)) {
+            try engine.review(serendipia, .good)
+        }
+        #expect(throws: EngineError.cardBuried(serendipia.id)) {
+            try engine.flag(serendipia.id, note: note("Otra nota"))
+        }
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+    }
+
     @Test("fixing a flagged card changes its content and brings it back to its step in Lucas's reviews")
     func fixingBringsTheCardBackToItsStep() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it

@@ -16,23 +16,17 @@ public struct Card: Sendable, Equatable, Encodable {
     public let createdAt: Date
     /// The capture it was refined from.
     public let captureID: Int64
-    /// Lucas's flag, while the card waits to be fixed: out of his reviews,
-    /// and in the inbox unless it's buried too.
+    /// Lucas's flag, while the card waits to be fixed, buried or not. Where
+    /// the card stands is read from `standing`, never from this.
     public let flag: Flag?
-    /// When Lucas buried it, while it's buried: out of his reviews for good.
+    /// When Lucas buried it, while it's buried. Where the card stands is read
+    /// from `standing`, never from this.
     public let buriedAt: Date?
-}
 
-/// Lucas's flag on a card: his note on what to fix, and when he wrote it.
-public struct Flag: Sendable, Equatable, Encodable {
-    /// What to fix, in his words.
-    public let note: String
-    /// When he flagged the card.
-    public let flaggedAt: Date
-
-    public init(note: String, flaggedAt: Date) {
-        self.note = note
-        self.flaggedAt = flaggedAt
+    /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
+    /// fixed, or buried.
+    public var standing: CardStanding {
+        CardStanding(flag: flag, buriedAt: buriedAt)
     }
 }
 
@@ -106,17 +100,16 @@ func replaceContent(
     )
 }
 
-/// The cards that wait in the inbox to be fixed: flagged, and not buried.
-var flaggedCardsInInbox: QueryInterfaceRequest<Row> {
-    Table("card").filter(Column("flaggedAt") != nil && Column("buriedAt") == nil)
-}
-
-extension Card {
-    /// Whether the card waits in the inbox to be fixed, as
-    /// `flaggedCardsInInbox` has it: flagged, and not buried.
-    var isInInbox: Bool {
-        flag != nil && buriedAt == nil
+/// The flagged cards that wait in the inbox to be fixed, as their standing
+/// says, the first flagged first, and then in the order Lucas approved them.
+func flaggedCardsWaiting(in db: Database) throws -> [Card] {
+    let flagged: [(card: Card, flag: Flag)] = try allCards(in: db).compactMap { card in
+        guard case .inInbox(let flag) = card.standing else {
+            return nil
+        }
+        return (card, flag)
     }
+    return flagged.sorted { ($0.flag.flaggedAt, $0.card.id) < ($1.flag.flaggedAt, $1.card.id) }.map(\.card)
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which
