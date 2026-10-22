@@ -75,8 +75,9 @@ extension Engine {
     /// Buries the card with this id, as buried at `buriedAt`, and returns it,
     /// or throws when it's already buried or doesn't exist.
     private func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
-        if case .buried = try existingCard(cardID, in: db).standing {
-            throw EngineError.cardBuried(cardID)
+        switch try existingCard(cardID, in: db).standing {
+        case .inReviews, .inInbox: break
+        case .buried: throw EngineError.cardBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
     }
@@ -84,8 +85,9 @@ extension Engine {
     /// Unburies the card with this id, and returns it, or throws when it isn't
     /// buried or doesn't exist.
     private func unbury(_ cardID: Int64, in db: Database) throws -> Card {
-        guard case .buried = try existingCard(cardID, in: db).standing else {
-            throw EngineError.cardNotBuried(cardID)
+        switch try existingCard(cardID, in: db).standing {
+        case .buried: break
+        case .inReviews, .inInbox: throw EngineError.cardNotBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
     }
