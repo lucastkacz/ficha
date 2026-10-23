@@ -1,15 +1,19 @@
+import CryptoKit
 import Foundation
 import GRDB
 import ZIPFoundation
+import libzstd
 
 // Small Anki packages a test describes, written as Anki writes them, so that
 // no binary file is checked in. The shapes come from Anki's source, as the
-// spec's research cites it: the tables of `rslib/src/storage/schema11.sql`,
-// and the members of `rslib/src/import_export/package/`. A package holds
-// only what a reader needs, which isn't enough for Anki itself to open it.
+// spec's research cites it: the tables of `rslib/src/storage/schema11.sql`
+// and of the upgrades to schema 18 (`rslib/src/storage/upgrades/`), the
+// protobuf messages of `proto/anki/`, and the members of
+// `rslib/src/import_export/package/`. A package holds only what a reader
+// needs, which isn't enough for Anki itself to open it.
 
 /// An Anki package a test describes: its notes, each with its note type, its
-/// deck and its tags, and which Anki wrote it.
+/// deck and its tags, its media files, and which Anki wrote it.
 struct AnkiPackage {
     /// Which Anki wrote a package, which sets its members.
     enum Format {
@@ -22,63 +26,118 @@ struct AnkiPackage {
         /// Current Anki with "Support older Anki versions" ticked: `meta`
         /// at version 2, `collection.anki21`, and the placeholder.
         case supportOlderAnkiVersions
-        /// Current Anki by default: `meta` at version 3, a zstd-compressed
-        /// `collection.anki21b`, and the placeholder. Its collection here is
-        /// a zstd frame's magic number and nothing else.
+        /// Current Anki by default: `meta` at version 3, and
+        /// `collection.anki21b`, a database at schema 18, beside the
+        /// placeholder. The collection, the media list, in protobuf, and each
+        /// media file are compressed with zstd.
         case current
     }
 
     var format = Format.supportOlderAnkiVersions
     var notes: [AnkiNote]
+    /// Its media files, by the names the notes' fields refer to them by.
+    var media: [String: Data] = [:]
 
-    /// Writes the package to `file`, as a zip, as Anki does.
+    /// Writes the package to `file`, as a zip, as Anki does: `meta`, the
+    /// collection, the placeholder, each media file, and the media list.
     func write(to file: URL) throws {
         let collection = try collectionData()
         let placeholder = try AnkiPackage(format: .anki20, notes: [.placeholder]).collectionData()
-        let media = Data("{}".utf8)
+        let media = try format == .current ? currentMedia : legacyMedia
         let members: [(String, Data)] =
             switch format {
             case .anki20:
-                [("collection.anki2", collection), ("media", media)]
+                [("collection.anki2", collection)] + media
             case .anki21:
-                [("collection.anki21", collection), ("collection.anki2", placeholder), ("media", media)]
+                [("collection.anki21", collection), ("collection.anki2", placeholder)] + media
             case .supportOlderAnkiVersions:
-                [
-                    ("meta", Data([0x08, 0x02])), ("collection.anki21", collection),
-                    ("collection.anki2", placeholder), ("media", media),
-                ]
+                [("meta", Data([0x08, 0x02])), ("collection.anki21", collection), ("collection.anki2", placeholder)]
+                    + media
             case .current:
                 [
-                    ("meta", Data([0x08, 0x03])), ("collection.anki21b", Data([0x28, 0xB5, 0x2F, 0xFD])),
-                    ("collection.anki2", placeholder), ("media", Data([0x28, 0xB5, 0x2F, 0xFD])),
-                ]
+                    ("meta", Data([0x08, 0x03])), ("collection.anki21b", try zstdStreamed(collection)),
+                    ("collection.anki2", placeholder),
+                ] + media
             }
         try? FileManager.default.removeItem(at: file)
         let archive = try Archive(url: file, accessMode: .create, pathEncoding: nil)
         for (path, data) in members {
             try archive.addEntry(
                 with: path, type: .file, uncompressedSize: Int64(data.count),
-                compressionMethod: path == "meta" ? .none : .deflate
+                compressionMethod: path == "meta" || format == .current ? .none : .deflate
             ) { position, size in
                 data.subdata(in: Int(position)..<Int(position) + size)
             }
         }
     }
 
-    /// The package's collection, a SQLite database at schema 11, as the
-    /// bytes of its file.
+    /// The media files' names, in the order their members are numbered.
+    private var mediaNames: [String] {
+        media.keys.sorted()
+    }
+
+    /// The media members of a package older than current Anki's default:
+    /// each file as it is, named by its number, and the list, JSON that maps
+    /// each number to the file's name.
+    private var legacyMedia: [(String, Data)] {
+        get throws {
+            let files = mediaNames.enumerated().map { ("\($0)", media[$1] ?? Data()) }
+            let list = Dictionary(uniqueKeysWithValues: mediaNames.enumerated().map { ("\($0)", $1) })
+            return files + [("media", Data(try json(list).utf8))]
+        }
+    }
+
+    /// The media members of a package current Anki exports by default: each
+    /// file compressed, named by its number, and the list, a protobuf
+    /// `MediaEntries` whose entries are in the numbers' order, compressed.
+    private var currentMedia: [(String, Data)] {
+        get throws {
+            let files = try mediaNames.enumerated().map { ("\($0)", try zstdStreamed(media[$1] ?? Data())) }
+            // MediaEntries { repeated MediaEntry entries = 1; }, and
+            // MediaEntry { string name = 1; uint32 size = 2; bytes sha1 = 3; }
+            // (`proto/anki/import_export.proto`).
+            let list = mediaNames.map { name in
+                let data = media[name] ?? Data()
+                let entry =
+                    protobufField(1, Data(name.utf8)) + protobufField(2, varint: UInt64(data.count))
+                    + protobufField(3, Data(Insecure.SHA1.hash(data: data)))
+                return protobufField(1, entry)
+            }
+            return files + [("media", try zstdStreamed(list.reduce(Data(), +)))]
+        }
+    }
+
+    /// The package's collection, a SQLite database at schema 18 for current
+    /// Anki's default format and at schema 11 otherwise, as the bytes of its
+    /// file.
     private func collectionData() throws -> Data {
         let folder = URL.temporaryDirectory.appending(
             path: "FichaAnkiPackage-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
         let file = folder.appending(path: "collection.anki2")
-        let queue = try DatabaseQueue(path: file.path(percentEncoded: false))
+        var configuration = Configuration()
+        let isSchema18 = format == .current
+        configuration.prepareDatabase { db in
+            // Schema 18's names sort with a collation Anki registers on its
+            // connections; and Anki leaves the file in WAL mode.
+            db.add(collation: unicase)
+            if isSchema18 {
+                try db.execute(sql: "PRAGMA journal_mode = WAL")
+            }
+        }
+        let queue = try DatabaseQueue(path: file.path(percentEncoded: false), configuration: configuration)
         try queue.write { db in
-            try db.execute(sql: schema11)
-            try db.execute(
-                sql: "INSERT INTO col VALUES (1, ?, 0, 0, 11, 0, 0, 0, ?, ?, ?, '{}', '{}')",
-                arguments: [creationTime, try json(["schedVer": 2]), try json(noteTypesJSON), try json(decksJSON)])
+            if isSchema18 {
+                try writeSchema18NoteTypesAndDecks(in: db)
+            } else {
+                try db.execute(sql: schema11)
+                try db.execute(
+                    sql: "INSERT INTO col VALUES (1, ?, 0, 0, 11, 0, 0, 0, ?, ?, ?, '{}', '{}')",
+                    arguments: [
+                        creationTime, try json(["schedVer": 2]), try json(noteTypesJSON), try json(decksJSON),
+                    ])
+            }
             var nextPosition = 1
             for (index, note) in notes.enumerated() {
                 let noteID = Int64(1_700_000_000_000 + index)
@@ -194,6 +253,121 @@ struct AnkiPackage {
     private func json(_ object: Any) throws -> String {
         String(decoding: try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), as: UTF8.self)
     }
+
+    /// Makes schema 18's tables in `db`, and writes the `col` row, the
+    /// configuration, the note types, with their fields and templates, and
+    /// the decks, as Anki keeps them there: in tables, with protobuf blobs,
+    /// rather than as JSON in `col`.
+    private func writeSchema18NoteTypesAndDecks(in db: Database) throws {
+        try db.execute(sql: schema18)
+        try db.execute(
+            sql: "INSERT INTO col VALUES (1, ?, 0, 0, 18, 0, 0, 0, '', '', '', '', '')", arguments: [creationTime])
+        try db.execute(sql: "INSERT INTO config VALUES ('schedVer', 0, 0, ?)", arguments: [Data("2".utf8)])
+        for type in noteTypes {
+            let id = noteTypeID(of: type)
+            // Notetype.Config: kind = 1 (0 normal, left out, or 1 cloze),
+            // css = 3, original_stock_kind = 9 (`proto/anki/notetypes.proto`).
+            var config = protobufField(3, Data(".card { font-family: arial; }".utf8))
+            if type.isCloze {
+                config = protobufField(1, varint: 1) + config
+            }
+            if type.originalStockKind != 0 {
+                config += protobufField(9, varint: UInt64(type.originalStockKind))
+            }
+            try db.execute(sql: "INSERT INTO notetypes VALUES (?, ?, 0, 0, ?)", arguments: [id, type.name, config])
+            for (ordinal, field) in type.fields.enumerated() {
+                try db.execute(sql: "INSERT INTO fields VALUES (?, ?, ?, X'')", arguments: [id, ordinal, field])
+            }
+            for (ordinal, template) in type.templates.enumerated() {
+                // Template.Config: q_format = 1, a_format = 2.
+                let config =
+                    protobufField(1, Data(template.question.utf8)) + protobufField(2, Data(template.answer.utf8))
+                try db.execute(
+                    sql: "INSERT INTO templates VALUES (?, ?, ?, 0, 0, ?)",
+                    arguments: [id, ordinal, template.name, config])
+            }
+        }
+        for name in deckNames {
+            // A name with U+001F between its levels, where schema 11 has
+            // `::` (`rslib/src/decks/name.rs`), and a Deck.KindContainer that
+            // holds an empty Normal, field 1.
+            try db.execute(
+                sql: "INSERT INTO decks VALUES (?, ?, 0, 0, X'', X'0A00')",
+                arguments: [deckID(of: name), name.replacingOccurrences(of: "::", with: "\u{1F}")])
+        }
+    }
+}
+
+/// Anki's `unicase` collation, which it registers on each connection to a
+/// collection, and schema 18 declares its names with: a comparison that
+/// ignores case.
+private let unicase = DatabaseCollation("unicase") { $0.compare($1, options: .caseInsensitive) }
+
+/// The protobuf field `number` holding `value`, length-delimited, as a
+/// string, bytes or a message are.
+private func protobufField(_ number: UInt64, _ value: Data) -> Data {
+    varintBytes(number << 3 | 2) + varintBytes(UInt64(value.count)) + value
+}
+
+/// The protobuf field `number` holding `varint`, as an integer, an enum or
+/// a bool is.
+private func protobufField(_ number: UInt64, varint: UInt64) -> Data {
+    varintBytes(number << 3) + varintBytes(varint)
+}
+
+/// `value` as a protobuf varint: seven bits a byte, the lowest first, each
+/// byte but the last with its top bit set.
+private func varintBytes(_ value: UInt64) -> Data {
+    var bytes = Data()
+    var rest = value
+    while rest >= 0x80 {
+        bytes.append(UInt8(rest & 0x7F) | 0x80)
+        rest >>= 7
+    }
+    bytes.append(UInt8(rest))
+    return bytes
+}
+
+/// `data` compressed with zstd as Anki compresses a package's members, with
+/// zstd's default level: fed to a stream, then ended, so that the frame
+/// doesn't say how large `data` is, as a frame compressed in one go does
+/// (`colpkg/export.rs`, `zstd_copy`). A reader that sizes its buffer from
+/// the frame would fail on Anki's packages, and so on these.
+private func zstdStreamed(_ data: Data) throws -> Data {
+    guard let context = ZSTD_createCCtx() else {
+        throw ZstdHelperError(description: "zstd couldn't start compressing")
+    }
+    defer { ZSTD_freeCCtx(context) }
+    var compressed = Data()
+    var buffer = [UInt8](repeating: 0, count: ZSTD_CStreamOutSize())
+    try data.withUnsafeBytes { source in
+        var input = ZSTD_inBuffer(src: source.baseAddress, size: source.count, pos: 0)
+        // Every byte goes in first, and the frame ends with nothing more.
+        for directive in [ZSTD_e_continue, ZSTD_e_end] {
+            var left = 0
+            repeat {
+                left = buffer.withUnsafeMutableBytes { out in
+                    var output = ZSTD_outBuffer(dst: out.baseAddress, size: out.count, pos: 0)
+                    let left = ZSTD_compressStream2(context, &output, &input, directive)
+                    compressed.append(contentsOf: out[..<output.pos])
+                    return left
+                }
+                guard ZSTD_isError(left) == 0 else {
+                    throw ZstdHelperError(description: String(cString: ZSTD_getErrorName(left)))
+                }
+            } while directive == ZSTD_e_continue ? input.pos < input.size : left != 0
+        }
+    }
+    let size = compressed.withUnsafeBytes { ZSTD_getFrameContentSize($0.baseAddress, $0.count) }
+    guard size == ZSTD_CONTENTSIZE_UNKNOWN else {
+        throw ZstdHelperError(description: "A streamed zstd frame says its size, \(size), unlike Anki's")
+    }
+    return compressed
+}
+
+/// Why the helper couldn't compress a member.
+private struct ZstdHelperError: Error, CustomStringConvertible {
+    let description: String
 }
 
 /// A note of a test's Anki package.
@@ -321,3 +495,24 @@ private let schema11 = """
       ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL, lapses integer NOT NULL,
       left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL, flags integer NOT NULL, data text NOT NULL);
     """
+
+/// Schema 18's tables a reader needs: schema 11's, and those the upgrades
+/// add (`schema14_upgrade.sql`, `schema15_upgrade.sql`), with their names'
+/// collation and the indexes on them, as Anki makes them.
+private let schema18 =
+    schema11 + """
+        CREATE TABLE notetypes (id integer NOT NULL PRIMARY KEY, name text NOT NULL COLLATE unicase,
+          mtime_secs integer NOT NULL, usn integer NOT NULL, config blob NOT NULL);
+        CREATE UNIQUE INDEX idx_notetypes_name ON notetypes (name);
+        CREATE TABLE fields (ntid integer NOT NULL, ord integer NOT NULL, name text NOT NULL COLLATE unicase,
+          config blob NOT NULL, PRIMARY KEY (ntid, ord)) WITHOUT ROWID;
+        CREATE UNIQUE INDEX idx_fields_name_ntid ON fields (name, ntid);
+        CREATE TABLE templates (ntid integer NOT NULL, ord integer NOT NULL, name text NOT NULL COLLATE unicase,
+          mtime_secs integer NOT NULL, usn integer NOT NULL, config blob NOT NULL, PRIMARY KEY (ntid, ord)) WITHOUT ROWID;
+        CREATE UNIQUE INDEX idx_templates_name_ntid ON templates (name, ntid);
+        CREATE TABLE decks (id integer PRIMARY KEY NOT NULL, name text NOT NULL COLLATE unicase,
+          mtime_secs integer NOT NULL, usn integer NOT NULL, common blob NOT NULL, kind blob NOT NULL);
+        CREATE UNIQUE INDEX idx_decks_name ON decks (name);
+        CREATE TABLE config (KEY text NOT NULL PRIMARY KEY, usn integer NOT NULL, mtime_secs integer NOT NULL,
+          val blob NOT NULL) WITHOUT ROWID;
+        """

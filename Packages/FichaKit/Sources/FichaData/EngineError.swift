@@ -292,13 +292,6 @@ extension CardsFileProblem {
                     again, and import that.
                     """
             )
-        case .ankiPackageNotReadableYet:
-            String(
-                localized: """
-                    “\(name)” is in the format current Anki exports by default, which Ficha can't read yet. In \
-                    Anki, export the deck again with “Support older Anki versions” ticked, and import that.
-                    """
-            )
         case .ankiPackageTooNew:
             String(
                 localized: """
