@@ -42,16 +42,18 @@ final class CardsWindowExportTests {
     }
 
     @Test(
-        "the Export sheet offers the selected cards only while some are selected, then all cards and each tag with cards, each with how many it takes"
+        "the Export sheet offers the selected cards only while some are selected, then all cards and each tag with cards, each with how many it takes, buried ones too"
     )
     func theExportSheetOffersEachChoiceWithItsCount() throws {
         let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
         try approveCard("Sócrates", tags: ["historia", "filosofía"])
         let ubuntu = try approveCard("ubuntu")
+        let cabildo = try approveCard("Cabildo abierto", tags: ["historia"])
+        try engine.bury(cabildo.id)
         let guernica = try approveCard("Guernica", tags: ["arte"])
-        try engine.bury(guernica.id)
         // The sidebar still lists a set-aside tag with no cards.
         try engine.setAside("arte")
+        try engine.delete([guernica.id])
         var unselected = openWindow()
         var selected = openWindow()
         selected.select([mayo.id, ubuntu.id])
@@ -59,9 +61,9 @@ final class CardsWindowExportTests {
         unselected.startExport()
         selected.startExport()
 
-        let all = CardsWindowState.ExportChoice(cards: .all, cardCount: 3)
+        let all = CardsWindowState.ExportChoice(cards: .all, cardCount: 4)
         let philosophy = CardsWindowState.ExportChoice(cards: .tag("filosofía"), cardCount: 1)
-        let history = CardsWindowState.ExportChoice(cards: .tag("historia"), cardCount: 2)
+        let history = CardsWindowState.ExportChoice(cards: .tag("historia"), cardCount: 3)
         #expect(unselected.exporting?.choices == [all, philosophy, history])
         #expect(unselected.exporting?.cardChoices == [all])
         #expect(unselected.exporting?.tagChoices == [philosophy, history])

@@ -4,22 +4,21 @@ internal import GRDB
 
 /// Which of the user's cards an export takes.
 public enum CardsToExport: Sendable, Hashable {
-    /// The cards with these ids, whatever their standing: those the user
-    /// selected.
+    /// The cards with these ids: those the user selected.
     case cards(Set<Int64>)
-    /// The cards with this tag that aren't buried, as the Cards window's
-    /// sidebar lists them under the tag.
+    /// Every card with this tag.
     case tag(String)
-    /// Every card that isn't buried, as the Cards window's All cards lists
-    /// them.
+    /// Every card.
     case all
 
-    /// Whether the export takes `card`.
+    /// Whether the export takes `card`, whatever its standing: buried cards
+    /// too, which the Cards window lists apart, since an export holds what
+    /// cards say and never where they stand.
     fileprivate func takes(_ card: Card) -> Bool {
         switch self {
         case .cards(let ids): ids.contains(card.id)
-        case .tag(let tag): card.tags.contains(tag) && card.standing.isInAllCards
-        case .all: card.standing.isInAllCards
+        case .tag(let tag): card.tags.contains(tag)
+        case .all: true
         }
     }
 }

@@ -156,7 +156,7 @@ struct ExportSheet: View {
         case .all:
             String(
                 localized: "All cards (\(count))",
-                comment: "An item of the Export sheet's menu: every card but the buried ones, with how many.")
+                comment: "An item of the Export sheet's menu: every card, buried ones too, with how many.")
         case .tag(let name):
             String(
                 localized: "\(tags.first { $0.name == name }?.title ?? name) (\(count))",

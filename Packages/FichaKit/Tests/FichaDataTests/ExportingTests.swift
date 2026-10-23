@@ -94,11 +94,10 @@ final class ExportingTests {
         #expect(try other.reviewLog() == [])
     }
 
-    // As the sidebar lists a tag's cards and All cards: flagged and set-aside
-    // ones too, and buried ones only in Buried.
-    @Test(
-        "exporting a tag's cards holds exactly the cards with that tag, and all cards every card, but the buried ones")
-    func exportingATagsCardsHoldsExactlyTheCardsWithThatTag() throws {
+    // Flagged, set-aside and buried ones too: an export holds what cards say,
+    // and a burial is where a card stands, which it leaves out.
+    @Test("exporting a tag's cards holds every card with that tag, and all cards every card, buried ones too")
+    func exportingATagsCardsHoldsEveryCardWithThatTag() throws {
         try approveCard("Revolución de Mayo", tags: ["historia"])
         try approveCard("Sócrates", tags: ["filosofía", "historia"])
         try approveCard("ubuntu", tags: ["filosofía"])
@@ -114,15 +113,15 @@ final class ExportingTests {
         let historyCount = try engine.export(.tag("historia"), to: history)
         let everythingCount = try engine.export(.all, to: everything)
 
-        #expect(historyCount == 3)
+        #expect(historyCount == 4)
         #expect(
             try anotherFicha(importing: history).cards().map(\.front) == [
-                "Revolución de Mayo", "Sócrates", "Independencia",
+                "Revolución de Mayo", "Sócrates", "Cabildo abierto", "Independencia",
             ])
-        #expect(everythingCount == 4)
+        #expect(everythingCount == 5)
         #expect(
             try anotherFicha(importing: everything).cards().map(\.front) == [
-                "Revolución de Mayo", "Sócrates", "ubuntu", "Independencia",
+                "Revolución de Mayo", "Sócrates", "ubuntu", "Cabildo abierto", "Independencia",
             ])
     }
 
