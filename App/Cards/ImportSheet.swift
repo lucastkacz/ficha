@@ -98,7 +98,8 @@ private struct ImportButtonAndSheet: ViewModifier {
 }
 
 /// The sheet the Cards window's Import button opens. First it says in a line
-/// what Ficha reads, and Choose File… opens a text file of cards. Then it
+/// what Ficha reads, Copy Instructions for an AI copies how to write such a
+/// file, and Choose File… opens a text file of cards. Then it
 /// shows what importing the file would do: how many cards come in, how many
 /// repeat the user's cards, with Update or Skip for them, which lines stay
 /// out and why, and the tag every card gets, named after the file, which the
@@ -157,6 +158,7 @@ struct ImportSheet: View {
                     """,
                     comment: "Under the title of the Cards window's Import sheet, before a file is chosen."))
             HStack {
+                CopyInstructionsButton()
                 Spacer()
                 cancelButton
                 chooseFileButton(

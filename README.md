@@ -6,7 +6,7 @@ Ficha is a small Mac app that lives in the menu bar and, every so often, shows y
   <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with three buttons below: Don't know, Sort of and Know it.">
 </p>
 
-The cards in these pictures are samples. Ficha's cards are in Spanish.
+The cards in these pictures are samples, in Spanish. Yours can be in any language.
 
 ## A card every so often
 
@@ -48,14 +48,24 @@ A new card starts on the first step. "Know it" moves it one step up, so it waits
 
 Many flashcard apps work out a different wait for each card with a formula. Ficha's ladder is simpler: you can always tell why a card shows up today. Its steps can be changed in Settings.
 
+## Your cards
+
+Ficha's Cards window lists all your cards, and it's where they come in and go out.
+
+**New Card.** Write a card yourself: its front and back, and if you like its tags, a type and where it comes from. The form stays open for the next card, and tells you when a front repeats one of your cards.
+
+**Import.** Bring in cards you made elsewhere: a text file with one card per line, which a spreadsheet saves, Anki exports as "Notes in Plain Text", or an AI writes. The Import sheet copies [instructions for an AI](docs/instructions-for-an-ai.md) to paste into yours, so that it writes the file for you. Before anything comes in, Ficha shows how many cards the file holds, which repeat yours, and which lines it couldn't read, and it saves a copy of your cards, so restoring it undoes the import.
+
+**Export.** Save the selected cards, a tag's cards or all of them to that same kind of file, to pass them on: another Ficha imports it, and Anki too. It holds what the cards say, never your progress.
+
 ## From something you read to a card
 
-Ficha's cards come from what you come across: a word in a book, a line in a podcast, a question you couldn't answer.
+Many cards come from what you come across: a word in a book, a line in a podcast, a question you couldn't answer.
 
 ```mermaid
 flowchart LR
     capture["You capture<br/>something"] --> inbox["Inbox"]
-    inbox -- "Refine" --> new["New card"]
+    inbox -- "Convert to Card" --> new["New card"]
     new -- "You meet it" --> reviews["Your reviews"]
     reviews -- "Flag" --> inbox
     inbox -- "Fix" --> reviews
@@ -68,11 +78,13 @@ flowchart LR
   <img src="docs/images/capture-window.png" width="564" alt="The Capture window, with three fields: “A word, a concept, a quote or a question”, “Note (optional)” and “Source (optional): a book, a podcast…”, and the buttons Cancel and Save.">
 </p>
 
-**Refine.** Now and then, you go through the inbox with Claude, Anthropic's AI assistant, in a session you start. Claude drafts cards for each capture, short and in plain Spanish, following [a guide](docs/content-guide.md) for how Ficha's cards are written. It also proposes a fix for each card you flagged, and can bring back a card you buried. You approve, change or turn down each proposal: nothing becomes a card without your OK.
+**Convert to Card.** When you have a moment, pick a capture in the Cards window's inbox and convert it: the card form opens beside what you jotted down, for one card or several, and the capture leaves the inbox once you close the form.
+
+**Refine.** Lucas, who builds Ficha, turns his own captures into cards another way, outside the app: he goes through his inbox with Claude, Anthropic's AI assistant, in a session he starts. Claude drafts cards for each capture, following [a guide](docs/content-guide.md) for how Lucas's cards are written, and proposes a fix for each card he flagged. Nothing becomes a card without his OK.
 
 ## Everything stays on your Mac
 
-Ficha has no account, no sync and no tracking, and it never connects to the internet. Your cards are kept on your Mac and nowhere else. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Backups tab lists the copies and restores any of them. There's no AI inside the app either: Claude only sees your cards in a refine session you start, and changes only what you approve.
+Ficha has no account, no sync and no tracking, and it never connects to the internet. Your cards are kept on your Mac and nowhere else. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Backups tab lists the copies and restores any of them. There's no AI inside the app either: an AI sees your cards only if you give them to it, and its cards come in only when you import its file.
 
 ---
 

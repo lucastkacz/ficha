@@ -57,6 +57,10 @@ targets:
     platform: macOS
     sources:
       - path: App
+      # The instructions for an AI, which the Import sheet copies: the app
+      # bundles the repo's own page, so the two are always the same.
+      - path: docs/instructions-for-an-ai.md
+        buildPhase: resources
     dependencies:
       - package: FichaKit
         product: FichaCore
