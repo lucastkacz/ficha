@@ -64,13 +64,13 @@ extension NoAppearance {
 extension ReviewSettings {
     /// Whether the review panel shows up on its own at `now`, out of `cards`,
     /// given when the last appearance or review now closed, if any did, and
-    /// what `signals` says of the device. While it's awake, within active hours,
-    /// by `calendar`'s clock, and once `separation` has passed since that
-    /// closing and `waitAfterWaking` since the device woke, it shows up once a
-    /// card is due, or, with nothing due, once a new card may come in, unless
-    /// one of `suppressionsThatApply` holds it back, or one of them ended less
-    /// than `waitAfterSuppression` ago. It brings the cards review now would,
-    /// along with those due within `lookAhead`.
+    /// what `signals` says of the device. While it's awake, within active
+    /// hours, by `calendar`'s clock, and once `separation` has passed since
+    /// that closing and `waitAfterWaking` since the device woke, it shows up
+    /// once a card is due, or, with nothing due, once a new card may come in,
+    /// unless one of `suppressionsThatApply` holds it back, or one of them
+    /// ended less than `waitAfterSuppression` ago. It brings the cards review
+    /// now would, along with those due within `lookAhead`.
     public func appearance(
         cards: CardsInReviews,
         lastClosing: Date?,
@@ -111,12 +111,13 @@ extension ReviewSettings {
     /// The appearances that come from `now` on, as if Lucas rated nothing in
     /// between, up to `count`, for the iPhone to schedule as notifications
     /// (ADR 0010). Out of `cards`, given when the last appearance or review
-    /// now closed, if any did. Walking time forward from `now`, each appearance
-    /// comes at the first time `appearance` says it shows up, on a device that
-    /// never holds one back, with the cards it says. Left alone, a planned
-    /// appearance closes as it shows, and its cards stay as they were, so the
-    /// next one comes once `separation` passed. The plan ends after `count`,
-    /// or once no appearance would come without Lucas doing something.
+    /// now closed, if any did. Walking time forward from `now`, each
+    /// appearance comes at the first time `appearance` says it shows up, on a
+    /// device that never holds one back, with the cards it says. Left alone, a
+    /// planned appearance closes as it shows, and its cards stay as they were,
+    /// so the next one comes once `separation` passed. The plan ends after
+    /// `count`, or once no appearance would come without Lucas doing
+    /// something.
     public func plannedAppearances(
         cards: CardsInReviews,
         lastClosing: Date?,

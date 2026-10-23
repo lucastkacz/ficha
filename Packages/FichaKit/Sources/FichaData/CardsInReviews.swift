@@ -2,11 +2,9 @@ import FichaCore
 internal import GRDB
 
 // Which cards are in Lucas's reviews, as their standing says: the only ones
-// the review panel brings, and takes an answer or a flag for. Every entry
-// point that picks cards reads them from `cardsThatShowUp(in:)`, the one way
-// in to them, never gathering them again. They decide which cards show up, so
-// the merge gate (`.claude/hooks/merge-gate.sh`) watches this file: changing
-// it makes a pull request risk:high.
+// the review panel brings, and takes an answer or a flag for. They decide
+// which cards show up, so the merge gate (`.claude/hooks/merge-gate.sh`)
+// watches this file: changing it makes a pull request risk:high.
 
 /// The cards that show up, as the engine reads them for the planners: the
 /// cards in Lucas's reviews, which the planners pick from, and every card, by
@@ -49,7 +47,8 @@ struct CardsThatShowUp {
 }
 
 /// The cards that show up, out of every card and the whole review log: the
-/// one way in to them, for every entry point that picks cards.
+/// one way in to them, which every entry point that picks cards reads,
+/// never gathering them again.
 func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
     CardsThatShowUp(try allCards(in: db), log: try logEntries(in: db))
 }
