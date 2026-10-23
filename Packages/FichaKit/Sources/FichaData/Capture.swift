@@ -63,16 +63,16 @@ func save(_ content: CaptureContent, expanding cardID: Int64?, at time: Date, in
 }
 
 /// What a capture with this text would repeat, if anything: the first card
-/// whose front it repeats, or whose capture it repeats, or else the first
-/// capture in the inbox it repeats. A capture that was discarded is left
-/// out: it's in neither.
+/// whose front it repeats, or whose capture it repeats, when it came from
+/// one, or else the first capture in the inbox it repeats. A capture that
+/// was discarded is left out: it's in neither.
 func repeated(by text: String, in db: Database) throws -> Repeated? {
     let capturedAs = Dictionary(
         uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT id, text FROM capture")
             .map { row in (try row.decode(forColumn: "id") as Int64, try row.decode(forColumn: "text") as String) }
     )
     let card = try allCards(in: db).first { card in
-        repeats(text, card.front) || capturedAs[card.captureID].map { repeats(text, $0) } == true
+        repeats(text, card.front) || card.captureID.flatMap { capturedAs[$0] }.map { repeats(text, $0) } == true
     }
     if let card {
         return .card(card)

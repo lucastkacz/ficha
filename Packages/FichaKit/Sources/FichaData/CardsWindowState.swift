@@ -171,6 +171,9 @@ public struct CardsWindowState: Sendable {
     /// The tags the sidebar offers, with what each has of its own: those of
     /// the cards that aren't buried, and the set-aside ones.
     public private(set) var tags: [CardTag] = []
+    /// The type groups the sidebar offers: one for each card type, and No
+    /// Type after them while a card that isn't buried has no type.
+    public private(set) var typeGroups = CardType.allCases.map(CardGroup.type)
     /// The engine's time when the cards were read, which the Due column
     /// counts from.
     public private(set) var now: Date
@@ -547,13 +550,15 @@ public struct CardsWindowState: Sendable {
     /// since the last read, and the review log of the card the detail shows.
     /// When the chosen tag is gone, because its last card was buried, edited
     /// or deleted while it isn't set aside, the sidebar goes back to All
-    /// cards.
+    /// cards, and so it does when No Type is gone, once every card that
+    /// isn't buried has a type.
     public mutating func read(on ladder: Ladder) {
         self.ladder = ladder
         now = engine.now
         do throws(EngineError) {
             tags = try engine.sidebarTags()
-            if case .cards(.tag(let tag)) = sidebarItem, !tags.contains(where: { $0.name == tag }) {
+            typeGroups = try engine.sidebarTypeGroups()
+            if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = .cards(.all)
             }
             switch sidebarItem {
@@ -566,6 +571,16 @@ public struct CardsWindowState: Sendable {
             listing = .failure(error)
         }
         readReviewLog()
+    }
+
+    /// Whether the sidebar offers `group`, as last read: a tag while it lists
+    /// it, No Type while some card has none, and every other group always.
+    private func offers(_ group: CardGroup) -> Bool {
+        switch group {
+        case .tag(let tag): tags.contains { $0.name == tag }
+        case .noType: typeGroups.contains(.noType)
+        case .all, .new, .due, .learned, .flagged, .buried, .type: true
+        }
     }
 
     /// Reads the review log of the card the detail shows, while it shows one.

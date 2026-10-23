@@ -272,7 +272,8 @@ struct CardsView: View {
 
     /// What Lucas chooses from: the cards by where they stand, then the
     /// inbox, with how many things wait in it, as the menu counts them, then
-    /// the cards by tag, then by type. One is chosen at a time, always.
+    /// the cards by tag, then by type, with No Type while the state offers
+    /// it. One is chosen at a time, always.
     private var sidebar: some View {
         List(selection: chosenItem) {
             Section {
@@ -304,9 +305,9 @@ struct CardsView: View {
                 }
             }
             Section {
-                ForEach(CardType.allCases, id: \.self) { type in
-                    Label(type.pluralName, systemImage: type.symbol)
-                        .tag(SidebarItem.cards(.type(type)))
+                ForEach(state.typeGroups, id: \.self) { group in
+                    Label(group.title, systemImage: group.symbol)
+                        .tag(SidebarItem.cards(group))
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
@@ -479,7 +480,8 @@ struct CardsView: View {
                 Text("Type", comment: "A column of the Cards window: the card's type."),
                 sortUsing: CardRowOrder(.type)
             ) { row in
-                Text(row.card.type.name)
+                // Blank for a card with no type.
+                Text(row.card.type?.name ?? "")
             }
             .width(min: 60, ideal: 76, max: 110)
             .customizationID(CardRowOrder.Column.type.rawValue)

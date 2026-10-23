@@ -117,6 +117,9 @@ public enum CardGroup: Sendable, Hashable {
     case tag(String)
     /// The cards of this type that aren't buried.
     case type(CardType)
+    /// The cards with no type that aren't buried, which the sidebar offers
+    /// only while there are some.
+    case noType
 }
 
 /// Something that waits in the inbox, as the Cards window lists it, with when
@@ -216,6 +219,18 @@ extension Engine {
         }
     }
 
+    /// The type groups the Cards window's sidebar lists: one for each card
+    /// type, in `CardType`'s order, and No Type after them while a card that
+    /// isn't buried has no type.
+    func sidebarTypeGroups() throws(EngineError) -> [CardGroup] {
+        try read { db in
+            let someCardHasNoType = try allCards(in: db).contains { card in
+                card.type == nil && card.standing.isInAllCards
+            }
+            return CardType.allCases.map(CardGroup.type) + (someCardHasNoType ? [.noType] : [])
+        }
+    }
+
     /// A card's review log as the Cards window shows it under the card,
     /// oldest first: each first view and review, with the step of `ladder`
     /// the card stood on after it. Empty while the card is new.
@@ -290,6 +305,7 @@ extension CardGroup {
             }
         case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
+        case .noType: row.card.type == nil && row.cardStanding.isInAllCards
         }
     }
 }

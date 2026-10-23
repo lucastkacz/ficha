@@ -289,6 +289,41 @@ struct CardsWindowStateTests {
         #expect(window.failure?.error == .cardNotFound(ubuntu.id))
     }
 
+    @Test("the No Type group lists exactly the cards with no type, flagged ones too but not the buried ones")
+    func theNoTypeGroupListsTheCardsWithNoType() throws {
+        try approveCard("serendipia", in: engine)
+        let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
+        let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."))
+        let ataraxia = try engine.create(card(nil, front: "ataraxia", back: "Serenidad."))
+        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
+        try engine.bury(ataraxia.id)
+        var window = openWindow()
+
+        window.choose(.cards(.noType))
+
+        #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question), .noType])
+        #expect(window.listedCardIDs == [petricor.id, ubuntu.id])
+    }
+
+    @Test("No Type isn't offered when every card has a type, and once it's gone the sidebar goes back to All cards")
+    func noTypeIsNotOfferedWhenEveryCardHasAType() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let buried = try engine.create(card(nil, front: "ataraxia", back: "Serenidad."))
+        try engine.bury(buried.id)
+        var window = openWindow()
+        #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
+        let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
+        window.read(on: ladder)
+        window.choose(.cards(.noType))
+
+        try engine.edit(petricor.id, with: card(.word, front: "petricor", back: "El olor de la lluvia."))
+        window.read(on: ladder)
+
+        #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
+        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.listedCardIDs == [serendipia.id, petricor.id])
+    }
+
     @Test("saving an edit ends it, and the detail shows the card as saved at once")
     func savingAnEditShowsTheCardAsSavedAtOnce() throws {
         let serendipia = try approveCard("serendipia", in: engine)

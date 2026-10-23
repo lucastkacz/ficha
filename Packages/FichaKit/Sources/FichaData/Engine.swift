@@ -126,16 +126,7 @@ public struct Engine: Sendable {
         return try write { db in
             try takeOutOfInbox(captureID, at: createdAt, in: db)
             for card in cards {
-                try db.execute(
-                    sql: """
-                        INSERT INTO card (type, front, back, tags, source, createdAt, captureId)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """,
-                    arguments: [
-                        card.type.rawValue, card.front, card.back, try tagsJSON(card.tags), card.source,
-                        createdAt, captureID,
-                    ]
-                )
+                try insertCard(card, capturedAs: captureID, at: createdAt, in: db)
             }
             return try FichaData.cards(
                 in: Row.fetchAll(

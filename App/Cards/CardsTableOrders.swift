@@ -49,7 +49,8 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case front
         case step
         case due
-        /// By what the Type column says, alphabetically.
+        /// By what the Type column says, alphabetically, and cards with no
+        /// type after the others.
         case type
         /// By the card's tags, alphabetically: by their first tags, then by
         /// their second ones, and so on.
@@ -83,7 +84,7 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .due:
             ordered(lhs.due, rhs.due) { $0.compare($1) }
         case .type:
-            ordered(lhs.card.type.name.localizedStandardCompare(rhs.card.type.name))
+            ordered(lhs.card.type?.name, rhs.card.type?.name) { $0.localizedStandardCompare($1) }
         case .tags:
             ordered(lhs.tagsIfAny, rhs.tagsIfAny, by: alphabetically)
         case .source:

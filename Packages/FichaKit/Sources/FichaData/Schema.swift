@@ -185,6 +185,50 @@ enum Schema {
                 table.check(sql: "switchedOn IS NOT NULL OR color IS NOT NULL OR emoji IS NOT NULL")
             }
         }
+        migrator.registerMigration("v12 cards without a type or a capture") { db in
+            // A card's type is optional, and so is its capture, since cards
+            // come in by hand and from files too (ADR 0012). SQLite can't
+            // drop a column's NOT NULL, so the card table is made again, with
+            // every card as it was, the way GRDB's guide to migrations
+            // recreates a table, as "v9 answers from card notifications" did.
+            try db.create(table: "new_card") { table in
+                table.autoIncrementedPrimaryKey("id")
+                // As `CardType` names it, or NULL for none.
+                table.column("type", .text)
+                table.column("front", .text).notNull()
+                table.column("back", .text).notNull()
+                // A JSON array of strings.
+                table.column("tags", .jsonText).notNull()
+                table.column("source", .text)
+                table.column("createdAt", .datetime).notNull()
+                // The capture it was approved from, or NULL when it came in
+                // another way. Its index comes once the table has its name.
+                table.belongsTo("capture", indexed: false)
+                table.column("flagNote", .text)
+                table.column("flaggedAt", .datetime)
+                    .check(sql: "(flagNote IS NULL) = (flaggedAt IS NULL)")
+                table.column("buriedAt", .datetime)
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_card
+                        (id, type, front, back, tags, source, createdAt, captureId, flagNote, flaggedAt, buriedAt)
+                    SELECT id, type, front, back, tags, source, createdAt, captureId, flagNote, flaggedAt, buriedAt
+                    FROM card
+                    """
+            )
+            // A deleted card's id is never given again, so a refine session
+            // that names an old card never reaches another one. Dropping the
+            // table drops its last id too, so the new one starts from it.
+            let lastID = try Int64.fetchOne(db, sql: "SELECT seq FROM sqlite_sequence WHERE name = 'card'")
+            try db.drop(table: "card")
+            try db.rename(table: "new_card", to: "card")
+            if let lastID {
+                try db.execute(sql: "DELETE FROM sqlite_sequence WHERE name = 'card'")
+                try db.execute(sql: "INSERT INTO sqlite_sequence (name, seq) VALUES ('card', ?)", arguments: [lastID])
+            }
+            try db.create(index: "card_on_captureId", on: "card", columns: ["captureId"])
+        }
         return migrator
     }()
 }
