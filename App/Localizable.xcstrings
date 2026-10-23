@@ -387,6 +387,9 @@
     "Couldn't change the emoji of “%@”" : {
       "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the tag."
     },
+    "Couldn't change the priority tags" : {
+
+    },
     "Couldn't change whether %@ starts at login" : {
 
     },
@@ -453,6 +456,9 @@
           }
         }
       }
+    },
+    "Couldn't read your tags" : {
+
     },
     "Couldn't restore the copy" : {
       "comment" : "An alert's title in Settings' Backups tab."
@@ -886,7 +892,7 @@
       "comment" : "In the Cards window: no word card that isn't buried."
     },
     "None" : {
-      "comment" : "The empty field of the sheet that gives a tag an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
+      "comment" : "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.\nThe empty field of the sheet that gives a tag an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
     },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
@@ -952,6 +958,12 @@
     },
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "Prioritize" : {
+      "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked."
+    },
+    "Prioritize: %@" : {
+      "comment" : "The Prioritize submenu's title while some tags are priority tags, which it lists by name."
     },
     "Process %d" : {
       "comment" : "A process with no name, by its id, in Diagnostics: a noun."

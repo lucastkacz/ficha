@@ -67,7 +67,8 @@ extension ReviewSettings {
     /// what `signals` says of the device. While it's awake, within active
     /// hours, by `calendar`'s clock, and once `separation` has passed since
     /// that closing and `waitAfterWaking` since the device woke, it shows up
-    /// once a card is due, or, with nothing due, once a new card may come in,
+    /// once a card is due, or, with nothing due, once a new card may come in
+    /// as it would without priority tags, which never move an appearance,
     /// unless one of `suppressionsThatApply` holds it back, or one of them
     /// ended less than `waitAfterSuppression` ago. It brings the cards review
     /// now would, along with those due within `lookAhead`.
@@ -91,9 +92,17 @@ extension ReviewSettings {
             return .notNow(.tooSoonAfterWaking(until: until))
         }
         let standings = try cards.standings(on: ladder)
-        let picked = pickCards(after: standings, of: cards, dueBy: now.adding(lookAhead), now: now, calendar: calendar)
+        let horizon = now.adding(lookAhead)
+        let picked = pickCards(after: standings, of: cards, dueBy: horizon, now: now, calendar: calendar)
         let isAnyCardDue = standings.contains { $0.standing.isDue(at: now) }
-        guard isAnyCardDue || picked.firstView != nil else {
+        // Priority tags change which cards come, never when an appearance
+        // does: a new priority card fits beside the cards due within the
+        // look-ahead where another new card wouldn't, so whether a new card
+        // may come in is asked as without them.
+        let mayMeetNewCard =
+            pickCards(after: standings, of: cards.withoutPriority, dueBy: horizon, now: now, calendar: calendar)
+            .firstView != nil
+        guard isAnyCardDue || mayMeetNewCard else {
             return .notNow(.nothingDue)
         }
         let applying = Suppression.allCases.filter(suppressionsThatApply.contains)

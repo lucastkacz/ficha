@@ -18,10 +18,10 @@ struct CardsThatShowUp {
     private let cards: [Int64: Card]
 
     /// The cards that show up out of `cards`, every card in the order Lucas
-    /// approved them, and `log`, the whole review log, in the order it was
-    /// written.
-    fileprivate init(_ cards: [Card], log: [ReviewLogEntry]) {
-        inReviews = CardsInReviews(cards.map { ($0.id, $0.standing) }, log: log)
+    /// approved them, those with any of `priorityTags` first, and `log`, the
+    /// whole review log, in the order it was written.
+    fileprivate init(_ cards: [Card], priorityTags: Set<String>, log: [ReviewLogEntry]) {
+        inReviews = CardsInReviews(cards.map { ($0.id, $0.standing, $0.tags) }, priorityTags: priorityTags, log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 
@@ -46,17 +46,23 @@ struct CardsThatShowUp {
     }
 }
 
-/// The cards that show up, out of every card and the whole review log: the
-/// one way in to them, which every entry point that picks cards reads,
-/// never gathering them again.
+/// The cards that show up, out of every card, the priority tags and the
+/// whole review log: the one way in to them, which every entry point that
+/// picks cards reads, never gathering them again.
 func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
-    CardsThatShowUp(try allCards(in: db), log: try logEntries(in: db))
+    CardsThatShowUp(
+        try allCards(in: db), priorityTags: try tags(switchedOn: .priority, in: db), log: try logEntries(in: db))
 }
 
 /// The tags that are set aside: every card with one of them is set aside,
 /// unless it's buried or flagged, as its standing says.
 func setAsideTags(in db: Database) throws -> Set<String> {
-    Set(try String.fetchAll(db, sql: "SELECT name FROM tag WHERE switchedOn = ?", arguments: [TagSwitch.setAside.rawValue]))
+    try tags(switchedOn: .setAside, in: db)
+}
+
+/// The tags that have `tagSwitch` on.
+private func tags(switchedOn tagSwitch: TagSwitch, in db: Database) throws -> Set<String> {
+    Set(try String.fetchAll(db, sql: "SELECT name FROM tag WHERE switchedOn = ?", arguments: [tagSwitch.rawValue]))
 }
 
 /// The card with this id, while it's in Lucas's reviews, or an error that

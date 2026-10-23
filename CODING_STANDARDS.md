@@ -24,7 +24,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 ## Where a card stands
 
 - Where a card stands, in Lucas's reviews, waiting in the inbox, buried or set aside with one of its tags, is read from `CardStanding` (`Card.standing`), in `FichaCore/Scheduler/CardStanding.swift`, or from `cardInReviews(_:in:)`, in `FichaData/CardsInReviews.swift`, never worked out again from a card's flag, burial date and tags. A card read from the database knows which of its tags are set aside, as `setAsideTags(in:)`, in the same file, reads them.
-- The cards that show up are read from one way in, never gathered again: `cardsThatShowUp(in:)`, in `FichaData/CardsInReviews.swift`, reads every card and the review log into `CardsInReviews`, in `FichaCore/Scheduler/CardsInReviews.swift`, which keeps the cards whose standing is in Lucas's reviews. The planners take that value, never ids, and `CardsThatShowUp.panelCards` maps what they pick back to cards.
+- The cards that show up are read from one way in, never gathered again: `cardsThatShowUp(in:)`, in `FichaData/CardsInReviews.swift`, reads every card, the priority tags and the review log into `CardsInReviews`, in `FichaCore/Scheduler/CardsInReviews.swift`, which keeps the cards whose standing is in Lucas's reviews and knows which of them have a priority tag. The planners take that value, never ids, and `CardsThatShowUp.panelCards` maps what they pick back to cards.
 - The merge gate watches these three files, so a change to where a card stands, and so to which cards show up, makes a pull request risk:high; the same rule written elsewhere would slip past it.
 
 ## Time
