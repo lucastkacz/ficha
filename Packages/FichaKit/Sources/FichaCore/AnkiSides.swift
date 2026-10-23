@@ -59,8 +59,8 @@ struct AnkiSide {
 /// bare, with its character references decoded. The quoted values of a
 /// tag's other attributes are skipped whole, so that a `src=` inside one
 /// isn't taken. A `src` with a colon is an address, such as an image's on
-/// the web, and names no file of the package, since Anki never names one
-/// with a colon.
+/// the web, and names no file of the package, since Anki keeps colons out
+/// of its media's names (`rslib/src/media/files.rs`).
 private func fileNames(shownIn html: String) -> [String] {
     html.matches(of: #/(?i)<img\b(?:[^>"']|"[^"]*"|'[^']*')*?\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/#)
         .compactMap { match in

@@ -459,8 +459,10 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
 /// Anki tags, two cards Anki was reviewing, which Bring progress puts on a
-/// step, a card the sample cards have, a card whose back is only a sound and
-/// an Image Occlusion note, which stay out. The file goes once it's read.
+/// step, a card the sample cards have, a card with two images on its front,
+/// of which the first comes in, and a card whose back is only a sound, one
+/// whose front is only an image the package lacks and an Image Occlusion
+/// note, which stay out. The file goes once it's read.
 func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
     try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -512,8 +514,9 @@ func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
 /// Writes the sample Anki package to `file`, as current Anki exports a deck
 /// with "Support older Anki versions" ticked: a zip with `meta` at version
 /// 2, `collection.anki21`, a SQLite database at schema 11 with only what
-/// Ficha reads, and an empty media list. The tests' `AnkiPackages.swift`
-/// writes such packages too, from Anki's source.
+/// Ficha reads, and its media, the flag and the Sun of May, in members `0`
+/// and `1`, with the JSON list that names them. The tests'
+/// `AnkiPackages.swift` writes such packages too, from Anki's source.
 func writeSampleAnkiPackage(to file: URL) throws {
     let folder = file.deletingLastPathComponent().appending(path: "Anki package", directoryHint: .isDirectory)
     try? FileManager.default.removeItem(at: folder)
@@ -523,12 +526,16 @@ func writeSampleAnkiPackage(to file: URL) throws {
     try runSQLite(try sampleAnkiCollectionSQL(), in: collection)
     let meta = folder.appending(path: "meta")
     try Data([0x08, 0x02]).write(to: meta)
+    let flag = folder.appending(path: "0")
+    try SamplePicture.flag.png().write(to: flag)
+    let sun = folder.appending(path: "1")
+    try SamplePicture.sun.png().write(to: sun)
     let media = folder.appending(path: "media")
-    try Data("{}".utf8).write(to: media)
+    try Data(#"{"0":"bandera.png","1":"sol.png"}"#.utf8).write(to: media)
     try? FileManager.default.removeItem(at: file)
     let zip = Process()
     zip.executableURL = URL(filePath: "/usr/bin/zip")
-    zip.arguments = ["-q", "-j"] + [file, meta, collection, media].map { $0.path(percentEncoded: false) }
+    zip.arguments = ["-q", "-j"] + [file, meta, collection, flag, sun, media].map { $0.path(percentEncoded: false) }
     try zip.run()
     zip.waitUntilExit()
     guard zip.terminationStatus == 0 else {
@@ -557,7 +564,9 @@ func runSQLite(_ sql: String, in file: URL) throws {
 /// note types, a deck of medicine with two subdecks, and the notes, with
 /// their cards: the femur's in review, every 10 days, due on Anki's day 22,
 /// 23 October; the systole's relearning, due on day 20, 21 October; and the
-/// rest new.
+/// rest new, among them one in Default whose front shows the flag and the
+/// Sun of May, of which the first comes in, and one whose front is only an
+/// image the package lacks.
 func sampleAnkiCollectionSQL() throws -> String {
     let basicAnswer = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
     let noteTypes: [String: Any] = [
@@ -599,6 +608,8 @@ func sampleAnkiCollectionSQL() throws -> String {
             [0]
         ),
         (1, 4, "corazón leech", ["sístole", "La contracción del corazón, que empuja la sangre."], [0]),
+        (1, 1, "", ["<img src=\"bandera.png\"><img src=\"sol.png\">", "La bandera de la Argentina."], [0]),
+        (1, 3, "huesos", ["<img src=\"tibia.png\">", "La tibia."], [0]),
     ]
     // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
     // by the notes' places above: in review, and relearning across days.
