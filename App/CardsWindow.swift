@@ -9,8 +9,8 @@ import SwiftUI
 final class CardsWindow: NSWindow {
     /// The name the window's frame is kept under in the app's preferences.
     private static let frameName = "Cards"
-    /// The least the window's content can be: enough for the sidebar, the
-    /// table and the detail side by side.
+    /// The least the window's content can be below its toolbar: enough for
+    /// the sidebar, the table and the detail side by side.
     private static let minimumSize = NSSize(width: 880, height: 440)
     /// The window's content the first time it opens.
     private static let firstSize = NSSize(width: 1120, height: 640)
@@ -33,7 +33,6 @@ final class CardsWindow: NSWindow {
         // The toolbar, where the split view puts its sidebar button.
         toolbar = NSToolbar()
         toolbarStyle = .unified
-        contentMinSize = Self.minimumSize
         if !setFrameUsingName(Self.frameName) {
             center()
         }
@@ -60,9 +59,15 @@ final class CardsWindow: NSWindow {
     /// with nothing selected or searched, its table as Lucas left it, and
     /// stops reading the cards once it closes.
     func makeContent() {
-        let content = NSHostingView(rootView: CardsView(model: model))
+        // Once SwiftUI lays it out, a window's hosting view sets the window's
+        // minimum whatever contentMinSize says: from its content's least size
+        // with .minSize, and to none without it. So the content says how
+        // small it can be, and the hosting view sets nothing else.
+        let content = NSHostingView(
+            rootView: CardsView(model: model)
+                .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height))
         content.sceneBridgingOptions = [.toolbars]
-        content.sizingOptions = []
+        content.sizingOptions = [.minSize]
         contentView = content
     }
 
