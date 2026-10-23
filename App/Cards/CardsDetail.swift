@@ -159,13 +159,15 @@ private struct Chip: View {
     }
 }
 
-/// A card's type, and its tags after it when it has any.
+/// A card's type, when it has one, and its tags after it when it has any.
 private struct TypeAndTags: View {
     let card: Card
 
     var body: some View {
         HStack(spacing: 8) {
-            Chip(text: card.type.name)
+            if let type = card.type {
+                Chip(text: type.name)
+            }
             if !card.tags.isEmpty {
                 Label(card.tags.formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
                     .font(.caption)

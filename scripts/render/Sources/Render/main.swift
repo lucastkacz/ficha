@@ -222,8 +222,9 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
 /// the first day and climbing at different paces, two sent back to the first
-/// step, one flagged with a note and one buried, and the rest new. The time
-/// it's on stays where the twelve days left it.
+/// step, one flagged with a note and one buried, and the rest new, with a
+/// capture waiting in the inbox; and then two new cards made by hand, with no
+/// type and no capture. The time it's on stays where the twelve days left it.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -260,12 +261,32 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
     try review(0..<8, .good)
+    // A capture that waits in the inbox, for Convert to Card: the inbox lists
+    // it after the flagged card, which comes later.
+    let capture = try engine.capture(
+        text: "La paradoja de Teseo: si le cambiás todas las tablas a un barco, ¿sigue siendo el mismo barco?",
+        note: "Una tarjeta para la paradoja y otra para la pregunta", source: "Un video de filosofía")
+    guard case .saved = capture else {
+        throw RenderError(description: "The sample's capture repeats a sample card.")
+    }
     time.advance(by: hours(4 * 24 + 3))
     guard let note = FlagNote("El ejemplo no se entiende: cambiarlo por uno más cotidiano.") else {
         throw RenderError(description: "The sample's flag note is blank.")
     }
     try engine.flag(cards[2].id, note: note)
     try engine.bury(cards[5].id)
+    // The sample cards all have a type, and cards from a capture: these two
+    // are as someone who doesn't refine with Claude makes them.
+    let madeByHand = [
+        ("¿Cuál es la capital de Mongolia?", "Ulán Bator."),
+        ("mitocondria", "La parte de la célula que produce su energía."),
+    ]
+    for (front, back) in madeByHand {
+        guard let content = CardContent(type: nil, front: front, back: back, tags: [], source: nil) else {
+            throw RenderError(description: "A card made by hand for the sample has a blank front or back.")
+        }
+        try engine.create(content)
+    }
     return (engine, time)
 }
 

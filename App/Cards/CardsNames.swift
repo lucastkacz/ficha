@@ -24,6 +24,9 @@ extension CardGroup {
             tag
         case .type(let type):
             type.pluralName
+        case .noType:
+            String(
+                localized: "No Type", comment: "An item of the Cards window's sidebar: the cards that have no type.")
         }
     }
 
@@ -38,6 +41,7 @@ extension CardGroup {
         case .buried: "eye.slash"
         case .tag: "tag"
         case .type(let type): type.symbol
+        case .noType: "square.dashed"
         }
     }
 
@@ -68,6 +72,10 @@ extension CardGroup {
             String(localized: "No quotes", comment: "In the Cards window: no quote card that isn't buried.")
         case .type(.question):
             String(localized: "No questions", comment: "In the Cards window: no question card that isn't buried.")
+        case .noType:
+            String(
+                localized: "No cards without a type",
+                comment: "In the Cards window: every card that isn't buried has a type.")
         }
     }
 }

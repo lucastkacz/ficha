@@ -2,8 +2,8 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The fields Lucas edits a card in, in place of its detail: its type,
-/// front, back, tags and source, under his note when it's flagged. Return
+/// The fields Lucas edits a card in, in place of its detail: its type, or
+/// None, front, back, tags and source, under his note when it's flagged. Return
 /// saves, Option-Return starts a new line, and Escape cancels, as in the
 /// capture window, unless he's in the window's search field. Saving with the
 /// front or the back blank says, under it, what's missing. When the card
@@ -19,7 +19,8 @@ struct CardEditor: View {
     let save: (CardContent) -> Void
     /// Ends the edit without saving it.
     let cancel: () -> Void
-    @State private var type: CardType
+    /// The card's type, or nil for None.
+    @State private var type: CardType?
     @State private var front: String
     @State private var back: String
     /// The card's tags as the Tags field holds them, separated by commas.
@@ -71,9 +72,18 @@ struct CardEditor: View {
                     "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
                 gridLabel(label)
                 Picker(selection: $type) {
+                    // A key of its own, since a tag's Color submenu says
+                    // "None" too, which a translation may word apart.
+                    Text(
+                        String(
+                            localized: "card-type.none", defaultValue: "None",
+                            comment: "The first item of a card's type picker in the Cards window: no type.")
+                    )
+                    .tag(CardType?.none)
+                    Divider()
                     ForEach(CardType.allCases, id: \.self) { type in
                         Text(type.name)
-                            .tag(type)
+                            .tag(CardType?.some(type))
                     }
                 } label: {
                     label
