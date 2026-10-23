@@ -10,4 +10,3 @@ Ficha holds what Lucas is learning, and he wants it private and under his contro
 
 - Lucas captures on the Mac only, from the menu bar or the CLI: nothing reaches Ficha from his phone.
 - The app and the CLI must agree on the database, so both use the same storage code and migrations.
-- Since ADR 0012, Ficha is for anyone: other people bring their cards in by hand or from a file, and refining with Claude stays Lucas's own way of making cards.

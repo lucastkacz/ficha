@@ -7,15 +7,15 @@ An app that shows its user small cards to remember, every so often, on the Mac, 
 ### Cards
 
 **Card**:
-One small thing the user wants to remember, with a front and a back.
+One small thing the user wants to remember, with a front and a back. Each side holds text, an image, or both, and one image at most.
 _Avoid_: flashcard, note, item
 
 **Card type**:
-What a card holds, if it says: a word, a concept, a quote or a question. A card can have none.
+What a card holds, if it has one: a word, a concept, a quote or a question.
 _Avoid_: kind, category
 
 **Front**:
-The side of a card the review panel shows first. Each side holds text, an image, or both.
+The side of a card the review panel shows first.
 
 **Back**:
 The side of a card the user turns to after trying to remember it.
@@ -48,7 +48,7 @@ What waits to be turned into cards or fixed: captures, including expansions, and
 _Avoid_: queue, backlog
 
 **Duplicate**:
-A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox; or a card created or imported whose front matches another card's front. Matching ignores case and accents. The ñ isn't an accent: "año" doesn't match "ano".
+A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano".
 
 **Expand**:
 Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that approving it adds to that card; or next to the capture it repeats, to be turned into cards with it.
@@ -58,7 +58,7 @@ _Avoid_: merge, append
 A capture in the inbox attached to the card it repeats. Approving it gives that card new content, and the card keeps its step.
 
 **Refine**:
-Turning what waits in the inbox into finished cards, in a Claude session Lucas starts. Claude drafts each change following the content guide, and Lucas approves it. It's Lucas's own way of making cards, not part of the app.
+Turning what waits in the inbox into finished cards, in a Claude session Lucas starts. Claude drafts each change following the content guide, and Lucas approves it.
 _Avoid_: process, generate, import
 
 **Approve**:
@@ -96,7 +96,7 @@ The first time the user sees a card, whole, before it's on the ladder. It isn't 
 _Avoid_: introduction, first review, learning step
 
 **Review log**:
-Every first view and review, with when the user answered, whether an appearance or a review now brought the card, their rating, and how long they took, except from a card notification. A card imported from Anki with its progress starts it with the step it came in on and when it falls due. A card's step and due time are worked out from it.
+Every first view and review, with when the user answered, whether an appearance or a review now brought the card, their rating, and how long they took, except from a card notification; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
@@ -138,11 +138,11 @@ Taking a card out of Ficha for good, with its review log, which burying keeps. A
 _Avoid_: remove, erase
 
 **Import**:
-Bringing cards into Ficha from a file: a text file with one card per line, which another Ficha exported or someone wrote, maybe with an AI, or a deck exported from Anki, with its progress.
+Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a deck exported from Anki, with its progress unless the user leaves it out.
 _Avoid_: load, refine
 
 **Export**:
-Saving cards to a text file with one card per line, which another Ficha or Anki can import. It holds what the cards say, never the user's progress.
+Saving cards to a text file with one card per line, zipped with their images if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, never the user's progress.
 _Avoid_: backup, share
 
 ### Spacing
@@ -160,7 +160,7 @@ A card on the ladder whose wait is over.
 _Avoid_: pending, ready
 
 **New**:
-A card that hasn't had its first view yet.
+A card that isn't on the ladder yet: it hasn't had its first view, nor come in on a step with an import.
 _Avoid_: unseen, fresh
 
 **Learned**:
