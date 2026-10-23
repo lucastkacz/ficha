@@ -103,7 +103,7 @@ struct MenuContent: View {
                                 changePriority { () throws(EngineError) in try model.togglePriority(of: tag.name) }
                             })
                     ) {
-                        Text(verbatim: tag.emoji.map { "\($0) \(tag.name)" } ?? tag.name)
+                        Text(verbatim: tag.title)
                     }
                 }
             } else {

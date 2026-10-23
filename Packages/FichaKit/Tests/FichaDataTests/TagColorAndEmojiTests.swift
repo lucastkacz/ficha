@@ -35,6 +35,22 @@ struct TagColorAndEmojiTests {
             try engine.cardRows(in: .all, on: ladder).map(\.tags) == [[historia, argentina], [ciencia, lenguaje]])
     }
 
+    // The menu's Prioritize submenu puts each tag's emoji before its name.
+    @Test("the Prioritize submenu's read carries each tag's emoji and color, also a priority tag's")
+    func thePrioritizeSubmenusReadCarriesEachTagsEmoji() throws {
+        try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
+        try engine.setEmoji("🇦🇷", of: "argentina")
+        try engine.togglePriority(of: "historia")
+        try engine.setColor(.blue, of: "historia")
+        try engine.setEmoji("📜", of: "historia")
+
+        #expect(
+            try engine.tagsToPrioritize() == [
+                CardTag(name: "argentina", emoji: "🇦🇷"),
+                CardTag(name: "historia", switchedOn: .priority, color: .blue, emoji: "📜"),
+            ])
+    }
+
     // The `tag` table refuses a row with nothing in it, so removing both
     // fails unless the row goes.
     @Test("removing both from a tag with nothing else deletes its row, and removing one keeps the other")
