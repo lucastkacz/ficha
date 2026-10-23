@@ -79,6 +79,49 @@ struct CardsWindowStateTests {
         #expect(try engine.cards().map(\.standing) == [ubuntu.standing])
     }
 
+    @Test("the Color submenu offers None and Finder's seven colors, and ticks the tag's color, or None")
+    func theColorSubmenuTicksTheTagsColorOrNone() throws {
+        try approve(card(.word, front: "fotosíntesis", back: "Luz en azúcar.", tags: ["ciencia"]), in: engine)
+        var window = openWindow()
+        let colors: [TagColor?] = [nil, .red, .orange, .yellow, .green, .blue, .purple, .gray]
+        #expect(window.menu(for: "ciencia")?.colorItems.map(\.color) == colors)
+        #expect(window.menu(for: "ciencia")?.colorItems.filter(\.isTicked).map(\.color) == [nil])
+
+        window.chooseColor(.green, on: "ciencia")
+
+        #expect(window.menu(for: "ciencia")?.colorItems.filter(\.isTicked).map(\.color) == [.green])
+        #expect(window.tags == [CardTag(name: "ciencia", color: .green)])
+        window.chooseColor(nil, on: "ciencia")
+        #expect(window.menu(for: "ciencia")?.colorItems.filter(\.isTicked).map(\.color) == [nil])
+        #expect(window.tags == [CardTag(name: "ciencia")])
+    }
+
+    // The sheet says why while OK refuses, so nothing fails.
+    @Test("the emoji sheet refuses what isn't one emoji, and takes an empty field as removing the tag's emoji")
+    func theEmojiSheetRefusesWhatIsntOneEmoji() throws {
+        try approve(card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["argentina"]), in: engine)
+        var window = openWindow()
+        window.askForEmoji(on: "argentina")
+        #expect(window.question == .emoji(CardTag(name: "argentina")))
+        #expect(window.emojiEntry("argentina") == .refused(.notOneEmoji))
+        #expect(window.emojiEntry("🇦🇷🇺🇾") == .refused(.notOneEmoji))
+        #expect(window.emojiEntry(" ") == .removal)
+        #expect(window.emojiEntry("🇦🇷") == .emoji("🇦🇷"))
+
+        window.chooseEmoji("argentina")
+        #expect(window.question == .emoji(CardTag(name: "argentina")))
+        #expect(window.failure == nil)
+        window.chooseEmoji("🇦🇷")
+        #expect(window.question == nil)
+        #expect(window.tags == [CardTag(name: "argentina", emoji: "🇦🇷")])
+
+        window.askForEmoji(on: "argentina")
+        #expect(window.question == .emoji(CardTag(name: "argentina", emoji: "🇦🇷")))
+        window.chooseEmoji("")
+        #expect(window.question == nil)
+        #expect(window.tags == [CardTag(name: "argentina")])
+    }
+
     @Test("New, Due and Learned leave set-aside cards out, while All cards and the tag's group hold them")
     func newDueAndLearnedLeaveSetAsideCardsOut() throws {
         // eudaimonía gets to the 30-day step, from which a card is learned,

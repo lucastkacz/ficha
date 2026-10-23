@@ -7,7 +7,8 @@ import SwiftUI
 /// card in it, or per capture and flagged card in the inbox, narrowed by the
 /// toolbar's search field, and the selected row whole beside it, with what
 /// Lucas can do with it at its foot. A tag's context menu in the sidebar sets
-/// the tag aside. The cards' table opens with the columns
+/// the tag aside, and gives it a color and an emoji, which the sidebar and the
+/// table's Tags column show. The cards' table opens with the columns
 /// and the order Lucas left it with, which he changes in its headers. He
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the table wait. He selects several cards with
@@ -71,7 +72,7 @@ struct CardsView: View {
             .hidden()
         }
         .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
-            FlagSheet(card: row.card, failure: failure(overFlagSheet: true)) { note in
+            FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
                 state.flag(note: note)
             }
         }
@@ -112,7 +113,7 @@ struct CardsView: View {
         } message: { rows in
             deletionMessage(for: rows)
         }
-        .failureAlert(failure(overFlagSheet: false))
+        .failureAlert(failure(overSheet: false))
         .task {
             // Listening before reading, so no change falls in between.
             let changes = model.changes()
@@ -152,6 +153,13 @@ struct CardsView: View {
         return row
     }
 
+    /// The tag the window asks which emoji to give, while the emoji sheet
+    /// asks.
+    private var tagForEmoji: CardTag? {
+        guard case .emoji(let tag) = state.question else { return nil }
+        return tag
+    }
+
     /// The capture the window asks whether to discard, while it asks.
     private var captureToDiscard: Capture? {
         guard case .discard(let capture) = state.question else { return nil }
@@ -165,12 +173,13 @@ struct CardsView: View {
     }
 
     /// What Lucas did that couldn't be saved, as an alert says it, which
-    /// closing it clears: over the flag sheet while it's open, since the
-    /// window's own alert can't show over its sheet, and over the window
-    /// otherwise. `overFlagSheet` says which of the two alerts this is for.
-    private func failure(overFlagSheet: Bool) -> Binding<Failure?> {
+    /// closing it clears: over the flag sheet or the emoji sheet while one is
+    /// open, since the window's own alert can't show over its sheet, and over
+    /// the window otherwise. `overSheet` says which of the two alerts this is
+    /// for.
+    private func failure(overSheet: Bool) -> Binding<Failure?> {
         Binding {
-            guard overFlagSheet == (cardToFlag != nil) else { return nil }
+            guard overSheet == (cardToFlag != nil || tagForEmoji != nil) else { return nil }
             return state.failure.map(alert(for:))
         } set: {
             if $0 == nil {
@@ -246,6 +255,18 @@ struct CardsView: View {
                         "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
                 ),
                 error: error)
+        case .setColor(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the color of “\(tag)”",
+                    comment: "An alert's title in the Cards window, after a color in a tag's menu, with the tag."),
+                error: error)
+        case .setEmoji(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the emoji of “\(tag)”",
+                    comment: "An alert's title in the Cards window's emoji sheet, after OK, with the tag."),
+                error: error)
         }
     }
 
@@ -291,10 +312,21 @@ struct CardsView: View {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
             }
         }
+        .sheet(isPresented: Binding(get: { tagForEmoji != nil }, set: { if !$0 { state.cancelQuestion() } })) {
+            if let tag = tagForEmoji {
+                EmojiSheet(tag: tag, failure: failure(overSheet: true)) { text in
+                    state.emojiEntry(text)
+                } choose: { text in
+                    state.chooseEmoji(text)
+                }
+            }
+        }
     }
 
     /// The context menu of the sidebar's tag named `tag`, as the state offers
-    /// it: Set Aside, ticked while the tag is set aside.
+    /// it: Set Aside, ticked while the tag is set aside; Color, with None and
+    /// Finder's seven colors, each with a swatch, the tag's own ticked; and
+    /// Emoji…, which opens the emoji sheet.
     @ViewBuilder
     private func tagMenu(for tag: String) -> some View {
         if let menu = state.menu(for: tag) {
@@ -307,6 +339,31 @@ struct CardsView: View {
                         An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its \
                         cards are out of Lucas's reviews for now.
                         """)
+            }
+            Menu {
+                ForEach(menu.colorItems, id: \.color) { item in
+                    Toggle(isOn: Binding(get: { item.isTicked }, set: { _ in state.chooseColor(item.color, on: tag) }))
+                    {
+                        if let color = item.color {
+                            Label {
+                                Text(verbatim: color.name)
+                            } icon: {
+                                color.swatch
+                            }
+                        } else {
+                            Text("None", comment: "The first item of the Color submenu of a tag's menu: no color.")
+                        }
+                    }
+                }
+            } label: {
+                Text("Color", comment: "A submenu of a tag's menu in the Cards window's sidebar: the tag's color.")
+            }
+            Button {
+                state.askForEmoji(on: tag)
+            } label: {
+                Text(
+                    "Emoji…",
+                    comment: "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's emoji.")
             }
         }
     }
@@ -431,8 +488,13 @@ struct CardsView: View {
                 Text("Tags", comment: "A column of the Cards window: the card's tags."),
                 sortUsing: CardRowOrder(.tags)
             ) { row in
-                Text(row.card.tags.formatted(.list(type: .and, width: .narrow)))
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    ForEach(row.tags, id: \.name) { tag in
+                        TagCapsule(tag: tag)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .clipped()
             }
             .width(min: 60, ideal: 120)
             .customizationID(CardRowOrder.Column.tags.rawValue)
@@ -791,21 +853,31 @@ struct CardsView: View {
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
 
-/// A tag's row in the sidebar: its name and the tag symbol, dimmed while
+/// A tag's row in the sidebar: its emoji, when it has one, before its name,
+/// and the tag symbol, filled with its color when it has one, dimmed while
 /// it's set aside.
 private struct TagRow: View {
     let tag: CardTag
 
     var body: some View {
-        Label(tag.name, systemImage: "tag")
-            .opacity(tag.isSetAside ? 0.45 : 1)
-            .accessibilityValue(
-                tag.isSetAside
-                    ? Text(
-                        "Set aside",
-                        comment: "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."
-                    )
-                    : Text(verbatim: ""))
+        Label {
+            Text(verbatim: tag.title)
+        } icon: {
+            if let color = tag.color {
+                Image(systemName: "tag.fill")
+                    .foregroundStyle(color.color)
+            } else {
+                Image(systemName: "tag")
+            }
+        }
+        .opacity(tag.isSetAside ? 0.45 : 1)
+        .accessibilityValue(
+            tag.isSetAside
+                ? Text(
+                    "Set aside",
+                    comment: "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."
+                )
+                : Text(verbatim: ""))
     }
 }
 

@@ -10,9 +10,9 @@ import Foundation
 /// Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
-/// buries and unburies at once, as it sets a tag aside from the tag's
-/// context menu, and it records what couldn't be saved, for the window to
-/// say.
+/// buries and unburies at once, as it sets a tag aside or gives it a color
+/// from the tag's context menu, it asks which emoji the tag gets, and it
+/// records what couldn't be saved, for the window to say.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, or the
     /// inbox.
@@ -77,6 +77,19 @@ public struct CardsWindowState: Sendable {
         /// Whether Set Aside is ticked: the tag is set aside, and choosing it
         /// again undoes it.
         public let isSetAsideTicked: Bool
+        /// The Color submenu's items: None, then Finder's seven colors in
+        /// Finder's order, with the tag's own ticked, or None when it has
+        /// none.
+        public let colorItems: [ColorItem]
+    }
+
+    /// An item of the Color submenu in a tag's context menu.
+    public struct ColorItem: Sendable, Equatable {
+        /// The color it gives the tag, or nil for None, which takes its color
+        /// away.
+        public let color: TagColor?
+        /// Whether it's ticked: the tag has this color, or none for None.
+        public let isTicked: Bool
     }
 
     /// What the window asks before it acts, until Lucas confirms or cancels.
@@ -87,6 +100,20 @@ public struct CardsWindowState: Sendable {
         case delete([CardRow])
         /// What needs fixing in this card, to flag it with that note.
         case flag(CardRow)
+        /// Which emoji this tag gets, in the emoji sheet, whose field starts
+        /// with the one it has.
+        case emoji(CardTag)
+    }
+
+    /// What OK in the emoji sheet makes of what its field holds.
+    public enum EmojiEntry: Sendable, Equatable {
+        /// One emoji, without the spaces around it, which the tag gets.
+        case emoji(String)
+        /// Nothing but spaces, if any, which takes the tag's emoji away.
+        case removal
+        /// Something that isn't one emoji, which OK refuses, and why, for
+        /// the sheet to say.
+        case refused(EngineError)
     }
 
     /// What Lucas did in the window that couldn't be saved, and why, which
@@ -118,6 +145,10 @@ public struct CardsWindowState: Sendable {
         case setAside(tag: String)
         /// He undid setting this tag aside.
         case stopSettingAside(tag: String)
+        /// He gave this tag a color, or took its color away.
+        case setColor(tag: String)
+        /// He gave this tag an emoji, or took its emoji away.
+        case setEmoji(tag: String)
     }
 
     /// What the sidebar chose: All cards, until Lucas picks another group or
@@ -411,7 +442,11 @@ public struct CardsWindowState: Sendable {
     /// What the context menu of the sidebar's tag named `tag` offers, or nil
     /// when the sidebar doesn't list it.
     public func menu(for tag: String) -> TagMenu? {
-        tags.first { $0.name == tag }.map { TagMenu(isSetAsideTicked: $0.isSetAside) }
+        tags.first { $0.name == tag }.map { tag in
+            TagMenu(
+                isSetAsideTicked: tag.isSetAside,
+                colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: $0 == tag.color) })
+        }
     }
 
     /// Chooses Set Aside in the context menu of the sidebar's tag named
@@ -426,6 +461,60 @@ public struct CardsWindowState: Sendable {
                 perform(.setAside(tag: tag)) { engine throws(EngineError) in try engine.setAside(tag) }
             }
         if done {
+            read(on: ladder)
+        }
+    }
+
+    /// Chooses `color` in the Color submenu of the sidebar's tag named `tag`,
+    /// or None when it's nil: gives the tag that color, or takes its color
+    /// away, and reads the cards again, or records why it couldn't.
+    public mutating func chooseColor(_ color: TagColor?, on tag: String) {
+        guard menu(for: tag) != nil else { return }
+        let done = perform(.setColor(tag: tag)) { engine throws(EngineError) in try engine.setColor(color, of: tag) }
+        if done {
+            read(on: ladder)
+        }
+    }
+
+    /// Asks which emoji the sidebar's tag named `tag` gets, in the emoji
+    /// sheet, after Emoji… in its context menu.
+    public mutating func askForEmoji(on tag: String) {
+        guard let tag = tags.first(where: { $0.name == tag }) else { return }
+        question = .emoji(tag)
+    }
+
+    /// What OK in the emoji sheet makes of `text`, what its field holds: one
+    /// emoji for the tag, its emoji's removal when the field is empty, or a
+    /// refusal of anything else.
+    public func emojiEntry(_ text: String) -> EmojiEntry {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .removal
+        }
+        do throws(EngineError) {
+            return .emoji(try tagEmoji(text))
+        } catch {
+            return .refused(error)
+        }
+    }
+
+    /// Chooses OK in the emoji sheet, whose field holds `text`: gives the tag
+    /// the window asks about that emoji, or takes its emoji away when the
+    /// field is empty, and reads the cards again, or records why it couldn't
+    /// and goes on asking. While OK refuses `text`, it does nothing, and the
+    /// sheet says why.
+    public mutating func chooseEmoji(_ text: String) {
+        guard case .emoji(let tag) = question else { return }
+        let emoji: String?
+        switch emojiEntry(text) {
+        case .emoji(let entered): emoji = entered
+        case .removal: emoji = nil
+        case .refused: return
+        }
+        let done = perform(.setEmoji(tag: tag.name)) { engine throws(EngineError) in
+            try engine.setEmoji(emoji, of: tag.name)
+        }
+        if done {
+            question = nil
             read(on: ladder)
         }
     }
