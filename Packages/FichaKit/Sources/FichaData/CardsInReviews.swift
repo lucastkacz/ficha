@@ -46,9 +46,9 @@ struct CardsThatShowUp {
     }
 }
 
-/// The cards that show up, out of every card and the whole review log: the
-/// one way in to them, which every entry point that picks cards reads,
-/// never gathering them again. The cards with a priority tag come first.
+/// The cards that show up, out of every card, the priority tags and the
+/// whole review log: the one way in to them, which every entry point that
+/// picks cards reads, never gathering them again.
 func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
     CardsThatShowUp(
         try allCards(in: db), priorityTags: try tags(switchedOn: .priority, in: db), log: try logEntries(in: db))

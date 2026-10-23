@@ -20,12 +20,7 @@ extension Engine {
     public func tagsToPrioritize() throws(EngineError) -> [CardTag] {
         try read { db in
             let ownTags = try tagsWithSomethingOfTheirOwn(in: db)
-            let inReviews = try allCards(in: db).filter { card in
-                guard case .inReviews = card.standing else {
-                    return false
-                }
-                return true
-            }
+            let inReviews = try allCards(in: db).filter { $0.standing == .inReviews }
             let names = Set(inReviews.flatMap(\.tags)).union(ownTags.values.filter(\.isPriority).map(\.name))
             return names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
                 .map { ownTags[$0] ?? CardTag(name: $0) }

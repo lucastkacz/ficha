@@ -24,17 +24,14 @@ public struct CardsInReviews: Sendable, Equatable {
         priorityTags: Set<String>,
         log: [ReviewLogEntry]
     ) {
-        let inReviews = cards.filter { card in
-            guard case .inReviews = card.standing else {
-                return false
-            }
-            return true
-        }
+        let inReviews = cards.filter { $0.standing == .inReviews }
         ids = inReviews.map(\.id)
         priorityIDs = Set(inReviews.filter { !priorityTags.isDisjoint(with: $0.tags) }.map(\.id))
         self.log = log
     }
 
+    /// These cards in Lucas's reviews, these of them as priority cards, and
+    /// this review log.
     private init(ids: [Int64], priorityIDs: Set<Int64>, log: [ReviewLogEntry]) {
         self.ids = ids
         self.priorityIDs = priorityIDs
