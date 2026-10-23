@@ -107,7 +107,7 @@ func tagsWithSomethingOfTheirOwn(in db: Database) throws -> [String: CardTag] {
 
 /// The tag with this name, with what it has of its own, which is nothing
 /// when the `tag` table has no row for it.
-private func ownTag(_ name: String, in db: Database) throws -> CardTag {
+func ownTag(_ name: String, in db: Database) throws -> CardTag {
     guard let row = try Row.fetchOne(db, sql: "SELECT * FROM tag WHERE name = ?", arguments: [name]) else {
         return CardTag(name: name)
     }

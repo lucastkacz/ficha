@@ -6,6 +6,9 @@ internal import GRDB
 /// reviews and on his ladder, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
+    /// The card's tags, in its order, each with what it has of its own, as
+    /// the Tags column shows them.
+    public let tags: [CardTag]
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
@@ -246,8 +249,9 @@ private func cardRows(
     in db: Database
 ) throws -> [CardRow] {
     let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
+    let ownTags = try tagsWithSomethingOfTheirOwn(in: db)
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
-        try CardRow(card: card, after: entries[card.id] ?? [], on: ladder)
+        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], on: ladder)
     }
     .filter { group.holds($0, at: now, on: ladder) }
 }
@@ -303,10 +307,14 @@ extension CardStanding {
 }
 
 extension CardRow {
-    /// The row of `card`, standing on `ladder` after `entries`, its review
-    /// log's, in the order they happened.
-    fileprivate init(card: Card, after entries: [ReviewLogEntry], on ladder: Ladder) throws(UnexpectedReviewLog) {
+    /// The row of `card`, whose tags have what `ownTags` says of their own,
+    /// standing on `ladder` after `entries`, its review log's, in the order
+    /// they happened.
+    fileprivate init(
+        card: Card, tags ownTags: [String: CardTag], after entries: [ReviewLogEntry], on ladder: Ladder
+    ) throws(UnexpectedReviewLog) {
         self.card = card
+        tags = card.tags.map { ownTags[$0] ?? CardTag(name: $0) }
         cardStanding = card.standing
         standing = try ladder.standing(after: entries)
         lastSeen = entries.last?.answeredAt

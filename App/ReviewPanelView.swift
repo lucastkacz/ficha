@@ -430,7 +430,7 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
-            .cardNotBuried, .cardSetAside, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
+            .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
             .copyMigratedByNewerVersion, .backupsFolder:
             localizedDescription
         }

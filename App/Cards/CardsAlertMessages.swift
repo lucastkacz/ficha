@@ -20,8 +20,8 @@ extension EngineError {
                 comment: "An alert's message in the Cards window, under what couldn't be done with the selected cards."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardSetAside, .cannotUndo, .unreadableReviewLog,
-            .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder:
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardSetAside, .notOneEmoji, .cannotUndo,
+            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder:
             localizedDescription
         }
     }
@@ -38,7 +38,7 @@ extension EngineError {
             message
         case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
-            .cardNotBuried, .cardSetAside, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
+            .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
             .copyMigratedByNewerVersion, .backupsFolder:
             localizedDescription
         }

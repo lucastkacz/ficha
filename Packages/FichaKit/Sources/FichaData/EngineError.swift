@@ -52,6 +52,9 @@ public enum EngineError: Error, Equatable {
     /// alphabetical order, so it can't be answered until none of them is set
     /// aside. Everything else treats it as a card in Lucas's reviews.
     case cardSetAside(Int64, tags: [String])
+    /// What Lucas gave a tag as its emoji isn't one emoji: a word, two
+    /// emoji, a letter or nothing.
+    case notOneEmoji
     /// The card with this id changed outside the review panel, as a refine
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
@@ -144,6 +147,8 @@ extension EngineError: LocalizedError {
                     on each of them in the Cards window.
                     """
             )
+        case .notOneEmoji:
+            String(localized: "A tag's emoji is one emoji. Pick just one, or leave the field empty for none.")
         case .cannotUndo(let id):
             String(
                 localized: "Card \(id) changed outside the review panel, so ⌘Z can't undo it. \(reopenReviewNow)")
