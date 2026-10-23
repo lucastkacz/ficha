@@ -1,24 +1,24 @@
 # Ficha
 
-An app that shows Lucas small cards to remember, every so often, on his Mac, from the menu bar, and on his iPhone, and spaces each one out by how well he knows it. Terms are in English, as the code and the app name them.
+An app that shows its user small cards to remember, every so often, on the Mac, from the menu bar, and on the iPhone, and spaces each one out by how well they know it. Anyone can use it; Lucas builds it, and his own way of making cards, refining them with Claude, isn't part of the app. Terms are in English, as the code and the app name them.
 
 ## Language
 
 ### Cards
 
 **Card**:
-One small thing Lucas wants to remember, with a front and a back.
+One small thing the user wants to remember, with a front and a back. Each side holds text, an image, or both, and one image at most.
 _Avoid_: flashcard, note, item
 
 **Card type**:
-What a card holds: a word, a concept, a quote or a question.
+What a card holds, if it has one: a word, a concept, a quote or a question.
 _Avoid_: kind, category
 
 **Front**:
 The side of a card the review panel shows first.
 
 **Back**:
-The side of a card Lucas turns to after trying to remember it.
+The side of a card the user turns to after trying to remember it.
 _Avoid_: answer, solution
 
 **Tag**:
@@ -26,32 +26,32 @@ A subject a card belongs to, like "historia" or "filosofía". A card can have se
 _Avoid_: topic, category, deck
 
 **Priority tag**:
-A tag Lucas chose so that its cards come first when cards show up, as while he prepares for an exam. It changes which cards come first, never when a card is due.
+A tag the user chose so that its cards come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.
 _Avoid_: focus, exam mode, filter
 
 **Set aside**:
-Taking every card with a tag out of Lucas's reviews for now, also those that get the tag later, as when he's done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
+Taking every card with a tag out of the user's reviews for now, also those that get the tag later, as when they're done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
 _Avoid_: pause, suspend, archive, hide
 
 **Source**:
-Where Lucas came across what a capture or a card holds, like a book or a podcast.
+Where the user came across what a capture or a card holds, like a book or a podcast.
 _Avoid_: origin, reference, citation
 
 ### Capturing and refining
 
 **Capture**:
-Something Lucas jots down to turn into cards later: the raw text, with an optional note and source.
+Something the user jots down to turn into cards later: the raw text, with an optional note and source.
 _Avoid_: draft, idea, raw card
 
 **Inbox**:
-What waits to be refined: captures, including expansions, and flagged cards.
+What waits to be turned into cards or fixed: captures, including expansions, and flagged cards.
 _Avoid_: queue, backlog
 
 **Duplicate**:
-A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano".
+A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano".
 
 **Expand**:
-Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that refining adds it to that card; or next to the capture it repeats, to be refined with it.
+Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that approving it adds to that card; or next to the capture it repeats, to be turned into cards with it.
 _Avoid_: merge, append
 
 **Expansion**:
@@ -62,7 +62,7 @@ Turning what waits in the inbox into finished cards, in a Claude session Lucas s
 _Avoid_: process, generate, import
 
 **Approve**:
-Turning a capture into the cards Lucas accepted for it, which takes it out of the inbox. Approving an expansion gives its card the content Lucas accepted instead.
+Turning a capture into the cards the user accepted for it, in the Cards window or a refine session, which takes it out of the inbox. Approving an expansion gives its card the content the user accepted instead.
 _Avoid_: accept, save
 
 **Discard**:
@@ -70,45 +70,45 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to Lucas's reviews unless one of its tags is set aside.
+Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless one of its tags is set aside.
 _Avoid_: correct
 
 **Content guide**:
-The written rules Claude follows to draft cards: what each type holds, how long it is and how it's worded.
+The written rules Claude follows to draft Lucas's cards: what each type holds, how long it is and how it's worded.
 _Avoid_: style guide, template, prompt
 
 ### Reviewing
 
 **Review panel**:
-The small floating window on the Mac where cards show up and Lucas goes through them.
+The small floating window on the Mac where cards show up and the user goes through them.
 _Avoid_: popup, window, notification
 
 **Review**:
-One pass over one card: Lucas sees its front, flips it to check the back, and rates it.
+One pass over one card: the user sees its front, flips it to check the back, and rates it.
 _Avoid_: answer, attempt, study
 
 **Rating**:
-How well Lucas says he knew a card in a review: again, hard or good, which the app's buttons call "Don't know", "Sort of" and "Know it".
+How well the user says they knew a card in a review: again, hard or good, which the app's buttons call "Don't know", "Sort of" and "Know it".
 _Avoid_: grade, score, ease
 
 **First view**:
-The first time Lucas sees a card, whole, before it's on the ladder. It isn't a review.
+The first time the user sees a card, whole, before it's on the ladder. It isn't a review.
 _Avoid_: introduction, first review, learning step
 
 **Review log**:
-Every first view and review, with when Lucas answered, whether an appearance or a review now brought the card, his rating, and how long he took, except from a card notification. A card's step and due time are worked out from it.
+Every first view and review, with when the user answered, whether an appearance or a review now brought the card, their rating, and how long they took, except from a card notification; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
-Lucas reviewing on his own, outside an appearance: from the menu bar on the Mac, or the Review tab on the iPhone.
+The user reviewing on their own, outside an appearance: from the menu bar on the Mac, or the Review tab on the iPhone.
 _Avoid_: manual session, study mode
 
 **See more**:
-Lucas asking for more cards once an appearance or a review now is done.
+The user asking for more cards once an appearance or a review now is done.
 _Avoid_: continue, extra session
 
 **Review ahead**:
-A review of a card that isn't due yet, which Lucas asks for.
+A review of a card that isn't due yet, which the user asks for.
 _Avoid_: cram, study ahead, extra practice
 
 **Flag**:
@@ -116,17 +116,17 @@ Sending a card back to the inbox with a note on what to fix. It stays out of rev
 _Avoid_: mark, report
 
 **Bury**:
-Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it would be without the burial.
+Taking a card the user no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it would be without the burial.
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with one of its tags; or in Lucas's reviews, new or on a ladder step until it's due. Out of his reviews, a card keeps its step, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with one of its tags; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
 
 **Cards window**:
-The window where Lucas sees all his cards and everything in the inbox, and acts on them himself.
+The window where the user sees all their cards and everything in the inbox, creates cards, and acts on them.
 _Avoid_: browser, card list
 
 **Edit**:
@@ -137,10 +137,18 @@ _Avoid_: modify, update
 Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it stays in the inbox as a capture.
 _Avoid_: remove, erase
 
+**Import**:
+Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a deck exported from Anki, with its progress unless the user leaves it out.
+_Avoid_: load, refine
+
+**Export**:
+Saving cards to a text file with one card per line, zipped with their images if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, never the user's progress.
+_Avoid_: backup, share
+
 ### Spacing
 
 **Ladder**:
-The fixed sequence of waits a card climbs as Lucas remembers it.
+The fixed sequence of waits a card climbs as the user remembers it.
 _Avoid_: schedule, intervals, boxes
 
 **Ladder step**:
@@ -152,7 +160,7 @@ A card on the ladder whose wait is over.
 _Avoid_: pending, ready
 
 **New**:
-A card that hasn't had its first view yet.
+A card that isn't on the ladder yet: it hasn't had its first view, nor come in on a step with an import.
 _Avoid_: unseen, fresh
 
 **Learned**:
@@ -166,7 +174,7 @@ A time Ficha shows up on its own, with the cards that are due or about to be: th
 _Avoid_: session, prompt, popup, presentation
 
 **Card notification**:
-A notification on the iPhone with one card of an appearance, and the buttons to go through it: a new card whole, for its first view, or a due card's front, and its back when Lucas presses and holds it, to rate it.
+A notification on the iPhone with one card of an appearance, and the buttons to go through it: a new card whole, for its first view, or a due card's front, and its back when the user presses and holds it, to rate it.
 _Avoid_: alert, push, banner
 
 **Look-ahead**:
@@ -186,7 +194,7 @@ Putting off an appearance, or what's left of a review now, without rating its ca
 _Avoid_: dismiss, skip, postpone
 
 **Auto-close**:
-The Mac's review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze, unless Lucas had gone through every card it brought.
+The Mac's review panel closing on its own: once it's been untouched for a while, or as the Mac or its screens go to sleep. It counts as a snooze, unless the user had gone through every card it brought.
 _Avoid_: timeout, expiry
 
 **Suppression**:
@@ -194,17 +202,17 @@ A situation in which Ficha holds back appearances on the Mac so as not to interr
 _Avoid_: exception, block, do not disturb
 
 **Focus mode**:
-Whether the Mac's review panel takes the keyboard when it shows up on its own: never, once Lucas is idle, or always. It has nothing to do with the Focus of macOS or iOS.
+Whether the Mac's review panel takes the keyboard when it shows up on its own: never, once the user is idle, or always. It has nothing to do with the Focus of macOS or iOS.
 _Avoid_: Focus, keyboard grab
 
 **Appearance log**:
-Every appearance, and every review now that brought cards, with when it showed and closed and how: finished, snoozed or auto-closed; on the iPhone, from its first card notification to the last card Lucas went through or the one he swiped away, snoozed until none is left, and closed as it showed when he never touched them. An appearance a suppression held back goes in once too, with the suppression.
+Every appearance, and every review now that brought cards, with when it showed and closed and how: finished, snoozed or auto-closed; on the iPhone, from its first card notification to the last card the user went through or the one they swiped away, snoozed until none is left, and closed as it showed when they never touched them. An appearance a suppression held back goes in once too, with the suppression.
 _Avoid_: history, session log
 
 ### Backups
 
 **Backup**:
-A copy of everything Ficha keeps, as it was at one moment, which Ficha saves on its own every day, or as often as Lucas sets, or when he asks. Ficha keeps the last 7, or as many as he sets.
+A copy of everything Ficha keeps, images included, as it was at one moment, which Ficha saves on its own every day, or as often as the user sets, or when they ask. Ficha keeps the last 7, or as many as they set.
 _Avoid_: snapshot, export
 
 **Copy before an update**:
@@ -212,6 +220,9 @@ A copy Ficha saves before a new version changes the database. Ficha never delete
 
 **Copy before a restore**:
 A copy of everything as it was just before a restore, so restoring it undoes the restore. Ficha never deletes it on its own.
+
+**Copy before an import**:
+A copy of everything as it was just before an import, so restoring it undoes the import. Ficha never deletes it on its own.
 
 **Restore**:
 Bringing back a backup, or another copy Ficha saved, in place of everything as it is now.
