@@ -89,25 +89,7 @@ struct CardEditor: View {
                 let label = Text(
                     "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
                 gridLabel(label)
-                Picker(selection: $type) {
-                    // A key of its own, since a tag's Color submenu says
-                    // "None" too, which a translation may word apart.
-                    Text(
-                        String(
-                            localized: "card-type.none", defaultValue: "None",
-                            comment: "The first item of a card's type picker in the Cards window: no type.")
-                    )
-                    .tag(CardType?.none)
-                    Divider()
-                    ForEach(CardType.allCases, id: \.self) { type in
-                        Text(type.name)
-                            .tag(CardType?.some(type))
-                    }
-                } label: {
-                    label
-                }
-                .labelsHidden()
-                .fixedSize()
+                CardTypePicker(type: $type, label: label)
             }
             GridRow {
                 gridLabel(
@@ -171,10 +153,9 @@ struct CardEditor: View {
         .onSubmit(submit)
     }
 
-    /// The tags in the Tags field, which `CardContent` cleans up as it does
-    /// wherever a card comes from.
+    /// The tags in the Tags field.
     private var tags: [String] {
-        tagsText.split(separator: ",").map(String.init)
+        CardContent.tags(inField: tagsText)
     }
 
     /// The place for the image on `side`.

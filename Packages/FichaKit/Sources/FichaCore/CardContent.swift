@@ -61,6 +61,12 @@ public struct CardContent: Sendable, Equatable {
         isBlank(text) && image == nil
     }
 
+    /// The tags a Tags field holds, `text`, separated by commas, as they come
+    /// in: `init` cleans them up as it does wherever a card comes from.
+    public static func tags(inField text: String) -> [String] {
+        text.split(separator: ",").map(String.init)
+    }
+
     /// The images on its sides, each once.
     public var images: Set<ImageName> {
         Set([frontImage, backImage].compactMap(\.self))

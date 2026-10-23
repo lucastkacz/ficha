@@ -156,25 +156,7 @@ private struct CardFormSheet: View {
             GridRow {
                 let label = Text("Type", comment: "In the Cards window's card form, the label of the card's type.")
                 gridLabel(label)
-                Picker(selection: draft(\.type)) {
-                    // The key the card editor's picker has, which a
-                    // translation words apart from a tag's color's None.
-                    Text(
-                        String(
-                            localized: "card-type.none", defaultValue: "None",
-                            comment: "The first item of a card's type picker in the Cards window: no type.")
-                    )
-                    .tag(CardType?.none)
-                    Divider()
-                    ForEach(CardType.allCases, id: \.self) { type in
-                        Text(type.name)
-                            .tag(CardType?.some(type))
-                    }
-                } label: {
-                    label
-                }
-                .labelsHidden()
-                .fixedSize()
+                CardTypePicker(type: draft(\.type), label: label)
             }
             GridRow {
                 gridLabel(Text("Front", comment: "In the Cards window's card form, the label of the card's front."))

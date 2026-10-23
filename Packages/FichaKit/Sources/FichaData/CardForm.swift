@@ -61,7 +61,7 @@ extension CardsWindowState.CardForm {
         /// blank: it has neither text nor an image.
         var content: CardContent? {
             CardContent(
-                type: type, front: front.text, back: back.text, tags: tags.split(separator: ",").map(String.init),
+                type: type, front: front.text, back: back.text, tags: CardContent.tags(inField: tags),
                 source: source, frontImage: front.image, backImage: back.image)
         }
 
