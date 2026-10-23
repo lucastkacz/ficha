@@ -128,11 +128,7 @@ extension AnkiCollection {
             levels = levels.dropFirst(defaultDeck.name.count)
         }
         let tags = levels + note.tags.map { $0.replacingOccurrences(of: "_", with: " ") }
-        return tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.reduce(into: []) { unique, tag in
-            if !tag.isEmpty, !unique.contains(tag) {
-                unique.append(tag)
-            }
-        }
+        return tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.uniqued()
     }
 }
 

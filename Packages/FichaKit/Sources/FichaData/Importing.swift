@@ -204,11 +204,7 @@ extension Engine {
     ) throws(EngineError) -> ImportPreview {
         let repeated = try read { db in try repeatedCards(of: reading.cards, in: db) }
         let referred = Set(reading.cards.flatMap(\.content.images))
-        var proposedTags: [String] = []
-        var seen = Set<String>()
-        for tag in reading.cards.flatMap(\.proposedTags) where seen.insert(tag).inserted {
-            proposedTags.append(tag)
-        }
+        let proposedTags = reading.cards.flatMap(\.proposedTags).uniqued()
         let placedCount = zip(reading.cards, repeated).count { card, repeated in
             switch (card.progress?.stage, repeated) {
             case (.learning?, nil), (.review?, nil): true
@@ -319,7 +315,7 @@ extension ImportedCard {
     fileprivate func content(adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
-                type: content.type, front: content.front, back: content.back, tags: content.tags.adding(tags),
+                type: content.type, front: content.front, back: content.back, tags: (content.tags + tags).uniqued(),
                 source: content.source, frontImage: content.frontImage, backImage: content.backImage))
     }
 
@@ -333,7 +329,7 @@ extension ImportedCard {
                 type: fields.contains(.type) ? content.type : card.type,
                 front: card.front,
                 back: content.back,
-                tags: (fields.contains(.tags) ? content.tags : card.tags).adding(tags),
+                tags: ((fields.contains(.tags) ? content.tags : card.tags) + tags).uniqued(),
                 source: fields.contains(.source) ? content.source : card.source,
                 frontImage: card.frontImage,
                 backImage: fields.contains(.backImage) ? content.backImage : card.backImage))
@@ -357,21 +353,10 @@ extension ImportReading {
             cards: cards.map { card in
                 ImportedCard(
                     content: card.content, fields: card.fields, line: card.line,
-                    proposedTags: card.proposedTags.adding(tags), progress: card.progress,
+                    proposedTags: (card.proposedTags + tags).uniqued(), progress: card.progress,
                     hasImagesDropped: card.hasImagesDropped)
             },
             leftOut: leftOut)
-    }
-}
-
-extension [String] {
-    /// These tags, then those of `tags` they don't hold yet, in order.
-    fileprivate func adding(_ tags: [String]) -> [String] {
-        tags.reduce(into: self) { all, tag in
-            if !all.contains(tag) {
-                all.append(tag)
-            }
-        }
     }
 }
 
