@@ -43,6 +43,8 @@ enum Action: CustomStringConvertible {
     case key(KeyPress)
     /// Text, typed into what holds the focus.
     case type(String)
+    /// A picture, copied to the tool's own pasteboard, for ⌘V to paste.
+    case copyImage(SamplePicture)
 
     /// The action as its arguments ask for it, like `--key cmd+f`.
     var description: String {
@@ -50,8 +52,75 @@ enum Action: CustomStringConvertible {
         case .click(let mouseClick): "--click \(mouseClick.name)"
         case .key(let press): "--key \(press.name)"
         case .type(let text): "--type \"\(text)\""
+        case .copyImage(let picture): "--copy-image \(picture.rawValue)"
         }
     }
+}
+
+/// A picture the tool draws, for the sample's card with images and for
+/// `--copy-image`, since it can't drag a file nor reach a clipboard with an
+/// image on it.
+enum SamplePicture: String, CaseIterable {
+    /// Argentina's flag, 1,800 × 1,125 pixels, which Ficha shrinks as it
+    /// comes in.
+    case flag
+    /// The flag's Sun of May alone, 600 × 600 pixels, on a transparent
+    /// background, which Ficha keeps as a PNG.
+    case sun
+
+    /// The picture, as a PNG.
+    func png() throws(RenderError) -> Data {
+        let size = self == .flag ? CGSize(width: 1800, height: 1125) : CGSize(width: 600, height: 600)
+        guard let sRGB = CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+                space: sRGB, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            throw RenderError(description: "Couldn't draw the sample picture \(rawValue). \(whenMacOSRefuses)")
+        }
+        switch self {
+        case .flag:
+            let stripe = size.height / 3
+            context.setFillColor(CGColor(srgbRed: 0.455, green: 0.675, blue: 0.875, alpha: 1))
+            context.fill(CGRect(origin: .zero, size: size))
+            context.setFillColor(CGColor(gray: 1, alpha: 1))
+            context.fill(CGRect(x: 0, y: stripe, width: size.width, height: stripe))
+            drawSunOfMay(in: context, center: CGPoint(x: size.width / 2, y: size.height / 2), radius: stripe * 0.45)
+        case .sun:
+            drawSunOfMay(in: context, center: CGPoint(x: size.width / 2, y: size.height / 2), radius: 290)
+        }
+        guard let image = context.makeImage(),
+            let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        else {
+            throw RenderError(description: "Couldn't draw the sample picture \(rawValue). \(whenMacOSRefuses)")
+        }
+        return png
+    }
+}
+
+/// Draws the Sun of May in `context`: a golden disk and 32 rays, the longest
+/// reaching `radius` from `center`.
+func drawSunOfMay(in context: CGContext, center: CGPoint, radius: CGFloat) {
+    /// The point `distance` from `center` at `angle`, in radians.
+    func point(_ distance: CGFloat, _ angle: CGFloat) -> CGPoint {
+        CGPoint(x: center.x + distance * cos(angle), y: center.y + distance * sin(angle))
+    }
+    context.setFillColor(CGColor(srgbRed: 0.965, green: 0.706, blue: 0.055, alpha: 1))
+    context.setStrokeColor(CGColor(srgbRed: 0.522, green: 0.204, blue: 0.039, alpha: 1))
+    context.setLineWidth(radius * 0.02)
+    let disk = radius * 0.45
+    for index in 0..<32 {
+        let angle = CGFloat(index) * .pi / 16
+        let ray = CGMutablePath()
+        ray.move(to: point(disk * 0.9, angle - .pi / 40))
+        ray.addLine(to: point(index.isMultiple(of: 2) ? radius : radius * 0.8, angle))
+        ray.addLine(to: point(disk * 0.9, angle + .pi / 40))
+        ray.closeSubpath()
+        context.addPath(ray)
+        context.drawPath(using: .fillStroke)
+    }
+    context.addEllipse(in: CGRect(x: center.x - disk, y: center.y - disk, width: disk * 2, height: disk * 2))
+    context.drawPath(using: .fillStroke)
 }
 
 /// A click, with the modifier keys held down, like `cmd+280,121`.
@@ -131,8 +200,10 @@ let usage = """
       --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
                  keys: a-z, 0-9, return, escape, tab, space, delete; modifiers: cmd, shift
       --type     text typed into what holds the focus, like a text field
+      --copy-image  a picture, flag or sun, copied to the tool's own pasteboard, for --key cmd+v to paste
       --out      the PNG, by default .build/render/<window>-<light|dark>.png
-    --click, --key and --type run in the order given, and after each one the tool prints what holds the focus.
+    --click, --key, --type and --copy-image run in the order given, and after each one the tool prints what holds
+    the focus.
     While the window has a sheet, an alert or a confirmation open, they go to it.
     """
 
@@ -202,6 +273,11 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
                 throw RenderError(description: "--type takes the text to type.\n\(usage)")
             }
             request.actions.append(.type(text))
+        case "--copy-image":
+            guard let name = arguments.popFirst(), let picture = SamplePicture(rawValue: name) else {
+                throw RenderError(description: "--copy-image takes a picture: flag or sun.\n\(usage)")
+            }
+            request.actions.append(.copyImage(picture))
         case "--out":
             guard let path = arguments.popFirst() else {
                 throw RenderError(description: "--out takes the PNG's path.\n\(usage)")
@@ -223,7 +299,8 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
 /// the first day and climbing at different paces, two sent back to the first
 /// step, one flagged with a note and one buried, and the rest new, with a
-/// capture waiting in the inbox; and then two new cards made by hand, with no
+/// capture waiting in the inbox; and then a new card with a flag on its front
+/// and the Sun of May on its back, and two new cards made by hand, with no
 /// type and no capture. The time it's on stays where the twelve days left it.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
@@ -275,6 +352,16 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     }
     try engine.flag(cards[2].id, note: note)
     try engine.bury(cards[5].id)
+    // A card made in the Cards window with an image on each side.
+    guard
+        let withImages = CardContent(
+            type: nil, front: "¿De qué país es esta bandera?", back: "De la Argentina. En el centro, el Sol de Mayo.",
+            tags: ["geografía"], source: nil, frontImage: try engine.addImage(SamplePicture.flag.png()),
+            backImage: try engine.addImage(SamplePicture.sun.png()))
+    else {
+        throw RenderError(description: "The sample's card with images has a blank side.")
+    }
+    try engine.create(withImages)
     // The sample cards all have a type, and cards from a capture: these two
     // are as someone who doesn't refine with Claude makes them.
     let madeByHand = [
@@ -701,6 +788,9 @@ do {
         case .click(let mouseClick): try click(mouseClick, in: window)
         case .key(let keyPress): try press(keyPress, in: window)
         case .type(let text): try typeText(text, in: window)
+        case .copyImage(let picture):
+            pasteboard.clearContents()
+            pasteboard.setData(try picture.png(), forType: .png)
         }
         try wait(0.5)
         print("\(action): the focus is on \(focus(in: window))")

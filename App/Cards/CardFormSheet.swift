@@ -75,10 +75,11 @@ struct ConvertToCardButton: View {
     }
 }
 
-/// The card form, a sheet over the Cards window: an optional type, a front,
-/// a back, tags and a source, and, when it was opened from a capture, the
-/// capture beside them, whole. Add saves the card and keeps the form open,
-/// with the front and the back cleared for the next one, as Anki's Add
+/// The card form, a sheet over the Cards window: an optional type, a front
+/// and a back, each with its text and an image, dragged or pasted under it,
+/// tags and a source, and, when it was opened from a capture, the capture
+/// beside them, whole. Add saves the card and keeps the form open, with the
+/// front and the back cleared for the next one, as Anki's Add
 /// window does; Return adds too, Option-Return starts a new line, and Escape
 /// closes, as Close does. While the front repeats another card's, the form
 /// says so under it, with Show Card (⌘R), which closes the form and selects
@@ -185,12 +186,16 @@ private struct CardFormSheet: View {
                             state.showRepeatedCard()
                         }
                     }
+                    imageWell(on: .front, of: form)
                 }
             }
             GridRow {
                 gridLabel(Text("Back", comment: "In the Cards window's card form, the label of the card's back."))
-                TextField("Back", text: draft(\.back.text), axis: .vertical)
-                    .lineLimit(4...10)
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField("Back", text: draft(\.back.text), axis: .vertical)
+                        .lineLimit(4...10)
+                    imageWell(on: .back, of: form)
+                }
             }
             GridRow {
                 gridLabel(Text("Tags", comment: "In the Cards window's card form, the label of the card's tags."))
@@ -249,6 +254,17 @@ private struct CardFormSheet: View {
             }
             .keyboardShortcut(.defaultAction)
             .disabled(!form.canAdd)
+        }
+    }
+
+    /// The place for the image on `side` of the card the form makes.
+    private func imageWell(on side: CardSide, of form: CardsWindowState.CardForm) -> some View {
+        ImageWell(
+            image: side == .front ? form.draft.front.image : form.draft.back.image, images: state.images
+        ) { data in
+            state.putImageInForm(data, on: side)
+        } remove: {
+            state.removeImageFromForm(on: side)
         }
     }
 

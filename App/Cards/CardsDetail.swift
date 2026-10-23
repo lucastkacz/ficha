@@ -3,7 +3,8 @@ import FichaData
 import SwiftUI
 
 /// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says: a buried card keeps its flag.
+/// buried, as where it stands says, since a buried card keeps its flag, and
+/// after a photo when the front has an image.
 struct FrontCell: View {
     let card: Card
 
@@ -19,6 +20,19 @@ struct FrontCell: View {
                     FlagIcon()
                 }
                 BuriedIcon()
+            }
+            if card.frontImage != nil {
+                Image(systemName: "photo")
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(
+                        Text(
+                            "Image",
+                            comment: "The icon beside a card's front in the Cards window, when it has an image.")
+                    )
+                    .help(
+                        Text(
+                            "The front has an image",
+                            comment: "The tooltip of the icon beside a card's front, when it has an image."))
             }
             Text(card.front)
                 .lineLimit(1)
@@ -58,10 +72,13 @@ private struct SetAsideIcon: View {
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
 /// buried it when it's buried, and its set-aside tags when it's set aside,
-/// its type and tags, its front, back and source, where it stands, and its
-/// review log, in a chart and in full.
+/// its type and tags, its front and back, each side's image above its text,
+/// and its source, where it stands, and its review log, in a chart and in
+/// full.
 struct CardDetail: View {
     let row: CardRow
+    /// The images the window shows, the card's among them.
+    let images: ShownImages
     /// The engine's time, which the due time counts from.
     let now: Date
     /// The card's review log, oldest first, or why it couldn't be read, or
@@ -75,11 +92,26 @@ struct CardDetail: View {
             VStack(alignment: .leading, spacing: 16) {
                 FlagAndBurial(standing: row.cardStanding)
                 TypeAndTags(card: row.card)
-                Text(row.card.front)
-                    .font(.title2.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(row.card.back)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let image = row.card.frontImage {
+                    SideImage(image: images[image], maximumHeight: 320)
+                }
+                if !row.card.front.isEmpty {
+                    Text(row.card.front)
+                        .font(.title2.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if row.card.frontImage != nil || row.card.backImage != nil {
+                    // Which side is which, once an image makes them more
+                    // than two lines of text.
+                    Divider()
+                }
+                if let image = row.card.backImage {
+                    SideImage(image: images[image], maximumHeight: 320)
+                }
+                if !row.card.back.isEmpty {
+                    Text(row.card.back)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let source = row.card.source {
                     Text(source)
                         .font(.callout)

@@ -257,6 +257,12 @@ struct CardsView: View {
                             already left the inbox.
                             """
                     )))
+        case .putImage:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add the image",
+                    comment: "An alert's title in the Cards window, after dragging or pasting onto a side of a card."),
+                error: error)
         case .flag:
             return Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
         case .bury(let count):
@@ -650,7 +656,13 @@ struct CardsView: View {
     private var detail: some View {
         switch state.editing {
         case .card(let card):
-            CardEditor(card: card, isSearching: isSearchFocused) { content in
+            CardEditor(
+                card: card, images: state.editedImages, shownImages: state.images, isSearching: isSearchFocused
+            ) { data, side in
+                state.putImageInEditor(data, on: side)
+            } removeImage: { side in
+                state.removeImageFromEditor(on: side)
+            } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()
             } cancel: {
@@ -683,10 +695,12 @@ struct CardsView: View {
             case .cards(let rows):
                 selectionSummary(rows)
             case .card(let row, let reviewLog):
-                CardDetail(row: row, now: state.now, reviewLog: reviewLog, ladder: state.ladder)
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        actionBar
-                    }
+                CardDetail(
+                    row: row, images: state.images, now: state.now, reviewLog: reviewLog, ladder: state.ladder
+                )
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    actionBar
+                }
             case .nothingSelectedInInbox:
                 ContentUnavailableView(
                     String(

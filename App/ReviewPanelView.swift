@@ -27,6 +27,10 @@ struct ReviewPanelView: View {
     /// The tallest the panel grows, which its window sets by the screen it
     /// shows on: a card taller than that scrolls.
     var maximumHeight = CGFloat.infinity
+    /// The tallest a side's image shows: a third of the panel's tallest, so a
+    /// card with an image on each side and a line or two of text on each fits
+    /// without scrolling, and never more than 280 pt.
+    private var imageHeight: CGFloat { min(280, maximumHeight / 3) }
     /// Whether the note's field has the keyboard. Whatever shows the note
     /// sets it, in the same action, as the flag button does.
     @FocusState private var noteIsFocused: Bool
@@ -239,9 +243,9 @@ struct ReviewPanelView: View {
         let line = topLine()
         let room = topButtons(buttons, of: panel, withKeys: false).hidden()
         let frontAndBack = VStack(alignment: .leading, spacing: 16) {
-            front(of: card)
+            front(of: card, in: panel)
             if showingBack {
-                back(of: card)
+                back(of: card, in: panel)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -250,13 +254,13 @@ struct ReviewPanelView: View {
                 header {
                     VStack(alignment: .leading, spacing: 8) {
                         line
-                        front(of: card)
+                        front(of: card, in: panel)
                     }
                 } buttons: {
                     room
                 }
                 if showingBack {
-                    back(of: card)
+                    back(of: card, in: panel)
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -428,18 +432,33 @@ struct ReviewPanelView: View {
         }
     }
 
-    private func front(of card: Card) -> some View {
-        Text(card.front)
-            .font(.title2.weight(.semibold))
-            .fixedSize(horizontal: false, vertical: true)
+    /// The card's front: its image, fitted to the panel's width, above its
+    /// text, each when it has one.
+    private func front(of card: Card, in panel: ReviewPanelModel) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let image = card.frontImage {
+                SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
+            }
+            if !card.front.isEmpty {
+                Text(card.front)
+                    .font(.title2.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
-    /// The card's back, and its source, small, when it has one.
-    private func back(of card: Card) -> some View {
+    /// The card's back: its image, fitted to the panel's width, above its
+    /// text, each when it has one, and its source, small, when it has one.
+    private func back(of card: Card, in panel: ReviewPanelModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Text(card.back)
-                .fixedSize(horizontal: false, vertical: true)
+            if let image = card.backImage {
+                SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
+            }
+            if !card.back.isEmpty {
+                Text(card.back)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let source = card.source {
                 Text(source)
                     .font(.caption)
@@ -595,7 +614,7 @@ extension EngineError {
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
             .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
-            .copyMigratedByNewerVersion, .backupsFolder:
+            .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .imagesFolder:
             localizedDescription
         }
     }
