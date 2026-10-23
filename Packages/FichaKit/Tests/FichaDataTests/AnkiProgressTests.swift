@@ -255,13 +255,13 @@ final class AnkiProgressTests {
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
 
-        window.previewImport(of: textFile)
+        window.previewImportAndWait(of: textFile)
         let textFileOffers = window.importing?.offersProgress
-        window.previewImport(of: packageFile)
+        window.previewImportAndWait(of: packageFile)
         let importing = try #require(window.importing)
         window.chooseToBringProgress(false)
         let untickedBrings = window.importing?.bringsProgress
-        window.importCards()
+        window.importCardsAndWait()
 
         #expect(textFileOffers == false)
         #expect(importing.offersProgress)
@@ -289,9 +289,9 @@ final class AnkiProgressTests {
         ).write(to: file)
         var window = engine.openCardsWindow(on: threeSteps)
         window.startImport()
-        window.previewImport(of: file)
+        window.previewImportAndWait(of: file)
 
-        window.importCards()
+        window.importCardsAndWait()
 
         let uno = try #require(try engine.cards().first)
         #expect(try engine.standing(of: uno.id, on: threeSteps) == .onLadder(step: 2, due: try october(31, at: 4)))

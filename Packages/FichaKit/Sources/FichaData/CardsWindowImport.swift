@@ -17,7 +17,23 @@ extension CardsWindowState {
             case done(ImportOutcome)
         }
 
+        /// What the sheet is busy with, away from the main actor, while it
+        /// is.
+        public enum Busy: Sendable, Equatable {
+            /// Reading the file with this name, for its preview.
+            case reading(String)
+            /// Importing the preview's cards.
+            case importing
+        }
+
         public fileprivate(set) var step = Step.choosingFile
+        /// What the sheet is busy with, while it is: until it's done, the
+        /// sheet takes no other file and doesn't import.
+        public fileprivate(set) var busy: Busy?
+        /// The work the sheet waits for, while it's busy: what any other
+        /// work did, as one the sheet started before it closed, it leaves
+        /// alone.
+        fileprivate var awaitedWork: UUID?
         /// A field for each tag the preview proposes, in its order.
         public fileprivate(set) var tagFields: [TagField] = []
         /// What happens to the file's cards that repeat the user's: Update,
@@ -38,9 +54,10 @@ extension CardsWindowState {
         }
 
         /// Whether Import is on: while the sheet shows a preview whose import
-        /// brings in a card, or updates one, as the user chose.
+        /// brings in a card, or updates one, as the user chose, and isn't
+        /// busy.
         public var canImport: Bool {
-            guard let preview else {
+            guard let preview, busy == nil else {
                 return false
             }
             return preview.newCount > 0 || (repeatedCards == .update && preview.repeatedCount > 0)
@@ -101,20 +118,14 @@ extension CardsWindowState {
         importing = Importing()
     }
 
-    /// Reads `file`, the one the user chose, and shows its preview, with the
-    /// tags it proposes in their fields, its repeated cards updated and Bring
-    /// progress ticked, or says why it couldn't, and the sheet stays where it
-    /// was.
-    public mutating func previewImport(of file: URL) {
-        guard importing != nil else { return }
-        do throws(EngineError) {
-            let preview = try engine.previewImport(of: file)
-            importing = Importing(
-                step: .preview(preview),
-                tagFields: preview.proposedTags.map { TagField(proposed: $0, name: $0) })
-        } catch {
-            importing?.failure = ImportFailure(action: .preview, error: error)
-        }
+    /// Starts reading `file`, the one the user chose, while the sheet isn't
+    /// busy, and returns the work, which the app runs away from the main
+    /// actor and hands to `finishImportWork(_:)`: the sheet then shows the
+    /// file's preview, with the tags it proposes in their fields, its
+    /// repeated cards updated and Bring progress ticked, or says why it
+    /// couldn't read it, and stays where it was.
+    public mutating func previewImport(of file: URL) -> ImportWork? {
+        startImportWork(.preview(file), busy: .reading(file.lastPathComponent))
     }
 
     /// Gives the field of the tag the preview proposes as `proposed` what
@@ -142,19 +153,51 @@ extension CardsWindowState {
         importing?.bringsProgress = brings
     }
 
-    /// Imports the file the sheet shows the preview of, as the user chose,
-    /// while Import is on, and says what it did, or why it couldn't, and the
-    /// preview stays. The table lists the cards as they are then. An Anki
-    /// package's cards bring their progress onto the window's ladder while
-    /// Bring progress is ticked.
-    public mutating func importCards() {
-        guard let importing, importing.canImport, let preview = importing.preview else { return }
-        do throws(EngineError) {
-            let outcome = try engine.importCards(preview, choosing: importing.choices(on: ladder))
-            self.importing?.step = .done(outcome)
+    /// Starts importing the file the sheet shows the preview of, as the user
+    /// chose, while Import is on, and returns the work, which the app runs
+    /// away from the main actor and hands to `finishImportWork(_:)`: the
+    /// sheet then says what the import did, or why it couldn't import the
+    /// cards, and the preview stays. An Anki package's cards bring their
+    /// progress onto the window's ladder while Bring progress is ticked.
+    public mutating func importCards() -> ImportWork? {
+        guard let importing, importing.canImport, let preview = importing.preview else { return nil }
+        return startImportWork(.importCards(preview, importing.choices(on: ladder)), busy: .importing)
+    }
+
+    /// Starts `job` while the sheet is open and isn't busy, and returns its
+    /// work, which the sheet is `busy` with until it's done.
+    private mutating func startImportWork(_ job: ImportWork.Job, busy: Importing.Busy) -> ImportWork? {
+        guard importing != nil, importing?.busy == nil else { return nil }
+        let work = ImportWork(id: UUID(), engine: engine, job: job)
+        importing?.busy = busy
+        importing?.awaitedWork = work.id
+        return work
+    }
+
+    /// Takes what the work the sheet started did, once the app ran it: the
+    /// preview it read, or what the import did, or why it couldn't, as
+    /// `previewImport(of:)` and `importCards()` say. The table lists the
+    /// cards as they are once an import is done, even after the sheet
+    /// closed. What other work did, which the sheet doesn't wait for, it
+    /// leaves alone.
+    public mutating func finishImportWork(_ done: ImportWork.Done) {
+        if case .imported(.success) = done.result {
             read(on: ladder)
-        } catch {
-            self.importing?.failure = ImportFailure(action: .importCards, error: error)
+        }
+        guard importing?.awaitedWork == done.id else { return }
+        importing?.busy = nil
+        importing?.awaitedWork = nil
+        switch done.result {
+        case .preview(.success(let preview)):
+            importing = Importing(
+                step: .preview(preview),
+                tagFields: preview.proposedTags.map { TagField(proposed: $0, name: $0) })
+        case .preview(.failure(let error)):
+            importing?.failure = ImportFailure(action: .preview, error: error)
+        case .imported(.success(let outcome)):
+            importing?.step = .done(outcome)
+        case .imported(.failure(let error)):
+            importing?.failure = ImportFailure(action: .importCards, error: error)
         }
     }
 
@@ -167,5 +210,44 @@ extension CardsWindowState {
     /// Closes the Import sheet.
     public mutating func closeImport() {
         importing = nil
+    }
+}
+
+/// Work the Import sheet starts: reading a file for its preview, or
+/// importing the cards. A big file takes a while, so the app runs it away
+/// from the main actor, and hands what it did to the window's
+/// `finishImportWork(_:)`.
+public struct ImportWork: Sendable {
+    fileprivate enum Job: Sendable {
+        case preview(URL)
+        case importCards(ImportPreview, ImportChoices)
+    }
+
+    /// What the work did.
+    public struct Done: Sendable {
+        fileprivate enum Result: Sendable {
+            case preview(Swift.Result<ImportPreview, EngineError>)
+            case imported(Swift.Result<ImportOutcome, EngineError>)
+        }
+
+        fileprivate let id: UUID
+        fileprivate let result: Result
+    }
+
+    fileprivate let id: UUID
+    fileprivate let engine: Engine
+    fileprivate let job: Job
+
+    /// Does the work, where it's called, and says what it did.
+    public func run() -> Done {
+        switch job {
+        case .preview(let file):
+            Done(id: id, result: .preview(Result { () throws(EngineError) in try engine.previewImport(of: file) }))
+        case .importCards(let preview, let choices):
+            Done(
+                id: id,
+                result: .imported(
+                    Result { () throws(EngineError) in try engine.importCards(preview, choosing: choices) }))
+        }
     }
 }

@@ -447,12 +447,21 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
     defer { try? FileManager.default.removeItem(at: file) }
     var state = model.openCardsWindow()
     state.startImport()
-    state.previewImport(of: file)
+    previewImportAtOnce(of: file, in: &state)
     guard state.importing?.preview != nil else {
         throw RenderError(
             description: "The sample file to import has no preview: \(String(describing: state.importing))")
     }
     return state
+}
+
+/// Reads `file` for the Import sheet in `state`, as the app does once the
+/// user chose it, the reading run at once rather than away from the main
+/// actor, so that the picture shows its preview.
+func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) {
+    if let work = state.previewImport(of: file) {
+        state.finishImportWork(work.run())
+    }
 }
 
 /// The Cards window's state partway through importing an Anki package, as
@@ -470,7 +479,7 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
     defer { try? FileManager.default.removeItem(at: file) }
     var state = model.openCardsWindow()
     state.startImport()
-    state.previewImport(of: file)
+    previewImportAtOnce(of: file, in: &state)
     guard state.importing?.preview != nil else {
         throw RenderError(
             description: "The sample Anki package has no preview: \(String(describing: state.importing))")

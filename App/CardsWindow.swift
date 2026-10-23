@@ -12,7 +12,7 @@ final class CardsWindow: NSWindow {
     private static let frameName = "Cards"
     /// The least the window's content can be below its toolbar: enough for
     /// the sidebar, the table and the detail side by side.
-    private static let minimumSize = NSSize(width: 880, height: 440)
+    static let minimumSize = NSSize(width: 880, height: 440)
     /// The window's content the first time it opens.
     private static let firstSize = NSSize(width: 1120, height: 640)
 

@@ -14,9 +14,21 @@ extension View {
 /// Import… and ⇧⌘I, and the sheet they open while the state imports.
 private struct ImportButtonAndSheet: ViewModifier {
     @Binding var state: CardsWindowState
+    /// The height of the window under its toolbar, which the sheet stays
+    /// within, once it's known.
+    @State private var windowHeight: CGFloat?
+    /// What the sheet takes of that height beyond its content: the frame
+    /// macOS draws around a sheet, about 28 points tall on macOS 26, and a
+    /// margin over the window's bottom edge.
+    private let sheetMargins: CGFloat = 44
 
     func body(content: Content) -> some View {
         content
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.height
+            } action: { height in
+                windowHeight = height
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     importButton
@@ -37,13 +49,31 @@ private struct ImportButtonAndSheet: ViewModifier {
             .sheet(isPresented: isImporting) {
                 if let importing = state.importing {
                     ImportSheet(
-                        importing: importing, failure: failure, preview: { state.previewImport(of: $0) },
+                        importing: importing, maximumHeight: maximumSheetHeight, failure: failure,
+                        preview: { run(state.previewImport(of: $0)) },
                         nameTag: { state.nameImportTag($0, as: $1) }, removeTag: { state.removeImportTag($0) },
                         chooseForRepeatedCards: { state.chooseForRepeatedCards($0) },
                         chooseToBringProgress: { state.chooseToBringProgress($0) },
-                        importCards: { state.importCards() })
+                        importCards: { run(state.importCards()) })
                 }
             }
+    }
+
+    /// The tallest the sheet's content gets: what the window has under its
+    /// toolbar, or until that's known, as when the window opens with the
+    /// sheet, the least it can have, less the sheet's margins, so that the
+    /// sheet fits from the moment it opens.
+    private var maximumSheetHeight: CGFloat {
+        (windowHeight ?? CardsWindow.minimumSize.height) - sheetMargins
+    }
+
+    /// Runs `work`, which the state started, away from the main actor, and
+    /// hands what it did back to the state.
+    private func run(_ work: ImportWork?) {
+        guard let work else { return }
+        Task {
+            state.finishImportWork(await doneAwayFromTheMainActor(work))
+        }
     }
 
     /// Import…, which opens the Import sheet.
@@ -98,6 +128,13 @@ private struct ImportButtonAndSheet: ViewModifier {
     }
 }
 
+/// What `work` did, done away from the main actor: reading a big file, or
+/// importing its cards, takes seconds, while the window goes on answering.
+@concurrent
+private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Done {
+    work.run()
+}
+
 /// The sheet the Cards window's Import button opens. First it says in a line
 /// what Ficha reads, Copy Instructions for an AI copies how to write such a
 /// file, and Choose File… opens a text file of cards, a zip with one and its
@@ -111,10 +148,18 @@ private struct ImportButtonAndSheet: ViewModifier {
 /// each, or clears it to leave it out. An Anki package's cards come in where
 /// Anki had them while Bring progress is ticked (ADR 0013), and how many of
 /// them land on a step goes in the line under the title. Import imports
-/// them. Last, it says what the import did. `CardsWindowState` holds the
+/// them. While it reads the file or imports, it says so beside a spinner.
+/// A preview taller than the window scrolls between the title and the
+/// buttons. Last, it says what the import did. `CardsWindowState` holds the
 /// preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
+    /// The tallest the sheet gets, as the window is.
+    let maximumHeight: CGFloat
+    /// `maximumHeight` as it was when the sheet opened, which the sheet
+    /// keeps: macOS keeps a sheet's window as tall as it opened, so the
+    /// content keeps to that, even once the window's height is known.
+    @State private var openingMaximumHeight: CGFloat?
     /// What couldn't be done, as the alert over the sheet says it.
     let failure: Binding<Failure?>
     /// Reads the file chosen in the open panel and shows its preview.
@@ -132,9 +177,15 @@ struct ImportSheet: View {
     @Environment(\.dismiss) private var dismiss
     /// Whether the open panel is open.
     @State private var isChoosingFile = false
+    /// The space between the sheet's parts, and around them.
+    private let spacing: CGFloat = 16
+    private let padding: CGFloat = 20
+    /// The height of a row of buttons, which a preview keeps in view under
+    /// what scrolls.
+    private let buttonsHeight: CGFloat = 28
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: spacing) {
             switch importing.step {
             case .choosingFile:
                 choosingFile
@@ -144,8 +195,13 @@ struct ImportSheet: View {
                 done(outcome)
             }
         }
-        .padding(20)
+        .padding(padding)
         .frame(width: 460)
+        .onAppear {
+            openingMaximumHeight = maximumHeight
+        }
+        // An import that started goes on until it's done.
+        .interactiveDismissDisabled(importing.busy == .importing)
         .fileImporter(
             isPresented: $isChoosingFile,
             allowedContentTypes: [.plainText, .commaSeparatedText, .tabSeparatedText, .zip]
@@ -175,24 +231,93 @@ struct ImportSheet: View {
                     """,
                     comment: "Under the title of the Cards window's Import sheet, before a file is chosen."))
             HStack {
-                CopyInstructionsButton()
+                if importing.busy == nil {
+                    CopyInstructionsButton()
+                } else {
+                    busyNote
+                }
                 Spacer()
                 cancelButton
                 chooseFileButton(
                     Text("Choose File…", comment: "The Import sheet's button that opens a text file of cards."),
-                    shortcut: .defaultAction)
+                    shortcut: .defaultAction
+                )
+                .disabled(importing.busy != nil)
             }
         }
     }
 
-    /// The preview of the file chosen, with the choices for its import.
+    /// What the sheet is busy with, beside a spinner, while it is.
+    @ViewBuilder
+    private var busyNote: some View {
+        if let busy = importing.busy {
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                switch busy {
+                case .reading(let fileName):
+                    Text(
+                        "Reading “\(fileName)”…",
+                        comment: "In the Import sheet, beside a spinner, while it reads the file chosen, with its name."
+                    )
+                case .importing:
+                    Text("Importing…", comment: "In the Import sheet, beside a spinner, while it imports the cards.")
+                }
+            }
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+        }
+    }
+
+    /// The preview of the file chosen, with the choices for its import,
+    /// which scroll above its buttons when they're taller than the sheet can
+    /// be.
     private func previewOf(_ preview: ImportPreview) -> some View {
         Group {
-            heading(
-                Text(
-                    "Import “\(preview.fileName)”",
-                    comment: "The title of the Cards window's Import sheet, with the name of the file chosen."),
-                cardsComingIn(preview))
+            ScrollView {
+                VStack(alignment: .leading, spacing: spacing) {
+                    heading(
+                        Text(
+                            "Import “\(preview.fileName)”",
+                            comment: "The title of the Cards window's Import sheet, with the name of the file chosen."),
+                        cardsComingIn(preview))
+                    previewDetails(preview)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: (openingMaximumHeight ?? maximumHeight) - 2 * padding - spacing - buttonsHeight)
+            .fixedSize(horizontal: false, vertical: true)
+            .scrollBounceBehavior(.basedOnSize)
+            .disabled(importing.busy != nil)
+            HStack {
+                if importing.busy == nil {
+                    chooseFileButton(
+                        Text(
+                            "Choose Another File…",
+                            comment: "The Import sheet's button that opens another text file of cards instead."),
+                        shortcut: KeyboardShortcut("o", modifiers: .command))
+                } else {
+                    busyNote
+                }
+                Spacer()
+                cancelButton
+                    .disabled(importing.busy == .importing)
+                Button {
+                    importCards()
+                } label: {
+                    Text("Import", comment: "The Import sheet's button that imports the cards as previewed.")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!importing.canImport)
+            }
+        }
+    }
+
+    /// What the preview of the file chosen says under its title, and the
+    /// choices for its import.
+    private func previewDetails(_ preview: ImportPreview) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
             if preview.cardsWithImagesDropped > 0 {
                 Text(
                     "\(preview.cardsWithImagesDropped) cards have more than one image on a side, and come in with the first.",
@@ -229,22 +354,6 @@ struct ImportSheet: View {
                 if !importing.tagFields.isEmpty {
                     ankiTags
                 }
-            }
-            HStack {
-                chooseFileButton(
-                    Text(
-                        "Choose Another File…",
-                        comment: "The Import sheet's button that opens another text file of cards instead."),
-                    shortcut: KeyboardShortcut("o", modifiers: .command))
-                Spacer()
-                cancelButton
-                Button {
-                    importCards()
-                } label: {
-                    Text("Import", comment: "The Import sheet's button that imports the cards as previewed.")
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(!importing.canImport)
             }
         }
     }

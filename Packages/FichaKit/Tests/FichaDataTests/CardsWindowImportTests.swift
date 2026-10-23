@@ -41,7 +41,7 @@ final class CardsWindowImportTests {
         var window = engine.openCardsWindow(on: ladder)
         window.read(on: ladder)
         window.startImport()
-        window.previewImport(of: try file(name, text))
+        window.previewImportAndWait(of: try file(name, text))
         return window
     }
 
@@ -55,7 +55,7 @@ final class CardsWindowImportTests {
 
         window.startImport()
         let beforeChoosing = window.importing
-        window.previewImport(
+        window.previewImportAndWait(
             of: try file("Palabras.txt", "serendipia\tUn hallazgo.\nefímero\tQue dura poco.\npetricor\n"))
 
         #expect(beforeChoosing?.step == .choosingFile)
@@ -77,9 +77,9 @@ final class CardsWindowImportTests {
         var removed = try importSheet(on: "Lenguaje.txt", "petricor\tEl olor de la lluvia.\n")
 
         renamed.nameImportTag("Palabras", as: "vocabulario")
-        renamed.importCards()
+        renamed.importCardsAndWait()
         removed.nameImportTag("Lenguaje", as: " ")
-        removed.importCards()
+        removed.importCardsAndWait()
 
         #expect(renamed.importing?.tagFields == [CardsWindowState.TagField(proposed: "Palabras", name: "vocabulario")])
         #expect(try engine.cards().map(\.tags) == [["vocabulario"], []])
@@ -92,7 +92,7 @@ final class CardsWindowImportTests {
 
         window.chooseForRepeatedCards(.skip)
         let isImportOnWithSkip = window.importing?.canImport
-        window.importCards()
+        window.importCardsAndWait()
         let afterImportWhileOff = window.importing?.step
         window.chooseForRepeatedCards(.update)
 
@@ -114,7 +114,7 @@ final class CardsWindowImportTests {
         window.chooseForRepeatedCards(.skip)
         window.chooseForRepeatedCards(.update)
 
-        window.importCards()
+        window.importCardsAndWait()
 
         #expect(window.importing?.step == .done(ImportOutcome(added: 1, updated: 2, skipped: 0, copyBeforeImport: nil)))
         #expect(window.listedFronts == ["serendipia", "petricor", "efímero"])
@@ -137,12 +137,12 @@ final class CardsWindowImportTests {
         try package.write(to: file)
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
-        window.previewImport(of: file)
+        window.previewImportAndWait(of: file)
         let tagFields = window.importing?.tagFields
 
         window.nameImportTag("Anatomía", as: "anatomía humana")
         window.removeImportTag("repaso")
-        window.importCards()
+        window.importCardsAndWait()
 
         #expect(
             tagFields == ["Medicina", "Anatomía", "repaso"].map { CardsWindowState.TagField(proposed: $0, name: $0) })
@@ -164,7 +164,7 @@ final class CardsWindowImportTests {
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
 
-        window.previewImport(of: file)
+        window.previewImportAndWait(of: file)
 
         let preview = try #require(window.importing?.preview)
         #expect(preview.kind == .ankiPackage)
@@ -176,12 +176,57 @@ final class CardsWindowImportTests {
             ])
     }
 
+    // A big file takes a while, and the app reads it away from the main
+    // actor, so the window answers meanwhile.
+    @Test(
+        "while the file chosen is read, the sheet says so, and a reading that ends after the sheet closed shows nothing"
+    )
+    func whileTheFileIsReadTheSheetSaysSo() throws {
+        var window = engine.openCardsWindow(on: ladder)
+        window.read(on: ladder)
+        window.startImport()
+        let file = try file("Palabras.txt", "efímero\tQue dura poco.\n")
+
+        let reading = window.previewImport(of: file)
+        let whileReading = window.importing
+        window.finishImportWork(try #require(reading).run())
+        let read = window.importing
+        let readingAgain = window.previewImport(of: file)
+        window.closeImport()
+        window.startImport()
+        window.finishImportWork(try #require(readingAgain).run())
+
+        #expect(whileReading?.busy == .reading("Palabras.txt"))
+        #expect(whileReading?.step == .choosingFile)
+        #expect(read?.busy == nil)
+        #expect(read?.preview?.newCount == 1)
+        #expect(window.importing?.step == .choosingFile)
+        #expect(window.importing?.busy == nil)
+    }
+
+    @Test("while the cards are imported, the sheet says so and Import is off, and once they are, the table lists them")
+    func whileTheCardsAreImportedTheSheetSaysSo() throws {
+        var window = try importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
+
+        let importing = window.importCards()
+        let whileImporting = window.importing
+        let importingTwice = window.importCards()
+        window.finishImportWork(try #require(importing).run())
+
+        #expect(whileImporting?.busy == .importing)
+        #expect(whileImporting?.canImport == false)
+        #expect(importingTwice == nil)
+        #expect(window.importing?.step == .done(ImportOutcome(added: 1, updated: 0, skipped: 0, copyBeforeImport: nil)))
+        #expect(window.importing?.busy == nil)
+        #expect(window.listedFronts == ["efímero"])
+    }
+
     @Test("a file that can't be read leaves the sheet where it was, saying why until it's dismissed")
     func aFileThatCantBeReadSaysWhy() throws {
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
 
-        window.previewImport(of: folder.appending(path: "Nada.txt"))
+        window.previewImportAndWait(of: folder.appending(path: "Nada.txt"))
 
         #expect(window.importing?.step == .choosingFile)
         #expect(
