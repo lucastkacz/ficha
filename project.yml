@@ -51,6 +51,21 @@ packages:
   FichaKit:
     path: Packages/FichaKit
 
+# zstd's configuration macros, for each target that links FichaData, whose
+# Swift loads zstd's module: FichaKit's `Package.swift` says why, and passes
+# the same ones to its own targets (ADR 0015).
+settingGroups:
+  zstd:
+    GCC_PREPROCESSOR_DEFINITIONS:
+      - $(inherited)
+      - ZSTDLIB_VISIBLE=
+      - ZSTDLIB_HIDDEN=
+      - ZDICTLIB_VISIBLE=
+      - ZDICTLIB_HIDDEN=
+      - ZSTDERRORLIB_VISIBLE=
+      - ZSTDERRORLIB_HIDDEN=
+      - ZSTD_CLEVEL_DEFAULT=3
+
 targets:
   Ficha:
     type: application
@@ -74,6 +89,7 @@ targets:
           destination: wrapper
           subpath: Contents/Helpers
     settings:
+      groups: [zstd]
       base:
         # One module name for both apps below, so the code behaves the same in each.
         PRODUCT_MODULE_NAME: Ficha
@@ -118,6 +134,7 @@ targets:
       - package: FichaKit
         product: FichaCLI
     settings:
+      groups: [zstd]
       base:
         PRODUCT_NAME: ficha
         # Built into the app, never installed on its own.
@@ -147,6 +164,7 @@ targets:
       - package: FichaKit
         product: FichaData
     settings:
+      groups: [zstd]
       base:
         # One module name, whatever the app's name, as the Mac app's.
         PRODUCT_MODULE_NAME: FichaPhone
