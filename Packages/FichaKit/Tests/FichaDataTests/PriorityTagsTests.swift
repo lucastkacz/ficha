@@ -183,17 +183,34 @@ struct PriorityTagsTests {
         try engine.flag(flagged.id, note: note("Falta la fórmula"))
         try engine.bury(buried.id)
         #expect(
-            try engine.tagsToPrioritize().map(\.name) == ["argentina", "ética", "filosofía", "historia", "lenguaje"])
-        #expect(try engine.tagsToPrioritize().filter(\.isPriority).isEmpty)
+            try engine.prioritizeMenu().tags.map(\.name) == ["argentina", "ética", "filosofía", "historia", "lenguaje"])
+        #expect(try engine.prioritizeMenu().tags.filter(\.isPriority).isEmpty)
 
         try engine.togglePriority(of: "historia")
         try engine.togglePriority(of: "filosofía")
         try engine.edit(
             mayo.id, with: card(.word, front: "Revolución de Mayo", back: "Mayo de 1810.", tags: ["argentina"]))
 
-        let tags = try engine.tagsToPrioritize()
+        let tags = try engine.prioritizeMenu().tags
         #expect(tags.map(\.name) == ["argentina", "ética", "filosofía", "historia", "lenguaje"])
         #expect(tags.filter(\.isPriority).map(\.name) == ["filosofía", "historia"])
+    }
+
+    @Test(
+        "the Prioritize submenu ticks None while no tag is a priority tag, and its title names the priority tags alphabetically once some are"
+    )
+    func theSubmenuTicksNoneAndNamesThePriorityTags() throws {
+        try approveCard("ubuntu", tags: ["lenguaje", "filosofía"])
+        try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
+        #expect(try engine.prioritizeMenu().isNoneTicked)
+        #expect(try engine.prioritizeMenu().priorityTagNames.isEmpty)
+
+        try engine.togglePriority(of: "historia")
+        try engine.togglePriority(of: "filosofía")
+
+        let menu = try engine.prioritizeMenu()
+        #expect(!menu.isNoneTicked)
+        #expect(menu.priorityTagNames == ["filosofía", "historia"])
     }
 
     @Test(
@@ -210,7 +227,7 @@ struct PriorityTagsTests {
         try engine.clearPriorityTags()
 
         #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia].map(PanelCard.review))
-        #expect(try engine.tagsToPrioritize() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
+        #expect(try engine.prioritizeMenu().tags == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
     }
 
     // A tag is a priority tag, set aside, or neither (ADR 0011).
@@ -224,12 +241,12 @@ struct PriorityTagsTests {
 
         try engine.setAside("filosofía")
 
-        #expect(try engine.tagsToPrioritize() == [CardTag(name: "historia")])
+        #expect(try engine.prioritizeMenu().tags == [CardTag(name: "historia")])
         try engine.togglePriority(of: "filosofía")
         #expect(try engine.sidebarTags().first == CardTag(name: "filosofía", switchedOn: .setAside))
-        #expect(try engine.tagsToPrioritize() == [CardTag(name: "historia")])
+        #expect(try engine.prioritizeMenu().tags == [CardTag(name: "historia")])
         try engine.stopSettingAside("filosofía")
-        #expect(try engine.tagsToPrioritize() == [CardTag(name: "filosofía"), CardTag(name: "historia")])
+        #expect(try engine.prioritizeMenu().tags == [CardTag(name: "filosofía"), CardTag(name: "historia")])
         #expect(try engine.cards().first == ubuntu)
     }
 
@@ -246,7 +263,7 @@ struct PriorityTagsTests {
 
         let reopened = try Engine(location: .folder(folder), time: time, calendar: calendar)
 
-        #expect(try reopened.tagsToPrioritize().filter(\.isPriority).map(\.name) == ["filosofía"])
+        #expect(try reopened.prioritizeMenu().tags.filter(\.isPriority).map(\.name) == ["filosofía"])
         #expect(try reopened.reviewNow(settings) == [.firstView(eudaimonia)])
     }
 

@@ -10,20 +10,36 @@ extension CardTag {
     }
 }
 
+/// What the menu bar's Prioritize submenu offers, as the engine reads it:
+/// "None", and then each tag, which the menu draws.
+public struct PrioritizeMenu: Sendable, Equatable {
+    /// The tags it offers, each with what it has of its own, ticked while
+    /// it's a priority tag, in alphabetical order as the Mac sorts text.
+    public let tags: [CardTag]
+
+    /// Whether "None" is ticked: no tag is a priority tag.
+    public var isNoneTicked: Bool {
+        priorityTagNames.isEmpty
+    }
+
+    /// The priority tags' names, in the order it offers them, which its
+    /// title names while there are some.
+    public var priorityTagNames: [String] {
+        tags.filter(\.isPriority).map(\.name)
+    }
+}
+
 extension Engine {
-    /// The tags the menu's Prioritize submenu offers, each with what it has
-    /// of its own, in alphabetical order as the Mac sorts text: every tag of
-    /// the cards in Lucas's reviews, and every priority tag, which stays
-    /// listed while no card in his reviews carries it, so that he can untick
-    /// it. A set-aside tag's cards are out of his reviews, and it's never a
-    /// priority tag, so it isn't offered.
-    public func tagsToPrioritize() throws(EngineError) -> [CardTag] {
+    /// What the menu's Prioritize submenu offers: every tag of the cards in
+    /// Lucas's reviews, as the one way in to the cards that show up reads
+    /// them, and every priority tag, which stays listed while no card in his
+    /// reviews carries it, so that he can untick it. A set-aside tag's cards
+    /// are out of his reviews, and it's never a priority tag, so it isn't
+    /// offered.
+    public func prioritizeMenu() throws(EngineError) -> PrioritizeMenu {
         try read { db in
-            let ownTags = try tagsWithSomethingOfTheirOwn(in: db)
-            let inReviews = try allCards(in: db).filter { $0.standing == .inReviews }
-            let names = Set(inReviews.flatMap(\.tags)).union(ownTags.values.filter(\.isPriority).map(\.name))
-            return names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-                .map { ownTags[$0] ?? CardTag(name: $0) }
+            PrioritizeMenu(
+                tags: try OwnTags(in: db).listing(cardsThatShowUp(in: db).inReviews.tags, alongWithEvery: .priority))
         }
     }
 
@@ -34,7 +50,7 @@ extension Engine {
     /// the Prioritize submenu doesn't offer it.
     public func togglePriority(of tag: String) throws(EngineError) {
         try write { db in
-            var own = try tagsWithSomethingOfTheirOwn(in: db)[tag] ?? CardTag(name: tag)
+            var own = try ownTag(tag, in: db)
             switch own.switchedOn {
             case .priority: own.switchedOn = nil
             case nil: own.switchedOn = .priority
@@ -49,7 +65,7 @@ extension Engine {
     /// appearance, review now or "See more" on.
     public func clearPriorityTags() throws(EngineError) {
         try write { db in
-            for var tag in try tagsWithSomethingOfTheirOwn(in: db).values where tag.isPriority {
+            for var tag in try OwnTags(in: db).tags(switchedOn: .priority) {
                 tag.switchedOn = nil
                 try save(tag, in: db)
             }

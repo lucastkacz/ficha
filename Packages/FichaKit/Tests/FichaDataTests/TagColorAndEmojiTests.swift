@@ -45,7 +45,7 @@ struct TagColorAndEmojiTests {
         try engine.setEmoji(TagEmoji("📜"), of: "historia")
 
         #expect(
-            try engine.tagsToPrioritize() == [
+            try engine.prioritizeMenu().tags == [
                 CardTag(name: "argentina", emoji: "🇦🇷"),
                 CardTag(name: "historia", switchedOn: .priority, color: .blue, emoji: "📜"),
             ])

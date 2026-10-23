@@ -6,7 +6,7 @@ internal import GRDB
 /// (ADR 0011). A tag has one on at most: setting aside a priority tag drops
 /// its priority. Its raw value is how the `tag` table keeps it, so it never
 /// changes.
-public enum TagSwitch: String, Sendable, CaseIterable {
+public enum TagSwitch: String, Sendable {
     /// Its cards come first when cards show up.
     case priority
     /// Its cards are out of Lucas's reviews for now, without being buried.
@@ -65,11 +65,8 @@ extension Engine {
     /// while no card carries it, so that Lucas can undo it.
     public func sidebarTags() throws(EngineError) -> [CardTag] {
         try read { db in
-            let ownTags = try tagsWithSomethingOfTheirOwn(in: db)
-            let names = Set(try allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags))
-                .union(ownTags.values.filter(\.isSetAside).map(\.name))
-            return names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-                .map { ownTags[$0] ?? CardTag(name: $0) }
+            try OwnTags(in: db).listing(
+                allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags), alongWithEvery: .setAside)
         }
     }
 
@@ -98,11 +95,36 @@ extension Engine {
     }
 }
 
-/// Every tag the `tag` table has a row for, since it has something of its
-/// own, by name.
-func tagsWithSomethingOfTheirOwn(in db: Database) throws -> [String: CardTag] {
-    let tags = try Row.fetchAll(db, sql: "SELECT * FROM tag").map(CardTag.init(row:))
-    return Dictionary(uniqueKeysWithValues: tags.map { ($0.name, $0) })
+/// What every tag has of its own, as the `tag` table keeps it, read at
+/// once: a tag the table has no row for is just a name.
+struct OwnTags: Sendable {
+    /// Every tag the `tag` table has a row for, since it has something of
+    /// its own, by name.
+    private let byName: [String: CardTag]
+
+    /// What every tag has of its own, as the `tag` table keeps it now.
+    init(in db: Database) throws {
+        let tags = try Row.fetchAll(db, sql: "SELECT * FROM tag").map(CardTag.init(row:))
+        byName = Dictionary(uniqueKeysWithValues: tags.map { ($0.name, $0) })
+    }
+
+    /// The tag with this name, with what it has of its own, which is nothing
+    /// when the `tag` table has no row for it.
+    func tag(_ name: String) -> CardTag {
+        byName[name] ?? CardTag(name: name)
+    }
+
+    /// Every tag with `tagSwitch` on.
+    func tags(switchedOn tagSwitch: TagSwitch) -> [CardTag] {
+        byName.values.filter { $0.switchedOn == tagSwitch }
+    }
+
+    /// The tags named in `names`, and every tag with `tagSwitch` on, which
+    /// stays listed while no card carries it, each once, with what it has of
+    /// its own, in alphabetical order as the Mac sorts text.
+    func listing(_ names: some Sequence<String>, alongWithEvery tagSwitch: TagSwitch) -> [CardTag] {
+        Set(names).union(tags(switchedOn: tagSwitch).map(\.name)).sortedAlphabetically().map(tag)
+    }
 }
 
 /// The tag with this name, with what it has of its own, which is nothing

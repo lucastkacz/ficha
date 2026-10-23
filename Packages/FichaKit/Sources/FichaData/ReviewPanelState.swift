@@ -89,10 +89,10 @@ public struct ReviewPanelState: Sendable {
     public private(set) var outcome: AppearanceLogEntry.Outcome?
     /// What Lucas did that couldn't be saved, while the panel says so.
     public private(set) var failure: Failure?
-    /// The tags with something of their own, by name, as they were when the
-    /// panel opened: a tag changed while it's open shows from the next panel
-    /// on, so the card Lucas is on doesn't change under him.
-    private let ownTags: [String: CardTag]
+    /// What every tag has of its own, as it was when the panel opened: a tag
+    /// changed while it's open shows from the next panel on, so the card
+    /// Lucas is on doesn't change under him.
+    private let ownTags: OwnTags
     private let engine: Engine
     private let settings: ReviewSettings
     private let shownAt: Date
@@ -113,7 +113,7 @@ public struct ReviewPanelState: Sendable {
     private var wentThrough: [Visit] = []
 
     init(
-        trigger: Trigger, cards: [PanelCard], ownTags: [String: CardTag], engine: Engine, settings: ReviewSettings,
+        trigger: Trigger, cards: [PanelCard], ownTags: OwnTags, engine: Engine, settings: ReviewSettings,
         clock: some Clock<Duration>
     ) {
         self.trigger = trigger
@@ -139,7 +139,7 @@ public struct ReviewPanelState: Sendable {
     /// color and emoji as they were when the panel opened, which the panel
     /// shows at the card's top, or none once he went through every card.
     public var tags: [CardTag] {
-        current?.card.tags.map { ownTags[$0] ?? CardTag(name: $0) } ?? []
+        current?.card.tags.map(ownTags.tag) ?? []
     }
 
     /// What the panel shows: the card Lucas is on, its front or its back, or
@@ -481,7 +481,7 @@ extension Engine {
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>
     ) throws(EngineError) -> ReviewPanelState {
         ReviewPanelState(
-            trigger: trigger, cards: cards, ownTags: try read(tagsWithSomethingOfTheirOwn(in:)), engine: self,
+            trigger: trigger, cards: cards, ownTags: try read(OwnTags.init(in:)), engine: self,
             settings: settings, clock: clock)
     }
 

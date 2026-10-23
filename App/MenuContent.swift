@@ -43,7 +43,7 @@ struct MenuContent: View {
         Button("Capture…", action: openCapture)
             .keyboardShortcut(captureShortcut.shortcut?.keyboardShortcut)
         Button(reviewNowTitle, action: openReviewPanel)
-        prioritizeMenu
+        prioritizeSubmenu
         Divider()
         Text(progressLine)
         Button(
@@ -80,22 +80,22 @@ struct MenuContent: View {
     /// emoji before its name, ticked while it's a priority tag, which toggles
     /// it. A change applies from the next appearance, review now or "See
     /// more" on.
-    private var prioritizeMenu: some View {
+    private var prioritizeSubmenu: some View {
         Menu(prioritizeTitle) {
-            if let tags = model.tagsToPrioritize {
+            if let menu = model.prioritizeMenu {
                 Toggle(
                     isOn: Binding(
-                        get: { !tags.contains(where: \.isPriority) },
+                        get: { menu.isNoneTicked },
                         set: { _ in changePriority { () throws(EngineError) in try model.clearPriorityTags() } })
                 ) {
                     Text(
                         "None",
                         comment: "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.")
                 }
-                if !tags.isEmpty {
+                if !menu.tags.isEmpty {
                     Divider()
                 }
-                ForEach(tags, id: \.name) { tag in
+                ForEach(menu.tags, id: \.name) { tag in
                     Toggle(
                         isOn: Binding(
                             get: { tag.isPriority },
@@ -115,7 +115,7 @@ struct MenuContent: View {
     /// "Prioritize", naming the priority tags while there are some, so Lucas
     /// sees that priority is on without opening the submenu.
     private var prioritizeTitle: String {
-        let names = (model.tagsToPrioritize ?? []).filter(\.isPriority).map(\.name)
+        let names = model.prioritizeMenu?.priorityTagNames ?? []
         guard !names.isEmpty else {
             return String(
                 localized: "Prioritize",

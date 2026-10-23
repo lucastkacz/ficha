@@ -43,9 +43,9 @@ final class AppModel {
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
     private(set) var progress: ProgressCounts?
-    /// The tags the menu's Prioritize submenu offers, as the engine reads
-    /// them, or nil when they couldn't be read (the engine logs why).
-    private(set) var tagsToPrioritize: [CardTag]?
+    /// What the menu's Prioritize submenu offers, as the engine reads it, or
+    /// nil when it couldn't be read (the engine logs why).
+    private(set) var prioritizeMenu: PrioritizeMenu?
 
     /// The real Ficha's way into Lucas's cards, through `engine`.
     convenience init(engine: Engine) {
@@ -64,12 +64,12 @@ final class AppModel {
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
         countProgress()
-        readTagsToPrioritize()
+        readPrioritizeMenu()
         Task { [weak self] in
             for await _ in changes {
                 guard let self else { return }
                 countProgress()
-                readTagsToPrioritize()
+                readPrioritizeMenu()
             }
         }
         // Cards come due as time passes, without the database changing.
@@ -188,9 +188,9 @@ final class AppModel {
         try engine.clearPriorityTags()
     }
 
-    /// Reads again the tags the Prioritize submenu offers, whenever the
-    /// database changes.
-    private func readTagsToPrioritize() {
-        tagsToPrioritize = try? engine.tagsToPrioritize()
+    /// Reads again what the Prioritize submenu offers, whenever the database
+    /// changes.
+    private func readPrioritizeMenu() {
+        prioritizeMenu = try? engine.prioritizeMenu()
     }
 }
