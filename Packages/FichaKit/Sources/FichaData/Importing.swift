@@ -34,6 +34,10 @@ public struct ImportPreview: Sendable, Equatable {
     /// How many of the file's cards repeat one of the user's, by the
     /// duplicate rule, as the user's cards were when the file was read.
     public let repeatedCount: Int
+    /// How many of the file's cards that repeat none of the user's an
+    /// import that brings progress puts on a step: an Anki package's cards
+    /// that Anki was reviewing or learning (ADR 0013).
+    public let placedCount: Int
 
     /// How many of the file's lines, or an Anki package's cards, stay out
     /// for a reason.
@@ -83,17 +87,36 @@ public struct ImportChoices: Sendable, Equatable {
         case skip
     }
 
+    /// Whether the cards bring where they stood in the app the file comes
+    /// from, as an Anki package's do (ADR 0013).
+    public enum Progress: Sendable, Equatable {
+        /// Every card comes in new, and in the user's reviews.
+        case leftOut
+        /// Each card that comes in new to Ficha comes in where it stood:
+        /// one in review on the step of `ladder`, the user's, nearest its
+        /// interval, one being learned on the first step, both due when they
+        /// were due there, and a new one new; a suspended one comes in
+        /// buried. A card of the user's that a repeated card updates keeps
+        /// its own progress.
+        case brought(onto: Ladder)
+    }
+
     /// The name each tag the preview proposes goes on the cards with, by the
     /// proposed name: another one, or a blank one, which leaves the tag out.
     /// A proposed tag that isn't here goes on the cards as it's proposed.
     public var tagNames: [String: String]
     public var repeatedCards: RepeatedCards
+    public var progress: Progress
 
-    /// The choices an import starts with: every proposed tag as it's
-    /// proposed, and the repeated cards updated.
-    public init(tagNames: [String: String] = [:], repeatedCards: RepeatedCards = .update) {
+    /// The choices an import starts with in the engine: every proposed tag
+    /// as it's proposed, the repeated cards updated, and progress left out.
+    /// The Import sheet starts with progress brought for an Anki package.
+    public init(
+        tagNames: [String: String] = [:], repeatedCards: RepeatedCards = .update, progress: Progress = .leftOut
+    ) {
         self.tagNames = tagNames
         self.repeatedCards = repeatedCards
+        self.progress = progress
     }
 }
 
@@ -144,7 +167,7 @@ extension Engine {
         let kind: ImportPreview.Kind
         do throws(CardsFileProblem) {
             if isZip(data) && isAnkiPackage(data) {
-                reading = try readAnkiPackage(data)
+                reading = try readAnkiPackage(data, in: calendar)
                 kind = .ankiPackage
             } else if isZip(data) {
                 (reading, images) = try readZipOfCards(data)
@@ -180,9 +203,16 @@ extension Engine {
         for tag in reading.cards.flatMap(\.proposedTags) where seen.insert(tag).inserted {
             proposedTags.append(tag)
         }
+        let placedCount = zip(reading.cards, repeated).count { card, repeated in
+            switch (card.progress?.stage, repeated) {
+            case (.learning?, nil), (.review?, nil): true
+            case (.new?, _), (nil, _), (_, _?): false
+            }
+        }
         return ImportPreview(
             fileName: fileName, kind: kind, cards: reading.cards, images: images.filter { referred.contains($0.key) },
-            leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil })
+            leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
+            placedCount: placedCount)
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that
@@ -227,8 +257,11 @@ extension Engine {
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
-                        try insertCard(
+                        let cardID = try insertCard(
                             try card.content(adding: addedTags(card)), capturedAs: nil, at: importedAt, in: db)
+                        if case .brought(let ladder) = choices.progress, let progress = card.progress {
+                            try bring(progress, to: cardID, onto: ladder, at: importedAt, in: db)
+                        }
                         added += 1
                     case (let repeated?, .update):
                         let updatedCard = try replaceContent(
@@ -247,6 +280,21 @@ extension Engine {
         }
         removeImagesNoCardUses(among: comingIn.union(letGo))
         return ImportOutcome(added: added, updated: updated, skipped: skipped, copyBeforeImport: copy)
+    }
+
+    /// Gives the card with the id `cardID`, which is coming in new to Ficha
+    /// at `importedAt`, the progress it brings from the app it comes from:
+    /// a placement on `ladder`, the first entry of its review log, unless
+    /// it's new there, and a burial when it was suspended there.
+    private func bring(
+        _ progress: ImportedProgress, to cardID: Int64, onto ladder: Ladder, at importedAt: Date, in db: Database
+    ) throws {
+        if let (step, due) = ladder.placement(of: progress.stage) {
+            try place(cardID, on: step, dueAt: due, at: importedAt, in: db)
+        }
+        if progress.isSuspended {
+            _ = try updateCard(cardID, setting: "buriedAt = ?", to: [importedAt], in: db)
+        }
     }
 
     /// Saves a copy before an import in the Backups folder, and returns it,
@@ -303,7 +351,7 @@ extension ImportReading {
             cards: cards.map { card in
                 ImportedCard(
                     content: card.content, fields: card.fields, line: card.line,
-                    proposedTags: card.proposedTags.adding(tags))
+                    proposedTags: card.proposedTags.adding(tags), progress: card.progress)
             },
             leftOut: leftOut)
     }

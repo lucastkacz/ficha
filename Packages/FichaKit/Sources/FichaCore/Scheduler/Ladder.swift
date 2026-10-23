@@ -30,21 +30,34 @@ public struct Ladder: Sendable, Equatable {
 
     /// Where a card stands on the ladder after the entries of its review log,
     /// in the order they happened. Without entries it's new. Its first view
-    /// puts it on the first step; then good moves it up one step, hard keeps
-    /// it on its step and again sends it back to the first. The last step
-    /// repeats for good. After each entry, the card waits its step's wait from
-    /// when Lucas answered. A review ahead only counts when it's an again:
-    /// hard and good leave the card's step and due time as they were
-    /// (ADR 0002).
+    /// puts it on the first step, to wait its wait from then, and a
+    /// placement, which an import gave it in place of a first view, on the
+    /// placement's step until its due time, or on the last step when the
+    /// ladder no longer has that one (ADR 0013). Then good moves it up one
+    /// step, hard keeps it on its step and again sends it back to the first.
+    /// The last step repeats for good. After each review, the card waits its
+    /// step's wait from when Lucas answered. A review ahead only counts when
+    /// it's an again: hard and good leave the card's step and due time as
+    /// they were (ADR 0002).
     public func standing(after entries: [ReviewLogEntry]) throws(UnexpectedReviewLog) -> LadderStanding {
         guard let first = entries.first else {
             return .new
         }
-        guard first.kind == .firstView else {
+        var step: Int
+        var due: Date
+        switch first.kind {
+        case .firstView:
+            step = 0
+            due = first.answeredAt.adding(waits[0])
+        case .placement(let placedStep, let placedDue):
+            guard placedStep >= 0 else {
+                throw UnexpectedReviewLog(cardID: first.cardID)
+            }
+            step = min(placedStep, waits.count - 1)
+            due = placedDue
+        case .review:
             throw UnexpectedReviewLog(cardID: first.cardID)
         }
-        var step = 0
-        var waitingSince = first.answeredAt
         for entry in entries.dropFirst() {
             guard case .review(let rating) = entry.kind else {
                 throw UnexpectedReviewLog(cardID: entry.cardID)
@@ -55,9 +68,32 @@ public struct Ladder: Sendable, Equatable {
             case (.good, false): step = min(step + 1, waits.count - 1)
             case (.hard, true), (.good, true): continue
             }
-            waitingSince = entry.answeredAt
+            due = entry.answeredAt.adding(waits[step])
         }
-        return .onLadder(step: step, due: waitingSince.adding(waits[step]))
+        return .onLadder(step: step, due: due)
+    }
+
+    /// The step and due time an import that brings a card's progress from
+    /// another app places it on, as it stood there at `stage` (ADR 0013): a
+    /// card being learned on the first step, and one in review on the step
+    /// whose wait is nearest its interval, the last step when its interval
+    /// is longer, the shorter wait when two are as near; each due when it
+    /// was due there. Nil for a new card, which comes in new.
+    public func placement(of stage: ImportedProgress.Stage) -> (step: Int, due: Date)? {
+        switch stage {
+        case .new:
+            nil
+        case .learning(let due):
+            (0, due)
+        case .review(let interval, let due):
+            (nearestStep(to: interval), due)
+        }
+    }
+
+    /// The step whose wait is nearest `interval`, the first of two as near.
+    private func nearestStep(to interval: Duration) -> Int {
+        let distances = waits.map { wait in wait > interval ? wait - interval : interval - wait }
+        return distances.indices.min { distances[$0] < distances[$1] } ?? 0
     }
 
     /// How many of `cards` are due at `now`, and how many are learned: on a
@@ -87,8 +123,9 @@ public struct Ladder: Sendable, Equatable {
     }
 }
 
-/// A card's review log that doesn't start with its first view, or that has a
-/// second one: the ladder can't tell where the card stands.
+/// A card's review log that doesn't start with its first view or a placement,
+/// or that has a second one later, or a placement on a step below the first:
+/// the ladder can't tell where the card stands.
 public struct UnexpectedReviewLog: Error, Equatable {
     public let cardID: Int64
 }

@@ -612,7 +612,7 @@ extension EngineError {
                 comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried,
             .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
             .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .imagesFolder, .unreadableFile,
             .unwritableFile:

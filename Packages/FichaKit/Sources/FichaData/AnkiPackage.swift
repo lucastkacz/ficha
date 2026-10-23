@@ -25,9 +25,10 @@ func isAnkiPackage(_ data: Data) -> Bool {
     return archive.contains { $0.path == "meta" || collectionMembers.contains($0.path) }
 }
 
-/// The cards of the Anki package `data`, as `AnkiCollection.importReading()`
-/// makes them of its collection, or why it can't be read.
-func readAnkiPackage(_ data: Data) throws(CardsFileProblem) -> ImportReading {
+/// The cards of the Anki package `data`, as `AnkiCollection.importReading(in:)`
+/// makes them of its collection, with their due days as dates in `calendar`,
+/// or why it can't be read.
+func readAnkiPackage(_ data: Data, in calendar: Calendar) throws(CardsFileProblem) -> ImportReading {
     let collection: AnkiCollection
     do {
         let archive = try Archive(data: data, accessMode: .read, pathEncoding: nil)
@@ -41,7 +42,7 @@ func readAnkiPackage(_ data: Data) throws(CardsFileProblem) -> ImportReading {
         throw .unreadableAnkiPackage
     }
     do {
-        return try collection.importReading()
+        return try collection.importReading(in: calendar)
     } catch {
         logger.error("An Anki package's collection is damaged: \(error.description, privacy: .public)")
         throw .unreadableAnkiPackage
@@ -143,15 +144,17 @@ private func readCollection(_ data: Data) throws -> AnkiCollection {
 /// decks are JSON in its one `col` row (`rslib/src/notetype/schema11.rs`,
 /// `rslib/src/decks/schema11.rs`), and its notes and cards are in tables.
 private func schema11Collection(in db: Database) throws -> AnkiCollection {
-    guard let col = try Row.fetchOne(db, sql: "SELECT crt, models, decks FROM col") else {
+    guard let col = try Row.fetchOne(db, sql: "SELECT crt, conf, models, decks FROM col") else {
         throw unreadable("An Anki package's collection has no col row")
     }
+    let conf: String = try col.decode(forColumn: "conf")
     let models: String = try col.decode(forColumn: "models")
     let noteTypes = try JSONDecoder().decode([String: Schema11NoteType].self, from: Data(models.utf8))
     let decksJSON: String = try col.decode(forColumn: "decks")
     let decks = try JSONDecoder().decode([String: Schema11Deck].self, from: Data(decksJSON.utf8))
     return AnkiCollection(
         creationTime: try col.decode(forColumn: "crt"),
+        daySettings: try ankiDaySettings(inConf: conf),
         noteTypes: try Dictionary(
             uniqueKeysWithValues: noteTypes.map { id, noteType in (try ankiID(id), try noteType.noteType()) }),
         decks: try Dictionary(

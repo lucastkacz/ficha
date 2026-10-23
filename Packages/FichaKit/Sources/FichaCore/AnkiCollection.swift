@@ -1,8 +1,8 @@
 import Foundation
 
 /// An Anki collection, as an Anki package holds it, in plain values whatever
-/// its schema: its note types, decks, notes and cards, with what Ficha reads
-/// of each. A package's reader, which knows the schema, makes it, from the
+/// its schema: when it was created and how it counts its days, and its note
+/// types, decks, notes and cards, with what Ficha reads of each. A package's reader, which knows the schema, makes it, from the
 /// JSON of schema 11 or the tables of schema 18, and `importReading()` makes
 /// Ficha's cards of it, the same way for both. The values follow Anki's
 /// source, `rslib/src/storage/` and `rslib/src/notetype/`.
@@ -10,6 +10,8 @@ public struct AnkiCollection: Sendable, Equatable {
     /// When the collection was created, `col.crt`, in seconds since 1970:
     /// the day a review card's due day counts from.
     public let creationTime: Int64
+    /// How the collection counts its days, from its configuration.
+    public let daySettings: AnkiDaySettings
     /// The note types, by their ids.
     public let noteTypes: [Int64: AnkiNoteType]
     /// The decks, by their ids.
@@ -20,10 +22,11 @@ public struct AnkiCollection: Sendable, Equatable {
     public let cards: [AnkiCard]
 
     public init(
-        creationTime: Int64, noteTypes: [Int64: AnkiNoteType], decks: [Int64: AnkiDeck], notes: [Int64: AnkiNote],
-        cards: [AnkiCard]
+        creationTime: Int64, daySettings: AnkiDaySettings, noteTypes: [Int64: AnkiNoteType],
+        decks: [Int64: AnkiDeck], notes: [Int64: AnkiNote], cards: [AnkiCard]
     ) {
         self.creationTime = creationTime
+        self.daySettings = daySettings
         self.noteTypes = noteTypes
         self.decks = decks
         self.notes = notes

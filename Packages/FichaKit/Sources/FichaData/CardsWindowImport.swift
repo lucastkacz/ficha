@@ -23,6 +23,9 @@ extension CardsWindowState {
         /// What happens to the file's cards that repeat the user's: Update,
         /// until the user chooses Skip.
         public fileprivate(set) var repeatedCards = ImportChoices.RepeatedCards.update
+        /// Whether Bring Progress is ticked: until the user unticks it, an
+        /// Anki package's cards come in where they stood in Anki (ADR 0013).
+        public fileprivate(set) var bringsProgress = true
         /// What couldn't be done, while the sheet says so.
         public fileprivate(set) var failure: ImportFailure?
 
@@ -43,11 +46,20 @@ extension CardsWindowState {
             return preview.newCount > 0 || (repeatedCards == .update && preview.repeatedCount > 0)
         }
 
-        /// What the user chose, for the import.
-        fileprivate var choices: ImportChoices {
+        /// Whether the sheet offers Bring Progress: for the preview of an
+        /// Anki package, whose cards stood somewhere in Anki.
+        public var offersProgress: Bool {
+            preview?.kind == .ankiPackage
+        }
+
+        /// What the user chose, for the import, with the cards' progress
+        /// brought onto `ladder`, the user's, when the sheet offers it and
+        /// it's ticked.
+        fileprivate func choices(on ladder: Ladder) -> ImportChoices {
             ImportChoices(
                 tagNames: Dictionary(tagFields.map { ($0.proposed, $0.name) }) { first, _ in first },
-                repeatedCards: repeatedCards)
+                repeatedCards: repeatedCards,
+                progress: offersProgress && bringsProgress ? .brought(onto: ladder) : .leftOut)
         }
     }
 
@@ -90,8 +102,9 @@ extension CardsWindowState {
     }
 
     /// Reads `file`, the one the user chose, and shows its preview, with the
-    /// tags it proposes in their fields and its repeated cards updated, or
-    /// says why it couldn't, and the sheet stays where it was.
+    /// tags it proposes in their fields, its repeated cards updated and Bring
+    /// Progress ticked, or says why it couldn't, and the sheet stays where it
+    /// was.
     public mutating func previewImport(of file: URL) {
         guard importing != nil else { return }
         do throws(EngineError) {
@@ -123,13 +136,21 @@ extension CardsWindowState {
         importing?.repeatedCards = choice
     }
 
+    /// Ticks or unticks Bring Progress, while the sheet offers it.
+    public mutating func chooseToBringProgress(_ brings: Bool) {
+        guard importing?.offersProgress == true else { return }
+        importing?.bringsProgress = brings
+    }
+
     /// Imports the file the sheet shows the preview of, as the user chose,
     /// while Import is on, and says what it did, or why it couldn't, and the
-    /// preview stays. The table lists the cards as they are then.
+    /// preview stays. The table lists the cards as they are then. An Anki
+    /// package's cards bring their progress onto the window's ladder while
+    /// Bring Progress is ticked.
     public mutating func importCards() {
         guard let importing, importing.canImport, let preview = importing.preview else { return }
         do throws(EngineError) {
-            let outcome = try engine.importCards(preview, choosing: importing.choices)
+            let outcome = try engine.importCards(preview, choosing: importing.choices(on: ladder))
             self.importing?.step = .done(outcome)
             read(on: ladder)
         } catch {

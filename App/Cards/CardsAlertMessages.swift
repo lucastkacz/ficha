@@ -20,7 +20,7 @@ extension EngineError {
                 comment: "An alert's message in the Cards window, under what couldn't be done with the selected cards."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardSetAside, .notOneEmoji, .cannotUndo,
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardSetAside, .notOneEmoji, .cannotUndo,
             .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage,
             .imagesFolder, .unreadableFile, .unwritableFile:
             localizedDescription
@@ -38,7 +38,7 @@ extension EngineError {
         case .captureNotInInbox:
             message
         case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried,
             .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
             .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .imagesFolder, .unreadableFile,
             .unwritableFile:

@@ -150,4 +150,69 @@ struct LadderTests {
         }
         #expect(try engine.reviewLog().map(\.cardID) == [serendipia.id])
     }
+
+    // An import that brings a card's progress starts its review log with a
+    // placement, which puts it on a step without a first view (ADR 0013).
+
+    /// A placement an import gave the card with the id 1 at the test's
+    /// time: on `step`, due at `due`.
+    private func placement(on step: Int, dueAt due: Date) -> ReviewLogEntry {
+        ReviewLogEntry(placing: 1, on: step, dueAt: due, at: time.now)
+    }
+
+    /// A review of the card with the id 1 with `rating`, at `time`, from
+    /// review now.
+    private func review(_ rating: Rating, at time: Date) -> ReviewLogEntry {
+        ReviewLogEntry(
+            cardID: 1, kind: .review(rating), answeredAt: time, responseTime: .seconds(3), trigger: .reviewNow)
+    }
+
+    @Test("a log that starts with a placement stands on its step until the due time it was given")
+    func aPlacementPutsTheCardOnItsStep() throws {
+        let due = time.now + days(8)
+
+        let standing = try ladder.standing(after: [placement(on: 4, dueAt: due)])
+
+        #expect(standing == .onLadder(step: 4, due: due))
+        #expect(!standing.isDue(at: due - 1))
+        #expect(standing.isDue(at: due))
+    }
+
+    @Test("good after a placement climbs one step from it, and again sends the card to the first step")
+    func reviewsClimbFromAPlacement() throws {
+        let due = time.now + days(8)
+        let placed = placement(on: 4, dueAt: due)
+
+        let afterGood = try ladder.standing(after: [placed, review(.good, at: due)])
+        let afterAgain = try ladder.standing(after: [placed, review(.again, at: due)])
+        let afterHard = try ladder.standing(after: [placed, review(.hard, at: due)])
+
+        #expect(afterGood == .onLadder(step: 5, due: due + days(30)))
+        #expect(afterAgain == .onLadder(step: 0, due: due + hours(1)))
+        #expect(afterHard == .onLadder(step: 4, due: due + days(12)))
+    }
+
+    @Test("a placement anywhere but first in a log is unexpected")
+    func aPlacementOnlyStartsALog() throws {
+        let firstView = ReviewLogEntry(
+            cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .seconds(8), trigger: .reviewNow)
+        let placed = placement(on: 2, dueAt: time.now + days(2))
+
+        #expect(throws: UnexpectedReviewLog.self) {
+            try ladder.standing(after: [firstView, placed])
+        }
+        #expect(throws: UnexpectedReviewLog.self) {
+            try ladder.standing(after: [placed, review(.good, at: time.now + days(2)), placed])
+        }
+    }
+
+    // The ladder in Settings can lose steps after an import placed cards on
+    // them.
+    @Test("a placement on a step the ladder no longer has stands on its last step, due when it was given")
+    func aPlacementBeyondTheLadderStandsOnItsLastStep() throws {
+        let shortLadder = try #require(Ladder(waits: [.seconds(3_600), .seconds(86_400)]))
+        let due = time.now + days(8)
+
+        #expect(try shortLadder.standing(after: [placement(on: 4, dueAt: due)]) == .onLadder(step: 1, due: due))
+    }
 }

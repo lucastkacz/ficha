@@ -2,18 +2,20 @@ import Foundation
 
 extension AnkiCollection {
     /// Ficha's cards of the collection's cards, as an import reads them: one
-    /// for each Anki card, new, whose front is its question side as Anki
-    /// renders it, and whose back is its answer side, from where the answer
-    /// starts, both as plain text, without sounds or images. Each proposes
-    /// a tag for each level of its home deck's name, but Default's, and its
-    /// note's tags, an underscore in them standing for a space. The new
-    /// cards come first, in Anki's order of new cards, then the rest by note
-    /// and template. A card of an Image Occlusion note type stays out, and
-    /// so do a card whose template Anki can't render and one with a side
-    /// left without text, each with its place in that order and why.
-    /// Throws when a card's note, note type, template or deck isn't in the
-    /// collection, as in a damaged one.
-    public func importReading() throws(AnkiCollectionProblem) -> ImportReading {
+    /// for each Anki card, whose front is its question side as Anki renders
+    /// it, and whose back is its answer side, from where the answer starts,
+    /// both as plain text, without sounds or images. Each proposes a tag for
+    /// each level of its home deck's name, but Default's, and its note's
+    /// tags, an underscore in them standing for a space, and brings where it
+    /// stands in Anki, its due days as dates in `calendar`, the user's, for
+    /// an import that brings progress. The new cards come first, in Anki's
+    /// order of new cards, then the rest by note and template. A card of an
+    /// Image Occlusion note type stays out, and so do a card whose template
+    /// Anki can't render and one with a side left without text, each with
+    /// its place in that order and why. Throws when a card's note, note
+    /// type, template or deck isn't in the collection, or its type isn't one
+    /// Anki has, as in a damaged one.
+    public func importReading(in calendar: Calendar) throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
         var cards: [ImportedCard] = []
         var leftOut: [LeftOutLine] = []
@@ -21,7 +23,7 @@ extension AnkiCollection {
             let line = index + 1
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
-                if let imported = rendered.importedCard(line: line) {
+                if let imported = rendered.importedCard(line: line, progress: try progress(of: card, in: calendar)) {
                     cards.append(imported)
                 } else {
                     leftOut.append(LeftOutLine(line: line, reason: .emptyAnkiSide))
@@ -170,16 +172,17 @@ private struct RenderedAnkiCard {
     let back: String
     let tags: [String]
 
-    /// The card as Ficha imports it, new, as plain text without sounds and
-    /// images, or nil when a side has no text left.
-    func importedCard(line: Int) -> ImportedCard? {
+    /// The card as Ficha imports it, as plain text without sounds and
+    /// images, with `progress`, where it stands in Anki, or nil when a side
+    /// has no text left.
+    func importedCard(line: Int, progress: ImportedProgress) -> ImportedCard? {
         guard
             let content = CardContent(
                 type: nil, front: plainText(fromAnki: front), back: plainText(fromAnki: back), tags: [], source: nil)
         else {
             return nil
         }
-        return ImportedCard(content: content, fields: [], line: line, proposedTags: tags)
+        return ImportedCard(content: content, fields: [], line: line, proposedTags: tags, progress: progress)
     }
 }
 

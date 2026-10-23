@@ -241,6 +241,60 @@ enum Schema {
                 table.add(column: "backImage", .text)
             }
         }
+        migrator.registerMigration("v14 placements in the review log") { db in
+            // An import that brings a card's progress from another app, such
+            // as Anki, starts the card's log with a placement in place of a
+            // first view: the step it puts the card on, and when the card is
+            // due there (ADR 0013). Nothing brought a placement and no one
+            // answered it, so it has no trigger and no response time. SQLite
+            // can't drop the trigger's NOT NULL, so the review log is made
+            // again, with every entry as it was, as "v9 answers from card
+            // notifications" did.
+            try db.create(table: "new_reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                // Its index comes once the table has its name.
+                table.belongsTo("card", indexed: false).notNull()
+                // "firstView", "review" or "placement".
+                table.column("kind", .text).notNull()
+                // A review's rating: "again", "hard" or "good".
+                table.column("rating", .text)
+                // A placement's step, counted from 0, the first step, and
+                // when the card is due on it.
+                table.column("step", .integer)
+                table.column("due", .datetime)
+                // When Lucas answered, or when the import placed the card.
+                table.column("answeredAt", .datetime).notNull()
+                // From showing the card to the answer, in seconds, when
+                // something measured it.
+                table.column("responseTime", .double)
+                // What brought the card, as `Trigger` names it, or NULL for a
+                // placement.
+                table.column("trigger", .text)
+                table.column("isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+                table.check(
+                    sql: """
+                        (kind = 'firstView' AND rating IS NULL)
+                        OR (kind = 'review' AND rating IN ('again', 'hard', 'good'))
+                        OR (kind = 'placement' AND rating IS NULL)
+                        """
+                )
+                table.check(sql: "(kind = 'placement') = (step IS NOT NULL)")
+                table.check(sql: "step IS NULL OR step >= 0")
+                table.check(sql: "(kind = 'placement') = (due IS NOT NULL)")
+                table.check(sql: "(kind = 'placement') = (trigger IS NULL)")
+                table.check(sql: "kind <> 'placement' OR responseTime IS NULL")
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_reviewLog (id, cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                    SELECT id, cardId, kind, rating, answeredAt, responseTime, trigger, isAhead FROM reviewLog
+                    """
+            )
+            try db.drop(table: "reviewLog")
+            try db.rename(table: "new_reviewLog", to: "reviewLog")
+            try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
+        }
         return migrator
     }()
 }
