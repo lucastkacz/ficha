@@ -17,26 +17,24 @@ internal import ZIPFoundation
 /// The members that hold a package's collection, oldest first.
 private let collectionMembers: Set = ["collection.anki2", "collection.anki21", "collection.anki21b"]
 
-/// Whether `data`, a zip, is an Anki package: it holds Anki's `meta`, or a
+/// Whether `archive`, a zip, is an Anki package: it holds Anki's `meta`, or a
 /// collection.
-func isAnkiPackage(_ data: Data) -> Bool {
-    guard let archive = try? Archive(data: data, accessMode: .read, pathEncoding: nil) else {
-        return false
-    }
-    return archive.contains { $0.path == "meta" || collectionMembers.contains($0.path) }
+func isAnkiPackage(_ archive: Archive) -> Bool {
+    archive.contains { $0.path == "meta" || collectionMembers.contains($0.path) }
 }
 
-/// The cards of the Anki package `data`, as `AnkiCollection.importReading(
-/// in:images:)` makes them of its collection, with their due days as dates
-/// in `calendar`, and the images they show, by the names Ficha keeps them
-/// by, as they come in, from the package's media; or why it can't be read.
-func readAnkiPackage(_ data: Data, in calendar: Calendar) throws(CardsFileProblem) -> (
+/// The cards of the Anki package `archive`, as `AnkiCollection.
+/// importReading(in:images:)` makes them of its collection, with their due
+/// days as dates in `calendar`, and the images they show, by the names
+/// Ficha keeps them by, as they come in, from the package's media, each
+/// read on its own; or why it can't be read. An image the package lacks, or
+/// holds damaged, keeps out only the cards that show nothing else on a side.
+func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFileProblem) -> (
     reading: ImportReading, images: [ImageName: CardImage]
 ) {
     let collection: AnkiCollection
     let media: AnkiMedia
     do {
-        let archive = try Archive(data: data, accessMode: .read, pathEncoding: nil)
         let entries = Dictionary(archive.map { ($0.path, $0) }) { first, _ in first }
         let format = try PackageFormat(of: entries, in: archive)
         guard let member = entries[format.collectionMember] else {
@@ -52,7 +50,10 @@ func readAnkiPackage(_ data: Data, in calendar: Calendar) throws(CardsFileProble
         logger.error("Couldn't read an Anki package: \(String(describing: error), privacy: .public)")
         throw .unreadableAnkiPackage
     }
-    var images = AnkiImages(media: media)
+    // Shrunk, as every image that comes in.
+    var images = ImagesComingIn(contents: media.contents(ofFileNamed:)) { data, _ throws(EngineError) in
+        try CardImage(shrinking: data)
+    }
     let reading: ImportReading
     do {
         reading = try collection.importReading(in: calendar) { images.lookUp($0) }
@@ -60,55 +61,7 @@ func readAnkiPackage(_ data: Data, in calendar: Calendar) throws(CardsFileProble
         logger.error("An Anki package's collection is damaged: \(error.description, privacy: .public)")
         throw .unreadableAnkiPackage
     }
-    if let damage = images.damage {
-        logger.error("An Anki package's media is damaged: \(String(describing: damage), privacy: .public)")
-        throw .unreadableAnkiPackage
-    }
     return (reading, images.found)
-}
-
-/// The images a package's cards show, looked up by the names their sides
-/// give them, each once, in the package's media, and brought in as every
-/// image comes in: shrunk, and named as Ficha keeps them.
-private struct AnkiImages {
-    let media: AnkiMedia
-    /// The images found, by the names Ficha keeps them by.
-    private(set) var found: [ImageName: CardImage] = [:]
-    /// What was found for each name looked up.
-    private var lookups: [String: ImageLookup] = [:]
-    /// What kept a file the media list names from being read, as in a
-    /// damaged package, if anything did.
-    private(set) var damage: (any Error)?
-
-    init(media: AnkiMedia) {
-        self.media = media
-    }
-
-    /// What the package has by `name`: an image, as it comes in; something
-    /// Ficha can't read as one; or nothing, as when it doesn't hold it, or
-    /// it's damaged, which `damage` then says.
-    mutating func lookUp(_ name: String) -> ImageLookup {
-        if let lookup = lookups[name] {
-            return lookup
-        }
-        let lookup: ImageLookup
-        do {
-            if let data = try media.contents(ofFileNamed: name) {
-                let image = try CardImage(shrinking: data)
-                found[image.name] = image
-                lookup = .found(image.name)
-            } else {
-                lookup = .missing
-            }
-        } catch EngineError.notAnImage {
-            lookup = .notAnImage
-        } catch {
-            damage = damage ?? error
-            lookup = .missing
-        }
-        lookups[name] = lookup
-        return lookup
-    }
 }
 
 /// How a package holds its collection and its media, as Anki tells (`package/
@@ -188,14 +141,16 @@ struct AnkiMedia {
     }
 
     /// What the media file named `name` holds, decompressed, or nil when
-    /// the package has no file by that name. A file its list names, but
-    /// that it lacks, is an error.
+    /// the package has no file by that name, as when its list names a
+    /// member it lacks, which the engine logs. A member it can't read whole,
+    /// as a damaged one, is an error.
     func contents(ofFileNamed name: String) throws -> Data? {
         guard let member = members[name] else {
             return nil
         }
         guard let entry = entries[member] else {
-            throw unreadable("An Anki package's media list names the member \(member), which it lacks")
+            logger.error("An Anki package's media list names the member \(member, privacy: .public), which it lacks")
+            return nil
         }
         return try format.uncompressed(entry, in: archive)
     }

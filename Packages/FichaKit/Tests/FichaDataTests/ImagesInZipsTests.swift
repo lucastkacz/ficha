@@ -133,6 +133,24 @@ final class ImagesInZipsTests {
         #expect(try pixelSize(of: engine.image(hornero)) == (1600, 1200))
     }
 
+    @Test("a damaged image in a zip is one Ficha can't read, and the rest of the zip comes in")
+    func aDamagedImageInAZipIsOneFichaCantRead() throws {
+        let text = "#columns:Front\tBack\tFront image\n\tUn nido.\tnido.jpg\nhornero\tUn pájaro.\tnido.jpg\n"
+        // The image first, so that its name first comes in its header.
+        let file = try zip(
+            [("nido.jpg", try picture(width: 400, height: 300, red: 0.8)), ("Aves.txt", Data(text.utf8))],
+            named: "Aves.zip")
+        var bytes = try Data(contentsOf: file)
+        let name = try #require(bytes.firstRange(of: Data("nido.jpg".utf8)))
+        bytes[name.upperBound + 20] ^= 0xFF
+        try bytes.write(to: file)
+
+        let preview = try engine.previewImport(of: file)
+
+        #expect(preview.leftOut == [LeftOutLine(line: 2, reason: .notAnImage("nido.jpg"))])
+        #expect(preview.cardCount == 1)
+    }
+
     @Test("a zip Finder made of a folder imports the text file in it with its images, whatever their case")
     func aZipFinderMadeOfAFolderImports() throws {
         let file = try zip(

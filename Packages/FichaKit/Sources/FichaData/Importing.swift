@@ -1,6 +1,7 @@
 import FichaCore
 import Foundation
 internal import GRDB
+internal import ZIPFoundation
 
 /// What importing a file would do, as the engine read it, before anything
 /// changes: the cards that come in, in the file's order, how many of them
@@ -151,38 +152,36 @@ public struct ImportOutcome: Sendable, Equatable {
 extension Engine {
     /// Reads the file of cards at `file`, a text file, a zip with a text
     /// file and its cards' images, or an Anki package, and says what
-    /// importing it would do, without changing anything.
+    /// importing it would do, without changing anything. A zip's files are
+    /// read one at a time, as they're needed, so that a big one takes no
+    /// more memory than its biggest file. It takes a while for a big file,
+    /// so the app calls it away from the main actor.
     public func previewImport(of file: URL) throws(EngineError) -> ImportPreview {
         let name = file.lastPathComponent
-        let data: Data
-        do {
-            // A file the user chose in an open panel, in an app with a
-            // sandbox; outside one, there's nothing to start.
-            let isAccessing = file.startAccessingSecurityScopedResource()
-            defer {
-                if isAccessing {
-                    file.stopAccessingSecurityScopedResource()
-                }
+        // A file the user chose in an open panel, in an app with a sandbox,
+        // held until it's read; outside one, there's nothing to start.
+        let isAccessing = file.startAccessingSecurityScopedResource()
+        defer {
+            if isAccessing {
+                file.stopAccessingSecurityScopedResource()
             }
-            data = try Data(contentsOf: file)
-        } catch {
-            logger.error("Couldn't read a file to import: \(String(describing: error))")
-            throw .unreadableFile(name, .cannotOpen)
         }
         var reading: ImportReading
         var images: [ImageName: CardImage] = [:]
         let kind: ImportPreview.Kind
         do throws(CardsFileProblem) {
-            if isZip(data) && isAnkiPackage(data) {
-                (reading, images) = try readAnkiPackage(data, in: calendar)
-                kind = .ankiPackage
-            } else if isZip(data) {
-                (reading, images) = try readZipOfCards(data)
-                kind = .cardsFile
+            if let archive = try zipArchive(at: file) {
+                if isAnkiPackage(archive) {
+                    (reading, images) = try readAnkiPackage(archive, in: calendar)
+                    kind = .ankiPackage
+                } else {
+                    (reading, images) = try readZipOfCards(archive)
+                    kind = .cardsFile
+                }
             } else if file.pathExtension.lowercased() == "apkg" {
                 throw .unreadableAnkiPackage
             } else {
-                reading = try CardsTextFile.read(data)
+                reading = try CardsTextFile.read(try fileContents(of: file))
                 kind = .cardsFile
             }
         } catch {

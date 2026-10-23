@@ -122,6 +122,54 @@ final class AnkiImageImportingTests {
         #expect(cards.map { [$0.frontImage, $0.backImage] } == [[nil, nil]])
     }
 
+    // The rest of the package comes in, as when Anki exports a deck without
+    // its media.
+    @Test(
+        "an image the media list names but the package lacks leaves its side without it",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func anImageThePackageLacksLeavesItsSideWithoutIt(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["hornero <img src=\"nido.jpg\">", "Un pájaro que hace su nido."]),
+                AnkiNote(type: .basic, fields: ["<img src=\"nido.jpg\">", "un nido de hornero"]),
+            ],
+            media: ["nido.jpg": try picture(width: 400, height: 300, red: 0.8)],
+            mediaMissingFromTheZip: ["nido.jpg"])
+
+        let preview = try preview(package)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.leftOut == [LeftOutLine(line: 2, reason: .missingAnkiImage)])
+        let cards = try engine.cards()
+        #expect(cards.map { [$0.front, $0.back] } == [["hornero", "Un pájaro que hace su nido."]])
+        #expect(cards.map(\.frontImage) == [nil])
+    }
+
+    // As an image Ficha can't read, rather than refusing the whole package.
+    @Test("a damaged image keeps out a card with only it, and the rest of the package comes in")
+    func aDamagedImageKeepsItsCardOut() throws {
+        let package = AnkiPackage(
+            format: .current,
+            notes: [
+                AnkiNote(type: .basic, fields: ["<img src=\"nido.jpg\">", "un nido de hornero"]),
+                AnkiNote(type: .basic, fields: ["<img src=\"tero.jpg\">", "tero"]),
+            ],
+            media: [
+                "nido.jpg": try picture(width: 400, height: 300, red: 0.8),
+                "tero.jpg": try picture(width: 300, height: 400, red: 0.2),
+            ],
+            damagedMedia: ["nido.jpg"])
+
+        let preview = try preview(package)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.leftOut == [LeftOutLine(line: 1, reason: .unreadableAnkiImage)])
+        let cards = try engine.cards()
+        #expect(cards.map(\.back) == ["tero"])
+        #expect(try cards.map { try $0.frontImage.map { try pixelSize(of: engine.image($0)).width } } == [300])
+    }
+
     @Test("a big image comes in shrunk", arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
     func aBigImageComesInShrunk(format: AnkiPackage.Format) throws {
         let package = AnkiPackage(

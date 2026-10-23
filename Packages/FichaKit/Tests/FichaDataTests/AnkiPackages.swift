@@ -37,6 +37,13 @@ struct AnkiPackage {
     var notes: [AnkiNote]
     /// Its media files, by the names the notes' fields refer to them by.
     var media: [String: Data] = [:]
+    /// The names of media files its media list names but whose members it
+    /// lacks, as in a damaged package.
+    var mediaMissingFromTheZip: Set<String> = []
+    /// The names of media files whose members hold bytes zstd can't
+    /// decompress, as in a damaged package of current Anki's default
+    /// format; in another format, they hold the file as it is.
+    var damagedMedia: Set<String> = []
     /// `creationOffset` in the collection's configuration: the UTC offset
     /// it was created at, in minutes west of UTC, Buenos Aires's by default,
     /// or nil to leave it out, as Anki 2.0 did.
@@ -88,7 +95,9 @@ struct AnkiPackage {
     /// each number to the file's name.
     private var legacyMedia: [(String, Data)] {
         get throws {
-            let files = mediaNames.enumerated().map { ("\($0)", media[$1] ?? Data()) }
+            let files = mediaNames.enumerated().filter { !mediaMissingFromTheZip.contains($1) }.map {
+                ("\($0)", media[$1] ?? Data())
+            }
             let list = Dictionary(uniqueKeysWithValues: mediaNames.enumerated().map { ("\($0)", $1) })
             return files + [("media", Data(try json(list).utf8))]
         }
@@ -99,7 +108,11 @@ struct AnkiPackage {
     /// `MediaEntries` whose entries are in the numbers' order, compressed.
     private var currentMedia: [(String, Data)] {
         get throws {
-            let files = try mediaNames.enumerated().map { ("\($0)", try zstdStreamed(media[$1] ?? Data())) }
+            let files = try mediaNames.enumerated().filter { !mediaMissingFromTheZip.contains($1) }.map {
+                position, name in
+                let data = media[name] ?? Data()
+                return ("\(position)", damagedMedia.contains(name) ? Data("no es zstd".utf8) : try zstdStreamed(data))
+            }
             // MediaEntries { repeated MediaEntry entries = 1; }, and
             // MediaEntry { string name = 1; uint32 size = 2; bytes sha1 = 3; }
             // (`proto/anki/import_export.proto`).

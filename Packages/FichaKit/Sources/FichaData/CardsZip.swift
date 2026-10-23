@@ -16,8 +16,38 @@ private let textFileExtensions: Set = ["txt", "csv", "tsv"]
 
 /// Whether `data` is a zip: it starts as every zip does, with an entry's
 /// header, or, for an empty one, with the record that ends a zip.
-func isZip(_ data: Data) -> Bool {
+private func isZip(_ data: Data) -> Bool {
     data.starts(with: [0x50, 0x4B, 0x03, 0x04]) || data.starts(with: [0x50, 0x4B, 0x05, 0x06])
+}
+
+/// The zip at `file`, open to read its files as they're needed, or nil when
+/// `file` isn't a zip, by how it starts.
+func zipArchive(at file: URL) throws(CardsFileProblem) -> Archive? {
+    guard isZip(try fileContents(of: file, upTo: 4)) else {
+        return nil
+    }
+    do {
+        return try Archive(url: file, accessMode: .read, pathEncoding: nil)
+    } catch {
+        logger.error("Couldn't open a zip to import: \(String(describing: error), privacy: .public)")
+        throw .unreadableZip
+    }
+}
+
+/// What `file` holds, or its first `count` bytes, as many as it has.
+func fileContents(of file: URL, upTo count: Int? = nil) throws(CardsFileProblem) -> Data {
+    do {
+        guard let count else {
+            return try Data(contentsOf: file)
+        }
+        let handle = try FileHandle(forReadingFrom: file)
+        defer { try? handle.close() }
+        return try handle.read(upToCount: count) ?? Data()
+    } catch {
+        // Private, as the error names the file, which says who the user is.
+        logger.error("Couldn't read a file to import: \(String(describing: error))")
+        throw .cannotOpen
+    }
 }
 
 /// A zip that holds `text`, a text file of cards named `textFileName`, and
@@ -50,17 +80,12 @@ func zipOfCards(text: String, named textFileName: String, images: [CardImage], a
 /// it by. The text file is the zip's one file ending in .txt, .csv or .tsv,
 /// at its top or in a folder, as Finder zips one, leaving out the files
 /// Finder adds, in `__MACOSX` or named with a leading dot. An image's name
-/// is found in any case, as a Mac finds a file.
-func readZipOfCards(_ data: Data) throws(CardsFileProblem) -> (reading: ImportReading, images: [ImageName: CardImage]) {
-    let archive: Archive
-    let files: [Entry]
-    do {
-        archive = try Archive(data: data, accessMode: .read, pathEncoding: nil)
-        files = archive.filter { $0.type == .file && !isAddedByFinder($0.path) }
-    } catch {
-        logger.error("Couldn't open a zip to import: \(String(describing: error), privacy: .public)")
-        throw .unreadableZip
-    }
+/// is found in any case, as a Mac finds a file. Each image is read on its
+/// own, and one the zip holds damaged is one Ficha can't read.
+func readZipOfCards(_ archive: Archive) throws(CardsFileProblem) -> (
+    reading: ImportReading, images: [ImageName: CardImage]
+) {
+    let files = archive.filter { $0.type == .file && !isAddedByFinder($0.path) }
     let textFiles = files.filter { textFileExtensions.contains(pathExtension(of: $0.path)) }
     guard let textFile = textFiles.first else {
         throw .noTextFileInZip
@@ -79,27 +104,13 @@ func readZipOfCards(_ data: Data) throws(CardsFileProblem) -> (reading: ImportRe
         logger.error("Couldn't read the text file of a zip to import: \(String(describing: error), privacy: .public)")
         throw .unreadableZip
     }
-    var images: [ImageName: CardImage] = [:]
-    var lookups: [String: ImageLookup] = [:]
-    let reading = try CardsTextFile.read(text) { name in
-        if let lookup = lookups[name] {
-            return lookup
-        }
-        let lookup: ImageLookup
-        if let file = filesByPath[(folder + name).lowercased()], let data = try? contents(of: file, in: archive) {
-            if let image = try? CardImage(fromZip: data, named: name) {
-                images[image.name] = image
-                lookup = .found(image.name)
-            } else {
-                lookup = .notAnImage
-            }
-        } else {
-            lookup = .missing
-        }
-        lookups[name] = lookup
-        return lookup
+    var images = ImagesComingIn { name in
+        try filesByPath[(folder + name).lowercased()].map { try contents(of: $0, in: archive) }
+    } bring: { data, name throws(EngineError) in
+        try CardImage(fromZip: data, named: name)
     }
-    return (reading, images)
+    let reading = try CardsTextFile.read(text) { images.lookUp($0) }
+    return (reading, images.found)
 }
 
 /// Whether the file at `path` in a zip is one Finder adds when it zips
