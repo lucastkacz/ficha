@@ -22,16 +22,19 @@ extension Engine {
     /// Fixes a flagged card in the inbox with `content`, as a refine session
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
     /// back to his reviews, on the step its review log puts it on, unless one
-    /// of its tags is set aside. Returns the card.
+    /// of its tags is set aside. It keeps its images, since refining never
+    /// adds or removes one. Returns the card.
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
         try write { db in
-            switch try existingCard(cardID, in: db).standing {
+            let card = try existingCard(cardID, in: db)
+            switch card.standing {
             case .inInbox: break
             case .inReviews, .setAside: throw EngineError.cardNotFlagged(cardID)
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            return try editCard(cardID, with: content, in: db)
+            return try editCard(
+                cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage), in: db)
         }
     }
 

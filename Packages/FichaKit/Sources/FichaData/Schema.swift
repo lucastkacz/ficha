@@ -229,6 +229,18 @@ enum Schema {
             }
             try db.create(index: "card_on_captureId", on: "card", columns: ["captureId"])
         }
+        migrator.registerMigration("v13 images on cards") { db in
+            // Each side of a card holds text, an image, or both, one image at
+            // most, so a side with only an image has an empty text. An image
+            // is a file of its own in the Images folder beside the database,
+            // named by its content, as `ImageName` says, and a side refers to
+            // it by that name, or is NULL for none. Many sides can refer to
+            // one image.
+            try db.alter(table: "card") { table in
+                table.add(column: "frontImage", .text)
+                table.add(column: "backImage", .text)
+            }
+        }
         return migrator
     }()
 }

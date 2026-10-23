@@ -73,6 +73,12 @@ public enum EngineError: Error, Equatable {
     /// A copy in the Backups folder couldn't be listed, named, moved or
     /// removed. The engine logs why.
     case backupsFolder
+    /// What came in for a side of a card, dragged or pasted, isn't an image
+    /// the system can read.
+    case notAnImage
+    /// An image in the Images folder couldn't be read, saved or removed, or
+    /// isn't there. The engine logs why.
+    case imagesFolder
 }
 
 extension EngineError: LocalizedError {
@@ -181,6 +187,19 @@ extension EngineError: LocalizedError {
                 localized: """
                     Ficha couldn't read or change its Backups folder. Check that the disk has room and try again, \
                     and if it keeps happening, report it.
+                    """
+            )
+        case .notAnImage:
+            String(
+                localized: """
+                    That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG.
+                    """
+            )
+        case .imagesFolder:
+            String(
+                localized: """
+                    Ficha couldn't read or save an image in its Images folder. Check that the disk has room and try \
+                    again, and if it keeps happening, report it.
                     """
             )
         }

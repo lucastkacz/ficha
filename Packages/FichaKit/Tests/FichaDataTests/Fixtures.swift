@@ -4,16 +4,21 @@ import Foundation
 import Testing
 
 /// A card for a test to approve a capture into: it always has a front and a
-/// back, and no tags or source unless the test gives them. A nil type is no
-/// type.
+/// back, and no tags, source or images unless the test gives them. A nil type
+/// is no type.
 func card(
     _ type: CardType?,
     front: String,
     back: String,
     tags: [String] = [],
-    source: String? = nil
+    source: String? = nil,
+    frontImage: ImageName? = nil,
+    backImage: ImageName? = nil
 ) throws -> CardContent {
-    try #require(CardContent(type: type, front: front, back: back, tags: tags, source: source))
+    try #require(
+        CardContent(
+            type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
+            backImage: backImage))
 }
 
 /// Lucas's note on what to fix in a card he flags, which isn't blank.

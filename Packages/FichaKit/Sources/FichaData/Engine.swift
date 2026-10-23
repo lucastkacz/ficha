@@ -26,6 +26,9 @@ public struct Engine: Sendable {
     let time: any TimeSource
     /// The Mac's calendar, whose days the new cards are counted by.
     let calendar: Calendar
+    /// Where the images on cards are kept: the Images folder beside the
+    /// database, or memory with it.
+    let images: ImageStore
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
@@ -59,12 +62,14 @@ public struct Engine: Sendable {
             }
             databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
             dataFolder = folder
+            images = .folder(folder.appending(path: "Images", directoryHint: .isDirectory))
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
             try migrate(queue, savingACopyIn: nil, at: time.now)
             database = queue
             databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
             dataFolder = nil
+            images = .memory(ImagesInMemory())
         }
         self.time = time
         self.calendar = calendar

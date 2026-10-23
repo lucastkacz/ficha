@@ -58,8 +58,12 @@ extension Engine {
 
 /// The card whose front `front` repeats, by the duplicate rule, the first one
 /// that came in, or nil when it repeats none. Only fronts count: a card
-/// created or imported is a duplicate by its front alone.
+/// created or imported is a duplicate by its front alone. A front without
+/// text, which holds only an image, repeats none.
 func cardRepeated(byFront front: String, in db: Database) throws -> Card? {
+    guard !CardContent.isBlank(front) else {
+        return nil
+    }
     let fronts = try Row.fetchAll(db, sql: "SELECT id, front FROM card ORDER BY id")
     let repeated = try fronts.first { row in repeats(front, try row.decode(forColumn: "front")) }
     return try repeated.map { row in try existingCard(row.decode(forColumn: "id"), in: db) }
@@ -72,12 +76,12 @@ func cardRepeated(byFront front: String, in db: Database) throws -> Card? {
 func insertCard(_ content: CardContent, capturedAs captureID: Int64?, at time: Date, in db: Database) throws -> Int64 {
     try db.execute(
         sql: """
-            INSERT INTO card (type, front, back, tags, source, createdAt, captureId)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO card (type, front, back, frontImage, backImage, tags, source, createdAt, captureId)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
-            content.type?.rawValue, content.front, content.back, try tagsJSON(content.tags), content.source, time,
-            captureID,
+            content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
+            content.backImage?.rawValue, try tagsJSON(content.tags), content.source, time, captureID,
         ]
     )
     return db.lastInsertedRowID
