@@ -125,8 +125,9 @@ public struct CardsWindowState: Sendable {
     /// What the table lists, or why it couldn't be read: nil until the window
     /// first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
-    /// The tags the sidebar offers: those of the cards that aren't buried.
-    public private(set) var tags: [String] = []
+    /// The tags the sidebar offers, with what each has of its own: those of
+    /// the cards that aren't buried, and the set-aside ones.
+    public private(set) var tags: [CardTag] = []
     /// The engine's time when the cards were read, which the Due column
     /// counts from.
     public private(set) var now: Date
@@ -427,8 +428,8 @@ public struct CardsWindowState: Sendable {
         self.ladder = ladder
         now = engine.now
         do throws(EngineError) {
-            tags = try engine.tags()
-            if case .cards(.tag(let tag)) = sidebarItem, !tags.contains(tag) {
+            tags = try engine.sidebarTags()
+            if case .cards(.tag(let tag)) = sidebarItem, !tags.contains(where: { $0.name == tag }) {
                 sidebarItem = .cards(.all)
             }
             switch sidebarItem {

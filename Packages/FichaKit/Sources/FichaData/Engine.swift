@@ -137,10 +137,10 @@ public struct Engine: Sendable {
                     ]
                 )
             }
-            return try Row.fetchAll(
-                db, sql: "SELECT * FROM card WHERE captureId = ? ORDER BY id", arguments: [captureID]
-            )
-            .map(Card.init(row:))
+            return try FichaData.cards(
+                in: Row.fetchAll(
+                    db, sql: "SELECT * FROM card WHERE captureId = ? ORDER BY id", arguments: [captureID]),
+                in: db)
         }
     }
 

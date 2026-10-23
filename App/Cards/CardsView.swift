@@ -256,9 +256,9 @@ struct CardsView: View {
             }
             if !state.tags.isEmpty {
                 Section {
-                    ForEach(state.tags, id: \.self) { tag in
-                        Label(tag, systemImage: "tag")
-                            .tag(SidebarItem.cards(.tag(tag)))
+                    ForEach(state.tags, id: \.name) { tag in
+                        Label(tag.name, systemImage: "tag")
+                            .tag(SidebarItem.cards(.tag(tag.name)))
                     }
                 } header: {
                     Text("Tags", comment: "A section of the Cards window's sidebar: the cards' tags.")

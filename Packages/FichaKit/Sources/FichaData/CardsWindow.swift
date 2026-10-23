@@ -188,15 +188,6 @@ extension Engine {
         }
     }
 
-    /// Every tag of the cards that aren't buried, once each, in alphabetical
-    /// order, as the Cards window's sidebar lists them.
-    public func tags() throws(EngineError) -> [String] {
-        try read { db in
-            Set(try allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags))
-                .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        }
-    }
-
     /// A card's review log as the Cards window shows it under the card,
     /// oldest first: each first view and review, with the step of `ladder`
     /// the card stood on after it. Empty while the card is new.
@@ -278,7 +269,7 @@ extension CardStanding {
     /// Whether All cards holds a card standing here, as each tag and type do
     /// for theirs: unless it's buried, since only Buried holds those. Like
     /// flagged cards, set-aside cards are there.
-    fileprivate var isInAllCards: Bool {
+    var isInAllCards: Bool {
         switch self {
         case .inReviews, .inInbox, .setAside: true
         case .buried: false

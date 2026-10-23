@@ -162,6 +162,29 @@ enum Schema {
                 table.column("time", .datetime).notNull()
             }
         }
+        migrator.registerMigration("v11 tags") { db in
+            // What a tag has of its own (ADR 0011), one row per tag that has
+            // something: a tag with nothing of its own has no row, and the
+            // engine deletes a row once it has nothing left. Cards keep their
+            // tags in their own JSON column, and a tag is never renamed, so
+            // its name is the key.
+            try db.create(table: "tag") { table in
+                // Exactly as cards carry it.
+                table.primaryKey("name", .text)
+                // The switch the tag has on, as `TagSwitch` names it:
+                // "priority" or "setAside", or NULL for neither. One column,
+                // so a tag is never both.
+                table.column("switchedOn", .text)
+                    .check(sql: "switchedOn IN ('priority', 'setAside')")
+                // One of Finder's seven tag colors, as `TagColor` names it,
+                // or NULL for none.
+                table.column("color", .text)
+                    .check(sql: "color IN ('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray')")
+                // One emoji, or NULL for none.
+                table.column("emoji", .text)
+                table.check(sql: "switchedOn IS NOT NULL OR color IS NOT NULL OR emoji IS NOT NULL")
+            }
+        }
         return migrator
     }()
 }

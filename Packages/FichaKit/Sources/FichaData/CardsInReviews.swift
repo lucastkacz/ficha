@@ -53,6 +53,12 @@ func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
     CardsThatShowUp(try allCards(in: db), log: try logEntries(in: db))
 }
 
+/// The tags that are set aside: every card with one of them is set aside,
+/// unless it's buried or flagged, as its standing says.
+func setAsideTags(in db: Database) throws -> Set<String> {
+    Set(try String.fetchAll(db, sql: "SELECT name FROM tag WHERE switchedOn = ?", arguments: [TagSwitch.setAside.rawValue]))
+}
+
 /// The card with this id, while it's in Lucas's reviews, or an error that
 /// says it's buried, flagged or set aside, or that there's no such card.
 func cardInReviews(_ cardID: Int64, in db: Database) throws -> Card {
