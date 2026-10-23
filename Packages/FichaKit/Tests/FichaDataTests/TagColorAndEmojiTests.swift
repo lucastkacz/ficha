@@ -80,11 +80,16 @@ struct TagColorAndEmojiTests {
         #expect(try engine.sidebarTags() == [CardTag(name: "argentina", emoji: "🇦🇷")])
     }
 
-    // A flag, a skin tone with a profession, an emoji asked for with U+FE0F,
-    // a keycap, and one with spaces around it.
+    // A flag, a skin tone with a profession, joined by U+200D, an emoji asked
+    // for with U+FE0F, a keycap, a text-default emoji with a skin tone and no
+    // U+FE0F, as the Mac's emoji picker inserts ☝🏽 and ✌🏾, and one with
+    // spaces around it.
     @Test(
         "one emoji is taken however many scalars it has, without the spaces around it",
-        arguments: [("🇦🇷", "🇦🇷"), ("👩🏽‍🔬", "👩🏽‍🔬"), ("❤️", "❤️"), ("1️⃣", "1️⃣"), (" 📜\n", "📜")])
+        arguments: [
+            ("🇦🇷", "🇦🇷"), ("👩🏽‍🔬", "👩🏽‍🔬"), ("❤️", "❤️"), ("1️⃣", "1️⃣"), ("\u{261D}\u{1F3FD}", "\u{261D}\u{1F3FD}"),
+            ("\u{270C}\u{1F3FE}", "\u{270C}\u{1F3FE}"), ("👍🏽", "👍🏽"), (" 📜\n", "📜"),
+        ])
     func oneEmojiIsTakenHoweverManyScalarsItHas(_ emoji: String, _ stored: String) throws {
         try approveCard("Revolución de Mayo", tags: ["argentina"])
 

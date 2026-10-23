@@ -41,14 +41,17 @@ func tagEmoji(_ text: String) throws(EngineError) -> String {
 
 extension Character {
     /// Whether the Mac draws it as an emoji: its first scalar shows as one
-    /// on its own, as 🇦🇷's and 👩🏽‍🔬's do, or has an emoji form that the
-    /// variation selector U+FE0F asks for, as ❤️ and 1️⃣ do. A letter, a digit
-    /// or ❤ without the selector is text.
+    /// on its own, as 🇦🇷's and 👩🏽‍🔬's do, has an emoji form that the
+    /// variation selector U+FE0F asks for, as ❤️ and 1️⃣ do, or takes the skin
+    /// tone that follows it, as ☝🏽 does without the selector. A letter, a
+    /// digit or ❤ without the selector is text.
     fileprivate var isDrawnAsEmoji: Bool {
-        guard let first = unicodeScalars.first else {
+        let scalars = Array(unicodeScalars)
+        guard let first = scalars.first else {
             return false
         }
         return first.properties.isEmojiPresentation
-            || (first.properties.isEmoji && unicodeScalars.contains("\u{FE0F}"))
+            || (first.properties.isEmoji && scalars.contains("\u{FE0F}"))
+            || (first.properties.isEmojiModifierBase && scalars.dropFirst().first?.properties.isEmojiModifier == true)
     }
 }
