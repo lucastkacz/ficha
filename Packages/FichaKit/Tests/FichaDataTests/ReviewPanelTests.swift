@@ -215,7 +215,7 @@ struct ReviewPanelTests {
                 tags: ["historia", "argentina", "lenguaje"]),
             in: engine)
         try engine.setColor(.blue, of: "argentina")
-        try engine.setEmoji("🇦🇷", of: "argentina")
+        try engine.setEmoji(TagEmoji("🇦🇷"), of: "argentina")
         try engine.setColor(.green, of: "historia")
 
         let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -240,7 +240,7 @@ struct ReviewPanelTests {
         try engine.climb(constituyente, to: 2, movingForward: time)
         try engine.meet(poder)
         time.advance(by: hours(1))
-        try engine.setEmoji("⚖️", of: "derecho")
+        try engine.setEmoji(TagEmoji("⚖️"), of: "derecho")
         try engine.setColor(.orange, of: "física")
         // Now "Poder" is due, and "Poder constituyente", on the third step, is
         // the closest to being due, for a review ahead.
@@ -273,7 +273,7 @@ struct ReviewPanelTests {
         let open = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         try engine.setColor(.green, of: "ciencia")
-        try engine.setEmoji("🔬", of: "ciencia")
+        try engine.setEmoji(TagEmoji("🔬"), of: "ciencia")
         let next = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         #expect(open.tags == [CardTag(name: "ciencia")])

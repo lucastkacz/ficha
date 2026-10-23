@@ -106,7 +106,7 @@ struct CardsWindowStateTests {
         #expect(window.emojiEntry("argentina") == .refused(.notOneEmoji))
         #expect(window.emojiEntry("🇦🇷🇺🇾") == .refused(.notOneEmoji))
         #expect(window.emojiEntry(" ") == .removal)
-        #expect(window.emojiEntry("🇦🇷") == .emoji("🇦🇷"))
+        #expect(window.emojiEntry("🇦🇷") == .emoji(try TagEmoji("🇦🇷")))
 
         window.chooseEmoji("argentina")
         #expect(window.question == .emoji(CardTag(name: "argentina")))

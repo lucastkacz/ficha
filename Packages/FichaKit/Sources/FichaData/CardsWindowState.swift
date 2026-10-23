@@ -107,8 +107,8 @@ public struct CardsWindowState: Sendable {
 
     /// What OK in the emoji sheet makes of what its field holds.
     public enum EmojiEntry: Sendable, Equatable {
-        /// One emoji, without the spaces around it, which the tag gets.
-        case emoji(String)
+        /// One emoji, which the tag gets.
+        case emoji(TagEmoji)
         /// Nothing but spaces, if any, which takes the tag's emoji away.
         case removal
         /// Something that isn't one emoji, which OK refuses, and why, for
@@ -491,7 +491,7 @@ public struct CardsWindowState: Sendable {
             return .removal
         }
         do throws(EngineError) {
-            return .emoji(try tagEmoji(text))
+            return .emoji(try TagEmoji(text))
         } catch {
             return .refused(error)
         }
@@ -504,7 +504,7 @@ public struct CardsWindowState: Sendable {
     /// sheet says why.
     public mutating func chooseEmoji(_ text: String) {
         guard case .emoji(let tag) = question else { return }
-        let emoji: String?
+        let emoji: TagEmoji?
         switch emojiEntry(text) {
         case .emoji(let entered): emoji = entered
         case .removal: emoji = nil
