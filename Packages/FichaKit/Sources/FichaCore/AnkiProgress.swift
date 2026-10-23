@@ -40,6 +40,28 @@ public struct AnkiDaySettings: Sendable, Equatable {
     }
 }
 
+/// An Anki card's type, its `type` column (`CardType` in
+/// `rslib/src/card/mod.rs`).
+private enum AnkiCardType: Int {
+    case new = 0
+    case learning = 1
+    case review = 2
+    case relearning = 3
+}
+
+/// The queue an Anki card is in, its `queue` column (`CardQueue` in
+/// `rslib/src/card/mod.rs`).
+private enum AnkiQueue: Int {
+    case new = 0
+    case learning = 1
+    case review = 2
+    case learningAcrossDays = 3
+    case preview = 4
+    case suspended = -1
+    case buriedByTheScheduler = -2
+    case buriedByTheUser = -3
+}
+
 extension AnkiCollection {
     /// Where `card` stands in Anki, as an import brings it, with its due
     /// days as dates in `calendar`, the user's, or a problem when its type
@@ -52,26 +74,29 @@ extension AnkiCollection {
     /// relearned, as Anki relabels it when it imports a package of its v1
     /// scheduler.
     func progress(of card: AnkiCard, in calendar: Calendar) throws(AnkiCollectionProblem) -> ImportedProgress {
+        guard let type = AnkiCardType(rawValue: card.type) else {
+            throw AnkiCollectionProblem("Card \(card.id) is of the type \(card.type)")
+        }
+        // A queue Anki doesn't have says nothing more than the type does.
+        let queue = AnkiQueue(rawValue: card.queue)
         let isInFilteredDeck = card.originalDeckID != 0
         let due = isInFilteredDeck && card.originalDue != 0 ? card.originalDue : card.due
         // Suspended stays suspended, out of a filtered deck too.
-        let isSuspended = card.queue == -1
+        let isSuspended = queue == .suspended
         let stage: ImportedProgress.Stage
-        switch card.type {
-        case 0:
+        switch type {
+        case .new:
             stage = .new
-        case 1, 3:
+        case .learning, .relearning:
             stage = .learning(due: try learningDue(due, in: calendar))
-        case 2 where !isInFilteredDeck && (card.queue == 1 || card.queue == 3):
+        case .review where !isInFilteredDeck && (queue == .learning || queue == .learningAcrossDays):
             stage = .learning(due: try learningDue(due, in: calendar))
-        case 2:
+        case .review:
             let (seconds, overflows) = card.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
             guard !overflows else {
                 throw AnkiCollectionProblem("Card \(card.id) has an interval of \(card.interval) days")
             }
             stage = .review(interval: .seconds(seconds), due: try start(ofDay: due, in: calendar))
-        default:
-            throw AnkiCollectionProblem("Card \(card.id) is of the type \(card.type)")
         }
         return ImportedProgress(stage: stage, isSuspended: isSuspended)
     }

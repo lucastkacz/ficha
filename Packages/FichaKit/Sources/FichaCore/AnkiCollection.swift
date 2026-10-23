@@ -38,13 +38,14 @@ public struct AnkiCollection: Sendable, Equatable {
 /// A note type of an Anki collection: the fields its notes have, and the
 /// card templates that show them.
 public struct AnkiNoteType: Sendable, Equatable {
-    /// How a note type makes its cards.
-    public enum Kind: Sendable, Equatable {
+    /// How a note type makes its cards, by the number Anki stores for it:
+    /// schema 11's `type`, schema 18's `kind`.
+    public enum Kind: Int, Sendable, Equatable {
         /// A card for each template, as Basic makes them.
-        case standard
+        case standard = 0
         /// A card for each cloze number in a note's fields, all with its one
         /// template, as Cloze makes them.
-        case cloze
+        case cloze = 1
     }
 
     /// Its name, in the language Anki had when it was made.

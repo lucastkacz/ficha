@@ -268,7 +268,7 @@ private struct Schema11NoteType: Decodable {
     }
 
     let name: String
-    /// 0 for a standard note type, 1 for a cloze one.
+    /// Its kind's number, as `AnkiNoteType.Kind` reads it.
     let type: Int
     let originalStockKind: Int?
     let flds: [Field]
@@ -276,11 +276,8 @@ private struct Schema11NoteType: Decodable {
 
     /// The note type it describes.
     func noteType() throws -> AnkiNoteType {
-        let kind: AnkiNoteType.Kind
-        switch type {
-        case 0: kind = .standard
-        case 1: kind = .cloze
-        default: throw unreadable("An Anki note type is of the kind \(type)")
+        guard let kind = AnkiNoteType.Kind(rawValue: type) else {
+            throw unreadable("An Anki note type is of the kind \(type)")
         }
         return AnkiNoteType(
             name: name, kind: kind, originalStockKind: originalStockKind ?? 0, fields: flds.map(\.name),

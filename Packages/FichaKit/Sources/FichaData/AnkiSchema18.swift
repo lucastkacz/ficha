@@ -46,11 +46,9 @@ func schema18Collection(in db: Database) throws -> AnkiCollection {
         // Notetype.Config: kind = 1, 0 normal or 1 cloze; and
         // original_stock_kind = 9, 6 for Image Occlusion.
         let config = try ProtobufFields(try row.decode(forColumn: "config") as Data)
-        let kind: AnkiNoteType.Kind
-        switch config.varint(1) {
-        case 0: kind = .standard
-        case 1: kind = .cloze
-        case let other: throw unreadable("Anki note type \(id) is of the kind \(other)")
+        let number = config.varint(1)
+        guard let kind = Int(exactly: number).flatMap(AnkiNoteType.Kind.init(rawValue:)) else {
+            throw unreadable("Anki note type \(id) is of the kind \(number)")
         }
         return (
             id,
