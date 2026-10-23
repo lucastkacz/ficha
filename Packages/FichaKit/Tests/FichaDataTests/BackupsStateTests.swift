@@ -122,6 +122,29 @@ final class BackupsStateTests {
         #expect(trashed.count == 2)
     }
 
+    @Test("the tab says what the images the copies share weigh, once, and nothing about images while they share none")
+    func tabSaysWhatTheSharedImagesWeigh() throws {
+        var backups = engine.openBackups()
+        backups.backUpNow(.defaults)
+        let sharingNone = backups.sharedImagesSize
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let birdSize = Int64(try engine.image(bird).count)
+        time.advance(by: hours(1))
+        backups.backUpNow(.defaults)
+        time.advance(by: hours(1))
+        backups.backUpNow(.defaults)
+        let sharingTheBird = backups.sharedImagesSize
+        let withTheBird = Array(try #require(try backups.copies?.get()).prefix(2))
+
+        trashed += backups.delete(withTheBird)
+
+        #expect(sharingNone == nil)
+        #expect(sharingTheBird == birdSize)
+        #expect(try backups.copies?.get().count == 1)
+        #expect(backups.sharedImagesSize == nil)
+    }
+
     @Test("a failed backup shows in the tab and in the menu until a backup is saved")
     func failedBackupShowsUntilOneIsSaved() throws {
         var backups = engine.openBackups()
