@@ -28,12 +28,21 @@ extension Engine {
     /// Writes the cards `cards` takes to `file`, in the order they came in,
     /// as the text file the import reads: what each card says, its front,
     /// back, tags, type and source, and never where it stands, its review
-    /// log, its flag or its burial. Returns how many cards it wrote.
+    /// log, its flag or its burial. When a card it takes has an image, the
+    /// file is a zip instead, with that text file, named after `file`, and
+    /// the cards' images beside it, which its lines name. Returns how many
+    /// cards it wrote.
     @discardableResult
     public func export(_ cards: CardsToExport, to file: URL) throws(EngineError) -> Int {
         let contents = try read { db in
             try allCards(in: db).filter(cards.takes).map(exportedContent(of:))
         }
+        var images: [CardImage] = []
+        let names = Set(contents.flatMap { [$0.frontImage, $0.backImage].compactMap(\.self) })
+        for name in names.sorted(by: { $0.rawValue < $1.rawValue }) {
+            images.append(CardImage(name: name, data: try image(name)))
+        }
+        let text = CardsTextFile.text(of: contents)
         do {
             // A file the user chose in a save panel, in an app with a
             // sandbox; outside one, there's nothing to start.
@@ -43,7 +52,13 @@ extension Engine {
                     file.stopAccessingSecurityScopedResource()
                 }
             }
-            try Data(CardsTextFile.text(of: contents).utf8).write(to: file, options: .atomic)
+            let data =
+                images.isEmpty
+                ? Data(text.utf8)
+                : try zipOfCards(
+                    text: text, named: file.deletingPathExtension().lastPathComponent + ".txt", images: images,
+                    at: time.now)
+            try data.write(to: file, options: .atomic)
         } catch {
             logger.error("Couldn't write the exported cards: \(String(describing: error))")
             throw .unwritableFile(file.lastPathComponent)
@@ -52,18 +67,21 @@ extension Engine {
     }
 
     /// How many cards each of `choices` takes, in its order, as the cards
-    /// are now, read once for all of them.
-    func cardCounts(toExport choices: [CardsToExport]) throws(EngineError) -> [Int] {
+    /// are now, read once for all of them, and whether one of them has an
+    /// image, which makes the export a zip.
+    func cardCounts(toExport choices: [CardsToExport]) throws(EngineError) -> [(count: Int, holdsImages: Bool)] {
         try read { db in
             let cards = try allCards(in: db)
-            return choices.map { choice in cards.count(where: choice.takes) }
+            return choices.map { choice in
+                let taken = cards.filter(choice.takes)
+                return (taken.count, taken.contains { !$0.images.isEmpty })
+            }
         }
     }
 }
 
 /// What `card` holds, as an export writes it, which every card it read
-/// makes, since every card came in through the same check. The text file
-/// holds no images, so a side with only an image has no text in it (#221).
+/// makes, since every card came in through the same check.
 private func exportedContent(of card: Card) throws -> CardContent {
     guard
         let content = CardContent(

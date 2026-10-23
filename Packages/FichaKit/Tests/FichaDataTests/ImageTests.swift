@@ -150,7 +150,8 @@ final class ImageTests {
         #expect(try engine.keptImages() == [bird, nest])
     }
 
-    // A text file holds no images until #221: what it gives a card is text.
+    // A text file without image columns gives a card text alone. A zip's
+    // back images are in ImagesInZipsTests.
     @Test("an import that updates a card keeps its images")
     func anImportThatUpdatesACardKeepsItsImages() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -169,24 +170,6 @@ final class ImageTests {
         #expect(updated.back == "Un pájaro que hace su nido de barro.")
         #expect(updated.frontImage == bird && updated.backImage == nest)
         #expect(try engine.keptImages() == [bird, nest])
-    }
-
-    @Test("an export writes every card it takes, a side with only an image as no text")
-    func anExportWritesCardsWithImages() throws {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let engine = try Engine(location: .inMemory, time: time)
-        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
-        try engine.create(card(nil, front: "", back: "Un hornero, otra vez.", frontImage: bird))
-        let file = folder.appending(path: "pájaros.txt")
-
-        let count = try engine.export(.all, to: file)
-
-        #expect(count == 2)
-        let other = try Engine(location: .inMemory, time: time)
-        let preview = try other.previewImport(of: file)
-        #expect(preview.cardCount == 1)
-        #expect(preview.leftOut.count == 1)
     }
 
     // As `ficha cards` prints a card, so a refine session knows it has one.

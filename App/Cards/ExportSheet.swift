@@ -81,13 +81,25 @@ struct ExportSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Export Cards", comment: "The title of the Cards window's Export sheet.")
                     .font(.headline)
-                Text(
-                    """
-                    Ficha saves the cards to a text file that another Ficha imports, and Anki too. It holds what \
-                    the cards say, never your progress.
-                    """,
-                    comment: "Under the title of the Cards window's Export sheet."
-                )
+                Group {
+                    if exporting.writesZip {
+                        Text(
+                            """
+                            Ficha saves the cards to a zip, with a text file and their images, that another Ficha \
+                            imports. It holds what the cards say, never your progress.
+                            """,
+                            comment: "Under the title of the Cards window's Export sheet, when a card has an image."
+                        )
+                    } else {
+                        Text(
+                            """
+                            Ficha saves the cards to a text file that another Ficha imports, and Anki too. It holds \
+                            what the cards say, never your progress.
+                            """,
+                            comment: "Under the title of the Cards window's Export sheet."
+                        )
+                    }
+                }
                 .foregroundStyle(.secondary)
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -169,12 +181,13 @@ struct ExportSheet: View {
         }
     }
 
-    /// Opens a save panel over the sheet, as a plain text file, and exports
-    /// there once the user saves. AppKit's own panel, since SwiftUI's file
-    /// exporter writes a document itself, and the engine writes this file.
+    /// Opens a save panel over the sheet, as a plain text file, or a zip when
+    /// a card has an image, and exports there once the user saves. AppKit's
+    /// own panel, since SwiftUI's file exporter writes a document itself,
+    /// and the engine writes this file.
     private func chooseFile() {
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [.plainText]
+        panel.allowedContentTypes = [exporting.writesZip ? .zip : .plainText]
         panel.nameFieldStringValue = fileName
         panel.canCreateDirectories = true
         let save = { (response: NSApplication.ModalResponse) in

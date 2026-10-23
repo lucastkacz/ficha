@@ -41,6 +41,21 @@ public enum CardField: Sendable, Hashable, CaseIterable {
     case tags
     case type
     case source
+    /// The back's image, which a file gives with a column for it, even
+    /// blank. The front's image goes with the front, which an import that
+    /// updates a card keeps.
+    case backImage
+}
+
+/// What a reader finds for an image a file of cards names for a side, by the
+/// name the file gives it, such as the name of a file in a zip.
+public enum ImageLookup: Sendable, Equatable {
+    /// The image, which Ficha holds by this name for the card.
+    case found(ImageName)
+    /// Nothing by that name comes with the file.
+    case missing
+    /// What comes by that name isn't an image Ficha can read.
+    case notAnImage
 }
 
 /// A line of a file of cards that makes no card, and why, for the preview to
@@ -62,6 +77,12 @@ public struct LeftOutLine: Sendable, Equatable {
         /// A field it opens with a quote has another quote inside that isn't
         /// doubled, as a quote in a quoted field must be.
         case strayQuote
+        /// A side of it has no text, and the image it names for that side,
+        /// this, doesn't come with the file, as in a zip that lacks it.
+        case missingImage(String)
+        /// A side of it has no text, and what comes as the image it names
+        /// for that side, this, isn't an image Ficha can read.
+        case notAnImage(String)
     }
 
     /// The line it is, or starts on, counted from 1.

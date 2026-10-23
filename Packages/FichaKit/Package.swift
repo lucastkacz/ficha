@@ -16,6 +16,8 @@ let package = Package(
         .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
         // The `ficha` CLI's commands (ADR 0008).
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
+        // Zips, for cards exported and imported with their images (ADR 0014).
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
     ],
     targets: [
         .target(
@@ -27,6 +29,7 @@ let package = Package(
             dependencies: [
                 "FichaCore",
                 .product(name: "GRDB", package: "GRDB.swift"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
@@ -52,6 +55,7 @@ let package = Package(
                 "FichaCore",
                 "FichaData",
                 .product(name: "GRDB", package: "GRDB.swift"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),

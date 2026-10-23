@@ -262,6 +262,27 @@ extension CardsFileProblem {
                     its columns Front, Back, Tags, Type and Source, or remove the line.
                     """
             )
+        case .unreadableZip:
+            String(
+                localized: """
+                    Ficha couldn't open “\(name)” as a zip: it may be damaged. Zip the text file of cards and its \
+                    images again, and import that.
+                    """
+            )
+        case .noTextFileInZip:
+            String(
+                localized: """
+                    “\(name)” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside \
+                    the images. Add it, zip them again, and import that.
+                    """
+            )
+        case .severalTextFilesInZip(let files):
+            String(
+                localized: """
+                    “\(name)” holds several text files of cards, \(quotedList(files)), and Ficha imports one at a \
+                    time. Zip each with its images on its own, and import them one by one.
+                    """
+            )
         }
     }
 }

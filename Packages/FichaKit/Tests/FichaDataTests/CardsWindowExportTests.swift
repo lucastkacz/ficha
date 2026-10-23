@@ -126,6 +126,23 @@ final class CardsWindowExportTests {
             ])
     }
 
+    // The save panel proposes a zip then, and the sheet says the images go.
+    @Test("Export writes a zip when a card it takes has an image, and a text file when none does")
+    func exportWritesAZipWhenACardHasAnImage() throws {
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try engine.create(card(nil, front: "hornero", back: "Un pájaro.", tags: ["aves"], frontImage: bird))
+        try approveCard("ubuntu", tags: ["filosofía"])
+        var window = openWindow()
+
+        window.startExport()
+        let all = window.exporting?.writesZip
+        window.chooseCardsToExport(.tag("filosofía"))
+        let philosophy = window.exporting?.writesZip
+
+        #expect(all == true)
+        #expect(philosophy == false)
+    }
+
     @Test("a file that can't be saved leaves the Export sheet open, saying why")
     func aFileThatCantBeSavedSaysWhy() throws {
         try approveCard("ubuntu")

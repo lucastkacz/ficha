@@ -6,7 +6,8 @@ import Foundation
 /// separator, a quote or a line break, and a quote inside it doubled. Its
 /// columns are, in order, the card's front, back, tags, type and source, of
 /// which a line may leave out the last three. A line starting with `#` is a
-/// comment, and so is a blank one.
+/// comment, and so is a blank one. In a zip with the images of its cards, a
+/// column for each side, which the `#columns` header names, names its image.
 public enum CardsTextFile {
     /// A column of the file.
     public enum Column: String, Sendable, CaseIterable {
@@ -15,11 +16,29 @@ public enum CardsTextFile {
         case tags = "Tags"
         case type = "Type"
         case source = "Source"
+        /// The name of the front's image, a file in the zip beside the text
+        /// file, or blank for none.
+        case frontImage = "Front image"
+        /// The name of the back's image, as the front's.
+        case backImage = "Back image"
+
+        /// Whether it names a side's image: a column that a file has only
+        /// when its `#columns` header names it, and an export writes only
+        /// with images.
+        var isImage: Bool {
+            self == .frontImage || self == .backImage
+        }
     }
 
     /// The cards in the file `data` holds, in its order, and the lines it
-    /// left out, with why, or why it can't be read at all.
-    public static func read(_ data: Data) throws(CardsFileProblem) -> ImportReading {
+    /// left out, with why, or why it can't be read at all. `images` looks up
+    /// each image a line names for a side, by the name it gives: a side with
+    /// no text whose image isn't found leaves the line out, and one with
+    /// text comes in without it. Without `images`, as for a text file alone,
+    /// no image is found.
+    public static func read(_ data: Data, images: (String) -> ImageLookup = { _ in .missing })
+        throws(CardsFileProblem) -> ImportReading
+    {
         guard let text = String(validating: data, as: UTF8.self) else {
             throw .notUTF8
         }
@@ -33,7 +52,8 @@ public enum CardsTextFile {
             switch record {
             case .fields(let fields, let line):
                 do throws(LeftOut) {
-                    cards.append(try card(in: fields, on: line, columns: columns, isHTML: headers.isHTML))
+                    cards.append(
+                        try card(in: fields, on: line, columns: columns, isHTML: headers.isHTML, images: images))
                 } catch {
                     leftOut.append(error.line)
                 }
@@ -64,9 +84,12 @@ public enum CardsTextFile {
     /// columns, that its fields hold no HTML, which columns it has, by their
     /// names, and which one holds the tags; then each card has a line with
     /// its front, back, tags, type and source, and a blank field for what it
-    /// lacks.
+    /// lacks. When a card has an image, every line also names the image of
+    /// its front and of its back, by the name Ficha keeps it by, which is
+    /// the name of its file in the zip the text goes in.
     public static func text(of cards: [CardContent]) -> String {
-        let columns = Column.allCases
+        let hasImages = cards.contains { $0.frontImage != nil || $0.backImage != nil }
+        let columns = Column.allCases.filter { hasImages || !$0.isImage }
         var lines = [
             "#separator:tab",
             "#html:false",
@@ -89,6 +112,8 @@ public enum CardsTextFile {
         case .tags: tagsColumn(holding: card.tags)
         case .type: card.type?.rawValue ?? ""
         case .source: card.source ?? ""
+        case .frontImage: card.frontImage?.rawValue ?? ""
+        case .backImage: card.backImage?.rawValue ?? ""
         }
     }
 
@@ -114,17 +139,18 @@ public enum CardsTextFile {
 
     /// The card that `fields`, the columns of the record on `line`, make,
     /// each the column `columns` says, and as plain text when `isHTML`, but
-    /// its tags; or the line left out, with why it makes none.
-    private static func card(in fields: [String], on line: Int, columns: ColumnMap, isHTML: Bool) throws(LeftOut)
-        -> ImportedCard
-    {
+    /// its tags and its images' names, with the images `images` finds; or
+    /// the line left out, with why it makes none.
+    private static func card(
+        in fields: [String], on line: Int, columns: ColumnMap, isHTML: Bool, images: (String) -> ImageLookup
+    ) throws(LeftOut) -> ImportedCard {
         guard fields.count > 1 else {
             throw LeftOut(line: line, reason: .oneColumn)
         }
         var values: [Column: String] = [:]
         for (index, field) in fields.enumerated() {
             if let column = columns.column(at: index), values[column] == nil {
-                values[column] = isHTML && column != .tags ? plainText(fromHTML: field) : field
+                values[column] = isHTML && column != .tags && !column.isImage ? plainText(fromHTML: field) : field
             }
         }
         var type: CardType?
@@ -136,16 +162,42 @@ public enum CardsTextFile {
         }
         let front = values[.front] ?? ""
         let back = values[.back] ?? ""
+        let frontImage = try image(named: values[.frontImage], beside: front, on: line, images: images)
+        let backImage = try image(named: values[.backImage], beside: back, on: line, images: images)
         guard
             let content = CardContent(
                 type: type, front: front, back: back, tags: tags(inColumn: values[.tags] ?? ""),
-                source: values[.source])
+                source: values[.source], frontImage: frontImage, backImage: backImage)
         else {
-            throw LeftOut(line: line, reason: CardContent.isBlank(front) ? .blankFront : .blankBack)
+            throw LeftOut(
+                line: line, reason: CardContent.isBlank(front, image: frontImage) ? .blankFront : .blankBack)
         }
-        let given: [(Column, CardField)] = [(.tags, .tags), (.type, .type), (.source, .source)]
+        let given: [(Column, CardField)] = [
+            (.tags, .tags), (.type, .type), (.source, .source), (.backImage, .backImage),
+        ]
         return ImportedCard(
             content: content, fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line)
+    }
+
+    /// The image a side with `text` gets from `name`, what its image column
+    /// holds, if anything, which `images` looks up: the image found, or none
+    /// when the column is blank, or when the image isn't found and the side
+    /// has text. A side with no text whose image isn't found leaves the line
+    /// on `line` out.
+    private static func image(
+        named name: String?, beside text: String, on line: Int, images: (String) -> ImageLookup
+    ) throws(LeftOut) -> ImageName? {
+        guard let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
+            return nil
+        }
+        let lookup = images(name)
+        if case .found(let image) = lookup {
+            return image
+        }
+        guard CardContent.isBlank(text) else {
+            return nil
+        }
+        throw LeftOut(line: line, reason: lookup == .notAnImage ? .notAnImage(name) : .missingImage(name))
     }
 }
 
@@ -175,6 +227,13 @@ public enum CardsFileProblem: Error, Sendable, Equatable {
     /// Its `#columns` header names no column `column`, which every card
     /// needs: a front or a back.
     case missingColumn(CardsTextFile.Column)
+    /// It's a zip that can't be read as one: it's damaged, or not a zip.
+    case unreadableZip
+    /// It's a zip that holds no text file of cards.
+    case noTextFileInZip
+    /// It's a zip that holds several text files of cards, these, of which
+    /// Ficha wouldn't know which to import.
+    case severalTextFilesInZip([String])
 }
 
 /// The separators a `#separator` header can name, by the names it takes for
@@ -257,7 +316,9 @@ private struct Headers {
 /// headers put what Ficha leaves out, and the others as `#columns` names
 /// them, or else, in order, the front, the back, the tags, the type and the
 /// source, without the tags when a header puts them elsewhere. A column
-/// beyond those, or one `#columns` names otherwise, is left out.
+/// beyond those, or one `#columns` names otherwise, is left out: the image
+/// columns come only by name, so a file without headers reads as before
+/// images.
 private struct ColumnMap {
     private let tagsColumn: Int?
     private let skippedColumns: Set<Int>
@@ -269,7 +330,9 @@ private struct ColumnMap {
     init(_ headers: Headers, separatedBy separator: Unicode.Scalar) throws(CardsFileProblem) {
         tagsColumn = headers.tagsColumn
         skippedColumns = headers.skippedColumns
-        unplaced = CardsTextFile.Column.allCases.filter { $0 != .tags || headers.tagsColumn == nil }
+        unplaced = CardsTextFile.Column.allCases.filter {
+            !$0.isImage && ($0 != .tags || headers.tagsColumn == nil)
+        }
         guard let columnNames = headers.columnNames else {
             named = nil
             return

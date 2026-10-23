@@ -99,7 +99,8 @@ private struct ImportButtonAndSheet: ViewModifier {
 
 /// The sheet the Cards window's Import button opens. First it says in a line
 /// what Ficha reads, Copy Instructions for an AI copies how to write such a
-/// file, and Choose File… opens a text file of cards. Then it
+/// file, and Choose File… opens a text file of cards, or a zip with one and
+/// its cards' images. Then it
 /// shows what importing the file would do: how many cards come in, how many
 /// repeat the user's cards, with Update or Skip for them, which lines stay
 /// out and why, and the tag every card gets, named after the file, which the
@@ -136,7 +137,8 @@ struct ImportSheet: View {
         .padding(20)
         .frame(width: 460)
         .fileImporter(
-            isPresented: $isChoosingFile, allowedContentTypes: [.plainText, .commaSeparatedText, .tabSeparatedText]
+            isPresented: $isChoosingFile,
+            allowedContentTypes: [.plainText, .commaSeparatedText, .tabSeparatedText, .zip]
         ) { result in
             if case .success(let file) = result {
                 preview(file)
@@ -154,7 +156,7 @@ struct ImportSheet: View {
                     """
                     Ficha reads a text file with one card per line: its front, back, tags, type and source, \
                     separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text \
-                    save it.
+                    save it. Cards with images come in a zip, with the text file and the images.
                     """,
                     comment: "Under the title of the Cards window's Import sheet, before a file is chosen."))
             HStack {
@@ -337,6 +339,15 @@ struct ImportSheet: View {
             String(
                 localized: "Line \(number) has a quote inside a quoted field that isn't doubled.",
                 comment: "In the Import sheet, a line the file can't read.")
+        case .missingImage(let image):
+            String(
+                localized: "Line \(number) has a side with only the image “\(image)”, which isn't in the zip.",
+                comment: "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.")
+        case .notAnImage(let image):
+            String(
+                localized:
+                    "Line \(number) has a side with only the image “\(image)”, which Ficha can't read as an image.",
+                comment: "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.")
         }
     }
 
@@ -349,7 +360,8 @@ struct ImportSheet: View {
     }
 
     /// A button with `shortcut` that opens the open panel for a text file of
-    /// cards: Return before a file is chosen, and ⌘O once one is.
+    /// cards, or a zip with one: Return before a file is chosen, and ⌘O once
+    /// one is.
     private func chooseFileButton(_ label: Text, shortcut: KeyboardShortcut) -> some View {
         Button {
             isChoosingFile = true
