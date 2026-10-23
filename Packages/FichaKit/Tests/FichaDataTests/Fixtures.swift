@@ -16,6 +16,12 @@ func card(
     try #require(CardContent(type: type, front: front, back: back, tags: tags, source: source))
 }
 
+/// What `card` holds, as a card is made from it, to compare with the
+/// content a test gave it.
+func content(of card: Card) -> CardContent? {
+    CardContent(type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source)
+}
+
 /// Lucas's note on what to fix in a card he flags, which isn't blank.
 func note(_ text: String) throws -> FlagNote {
     try #require(FlagNote(text))

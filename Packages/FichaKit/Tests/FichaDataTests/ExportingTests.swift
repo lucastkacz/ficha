@@ -133,8 +133,3 @@ final class ExportingTests {
         try approve(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
     }
 }
-
-/// What `card` holds, as a card is made from it.
-private func content(of card: Card) -> CardContent? {
-    CardContent(type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source)
-}
