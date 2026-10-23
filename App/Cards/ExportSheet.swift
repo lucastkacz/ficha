@@ -104,13 +104,13 @@ struct ExportSheet: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             Picker(selection: chosen) {
-                ForEach(exporting.choices.filter { !$0.isTag }, id: \.cards) { choice in
+                ForEach(exporting.cardChoices, id: \.cards) { choice in
                     Text(title(of: choice)).tag(choice.cards)
                 }
-                if exporting.choices.contains(where: \.isTag) {
+                if !exporting.tagChoices.isEmpty {
                     Divider()
                 }
-                ForEach(exporting.choices.filter(\.isTag), id: \.cards) { choice in
+                ForEach(exporting.tagChoices, id: \.cards) { choice in
                     Text(title(of: choice)).tag(choice.cards)
                 }
             } label: {
@@ -164,15 +164,14 @@ struct ExportSheet: View {
         }
     }
 
-    /// The name the save panel proposes for the file: the tag's, for a tag's
-    /// cards, which another Ficha proposes as their tag when it imports them.
+    /// The name the save panel proposes for the file, as the state chose it.
     private var fileName: String {
-        switch exporting.chosen {
-        case .cards:
+        switch exporting.fileName {
+        case .selectedCards:
             String(
                 localized: "Selected cards",
                 comment: "The name the Export sheet's save panel proposes for the file of the selected cards.")
-        case .all:
+        case .allCards:
             String(
                 localized: "All cards",
                 comment: "The name the Export sheet's save panel proposes for the file of all cards.")
@@ -201,15 +200,5 @@ struct ExportSheet: View {
         } else {
             panel.begin(completionHandler: save)
         }
-    }
-}
-
-extension CardsWindowState.ExportChoice {
-    /// Whether it's a tag's cards, which the menu lists after a divider.
-    fileprivate var isTag: Bool {
-        if case .tag = cards {
-            return true
-        }
-        return false
     }
 }

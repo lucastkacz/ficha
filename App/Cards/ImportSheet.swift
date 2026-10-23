@@ -281,7 +281,7 @@ struct ImportSheet: View {
                         Text(
                             "Import “\(preview.fileName)”",
                             comment: "The title of the Cards window's Import sheet, with the name of the file chosen."),
-                        cardsComingIn(preview))
+                        cardsComingIn)
                     previewDetails(preview)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -388,19 +388,23 @@ struct ImportSheet: View {
         }
     }
 
-    /// How many cards the import of `preview` brings in: new ones, and while
-    /// Bring progress is ticked, those that land on a step.
-    private func cardsComingIn(_ preview: ImportPreview) -> Text {
-        guard importing.offersProgress, importing.bringsProgress, preview.placedCount > 0 else {
-            return Text(
-                "\(preview.newCount) new cards come in, at the pace of your new cards per day.",
+    /// How many cards the import brings in, as the state counts them: new
+    /// ones, and while Bring progress is ticked, those that land on a step.
+    private var cardsComingIn: Text {
+        switch importing.cardsComingIn {
+        case .new(let count)?:
+            Text(
+                "\(count) new cards come in, at the pace of your new cards per day.",
                 comment: "In the Import sheet's preview, with how many new cards the file brings.")
+        case .newAndPlaced(let new, let placed)?:
+            Text(
+                "\(new) new cards come in, at the pace of your new cards per day, and \(placed) on a step, as Anki had them.",
+                comment:
+                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of the user's ladder."
+            )
+        case nil:
+            Text(verbatim: "")
         }
-        return Text(
-            "\(preview.newCount - preview.placedCount) new cards come in, at the pace of your new cards per day, and \(preview.placedCount) on a step, as Anki had them.",
-            comment:
-                "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of Lucas's ladder."
-        )
     }
 
     /// Bring progress, ticked until the user unticks it, and what it does,
@@ -506,7 +510,7 @@ struct ImportSheet: View {
                                 Image(systemName: "minus.circle")
                             }
                             .buttonStyle(.borderless)
-                            .disabled(field.name.isEmpty)
+                            .disabled(field.isLeftOut)
                             .help(
                                 Text(
                                     "Leave Out “\(field.proposed)”",

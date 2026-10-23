@@ -82,6 +82,8 @@ final class CardsWindowImportTests {
         removed.importCardsAndWait()
 
         #expect(renamed.importing?.tagFields == [CardsWindowState.TagField(proposed: "Palabras", name: "vocabulario")])
+        #expect(renamed.importing?.tagFields.map(\.isLeftOut) == [false])
+        #expect(removed.importing?.tagFields.map(\.isLeftOut) == [true])
         #expect(try engine.cards().map(\.tags) == [["vocabulario"], []])
     }
 

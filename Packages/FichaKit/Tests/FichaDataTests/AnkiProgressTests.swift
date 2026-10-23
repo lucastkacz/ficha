@@ -257,18 +257,22 @@ final class AnkiProgressTests {
 
         window.previewImportAndWait(of: textFile)
         let textFileOffers = window.importing?.offersProgress
+        let textFileCardsComingIn = window.importing?.cardsComingIn
         window.previewImportAndWait(of: packageFile)
         let importing = try #require(window.importing)
         window.chooseToBringProgress(false)
         let untickedBrings = window.importing?.bringsProgress
+        let untickedCardsComingIn = window.importing?.cardsComingIn
         window.importCardsAndWait()
 
         #expect(textFileOffers == false)
+        #expect(textFileCardsComingIn == .new(1))
         #expect(importing.offersProgress)
         #expect(importing.bringsProgress)
         // The repeated card keeps its own progress, so it isn't counted.
-        #expect(importing.preview?.placedCount == 2)
+        #expect(importing.cardsComingIn == .newAndPlaced(new: 1, placed: 2))
         #expect(untickedBrings == false)
+        #expect(untickedCardsComingIn == .new(3))
         #expect(try engine.cards().dropFirst().map(\.front) == ["tres", "uno", "dos"])
         #expect(try engine.cards().allSatisfy { try engine.standing(of: $0.id, on: ladder) == .new })
     }

@@ -63,11 +63,30 @@ final class CardsWindowExportTests {
         let philosophy = CardsWindowState.ExportChoice(cards: .tag("filosofía"), cardCount: 1)
         let history = CardsWindowState.ExportChoice(cards: .tag("historia"), cardCount: 2)
         #expect(unselected.exporting?.choices == [all, philosophy, history])
-        #expect(
-            selected.exporting?.choices == [
-                CardsWindowState.ExportChoice(cards: .cards([mayo.id, ubuntu.id]), cardCount: 2), all, philosophy,
-                history,
-            ])
+        #expect(unselected.exporting?.cardChoices == [all])
+        #expect(unselected.exporting?.tagChoices == [philosophy, history])
+        let selectedCards = CardsWindowState.ExportChoice(cards: .cards([mayo.id, ubuntu.id]), cardCount: 2)
+        #expect(selected.exporting?.choices == [selectedCards, all, philosophy, history])
+        #expect(selected.exporting?.cardChoices == [selectedCards, all])
+    }
+
+    // Which another Ficha proposes as their tag when it imports them.
+    @Test("the save panel proposes the tag's name for a tag's cards, and a name for the selected cards or all of them")
+    func theSavePanelProposesTheTagsName() throws {
+        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
+        let ubuntu = try approveCard("ubuntu")
+        var window = openWindow()
+        window.select([mayo.id, ubuntu.id])
+
+        window.startExport()
+        let selected = window.exporting?.fileName
+        window.chooseCardsToExport(.tag("historia"))
+        let history = window.exporting?.fileName
+        window.chooseCardsToExport(.all)
+
+        #expect(selected == .selectedCards)
+        #expect(history == .tag("historia"))
+        #expect(window.exporting?.fileName == .allCards)
     }
 
     // One selected card is often just the one the detail shows.

@@ -69,6 +69,28 @@ extension CardsWindowState {
             preview?.kind == .ankiPackage
         }
 
+        /// How many of the file's cards come in, as the line under the
+        /// preview's title says it.
+        public enum CardsComingIn: Sendable, Equatable {
+            /// This many, new, at the pace of the user's new cards per day.
+            case new(Int)
+            /// This many new, and this many on a step, as Anki had them.
+            case newAndPlaced(new: Int, placed: Int)
+        }
+
+        /// How many of the file's cards come in, while the sheet shows a
+        /// preview: those new to Ficha, and while Bring progress is ticked
+        /// and some of them land on a step, how many do.
+        public var cardsComingIn: CardsComingIn? {
+            guard let preview else {
+                return nil
+            }
+            guard offersProgress, bringsProgress, preview.placedCount > 0 else {
+                return .new(preview.newCount)
+            }
+            return .newAndPlaced(new: preview.newCount - preview.placedCount, placed: preview.placedCount)
+        }
+
         /// What the user chose, for the import, with the cards' progress
         /// brought onto `ladder`, the user's, when the sheet offers it and
         /// it's ticked.
@@ -87,6 +109,12 @@ extension CardsWindowState {
         /// What the field holds: at first the proposed name. A blank one
         /// leaves the tag out.
         public fileprivate(set) var name: String
+
+        /// Whether the field leaves the tag out, being blank, so that
+        /// there's nothing for Leave Out to clear.
+        public var isLeftOut: Bool {
+            name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
 
         public init(proposed: String, name: String) {
             self.proposed = proposed

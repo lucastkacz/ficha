@@ -12,6 +12,37 @@ extension CardsWindowState {
         /// What Export writes to the file the user picks.
         public fileprivate(set) var chosen: CardsToExport
 
+        /// The name the save panel proposes for the file.
+        public enum FileName: Sendable, Equatable {
+            /// A name for the selected cards.
+            case selectedCards
+            /// A name for all cards.
+            case allCards
+            /// The tag's own name, for the cards with it, which another
+            /// Ficha proposes as their tag when it imports them.
+            case tag(String)
+        }
+
+        /// What the menu offers before its divider: the selected cards,
+        /// while it offers them, and all cards.
+        public var cardChoices: [ExportChoice] {
+            choices.filter { !$0.isTag }
+        }
+
+        /// What the menu offers after its divider: each tag's cards.
+        public var tagChoices: [ExportChoice] {
+            choices.filter(\.isTag)
+        }
+
+        /// The name the save panel proposes for the file of what's chosen.
+        public var fileName: FileName {
+            switch chosen {
+            case .cards: .selectedCards
+            case .all: .allCards
+            case .tag(let name): .tag(name)
+            }
+        }
+
         /// How many cards Export writes.
         public var cardCount: Int {
             choices.first { $0.cards == chosen }?.cardCount ?? 0
@@ -42,6 +73,14 @@ extension CardsWindowState {
             self.cards = cards
             self.cardCount = cardCount
             self.holdsImages = holdsImages
+        }
+
+        /// Whether it's a tag's cards.
+        fileprivate var isTag: Bool {
+            if case .tag = cards {
+                return true
+            }
+            return false
         }
     }
 
