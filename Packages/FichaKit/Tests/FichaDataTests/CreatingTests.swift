@@ -72,6 +72,50 @@ struct CreatingTests {
         #expect(try engine.cards().isEmpty)
     }
 
+    // The Cards window's form adds them one at a time, and approves the
+    // capture as it closes.
+    @Test("a card added from a capture keeps the capture, and the capture stays in the inbox until the form closes")
+    func aCardAddedFromACaptureKeepsItUntilTheFormCloses() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let capture = try engine.newCapture("ubuntu, y también ataraxia")
+        let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."), from: capture.id)
+        let ataraxia = try engine.create(card(.concept, front: "ataraxia", back: "Serenidad."), from: capture.id)
+        #expect(try engine.inbox().captures == [capture])
+
+        let approved = try engine.approve(capture.id)
+
+        #expect(approved == [ubuntu, ataraxia])
+        #expect(try engine.cards().map(\.captureID) == [capture.id, capture.id])
+        #expect(try engine.inbox().captures.isEmpty)
+    }
+
+    @Test("closing after adding cards from a capture takes it out of the inbox, and closing with none leaves it")
+    func closingTakesTheCaptureOutOnlyAfterCards() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let withCards = try engine.newCapture("ubuntu")
+        let withNone = try engine.newCapture("¿Por qué bostezamos?")
+        try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."), from: withCards.id)
+
+        try engine.approve(withCards.id)
+
+        #expect(throws: EngineError.noCards) {
+            try engine.approve(withNone.id)
+        }
+        #expect(try engine.inbox().captures == [withNone])
+    }
+
+    @Test("a capture whose text matches a card made from another capture is still a duplicate")
+    func aCaptureRepeatingTheCaptureACardWasAddedFromIsADuplicate() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let capture = try engine.newCapture("Ubuntu, lo que dijo Mandela")
+        let ubuntu = try engine.create(card(.word, front: "ubuntu", back: "Soy porque somos."), from: capture.id)
+        try engine.approve(capture.id)
+
+        let again = try engine.capture(text: "ubuntu, lo que dijo mandela", note: nil, source: nil)
+
+        #expect(again == .duplicate(of: .card(ubuntu)))
+    }
+
     // `ficha cards` prints the cards this way, as it leaves out a source.
     @Test("Card's encoding leaves out type and captureID when they're nil")
     func aCardsEncodingLeavesOutTypeAndCaptureIDWhenNil() throws {

@@ -12,7 +12,8 @@ import Foundation
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, as it sets a tag aside or gives it a color
 /// from the tag's context menu, it asks which emoji the tag gets, and it
-/// records what couldn't be saved, for the window to say.
+/// records what couldn't be saved, for the window to say. It also holds the
+/// form that creates cards while it's open, which `CardForm.swift` decides.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, or the
     /// inbox.
@@ -53,6 +54,8 @@ public struct CardsWindowState: Sendable {
         /// Edit the card or the capture, in fields that take the detail's
         /// place.
         case edit
+        /// Turn the capture into cards, in the card form opened from it.
+        case convertToCard
         /// Flag the card, with a note on what to fix.
         case flag
         /// Bury the cards.
@@ -133,6 +136,11 @@ public struct CardsWindowState: Sendable {
         case saveCapture
         /// He discarded a capture.
         case discard
+        /// He added a card in the card form.
+        case addCard
+        /// He closed the card form opened from a capture, after adding cards
+        /// from it, which approves the capture.
+        case approveCapture
         /// He flagged a card.
         case flag
         /// He buried this many cards.
@@ -182,11 +190,14 @@ public struct CardsWindowState: Sendable {
     public private(set) var ladder: Ladder
     /// What Lucas edits, until he saves or cancels.
     public private(set) var editing: Editing?
+    /// The form that creates cards, while it's open: `CardForm.swift`.
+    public internal(set) var cardForm: CardForm?
     /// What the window asks before it acts, while it asks.
     public private(set) var question: Question?
     /// What Lucas did that couldn't be saved, while the window says so.
     public private(set) var failure: Failure?
-    private let engine: Engine
+    /// Internal, for the window's parts in files of their own.
+    let engine: Engine
 
     init(engine: Engine, ladder: Ladder) {
         self.engine = engine
@@ -266,13 +277,16 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// What Lucas can do with what the detail shows: with a capture or an
-    /// expansion, edit it and discard it; with one card, edit it, flag it
-    /// while it's in his reviews, bury or unbury it, and delete it; with
-    /// several, bury or unbury them and delete them.
+    /// What Lucas can do with what the detail shows: with a capture, edit it,
+    /// convert it to cards and discard it; with an expansion, edit it and
+    /// discard it; with one card, edit it, flag it while it's in his
+    /// reviews, bury or unbury it, and delete it; with several, bury or
+    /// unbury them and delete them.
     public var actions: Set<Action> {
         switch detail {
-        case .capture, .expansion:
+        case .capture:
+            return [.edit, .convertToCard, .discard]
+        case .expansion:
             return [.edit, .discard]
         case .card(let row, _):
             return Self.actions(for: row.cardStanding).union([.edit, .delete])
@@ -535,7 +549,7 @@ public struct CardsWindowState: Sendable {
     /// Does the engine's part of `action` with `work`, or records why it
     /// couldn't: whether it did.
     @discardableResult
-    private mutating func perform(_ action: FailedAction, _ work: (Engine) throws(EngineError) -> Void) -> Bool {
+    mutating func perform(_ action: FailedAction, _ work: (Engine) throws(EngineError) -> Void) -> Bool {
         do throws(EngineError) {
             try work(engine)
             return true
