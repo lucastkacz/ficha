@@ -9,15 +9,27 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "review
 
 /// The review panel's window: a small floating panel without a title bar,
 /// which its Liquid Glass draws, near the top of the screen and on the Space
-/// Lucas is in. It's an AppKit panel because a SwiftUI window without a title
-/// bar can't take the keyboard. It takes the keyboard without activating
-/// Ficha, so once it closes, the keyboard goes back to the app Lucas was in.
-/// When it shows up on its own, it can't have the keyboard until the focus
-/// mode says so or Lucas clicks it, so it doesn't catch what he's typing
-/// (#10's findings).
+/// Lucas is in. It fits its content up to two thirds of its screen's height,
+/// and a card taller than that scrolls in it. It's an AppKit panel because a
+/// SwiftUI window without a title bar can't take the keyboard. It takes the
+/// keyboard without activating Ficha, so once it closes, the keyboard goes
+/// back to the app Lucas was in. When it shows up on its own, it can't have
+/// the keyboard until the focus mode says so or Lucas clicks it, so it
+/// doesn't catch what he's typing (#10's findings).
 final class ReviewPanelWindow: NSPanel {
+    /// How much of its screen's visible height, without the menu bar and the
+    /// Dock, the panel takes at most: a long card scrolls in it instead of
+    /// running off the screen (#215).
+    private static let maximumShareOfScreen = 2.0 / 3.0
+
     /// The panel's cards, or why they couldn't be brought.
     private let model: Result<ReviewPanelModel, EngineError>
+    /// What the panel shows, which sizes the panel as it changes.
+    private lazy var content = NSHostingView(
+        rootView: ReviewPanelView(model: model) { [weak self] in
+            self?.close()
+        }
+    )
     /// Whether a panel that says why it couldn't bring its cards may have the
     /// keyboard: when Lucas opened it, or once he clicks it.
     private var failureMayHaveKeyboard = false
@@ -48,11 +60,6 @@ final class ReviewPanelWindow: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true
-        let content = NSHostingView(
-            rootView: ReviewPanelView(model: model) { [weak self] in
-                self?.close()
-            }
-        )
         // The panel is the glass's rounded rectangle, not the window's whole
         // frame: while the panel has the keyboard, the glass's backdrop
         // covers the whole frame, and the window's shadow follows it, unless
@@ -139,19 +146,18 @@ final class ReviewPanelWindow: NSPanel {
     }
 
     /// Places the panel at the top of the screen Lucas is pointing at,
-    /// centered just below the menu bar. As its content changes size, it
-    /// keeps its top edge where it is.
+    /// centered just below the menu bar, no taller than its share of that
+    /// screen. As its content changes size, it keeps its top edge where it is.
     private func place() {
         let mouse = NSEvent.mouseLocation
-        guard
-            let contentView,
-            let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main
+        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main
         else {
             return
         }
-        let size = contentView.fittingSize
-        setContentSize(size)
         let visible = screen.visibleFrame
+        content.rootView.maximumHeight = (visible.height * Self.maximumShareOfScreen).rounded(.down)
+        let size = content.fittingSize
+        setContentSize(size)
         setFrameTopLeftPoint(NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - 40))
     }
 

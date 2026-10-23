@@ -4,14 +4,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension View {
-    /// The Cards window's Import… button, in its toolbar, and the Import
-    /// sheet it opens, which `state` runs.
+    /// The Cards window's Import… button, in its toolbar, and ⇧⌘I, which
+    /// open the Import sheet, which `state` runs.
     func importButtonAndSheet(_ state: Binding<CardsWindowState>) -> some View {
         modifier(ImportButtonAndSheet(state: state))
     }
 }
 
-/// Import…, in the toolbar, and the sheet it opens while the state imports.
+/// Import… and ⇧⌘I, and the sheet they open while the state imports.
 private struct ImportButtonAndSheet: ViewModifier {
     @Binding var state: CardsWindowState
 
@@ -21,6 +21,18 @@ private struct ImportButtonAndSheet: ViewModifier {
                 ToolbarItem(placement: .primaryAction) {
                     importButton
                 }
+            }
+            .background {
+                // ⇧⌘I, as in Anki, works through a hidden button, as ⌘N
+                // does: the app has no main menu, whose File menu would
+                // hold it.
+                Button {
+                    state.startImport()
+                } label: {
+                    Text("Import", comment: "A hidden button of the Cards window: ⇧⌘I, which opens the Import sheet.")
+                }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+                .hidden()
             }
             .sheet(isPresented: isImporting) {
                 if let importing = state.importing {
@@ -33,7 +45,7 @@ private struct ImportButtonAndSheet: ViewModifier {
             }
     }
 
-    /// Import…, which opens the Import sheet: ⇧⌘I, as in Anki.
+    /// Import…, which opens the Import sheet.
     private var importButton: some View {
         Button {
             state.startImport()
@@ -44,7 +56,6 @@ private struct ImportButtonAndSheet: ViewModifier {
                 Image(systemName: "square.and.arrow.down")
             }
         }
-        .keyboardShortcut("i", modifiers: [.command, .shift])
         .help(Text("Import… (⇧⌘I)", comment: "The tooltip of the Cards window's toolbar button that imports cards."))
     }
 

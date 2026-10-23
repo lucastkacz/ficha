@@ -24,6 +24,45 @@ extension Engine {
             return try existingCard(insertCard(content, capturedAs: captureID, at: createdAt, in: db), in: db)
         }
     }
+
+    /// Approves a capture in the inbox into the cards created from it one at
+    /// a time, as the Cards window's form does once it closes: takes it out
+    /// of the inbox and returns those cards, in the order they came in. A
+    /// capture no card was created from stays in the inbox, and is refused,
+    /// as approving it into no cards is; so is one that isn't in the inbox.
+    @discardableResult
+    public func approve(_ captureID: Int64) throws(EngineError) -> [Card] {
+        let refinedAt = time.now
+        return try write { db in
+            let cards = try FichaData.cards(
+                in: Row.fetchAll(
+                    db, sql: "SELECT * FROM card WHERE captureId = ? ORDER BY id", arguments: [captureID]),
+                in: db)
+            guard !cards.isEmpty else {
+                throw EngineError.noCards
+            }
+            try takeOutOfInbox(captureID, at: refinedAt, in: db)
+            return cards
+        }
+    }
+}
+
+extension Engine {
+    /// The card whose front `front` repeats, by the duplicate rule, as the
+    /// Cards window's form warns about it: the first one that came in, or nil
+    /// when it repeats none.
+    func cardRepeated(byFront front: String) throws(EngineError) -> Card? {
+        try read { db in try FichaData.cardRepeated(byFront: front, in: db) }
+    }
+}
+
+/// The card whose front `front` repeats, by the duplicate rule, the first one
+/// that came in, or nil when it repeats none. Only fronts count: a card
+/// created or imported is a duplicate by its front alone.
+func cardRepeated(byFront front: String, in db: Database) throws -> Card? {
+    let fronts = try Row.fetchAll(db, sql: "SELECT id, front FROM card ORDER BY id")
+    let repeated = try fronts.first { row in repeats(front, try row.decode(forColumn: "front")) }
+    return try repeated.map { row in try existingCard(row.decode(forColumn: "id"), in: db) }
 }
 
 /// Saves `content` as a new card, created at `time` from the capture with the
