@@ -110,6 +110,67 @@ struct PriorityTagsTests {
             ])
     }
 
+    @Test("a card with any of the priority tags counts as a priority card")
+    func aCardWithAnyPriorityTagCounts() throws {
+        let ubuntu = try meetCard("ubuntu", tags: ["lenguaje"])
+        let mayo = try meetCard("Revolución de Mayo", tags: ["argentina", "historia"])
+        let petricor = try meetCard("petricor", tags: [])
+        let eudaimonia = try meetCard("eudaimonía", tags: ["ética", "filosofía"])
+        time.advance(by: hours(1))
+
+        try engine.togglePriority(of: "filosofía")
+        try engine.togglePriority(of: "historia")
+
+        #expect(try engine.reviewNow(settings) == [mayo, eudaimonia, ubuntu, petricor].map(PanelCard.review))
+    }
+
+    @Test("each card's step and due time are the same with or without priority tags")
+    func priorityTagsChangeNoStepOrDueTime() throws {
+        let ubuntu = try approveCard("ubuntu", tags: ["lenguaje"])
+        let eudaimonia = try approveCard("eudaimonía", tags: ["filosofía"])
+        let ataraxia = try approveCard("ataraxia", tags: ["filosofía"])
+        try engine.climb(ubuntu, to: 2, movingForward: time)
+        try engine.climb(eudaimonia, to: 1, movingForward: time)
+        let cards = [ubuntu, eudaimonia, ataraxia]
+        let standings = try cards.map { try engine.standing(of: $0.id, on: settings.ladder) }
+
+        try engine.togglePriority(of: "filosofía")
+
+        #expect(try cards.map { try engine.standing(of: $0.id, on: settings.ladder) } == standings)
+    }
+
+    // A new priority card fits beside the cards due within the look-ahead,
+    // where a new card without priority wouldn't, but that mustn't bring the
+    // appearance before one would come without priority tags.
+    @Test("an appearance comes when it would without priority tags, even when a new priority card would fit")
+    func anAppearanceComesWhenItWouldWithoutPriorityTags() throws {
+        // Five cards climb to the third step, which waits 2 days, so they
+        // come due on the 16th at 14:00, when none of that day's new cards is
+        // met yet.
+        let lenguaje = try ["uno", "dos", "tres", "cuatro"].map { try approveCard($0, tags: ["lenguaje"]) }
+        let cinco = try approveCard("cinco", tags: ["filosofía"])
+        for card in lenguaje + [cinco] {
+            try engine.meet(card)
+        }
+        for wait in [hours(1), hours(4)] {
+            time.advance(by: wait)
+            for card in lenguaje + [cinco] {
+                try engine.review(card, .good)
+            }
+        }
+        let eudaimonia = try approveCard("eudaimonía", tags: ["filosofía"])
+        let dueTime = time.now + days(2)
+        try engine.togglePriority(of: "filosofía")
+
+        // They're due within the 20-minute look-ahead, but none is due yet.
+        time.move(to: dueTime - minutes(15))
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.nothingDue))
+        time.move(to: dueTime)
+        #expect(
+            try engine.checkAppearance(settings, mac: FakeMac())
+                == .show([.review(cinco)] + lenguaje.prefix(3).map(PanelCard.review) + [.firstView(eudaimonia)]))
+    }
+
     /// Approves a card with this front and these tags and meets it now, so
     /// that it's due an hour later, after the first step's wait, and then
     /// moves time a minute forward, so the next card met comes due after it.

@@ -35,6 +35,17 @@ public struct CardsInReviews: Sendable, Equatable {
         self.log = log
     }
 
+    private init(ids: [Int64], priorityIDs: Set<Int64>, log: [ReviewLogEntry]) {
+        self.ids = ids
+        self.priorityIDs = priorityIDs
+        self.log = log
+    }
+
+    /// The same cards as if no tag were a priority tag.
+    var withoutPriority: CardsInReviews {
+        CardsInReviews(ids: ids, priorityIDs: [], log: log)
+    }
+
     /// Where each card stands on `ladder`, by id in the order Lucas approved
     /// them, after the review log.
     func standings(on ladder: Ladder) throws(UnexpectedReviewLog) -> [(cardID: Int64, standing: LadderStanding)] {
