@@ -10,7 +10,7 @@ struct ApproveExpansionCommand: EngineCommand {
         abstract: "Approve an expansion: give its card new content, read as JSON from standard input.",
         discussion: """
             The card is a JSON object with \(cardFields). It replaces the content of the card the expansion \
-            expands, which keeps its step. For example:
+            expands, which keeps its step and its images. For example:
 
               ficha approve-expansion 15 <<'EOF'
               {"type": "word", "front": "serendipia",

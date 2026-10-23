@@ -58,18 +58,36 @@ extension CardsWindowState.CardForm {
         public init() {}
 
         /// What Add saves, checked as every card is, or nil while a side is
-        /// blank.
+        /// blank: it has neither text nor an image.
         var content: CardContent? {
             CardContent(
                 type: type, front: front.text, back: back.text, tags: tags.split(separator: ",").map(String.init),
-                source: source)
+                source: source, frontImage: front.image, backImage: back.image)
+        }
+
+        /// The side `side` of the draft.
+        subscript(side: CardSide) -> Side {
+            get {
+                switch side {
+                case .front: front
+                case .back: back
+                }
+            }
+            set {
+                switch side {
+                case .front: front = newValue
+                case .back: back = newValue
+                }
+            }
         }
     }
 
     /// One side of the card the form makes, a front or a back, as its field
-    /// holds it.
+    /// holds it, and the image Lucas dragged or pasted on it, if any, which
+    /// the window holds until Add keeps it (`CardsWindowImages.swift`).
     public struct Side: Sendable, Equatable {
         public var text = ""
+        public internal(set) var image: ImageName?
     }
 }
 
@@ -113,15 +131,19 @@ extension CardsWindowState {
     }
 
     /// Add: saves what the form holds as a new card, while Add is on, straight
-    /// into Lucas's reviews as new. A card added from a capture keeps it as
-    /// its capture, and the capture stays in the inbox until the form closes.
-    /// Then it clears the front and the back, and keeps the type, the tags
-    /// and the source, for the next card. When the card can't be saved, it
-    /// records why, and the fields stay as they were.
+    /// into Lucas's reviews as new, with the images on its sides, which Ficha
+    /// keeps from then on. A card added from a capture keeps it as its
+    /// capture, and the capture stays in the inbox until the form closes.
+    /// Then it clears the front and the back, their images too, and keeps the
+    /// type, the tags and the source, for the next card. When the card can't
+    /// be saved, it records why, and the fields stay as they were.
     public mutating func addCard() {
         guard let form = cardForm, let content = form.draft.content else { return }
         var added: Card?
-        perform(.addCard) { engine throws(EngineError) in added = try engine.create(content, from: form.capture?.id) }
+        let images = heldImages(of: content)
+        perform(.addCard) { engine throws(EngineError) in
+            added = try engine.create(keeping: images, content, from: form.capture?.id)
+        }
         guard let added else { return }
         cardForm?.addedCards.append(added)
         cardForm?.draft.front = CardForm.Side()
@@ -150,6 +172,8 @@ extension CardsWindowState {
     public mutating func closeCardForm() {
         guard let form = cardForm else { return }
         cardForm = nil
+        // Images put on the last card, which Add never saved, go.
+        showImages()
         if form.approvesCaptureOnClose, let capture = form.capture {
             perform(.approveCapture) { engine throws(EngineError) in try engine.approve(capture.id) }
             read(on: ladder)

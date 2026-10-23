@@ -86,6 +86,12 @@ struct CardImage: Sendable, Equatable {
     /// transparency.
     let data: Data
 
+    /// The image `data`, which came in shrunk and named `name` already.
+    init(name: ImageName, data: Data) {
+        self.name = name
+        self.data = data
+    }
+
     /// The image in `data`, in any format the system reads, such as a JPEG, a
     /// PNG, a HEIC or a TIFF, turned upright as its orientation says,
     /// shrunk to `longestImageSide` pixels on its long side, never grown, and

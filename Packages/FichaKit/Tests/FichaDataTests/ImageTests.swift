@@ -198,6 +198,22 @@ final class ImageTests {
         #expect(try engine.read(imagesReferred(in:)) == [bird])
     }
 
+    @Test("the review panel shows the images of the cards it brings")
+    func theReviewPanelShowsTheCardsImages() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
+        let hornero = try engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird, backImage: nest))
+        try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
+
+        let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(.defaults), settings: .defaults)
+
+        #expect(panel.content == .firstView(hornero))
+        #expect(try panel.images[bird]?.get() == engine.image(bird))
+        #expect(try panel.images[nest]?.get() == engine.image(nest))
+    }
+
     @Test("what isn't an image doesn't come in")
     func whatIsntAnImageDoesntComeIn() throws {
         let engine = try Engine(location: .inMemory, time: time)

@@ -141,6 +141,9 @@ public struct CardsWindowState: Sendable {
         /// He closed the card form opened from a capture, after adding cards
         /// from it, which approves the capture.
         case approveCapture
+        /// He dragged or pasted something onto a side of the card he makes
+        /// or edits, as its image.
+        case putImage
         /// He flagged a card.
         case flag
         /// He buried this many cards.
@@ -192,6 +195,12 @@ public struct CardsWindowState: Sendable {
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
     public internal(set) var cardForm: CardForm?
+    /// The images on the sides of the card Lucas edits, as Save would give
+    /// them to it, while he edits one: `CardsWindowImages.swift`.
+    public internal(set) var editedImages = SideImages()
+    /// The images the window shows, in the detail, the editor and the form,
+    /// each read, or held until it's saved: `CardsWindowImages.swift`.
+    public internal(set) var images = ShownImages()
     /// What the window asks before it acts, while it asks.
     public private(set) var question: Question?
     /// What Lucas did that couldn't be saved, while the window says so.
@@ -353,19 +362,25 @@ public struct CardsWindowState: Sendable {
             editing = .capture(capture)
         } else if case .card(let row, _) = detail {
             editing = .card(row.card)
+            editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
         }
     }
 
-    /// Saves the card Lucas edits with `content`, and ends the edit, or
-    /// records why it couldn't and goes on with it. The card keeps its step
-    /// and its review log, and a flagged one is fixed, back in his reviews
-    /// unless it's buried. The detail shows it as saved at once, without
-    /// waiting for the engine to say it changed.
+    /// Saves the card Lucas edits with `content`, its images as
+    /// `editedImages` holds them, and ends the edit, or records why it
+    /// couldn't and goes on with it. The card keeps its step and its review
+    /// log, and a flagged one is fixed, back in his reviews unless it's
+    /// buried. The detail shows it as saved at once, without waiting for the
+    /// engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing else { return }
-        let saved = perform(.saveCard) { engine throws(EngineError) in try engine.edit(card.id, with: content) }
+        let images = heldImages(of: content)
+        let saved = perform(.saveCard) { engine throws(EngineError) in
+            try engine.edit(card.id, keeping: images, with: content)
+        }
         if saved {
             editing = nil
+            editedImages = SideImages()
             read(on: ladder)
         }
     }
@@ -385,9 +400,11 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Ends the edit without saving it.
+    /// Ends the edit without saving it, nor the images Lucas put on it.
     public mutating func cancelEditing() {
         editing = nil
+        editedImages = SideImages()
+        showImages()
     }
 
     /// Asks what needs fixing in the card the detail shows, to flag it, while
@@ -597,8 +614,10 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Reads the review log of the card the detail shows, while it shows one.
+    /// Reads the review log of the card the detail shows, while it shows one,
+    /// and the images the window shows.
     private mutating func readReviewLog() {
+        showImages()
         guard let row = shownCard else {
             reviewLog = nil
             return
