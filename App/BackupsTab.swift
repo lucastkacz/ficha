@@ -30,9 +30,11 @@ struct BackupsTab: View {
                 } label: {
                     Text("Back up", comment: "Settings, under Backups: how often Ficha backs up on its own.")
                 }
-                LabeledContent {
-                    Stepper(value: keptCount, in: BackupSettings.keptRange) {
-                        Text(model.backupSettings.keptCount, format: .number)
+                // A pop-up, as Back up is, so the two rows look alike.
+                Picker(selection: keptCount) {
+                    ForEach(BackupSettings.keptRange, id: \.self) { count in
+                        Text(count, format: .number)
+                            .tag(count)
                     }
                 } label: {
                     Text(
@@ -114,30 +116,26 @@ struct BackupsTab: View {
 
     /// Where the copies are, with Show in Finder.
     private func folderRow(_ folder: URL) -> some View {
-        LabeledContent {
+        twoLineRow {
+            Text("Folder", comment: "Settings, under Backups: the folder the copies are in.")
+        } detail: {
+            Text(verbatim: (folder.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath)
+                .textSelection(.enabled)
+        } control: {
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([folder])
             } label: {
                 Text("Show in Finder", comment: "Settings, under Backups: shows the Backups folder in Finder.")
             }
-        } label: {
-            Text("Folder", comment: "Settings, under Backups: the folder the copies are in.")
-            Text(verbatim: (folder.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath)
-                .textSelection(.enabled)
         }
     }
 
     /// When the last backup was saved, or why the last attempt failed, with
     /// Back Up Now.
     private var lastBackupRow: some View {
-        LabeledContent {
-            Button {
-                model.backups.backUpNow(model.backupSettings)
-            } label: {
-                Text("Back Up Now", comment: "Settings, under Backups: saves a backup now.")
-            }
-        } label: {
+        twoLineRow {
             Text("Last backup", comment: "Settings, under Backups: when the last backup was saved.")
+        } detail: {
             switch model.backups.lastBackup {
             case .none:
                 Text("None yet", comment: "Settings, under Backups: no backup was saved yet.")
@@ -150,6 +148,31 @@ struct BackupsTab: View {
                 )
                 .foregroundStyle(.red)
             }
+        } control: {
+            Button {
+                model.backups.backUpNow(model.backupSettings)
+            } label: {
+                Text("Back Up Now", comment: "Settings, under Backups: saves a backup now.")
+            }
+        }
+    }
+
+    /// A row with `title` and `detail` under it, drawn as a form's label
+    /// draws its two lines, and `control` centered beside both: LabeledContent
+    /// would line the control up with the title alone.
+    private func twoLineRow(
+        @ViewBuilder title: () -> some View, @ViewBuilder detail: () -> some View,
+        @ViewBuilder control: () -> some View
+    ) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                title()
+                detail()
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            control()
         }
     }
 
