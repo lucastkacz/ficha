@@ -157,7 +157,7 @@ struct LadderTests {
     /// A placement an import gave the card with the id 1 at the test's
     /// time: on `step`, due at `due`.
     private func placement(on step: Int, dueAt due: Date) -> ReviewLogEntry {
-        ReviewLogEntry(placing: 1, on: step, dueAt: due, at: time.now)
+        ReviewLogEntry(placing: 1, on: Placement(step: step, due: due), at: time.now)
     }
 
     /// A review of the card with the id 1 with `rating`, at `time`, from

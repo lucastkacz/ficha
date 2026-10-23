@@ -321,7 +321,7 @@ final class AnkiProgressTests {
             .review(.good), of: heart.id, responseTime: .seconds(3), trigger: .reviewNow,
             settings: .defaults)
 
-        #expect(rowsBefore.map(\.entry.kind) == [.placement(step: 4, due: try october(31, at: 4))])
+        #expect(rowsBefore.map(\.entry.kind) == [.placement(Placement(step: 4, due: try october(31, at: 4)))])
         #expect(rowsBefore.map(\.entry.answeredAt) == [importedAt])
         #expect(rowsBefore.map(\.step) == [4])
         #expect(lastSeenBefore == .some(nil))

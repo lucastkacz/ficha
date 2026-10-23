@@ -130,12 +130,12 @@ func recordAnswer(
         in: db)
 }
 
-/// Adds a placement to the review log of the card with this id, which an
-/// import brings in at `placedAt` with its progress from another app: it puts
-/// the card on `step`, due at `due`, in place of a first view (ADR 0013). The
-/// card has no entry yet: it's coming in in the same write.
-func place(_ cardID: Int64, on step: Int, dueAt due: Date, at placedAt: Date, in db: Database) throws {
-    try insert(ReviewLogEntry(placing: cardID, on: step, dueAt: due, at: placedAt), in: db)
+/// Adds `placement` to the review log of the card with this id, which an
+/// import brings in at `placedAt` with its progress from another app, in
+/// place of a first view (ADR 0013). The card has no entry yet: it's coming
+/// in in the same write.
+func place(_ cardID: Int64, on placement: Placement, at placedAt: Date, in db: Database) throws {
+    try insert(ReviewLogEntry(placing: cardID, on: placement, at: placedAt), in: db)
 }
 
 /// Adds an entry at the end of the review log.
@@ -167,8 +167,8 @@ extension ReviewLogEntry {
         let answeredAt: Date = try row.decode(forColumn: "answeredAt")
         let triggerName: String? = try row.decode(forColumn: "trigger")
         switch (kind, triggerName) {
-        case (.placement(let step, let due), nil):
-            self.init(placing: cardID, on: step, dueAt: due, at: answeredAt)
+        case (.placement(let placement), nil):
+            self.init(placing: cardID, on: placement, at: answeredAt)
         case (.firstView, let triggerName?), (.review, let triggerName?):
             guard let trigger = Trigger(rawValue: triggerName) else {
                 throw unreadable("Card \(cardID) has a review log entry with an unknown trigger")
@@ -202,7 +202,7 @@ extension ReviewLogEntry.Kind {
             }
             self = .review(rating)
         case ("placement", nil, let step?, let due?):
-            self = .placement(step: step, due: due)
+            self = .placement(Placement(step: step, due: due))
         default:
             return nil
         }
@@ -214,7 +214,7 @@ extension ReviewLogEntry.Kind {
         switch self {
         case .firstView: ("firstView", nil, nil, nil)
         case .review(let rating): ("review", rating.rawValue, nil, nil)
-        case .placement(let step, let due): ("placement", nil, step, due)
+        case .placement(let placement): ("placement", nil, placement.step, placement.due)
         }
     }
 }

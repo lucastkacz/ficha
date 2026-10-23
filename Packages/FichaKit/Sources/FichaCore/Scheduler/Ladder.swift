@@ -49,12 +49,12 @@ public struct Ladder: Sendable, Equatable {
         case .firstView:
             step = 0
             due = first.answeredAt.adding(waits[0])
-        case .placement(let placedStep, let placedDue):
-            guard placedStep >= 0 else {
+        case .placement(let placement):
+            guard placement.step >= 0 else {
                 throw UnexpectedReviewLog(cardID: first.cardID)
             }
-            step = min(placedStep, waits.count - 1)
-            due = placedDue
+            step = min(placement.step, waits.count - 1)
+            due = placement.due
         case .review:
             throw UnexpectedReviewLog(cardID: first.cardID)
         }
@@ -73,20 +73,20 @@ public struct Ladder: Sendable, Equatable {
         return .onLadder(step: step, due: due)
     }
 
-    /// The step and due time an import that brings a card's progress from
-    /// another app places it on, as it stood there at `stage` (ADR 0013): a
-    /// card being learned on the first step, and one in review on the step
-    /// whose wait is nearest its interval, the last step when its interval
-    /// is longer, the shorter wait when two are as near; each due when it
-    /// was due there. Nil for a new card, which comes in new.
-    public func placement(of stage: ImportedProgress.Stage) -> (step: Int, due: Date)? {
+    /// Where an import that brings a card's progress from another app places
+    /// it, as it stood there at `stage` (ADR 0013): a card being learned on
+    /// the first step, and one in review on the step whose wait is nearest
+    /// its interval, the last step when its interval is longer, the shorter
+    /// wait when two are as near; each due when it was due there. Nil for a
+    /// new card, which comes in new.
+    public func placement(of stage: ImportedProgress.Stage) -> Placement? {
         switch stage {
         case .new:
             nil
         case .learning(let due):
-            (0, due)
+            Placement(step: 0, due: due)
         case .review(let interval, let due):
-            (nearestStep(to: interval), due)
+            Placement(step: nearestStep(to: interval), due: due)
         }
     }
 

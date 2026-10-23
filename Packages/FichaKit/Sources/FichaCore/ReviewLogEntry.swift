@@ -11,10 +11,9 @@ public struct ReviewLogEntry: Sendable, Equatable {
         /// The user reviewed it, and rated it.
         case review(Rating)
         /// An import that brought its progress from another app, such as
-        /// Anki, placed it on this step of the ladder, counted from 0, the
-        /// first step, due at `due` (ADR 0013). Nobody answered it: like a
-        /// first view, it can only start a card's log.
-        case placement(step: Int, due: Date)
+        /// Anki, placed it on the ladder (ADR 0013). Nobody answered it: like
+        /// a first view, it can only start a card's log.
+        case placement(Placement)
     }
 
     public let cardID: Int64
@@ -50,14 +49,27 @@ public struct ReviewLogEntry: Sendable, Equatable {
         self.isAhead = isAhead
     }
 
-    /// The placement an import gives the card with the id `cardID` at
-    /// `placedAt`: on `step`, due at `due`.
-    public init(placing cardID: Int64, on step: Int, dueAt due: Date, at placedAt: Date) {
+    /// The entry of `placement`, which an import gives the card with the id
+    /// `cardID` at `placedAt`.
+    public init(placing cardID: Int64, on placement: Placement, at placedAt: Date) {
         self.cardID = cardID
-        kind = .placement(step: step, due: due)
+        kind = .placement(placement)
         answeredAt = placedAt
         responseTime = nil
         trigger = nil
         isAhead = false
+    }
+}
+
+/// Where an import that brings a card's progress from another app, such as
+/// Anki, places it on the ladder, in place of a first view (ADR 0013): on
+/// `step`, counted from 0, the first step, due at `due`.
+public struct Placement: Sendable, Equatable {
+    public let step: Int
+    public let due: Date
+
+    public init(step: Int, due: Date) {
+        self.step = step
+        self.due = due
     }
 }

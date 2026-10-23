@@ -291,8 +291,8 @@ extension Engine {
     private func bring(
         _ progress: ImportedProgress, to cardID: Int64, onto ladder: Ladder, at importedAt: Date, in db: Database
     ) throws {
-        if let (step, due) = ladder.placement(of: progress.stage) {
-            try place(cardID, on: step, dueAt: due, at: importedAt, in: db)
+        if let placement = ladder.placement(of: progress.stage) {
+            try place(cardID, on: placement, at: importedAt, in: db)
         }
         if progress.isSuspended {
             _ = try updateCard(cardID, setting: "buriedAt = ?", to: [importedAt], in: db)
