@@ -105,6 +105,32 @@ final class ImportingTests {
             ])
     }
 
+    // The headers an export writes, for Ficha and Anki to read it back.
+    @Test("a file with the headers Ficha writes reads every column by its name, and its tags by #tags column")
+    func aFileWithFichasHeadersReadsEveryColumn() throws {
+        let file = try file(
+            "Exportadas.txt",
+            """
+            #separator:tab
+            #html:false
+            #columns:Front\tBack\tTags\tType\tSource
+            #tags column:3
+            ubuntu\tSoy porque somos.\tfilosofía ética_africana\tconcept\tDesmond Tutu
+            "Pienso, luego existo."\t"Descartes,
+            en el Discurso del método."\t\tquote\t
+
+            """)
+
+        try importFile(file, choosing: ImportChoices(tagNames: ["Exportadas": ""]))
+
+        #expect(
+            try engine.cards().map { [$0.front, $0.back, $0.tags.joined(separator: "|"), $0.source ?? "-"] } == [
+                ["ubuntu", "Soy porque somos.", "filosofía|ética africana", "Desmond Tutu"],
+                ["Pienso, luego existo.", "Descartes,\nen el Discurso del método.", "", "-"],
+            ])
+        #expect(try engine.cards().map(\.type) == [.concept, .quote])
+    }
+
     @Test(
         "a file with no headers reads front, back, tags, type and source in that order, and type and source can be missing"
     )
