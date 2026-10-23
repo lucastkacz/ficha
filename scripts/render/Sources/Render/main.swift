@@ -222,9 +222,9 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
 /// the first day and climbing at different paces, two sent back to the first
-/// step, one flagged with a note and one buried, and the rest new; and then
-/// two new cards made by hand, with no type and no capture. The time it's on
-/// stays where the twelve days left it.
+/// step, one flagged with a note and one buried, and the rest new, with a
+/// capture waiting in the inbox; and then two new cards made by hand, with no
+/// type and no capture. The time it's on stays where the twelve days left it.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -261,6 +261,14 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
     try review(0..<8, .good)
+    // A capture that waits in the inbox, for Convert to Card: the inbox lists
+    // it after the flagged card, which comes later.
+    let capture = try engine.capture(
+        text: "La paradoja de Teseo: si le cambiás todas las tablas a un barco, ¿sigue siendo el mismo barco?",
+        note: "Una tarjeta para la paradoja y otra para la pregunta", source: "Un video de filosofía")
+    guard case .saved = capture else {
+        throw RenderError(description: "The sample's capture repeats a sample card.")
+    }
     time.advance(by: hours(4 * 24 + 3))
     guard let note = FlagNote("El ejemplo no se entiende: cambiarlo por uno más cotidiano.") else {
         throw RenderError(description: "The sample's flag note is blank.")

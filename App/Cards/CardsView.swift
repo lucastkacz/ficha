@@ -13,7 +13,9 @@ import SwiftUI
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the table wait. He selects several cards with
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
-/// can do with all of them. `CardsWindowState` decides what the window lists,
+/// can do with all of them. New Card in the toolbar, or ⌘N, and Convert to
+/// Card on a capture open the card form, a sheet of its own
+/// (`CardFormSheet.swift`). `CardsWindowState` decides what the window lists,
 /// shows, offers and asks, and what happens when Lucas acts, and the view
 /// draws it. It reads the cards again whenever
 /// the engine says they changed, from the app or the `ficha` CLI, when Lucas
@@ -71,6 +73,7 @@ struct CardsView: View {
             .keyboardShortcut("f")
             .hidden()
         }
+        .creatingCards($state, failure: failure(overSheet: true))
         .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
             FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
                 state.flag(note: note)
@@ -173,13 +176,13 @@ struct CardsView: View {
     }
 
     /// What Lucas did that couldn't be saved, as an alert says it, which
-    /// closing it clears: over the flag sheet or the emoji sheet while one is
-    /// open, since the window's own alert can't show over its sheet, and over
-    /// the window otherwise. `overSheet` says which of the two alerts this is
-    /// for.
+    /// closing it clears: over the flag sheet, the emoji sheet or the card
+    /// form while one is open, since the window's own alert can't show over
+    /// its sheet, and over the window otherwise. `overSheet` says which of the
+    /// two alerts this is for.
     private func failure(overSheet: Bool) -> Binding<Failure?> {
         Binding {
-            guard overSheet == (cardToFlag != nil || tagForEmoji != nil) else { return nil }
+            guard overSheet == (cardToFlag != nil || tagForEmoji != nil || state.cardForm != nil) else { return nil }
             return state.failure.map(alert(for:))
         } set: {
             if $0 == nil {
@@ -223,6 +226,36 @@ struct CardsView: View {
                             """,
                         comment:
                             "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
+                    )))
+        case .addCard:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add the card", comment: "An alert's title over the Cards window's card form."),
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            The capture this form was opened from left the inbox outside this window meanwhile, \
+                            approved or discarded in a refine session, so the card wasn't added. To keep what you \
+                            typed, copy it before you close the form.
+                            """,
+                        comment:
+                            "An alert's message over the Cards window's card form, when its capture already left the inbox."
+                    )))
+        case .approveCapture:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't take the capture out of the inbox",
+                    comment: "An alert's title in the Cards window, after closing the card form opened from a capture."),
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
+                            refine session. The cards you added from it are saved.
+                            """,
+                        comment: """
+                            An alert's message in the Cards window, after closing the card form, when its capture \
+                            already left the inbox.
+                            """
                     )))
         case .flag:
             return Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
@@ -400,7 +433,7 @@ struct CardsView: View {
             ContentUnavailableView(
                 group.emptyTitle, systemImage: group.symbol,
                 description: Text(
-                    "The cards you approve in a refine session show up here, and the ones you bury, in Buried.",
+                    "The cards you create with New Card show up here, and the ones you bury, in Buried.",
                     comment: "In the Cards window, when All cards is empty."))
         } else {
             ContentUnavailableView(group.emptyTitle, systemImage: group.symbol)
@@ -717,8 +750,8 @@ struct CardsView: View {
     }
 
     /// A button for each thing Lucas can do with what the detail shows, as
-    /// the state offers them: Edit, Flag…, Bury or Unbury, Delete… and
-    /// Discard…, in that order. Each button calls the state, which reads the
+    /// the state offers them: Edit, Convert to Card, Flag…, Bury or Unbury,
+    /// Delete… and Discard…, in that order. Each button calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
     /// so ⌘E would bury the cards selected back then.
@@ -727,6 +760,11 @@ struct CardsView: View {
         let actions = state.actions
         if actions.contains(.edit) {
             editButton
+        }
+        if actions.contains(.convertToCard) {
+            ConvertToCardButton {
+                state.convertToCard()
+            }
         }
         if actions.contains(.flag) {
             flagButton
