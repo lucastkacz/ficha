@@ -62,11 +62,13 @@ extension Engine {
 }
 
 /// What `card` holds, as an export writes it, which every card it read
-/// makes, since every card came in through the same check.
+/// makes, since every card came in through the same check. The text file
+/// holds no images, so a side with only an image has no text in it (#221).
 private func exportedContent(of card: Card) throws -> CardContent {
     guard
         let content = CardContent(
-            type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source)
+            type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source,
+            frontImage: card.frontImage, backImage: card.backImage)
     else {
         throw unreadable("Card \(card.id) has a blank front or back")
     }

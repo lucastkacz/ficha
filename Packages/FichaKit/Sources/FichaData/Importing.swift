@@ -182,8 +182,8 @@ extension ImportedCard {
     }
 
     /// What `card`, the user's card it repeats, holds once it's updated: its
-    /// own front, the back and every field the file gives, its own fields
-    /// that the file doesn't, and `tags` added to its tags.
+    /// own front and images, the back and every field the file gives, its
+    /// own fields that the file doesn't, and `tags` added to its tags.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
@@ -191,7 +191,9 @@ extension ImportedCard {
                 front: card.front,
                 back: content.back,
                 tags: (fields.contains(.tags) ? content.tags : card.tags).adding(tags),
-                source: fields.contains(.source) ? content.source : card.source))
+                source: fields.contains(.source) ? content.source : card.source,
+                frontImage: card.frontImage,
+                backImage: card.backImage))
     }
 
     /// `content`, which a front and a back already checked make, or an error
