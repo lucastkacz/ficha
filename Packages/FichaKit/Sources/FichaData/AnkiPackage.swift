@@ -26,10 +26,15 @@ func isAnkiPackage(_ data: Data) -> Bool {
     return archive.contains { $0.path == "meta" || collectionMembers.contains($0.path) }
 }
 
-/// The cards of the Anki package `data`, as `AnkiCollection.importReading()`
-/// makes them of its collection, or why it can't be read.
-func readAnkiPackage(_ data: Data) throws(CardsFileProblem) -> ImportReading {
+/// The cards of the Anki package `data`, as `AnkiCollection.importReading(
+/// images:)` makes them of its collection, and the images they show, by the
+/// names Ficha keeps them by, as they come in, from the package's media; or
+/// why it can't be read.
+func readAnkiPackage(_ data: Data) throws(CardsFileProblem) -> (
+    reading: ImportReading, images: [ImageName: CardImage]
+) {
     let collection: AnkiCollection
+    let media: AnkiMedia
     do {
         let archive = try Archive(data: data, accessMode: .read, pathEncoding: nil)
         let entries = Dictionary(archive.map { ($0.path, $0) }) { first, _ in first }
@@ -38,20 +43,71 @@ func readAnkiPackage(_ data: Data) throws(CardsFileProblem) -> ImportReading {
             throw unreadable("An Anki package has no \(format.collectionMember)")
         }
         collection = try readCollection(try format.uncompressed(member, in: archive))
-        // The media the cards' images come from: read now, so that a
-        // package whose media list is damaged can't be read, as in Anki.
-        _ = try AnkiMedia(of: entries, in: archive, format: format)
+        // Read now, so that a package whose media list is damaged can't be
+        // read, as in Anki.
+        media = try AnkiMedia(of: entries, in: archive, format: format)
     } catch let problem as CardsFileProblem {
         throw problem
     } catch {
         logger.error("Couldn't read an Anki package: \(String(describing: error), privacy: .public)")
         throw .unreadableAnkiPackage
     }
+    var images = AnkiImages(media: media)
+    let reading: ImportReading
     do {
-        return try collection.importReading()
+        reading = try collection.importReading { images.lookUp($0) }
     } catch {
         logger.error("An Anki package's collection is damaged: \(error.description, privacy: .public)")
         throw .unreadableAnkiPackage
+    }
+    if let damage = images.damage {
+        logger.error("An Anki package's media is damaged: \(String(describing: damage), privacy: .public)")
+        throw .unreadableAnkiPackage
+    }
+    return (reading, images.found)
+}
+
+/// The images a package's cards show, looked up by the names their sides
+/// give them, each once, in the package's media, and brought in as every
+/// image comes in: shrunk, and named as Ficha keeps them.
+private struct AnkiImages {
+    let media: AnkiMedia
+    /// The images found, by the names Ficha keeps them by.
+    private(set) var found: [ImageName: CardImage] = [:]
+    /// What was found for each name looked up.
+    private var lookups: [String: ImageLookup] = [:]
+    /// What kept a file the media list names from being read, as in a
+    /// damaged package, if anything did.
+    private(set) var damage: (any Error)?
+
+    init(media: AnkiMedia) {
+        self.media = media
+    }
+
+    /// What the package has by `name`: an image, as it comes in; something
+    /// Ficha can't read as one; or nothing, as when it doesn't hold it, or
+    /// it's damaged, which `damage` then says.
+    mutating func lookUp(_ name: String) -> ImageLookup {
+        if let lookup = lookups[name] {
+            return lookup
+        }
+        let lookup: ImageLookup
+        do {
+            if let data = try media.contents(ofFileNamed: name) {
+                let image = try CardImage(shrinking: data)
+                found[image.name] = image
+                lookup = .found(image.name)
+            } else {
+                lookup = .missing
+            }
+        } catch EngineError.notAnImage {
+            lookup = .notAnImage
+        } catch {
+            damage = damage ?? error
+            lookup = .missing
+        }
+        lookups[name] = lookup
+        return lookup
     }
 }
 

@@ -4,16 +4,19 @@ extension AnkiCollection {
     /// Ficha's cards of the collection's cards, as an import reads them: one
     /// for each Anki card, new, whose front is its question side as Anki
     /// renders it, and whose back is its answer side, from where the answer
-    /// starts, both as plain text, without sounds or images. Each proposes
-    /// a tag for each level of its home deck's name, but Default's, and its
-    /// note's tags, an underscore in them standing for a space. The new
-    /// cards come first, in Anki's order of new cards, then the rest by note
-    /// and template. A card of an Image Occlusion note type stays out, and
-    /// so do a card whose template Anki can't render and one with a side
-    /// left without text, each with its place in that order and why.
+    /// starts, both as plain text, without sounds, each with the first image
+    /// it shows, as `images` finds it by its name in the package: a side
+    /// whose image isn't found comes in without it, and its other images
+    /// are dropped. Each proposes a tag for each level of its home deck's
+    /// name, but Default's, and its note's tags, an underscore in them
+    /// standing for a space. The new cards come first, in Anki's order of
+    /// new cards, then the rest by note and template. A card of an Image
+    /// Occlusion note type stays out, and so do a card whose template Anki
+    /// can't render and one with a side left with neither text nor an
+    /// image, each with its place in that order and why.
     /// Throws when a card's note, note type, template or deck isn't in the
     /// collection, as in a damaged one.
-    public func importReading() throws(AnkiCollectionProblem) -> ImportReading {
+    public func importReading(images: (String) -> ImageLookup) throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
         var cards: [ImportedCard] = []
         var leftOut: [LeftOutLine] = []
@@ -21,10 +24,11 @@ extension AnkiCollection {
             let line = index + 1
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
-                if let imported = rendered.importedCard(line: line) {
+                switch rendered.importedCard(line: line, images: images) {
+                case .card(let imported):
                     cards.append(imported)
-                } else {
-                    leftOut.append(LeftOutLine(line: line, reason: .emptyAnkiSide))
+                case .leftOut(let reason):
+                    leftOut.append(LeftOutLine(line: line, reason: reason))
                 }
             case .leftOut(let reason):
                 leftOut.append(LeftOutLine(line: line, reason: reason))
@@ -170,17 +174,31 @@ private struct RenderedAnkiCard {
     let back: String
     let tags: [String]
 
-    /// The card as Ficha imports it, new, as plain text without sounds and
-    /// images, or nil when a side has no text left.
-    func importedCard(line: Int) -> ImportedCard? {
+    /// The card as Ficha imports it, new, each side as plain text without
+    /// sounds, with its first image as `images` finds it; or why it stays
+    /// out, when a side is left with neither.
+    func importedCard(line: Int, images: (String) -> ImageLookup) -> Imported {
+        let (front, back) = (AnkiSide(html: front, images: images), AnkiSide(html: back, images: images))
         guard
             let content = CardContent(
-                type: nil, front: plainText(fromAnki: front), back: plainText(fromAnki: back), tags: [], source: nil)
+                type: nil, front: front.text, back: back.text, tags: [], source: nil, frontImage: front.image,
+                backImage: back.image)
         else {
-            return nil
+            return .leftOut(front.reasonItsCardStaysOut ?? back.reasonItsCardStaysOut ?? .emptyAnkiSide)
         }
-        return ImportedCard(content: content, fields: [], line: line, proposedTags: tags)
+        // Its back is Anki's whole, with its image or none, for a card it
+        // updates.
+        return .card(
+            ImportedCard(
+                content: content, fields: [.backImage], line: line, proposedTags: tags,
+                hasImagesDropped: front.dropsImages || back.dropsImages))
     }
+}
+
+/// An Anki card as Ficha imports it, or why it stays out.
+private enum Imported {
+    case card(ImportedCard)
+    case leftOut(LeftOutLine.Reason)
 }
 
 /// The back of a card whose answer side Anki renders as `answer`, after
@@ -196,10 +214,4 @@ private func back(ofAnswer answer: String, question: String) -> String {
         return String(answer.dropFirst(question.count))
     }
     return answer
-}
-
-/// `html`, a side of an Anki card, as plain text, without its sounds,
-/// `[sound:…]`, and its images, which the HTML's tags are.
-private func plainText(fromAnki html: String) -> String {
-    plainText(fromHTML: html.replacing(/\[sound:.+?\]/, with: ""))
 }

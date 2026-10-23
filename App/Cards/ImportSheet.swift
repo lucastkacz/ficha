@@ -103,7 +103,8 @@ private struct ImportButtonAndSheet: ViewModifier {
 /// cards' images, or an Anki package. Then it shows what importing the file
 /// would do: how many cards come in, how many repeat the user's cards, with
 /// Update or Skip for them, which lines stay out and why, or for an Anki
-/// package, how many of its cards and why, and the tags the cards get: for a
+/// package, how many of its cards and why, and how many come in with the
+/// first of several images on a side, and the tags the cards get: for a
 /// text file, one named after the file, for every card; for an Anki package,
 /// one for each level of its decks and each of its tags. The user renames
 /// each, or clears it to leave it out; Import imports them. Last, it says
@@ -189,6 +190,14 @@ struct ImportSheet: View {
                 Text(
                     "\(preview.newCount) new cards come in, at the pace of your new cards per day.",
                     comment: "In the Import sheet's preview, with how many new cards the file brings."))
+            if preview.cardsWithImagesDropped > 0 {
+                Text(
+                    "\(preview.cardsWithImagesDropped) cards have more than one image on a side, and come in with the first.",
+                    comment:
+                        "In the Import sheet's preview of an Anki package, with how many of its cards have more than one image on a side, of which a Ficha card holds one."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
             if !preview.leftOut.isEmpty {
                 leftOut(of: preview)
             }
@@ -447,7 +456,7 @@ struct ImportSheet: View {
                 localized:
                     "Line \(number) has a side with only the image “\(image)”, which Ficha can't read as an image.",
                 comment: "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.")
-        case .emptyAnkiSide, .ankiImageOcclusion, .brokenAnkiTemplate:
+        case .emptyAnkiSide, .missingAnkiImage, .unreadableAnkiImage, .ankiImageOcclusion, .brokenAnkiTemplate:
             nil
         }
     }
@@ -459,7 +468,17 @@ struct ImportSheet: View {
         return switch counted.reason {
         case .emptyAnkiSide:
             String(
-                localized: "\(count) cards have a side with no text once sounds and images are left out.",
+                localized:
+                    "\(count) cards have a side with neither text nor an image once sounds and images on the web are left out.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .missingAnkiImage:
+            String(
+                localized:
+                    "\(count) cards have a side with only an image the package lacks, as when Anki exports a deck without its media.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .unreadableAnkiImage:
+            String(
+                localized: "\(count) cards have a side with only an image Ficha can't read, such as an SVG.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
         case .ankiImageOcclusion:
             String(

@@ -70,6 +70,13 @@ public struct ImportPreview: Sendable, Equatable {
     public var newCount: Int {
         cards.count - repeatedCount
     }
+
+    /// How many of the file's cards come in without some of the images the
+    /// file gives them: an Anki package's cards with more than one image on
+    /// a side, which bring the first.
+    public var cardsWithImagesDropped: Int {
+        cards.count(where: \.hasImagesDropped)
+    }
 }
 
 /// What the user chooses before an import.
@@ -144,7 +151,7 @@ extension Engine {
         let kind: ImportPreview.Kind
         do throws(CardsFileProblem) {
             if isZip(data) && isAnkiPackage(data) {
-                reading = try readAnkiPackage(data)
+                (reading, images) = try readAnkiPackage(data)
                 kind = .ankiPackage
             } else if isZip(data) {
                 (reading, images) = try readZipOfCards(data)
@@ -303,7 +310,7 @@ extension ImportReading {
             cards: cards.map { card in
                 ImportedCard(
                     content: card.content, fields: card.fields, line: card.line,
-                    proposedTags: card.proposedTags.adding(tags))
+                    proposedTags: card.proposedTags.adding(tags), hasImagesDropped: card.hasImagesDropped)
             },
             leftOut: leftOut)
     }

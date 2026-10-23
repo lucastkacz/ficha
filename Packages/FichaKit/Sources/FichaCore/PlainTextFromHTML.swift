@@ -15,6 +15,44 @@ public func plainText(fromHTML html: String) -> String {
     return String(converter.text)
 }
 
+/// `value`, an attribute's value in HTML, such as the name of an image's
+/// file, with its character references decoded, a no-break space's as a
+/// space, as Anki decodes a name (`rslib/src/text.rs`, `decode_entities`).
+/// What only looks like a reference stays as it is.
+func characterReferencesDecoded(in value: String) -> String {
+    let scalars = Array(value.unicodeScalars)
+    var decoded = String.UnicodeScalarView()
+    var index = 0
+    while index < scalars.count {
+        if scalars[index] == "&", let (scalar, end) = characterReference(in: scalars, at: index) {
+            decoded.append(scalar == "\u{A0}" ? " " : scalar)
+            index = end + 1
+        } else {
+            decoded.append(scalars[index])
+            index += 1
+        }
+    }
+    return String(decoded)
+}
+
+/// The character the reference that starts at `index` of `html`, its `&`,
+/// stands for, and where it ends, its `;`, or nil when it isn't one.
+private func characterReference(in html: [Unicode.Scalar], at index: Int) -> (Unicode.Scalar, Int)? {
+    guard let end = html[index...].prefix(34).firstIndex(of: ";") else {
+        return nil
+    }
+    let name = String(String.UnicodeScalarView(html[(index + 1)..<end]))
+    let scalar: Unicode.Scalar?
+    if name.hasPrefix("#x") || name.hasPrefix("#X") {
+        scalar = UInt32(name.dropFirst(2), radix: 16).flatMap { Unicode.Scalar($0) }
+    } else if name.hasPrefix("#") {
+        scalar = UInt32(name.dropFirst()).flatMap { Unicode.Scalar($0) }
+    } else {
+        scalar = namedReferences[name]
+    }
+    return scalar.map { ($0, end) }
+}
+
 /// The elements that start and end a line of their own.
 private let blockElements: Set<String> = [
     "address", "article", "aside", "blockquote", "dd", "div", "dl", "dt", "figcaption", "figure", "footer", "h1",
@@ -145,19 +183,7 @@ private struct HTMLToText {
     /// The character the reference that starts at `index`, its `&`, stands
     /// for, and where it ends, its `;`, or nil when it isn't one.
     private func reference() -> (Unicode.Scalar, Int)? {
-        guard let end = html[index...].prefix(34).firstIndex(of: ";") else {
-            return nil
-        }
-        let name = String(String.UnicodeScalarView(html[(index + 1)..<end]))
-        let scalar: Unicode.Scalar?
-        if name.hasPrefix("#x") || name.hasPrefix("#X") {
-            scalar = UInt32(name.dropFirst(2), radix: 16).flatMap { Unicode.Scalar($0) }
-        } else if name.hasPrefix("#") {
-            scalar = UInt32(name.dropFirst()).flatMap { Unicode.Scalar($0) }
-        } else {
-            scalar = namedReferences[name]
-        }
-        return scalar.map { ($0, end) }
+        characterReference(in: html, at: index)
     }
 
     /// Whether the HTML has `prefix` at `position`.

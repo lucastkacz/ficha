@@ -33,12 +33,20 @@ public struct ImportedCard: Sendable, Equatable {
     /// user may rename or leave out in the preview: a text file's name, or
     /// an Anki card's deck and its note's tags.
     public let proposedTags: [String]
+    /// Whether the file gives the card images it comes in without, since a
+    /// side holds one image at most: an Anki card with more than one image
+    /// on a side, which brings the first.
+    public let hasImagesDropped: Bool
 
-    public init(content: CardContent, fields: Set<CardField>, line: Int, proposedTags: [String] = []) {
+    public init(
+        content: CardContent, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
+        hasImagesDropped: Bool = false
+    ) {
         self.content = content
         self.fields = fields
         self.line = line
         self.proposedTags = proposedTags
+        self.hasImagesDropped = hasImagesDropped
     }
 }
 
@@ -90,9 +98,16 @@ public struct LeftOutLine: Sendable, Equatable {
         /// A side of it has no text, and what comes as the image it names
         /// for that side, this, isn't an image Ficha can read.
         case notAnImage(String)
-        /// An Anki card with a side left without text once its sounds and
-        /// images are dropped, such as one that holds only a sound.
+        /// An Anki card with a side left with neither text nor an image once
+        /// its sounds and its images on the web are dropped, such as one
+        /// that holds only a sound.
         case emptyAnkiSide
+        /// An Anki card with a side that holds only an image its package
+        /// lacks, as when Anki exports a deck without its media.
+        case missingAnkiImage
+        /// An Anki card with a side that holds only an image Ficha can't
+        /// read, such as an SVG.
+        case unreadableAnkiImage
         /// An Anki card of an Image Occlusion note type, which hides parts
         /// of an image.
         case ankiImageOcclusion

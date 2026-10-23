@@ -3,8 +3,8 @@ import Foundation
 /// An Anki collection, as an Anki package holds it, in plain values whatever
 /// its schema: its note types, decks, notes and cards, with what Ficha reads
 /// of each. A package's reader, which knows the schema, makes it, from the
-/// JSON of schema 11 or the tables of schema 18, and `importReading()` makes
-/// Ficha's cards of it, the same way for both. The values follow Anki's
+/// JSON of schema 11 or the tables of schema 18, and `importReading(images:)`
+/// makes Ficha's cards of it, the same way for both. The values follow Anki's
 /// source, `rslib/src/storage/` and `rslib/src/notetype/`.
 public struct AnkiCollection: Sendable, Equatable {
     /// When the collection was created, `col.crt`, in seconds since 1970:
