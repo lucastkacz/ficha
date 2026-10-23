@@ -7,11 +7,12 @@ internal import GRDB
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, or buried.
+    /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
     /// Where it stands on the ladder: new, or on a step until it's due,
-    /// worked out from its review log. A flagged or buried card keeps it, and
-    /// `cardStanding` says whether the card is in Lucas's reviews.
+    /// worked out from its review log. A flagged, buried or set-aside card
+    /// keeps it, and `cardStanding` says whether the card is in Lucas's
+    /// reviews.
     public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
@@ -33,10 +34,34 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     }
 
     /// When the card is due, as the Cards window says it: nil while it's new,
-    /// or out of Lucas's reviews, flagged or buried, since it won't show up
-    /// then.
+    /// or out of Lucas's reviews, flagged, buried or set aside, since it
+    /// won't show up then.
     public var due: Date? {
         cardStanding.due(given: standing)
+    }
+
+    /// What the Due column says of the card.
+    public enum DueColumn: Sendable, Equatable {
+        /// When it's due: it's in Lucas's reviews, on the ladder.
+        case due(Date)
+        /// That it's set aside, so it won't show up until none of its tags
+        /// is.
+        case setAside
+        /// Nothing: it's new, flagged or buried, which the Step column and
+        /// the Front column's marks say.
+        case nothing
+    }
+
+    /// What the Due column says of the card: when it's due, or that it's set
+    /// aside, or nothing.
+    public var dueColumn: DueColumn {
+        if case .setAside = cardStanding {
+            .setAside
+        } else if let due {
+            .due(due)
+        } else {
+            .nothing
+        }
     }
 
     /// Whether the card is due at `time`: in Lucas's reviews, with its wait
@@ -71,7 +96,7 @@ public struct ReviewLogRow: Sendable, Equatable {
 /// A group of cards the Cards window's sidebar offers, which the window lists
 /// one at a time.
 public enum CardGroup: Sendable, Hashable {
-    /// Every card that isn't buried.
+    /// Every card that isn't buried, flagged and set-aside ones too.
     case all
     /// The cards in Lucas's reviews that haven't had their first view yet.
     case new
@@ -85,7 +110,7 @@ public enum CardGroup: Sendable, Hashable {
     case flagged
     /// Every buried card, flagged or not.
     case buried
-    /// The cards with this tag that aren't buried.
+    /// The cards with this tag that aren't buried, set-aside ones too.
     case tag(String)
     /// The cards of this type that aren't buried.
     case type(CardType)

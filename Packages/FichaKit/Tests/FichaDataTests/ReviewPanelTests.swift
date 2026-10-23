@@ -181,6 +181,30 @@ struct ReviewPanelTests {
         #expect(panel.failure == nil)
     }
 
+    // The Cards window can set aside the tag of the card the panel shows, as
+    // it can bury the card.
+    @Test("answering a card whose tag was set aside after the panel opened fails as answering a buried one does")
+    func answeringACardSetAsideMeanwhileFailsAsABuriedOneDoes() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approve(
+            card(.word, front: "ubuntu", back: "Humanidad hacia los otros.", tags: ["filosofía"]), in: engine)
+        var buriedPanel = engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
+        var setAsidePanel = engine.openPanel(.reviewNow, with: [.firstView(ubuntu)], settings: settings)
+        try engine.bury(serendipia.id)
+        try engine.setAside("filosofía")
+
+        buriedPanel.endFirstView()
+        setAsidePanel.endFirstView()
+
+        #expect(buriedPanel.failure?.action == .answer)
+        #expect(buriedPanel.failure?.error == .cardBuried(serendipia.id))
+        #expect(setAsidePanel.failure?.action == .answer)
+        #expect(setAsidePanel.failure?.error == .cardSetAside(ubuntu.id, tags: ["filosofía"]))
+        #expect(buriedPanel.content == .firstView(serendipia))
+        #expect(setAsidePanel.content == .firstView(ubuntu))
+        #expect(try engine.reviewLog().isEmpty)
+    }
+
     // Ficha Dev's debug menu moves the engine's time forward, as this test's
     // time does.
     @Test("Ficha Dev moving the time doesn't change how long Lucas took on a card")

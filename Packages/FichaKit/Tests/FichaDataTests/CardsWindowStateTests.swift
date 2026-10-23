@@ -43,6 +43,80 @@ struct CardsWindowStateTests {
         #expect(window.listedCardIDs == [serendipia.id])
     }
 
+    // So that Lucas can undo it, and a card that gets the tag later is set
+    // aside too.
+    @Test("a set-aside tag stays listed without cards, and choosing it lists no cards rather than All cards")
+    func aSetAsideTagStaysListedWithoutCards() throws {
+        let mayo = try approve(
+            card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia"]), in: engine)
+        try approveCard("serendipia", in: engine)
+        var window = openWindow()
+        window.chooseSetAside(on: "historia")
+        window.choose(.cards(.tag("historia")))
+
+        try engine.delete([mayo.id])
+        window.read(on: ladder)
+
+        #expect(window.tags == [CardTag(name: "historia", switchedOn: .setAside)])
+        #expect(window.sidebarItem == .cards(.tag("historia")))
+        #expect(window.listedCardIDs == [])
+    }
+
+    @Test("Set Aside in a tag's menu is ticked while the tag is set aside, and choosing it again undoes it")
+    func setAsideIsTickedAsTheTagStands() throws {
+        let ubuntu = try approve(
+            card(.word, front: "ubuntu", back: "Humanidad.", tags: ["filosofía", "lenguaje"]), in: engine)
+        var window = openWindow()
+        #expect(window.menu(for: "filosofía")?.isSetAsideTicked == false)
+
+        window.chooseSetAside(on: "filosofía")
+
+        #expect(window.menu(for: "filosofía")?.isSetAsideTicked == true)
+        #expect(window.menu(for: "lenguaje")?.isSetAsideTicked == false)
+        #expect(try engine.cards().map(\.standing) == [.setAside(by: ["filosofía"])])
+        window.chooseSetAside(on: "filosofía")
+        #expect(window.menu(for: "filosofía")?.isSetAsideTicked == false)
+        #expect(try engine.cards().map(\.standing) == [ubuntu.standing])
+    }
+
+    @Test("New, Due and Learned leave set-aside cards out, while All cards and the tag's group hold them")
+    func newDueAndLearnedLeaveSetAsideCardsOut() throws {
+        // eudaimonía gets to the 30-day step, from which a card is learned,
+        // and comes due there; ataraxia is new.
+        let eudaimonia = try approve(
+            card(.concept, front: "eudaimonía", back: "Vida plena.", tags: ["filosofía"]), in: engine)
+        let ataraxia = try approve(
+            card(.concept, front: "ataraxia", back: "Serenidad.", tags: ["filosofía"]), in: engine)
+        try engine.climb(eudaimonia, to: 5, movingForward: time)
+        time.advance(by: days(30))
+        var window = openWindow()
+        window.chooseSetAside(on: "filosofía")
+
+        for group in [CardGroup.new, .due, .learned] {
+            window.choose(.cards(group))
+            #expect(window.listedCardIDs == [], "\(group)")
+        }
+        for group in [CardGroup.all, .tag("filosofía")] {
+            window.choose(.cards(group))
+            #expect(window.listedCardIDs == [eudaimonia.id, ataraxia.id], "\(group)")
+        }
+    }
+
+    @Test("the Due column says a set-aside card is set aside, where its due time goes")
+    func theDueColumnSaysASetAsideCardIsSetAside() throws {
+        let eudaimonia = try approve(
+            card(.concept, front: "eudaimonía", back: "Vida plena.", tags: ["filosofía"]), in: engine)
+        try engine.meet(eudaimonia)
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.meet(serendipia)
+        var window = openWindow()
+
+        window.chooseSetAside(on: "filosofía")
+
+        let rows = try #require(window.listedCardRows)
+        #expect(rows.map(\.dueColumn) == [.setAside, .due(time.now + hours(1))])
+    }
+
     @Test("selected cards the table no longer lists are left out of the selected rows")
     func selectedCardsTheTableNoLongerListsAreLeftOut() throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -192,10 +266,16 @@ extension CardsWindowState {
     /// The ids of the cards the table lists, in the order the engine read
     /// them, or nil when it lists the inbox or couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
+        listedCardRows?.map(\.id)
+    }
+
+    /// The cards the table lists, in the order the engine read them, or nil
+    /// when it lists the inbox or couldn't read them.
+    fileprivate var listedCardRows: [CardRow]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil
         }
-        return rows.map(\.id)
+        return rows
     }
 
     /// The card the detail shows whole, with its review log, or nil when it

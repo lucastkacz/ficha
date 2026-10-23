@@ -47,9 +47,19 @@ private struct BuriedIcon: View {
     }
 }
 
-/// The selected card, whole: Lucas's note on top when it's flagged, and when
-/// he buried it when it's buried, its type and tags, its front, back and
-/// source, where it stands, and its review log, in a chart and in full.
+/// The mark beside a set-aside card in the detail.
+private struct SetAsideIcon: View {
+    var body: some View {
+        Image(systemName: "tag.slash")
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The selected card, whole: Lucas's note on top when it's flagged, when he
+/// buried it when it's buried, and its set-aside tags when it's set aside,
+/// its type and tags, its front, back and source, where it stands, and its
+/// review log, in a chart and in full.
 struct CardDetail: View {
     let row: CardRow
     /// The engine's time, which the due time counts from.
@@ -246,8 +256,9 @@ private struct ExpandedCard: View {
 
 /// What the detail says on top of a card that's out of Lucas's reviews, as
 /// where it stands says: his note when it's flagged, and when he buried it
-/// when it's buried, after the note it keeps. While he edits a flagged card,
-/// the note also says that saving fixes it.
+/// when it's buried, after the note it keeps, or which of its tags are set
+/// aside when it's set aside. While he edits a flagged card, the note also
+/// says that saving fixes it.
 struct FlagAndBurial: View {
     let standing: CardStanding
     /// Whether Lucas is editing the card.
@@ -255,7 +266,7 @@ struct FlagAndBurial: View {
 
     var body: some View {
         switch standing {
-        case .inReviews, .setAside:
+        case .inReviews:
             EmptyView()
         case .inInbox(let flag):
             note(flag)
@@ -264,7 +275,29 @@ struct FlagAndBurial: View {
                 note(flag)
             }
             burial(at: buriedAt)
+        case .setAside(let tags):
+            setAside(by: tags)
         }
+    }
+
+    /// Which of the card's tags are set aside, which keep it out of Lucas's
+    /// reviews.
+    private func setAside(by tags: [String]) -> some View {
+        Label {
+            Text(
+                "Set aside with \(tags.formatted(.list(type: .and)))",
+                comment: """
+                    In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it \
+                    are set aside, like “Set aside with filosofía and historia”.
+                    """
+            )
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            SetAsideIcon()
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.fill.tertiary, in: .rect(cornerRadius: 8))
     }
 
     /// Lucas's note on the flagged card.
@@ -333,10 +366,22 @@ func stepText(_ row: CardRow) -> String {
 
 /// When the card is due, counted from `now`: "now" once it's due, however
 /// long ago, and before, as the Mac's locale words it, like "in 2h",
-/// "tomorrow" or "in 5d" in US English. Nothing while it's new, or out of
-/// Lucas's reviews, flagged or buried, since it won't show up then.
+/// "tomorrow" or "in 5d" in US English. "set aside" while it's set aside,
+/// and nothing while it's new, flagged or buried, since it won't show up
+/// then.
 func dueText(_ row: CardRow, at now: Date) -> String {
-    guard let due = row.due else {
+    let due: Date
+    switch row.dueColumn {
+    case .due(let date):
+        due = date
+    case .setAside:
+        return String(
+            localized: "set aside",
+            comment: """
+                In the Cards window's Due column: the card won't show up, since one of its tags is set aside. \
+                Lowercase, like “now”.
+                """)
+    case .nothing:
         return ""
     }
     guard !row.isDue(at: now) else {

@@ -454,6 +454,9 @@
     "Couldn't save your answer" : {
 
     },
+    "Couldn't set “%@” aside" : {
+      "comment" : "An alert's title in the Cards window, after Set Aside in a tag's menu, with the tag."
+    },
     "Couldn't turn on the capture shortcut" : {
 
     },
@@ -482,6 +485,9 @@
     },
     "Couldn't undo" : {
 
+    },
+    "Couldn't untick Set Aside on “%@”" : {
+      "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
     },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
@@ -976,6 +982,18 @@
     },
     "Separate tags with commas." : {
       "comment" : "In the Cards window, under a card's tags, while Lucas edits it."
+    },
+    "set aside" : {
+      "comment" : "In the Cards window's Due column: the card won't show up, since one of its tags is set aside. Lowercase, like “now”."
+    },
+    "Set aside" : {
+      "comment" : "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."
+    },
+    "Set Aside" : {
+      "comment" : "An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
+    },
+    "Set aside with %@" : {
+      "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it are set aside, like “Set aside with filosofía and historia”."
     },
     "Settings…" : {
 

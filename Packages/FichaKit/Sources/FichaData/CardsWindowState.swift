@@ -10,8 +10,9 @@ import Foundation
 /// Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
-/// buries and unburies at once, and it records what couldn't be saved, for
-/// the window to say.
+/// buries and unburies at once, as it sets a tag aside from the tag's
+/// context menu, and it records what couldn't be saved, for the window to
+/// say.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, or the
     /// inbox.
@@ -71,6 +72,13 @@ public struct CardsWindowState: Sendable {
         case capture(Capture)
     }
 
+    /// What the context menu of a tag in the sidebar offers.
+    public struct TagMenu: Sendable, Equatable {
+        /// Whether Set Aside is ticked: the tag is set aside, and choosing it
+        /// again undoes it.
+        public let isSetAsideTicked: Bool
+    }
+
     /// What the window asks before it acts, until Lucas confirms or cancels.
     public enum Question: Sendable, Equatable {
         /// Whether to discard this capture in the inbox.
@@ -106,6 +114,10 @@ public struct CardsWindowState: Sendable {
         case unbury(cardCount: Int)
         /// He deleted this many cards.
         case delete(cardCount: Int)
+        /// He set this tag aside.
+        case setAside(tag: String)
+        /// He undid setting this tag aside.
+        case stopSettingAside(tag: String)
     }
 
     /// What the sidebar chose: All cards, until Lucas picks another group or
@@ -396,6 +408,28 @@ public struct CardsWindowState: Sendable {
         perform(.discard) { engine throws(EngineError) in try engine.discard(capture.id) }
     }
 
+    /// What the context menu of the sidebar's tag named `tag` offers, or nil
+    /// when the sidebar doesn't list it.
+    public func menu(for tag: String) -> TagMenu? {
+        tags.first { $0.name == tag }.map { TagMenu(isSetAsideTicked: $0.isSetAside) }
+    }
+
+    /// Chooses Set Aside in the context menu of the sidebar's tag named
+    /// `tag`: sets it aside, or undoes it while it's ticked, and reads the
+    /// cards again, or records why it couldn't.
+    public mutating func chooseSetAside(on tag: String) {
+        guard let menu = menu(for: tag) else { return }
+        let done =
+            if menu.isSetAsideTicked {
+                perform(.stopSettingAside(tag: tag)) { engine throws(EngineError) in try engine.stopSettingAside(tag) }
+            } else {
+                perform(.setAside(tag: tag)) { engine throws(EngineError) in try engine.setAside(tag) }
+            }
+        if done {
+            read(on: ladder)
+        }
+    }
+
     /// Drops what the window asks, which Lucas cancelled.
     public mutating func cancelQuestion() {
         question = nil
@@ -423,7 +457,8 @@ public struct CardsWindowState: Sendable {
     /// `ladder`, the one Lucas set in Settings, which he may have changed
     /// since the last read, and the review log of the card the detail shows.
     /// When the chosen tag is gone, because its last card was buried, edited
-    /// or deleted, the sidebar goes back to All cards.
+    /// or deleted while it isn't set aside, the sidebar goes back to All
+    /// cards.
     public mutating func read(on ladder: Ladder) {
         self.ladder = ladder
         now = engine.now

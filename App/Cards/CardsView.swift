@@ -231,6 +231,20 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't delete \(count) cards", comment: "An alert's title in the Cards window."),
                 message: error.messageInCardsWindow(actingOn: count))
+        case .setAside(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't set “\(tag)” aside",
+                    comment: "An alert's title in the Cards window, after Set Aside in a tag's menu, with the tag."),
+                error: error)
+        case .stopSettingAside(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't untick Set Aside on “\(tag)”",
+                    comment:
+                        "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
+                ),
+                error: error)
         }
     }
 
@@ -257,8 +271,11 @@ struct CardsView: View {
             if !state.tags.isEmpty {
                 Section {
                     ForEach(state.tags, id: \.name) { tag in
-                        Label(tag.name, systemImage: "tag")
+                        TagRow(tag: tag)
                             .tag(SidebarItem.cards(.tag(tag.name)))
+                            .contextMenu {
+                                tagMenu(for: tag.name)
+                            }
                     }
                 } header: {
                     Text("Tags", comment: "A section of the Cards window's sidebar: the cards' tags.")
@@ -271,6 +288,24 @@ struct CardsView: View {
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
+            }
+        }
+    }
+
+    /// The context menu of the sidebar's tag named `tag`, as the state offers
+    /// it: Set Aside, ticked while the tag is set aside.
+    @ViewBuilder
+    private func tagMenu(for tag: String) -> some View {
+        if let menu = state.menu(for: tag) {
+            Toggle(
+                isOn: Binding(get: { menu.isSetAsideTicked }, set: { _ in state.chooseSetAside(on: tag) })
+            ) {
+                Text(
+                    "Set Aside",
+                    comment: """
+                        An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its \
+                        cards are out of Lucas's reviews for now.
+                        """)
             }
         }
     }
@@ -754,6 +789,24 @@ struct CardsView: View {
 }
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
+
+/// A tag's row in the sidebar: its name and the tag symbol, dimmed while
+/// it's set aside.
+private struct TagRow: View {
+    let tag: CardTag
+
+    var body: some View {
+        Label(tag.name, systemImage: "tag")
+            .opacity(tag.isSetAside ? 0.45 : 1)
+            .accessibilityValue(
+                tag.isSetAside
+                    ? Text(
+                        "Set aside",
+                        comment: "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."
+                    )
+                    : Text(verbatim: ""))
+    }
+}
 
 extension KeyEquivalent {
     /// The Delete key, ⌫, as macOS says it types: U+007F. A button's shortcut
