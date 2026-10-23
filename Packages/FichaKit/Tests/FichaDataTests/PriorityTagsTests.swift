@@ -171,6 +171,85 @@ struct PriorityTagsTests {
                 == .show([.review(cinco)] + lenguaje.prefix(3).map(PanelCard.review) + [.firstView(eudaimonia)]))
     }
 
+    @Test(
+        "the Prioritize submenu lists the tags of the cards in reviews alphabetically, ticks the priority tags, and keeps a priority tag no card carries listed and ticked"
+    )
+    func theSubmenuListsAndTicksTheTags() throws {
+        try approveCard("ubuntu", tags: ["lenguaje", "filosofía"])
+        let mayo = try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
+        try approveCard("eudaimonía", tags: ["ética"])
+        let flagged = try approveCard("fuerza", tags: ["física"])
+        let buried = try approveCard("átomo", tags: ["química"])
+        try engine.flag(flagged.id, note: note("Falta la fórmula"))
+        try engine.bury(buried.id)
+        #expect(
+            try engine.tagsToPrioritize().map(\.name) == ["argentina", "ética", "filosofía", "historia", "lenguaje"])
+        #expect(try engine.tagsToPrioritize().filter(\.isPriority).isEmpty)
+
+        try engine.togglePriority(of: "historia")
+        try engine.togglePriority(of: "filosofía")
+        try engine.edit(
+            mayo.id, with: card(.word, front: "Revolución de Mayo", back: "Mayo de 1810.", tags: ["argentina"]))
+
+        let tags = try engine.tagsToPrioritize()
+        #expect(tags.map(\.name) == ["argentina", "ética", "filosofía", "historia", "lenguaje"])
+        #expect(tags.filter(\.isPriority).map(\.name) == ["filosofía", "historia"])
+    }
+
+    @Test(
+        "clearing the priority tags brings the cards in today's order, and drops from the submenu a priority tag no card carries"
+    )
+    func clearingThePriorityTags() throws {
+        let ubuntu = try meetCard("ubuntu", tags: ["lenguaje"])
+        let eudaimonia = try meetCard("eudaimonía", tags: ["filosofía"])
+        time.advance(by: hours(1))
+        try engine.togglePriority(of: "filosofía")
+        try engine.togglePriority(of: "historia")
+        #expect(try engine.reviewNow(settings) == [eudaimonia, ubuntu].map(PanelCard.review))
+
+        try engine.clearPriorityTags()
+
+        #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia].map(PanelCard.review))
+        #expect(try engine.tagsToPrioritize() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
+    }
+
+    // A tag is a priority tag, set aside, or neither (ADR 0011).
+    @Test(
+        "setting aside a priority tag drops its priority, the submenu leaves set-aside tags out, and toggling one's priority leaves it set aside"
+    )
+    func settingAsideAPriorityTagDropsItsPriority() throws {
+        let ubuntu = try approveCard("ubuntu", tags: ["filosofía"])
+        try approveCard("Revolución de Mayo", tags: ["historia"])
+        try engine.togglePriority(of: "filosofía")
+
+        try engine.setAside("filosofía")
+
+        #expect(try engine.tagsToPrioritize() == [CardTag(name: "historia")])
+        try engine.togglePriority(of: "filosofía")
+        #expect(try engine.sidebarTags().first == CardTag(name: "filosofía", switchedOn: .setAside))
+        #expect(try engine.tagsToPrioritize() == [CardTag(name: "historia")])
+        try engine.stopSettingAside("filosofía")
+        #expect(try engine.tagsToPrioritize() == [CardTag(name: "filosofía"), CardTag(name: "historia")])
+        #expect(try engine.cards().first == ubuntu)
+    }
+
+    @Test("priority tags survive reopening the database, kept with the cards")
+    func priorityTagsSurviveReopening() throws {
+        let folder = URL.temporaryDirectory.appending(
+            path: "FichaDataTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let engine = try Engine(location: .folder(folder), time: time, calendar: calendar)
+        try approve(card(.word, front: "ubuntu", back: "Humanidad.", tags: ["lenguaje"]), in: engine)
+        let eudaimonia = try approve(
+            card(.word, front: "eudaimonía", back: "Plenitud.", tags: ["filosofía"]), in: engine)
+        try engine.togglePriority(of: "filosofía")
+
+        let reopened = try Engine(location: .folder(folder), time: time, calendar: calendar)
+
+        #expect(try reopened.tagsToPrioritize().filter(\.isPriority).map(\.name) == ["filosofía"])
+        #expect(try reopened.reviewNow(settings) == [.firstView(eudaimonia)])
+    }
+
     /// Approves a card with this front and these tags and meets it now, so
     /// that it's due an hour later, after the first step's wait, and then
     /// moves time a minute forward, so the next card met comes due after it.
