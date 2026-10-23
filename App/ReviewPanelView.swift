@@ -614,8 +614,8 @@ extension EngineError {
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
             .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage,
-            .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .unreadableImageFile, .imagesFolder, .unreadableFile,
-            .unwritableFile:
+            .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .unreadableImageFile,
+            .imagesFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }
