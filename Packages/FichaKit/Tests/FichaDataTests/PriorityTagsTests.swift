@@ -53,6 +53,63 @@ struct PriorityTagsTests {
         #expect(try engine.reviewNow(settings) == expected)
     }
 
+    @Test("once Lucas has met 5 new cards today, no new card comes, priority or not")
+    func noNewCardComesPastTheDailyLimit() throws {
+        try ["uno", "dos", "tres", "cuatro", "cinco"].forEach { try meetCard($0, tags: ["filosofía"]) }
+        try approveCard("ataraxia", tags: [])
+        try approveCard("eudaimonía", tags: ["filosofía"])
+
+        try engine.togglePriority(of: "filosofía")
+
+        #expect(try engine.reviewNow(settings).isEmpty)
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.nothingDue))
+    }
+
+    @Test("a new card without a priority tag still comes only when there's a slot after every due card")
+    func aNewCardWithoutAPriorityTagWaitsForEveryDueCard() throws {
+        let eudaimonia = try meetCard("eudaimonía", tags: ["filosofía"])
+        let others = try ["uno", "dos", "tres", "cuatro"].map { try meetCard($0, tags: ["lenguaje"]) }
+        let ataraxia = try approveCard("ataraxia", tags: [])
+        try engine.togglePriority(of: "filosofía")
+        time.move(to: try morning(of: 15, in: calendar))
+
+        #expect(try engine.reviewNow(settings) == ([eudaimonia] + others).map(PanelCard.review))
+        try engine.review(others[3], .good)
+        #expect(
+            try engine.reviewNow(settings) == ([eudaimonia] + others.prefix(3)).map(PanelCard.review)
+                + [.firstView(ataraxia)])
+    }
+
+    @Test(
+        "\"See more\" brings the due priority cards that didn't fit first, its reviews ahead are priority cards first, and it never brings a new card"
+    )
+    func seeMoreBringsPriorityCardsFirst() throws {
+        // Met the day before, the other card first, so it's the longest
+        // overdue.
+        let other = try meetCard("ubuntu", tags: ["lenguaje"])
+        let priority = try ["uno", "dos", "tres", "cuatro", "cinco", "seis"].map {
+            try meetCard($0, tags: ["filosofía"])
+        }
+        try approveCard("eudaimonía", tags: ["filosofía"])
+        time.move(to: try morning(of: 15, in: calendar))
+        // Met today, the other card first, so it's due sooner: neither is due
+        // for an hour.
+        let otherAhead = try meetCard("petricor", tags: [])
+        let priorityAhead = try meetCard("ataraxia", tags: ["filosofía"])
+        try engine.togglePriority(of: "filosofía")
+        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        #expect(panel.cards == priority.prefix(5).map(PanelCard.review))
+
+        for _ in panel.cards {
+            try panel.answer(.review(.good), responseTime: .seconds(3))
+        }
+
+        #expect(
+            panel.moreCards == [
+                .review(priority[5]), .review(other), .reviewAhead(priorityAhead), .reviewAhead(otherAhead),
+            ])
+    }
+
     /// Approves a card with this front and these tags and meets it now, so
     /// that it's due an hour later, after the first step's wait, and then
     /// moves time a minute forward, so the next card met comes due after it.

@@ -62,9 +62,10 @@ extension ReviewSettings {
 
     /// The cards "See more" brings once Lucas went through the review panel's
     /// cards, those in `shown`, out of the other cards in `cards`: the cards
-    /// due by `horizon` that didn't fit, as `pickCards` orders them, and then,
-    /// if there's room, the cards closest to being due, as reviews ahead, up
-    /// to `cardsPerAppearance`. Never a new card, so the day's new cards keep
+    /// due by `horizon` that didn't fit, priority cards first, each group as
+    /// `pickCards` orders it, and then, if there's room, the cards closest to
+    /// being due, priority cards first, as reviews ahead, up to
+    /// `cardsPerAppearance`. Never a new card, so the day's new cards keep
     /// Lucas's load in the coming weeks as it was.
     public func seeMoreCards(
         cards: CardsInReviews,
@@ -73,8 +74,10 @@ extension ReviewSettings {
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
         let others = try cards.standings(on: ladder).filter { !shown.contains($0.cardID) }
         let sorted = SortedStandings(others, dueBy: horizon)
-        let reviews = Array(sorted.due.prefix(cardsPerAppearance))
-        let reviewsAhead = Array(sorted.notDue.prefix(cardsPerAppearance - reviews.count))
+        let due = cards.splitByPriority(sorted.due)
+        let notDue = cards.splitByPriority(sorted.notDue)
+        let reviews = Array((due.priority + due.others).prefix(cardsPerAppearance))
+        let reviewsAhead = Array((notDue.priority + notDue.others).prefix(cardsPerAppearance - reviews.count))
         return PanelCardIDs(reviews: reviews, reviewsAhead: reviewsAhead, firstView: nil)
     }
 }
