@@ -43,7 +43,7 @@ struct UpcomingAppearanceTests {
     func plannedAppearancesKeepTheSeparation() throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(20, 30))
         time.move(to: try at(20, 55))
-        var reviewNow = engine.openPanel(.reviewNow, with: [.review(serendipia)], settings: settings)
+        var reviewNow = try engine.openPanel(.reviewNow, with: [.review(serendipia)], settings: settings)
         time.move(to: try at(21, 0))
         reviewNow.close(.byLucas)
 

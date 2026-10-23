@@ -34,7 +34,7 @@ struct SettingAsideTests {
         try engine.setAside("filosofía")
 
         #expect(try engine.reviewNow(settings) == [.review(ubuntu)])
-        #expect(engine.openPanel(.reviewNow, with: [], settings: settings).moreCards == [.review(ubuntu)])
+        #expect(try engine.openPanel(.reviewNow, with: [], settings: settings).moreCards == [.review(ubuntu)])
         let progress = try engine.progress(settings)
         #expect(progress.due == 1)
         #expect(progress.learned == 0)

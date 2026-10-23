@@ -32,9 +32,10 @@ final class ReviewPanel {
         self.window = window
     }
 
-    /// Shows the panel on its own with these cards: an appearance.
+    /// Shows the panel on its own with these cards, an appearance, or why it
+    /// couldn't open them.
     func showAppearance(_ cards: [PanelCard]) {
-        showOnItsOwn(.success(model.startAppearance(with: cards)))
+        showOnItsOwn(model.startAppearance(with: cards))
     }
 
     /// Shows the panel on its own, saying why there's no appearance: the

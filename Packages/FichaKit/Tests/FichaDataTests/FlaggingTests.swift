@@ -23,7 +23,7 @@ struct FlaggingTests {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
         time.advance(by: hours(1))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         try panel.flag(note: note("Falta decir de dónde viene"))
 

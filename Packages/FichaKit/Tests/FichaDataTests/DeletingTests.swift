@@ -131,7 +131,7 @@ struct DeletingTests {
         try engine.meet(ubuntu)
         try engine.meet(petricor)
         time.advance(by: hours(1))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try engine.delete([ubuntu.id])
 
         #expect(throws: EngineError.cardNotFound(ubuntu.id)) {
@@ -158,7 +158,7 @@ struct DeletingTests {
         try engine.meet(ubuntu)
         try engine.meet(petricor)
         time.advance(by: hours(1))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         try engine.delete([ubuntu.id])
 

@@ -26,7 +26,7 @@ struct BuryingTests {
         try engine.climb(serendipia, to: 5, movingForward: time)
         time.advance(by: days(30))
         let log = try engine.reviewLog()
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         try panel.bury()
 

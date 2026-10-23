@@ -114,7 +114,7 @@ struct AppearanceTests {
     func waitsThirtyMinutesAfterTheLastOneClosed(trigger: Trigger) throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
         time.move(to: try at(10, 0))
-        var panel = engine.openPanel(trigger, with: [.review(serendipia)], settings: settings)
+        var panel = try engine.openPanel(trigger, with: [.review(serendipia)], settings: settings)
         time.move(to: try at(10, 5))
         panel.close(.byLucas)
 
@@ -206,16 +206,16 @@ struct AppearanceTests {
     func appearancesAndReviewNowsGoIntoTheAppearanceLog() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         time.move(to: try at(10, 0))
-        var snoozed = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var snoozed = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
         time.move(to: try at(10, 3))
         snoozed.close(.byLucas)
         time.move(to: try at(11, 18))
-        var finished = engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
+        var finished = try engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
         time.move(to: try at(11, 20))
         try finished.answer(.firstView, responseTime: .seconds(90))
         finished.close(.byLucas)
         time.move(to: try at(12, 0))
-        var autoClosed = engine.openPanel(.appearance, with: [.review(serendipia)], settings: settings)
+        var autoClosed = try engine.openPanel(.appearance, with: [.review(serendipia)], settings: settings)
         time.move(to: try at(12, 10))
         autoClosed.closeIfUntouched()
 
@@ -242,7 +242,7 @@ struct AppearanceTests {
         guard case .show(let cards) = try appearance() else {
             throw NoAppearanceNow()
         }
-        return engine.openPanel(.appearance, with: cards, settings: settings)
+        return try engine.openPanel(.appearance, with: cards, settings: settings)
     }
 
     /// Approves a card with this front and meets it, an hour before `due`, so

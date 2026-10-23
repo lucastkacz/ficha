@@ -97,7 +97,7 @@ struct PriorityTagsTests {
         let otherAhead = try meetCard("petricor", tags: [])
         let priorityAhead = try meetCard("ataraxia", tags: ["filosofía"])
         try engine.togglePriority(of: "filosofía")
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards == priority.prefix(5).map(PanelCard.review))
 
         for _ in panel.cards {

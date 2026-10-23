@@ -22,7 +22,7 @@ struct SeeMoreTests {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.climb(serendipia, to: 2, movingForward: time)
         time.advance(by: days(1))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards.isEmpty)
         #expect(panel.moreCards == [.reviewAhead(serendipia)])
 
@@ -42,7 +42,7 @@ struct SeeMoreTests {
         try engine.climb(serendipia, to: 2, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
         time.advance(by: days(1))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         panel.seeMore()
         try panel.answer(.review(rating), responseTime: .seconds(4))
@@ -74,7 +74,7 @@ struct SeeMoreTests {
         // last two on the first step, for four hours. Five fit, the cards on
         // the lowest step first, so two are left over. "más tarde" is due in
         // half an hour and "mucho más tarde" in an hour, and "nueva" is new.
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards == [due[5], due[6], due[0], due[1], due[2]].map(PanelCard.review))
         for _ in panel.cards {
             try panel.answer(.review(.hard), responseTime: .seconds(3))
@@ -95,13 +95,13 @@ struct SeeMoreTests {
         try engine.meet(petricor)
         time.advance(by: minutes(10))
         // "petricor" is due in 50 minutes, beyond the 20-minute look-ahead.
-        var panel = engine.openPanel(.appearance, with: [.review(ubuntu)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.review(ubuntu)], settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         #expect(panel.moreCards == [.reviewAhead(petricor)])
         panel.close(.byLucas)
         time.advance(by: minutes(35))
 
-        var later = engine.openPanel(.appearance, with: [], settings: settings)
+        var later = try engine.openPanel(.appearance, with: [], settings: settings)
 
         #expect(later.moreCards == [.review(petricor), .reviewAhead(ubuntu)])
         later.seeMore()
@@ -113,7 +113,7 @@ struct SeeMoreTests {
     func nothingMoreWithoutOtherCards() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         try approveCard("ubuntu", in: engine)
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards == [.firstView(serendipia)])
 
         try panel.answer(.firstView, responseTime: .seconds(8))
@@ -134,7 +134,7 @@ struct SeeMoreTests {
         try engine.bury(serendipia.id)
         time.advance(by: hours(1))
 
-        let panel = engine.openPanel(.reviewNow, with: [], settings: settings)
+        let panel = try engine.openPanel(.reviewNow, with: [], settings: settings)
 
         #expect(panel.moreCards == [.review(ubuntu)])
     }
@@ -150,7 +150,7 @@ struct SeeMoreTests {
         try engine.meet(petricor)
         time.advance(by: minutes(30))
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards == [.review(ubuntu), .firstView(serendipia)])
         try panel.answer(.review(.good), responseTime: .seconds(3))
         try panel.answer(.firstView, responseTime: .seconds(8))
@@ -173,7 +173,7 @@ struct SeeMoreTests {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
         time.advance(by: minutes(30))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         panel.seeMore()
         #expect(panel.current == .reviewAhead(serendipia))
         time.advance(by: minutes(30))
@@ -197,7 +197,7 @@ struct SeeMoreTests {
         try engine.meet(petricor)
         try engine.meet(serendipia)
         time.advance(by: minutes(30))
-        var panel = engine.openPanel(.appearance, with: [.review(ubuntu)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.review(ubuntu)], settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         panel.seeMore()
         try panel.answer(.review(.again), responseTime: .seconds(3))

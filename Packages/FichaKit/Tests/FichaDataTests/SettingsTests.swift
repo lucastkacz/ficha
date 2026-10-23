@@ -112,7 +112,7 @@ struct SettingsTests {
 
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.outsideActiveHours))
         time.move(to: try at(22, 0))
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
         panel.close(.byLucas)
         time.advance(by: minutes(10) - 1)
         #expect(
@@ -148,7 +148,7 @@ struct SettingsTests {
         settings.autoClose = .seconds(minutes(3))
         settings.focusMode = .always
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
 
         let takesItWhileLucasTypes = panel.takesKeyboard(on: FakeMac(idleTime: .zero))
         time.advance(by: minutes(3))
@@ -163,7 +163,7 @@ struct SettingsTests {
         var settings = ReviewSettings.defaults
         settings.idleBeforeTakingKeyboard = .seconds(2)
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
 
         let takesItAfterASecond = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(1)))
         let takesItAfterTwoSeconds = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(2)))
