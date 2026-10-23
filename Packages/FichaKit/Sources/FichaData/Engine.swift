@@ -62,7 +62,7 @@ public struct Engine: Sendable {
             }
             databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
             dataFolder = folder
-            images = .folder(folder.appending(path: "Images", directoryHint: .isDirectory))
+            images = .folder(folderOfImages(in: folder))
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
             try migrate(queue, savingACopyIn: nil, at: time.now)

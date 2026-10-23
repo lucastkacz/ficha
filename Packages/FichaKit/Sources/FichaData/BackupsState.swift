@@ -70,6 +70,8 @@ public struct BackupsState: Sendable {
     public private(set) var failure: Failure?
     /// Why the last attempt to back up failed, until a backup is saved.
     private var lastAttemptFailure: EngineError?
+    /// What the images the copies share weigh, in bytes, as last read.
+    private var imagesSize: Int64 = 0
     private let engine: Engine
 
     init(engine: Engine) {
@@ -113,7 +115,8 @@ public struct BackupsState: Sendable {
         lastAttemptFailure != nil
     }
 
-    /// What the copies the list has weigh in all, in bytes.
+    /// What the copies the list has weigh in all, in bytes: their databases,
+    /// without the images they share.
     public var totalSize: Int64 {
         guard case .success(let copies) = copies else {
             return 0
@@ -121,9 +124,29 @@ public struct BackupsState: Sendable {
         return copies.reduce(0) { $0 + $1.size }
     }
 
-    /// Reads the copies in the Backups folder again, as they are now.
+    /// What the images the copies share weigh, in bytes, each once however
+    /// many copies refer to it, which the tab says beside what the copies
+    /// weigh; or nil while they share none, and the tab says nothing about
+    /// images.
+    public var sharedImagesSize: Int64? {
+        guard case .success = copies, imagesSize > 0 else {
+            return nil
+        }
+        return imagesSize
+    }
+
+    /// Reads the copies in the Backups folder again, as they are now, and
+    /// what the images they share weigh. When either can't be read, the tab
+    /// says why in place of the copies.
     public mutating func read() {
-        copies = Result { () throws(EngineError) in try engine.copies() }
+        do throws(EngineError) {
+            let read = try engine.copies()
+            imagesSize = try engine.sharedImagesSize()
+            copies = .success(read)
+        } catch {
+            imagesSize = 0
+            copies = .failure(error)
+        }
     }
 
     /// Saves a backup when one is due, as `settings` say, and lets the oldest

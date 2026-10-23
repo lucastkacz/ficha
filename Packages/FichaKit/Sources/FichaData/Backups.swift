@@ -33,13 +33,18 @@ extension Engine {
     }
 
     /// Saves a backup now, as Back Up Now does, and then lets the oldest
-    /// backups beyond the number `settings` keeps go. It's the backup of the
-    /// hour, day or week it's saved in. Returns the backup.
+    /// backups beyond the number `settings` keeps go, with the images no
+    /// remaining copy refers to. It's the backup of the hour, day or week
+    /// it's saved in. Returns the backup.
     @discardableResult
     public func backUpNow(_ settings: BackupSettings) throws(EngineError) -> DatabaseCopy {
         let backup = try saveCopy(.backup)
-        for extra in try copies().filter({ $0.kind == .backup }).dropFirst(settings.keptCount) {
+        let extras = try copies().filter { $0.kind == .backup }.dropFirst(settings.keptCount)
+        for extra in extras {
             try removeCopy(extra)
+        }
+        if !extras.isEmpty {
+            dropImagesNoCopyUses()
         }
         return backup
     }
@@ -50,10 +55,13 @@ extension Engine {
     /// backup copies the copy into the database, the reverse of saving one:
     /// the database's file stays where it is, in write-ahead logging, so the
     /// other engines on it, like the CLI's or the app's, read the restored
-    /// cards from then on, and hear that it changed. A copy that a newer
-    /// version of Ficha migrated is refused, and nothing changes. One that an
-    /// older version left is migrated once it's restored, with a copy before
-    /// an update, as when the engine opens the database.
+    /// cards from then on, and hear that it changed. The images the copy's
+    /// cards refer to come back before the cards do, and those only the
+    /// cards it replaces used go, which the copy before the restore keeps. A
+    /// copy that a newer version of Ficha migrated is refused, and nothing
+    /// changes. One that an older version left is migrated once it's
+    /// restored, with a copy before an update, as when the engine opens the
+    /// database.
     @discardableResult
     public func restore(_ name: String) throws(EngineError) -> Restoration {
         guard let dataFolder, let backupsFolder else {
@@ -65,7 +73,7 @@ extension Engine {
         }
         // While no other engine opens the database, which could migrate it
         // at the same time.
-        let restoration = try whileNoOtherProcessOpens(dataFolder.appending(path: "Ficha.sqlite")) {
+        let (restoration, replacedImages) = try whileNoOtherProcessOpens(dataFolder.appending(path: "Ficha.sqlite")) {
             () throws(EngineError) in
             let source = try reportingStorageErrors {
                 var configuration = Configuration()
@@ -78,10 +86,15 @@ extension Engine {
                 throw .copyMigratedByNewerVersion(name)
             }
             let copyBeforeRestore = try saveCopy(.beforeRestore)
+            let replacedImages = try read(imagesReferred(in:))
+            try bringBackImages(
+                try reportingStorageErrors { try source.read(imagesReferred(in:)) },
+                from: folderOfSharedImages(in: backupsFolder), into: folderOfImages(in: dataFolder))
             try reportingStorageErrors { try source.backup(to: database) }
             try migrate(database, savingACopyIn: backupsFolder, at: time.now)
-            return Restoration(restored: copy, copyBeforeRestore: copyBeforeRestore)
+            return (Restoration(restored: copy, copyBeforeRestore: copyBeforeRestore), replacedImages)
         }
+        removeImagesNoCardUses(among: replacedImages)
         databaseChanges.post()
         logger.notice("Restored \(name, privacy: .public)")
         return restoration
@@ -90,7 +103,9 @@ extension Engine {
     /// Moves `copies` from the Backups folder to the Trash, where Lucas can
     /// bring them back from, and returns where each one went, in order. A
     /// copy of any kind can go. When one can't, those before it are in the
-    /// Trash already, and the rest stay.
+    /// Trash already, and the rest stay. The images no remaining copy refers
+    /// to go for good: a copy put back from the Trash restores without those
+    /// its cards no longer have.
     @discardableResult
     public func moveToTrash(_ copies: [DatabaseCopy]) throws(EngineError) -> [URL] {
         guard let backupsFolder else {
@@ -98,6 +113,11 @@ extension Engine {
             throw .backupsFolder
         }
         var trashed: [URL] = []
+        defer {
+            if !trashed.isEmpty {
+                dropImagesNoCopyUses()
+            }
+        }
         for copy in copies {
             var inTrash: NSURL?
             do {
@@ -210,11 +230,13 @@ func moveOldCopiesBeforeAnUpdate(from folder: URL, into backups: URL) {
     }
 }
 
-/// Saves a copy of `database` as it is now in `folder`, as a copy of `kind`
-/// saved at `time`, and returns it. SQLite's online backup copies it whole
-/// and consistent, even while another process writes. The copy is written
-/// under a hidden name first, and then given its own, so a copy that failed
-/// halfway never shows as one, and never replaces another.
+/// Saves a copy of `database` as it is now in `folder`, the Backups folder of
+/// its data folder, as a copy of `kind` saved at `time`, and returns it.
+/// SQLite's online backup copies it whole and consistent, even while another
+/// process writes. The images its cards refer to go to the images the copies
+/// share, from the data folder's Images folder. The copy is written under a
+/// hidden name first, and then given its own once its images are kept, so a
+/// copy that failed halfway never shows as one, and never replaces another.
 @discardableResult
 func saveCopy(
     of database: any DatabaseWriter, as kind: DatabaseCopy.Kind, at time: Date, in folder: URL
@@ -234,6 +256,7 @@ func saveCopy(
         logger.error("Couldn't make the Backups folder: \(String(describing: error))")
         throw .backupsFolder
     }
+    let images: Set<ImageName>
     do {
         let copy = try DatabaseQueue(path: file.path(percentEncoded: false))
         try database.backup(to: copy)
@@ -241,11 +264,20 @@ func saveCopy(
         try copy.writeWithoutTransaction { db in
             try db.execute(sql: "PRAGMA journal_mode = DELETE")
         }
+        images = try copy.read(imagesReferred(in:))
         try copy.close()
     } catch {
         logger.error("Couldn't save a copy of the database: \(String(describing: error))")
         try? FileManager.default.removeItem(at: file)
         throw .storage
+    }
+    do throws(EngineError) {
+        try shareImages(
+            images, from: folderOfImages(in: folder.deletingLastPathComponent()),
+            into: folderOfSharedImages(in: folder))
+    } catch {
+        try? FileManager.default.removeItem(at: file)
+        throw error
     }
     return try moveIntoBackups(file, as: kind, savedAt: time, in: folder)
 }

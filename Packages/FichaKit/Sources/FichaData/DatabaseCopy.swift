@@ -2,7 +2,9 @@ import Foundation
 
 /// A copy of everything Ficha keeps, as it was at one moment, which the engine
 /// saved in its Backups folder: a backup, or a copy before an update, a
-/// restore or an import. Its file's name says its kind, and when it was saved,
+/// restore or an import. It's the database's file, and the images its cards
+/// refer to, which the copies share in the Backups folder's Images folder,
+/// each once for all of them. Its file's name says its kind, and when it was saved,
 /// by the engine's time, in UTC, like `Backup 2026-10-22T120000Z.sqlite`, with a
 /// number after the time when two copies of a kind were saved in the same
 /// second, as Finder numbers a copy.
@@ -35,7 +37,8 @@ public struct DatabaseCopy: Sendable, Hashable, Identifiable, Encodable {
     public let kind: Kind
     /// When it was saved, by the engine's time, to the second.
     public let savedAt: Date
-    /// What its file weighs, in bytes.
+    /// What its file weighs, in bytes: the database's, without the images
+    /// the copies share.
     public let size: Int64
     /// Its file's name in the Backups folder, which `ficha restore` takes.
     public let name: String

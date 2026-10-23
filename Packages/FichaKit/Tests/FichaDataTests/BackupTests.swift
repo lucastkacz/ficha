@@ -323,6 +323,126 @@ final class BackupTests {
         #expect(trashed.allSatisfy { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) })
     }
 
+    @Test("seven backups of cards with the same images store each image once")
+    func sevenBackupsStoreEachImageOnce() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird, backImage: nest))
+        try engine.create(card(nil, front: "¿De quién es este nido?", back: "Del hornero.", frontImage: nest))
+
+        for _ in 0..<7 {
+            try engine.backUpNow(.defaults)
+            time.advance(by: days(1))
+        }
+
+        #expect(try engine.copies().count == 7)
+        #expect(try engine.sharedImagesSize() == size(of: [bird, nest], in: engine))
+    }
+
+    @Test("deleting a card and then restoring a backup that had it brings the card back with its images")
+    func restoringBringsBackADeletedCardsImages() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        let hornero = try engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird, backImage: nest))
+        let images = (try engine.image(bird), try engine.image(nest))
+        let backup = try engine.backUpNow(.defaults)
+        try engine.delete([hornero.id])
+        #expect(throws: EngineError.imagesFolder) { try engine.image(bird) }
+
+        time.advance(by: hours(1))
+        try engine.restore(backup.name)
+
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.image(bird) == images.0)
+        #expect(try engine.image(nest) == images.1)
+    }
+
+    @Test("deleting old backups drops the images no remaining copy uses, and keeps the rest")
+    func deletingOldBackupsDropsTheirImages() throws {
+        let engine = try openEngine()
+        let keepingTwo = try #require(BackupSettings(frequency: .daily, kept: 2))
+        let (bird, nest) = try twoImages(in: engine)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let nido = try engine.create(
+            card(nil, front: "¿De quién es este nido?", back: "Del hornero.", frontImage: nest))
+        let (bothSizes, nestSize) = (try size(of: [bird, nest], in: engine), try size(of: [nest], in: engine))
+        try engine.backUpNow(keepingTwo)
+        try engine.delete([hornero.id])
+        time.advance(by: days(1))
+        try engine.backUpNow(keepingTwo)
+        let beforePruning = try engine.sharedImagesSize()
+
+        time.advance(by: days(1))
+        let newest = try engine.backUpNow(keepingTwo)
+
+        #expect(beforePruning == bothSizes)
+        #expect(try engine.sharedImagesSize() == nestSize)
+        try engine.delete([nido.id])
+        try engine.restore(newest.name)
+        #expect(try engine.cards() == [nido])
+        #expect(try Int64(engine.image(nest).count) == nestSize)
+    }
+
+    @Test(
+        "a backup from before images restores as before, letting go of the images, and undoing the restore brings them back"
+    )
+    func backupFromBeforeImagesRestoresAsBefore() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        let hornero = try engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird, backImage: nest))
+        let images = (try engine.image(bird), try engine.image(nest))
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeOptionalTypes(at: backups.appending(path: name), at: time.now)
+
+        let restoration = try engine.restore(name)
+
+        try expectEveryCardAsItWasBeforeOptionalTypes(in: engine, at: time.now)
+        #expect(try engine.cards().allSatisfy { $0.frontImage == nil && $0.backImage == nil })
+        #expect(throws: EngineError.imagesFolder) { try engine.image(bird) }
+        time.advance(by: minutes(1))
+        try engine.restore(restoration.copyBeforeRestore.name)
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.image(bird) == images.0)
+        #expect(try engine.image(nest) == images.1)
+    }
+
+    @Test("a copy before an import keeps the images too, so restoring it brings a card deleted since back whole")
+    func copyBeforeAnImportKeepsTheImages() throws {
+        let engine = try openEngine()
+        let (bird, _) = try twoImages(in: engine)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let image = try engine.image(bird)
+        let file = folder.appending(path: "pájaros.txt")
+        try Data("benteveo\tUn pájaro que dice su nombre.\n".utf8).write(to: file)
+        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let copy = try #require(outcome.copyBeforeImport)
+        try engine.delete([hornero.id])
+
+        time.advance(by: minutes(1))
+        try engine.restore(copy.name)
+
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.image(bird) == image)
+    }
+
+    /// Two images of different sizes, a bird and its nest, which `engine`
+    /// keeps.
+    private func twoImages(in engine: Engine) throws -> (bird: ImageName, nest: ImageName) {
+        (
+            try engine.addImage(picture(width: 800, height: 600, red: 0.8)),
+            try engine.addImage(picture(width: 300, height: 200, red: 0.3))
+        )
+    }
+
+    /// What `images` weigh, each once, as `engine` keeps them.
+    private func size(of images: [ImageName], in engine: Engine) throws -> Int64 {
+        try images.reduce(0) { $0 + Int64(try engine.image($1).count) }
+    }
+
     /// The path of `copy`'s file.
     private func path(of copy: DatabaseCopy, in engine: Engine) throws -> String {
         try #require(engine.backupsFolder).appending(path: copy.name).path(percentEncoded: false)

@@ -55,10 +55,20 @@ extension Engine {
     }
 }
 
+/// The Images folder in the data folder `folder`, where the engine keeps the
+/// images on cards, beside the database and the Backups folder.
+func folderOfImages(in folder: URL) -> URL {
+    folder.appending(path: "Images", directoryHint: .isDirectory)
+}
+
 /// Every image the cards in `db` refer to, on either side: none for a
-/// database from before images on cards, such as an old backup. A name that
-/// isn't an image's fails, as a card the engine never saved.
+/// database from before images on cards, such as an old backup, or from
+/// before cards. A name that isn't an image's fails, as a card the engine
+/// never saved.
 func imagesReferred(in db: Database) throws -> Set<ImageName> {
+    guard try db.tableExists("card") else {
+        return []
+    }
     let columns = try db.columns(in: "card").map(\.name)
     guard columns.contains("frontImage"), columns.contains("backImage") else {
         return []
