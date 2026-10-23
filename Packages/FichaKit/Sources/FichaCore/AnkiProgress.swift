@@ -27,7 +27,9 @@ public struct AnkiDaySettings: Sendable, Equatable {
     /// a problem when either is out of range: an offset beyond a day, or a
     /// rollover that isn't an hour of the day.
     public init(creationOffset: Int?, rollover: Int?) throws(AnkiCollectionProblem) {
-        if let creationOffset, abs(creationOffset) >= 24 * 60 {
+        // A range rather than `abs`, which has no answer for the smallest
+        // number.
+        if let creationOffset, !(1 - 24 * 60..<24 * 60).contains(creationOffset) {
             throw AnkiCollectionProblem("The collection's creation offset is \(creationOffset) minutes")
         }
         if let rollover, !(0..<24).contains(rollover) {
@@ -63,7 +65,11 @@ extension AnkiCollection {
         case 2 where !isInFilteredDeck && (card.queue == 1 || card.queue == 3):
             stage = .learning(due: try learningDue(due, in: calendar))
         case 2:
-            stage = .review(interval: .seconds(card.interval * 24 * 60 * 60), due: try start(ofDay: due, in: calendar))
+            let (seconds, overflows) = card.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
+            guard !overflows else {
+                throw AnkiCollectionProblem("Card \(card.id) has an interval of \(card.interval) days")
+            }
+            stage = .review(interval: .seconds(seconds), due: try start(ofDay: due, in: calendar))
         default:
             throw AnkiCollectionProblem("Card \(card.id) is of the type \(card.type)")
         }
@@ -103,7 +109,11 @@ extension AnkiCollection {
         var dates = Calendar(identifier: .gregorian)
         dates.timeZone = .gmt
         guard let creationDate = dates.date(from: createdOn),
-            let dueDate = dates.date(byAdding: .day, value: Int(clamping: day), to: creationDate)
+            let days = Int(exactly: day),
+            let dueDate = dates.date(byAdding: .day, value: days, to: creationDate),
+            // Foundation answers a day beyond what it counts to with another
+            // date, which counting back tells apart.
+            dates.dateComponents([.day], from: creationDate, to: dueDate).day == days
         else {
             throw AnkiCollectionProblem("Day \(day) of the collection isn't a date")
         }

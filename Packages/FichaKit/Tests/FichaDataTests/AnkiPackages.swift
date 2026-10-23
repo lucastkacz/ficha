@@ -176,10 +176,11 @@ struct AnkiPackage {
                         (deck, originalDeck, originalDue) = (deckID(of: filteredDeck), deck, due)
                         due = -100_000 + Int64(index)
                     }
+                    // Wrapping, for a damaged template index.
                     try db.execute(
                         sql: "INSERT INTO cards VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 2500, 0, 0, 0, ?, ?, 0, '')",
                         arguments: [
-                            noteID * 10 + Int64(ordinal), noteID, deck, ordinal, columns.type, queue, due,
+                            noteID * 10 &+ Int64(ordinal), noteID, deck, ordinal, columns.type, queue, due,
                             columns.interval, originalDue, originalDeck,
                         ])
                 }
@@ -466,11 +467,17 @@ struct AnkiNote {
     var queue = Queue.asItsTypeSays
     /// The filtered deck its cards were moved to, or nil.
     var filteredDeck: String? = nil
+    /// The template index of the note's one card, in place of those Anki
+    /// gives its cards, as in a damaged package, or nil.
+    var damagedTemplateIndex: Int? = nil
 
     /// The template index, from 0, of each card the note has, as Anki makes
     /// them: one for each template of a standard note type, and one for each
     /// cloze number its fields hold for a cloze one, its number less one.
     var cardOrdinals: [Int] {
+        if let damagedTemplateIndex {
+            return [damagedTemplateIndex]
+        }
         guard type.isCloze else {
             return Array(type.templates.indices)
         }

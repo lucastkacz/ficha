@@ -61,6 +61,12 @@ extension AnkiCollection {
         guard noteType.templates.indices.contains(templateIndex) else {
             throw AnkiCollectionProblem("Card \(card.id) has template \(templateIndex), which its note type lacks")
         }
+        // The card's number, which counts from 1: a cloze card's is the
+        // number of the gap it asks for.
+        let (number, overflows) = card.templateIndex.addingReportingOverflow(1)
+        guard !overflows else {
+            throw AnkiCollectionProblem("Card \(card.id) has template \(card.templateIndex)")
+        }
         if noteType.isImageOcclusion || (noteType.kind == .cloze && note.fields.contains(where: holdsImageOcclusion)) {
             return .leftOut(.ankiImageOcclusion)
         }
@@ -75,8 +81,8 @@ extension AnkiCollection {
             }
         templates[key] = parsed
         do throws(AnkiTemplateError) {
-            let fields = self.fields(of: card, note: note, noteType: noteType, template: template, deck: deck)
-            let number = card.templateIndex + 1
+            let fields = self.fields(
+                of: card, numbered: number, note: note, noteType: noteType, template: template, deck: deck)
             let question = try parsed.get().question.render(fields: fields, cardNumber: number, frontSide: nil)
             let answer = try parsed.get().answer.render(fields: fields, cardNumber: number, frontSide: question)
             return .rendered(
@@ -88,12 +94,13 @@ extension AnkiCollection {
         }
     }
 
-    /// The fields a template of `card` can show, by their names: its note's,
-    /// and the special fields Anki adds unless a field of the note has the
-    /// same name (`rslib/src/notetype/render.rs`). A note with fewer fields
-    /// than its note type has the others empty.
+    /// The fields a template of `card`, whose number is `number`, can show,
+    /// by their names: its note's, and the special fields Anki adds unless a
+    /// field of the note has the same name (`rslib/src/notetype/render.rs`).
+    /// A note with fewer fields than its note type has the others empty.
     private func fields(
-        of card: AnkiCard, note: AnkiNote, noteType: AnkiNoteType, template: AnkiCardTemplate, deck: AnkiDeck
+        of card: AnkiCard, numbered number: Int, note: AnkiNote, noteType: AnkiNoteType, template: AnkiCardTemplate,
+        deck: AnkiDeck
     ) -> [String: String] {
         var fields = [
             "Tags": note.tags.joined(separator: " "),
@@ -103,7 +110,7 @@ extension AnkiCollection {
             "CardFlag": card.flags & 7 == 0 ? "" : "flag\(card.flags & 7)",
             "Card": template.name,
             "CardID": "\(card.id)",
-            "c\(card.templateIndex + 1)": "1",
+            "c\(number)": "1",
         ]
         for (index, name) in noteType.fields.enumerated() {
             fields[name] = note.fields.indices.contains(index) ? note.fields[index] : ""

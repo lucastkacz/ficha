@@ -318,6 +318,17 @@ final class AnkiImportingTests {
         #expect(try engine.cards().map(\.back) == [back.joined(separator: "\n")])
     }
 
+    @Test(
+        "a package with a number beyond what Ficha counts with can't be read, and Ficha goes on",
+        arguments: schemas, DamagedNumber.allCases)
+    func aPackageWithANumberOutOfRangeCantBeRead(format: AnkiPackage.Format, number: DamagedNumber) throws {
+        let damaged = try file("Dañado.apkg", number.package(format: format))
+
+        #expect(throws: EngineError.unreadableFile("Dañado.apkg", .unreadableAnkiPackage)) {
+            try engine.previewImport(of: damaged)
+        }
+    }
+
     // The placeholder holds a note asking to update Anki, which would come
     // in as a card of its own.
     @Test(
@@ -329,5 +340,47 @@ final class AnkiImportingTests {
         try importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"]])
+    }
+}
+
+/// A number a damaged package holds, too large or too small for what Ficha
+/// works out from it.
+enum DamagedNumber: CaseIterable, CustomTestStringConvertible {
+    /// A review card's interval, in days, as long as a number can be.
+    case interval
+    /// A review card's due day, the last a number can count.
+    case dueDay
+    /// A cloze card's template index, as large as a number can be.
+    case templateIndex
+    /// The collection's creation offset, as small as a number can be.
+    case creationOffset
+
+    var testDescription: String {
+        "\(self)"
+    }
+
+    /// A package of `format` with the number.
+    func package(format: AnkiPackage.Format) -> AnkiPackage {
+        switch self {
+        case .interval:
+            AnkiPackage(
+                format: format,
+                notes: [
+                    AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: .max))
+                ])
+        case .dueDay:
+            AnkiPackage(
+                format: format,
+                notes: [
+                    AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: .max, interval: 10))
+                ])
+        case .templateIndex:
+            AnkiPackage(
+                format: format,
+                notes: [AnkiNote(type: .cloze, fields: ["El {{c1::corazón}} late.", ""], damagedTemplateIndex: .max)])
+        case .creationOffset:
+            AnkiPackage(
+                format: format, notes: [AnkiNote(type: .basic, fields: ["corazón", "heart"])], creationOffset: .min)
+        }
     }
 }
