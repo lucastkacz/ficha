@@ -205,6 +205,10 @@ public struct CardsWindowState: Sendable {
     /// The form Show Card set aside, as it was, until it's opened the same
     /// way again, or closes for good: `CardForm.swift`.
     var setAsideCardForm: CardForm?
+    /// The cards' fronts, which the form's front is looked up in as it's
+    /// typed, or why they couldn't be read: read with the cards while the
+    /// form is open, and nil otherwise.
+    var frontsInUse: Result<FrontsInUse, EngineError>?
     /// The images on the sides of the card Lucas edits, as Save would give
     /// them to it, while he edits one: `CardsWindowImages.swift`.
     public internal(set) var editedImages = SideImages()
@@ -617,6 +621,7 @@ public struct CardsWindowState: Sendable {
         } catch {
             listing = .failure(error)
         }
+        readFrontsInUse()
         readReviewLog()
     }
 

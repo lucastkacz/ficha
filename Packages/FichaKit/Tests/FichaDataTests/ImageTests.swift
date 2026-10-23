@@ -197,7 +197,7 @@ final class ImageTests {
         let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
         try engine.create(card(nil, front: "", back: "Un hornero.", frontImage: bird))
 
-        #expect(try engine.cardRepeated(byFront: "") == nil)
+        #expect(try engine.frontsInUse().cardID(repeatedBy: "") == nil)
         #expect(try engine.create(card(nil, front: "", back: "Un nido.", frontImage: nest)).frontImage == nest)
     }
 

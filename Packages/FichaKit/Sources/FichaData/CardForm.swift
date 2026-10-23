@@ -114,24 +114,36 @@ extension CardsWindowState {
     /// repeats checked again. A form set aside that was opened another way
     /// closes for good first.
     private mutating func openCardForm(_ form: CardForm) {
-        guard let setAside = setAsideCardForm else {
+        if let setAside = setAsideCardForm {
+            setAsideCardForm = nil
+            if setAside.capture?.id == form.capture?.id {
+                cardForm = setAside
+            } else {
+                finishClosing(setAside)
+                cardForm = form
+            }
+        } else {
             cardForm = form
-            return
         }
-        setAsideCardForm = nil
-        guard setAside.capture?.id == form.capture?.id else {
-            finishClosing(setAside)
-            cardForm = form
-            return
-        }
-        var broughtBack = setAside
-        broughtBack.frontWarning = frontWarning(for: setAside.draft.front)
-        cardForm = broughtBack
+        readFrontsInUse()
     }
 
-    /// Changes what the form's fields hold to `draft`, as Lucas types. When
-    /// the front changes, the form checks again whether it repeats another
-    /// card's.
+    /// Reads the cards' fronts, while the form is open, and checks again
+    /// whether its front repeats one: when the form opens, and each time the
+    /// window reads the cards.
+    mutating func readFrontsInUse() {
+        guard let front = cardForm?.draft.front else {
+            frontsInUse = nil
+            return
+        }
+        frontsInUse = Result { () throws(EngineError) in try engine.frontsInUse() }
+        let warning = frontWarning(for: front)
+        cardForm?.frontWarning = warning
+    }
+
+    /// Changes what the form's fields hold to `draft`, as the user types.
+    /// When the front changes, the form checks again whether it repeats
+    /// another card's, among the fronts as the window last read them.
     public mutating func changeDraft(_ draft: CardForm.Draft) {
         guard let form = cardForm else { return }
         cardForm?.draft = draft
@@ -144,9 +156,11 @@ extension CardsWindowState {
     /// What the form says under `front`: the card it repeats, if any. A blank
     /// front repeats none.
     private func frontWarning(for front: CardForm.Side) -> CardForm.FrontWarning? {
-        guard !CardContent.isBlank(front.text) else { return nil }
         do throws(EngineError) {
-            return try engine.cardRepeated(byFront: front.text).map(CardForm.FrontWarning.repeats)
+            guard let frontsInUse, let cardID = try frontsInUse.get().cardID(repeatedBy: front.text) else {
+                return nil
+            }
+            return .repeats(try engine.card(cardID))
         } catch {
             return .uncheckable(error)
         }
@@ -203,6 +217,7 @@ extension CardsWindowState {
     public mutating func closeCardForm() {
         guard let form = cardForm else { return }
         cardForm = nil
+        frontsInUse = nil
         finishClosing(form)
     }
 

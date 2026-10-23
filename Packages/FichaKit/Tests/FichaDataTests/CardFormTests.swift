@@ -96,6 +96,23 @@ struct CardFormTests {
         #expect(try engine.cards().map(\.front) == ["serendipia", "Año", "año"])
     }
 
+    // So that typing doesn't read every card's front at each key.
+    @Test("the warning checks the front against the cards as the window last read them")
+    func theWarningChecksTheCardsAsLastRead() throws {
+        var window = openWindow()
+        window.openNewCardForm()
+        window.type(front: "petricor", back: "El olor de la lluvia.")
+        // From the command line, while the form is open.
+        let petricor = try engine.create(card(nil, front: "Petricor", back: "Olor a tierra mojada."))
+
+        window.type(front: "petricor ")
+        let typedBeforeReading = window.cardForm?.frontWarning
+        window.read(on: ladder)
+
+        #expect(typedBeforeReading == nil)
+        #expect(window.cardForm?.frontWarning == .repeats(petricor))
+    }
+
     @Test("the form from a capture shows its text, note and source, with the source filled in")
     func theFormFromACaptureShowsIt() throws {
         let capture = try engine.newCapture(

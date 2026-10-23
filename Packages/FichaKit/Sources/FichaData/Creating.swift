@@ -47,26 +47,46 @@ extension Engine {
     }
 }
 
-extension Engine {
-    /// The card whose front `front` repeats, by the duplicate rule, as the
-    /// Cards window's form warns about it: the first one that came in, or nil
-    /// when it repeats none.
-    func cardRepeated(byFront front: String) throws(EngineError) -> Card? {
-        try read { db in try FichaData.cardRepeated(byFront: front, in: db) }
+/// The cards' fronts, by the duplicate rule, each with the first card that
+/// came in with it, which the Cards window's form looks a front up in as it's
+/// typed. Only fronts count: a card created or imported is a duplicate by its
+/// front alone.
+struct FrontsInUse: Sendable, Equatable {
+    private var firstCardIDs: [String: Int64] = [:]
+
+    /// The id of the first card whose front `front` repeats, or nil when it
+    /// repeats none. A front without text, which holds only an image, repeats
+    /// none.
+    func cardID(repeatedBy front: String) -> Int64? {
+        guard !CardContent.isBlank(front) else {
+            return nil
+        }
+        return firstCardIDs[duplicateKey(front)]
+    }
+
+    /// The fronts of the cards in `db`.
+    init(in db: Database) throws {
+        for row in try Row.fetchAll(db, sql: "SELECT id, front FROM card ORDER BY id") {
+            let front: String = try row.decode(forColumn: "front")
+            let key = duplicateKey(front)
+            // The first card that came in stays.
+            if !CardContent.isBlank(front), firstCardIDs[key] == nil {
+                firstCardIDs[key] = try row.decode(forColumn: "id")
+            }
+        }
     }
 }
 
-/// The card whose front `front` repeats, by the duplicate rule, the first one
-/// that came in, or nil when it repeats none. Only fronts count: a card
-/// created or imported is a duplicate by its front alone. A front without
-/// text, which holds only an image, repeats none.
-func cardRepeated(byFront front: String, in db: Database) throws -> Card? {
-    guard !CardContent.isBlank(front) else {
-        return nil
+extension Engine {
+    /// The cards' fronts, as the Cards window's form looks them up.
+    func frontsInUse() throws(EngineError) -> FrontsInUse {
+        try read { db in try FrontsInUse(in: db) }
     }
-    let fronts = try Row.fetchAll(db, sql: "SELECT id, front FROM card ORDER BY id")
-    let repeated = try fronts.first { row in repeats(front, try row.decode(forColumn: "front")) }
-    return try repeated.map { row in try existingCard(row.decode(forColumn: "id"), in: db) }
+
+    /// The card with the id `cardID`, or `cardNotFound` when there's none.
+    func card(_ cardID: Int64) throws(EngineError) -> Card {
+        try read { db in try existingCard(cardID, in: db) }
+    }
 }
 
 /// Saves `content` as a new card, created at `time` from the capture with the
