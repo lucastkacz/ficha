@@ -44,7 +44,7 @@ Something the user jots down to turn into cards later: the raw text, with an opt
 _Avoid_: draft, idea, raw card
 
 **Inbox**:
-What waits to be turned into cards or fixed: captures, including expansions, and flagged cards.
+What waits to be turned into cards or fixed: captures, including expansions and follow-ups, and flagged cards.
 _Avoid_: queue, backlog
 
 **Duplicate**:
@@ -56,6 +56,10 @@ _Avoid_: merge, append
 
 **Expansion**:
 A capture in the inbox attached to the card it repeats. Approving it gives that card new content, and the card keeps its step.
+
+**Follow-up**:
+A capture the user jots down in the review panel about the card in front of them, tied to that card, such as a question it raised. Approving it creates new cards, as any capture does, and leaves that card as it is.
+_Avoid_: question, expansion
 
 **Refine**:
 Turning what waits in the inbox into finished cards, in a Claude session Lucas starts. Claude drafts each change following the content guide, and Lucas approves it.
@@ -115,6 +119,10 @@ _Avoid_: cram, study ahead, extra practice
 Sending a card back to the inbox with a note on what to fix. It stays out of reviews until it's fixed.
 _Avoid_: mark, report
 
+**Forgotten often**:
+A card the user rated again, "Don't know", in eight reviews in all, or as many as they set, since its front or back last changed. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
+_Avoid_: leech, hard card
+
 **Bury**:
 Taking a card the user no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it would be without the burial.
 _Avoid_: archive, suspend
@@ -134,7 +142,7 @@ Changing the content of a card or a capture. A card keeps its step and its revie
 _Avoid_: modify, update
 
 **Delete**:
-Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it stays in the inbox as a capture.
+Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture.
 _Avoid_: remove, erase
 
 **Import**:

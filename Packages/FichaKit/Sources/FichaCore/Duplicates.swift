@@ -8,6 +8,13 @@ public func repeats(_ captureText: String, _ text: String) -> Bool {
     comparable(captureText) == comparable(text)
 }
 
+/// `text`, another capture's text or a card's front, as `repeats` compares
+/// it, for finding the duplicates among many at once: two texts repeat each
+/// other when their keys are the same.
+public func duplicateKey(_ text: String) -> String {
+    comparable(text)
+}
+
 /// Whether `text`, a card's front, back or source, mentions `search`, what
 /// Lucas looks for in the Cards window: it contains it once both are compared
 /// as duplicates are, trimmed, ignoring case and accents, but not the ñ, so

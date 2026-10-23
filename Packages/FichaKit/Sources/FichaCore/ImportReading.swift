@@ -1,0 +1,75 @@
+import Foundation
+
+/// What a reader made of a file of cards, before anything is imported: the
+/// cards it holds, in the file's order, and the lines it left out, with why.
+/// A text file's reader is `CardsTextFile`; another kind of file gets a
+/// reader of its own that gives the same, so the preview, the duplicates,
+/// the tags and the import itself are the same for every kind.
+public struct ImportReading: Sendable, Equatable {
+    /// The cards, in the file's order.
+    public let cards: [ImportedCard]
+    /// The lines that make no card, in the file's order.
+    public let leftOut: [LeftOutLine]
+
+    public init(cards: [ImportedCard], leftOut: [LeftOutLine]) {
+        self.cards = cards
+        self.leftOut = leftOut
+    }
+}
+
+/// A card a file holds, as its reader read it.
+public struct ImportedCard: Sendable, Equatable {
+    /// What the card holds, checked as every card is.
+    public let content: CardContent
+    /// Which of a card's fields beyond its front and back the file gives it:
+    /// an import that updates a card the user has keeps the card's own
+    /// fields that the file doesn't give, and sets the others, even blank.
+    public let fields: Set<CardField>
+    /// The line of the file it starts on, counted from 1.
+    public let line: Int
+
+    public init(content: CardContent, fields: Set<CardField>, line: Int) {
+        self.content = content
+        self.fields = fields
+        self.line = line
+    }
+}
+
+/// A field of a card beyond its front and back, which every card has, and
+/// which a file of cards may give a card or not.
+public enum CardField: Sendable, Hashable, CaseIterable {
+    case tags
+    case type
+    case source
+}
+
+/// A line of a file of cards that makes no card, and why, for the preview to
+/// list.
+public struct LeftOutLine: Sendable, Equatable {
+    /// Why a line makes no card.
+    public enum Reason: Sendable, Equatable {
+        /// It has one column, a front with no back: its columns aren't
+        /// separated by what separates the file's.
+        case oneColumn
+        /// Its front is blank.
+        case blankFront
+        /// Its back is blank.
+        case blankBack
+        /// Its type column holds this, which isn't a card type.
+        case unknownType(String)
+        /// A field it opens with a quote is never closed by another.
+        case unclosedQuote
+        /// A field it opens with a quote has another quote inside that isn't
+        /// doubled, as a quote in a quoted field must be.
+        case strayQuote
+    }
+
+    /// The line it is, or starts on, counted from 1.
+    public let line: Int
+    public let reason: Reason
+
+    public init(line: Int, reason: Reason) {
+        self.line = line
+        self.reason = reason
+    }
+}

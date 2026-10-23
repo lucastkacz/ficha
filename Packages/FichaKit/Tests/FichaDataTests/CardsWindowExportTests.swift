@@ -1,0 +1,154 @@
+import FichaCore
+import FichaData
+import Foundation
+import Testing
+
+/// Tests on the Cards window's Export sheet: what it offers to export, what
+/// it starts on, and the file it writes, into a folder of the test's own,
+/// from an engine in memory.
+final class CardsWindowExportTests {
+    let time: ManualTimeSource
+    let engine: Engine
+    let ladder = ReviewSettings.defaults.ladder
+    /// A folder of the test's own, for the files it exports.
+    let folder = URL.temporaryDirectory.appending(
+        path: "FichaCardsWindowExportTests-\(UUID().uuidString)",
+        directoryHint: .isDirectory
+    )
+
+    init() throws {
+        let calendar = try buenosAiresCalendar()
+        time = ManualTimeSource(now: try morning(of: 14, in: calendar))
+        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: folder)
+    }
+
+    /// The Cards window, open on All cards with its cards read.
+    private func openWindow() -> CardsWindowState {
+        var window = engine.openCardsWindow(on: ladder)
+        window.read(on: ladder)
+        return window
+    }
+
+    /// Approves a capture into one word card with this front and `tags`, and
+    /// returns the card.
+    @discardableResult
+    private func approveCard(_ front: String, tags: [String] = []) throws -> Card {
+        try approve(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
+    }
+
+    @Test(
+        "the Export sheet offers the selected cards only while some are selected, then all cards and each tag with cards, each with how many it takes"
+    )
+    func theExportSheetOffersEachChoiceWithItsCount() throws {
+        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
+        try approveCard("Sócrates", tags: ["historia", "filosofía"])
+        let ubuntu = try approveCard("ubuntu")
+        let guernica = try approveCard("Guernica", tags: ["arte"])
+        try engine.bury(guernica.id)
+        // The sidebar still lists a set-aside tag with no cards.
+        try engine.setAside("arte")
+        var unselected = openWindow()
+        var selected = openWindow()
+        selected.select([mayo.id, ubuntu.id])
+
+        unselected.startExport()
+        selected.startExport()
+
+        let all = CardsWindowState.ExportChoice(cards: .all, cardCount: 3)
+        let philosophy = CardsWindowState.ExportChoice(cards: .tag("filosofía"), cardCount: 1)
+        let history = CardsWindowState.ExportChoice(cards: .tag("historia"), cardCount: 2)
+        #expect(unselected.exporting?.choices == [all, philosophy, history])
+        #expect(
+            selected.exporting?.choices == [
+                CardsWindowState.ExportChoice(cards: .cards([mayo.id, ubuntu.id]), cardCount: 2), all, philosophy,
+                history,
+            ])
+    }
+
+    // One selected card is often just the one the detail shows.
+    @Test(
+        "the Export sheet starts on the selected cards when several are selected, else on the tag the sidebar chose, else on all cards"
+    )
+    func theExportSheetStartsOnWhatTheWindowPointsAt() throws {
+        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
+        let socrates = try approveCard("Sócrates", tags: ["historia", "filosofía"])
+        try approveCard("ubuntu")
+        var several = openWindow()
+        several.select([mayo.id, socrates.id])
+        var tag = openWindow()
+        tag.choose(.cards(.tag("filosofía")))
+        tag.select([socrates.id])
+        var one = openWindow()
+        one.select([mayo.id])
+
+        several.startExport()
+        tag.startExport()
+        one.startExport()
+
+        #expect(several.exporting?.chosen == .cards([mayo.id, socrates.id]))
+        #expect(several.exporting?.cardCount == 2)
+        #expect(tag.exporting?.chosen == .tag("filosofía"))
+        #expect(tag.exporting?.cardCount == 1)
+        #expect(one.exporting?.chosen == .all)
+        #expect(one.exporting?.cardCount == 3)
+    }
+
+    @Test(
+        "Export writes what the user chose to the file they picked, the selected cards, a tag's or all, and closes the sheet"
+    )
+    func exportWritesWhatTheUserChose() throws {
+        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
+        try approveCard("Sócrates", tags: ["historia", "filosofía"])
+        let ubuntu = try approveCard("ubuntu")
+        var window = openWindow()
+        window.select([mayo.id, ubuntu.id])
+
+        var exportedFronts: [[String]] = []
+        for choice in [CardsToExport.cards([mayo.id, ubuntu.id]), .tag("historia"), .all] {
+            let file = folder.appending(path: "Tarjetas \(exportedFronts.count).txt")
+            window.startExport()
+            window.chooseCardsToExport(choice)
+            window.export(to: file)
+            #expect(window.exporting == nil)
+            exportedFronts.append(try CardsTextFile.read(Data(contentsOf: file)).cards.map(\.content.front))
+        }
+
+        #expect(
+            exportedFronts == [
+                ["Revolución de Mayo", "ubuntu"],
+                ["Revolución de Mayo", "Sócrates"],
+                ["Revolución de Mayo", "Sócrates", "ubuntu"],
+            ])
+    }
+
+    @Test("a file that can't be saved leaves the Export sheet open, saying why")
+    func aFileThatCantBeSavedSaysWhy() throws {
+        try approveCard("ubuntu")
+        var window = openWindow()
+        window.startExport()
+
+        window.export(to: folder.appending(path: "Una carpeta que no existe/Tarjetas.txt"))
+
+        #expect(window.failure?.action == .export)
+        #expect(window.failure?.error == .unwritableFile("Tarjetas.txt"))
+        #expect(window.exporting?.chosen == .all)
+    }
+
+    @Test("with no cards, Export is off and writes nothing")
+    func withNoCardsExportIsOff() throws {
+        var window = openWindow()
+        let file = folder.appending(path: "Tarjetas.txt")
+
+        window.startExport()
+        window.export(to: file)
+
+        #expect(window.exporting?.choices == [CardsWindowState.ExportChoice(cards: .all, cardCount: 0)])
+        #expect(window.exporting?.canExport == false)
+        #expect(!FileManager.default.fileExists(atPath: file.path(percentEncoded: false)))
+    }
+}

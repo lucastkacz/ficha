@@ -10,7 +10,7 @@ import Foundation
 /// time: its type, if it has one, its sides' text, and its tags and source,
 /// without surrounding spaces or line breaks. A tag or source left blank is
 /// no tag or source, and a side's text left blank is none.
-public struct CardContent: Sendable {
+public struct CardContent: Sendable, Equatable {
     /// Its type, or nil when it has none.
     public let type: CardType?
     /// The front's text, or empty when the front holds only an image.

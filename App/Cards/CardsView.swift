@@ -15,9 +15,12 @@ import SwiftUI
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
 /// can do with all of them. New Card in the toolbar, or ⌘N, and Convert to
 /// Card on a capture open the card form, a sheet of its own
-/// (`CardFormSheet.swift`). `CardsWindowState` decides what the window lists,
-/// shows, offers and asks, and what happens when Lucas acts, and the view
-/// draws it. It reads the cards again whenever
+/// (`CardFormSheet.swift`), Import… in the toolbar opens the Import sheet
+/// (`ImportSheet.swift`), which imports a text file of cards, and Export…
+/// opens the Export sheet (`ExportSheet.swift`), which saves cards to one.
+/// `CardsWindowState` decides what the window lists, shows, offers and asks,
+/// and what happens when Lucas acts, and the view draws it. It reads the cards
+/// again whenever
 /// the engine says they changed, from the app or the `ficha` CLI, when Lucas
 /// changes the ladder in Settings, and every minute, since cards come due as
 /// time passes, or at once when Ficha Dev's debug menu moves the time.
@@ -42,9 +45,12 @@ struct CardsView: View {
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
 
-    init(model: AppModel) {
+    /// The content for Lucas's cards in `model`, opening with `state` when
+    /// it's given, as `make render` opens it partway through an import, and
+    /// on All cards otherwise.
+    init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
-        _state = State(initialValue: model.openCardsWindow())
+        _state = State(initialValue: state ?? model.openCardsWindow())
     }
 
     var body: some View {
@@ -62,6 +68,10 @@ struct CardsView: View {
         }
         .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
+        // The toolbar lists the outer modifier's buttons first: New Card,
+        // then Import…, then Export….
+        .exportButtonAndSheet($state, failure: failure(overSheet: true))
+        .importButtonAndSheet($state)
         .background {
             // ⌘F puts Lucas in the search field, as in Mail and Finder. The
             // search field doesn't take it on its own.
@@ -176,13 +186,14 @@ struct CardsView: View {
     }
 
     /// What Lucas did that couldn't be saved, as an alert says it, which
-    /// closing it clears: over the flag sheet, the emoji sheet or the card
-    /// form while one is open, since the window's own alert can't show over
-    /// its sheet, and over the window otherwise. `overSheet` says which of the
-    /// two alerts this is for.
+    /// closing it clears: over the flag sheet, the emoji sheet, the card form
+    /// or the Export sheet while one is open, since the window's own alert
+    /// can't show over its sheet, and over the window otherwise. `overSheet`
+    /// says which of the two alerts this is for.
     private func failure(overSheet: Bool) -> Binding<Failure?> {
         Binding {
-            guard overSheet == (cardToFlag != nil || tagForEmoji != nil || state.cardForm != nil) else { return nil }
+            let isSheetOpen = cardToFlag != nil || tagForEmoji != nil || state.cardForm != nil || state.exporting != nil
+            guard overSheet == isSheetOpen else { return nil }
             return state.failure.map(alert(for:))
         } set: {
             if $0 == nil {
@@ -305,6 +316,12 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't change the emoji of “\(tag)”",
                     comment: "An alert's title in the Cards window's emoji sheet, after OK, with the tag."),
+                error: error)
+        case .export:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't export the cards",
+                    comment: "An alert's title in the Cards window, after Export… or over its Export sheet."),
                 error: error)
         }
     }

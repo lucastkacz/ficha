@@ -316,6 +316,10 @@ struct BackupsTab: View {
             String(
                 localized: "Before a restore",
                 comment: "Settings, under Backups: a copy's kind, saved before a restore.")
+        case .beforeImport:
+            String(
+                localized: "Before an import",
+                comment: "Settings, under Backups: a copy's kind, saved before cards were imported from a file.")
         }
     }
 }
