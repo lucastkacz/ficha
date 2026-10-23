@@ -19,21 +19,30 @@ public enum CardStanding: Sendable, Equatable {
 }
 
 extension CardStanding {
-    /// Where a card with this flag, burial date and set-aside tags stands,
-    /// the first of these that holds: buried, waiting in the inbox, set
-    /// aside, or in Lucas's reviews. A burial wins over a flag: a flagged
-    /// card Lucas buries leaves the inbox. Both win over set aside, which
-    /// never hides a card Lucas needs to fix or brings back one he buried.
+    /// Where a card with this flag, burial date and set-aside tags, as
+    /// `setAsideTags(of:among:)` picks them, stands, the first of these that
+    /// holds: buried, waiting in the inbox, set aside, or in Lucas's reviews.
+    /// A burial wins over a flag: a flagged card Lucas buries leaves the
+    /// inbox. Both win over set aside, which never hides a card Lucas needs to
+    /// fix or brings back one he buried.
     public init(flag: Flag?, buriedAt: Date?, setAsideBy setAsideTags: [String]) {
         if let buriedAt {
             self = .buried(at: buriedAt, flag: flag)
         } else if let flag {
             self = .inInbox(flag)
         } else if !setAsideTags.isEmpty {
-            self = .setAside(by: setAsideTags.sorted { $0.localizedStandardCompare($1) == .orderedAscending })
+            self = .setAside(by: setAsideTags)
         } else {
             self = .inReviews
         }
+    }
+
+    /// Which of a card's `tags` are set aside while the tags in
+    /// `setAsideTags` are, in alphabetical order as the Mac sorts text,
+    /// whether the card is buried, flagged or neither: when it's neither,
+    /// they set it aside.
+    public static func setAsideTags(of tags: [String], among setAsideTags: Set<String>) -> [String] {
+        tags.filter(setAsideTags.contains).sortedAlphabetically()
     }
 }
 

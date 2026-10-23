@@ -14,6 +14,9 @@ public struct CardsInReviews: Sendable, Equatable {
     let priorityIDs: Set<Int64>
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]
+    /// The tags of the cards in Lucas's reviews, which the menu's Prioritize
+    /// submenu offers.
+    public let tags: Set<String>
 
     /// The cards in Lucas's reviews out of `cards`, every card by id with
     /// where it stands and its tags, in the order he approved them, those
@@ -28,19 +31,21 @@ public struct CardsInReviews: Sendable, Equatable {
         ids = inReviews.map(\.id)
         priorityIDs = Set(inReviews.filter { !priorityTags.isDisjoint(with: $0.tags) }.map(\.id))
         self.log = log
+        tags = Set(inReviews.flatMap(\.tags))
     }
 
-    /// These cards in Lucas's reviews, these of them as priority cards, and
-    /// this review log.
-    private init(ids: [Int64], priorityIDs: Set<Int64>, log: [ReviewLogEntry]) {
+    /// These cards in Lucas's reviews, these of them as priority cards, this
+    /// review log, and the tags of these cards.
+    private init(ids: [Int64], priorityIDs: Set<Int64>, log: [ReviewLogEntry], tags: Set<String>) {
         self.ids = ids
         self.priorityIDs = priorityIDs
         self.log = log
+        self.tags = tags
     }
 
     /// The same cards as if no tag were a priority tag.
     var withoutPriority: CardsInReviews {
-        CardsInReviews(ids: ids, priorityIDs: [], log: log)
+        CardsInReviews(ids: ids, priorityIDs: [], log: log, tags: tags)
     }
 
     /// Where each card stands on `ladder`, by id in the order Lucas approved

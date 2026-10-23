@@ -3,8 +3,8 @@ import Foundation
 import Testing
 
 struct CardStandingTests {
-    @Test("a card neither flagged nor buried is in Lucas's reviews")
-    func neitherFlaggedNorBuriedIsInReviews() {
+    @Test("a card neither flagged, buried nor set aside is in Lucas's reviews")
+    func neitherFlaggedBuriedNorSetAsideIsInReviews() {
         #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: []) == .inReviews)
     }
 
@@ -38,11 +38,15 @@ struct CardStandingTests {
         )
     }
 
-    @Test("a set-aside card's set-aside tags come in alphabetical order, as the Mac sorts text")
-    func setAsideTagsComeAlphabetically() {
+    @Test(
+        "a card's set-aside tags are those of its tags that are set aside, in alphabetical order as the Mac sorts text")
+    func setAsideTagsAreTheCardsInAlphabeticalOrder() {
+        let setAsideTags: Set = ["filosofía", "física", "lenguaje", "Ética"]
+
         #expect(
-            CardStanding(flag: nil, buriedAt: nil, setAsideBy: ["lenguaje", "Ética", "filosofía"])
-                == .setAside(by: ["Ética", "filosofía", "lenguaje"]))
+            CardStanding.setAsideTags(of: ["lenguaje", "historia", "Ética", "filosofía"], among: setAsideTags)
+                == ["Ética", "filosofía", "lenguaje"])
+        #expect(CardStanding.setAsideTags(of: ["historia"], among: setAsideTags).isEmpty)
     }
 
     @Test(

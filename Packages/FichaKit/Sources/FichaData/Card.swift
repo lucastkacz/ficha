@@ -60,9 +60,8 @@ extension Card {
             throw unreadable("Card \(id) has a flag without its note or its time")
         }
         buriedAt = try row.decode(forColumn: "buriedAt")
-        let setAside = tags.filter(setAsideTags.contains)
-        setAsideBy =
-            setAside.isEmpty ? nil : setAside.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        let setAside = CardStanding.setAsideTags(of: tags, among: setAsideTags)
+        setAsideBy = setAside.isEmpty ? nil : setAside
     }
 }
 

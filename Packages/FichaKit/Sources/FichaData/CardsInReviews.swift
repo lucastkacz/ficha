@@ -2,9 +2,9 @@ import FichaCore
 internal import GRDB
 
 // Which cards are in Lucas's reviews, as their standing says: the only ones
-// the review panel brings, and takes an answer or a flag for. They decide
-// which cards show up, so the merge gate (`.claude/hooks/merge-gate.sh`)
-// watches this file: changing it makes a pull request risk:high.
+// the review panel brings, and takes an answer for. They decide which cards
+// show up, so the merge gate (`.claude/hooks/merge-gate.sh`) watches this
+// file: changing it makes a pull request risk:high.
 
 /// The cards that show up, as the engine reads them for the planners: the
 /// cards in Lucas's reviews, which the planners pick from, and every card, by
@@ -18,8 +18,8 @@ struct CardsThatShowUp {
     private let cards: [Int64: Card]
 
     /// The cards that show up out of `cards`, every card in the order Lucas
-    /// approved them, those with any of `priorityTags` first, and `log`, the
-    /// whole review log, in the order it was written.
+    /// approved them, those with any of `priorityTags` as priority cards, and
+    /// `log`, the whole review log, in the order it was written.
     fileprivate init(_ cards: [Card], priorityTags: Set<String>, log: [ReviewLogEntry]) {
         inReviews = CardsInReviews(cards.map { ($0.id, $0.standing, $0.tags) }, priorityTags: priorityTags, log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
