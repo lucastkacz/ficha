@@ -13,9 +13,10 @@ import SwiftUI
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the table wait. He selects several cards with
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
-/// can do with all of them. `CardsWindowState` decides what the window lists,
-/// shows, offers and asks, and what happens when Lucas acts, and the view
-/// draws it. It reads the cards again whenever
+/// can do with all of them. Import… in the toolbar opens the Import sheet,
+/// which imports a text file of cards. `CardsWindowState` decides what the
+/// window lists, shows, offers and asks, and what happens when Lucas acts, and
+/// the view draws it. It reads the cards again whenever
 /// the engine says they changed, from the app or the `ficha` CLI, when Lucas
 /// changes the ladder in Settings, and every minute, since cards come due as
 /// time passes, or at once when Ficha Dev's debug menu moves the time.
@@ -40,9 +41,12 @@ struct CardsView: View {
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
 
-    init(model: AppModel) {
+    /// The content for Lucas's cards in `model`, opening with `state` when
+    /// it's given, as `make render` opens it partway through an import, and
+    /// on All cards otherwise.
+    init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
-        _state = State(initialValue: model.openCardsWindow())
+        _state = State(initialValue: state ?? model.openCardsWindow())
     }
 
     var body: some View {
@@ -60,6 +64,7 @@ struct CardsView: View {
         }
         .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
+        .importButtonAndSheet($state)
         .background {
             // ⌘F puts Lucas in the search field, as in Mail and Finder. The
             // search field doesn't take it on its own.

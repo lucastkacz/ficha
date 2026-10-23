@@ -73,6 +73,9 @@ public enum EngineError: Error, Equatable {
     /// A copy in the Backups folder couldn't be listed, named, moved or
     /// removed. The engine logs why.
     case backupsFolder
+    /// The file of cards with this name can't be imported, for the reason
+    /// the problem gives, so nothing was read from it.
+    case unreadableFile(String, CardsFileProblem)
 }
 
 extension EngineError: LocalizedError {
@@ -181,6 +184,53 @@ extension EngineError: LocalizedError {
                 localized: """
                     Ficha couldn't read or change its Backups folder. Check that the disk has room and try again, \
                     and if it keeps happening, report it.
+                    """
+            )
+        case .unreadableFile(let name, let problem):
+            problem.message(forFileNamed: name)
+        }
+    }
+}
+
+extension CardsFileProblem {
+    /// What happened to the file named `name`, and what to do about it.
+    fileprivate func message(forFileNamed name: String) -> String {
+        switch self {
+        case .cannotOpen:
+            String(localized: "Ficha couldn't open “\(name)”. Check that the file is still there, and try again.")
+        case .notUTF8:
+            String(
+                localized: """
+                    “\(name)” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a \
+                    spreadsheet as “CSV UTF-8”, and import that.
+                    """
+            )
+        case .unknownSeparator(let separator):
+            String(
+                localized: """
+                    The #separator line of “\(name)” says “\(separator)”, which Ficha can't separate columns by. Make \
+                    it Tab, Comma or Semicolon, or remove it.
+                    """
+            )
+        case .unknownHTML(let value):
+            String(
+                localized: """
+                    The #html line of “\(name)” says “\(value)”: make it true when the file holds HTML, or false when \
+                    it doesn't.
+                    """
+            )
+        case .unknownColumnNumber(let header, let value):
+            String(
+                localized: """
+                    The #\(header) line of “\(name)” says “\(value)”, which isn't a column's number. Make it the \
+                    number of the column, counting the first one as 1.
+                    """
+            )
+        case .missingColumn(let column):
+            String(
+                localized: """
+                    The #columns line of “\(name)” names no \(column.rawValue) column, which every card needs. Name \
+                    its columns Front, Back, Tags, Type and Source, or remove the line.
                     """
             )
         }

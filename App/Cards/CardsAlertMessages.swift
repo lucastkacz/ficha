@@ -21,7 +21,8 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardSetAside, .notOneEmoji, .cannotUndo,
-            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder:
+            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder,
+            .unreadableFile:
             localizedDescription
         }
     }
@@ -39,7 +40,7 @@ extension EngineError {
         case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
             .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
-            .copyMigratedByNewerVersion, .backupsFolder:
+            .copyMigratedByNewerVersion, .backupsFolder, .unreadableFile:
             localizedDescription
         }
     }

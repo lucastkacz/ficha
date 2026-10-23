@@ -19,6 +19,9 @@ import FichaData
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
     case cards
+    /// The Cards window with its Import sheet showing the preview of a file,
+    /// which the tool can't choose in the open panel.
+    case cardsImport = "cards-import"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -124,7 +127,8 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
-      <window>   cards, backups (Settings, on its Backups tab) or backups-failed (once a backup failed)
+      <window>   cards, cards-import (its Import sheet, previewing a file), backups (Settings, on its Backups tab)
+                 or backups-failed (once a backup failed)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -313,6 +317,41 @@ func backupsEngine() throws -> Engine {
     return engine
 }
 
+/// The Cards window's state partway through an import, as the Import sheet
+/// shows it once the user chose a file: the preview of a text file the tool
+/// writes in its scratch home, with words from other languages as someone
+/// might type them in a spreadsheet, two of which the sample cards have, and
+/// three lines that can't be read. The file goes once it's read.
+func importingState(of model: AppModel) throws -> CardsWindowState {
+    let file = URL.documentsDirectory.appending(path: "Palabras del mundo.txt")
+    let lines = [
+        "#separator:tab",
+        "#html:false",
+        "#columns:Front\tBack\tTags\tType\tSource",
+        "hygge\tPalabra danesa: el bienestar de un rato cálido y sencillo con gente querida.\tdanés\tword\t",
+        "wabi-sabi\tIdea japonesa: la belleza de lo imperfecto, lo pasajero y lo incompleto.\tjaponés\tconcept\t",
+        "lagom\tPalabra sueca: ni mucho ni poco, lo justo.\tsueco\tword\t",
+        "sisu",
+        "ubuntu\tPalabra zulú: soy porque somos.\tzulú\tword\tDesmond Tutu",
+        "Fernweh\tPalabra alemana: las ganas de estar lejos, en lugares que no conocés.\talemán\tword\t",
+        "Kummerspeck\tPalabra alemana: los kilos que se ganan comiendo por tristeza.\talemán\tsustantivo\t",
+        "tsundoku\tPalabra japonesa: comprar libros y dejarlos apilados sin leer.\tjaponés\tword\t",
+        "\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
+        "mamihlapinatapai\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
+    ]
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(lines.joined(separator: "\n").utf8).write(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    state.startImport()
+    state.previewImport(of: file)
+    guard state.importing?.preview != nil else {
+        throw RenderError(
+            description: "The sample file to import has no preview: \(String(describing: state.importing))")
+    }
+    return state
+}
+
 /// A span of whole hours, in seconds.
 func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
@@ -322,7 +361,7 @@ func hours(_ count: Int) -> TimeInterval {
 /// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cards, .cardsImport: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .backups: return AppModel(engine: try backupsEngine())
     case .backupsFailed:
         let model = AppModel(engine: try backupsEngine())
@@ -337,11 +376,15 @@ func model(for name: Window) throws -> AppModel {
 
 /// The app's window for `name`, closed, with its content, at the size it
 /// opens at.
-func window(_ name: Window, model: AppModel) -> NSWindow {
+func window(_ name: Window, model: AppModel) throws -> NSWindow {
     switch name {
     case .cards:
         let window = CardsWindow(model: model)
         window.makeContent()
+        return window
+    case .cardsImport:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try importingState(of: model))
         return window
     case .backups, .backupsFailed:
         let window = AppWindow(
@@ -681,7 +724,7 @@ do {
     // tool ends.
     defer { try? FileManager.default.removeItem(at: renderDataFolder) }
     let model = try model(for: name)
-    let window = window(name, model: model)
+    let window = try window(name, model: model)
     window.level = belowDesktop
     window.ignoresMouseEvents = true
     try actAsKey(window, isMain: true)

@@ -8,7 +8,7 @@ import Foundation
 /// the same way each time: its type, if it has one, its front and back, and
 /// its tags and source, without surrounding spaces or line breaks. A tag or
 /// source left blank is no tag or source.
-public struct CardContent: Sendable {
+public struct CardContent: Sendable, Equatable {
     /// Its type, or nil when it has none.
     public let type: CardType?
     public let front: String

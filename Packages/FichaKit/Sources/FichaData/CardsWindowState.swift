@@ -12,7 +12,8 @@ import Foundation
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, as it sets a tag aside or gives it a color
 /// from the tag's context menu, it asks which emoji the tag gets, and it
-/// records what couldn't be saved, for the window to say.
+/// records what couldn't be saved, for the window to say. It also runs the
+/// Import sheet, from a file's preview to what the import did.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, or the
     /// inbox.
@@ -186,7 +187,10 @@ public struct CardsWindowState: Sendable {
     public private(set) var question: Question?
     /// What Lucas did that couldn't be saved, while the window says so.
     public private(set) var failure: Failure?
-    private let engine: Engine
+    /// The Import sheet, while it's open, which `CardsWindowImport.swift`
+    /// runs.
+    public internal(set) var importing: Importing?
+    let engine: Engine
 
     init(engine: Engine, ladder: Ladder) {
         self.engine = engine

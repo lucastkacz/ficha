@@ -9,8 +9,8 @@ extension Engine {
         dataFolder.map(folderOfBackups(in:))
     }
 
-    /// Every copy in the Backups folder, newest first: the backups, the copies
-    /// before an update and the copies before a restore.
+    /// Every copy in the Backups folder, newest first: the backups, and the
+    /// copies before an update, a restore or an import.
     public func copies() throws(EngineError) -> [DatabaseCopy] {
         guard let backupsFolder else {
             return []
