@@ -27,7 +27,7 @@ struct UndoTests {
         time.advance(by: hours(1))
         let standing = try engine.standing(of: ubuntu.id, on: settings.ladder)
         let log = try engine.reviewLog()
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
 
         try panel.undo()
@@ -40,7 +40,7 @@ struct UndoTests {
     @Test("undoing a flag takes the card out of the inbox, back to the reviews, and the panel shows it again")
     func undoingAFlagTakesTheCardOutOfTheInbox() throws {
         let cards = try dueCards("ubuntu", "petricor")
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.flag(note: note("Falta un ejemplo"))
 
         try panel.undo()
@@ -53,7 +53,7 @@ struct UndoTests {
     @Test("undoing a bury brings the card back to the reviews, and the panel shows it again")
     func undoingABuryBringsTheCardBack() throws {
         let cards = try dueCards("ubuntu", "petricor")
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.bury()
 
         try panel.undo()
@@ -67,7 +67,7 @@ struct UndoTests {
     func undoGoesBackOneCardAtATime() throws {
         let cards = try dueCards("ubuntu", "petricor", "serendipia")
         let standing = try engine.standing(of: cards[0].id, on: settings.ladder)
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(!panel.canUndo)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         try panel.bury()
@@ -88,7 +88,7 @@ struct UndoTests {
     @Test("⌘Z shows the last card again as Lucas left it, its back showing or not, with its time going on")
     func undoShowsTheCardAsLucasLeftIt() throws {
         let cards = try dueCards("ubuntu", "petricor", "serendipia")
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
         clock.advance(by: .seconds(4))
         panel.flip()
         panel.rate(.good)
@@ -110,7 +110,7 @@ struct UndoTests {
     @Test("once the panel closed, nothing is left to undo")
     func nothingIsLeftToUndoOnceThePanelClosed() throws {
         let cards = try dueCards("ubuntu", "petricor")
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         panel.close(.byLucas)
 
@@ -125,10 +125,12 @@ struct UndoTests {
     @Test("⌘Z doesn't undo a flag or a bury that changed outside the panel, and says so")
     func undoRefusesWhatChangedOutsideThePanel() throws {
         let cards = try dueCards("ubuntu", "petricor", "serendipia")
-        var flagging = engine.openPanel(.reviewNow, with: [.review(cards[0]), .review(cards[2])], settings: settings)
+        var flagging = try engine.openPanel(
+            .reviewNow, with: [.review(cards[0]), .review(cards[2])], settings: settings)
         try flagging.flag(note: note("Falta un ejemplo"))
         try engine.fix(cards[0].id, with: card(.word, front: "ubuntu", back: "Soy porque somos."))
-        var burying = engine.openPanel(.reviewNow, with: [.review(cards[1]), .review(cards[2])], settings: settings)
+        var burying = try engine.openPanel(
+            .reviewNow, with: [.review(cards[1]), .review(cards[2])], settings: settings)
         try burying.bury()
         try engine.unbury(cards[1].id)
 

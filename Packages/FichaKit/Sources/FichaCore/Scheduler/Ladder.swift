@@ -60,13 +60,10 @@ public struct Ladder: Sendable, Equatable {
         return .onLadder(step: step, due: waitingSince.adding(waits[step]))
     }
 
-    /// How many cards are due at `now`, and how many are learned: on a step
-    /// that waits 30 days or more. Out of the cards with these ids, and the
-    /// whole review log, in the order it was written.
-    public func counts(of cardIDs: [Int64], after log: [ReviewLogEntry], at now: Date) throws(UnexpectedReviewLog)
-        -> (due: Int, learned: Int)
-    {
-        let standings = try standings(of: cardIDs, after: log).map(\.standing)
+    /// How many of `cards` are due at `now`, and how many are learned: on a
+    /// step that waits 30 days or more.
+    public func counts(of cards: CardsInReviews, at now: Date) throws(UnexpectedReviewLog) -> (due: Int, learned: Int) {
+        let standings = try cards.standings(on: self).map(\.standing)
         return (standings.count { $0.isDue(at: now) }, standings.count(where: isLearned))
     }
 

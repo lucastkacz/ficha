@@ -4,7 +4,7 @@ internal import GRDB
 
 /// One small thing Lucas wants to remember, with a front and a back, as the
 /// engine saved it when he approved it. The `ficha` CLI prints it as JSON,
-/// without the source, flag or burial it doesn't have.
+/// without the source, flag, burial or set-aside tags it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     public let type: CardType
@@ -22,17 +22,22 @@ public struct Card: Sendable, Equatable, Encodable {
     /// When Lucas buried it, while it's buried. Where the card stands is read
     /// from `standing`, never from this.
     public let buriedAt: Date?
+    /// Its tags that are set aside, in alphabetical order, flagged or buried
+    /// or not, or nil when none is. Where the card stands is read from
+    /// `standing`, never from this.
+    public let setAsideBy: [String]?
 
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, or buried.
+    /// fixed, buried, or set aside with one of its tags.
     public var standing: CardStanding {
-        CardStanding(flag: flag, buriedAt: buriedAt)
+        CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }
 }
 
 extension Card {
-    /// A card read from a row of the `card` table, whose tags are a JSON array.
-    init(row: Row) throws {
+    /// A card read from a row of the `card` table, whose tags are a JSON
+    /// array, when the tags in `setAsideTags` are set aside.
+    init(row: Row, setAsideTags: Set<String>) throws {
         id = try row.decode(forColumn: "id")
         let typeName: String = try row.decode(forColumn: "type")
         guard let type = CardType(rawValue: typeName) else {
@@ -55,12 +60,21 @@ extension Card {
             throw unreadable("Card \(id) has a flag without its note or its time")
         }
         buriedAt = try row.decode(forColumn: "buriedAt")
+        let setAside = CardStanding.setAsideTags(of: tags, among: setAsideTags)
+        setAsideBy = setAside.isEmpty ? nil : setAside
     }
+}
+
+/// The cards in `rows` of the `card` table, as they are now, each knowing
+/// which of its tags are set aside.
+func cards(in rows: [Row], in db: Database) throws -> [Card] {
+    let setAside = try setAsideTags(in: db)
+    return try rows.map { try Card(row: $0, setAsideTags: setAside) }
 }
 
 /// Every card, in the order Lucas approved them.
 func allCards(in db: Database) throws -> [Card] {
-    try Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id").map(Card.init(row:))
+    try cards(in: Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id"), in: db)
 }
 
 /// The card with this id, as it is now, or an error when there's none.
@@ -68,7 +82,7 @@ func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
     guard let row = try Table("card").filter(Column("id") == cardID).fetchOne(db) else {
         throw EngineError.cardNotFound(cardID)
     }
-    return try Card(row: row)
+    return try Card(row: row, setAsideTags: setAsideTags(in: db))
 }
 
 /// Sets some of a card's columns, as `assignments` say, to `values` in

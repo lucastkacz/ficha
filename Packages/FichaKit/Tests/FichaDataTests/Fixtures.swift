@@ -74,8 +74,8 @@ extension Engine {
     /// Opens the review panel with `cards` on a clock that never moves, for a
     /// test that doesn't time Lucas: it answers with a response time of its
     /// own.
-    func openPanel(_ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings) -> ReviewPanelState {
-        openPanel(trigger, with: cards, settings: settings, clock: ManualClock())
+    func openPanel(_ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings) throws -> ReviewPanelState {
+        try openPanel(trigger, with: cards, settings: settings, clock: ManualClock())
     }
 }
 

@@ -4,8 +4,8 @@ import Foundation
 import Testing
 
 /// Tests on the review panel while it's open: how it closes, when an
-/// appearance's panel takes the keyboard, and how long Lucas takes on a card,
-/// with the default settings. Left untouched for 10 minutes, the panel closes
+/// appearance's panel takes the keyboard, how long Lucas takes on a card,
+/// and the tags each card comes with, with the default settings. Left untouched for 10 minutes, the panel closes
 /// on its own, and an appearance's panel takes the keyboard once Lucas has
 /// been idle for 5 seconds.
 struct ReviewPanelTests {
@@ -25,7 +25,7 @@ struct ReviewPanelTests {
     @Test("a panel left untouched for 10 minutes closes on its own, which counts as a snooze")
     func anUntouchedPanelClosesOnItsOwn() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
 
         time.advance(by: minutes(10) - 1)
         panel.closeIfUntouched()
@@ -41,7 +41,7 @@ struct ReviewPanelTests {
     @Test("doing something in the panel keeps it open for another 10 minutes")
     func touchingThePanelKeepsItOpen() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
 
         time.advance(by: minutes(5))
         panel.touch()
@@ -59,7 +59,7 @@ struct ReviewPanelTests {
     func thePanelStaysOpenOnceEveryCardIsAnswered() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let start = time.now
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         time.advance(by: 8)
 
         try panel.answer(.firstView, responseTime: .seconds(8))
@@ -85,7 +85,7 @@ struct ReviewPanelTests {
         try engine.meet(ubuntu)
         try engine.meet(petricor)
         time.advance(by: hours(1))
-        var panel = engine.openPanel(.appearance, with: [.review(ubuntu), .review(petricor)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.review(ubuntu), .review(petricor)], settings: settings)
 
         try panel.answer(.review(.good), responseTime: .seconds(3))
         panel.close(.byLucas)
@@ -98,7 +98,7 @@ struct ReviewPanelTests {
     @Test("an appearance's panel takes the keyboard once Lucas has been idle for 5 seconds, and only once")
     func anAppearanceTakesTheKeyboardOnceIdle() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
         #expect(!panel.mayHaveKeyboard)
 
         let takesItBeforeFiveSeconds = panel.takesKeyboard(on: FakeMac(idleTime: .milliseconds(4_999)))
@@ -115,7 +115,7 @@ struct ReviewPanelTests {
     @Test("an appearance's panel doesn't take the keyboard when the Mac doesn't say how long Lucas has been idle")
     func anAppearanceWaitsForTheIdleTime() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
 
         let takesIt = panel.takesKeyboard(on: FakeMac(idleTime: nil))
 
@@ -126,7 +126,7 @@ struct ReviewPanelTests {
     @Test("once Lucas clicks an appearance's panel, it has the keyboard and doesn't take it again on its own")
     func clickingThePanelGivesItTheKeyboard() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
 
         panel.clicked()
         let takesItOnItsOwn = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(60)))
@@ -139,7 +139,7 @@ struct ReviewPanelTests {
     func reviewNowHasTheKeyboard() throws {
         try approveCard("serendipia", in: engine)
 
-        let panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         #expect(panel.mayHaveKeyboard)
     }
@@ -151,7 +151,7 @@ struct ReviewPanelTests {
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.meet(ubuntu)
         time.advance(by: hours(1))
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
 
         clock.advance(by: .seconds(3))
         panel.startFlagging()
@@ -169,7 +169,7 @@ struct ReviewPanelTests {
     @Test("burying a card that was deleted meanwhile leaves the panel on it, and records that the bury failed")
     func aFailedBuryLeavesTheCard() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
         try engine.delete([serendipia.id])
 
         panel.buryCard()
@@ -181,12 +181,111 @@ struct ReviewPanelTests {
         #expect(panel.failure == nil)
     }
 
+    // The Cards window can set aside the tag of the card the panel shows, as
+    // it can bury the card.
+    @Test("answering a card whose tag was set aside after the panel opened fails as answering a buried one does")
+    func answeringACardSetAsideMeanwhileFailsAsABuriedOneDoes() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approve(
+            card(.word, front: "ubuntu", back: "Humanidad hacia los otros.", tags: ["filosofía"]), in: engine)
+        var buriedPanel = try engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
+        var setAsidePanel = try engine.openPanel(.reviewNow, with: [.firstView(ubuntu)], settings: settings)
+        try engine.bury(serendipia.id)
+        try engine.setAside("filosofía")
+
+        buriedPanel.endFirstView()
+        setAsidePanel.endFirstView()
+
+        #expect(buriedPanel.failure?.action == .answer)
+        #expect(buriedPanel.failure?.error == .cardBuried(serendipia.id))
+        #expect(setAsidePanel.failure?.action == .answer)
+        #expect(setAsidePanel.failure?.error == .cardSetAside(ubuntu.id, tags: ["filosofía"]))
+        #expect(buriedPanel.content == .firstView(serendipia))
+        #expect(setAsidePanel.content == .firstView(ubuntu))
+        #expect(try engine.reviewLog().isEmpty)
+    }
+
+    // Subjects come mixed (ADR 0011): "Poder" isn't answered the same way
+    // under "derecho" as under "física".
+    @Test("a new card comes with its tags, in its order, each with its color and emoji")
+    func aNewCardComesWithItsTags() throws {
+        let mayo = try approve(
+            card(
+                .concept, front: "Revolución de Mayo", back: "25 de mayo de 1810.",
+                tags: ["historia", "argentina", "lenguaje"]),
+            in: engine)
+        try engine.setColor(.blue, of: "argentina")
+        try engine.setEmoji(TagEmoji("🇦🇷"), of: "argentina")
+        try engine.setColor(.green, of: "historia")
+
+        let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        #expect(panel.content == .firstView(mayo))
+        #expect(
+            panel.tags == [
+                CardTag(name: "historia", color: .green),
+                CardTag(name: "argentina", color: .blue, emoji: "🇦🇷"),
+                CardTag(name: "lenguaje"),
+            ])
+    }
+
+    @Test("a review and a review ahead come with their tags, each with its color and emoji")
+    func aReviewAndAReviewAheadComeWithTheirTags() throws {
+        let constituyente = try approve(
+            card(.concept, front: "Poder constituyente", back: "El que crea la constitución.", tags: ["derecho"]),
+            in: engine)
+        let poder = try approve(
+            card(.concept, front: "Poder", back: "Trabajo por unidad de tiempo.", tags: ["física", "ciencia"]),
+            in: engine)
+        try engine.climb(constituyente, to: 2, movingForward: time)
+        try engine.meet(poder)
+        time.advance(by: hours(1))
+        try engine.setEmoji(TagEmoji("⚖️"), of: "derecho")
+        try engine.setColor(.orange, of: "física")
+        // Now "Poder" is due, and "Poder constituyente", on the third step, is
+        // the closest to being due, for a review ahead.
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        #expect(panel.content == .front(poder, isAhead: false))
+        #expect(panel.tags == [CardTag(name: "física", color: .orange), CardTag(name: "ciencia")])
+
+        try panel.answer(.review(.good), responseTime: .seconds(3))
+        panel.seeMore()
+
+        #expect(panel.content == .front(constituyente, isAhead: true))
+        #expect(panel.tags == [CardTag(name: "derecho", emoji: "⚖️")])
+    }
+
+    @Test("a card with no tags comes with none")
+    func aCardWithNoTagsComesWithNone() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setColor(.green, of: "ciencia")
+
+        let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        #expect(panel.content == .firstView(serendipia))
+        #expect(panel.tags.isEmpty)
+    }
+
+    // So the card Lucas is on doesn't change under him.
+    @Test("a tag's color or emoji changed while the panel is open shows from the next panel on")
+    func aTagChangedWhileThePanelIsOpenShowsFromTheNextPanelOn() throws {
+        try approve(card(.concept, front: "fotosíntesis", back: "Luz en azúcar.", tags: ["ciencia"]), in: engine)
+        let open = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        try engine.setColor(.green, of: "ciencia")
+        try engine.setEmoji(TagEmoji("🔬"), of: "ciencia")
+        let next = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        #expect(open.tags == [CardTag(name: "ciencia")])
+        #expect(next.tags == [CardTag(name: "ciencia", color: .green, emoji: "🔬")])
+    }
+
     // Ficha Dev's debug menu moves the engine's time forward, as this test's
     // time does.
     @Test("Ficha Dev moving the time doesn't change how long Lucas took on a card")
     func movingTheTimeLeavesTheResponseTime() throws {
         try approveCard("serendipia", in: engine)
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: clock)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
 
         clock.advance(by: .seconds(8))
         time.advance(by: hours(3))
@@ -199,7 +298,7 @@ struct ReviewPanelTests {
     // after.
     @Test("an empty review now isn't logged, so it doesn't hold the next appearance back")
     func anEmptyReviewNowIsNotLogged() throws {
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         time.advance(by: minutes(1))
 
         panel.close(.byLucas)

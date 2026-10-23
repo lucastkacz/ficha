@@ -1,8 +1,9 @@
 import Foundation
 
 /// Where a card stands: in Lucas's reviews, waiting in the inbox to be fixed,
-/// or buried. Out of his reviews, it keeps its `LadderStanding`, so it comes
-/// back on its step when it's fixed or unburied.
+/// buried, or set aside with one of its tags. Out of his reviews, it keeps
+/// its `LadderStanding`, so it comes back on its step when it's fixed,
+/// unburied, or its tags are no longer set aside.
 public enum CardStanding: Sendable, Equatable {
     /// In Lucas's reviews: new, or on a ladder step until it's due.
     case inReviews
@@ -12,19 +13,36 @@ public enum CardStanding: Sendable, Equatable {
     /// inbox. With the flag it had, if any, since unburying it brings it back
     /// to the inbox.
     case buried(at: Date, flag: Flag?)
+    /// Set aside by these tags of the card, in alphabetical order: out of
+    /// Lucas's reviews for now, while one of them is set aside (ADR 0011).
+    case setAside(by: [String])
 }
 
 extension CardStanding {
-    /// Where a card with this flag and burial date stands. A burial wins over
-    /// a flag: a flagged card Lucas buries leaves the inbox.
-    public init(flag: Flag?, buriedAt: Date?) {
+    /// Where a card with this flag, burial date and set-aside tags, as
+    /// `setAsideTags(of:among:)` picks them, stands, the first of these that
+    /// holds: buried, waiting in the inbox, set aside, or in Lucas's reviews.
+    /// A burial wins over a flag: a flagged card Lucas buries leaves the
+    /// inbox. Both win over set aside, which never hides a card Lucas needs to
+    /// fix or brings back one he buried.
+    public init(flag: Flag?, buriedAt: Date?, setAsideBy setAsideTags: [String]) {
         if let buriedAt {
             self = .buried(at: buriedAt, flag: flag)
         } else if let flag {
             self = .inInbox(flag)
+        } else if !setAsideTags.isEmpty {
+            self = .setAside(by: setAsideTags)
         } else {
             self = .inReviews
         }
+    }
+
+    /// Which of a card's `tags` are set aside while the tags in
+    /// `setAsideTags` are, in alphabetical order as the Mac sorts text,
+    /// whether the card is buried, flagged or neither: when it's neither,
+    /// they set it aside.
+    public static func setAsideTags(of tags: [String], among setAsideTags: Set<String>) -> [String] {
+        tags.filter(setAsideTags.contains).sortedAlphabetically()
     }
 }
 

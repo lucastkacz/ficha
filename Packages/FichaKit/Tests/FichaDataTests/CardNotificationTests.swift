@@ -64,6 +64,27 @@ struct CardNotificationTests {
         #expect(next == .review(schadenfreude))
     }
 
+    @Test("a card notification's next card is never a flagged or a buried one")
+    func theNextCardIsNeverFlaggedOrBuried() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        let petricor = try meetCard("petricor", dueAt: try at(10, 0))
+        let schadenfreude = try meetCard("Schadenfreude", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+        // In the app, before he answers the first card notification.
+        try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
+        try engine.bury(petricor.id)
+
+        time.move(to: try at(10, 2))
+        let next = try engine.answerFromNotification(.review(.hard), of: ubuntu.id, in: appearance, settings: settings)
+        let last = try engine.answerFromNotification(
+            .review(.good), of: schadenfreude.id, in: appearance, settings: settings)
+
+        #expect(next == .review(schadenfreude))
+        #expect(last == nil)
+    }
+
     // A card notification carries its card with its appearance, so only a
     // mistake could mix them up, and it would log a card that never showed.
     @Test("an answer to a card its appearance didn't bring is refused, and neither log changes")

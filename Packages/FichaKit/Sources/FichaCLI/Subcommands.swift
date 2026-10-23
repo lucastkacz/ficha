@@ -96,7 +96,10 @@ struct UnburyCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "unbury",
         abstract: "Unbury a card: put it back in your reviews, on its step, and print the card.",
-        discussion: "A card that was flagged when it was buried goes back to the inbox instead, with its note."
+        discussion: """
+            A card that was flagged when it was buried goes back to the inbox instead, with its note, and one with \
+            a set-aside tag stays set aside.
+            """
     )
 
     @Argument(help: "The buried card's id, as `ficha cards` shows it.")
@@ -113,8 +116,8 @@ struct CardsCommand: EngineCommand {
         commandName: "cards",
         abstract: "List your cards, in the order you approved them.",
         discussion: """
-            A flagged card has your note on what to fix in "flag", and a buried one says when you buried it in \
-            "buriedAt".
+            A flagged card has your note on what to fix in "flag", a buried one says when you buried it in \
+            "buriedAt", and one with tags you set aside in the Cards window lists them in "setAsideBy".
             """
     )
 

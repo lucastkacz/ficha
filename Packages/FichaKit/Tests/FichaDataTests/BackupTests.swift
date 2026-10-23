@@ -259,6 +259,25 @@ final class BackupTests {
         #expect(try engine.copies().count == 3)
     }
 
+    @Test("a copy from before tags of their own restores with every card where it stood, and no tag set aside")
+    func copyFromBeforeTagsRestoresWithNoTagSetAside() throws {
+        let engine = try openEngine()
+        try engine.setAside("filosofía")
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeTags(at: backups.appending(path: name), at: time.now)
+
+        try engine.restore(name)
+
+        #expect(
+            try engine.cards().map(\.standing) == [
+                .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
+                .buried(at: time.now, flag: nil),
+            ])
+        #expect(try engine.sidebarTags().filter(\.isSetAside).isEmpty)
+    }
+
     @Test("a copy that isn't in the Backups folder can't be restored")
     func missingCopyIsRefused() throws {
         let engine = try openEngine()

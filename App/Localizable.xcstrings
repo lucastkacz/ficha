@@ -178,6 +178,9 @@
         }
       }
     },
+    "+%lld" : {
+      "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
+    },
     "A book, a podcast…" : {
       "comment" : "In the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
     },
@@ -277,6 +280,9 @@
     "Before an update" : {
       "comment" : "Settings, under Backups: a copy's kind, saved before a new version changed the database."
     },
+    "Blue" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
+    },
     "Bring along cards due within" : {
       "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
     },
@@ -343,6 +349,9 @@
     "Closed on its own" : {
       "comment" : "How an appearance closed, in Diagnostics."
     },
+    "Color" : {
+      "comment" : "A submenu of a tag's menu in the Cards window's sidebar: the tag's color."
+    },
     "Concept" : {
       "comment" : "A card type."
     },
@@ -373,6 +382,15 @@
       }
     },
     "Couldn't bury the card" : {
+
+    },
+    "Couldn't change the color of “%@”" : {
+      "comment" : "An alert's title in the Cards window, after a color in a tag's menu, with the tag."
+    },
+    "Couldn't change the emoji of “%@”" : {
+      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the tag."
+    },
+    "Couldn't change the priority tags" : {
 
     },
     "Couldn't change whether %@ starts at login" : {
@@ -442,6 +460,9 @@
         }
       }
     },
+    "Couldn't read your tags" : {
+
+    },
     "Couldn't restore the copy" : {
       "comment" : "An alert's title in Settings' Backups tab."
     },
@@ -453,6 +474,9 @@
     },
     "Couldn't save your answer" : {
 
+    },
+    "Couldn't set “%@” aside" : {
+      "comment" : "An alert's title in the Cards window, after Set Aside in a tag's menu, with the tag."
     },
     "Couldn't turn on the capture shortcut" : {
 
@@ -482,6 +506,9 @@
     },
     "Couldn't undo" : {
 
+    },
+    "Couldn't untick Set Aside on “%@”" : {
+      "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
     },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
@@ -553,6 +580,21 @@
     },
     "Edit (⌘L)" : {
       "comment" : "The tooltip of the Cards window's button that edits the card or the capture."
+    },
+    "Emoji" : {
+      "comment" : "The field of the sheet that gives a tag an emoji."
+    },
+    "Emoji & Symbols" : {
+      "comment" : "A button beside the emoji field: it opens the Mac's emoji picker."
+    },
+    "Emoji & Symbols (⌃⌘Space)" : {
+      "comment" : "The tooltip of the button beside the emoji field that opens the Mac's emoji picker."
+    },
+    "Emoji for “%@”" : {
+      "comment" : "The title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
+    },
+    "Emoji…" : {
+      "comment" : "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's emoji."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -635,6 +677,12 @@
     "Got it" : {
 
     },
+    "Gray" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "Green" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
+    },
     "Held back by a full-screen app" : {
       "comment" : "In Diagnostics: the app in front was in full screen."
     },
@@ -697,6 +745,9 @@
     },
     "It leaves the inbox without becoming cards, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it discards a capture."
+    },
+    "It shows before the tag's name. Leave the field empty for none." : {
+      "comment" : "Under the title of the Cards window's sheet that gives a tag an emoji."
     },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
@@ -843,6 +894,9 @@
     "No words" : {
       "comment" : "In the Cards window: no word card that isn't buried."
     },
+    "None" : {
+      "comment" : "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.\nThe empty field of the sheet that gives a tag an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
+    },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
     },
@@ -905,8 +959,20 @@
     "Open Login Items" : {
 
     },
+    "Orange" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "Prioritize" : {
+      "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked."
+    },
+    "Prioritize: %@" : {
+      "comment" : "The Prioritize submenu's title while some tags are priority tags, which it lists by name."
+    },
     "Process %d" : {
       "comment" : "A process with no name, by its id, in Diagnostics: a noun."
+    },
+    "Purple" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Question" : {
       "comment" : "A card type."
@@ -925,6 +991,9 @@
     },
     "Record Shortcut" : {
       "comment" : "Settings: the capture shortcut's button, while there's none."
+    },
+    "Red" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Remove Step %lld" : {
       "comment" : "Settings: removes a step of the ladder."
@@ -976,6 +1045,18 @@
     },
     "Separate tags with commas." : {
       "comment" : "In the Cards window, under a card's tags, while Lucas edits it."
+    },
+    "set aside" : {
+      "comment" : "In the Cards window's Due column: the card won't show up, since one of its tags is set aside. Lowercase, like “now”."
+    },
+    "Set aside" : {
+      "comment" : "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."
+    },
+    "Set Aside" : {
+      "comment" : "An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
+    },
+    "Set aside with %@" : {
+      "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it are set aside, like “Set aside with filosofía and historia”."
     },
     "Settings…" : {
 
@@ -1113,6 +1194,9 @@
     },
     "Words" : {
       "comment" : "An item of the Cards window's sidebar: the word cards."
+    },
+    "Yellow" : {
+      "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "You went through every card." : {
 

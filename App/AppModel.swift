@@ -43,6 +43,9 @@ final class AppModel {
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
     private(set) var progress: ProgressCounts?
+    /// What the menu's Prioritize submenu offers, as the engine reads it, or
+    /// nil when it couldn't be read (the engine logs why).
+    private(set) var prioritizeMenu: PrioritizeMenu?
 
     /// The real Ficha's way into Lucas's cards, through `engine`.
     convenience init(engine: Engine) {
@@ -61,10 +64,12 @@ final class AppModel {
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
         countProgress()
+        readPrioritizeMenu()
         Task { [weak self] in
             for await _ in changes {
                 guard let self else { return }
                 countProgress()
+                readPrioritizeMenu()
             }
         }
         // Cards come due as time passes, without the database changing.
@@ -100,8 +105,8 @@ final class AppModel {
     func startReviewNow() -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
             ReviewPanelModel(
-                engine.openPanel(
-                    .reviewNow, with: try engine.reviewNow(settings), settings: settings, clock: ContinuousClock()))
+                try engine.openPanel(
+                    .reviewNow, with: engine.reviewNow(settings), settings: settings, clock: ContinuousClock()))
         }
     }
 
@@ -119,9 +124,12 @@ final class AppModel {
     }
 
     /// Starts an appearance with the cards the engine picked, for the review
-    /// panel to go through.
-    func startAppearance(with cards: [PanelCard]) -> ReviewPanelModel {
-        ReviewPanelModel(engine.openPanel(.appearance, with: cards, settings: settings, clock: ContinuousClock()))
+    /// panel to go through, or why the panel couldn't open them.
+    func startAppearance(with cards: [PanelCard]) -> Result<ReviewPanelModel, EngineError> {
+        Result { () throws(EngineError) in
+            ReviewPanelModel(
+                try engine.openPanel(.appearance, with: cards, settings: settings, clock: ContinuousClock()))
+        }
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder
@@ -165,5 +173,24 @@ final class AppModel {
     /// debug menu asks for it when it moves the time.
     func countProgress() {
         progress = try? engine.progress(settings)
+    }
+
+    /// Toggles `tag`'s priority, as the Prioritize submenu does: its cards
+    /// come first, or no longer do, from the next appearance, review now or
+    /// "See more" on. An open review panel keeps its cards. The submenu reads
+    /// the tags again when the engine says the database changed.
+    func togglePriority(of tag: String) throws(EngineError) {
+        try engine.togglePriority(of: tag)
+    }
+
+    /// Makes no tag a priority tag, as the Prioritize submenu's "None" does.
+    func clearPriorityTags() throws(EngineError) {
+        try engine.clearPriorityTags()
+    }
+
+    /// Reads again what the Prioritize submenu offers, whenever the database
+    /// changes.
+    private func readPrioritizeMenu() {
+        prioritizeMenu = try? engine.prioritizeMenu()
     }
 }

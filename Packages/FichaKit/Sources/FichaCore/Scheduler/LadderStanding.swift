@@ -1,9 +1,9 @@
 import Foundation
 
 /// Where a card stands on the ladder: new until its first view, and on a step
-/// from then on, as its review log says. A flagged or buried card keeps it, so
-/// it comes back on its step; `CardStanding` says whether the card is in
-/// Lucas's reviews.
+/// from then on, as its review log says. A flagged, buried or set-aside card
+/// keeps it, so it comes back on its step; `CardStanding` says whether the
+/// card is in Lucas's reviews.
 public enum LadderStanding: Sendable, Equatable {
     /// It hasn't had its first view yet.
     case new

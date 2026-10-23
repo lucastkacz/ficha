@@ -111,7 +111,9 @@ struct ReviewPanelView: View {
         case .firstView(let card):
             header {
                 VStack(alignment: .leading, spacing: 8) {
-                    newBadge
+                    TagLine(tags: panel.state.tags) {
+                        newBadge
+                    }
                     front(of: card)
                 }
             } buttons: {
@@ -124,7 +126,7 @@ struct ReviewPanelView: View {
             }
         case .front(let card, let isAhead):
             header {
-                front(of: card, isAhead: isAhead)
+                front(of: card, isAhead: isAhead, tags: panel.state.tags)
             } buttons: {
                 cardButtons(of: panel)
                 closeButton(closeByLucas)
@@ -144,7 +146,7 @@ struct ReviewPanelView: View {
             }
         case .back(let card, let isAhead):
             header {
-                front(of: card, isAhead: isAhead)
+                front(of: card, isAhead: isAhead, tags: panel.state.tags)
             } buttons: {
                 cardButtons(of: panel)
                 closeButton(closeByLucas)
@@ -331,11 +333,16 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The card's front, under the badge of a review ahead when it's one.
-    private func front(of card: Card, isAhead: Bool) -> some View {
+    /// The card's front, under the line of the badge of a review ahead, when
+    /// it's one, and the card's tags, when it has some.
+    private func front(of card: Card, isAhead: Bool, tags: [CardTag]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            if isAhead {
-                AheadBadge()
+            if isAhead || !tags.isEmpty {
+                TagLine(tags: tags) {
+                    if isAhead {
+                        AheadBadge()
+                    }
+                }
             }
             front(of: card)
         }
@@ -395,6 +402,57 @@ struct AheadBadge: View {
     }
 }
 
+/// The line at the top of a card in the review panel: its badge, "New" or
+/// "Ahead", when it has one, and then its tags, each as the Cards window's
+/// Tags column draws it, so that Lucas knows which subject the card is about
+/// before he answers it. It's one line, so the panel stays as small as it is:
+/// the tags that don't fit collapse into a "+n" capsule, whose tooltip names
+/// them.
+private struct TagLine<Badge: View>: View {
+    let tags: [CardTag]
+    @ViewBuilder let badge: Badge
+
+    var body: some View {
+        // The first line that fits shows: every tag, then one fewer and
+        // "+1", down to none and "+n".
+        ViewThatFits(in: .horizontal) {
+            ForEach((0...tags.count).reversed(), id: \.self) { shown in
+                HStack(spacing: 4) {
+                    badge
+                    ForEach(tags.prefix(shown), id: \.name) { tag in
+                        TagCapsule(tag: tag)
+                    }
+                    if shown < tags.count {
+                        MoreTagsCapsule(tags: Array(tags.dropFirst(shown)))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The tags that don't fit on a card's line in the review panel, as one
+/// capsule that counts them, gray like a tag without a color, and whose
+/// tooltip names them, one per line, each as its capsule names it.
+private struct MoreTagsCapsule: View {
+    let tags: [CardTag]
+
+    var body: some View {
+        Text(
+            "+\(tags.count)",
+            comment:
+                "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(.secondary.opacity(0.15), in: .capsule)
+        .fixedSize()
+        .help(Text(verbatim: tags.map(\.title).joined(separator: "\n")))
+    }
+}
+
 /// A button's title, followed by the key that does the same, small. The key
 /// shows as it's given: a symbol, a digit, or a key's name, like Space's,
 /// which the caller translates.
@@ -430,8 +488,8 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
-            .cardNotBuried, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion,
-            .backupsFolder:
+            .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
+            .copyMigratedByNewerVersion, .backupsFolder:
             localizedDescription
         }
     }

@@ -43,14 +43,14 @@ extension Engine {
         // would plan forever, and the plan changes no card.
         return try writeWithoutTelling { db in
             try noteUntouchedAppearances(by: now, in: db)
-            let cards = try cardsInReviews(in: db)
+            let cards = try cardsThatShowUp(in: db)
             let planned = try settings.plannedAppearances(
-                cardIDs: cards.map(\.id), log: logEntries(in: db), lastClosing: lastClosing(in: db), from: now,
-                calendar: calendar, upTo: Self.mostUpcomingAppearances)
+                cards: cards.inReviews, lastClosing: lastClosing(in: db), from: now, calendar: calendar,
+                upTo: Self.mostUpcomingAppearances)
             let upcoming = try planned.enumerated().map { number, appearance in
                 UpcomingAppearance(
                     time: number == 0 ? firstTime ?? appearance.time : appearance.time,
-                    cards: try panelCards(appearance.cardIDs, from: cards))
+                    cards: try cards.panelCards(appearance.cardIDs))
             }
             try keep(upcoming, in: db)
             return upcoming

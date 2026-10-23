@@ -46,11 +46,13 @@ risky_paths=(
   'Packages/FichaKit/Package\.resolved'
   # The database schema and its migrations, which all live in FichaData/Schema*.
   'Packages/FichaKit/Sources/FichaData/Schema'
-  # Which cards are in Lucas's reviews, neither flagged nor buried, the only
-  # ones that show up.
+  # The one way in to the cards that show up, those in Lucas's reviews, and
+  # which cards take an answer.
   'Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift'
-  # The scheduler, which moves cards on the ladder, and says where a card
-  # stands: in Lucas's reviews, waiting in the inbox, or buried.
+  # The scheduler, which moves cards on the ladder, says where a card stands:
+  # in Lucas's reviews, waiting in the inbox, buried, or set aside by which of
+  # its tags are, and keeps the cards in his reviews for the planners to pick
+  # from.
   'Packages/FichaKit/Sources/FichaCore/Scheduler/'
   # Which cards review now brings, when the review panel shows up on its own
   # and with which cards, the settings' defaults, and the trigger's names,

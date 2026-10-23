@@ -6,12 +6,16 @@ internal import GRDB
 /// reviews and on his ladder, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
+    /// The card's tags, in its order, each with what it has of its own, as
+    /// the Tags column shows them.
+    public let tags: [CardTag]
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, or buried.
+    /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
     /// Where it stands on the ladder: new, or on a step until it's due,
-    /// worked out from its review log. A flagged or buried card keeps it, and
-    /// `cardStanding` says whether the card is in Lucas's reviews.
+    /// worked out from its review log. A flagged, buried or set-aside card
+    /// keeps it, and `cardStanding` says whether the card is in Lucas's
+    /// reviews.
     public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
@@ -33,10 +37,34 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     }
 
     /// When the card is due, as the Cards window says it: nil while it's new,
-    /// or out of Lucas's reviews, flagged or buried, since it won't show up
-    /// then.
+    /// or out of Lucas's reviews, flagged, buried or set aside, since it
+    /// won't show up then.
     public var due: Date? {
         cardStanding.due(given: standing)
+    }
+
+    /// What the Due column says of the card.
+    public enum DueColumn: Sendable, Equatable {
+        /// When it's due: it's in Lucas's reviews, on the ladder.
+        case due(Date)
+        /// That it's set aside, so it won't show up until none of its tags
+        /// is.
+        case setAside
+        /// Nothing: it's new, flagged or buried, which the Step column and
+        /// the Front column's marks say.
+        case nothing
+    }
+
+    /// What the Due column says of the card: when it's due, or that it's set
+    /// aside, or nothing.
+    public var dueColumn: DueColumn {
+        if case .setAside = cardStanding {
+            .setAside
+        } else if let due {
+            .due(due)
+        } else {
+            .nothing
+        }
     }
 
     /// Whether the card is due at `time`: in Lucas's reviews, with its wait
@@ -71,7 +99,7 @@ public struct ReviewLogRow: Sendable, Equatable {
 /// A group of cards the Cards window's sidebar offers, which the window lists
 /// one at a time.
 public enum CardGroup: Sendable, Hashable {
-    /// Every card that isn't buried.
+    /// Every card that isn't buried, flagged and set-aside ones too.
     case all
     /// The cards in Lucas's reviews that haven't had their first view yet.
     case new
@@ -85,7 +113,7 @@ public enum CardGroup: Sendable, Hashable {
     case flagged
     /// Every buried card, flagged or not.
     case buried
-    /// The cards with this tag that aren't buried.
+    /// The cards with this tag that aren't buried, set-aside ones too.
     case tag(String)
     /// The cards of this type that aren't buried.
     case type(CardType)
@@ -188,15 +216,6 @@ extension Engine {
         }
     }
 
-    /// Every tag of the cards that aren't buried, once each, in alphabetical
-    /// order, as the Cards window's sidebar lists them.
-    public func tags() throws(EngineError) -> [String] {
-        try read { db in
-            Set(try allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags))
-                .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        }
-    }
-
     /// A card's review log as the Cards window shows it under the card,
     /// oldest first: each first view and review, with the step of `ladder`
     /// the card stood on after it. Empty while the card is new.
@@ -230,8 +249,9 @@ private func cardRows(
     in db: Database
 ) throws -> [CardRow] {
     let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
+    let ownTags = try OwnTags(in: db)
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
-        try CardRow(card: card, after: entries[card.id] ?? [], on: ladder)
+        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], on: ladder)
     }
     .filter { group.holds($0, at: now, on: ladder) }
 }
@@ -261,12 +281,12 @@ extension CardGroup {
         case .flagged:
             switch row.cardStanding {
             case .inInbox: true
-            case .inReviews, .buried: false
+            case .inReviews, .buried, .setAside: false
             }
         case .buried:
             switch row.cardStanding {
             case .buried: true
-            case .inReviews, .inInbox: false
+            case .inReviews, .inInbox, .setAside: false
             }
         case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
@@ -276,20 +296,25 @@ extension CardGroup {
 
 extension CardStanding {
     /// Whether All cards holds a card standing here, as each tag and type do
-    /// for theirs: unless it's buried, since only Buried holds those.
-    fileprivate var isInAllCards: Bool {
+    /// for theirs: unless it's buried, since only Buried holds those. Like
+    /// flagged cards, set-aside cards are there.
+    var isInAllCards: Bool {
         switch self {
-        case .inReviews, .inInbox: true
+        case .inReviews, .inInbox, .setAside: true
         case .buried: false
         }
     }
 }
 
 extension CardRow {
-    /// The row of `card`, standing on `ladder` after `entries`, its review
-    /// log's, in the order they happened.
-    fileprivate init(card: Card, after entries: [ReviewLogEntry], on ladder: Ladder) throws(UnexpectedReviewLog) {
+    /// The row of `card`, whose tags have what `ownTags` says of their own,
+    /// standing on `ladder` after `entries`, its review log's, in the order
+    /// they happened.
+    fileprivate init(
+        card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], on ladder: Ladder
+    ) throws(UnexpectedReviewLog) {
         self.card = card
+        tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
         standing = try ladder.standing(after: entries)
         lastSeen = entries.last?.answeredAt

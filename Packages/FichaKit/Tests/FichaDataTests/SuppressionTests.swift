@@ -128,7 +128,7 @@ struct SuppressionTests {
         #expect(try appearance(on: FakeMac(suppressions: [.meeting])) == .notNow(.suppressed(.meeting)))
         time.advance(by: minutes(5))
         let reviewNowAt = time.now
-        var panel = engine.openPanel(.reviewNow, with: try engine.reviewNow(settings), settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         panel.close(.byLucas)
 
@@ -153,7 +153,7 @@ struct SuppressionTests {
         guard case .show(let cards) = try appearance(on: mac) else {
             throw NoAppearanceNow()
         }
-        return engine.openPanel(.appearance, with: cards, settings: settings)
+        return try engine.openPanel(.appearance, with: cards, settings: settings)
     }
 
     /// A time of day on a day in October 2026 by the tests' calendar: the

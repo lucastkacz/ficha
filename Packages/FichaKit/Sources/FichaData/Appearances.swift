@@ -33,13 +33,12 @@ extension Engine {
     {
         let now = time.now
         return try read { db in
-            let cards = try cardsInReviews(in: db)
+            let cards = try cardsThatShowUp(in: db)
             switch try settings.appearance(
-                cardIDs: cards.map(\.id), log: logEntries(in: db), lastClosing: lastClosing(in: db), signals: mac,
-                now: now, calendar: calendar)
+                cards: cards.inReviews, lastClosing: lastClosing(in: db), signals: mac, now: now, calendar: calendar)
             {
             case .show(let picked):
-                return .show(try panelCards(picked, from: cards))
+                return .show(try cards.panelCards(picked))
             case .notNow(let reason):
                 return .notNow(reason)
             }

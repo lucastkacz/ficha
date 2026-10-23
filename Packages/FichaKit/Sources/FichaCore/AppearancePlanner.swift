@@ -62,20 +62,18 @@ extension NoAppearance {
 }
 
 extension ReviewSettings {
-    /// Whether the review panel shows up on its own at `now`, out of the cards
-    /// in Lucas's reviews, neither flagged nor buried, by id in the order he
-    /// approved them, the whole review log, in the order it was written, when
-    /// the last appearance or review now closed, if any did, and what
-    /// `signals` says of the device. While it's awake, within active hours,
-    /// by `calendar`'s clock, and once `separation` has passed since that
-    /// closing and `waitAfterWaking` since the device woke, it shows up once a
-    /// card is due, or, with nothing due, once a new card may come in, unless
-    /// one of `suppressionsThatApply` holds it back, or one of them ended less
-    /// than `waitAfterSuppression` ago. It brings the cards review now would,
-    /// along with those due within `lookAhead`.
+    /// Whether the review panel shows up on its own at `now`, out of `cards`,
+    /// given when the last appearance or review now closed, if any did, and
+    /// what `signals` says of the device. While it's awake, within active
+    /// hours, by `calendar`'s clock, and once `separation` has passed since
+    /// that closing and `waitAfterWaking` since the device woke, it shows up
+    /// once a card is due, or, with nothing due, once a new card may come in
+    /// as it would without priority tags, which never move an appearance,
+    /// unless one of `suppressionsThatApply` holds it back, or one of them
+    /// ended less than `waitAfterSuppression` ago. It brings the cards review
+    /// now would, along with those due within `lookAhead`.
     public func appearance(
-        cardIDs: [Int64],
-        log: [ReviewLogEntry],
+        cards: CardsInReviews,
         lastClosing: Date?,
         signals: some DeviceSignals,
         now: Date,
@@ -93,10 +91,18 @@ extension ReviewSettings {
         if let until = signals.lastWake?.adding(waitAfterWaking), now < until {
             return .notNow(.tooSoonAfterWaking(until: until))
         }
-        let standings = try ladder.standings(of: cardIDs, after: log)
-        let picked = pickCards(after: standings, log: log, dueBy: now.adding(lookAhead), now: now, calendar: calendar)
+        let standings = try cards.standings(on: ladder)
+        let horizon = now.adding(lookAhead)
+        let picked = pickCards(after: standings, of: cards, dueBy: horizon, now: now, calendar: calendar)
         let isAnyCardDue = standings.contains { $0.standing.isDue(at: now) }
-        guard isAnyCardDue || picked.firstView != nil else {
+        // Priority tags change which cards come, never when an appearance
+        // does: a new priority card fits beside the cards due within the
+        // look-ahead where another new card wouldn't, so whether a new card
+        // may come in is asked as without them.
+        let mayMeetNewCard =
+            pickCards(after: standings, of: cards.withoutPriority, dueBy: horizon, now: now, calendar: calendar)
+            .firstView != nil
+        guard isAnyCardDue || mayMeetNewCard else {
             return .notNow(.nothingDue)
         }
         let applying = Suppression.allCases.filter(suppressionsThatApply.contains)
@@ -113,18 +119,16 @@ extension ReviewSettings {
 
     /// The appearances that come from `now` on, as if Lucas rated nothing in
     /// between, up to `count`, for the iPhone to schedule as notifications
-    /// (ADR 0010). Out of the cards in his reviews, neither flagged nor
-    /// buried, by id in the order he approved them, the whole review log, in
-    /// the order it was written, and when the last appearance or review now
-    /// closed, if any did. Walking time forward from `now`, each appearance
-    /// comes at the first time `appearance` says it shows up, on a device that
-    /// never holds one back, with the cards it says. Left alone, a planned
-    /// appearance closes as it shows, and its cards stay as they were, so the
-    /// next one comes once `separation` passed. The plan ends after `count`,
-    /// or once no appearance would come without Lucas doing something.
+    /// (ADR 0010). Out of `cards`, given when the last appearance or review
+    /// now closed, if any did. Walking time forward from `now`, each
+    /// appearance comes at the first time `appearance` says it shows up, on a
+    /// device that never holds one back, with the cards it says. Left alone, a
+    /// planned appearance closes as it shows, and its cards stay as they were,
+    /// so the next one comes once `separation` passed. The plan ends after
+    /// `count`, or once no appearance would come without Lucas doing
+    /// something.
     public func plannedAppearances(
-        cardIDs: [Int64],
-        log: [ReviewLogEntry],
+        cards: CardsInReviews,
         lastClosing: Date?,
         from now: Date,
         calendar: Calendar,
@@ -133,7 +137,7 @@ extension ReviewSettings {
         // With nothing rated, the cards keep their due times, and a new card
         // waits for a day whose new cards Lucas hasn't met, if one ever comes
         // in: when none may, a new day changes nothing, and the plan ends.
-        let standings = try ladder.standings(of: cardIDs, after: log).map(\.standing)
+        let standings = try cards.standings(on: ladder).map(\.standing)
         let dueTimes = standings.compactMap(\.due)
         let mayMeetNewCards = standings.contains(.new) && bringsNewCard(after: 0, metToday: 0)
         var plan: [PlannedAppearance] = []
@@ -141,8 +145,7 @@ extension ReviewSettings {
         var next: Date? = now
         while plan.count < count, let time = next {
             switch try appearance(
-                cardIDs: cardIDs, log: log, lastClosing: lastClosing, signals: PhoneSignals(), now: time,
-                calendar: calendar)
+                cards: cards, lastClosing: lastClosing, signals: PhoneSignals(), now: time, calendar: calendar)
             {
             case .show(let picked):
                 plan.append(PlannedAppearance(time: time, cardIDs: picked))
@@ -167,22 +170,19 @@ extension ReviewSettings {
     /// The card that comes after `cardID` in an appearance on the iPhone,
     /// which brought the cards in `appearance`, by id in the order they show,
     /// once Lucas answered it from its card notification (ADR 0010): the first
-    /// of the cards after it that he can still answer at `now`, out of the
-    /// cards in his reviews, neither flagged nor buried, by id, and the whole
-    /// review log, in the order it was written. As in any appearance, a new
-    /// card comes for its first view, and one due within `lookAhead` for a
-    /// review, so one he rated meanwhile, or that left his reviews, is
-    /// skipped. None comes once none is left.
+    /// of the cards after it that he can still answer at `now`, out of
+    /// `cards`. As in any appearance, a new card comes for its first view, and
+    /// one due within `lookAhead` for a review, so one he rated meanwhile, or
+    /// that left his reviews, is skipped. None comes once none is left.
     public func nextCard(
         after cardID: Int64,
         in appearance: [Int64],
-        cardIDs: [Int64],
-        log: [ReviewLogEntry],
+        cards: CardsInReviews,
         now: Date
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
-        let inReviews = Set(cardIDs)
+        let inReviews = Set(cards.ids)
         let later = appearance.drop { $0 != cardID }.dropFirst().filter(inReviews.contains)
-        for (id, standing) in try ladder.standings(of: later, after: log) {
+        for (id, standing) in try ladder.standings(of: later, after: cards.log) {
             switch standing {
             case .new:
                 return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: id)

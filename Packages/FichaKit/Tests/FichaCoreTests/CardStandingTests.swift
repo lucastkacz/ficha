@@ -3,36 +3,69 @@ import Foundation
 import Testing
 
 struct CardStandingTests {
-    @Test("a card neither flagged nor buried is in Lucas's reviews")
-    func neitherFlaggedNorBuriedIsInReviews() {
-        #expect(CardStanding(flag: nil, buriedAt: nil) == .inReviews)
+    @Test("a card neither flagged, buried nor set aside is in Lucas's reviews")
+    func neitherFlaggedBuriedNorSetAsideIsInReviews() {
+        #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: []) == .inReviews)
     }
 
     @Test("a flagged card waits in the inbox, with its flag")
     func flaggedWaitsInInbox() {
-        #expect(CardStanding(flag: flag, buriedAt: nil) == .inInbox(flag))
+        #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: []) == .inInbox(flag))
     }
 
     @Test("a buried card is buried, and a flagged buried card is buried and keeps its flag")
     func buriedIsBuried() {
-        #expect(CardStanding(flag: nil, buriedAt: buriedAt) == .buried(at: buriedAt, flag: nil))
-        #expect(CardStanding(flag: flag, buriedAt: buriedAt) == .buried(at: buriedAt, flag: flag))
+        #expect(CardStanding(flag: nil, buriedAt: buriedAt, setAsideBy: []) == .buried(at: buriedAt, flag: nil))
+        #expect(CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: []) == .buried(at: buriedAt, flag: flag))
     }
 
-    @Test("a card is due only in Lucas's reviews: flagged or buried, it has no due time even once its wait is over")
+    @Test("a card with a set-aside tag is set aside rather than in Lucas's reviews")
+    func setAsideWinsOverReviews() {
+        #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: ["filosofía"]) == .setAside(by: ["filosofía"]))
+    }
+
+    @Test("a flagged card with a set-aside tag waits in the inbox")
+    func theInboxWinsOverSetAside() {
+        #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: ["filosofía"]) == .inInbox(flag))
+    }
+
+    @Test("a buried card with a set-aside tag is buried, and keeps its flag")
+    func buriedWinsOverSetAside() {
+        #expect(
+            CardStanding(flag: nil, buriedAt: buriedAt, setAsideBy: ["filosofía"]) == .buried(at: buriedAt, flag: nil))
+        #expect(
+            CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: ["filosofía"]) == .buried(at: buriedAt, flag: flag)
+        )
+    }
+
+    @Test(
+        "a card's set-aside tags are those of its tags that are set aside, in alphabetical order as the Mac sorts text")
+    func setAsideTagsAreTheCardsInAlphabeticalOrder() {
+        let setAsideTags: Set = ["filosofía", "física", "lenguaje", "Ética"]
+
+        #expect(
+            CardStanding.setAsideTags(of: ["lenguaje", "historia", "Ética", "filosofía"], among: setAsideTags)
+                == ["Ética", "filosofía", "lenguaje"])
+        #expect(CardStanding.setAsideTags(of: ["historia"], among: setAsideTags).isEmpty)
+    }
+
+    @Test(
+        "a card is due only in Lucas's reviews: flagged, buried or set aside, it has no due time even once its wait is over"
+    )
     func dueOnlyInReviews() {
         let onLadder = LadderStanding.onLadder(step: 2, due: start)
         let later = start.addingTimeInterval(60)
 
         #expect(CardStanding.inReviews.due(given: onLadder) == start)
         #expect(CardStanding.inReviews.isDue(at: later, given: onLadder))
-        for outOfReviews in [CardStanding.inInbox(flag), .buried(at: buriedAt, flag: nil)] {
+        for outOfReviews in [CardStanding.inInbox(flag), .buried(at: buriedAt, flag: nil), .setAside(by: ["historia"])]
+        {
             #expect(outOfReviews.due(given: onLadder) == nil)
             #expect(!outOfReviews.isDue(at: later, given: onLadder))
         }
     }
 
-    @Test("a card is new or learned only in Lucas's reviews")
+    @Test("a card is new or learned only in Lucas's reviews: not while it's flagged, buried or set aside")
     func newOrLearnedOnlyInReviews() {
         let ladder = Ladder.standard
         // The standard ladder's sixth step waits 30 days.
@@ -40,7 +73,9 @@ struct CardStandingTests {
 
         #expect(CardStanding.inReviews.isNew(given: .new))
         #expect(CardStanding.inReviews.isLearned(given: learned, on: ladder))
-        for outOfReviews in [CardStanding.inInbox(flag), .buried(at: buriedAt, flag: flag)] {
+        for outOfReviews in [
+            CardStanding.inInbox(flag), .buried(at: buriedAt, flag: flag), .setAside(by: ["historia"]),
+        ] {
             #expect(!outOfReviews.isNew(given: .new))
             #expect(!outOfReviews.isLearned(given: learned, on: ladder))
         }

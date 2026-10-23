@@ -3,16 +3,16 @@ import Foundation
 
 /// An appearance or a review now while the review panel shows it: the cards
 /// it brought, which Lucas goes through one at a time, what the panel shows of
-/// the card he's on, whether the panel may have the keyboard, and how it
-/// closes. He ends a new card's first view, and flips and rates a due card,
-/// or one he reviews ahead. He can also flag any card with a note on what to
-/// fix, or bury it. Each is saved as he does it, and ⌘Z undoes it, one card
-/// at a time, while the panel is open, and shows the card again as he left
-/// it. Once he went through every card, the panel stays open and offers more
-/// cards, if there are any, until he closes it. The panel goes into the
-/// appearance log as it closes. It runs on the engine's time, which Ficha
-/// Dev's debug menu moves forward, and times Lucas on a steady clock, which
-/// it doesn't.
+/// the card he's on, its tags included, whether the panel may have the
+/// keyboard, and how it closes. He ends a new card's first view, and flips
+/// and rates a due card, or one he reviews ahead. He can also flag any card
+/// with a note on what to fix, or bury it. Each is saved as he does it, and
+/// ⌘Z undoes it, one card at a time, while the panel is open, and shows the
+/// card again as he left it. Once he went through every card, the panel stays
+/// open and offers more cards, if there are any, until he closes it. The
+/// panel goes into the appearance log as it closes. It runs on the engine's
+/// time, which Ficha Dev's debug menu moves forward, and times Lucas on a
+/// steady clock, which it doesn't.
 public struct ReviewPanelState: Sendable {
     /// Who closes the panel.
     public enum Closing: Sendable {
@@ -89,6 +89,10 @@ public struct ReviewPanelState: Sendable {
     public private(set) var outcome: AppearanceLogEntry.Outcome?
     /// What Lucas did that couldn't be saved, while the panel says so.
     public private(set) var failure: Failure?
+    /// What every tag has of its own, as it was when the panel opened: a tag
+    /// changed while it's open shows from the next panel on, so the card
+    /// Lucas is on doesn't change under him.
+    private let ownTags: OwnTags
     private let engine: Engine
     private let settings: ReviewSettings
     private let shownAt: Date
@@ -109,11 +113,13 @@ public struct ReviewPanelState: Sendable {
     private var wentThrough: [Visit] = []
 
     init(
-        trigger: Trigger, cards: [PanelCard], engine: Engine, settings: ReviewSettings, clock: some Clock<Duration>
+        trigger: Trigger, cards: [PanelCard], ownTags: OwnTags, engine: Engine, settings: ReviewSettings,
+        clock: some Clock<Duration>
     ) {
         self.trigger = trigger
         self.cards = cards
         broughtCount = cards.count
+        self.ownTags = ownTags
         self.engine = engine
         self.settings = settings
         mayHaveKeyboard = trigger == .reviewNow
@@ -127,6 +133,13 @@ public struct ReviewPanelState: Sendable {
     /// The card Lucas is on, or nil once he went through every one.
     public var current: PanelCard? {
         wentThrough.count < cards.count ? cards[wentThrough.count] : nil
+    }
+
+    /// The tags of the card Lucas is on, in the card's order, each with its
+    /// color and emoji as they were when the panel opened, which the panel
+    /// shows at the card's top, or none once he went through every card.
+    public var tags: [CardTag] {
+        current?.card.tags.map(ownTags.tag) ?? []
     }
 
     /// What the panel shows: the card Lucas is on, its front or its back, or
@@ -461,13 +474,15 @@ private struct Flagging: Sendable {
 
 extension Engine {
     /// Opens the review panel with `cards`, which `trigger` brought: the panel
-    /// shows them from now on, and times Lucas on each on `clock`, a steady
-    /// one, which moving the engine's time doesn't move: the system's
-    /// continuous clock in the app.
+    /// shows them from now on, with their tags' colors and emoji as they are
+    /// now, and times Lucas on each on `clock`, a steady one, which moving the
+    /// engine's time doesn't move: the system's continuous clock in the app.
     public func openPanel(
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>
-    ) -> ReviewPanelState {
-        ReviewPanelState(trigger: trigger, cards: cards, engine: self, settings: settings, clock: clock)
+    ) throws(EngineError) -> ReviewPanelState {
+        ReviewPanelState(
+            trigger: trigger, cards: cards, ownTags: try read(OwnTags.init(in:)), engine: self,
+            settings: settings, clock: clock)
     }
 
     /// Undoes `action`, which Lucas did to a card in the review panel, so the
@@ -491,13 +506,13 @@ extension Engine {
             case .flagged:
                 switch card.standing {
                 case .inInbox: break
-                case .inReviews, .buried: throw EngineError.cannotUndo(cardID)
+                case .inReviews, .buried, .setAside: throw EngineError.cannotUndo(cardID)
                 }
                 _ = try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
             case .buried:
                 switch card.standing {
                 case .buried: break
-                case .inReviews, .inInbox: throw EngineError.cannotUndo(cardID)
+                case .inReviews, .inInbox, .setAside: throw EngineError.cannotUndo(cardID)
                 }
                 _ = try updateCard(cardID, setting: "buriedAt = NULL", in: db)
             }
