@@ -430,8 +430,8 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
-            .cardNotBuried, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion,
-            .backupsFolder:
+            .cardNotBuried, .cardSetAside, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
+            .copyMigratedByNewerVersion, .backupsFolder:
             localizedDescription
         }
     }

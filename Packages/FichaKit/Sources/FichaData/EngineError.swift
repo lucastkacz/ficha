@@ -48,6 +48,10 @@ public enum EngineError: Error, Equatable {
     case cardBuried(Int64)
     /// The card with this id isn't buried, so it can't be unburied.
     case cardNotBuried(Int64)
+    /// The card with this id is set aside by these tags of it, in
+    /// alphabetical order, so it can't be answered until none of them is set
+    /// aside. Everything else treats it as a card in Lucas's reviews.
+    case cardSetAside(Int64, tags: [String])
     /// The card with this id changed outside the review panel, as a refine
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
@@ -126,6 +130,20 @@ extension EngineError: LocalizedError {
             String(localized: "Card \(id) is buried. To bring it back, unbury it.")
         case .cardNotBuried(let id):
             String(localized: "Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
+        case .cardSetAside(let id, let tags) where tags.count == 1:
+            String(
+                localized: """
+                    Card \(id) is set aside with its tag “\(tags[0])”. To bring it back, untick Set Aside on that \
+                    tag in the Cards window.
+                    """
+            )
+        case .cardSetAside(let id, let tags):
+            String(
+                localized: """
+                    Card \(id) is set aside with its tags \(quotedList(tags)). To bring it back, untick Set Aside \
+                    on each of them in the Cards window.
+                    """
+            )
         case .cannotUndo(let id):
             String(
                 localized: "Card \(id) changed outside the review panel, so ⌘Z can't undo it. \(reopenReviewNow)")
@@ -162,6 +180,12 @@ extension EngineError: LocalizedError {
             )
         }
     }
+}
+
+/// `words` in quotes, listed as the Mac's language lists them, like “ética”
+/// and “filosofía” in English.
+private func quotedList(_ words: [String]) -> String {
+    words.map { "“\($0)”" }.formatted(.list(type: .and))
 }
 
 /// What to do when the review panel shows a card for an answer it can't take:

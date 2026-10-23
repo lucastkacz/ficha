@@ -24,7 +24,7 @@ extension Engine {
         try write { db in
             switch try existingCard(cardID, in: db).standing {
             case .inInbox: break
-            case .inReviews: throw EngineError.cardNotFlagged(cardID)
+            case .inReviews, .setAside: throw EngineError.cardNotFlagged(cardID)
             case .buried: throw EngineError.cardBuried(cardID)
             }
             return try editCard(cardID, with: content, in: db)
@@ -76,7 +76,7 @@ extension Engine {
     /// or throws when it's already buried or doesn't exist.
     private func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
         switch try existingCard(cardID, in: db).standing {
-        case .inReviews, .inInbox: break
+        case .inReviews, .inInbox, .setAside: break
         case .buried: throw EngineError.cardBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
@@ -87,7 +87,7 @@ extension Engine {
     private func unbury(_ cardID: Int64, in db: Database) throws -> Card {
         switch try existingCard(cardID, in: db).standing {
         case .buried: break
-        case .inReviews, .inInbox: throw EngineError.cardNotBuried(cardID)
+        case .inReviews, .inInbox, .setAside: throw EngineError.cardNotBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
     }

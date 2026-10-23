@@ -261,12 +261,12 @@ extension CardGroup {
         case .flagged:
             switch row.cardStanding {
             case .inInbox: true
-            case .inReviews, .buried: false
+            case .inReviews, .buried, .setAside: false
             }
         case .buried:
             switch row.cardStanding {
             case .buried: true
-            case .inReviews, .inInbox: false
+            case .inReviews, .inInbox, .setAside: false
             }
         case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
@@ -276,10 +276,11 @@ extension CardGroup {
 
 extension CardStanding {
     /// Whether All cards holds a card standing here, as each tag and type do
-    /// for theirs: unless it's buried, since only Buried holds those.
+    /// for theirs: unless it's buried, since only Buried holds those. Like
+    /// flagged cards, set-aside cards are there.
     fileprivate var isInAllCards: Bool {
         switch self {
-        case .inReviews, .inInbox: true
+        case .inReviews, .inInbox, .setAside: true
         case .buried: false
         }
     }

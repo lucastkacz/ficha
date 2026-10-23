@@ -491,13 +491,13 @@ extension Engine {
             case .flagged:
                 switch card.standing {
                 case .inInbox: break
-                case .inReviews, .buried: throw EngineError.cannotUndo(cardID)
+                case .inReviews, .buried, .setAside: throw EngineError.cannotUndo(cardID)
                 }
                 _ = try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
             case .buried:
                 switch card.standing {
                 case .buried: break
-                case .inReviews, .inInbox: throw EngineError.cannotUndo(cardID)
+                case .inReviews, .inInbox, .setAside: throw EngineError.cannotUndo(cardID)
                 }
                 _ = try updateCard(cardID, setting: "buriedAt = NULL", in: db)
             }

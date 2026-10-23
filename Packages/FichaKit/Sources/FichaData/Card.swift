@@ -26,7 +26,7 @@ public struct Card: Sendable, Equatable, Encodable {
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, or buried.
     public var standing: CardStanding {
-        CardStanding(flag: flag, buriedAt: buriedAt)
+        CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: [])
     }
 }
 

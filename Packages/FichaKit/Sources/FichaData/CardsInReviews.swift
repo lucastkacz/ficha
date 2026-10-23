@@ -54,12 +54,13 @@ func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
 }
 
 /// The card with this id, while it's in Lucas's reviews, or an error that
-/// says it's buried or flagged, or that there's no such card.
+/// says it's buried, flagged or set aside, or that there's no such card.
 func cardInReviews(_ cardID: Int64, in db: Database) throws -> Card {
     let card = try existingCard(cardID, in: db)
     switch card.standing {
     case .inReviews: return card
     case .inInbox: throw EngineError.cardFlagged(cardID)
     case .buried: throw EngineError.cardBuried(cardID)
+    case .setAside(let tags): throw EngineError.cardSetAside(cardID, tags: tags)
     }
 }

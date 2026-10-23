@@ -241,7 +241,7 @@ public struct CardsWindowState: Sendable {
     /// review panel, bury it unless it's buried, and unbury it when it is.
     private static func actions(for standing: CardStanding) -> Set<Action> {
         switch standing {
-        case .inReviews: [.flag, .bury]
+        case .inReviews, .setAside: [.flag, .bury]
         case .inInbox: [.bury]
         case .buried: [.unbury]
         }

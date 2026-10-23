@@ -10,7 +10,7 @@ struct FrontCell: View {
     var body: some View {
         HStack(spacing: 4) {
             switch card.standing {
-            case .inReviews:
+            case .inReviews, .setAside:
                 EmptyView()
             case .inInbox:
                 FlagIcon()
@@ -255,7 +255,7 @@ struct FlagAndBurial: View {
 
     var body: some View {
         switch standing {
-        case .inReviews:
+        case .inReviews, .setAside:
             EmptyView()
         case .inInbox(let flag):
             note(flag)
