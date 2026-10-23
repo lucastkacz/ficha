@@ -25,6 +25,14 @@ _Avoid_: answer, solution
 A subject a card belongs to, like "historia" or "filosofía". A card can have several.
 _Avoid_: topic, category, deck
 
+**Priority tag**:
+A tag Lucas chose so that its cards come first when cards show up, as while he prepares for an exam. It changes which cards come first, never when a card is due.
+_Avoid_: focus, exam mode, filter
+
+**Set aside**:
+Taking every card with a tag out of Lucas's reviews for now, also those that get the tag later, as when he's done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
+_Avoid_: pause, suspend, archive, hide
+
 **Source**:
 Where Lucas came across what a capture or a card holds, like a book or a podcast.
 _Avoid_: origin, reference, citation
@@ -62,7 +70,7 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Editing a flagged card, as its note asks, in the Cards window or a refine session, which brings it back from the inbox to Lucas's reviews, where it stood.
+Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to Lucas's reviews unless one of its tags is set aside.
 _Avoid_: correct
 
 **Content guide**:
@@ -108,11 +116,11 @@ Sending a card back to the inbox with a note on what to fix. It stays out of rev
 _Avoid_: mark, report
 
 **Bury**:
-Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it was.
+Taking a card Lucas no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it would be without the burial.
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands: in Lucas's reviews, new or on a ladder step until it's due; waiting in the inbox to be fixed; or buried. A flagged or buried card keeps its step, and comes back on it when it's fixed or unburied.
+Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with one of its tags; or in Lucas's reviews, new or on a ladder step until it's due. Out of his reviews, a card keeps its step, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
