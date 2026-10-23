@@ -79,16 +79,9 @@ func folderOfSharedImages(in backups: URL) -> URL {
 /// image `live` lacks too is left out, and the log says so: the copy keeps
 /// the cards all the same, as the database had them.
 func shareImages(_ images: Set<ImageName>, from live: URL, into shared: URL) throws(EngineError) {
-    guard !images.isEmpty else { return }
     do {
-        try FileManager.default.createDirectory(at: shared, withIntermediateDirectories: true)
-        for image in images.sorted(by: { $0.rawValue < $1.rawValue }) {
-            let source = live.appending(path: image.rawValue)
-            guard FileManager.default.fileExists(atPath: source.path(percentEncoded: false)) else {
-                logger.error("A copy refers to the image \(image.rawValue, privacy: .public), which isn't in Images")
-                continue
-            }
-            try copyImage(source, into: shared)
+        try copyImages(images, from: live, into: shared) { image in
+            logger.error("A copy refers to the image \(image.rawValue, privacy: .public), which isn't in Images")
         }
     } catch {
         logger.error("Couldn't keep a copy's images in the Backups folder: \(String(describing: error))")
@@ -102,21 +95,32 @@ func shareImages(_ images: Set<ImageName>, from live: URL, into shared: URL) thr
 /// copies kept images can refer to, is left out, and the log says so: its
 /// card shows without it.
 func bringBackImages(_ images: Set<ImageName>, from shared: URL, into live: URL) throws(EngineError) {
-    guard !images.isEmpty else { return }
     do {
-        try FileManager.default.createDirectory(at: live, withIntermediateDirectories: true)
-        for image in images.sorted(by: { $0.rawValue < $1.rawValue }) {
-            let source = shared.appending(path: image.rawValue)
-            guard FileManager.default.fileExists(atPath: source.path(percentEncoded: false)) else {
-                logger.error(
-                    "A restored copy refers to the image \(image.rawValue, privacy: .public), which no copy keeps")
-                continue
-            }
-            try copyImage(source, into: live)
+        try copyImages(images, from: shared, into: live) { image in
+            logger.error(
+                "A restored copy refers to the image \(image.rawValue, privacy: .public), which no copy keeps")
         }
     } catch {
         logger.error("Couldn't bring back a restored copy's images: \(String(describing: error))")
         throw .imagesFolder
+    }
+}
+
+/// Copies into `folder` each of `images` it lacks, from `source`, making
+/// `folder` when there's one to copy. An image `source` lacks too is left
+/// out, and `missing` is told its name.
+private func copyImages(_ images: Set<ImageName>, from source: URL, into folder: URL, missing: (ImageName) -> Void)
+    throws
+{
+    guard !images.isEmpty else { return }
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    for image in images.sorted(by: { $0.rawValue < $1.rawValue }) {
+        let file = source.appending(path: image.rawValue)
+        guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
+            missing(image)
+            continue
+        }
+        try copyImage(file, into: folder)
     }
 }
 
