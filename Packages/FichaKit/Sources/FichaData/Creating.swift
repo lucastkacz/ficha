@@ -3,16 +3,25 @@ import Foundation
 internal import GRDB
 
 extension Engine {
-    /// Creates a card with `content`, which comes from no capture, as the
-    /// Cards window's form and the imports make cards, and returns it. It
-    /// goes straight into the user's reviews as a new card, after the cards
-    /// before it, unless one of its tags is set aside. It's saved whether or
-    /// not its front repeats another card's: the duplicate rule only warns.
+    /// Creates a card with `content`, as the Cards window's form and the
+    /// imports make cards, and returns it. It goes straight into the user's
+    /// reviews as a new card, after the cards before it, unless one of its
+    /// tags is set aside. It's saved whether or not its front repeats another
+    /// card's: the duplicate rule only warns.
+    ///
+    /// With no capture, as from a new card or an import, the card has none.
+    /// From `captureID`, a capture in the inbox, the card remembers it, as an
+    /// approved card does, so that a capture repeating it repeats the card,
+    /// and the capture stays in the inbox, for more cards from it. A capture
+    /// that isn't in the inbox is refused.
     @discardableResult
-    public func create(_ content: CardContent) throws(EngineError) -> Card {
+    public func create(_ content: CardContent, from captureID: Int64? = nil) throws(EngineError) -> Card {
         let createdAt = time.now
         return try write { db in
-            try existingCard(insertCard(content, capturedAs: nil, at: createdAt, in: db), in: db)
+            if let captureID {
+                _ = try captureInInbox(captureID, in: db)
+            }
+            return try existingCard(insertCard(content, capturedAs: captureID, at: createdAt, in: db), in: db)
         }
     }
 }

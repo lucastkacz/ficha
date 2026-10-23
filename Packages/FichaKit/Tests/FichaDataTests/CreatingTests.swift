@@ -42,6 +42,36 @@ struct CreatingTests {
         #expect(try engine.reviewNow(.defaults) == [.firstView(created)])
     }
 
+    // As the Cards window's form opened from a capture makes them: the capture
+    // leaves the inbox only once the form closes.
+    @Test("a card created from a capture in the inbox remembers it, and the capture stays in the inbox")
+    func aCardCreatedFromACaptureRemembersIt() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let capture = try engine.newCapture("ubuntu")
+
+        let created = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."), from: capture.id)
+
+        #expect(created.captureID == capture.id)
+        #expect(try engine.inbox().captures == [capture])
+        #expect(try engine.reviewNow(.defaults) == [.firstView(created)])
+    }
+
+    @Test("a card can't be created from a capture that isn't in the inbox, and none is saved")
+    func aCardCantBeCreatedFromACaptureOutOfTheInbox() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let discarded = try engine.newCapture("algo que ya no me interesa")
+        try engine.discard(discarded.id)
+        let ubuntu = try card(nil, front: "ubuntu", back: "Soy porque somos.")
+
+        #expect(throws: EngineError.captureNotInInbox(discarded.id)) {
+            try engine.create(ubuntu, from: discarded.id)
+        }
+        #expect(throws: EngineError.captureNotInInbox(99)) {
+            try engine.create(ubuntu, from: 99)
+        }
+        #expect(try engine.cards().isEmpty)
+    }
+
     // `ficha cards` prints the cards this way, as it leaves out a source.
     @Test("Card's encoding leaves out type and captureID when they're nil")
     func aCardsEncodingLeavesOutTypeAndCaptureIDWhenNil() throws {
