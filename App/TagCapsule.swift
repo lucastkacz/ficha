@@ -10,6 +10,7 @@ import SwiftUI
 /// its badge.
 struct TagCapsule: View {
     let tag: CardTag
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Text(verbatim: tag.title)
@@ -22,9 +23,12 @@ struct TagCapsule: View {
             .fixedSize()
     }
 
-    /// The text's color: the tag's, or the secondary gray of "Ahead".
+    /// The text's color: the tag's, or the secondary gray of "Ahead". In
+    /// light mode, the tag's is a third darker, so that yellow and green
+    /// read on the faint capsule; in dark mode, they read as they are.
     private var tint: AnyShapeStyle {
-        tag.color.map { AnyShapeStyle($0.color) } ?? AnyShapeStyle(.secondary)
+        tag.color.map { AnyShapeStyle($0.color.mix(with: .black, by: colorScheme == .light ? 1 / 3 : 0)) }
+            ?? AnyShapeStyle(.secondary)
     }
 
     /// The capsule's: the text's, faint.
