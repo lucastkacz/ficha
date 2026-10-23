@@ -19,8 +19,9 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
-    /// When Lucas last saw it: its review log's latest entry, its first view
-    /// or a review, or nil while it's new.
+    /// When Lucas last saw it: its review log's latest first view or review,
+    /// or nil while it's new, or while it has only the placement an import
+    /// put it on its step with (ADR 0013).
     public let lastSeen: Date?
 
     public var id: Int64 {
@@ -87,10 +88,10 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 }
 
 /// An entry of a card's review log as the Cards window shows it under the
-/// card, in its chart and its list: the first view or review, and the step
-/// the card stood on after it.
+/// card, in its chart and its list: the first view, review or placement, and
+/// the step the card stood on after it.
 public struct ReviewLogRow: Sendable, Equatable {
-    /// The first view or review, as the review log keeps it.
+    /// The first view, review or placement, as the review log keeps it.
     public let entry: ReviewLogEntry
     /// The step the card stood on after it, counted from 0, the first step.
     public let step: Int
@@ -232,8 +233,8 @@ extension Engine {
     }
 
     /// A card's review log as the Cards window shows it under the card,
-    /// oldest first: each first view and review, with the step of `ladder`
-    /// the card stood on after it. Empty while the card is new.
+    /// oldest first: each first view, review and placement, with the step of
+    /// `ladder` the card stood on after it. Empty while the card is new.
     public func reviewLogRows(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> [ReviewLogRow] {
         try read { db in
             let entries = try logEntries(ofExisting: cardID, in: db)
@@ -333,7 +334,11 @@ extension CardRow {
         tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
         standing = try ladder.standing(after: entries)
-        lastSeen = entries.last?.answeredAt
+        lastSeen =
+            entries.last { entry in
+                if case .placement = entry.kind { false } else { true }
+            }?
+            .answeredAt
         if case .onLadder(let step, _) = standing {
             wait = ladder.waits[step]
         } else {

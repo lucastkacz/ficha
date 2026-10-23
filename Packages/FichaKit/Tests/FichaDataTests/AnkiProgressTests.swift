@@ -297,6 +297,34 @@ final class AnkiProgressTests {
         #expect(try engine.standing(of: uno.id, on: threeSteps) == .onLadder(step: 2, due: try october(31, at: 4)))
     }
 
+    @Test(
+        "a card that came in on a step shows it in its review log, unseen until its first review, which climbs from there",
+        arguments: schemas)
+    func aPlacedCardShowsItsStepInItsReviewLog(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))
+            ])
+        try importPackage(package)
+        let heart = try #require(try engine.cards().first)
+        let importedAt = time.now
+
+        let rowsBefore = try engine.reviewLogRows(of: heart.id, on: ladder)
+        let lastSeenBefore = try engine.cardRows(in: .all, on: ladder).first?.lastSeen
+        time.advance(by: days(9))
+        try engine.record(
+            .review(.good), of: heart.id, responseTime: .seconds(3), trigger: .reviewNow,
+            settings: .defaults)
+
+        #expect(rowsBefore.map(\.entry.kind) == [.placement(step: 4, due: try october(31, at: 4))])
+        #expect(rowsBefore.map(\.entry.answeredAt) == [importedAt])
+        #expect(rowsBefore.map(\.step) == [4])
+        #expect(lastSeenBefore == .some(nil))
+        #expect(try engine.reviewLogRows(of: heart.id, on: ladder).map(\.step) == [4, 5])
+        #expect(try engine.cardRows(in: .all, on: ladder).first?.lastSeen == time.now)
+    }
+
     // A filtered deck keeps the card's due in its home deck aside, and
     // gives it one of its own, as when the user crams a deck.
     @Test(

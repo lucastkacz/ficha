@@ -125,7 +125,8 @@ extension EngineError: LocalizedError {
                     "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
         case .cardNotNew(let id):
             String(
-                localized: "Card \(id) isn't new: it already had its first view, or came in on a step. \(reopenReviewNow)")
+                localized:
+                    "Card \(id) isn't new: it already had its first view, or came in on a step. \(reopenReviewNow)")
         case .cardStillNew(let id):
             String(
                 localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")

@@ -23,7 +23,7 @@ extension CardsWindowState {
         /// What happens to the file's cards that repeat the user's: Update,
         /// until the user chooses Skip.
         public fileprivate(set) var repeatedCards = ImportChoices.RepeatedCards.update
-        /// Whether Bring Progress is ticked: until the user unticks it, an
+        /// Whether Bring progress is ticked: until the user unticks it, an
         /// Anki package's cards come in where they stood in Anki (ADR 0013).
         public fileprivate(set) var bringsProgress = true
         /// What couldn't be done, while the sheet says so.
@@ -46,7 +46,7 @@ extension CardsWindowState {
             return preview.newCount > 0 || (repeatedCards == .update && preview.repeatedCount > 0)
         }
 
-        /// Whether the sheet offers Bring Progress: for the preview of an
+        /// Whether the sheet offers Bring progress: for the preview of an
         /// Anki package, whose cards stood somewhere in Anki.
         public var offersProgress: Bool {
             preview?.kind == .ankiPackage
@@ -103,7 +103,7 @@ extension CardsWindowState {
 
     /// Reads `file`, the one the user chose, and shows its preview, with the
     /// tags it proposes in their fields, its repeated cards updated and Bring
-    /// Progress ticked, or says why it couldn't, and the sheet stays where it
+    /// progress ticked, or says why it couldn't, and the sheet stays where it
     /// was.
     public mutating func previewImport(of file: URL) {
         guard importing != nil else { return }
@@ -136,7 +136,7 @@ extension CardsWindowState {
         importing?.repeatedCards = choice
     }
 
-    /// Ticks or unticks Bring Progress, while the sheet offers it.
+    /// Ticks or unticks Bring progress, while the sheet offers it.
     public mutating func chooseToBringProgress(_ brings: Bool) {
         guard importing?.offersProgress == true else { return }
         importing?.bringsProgress = brings
@@ -146,7 +146,7 @@ extension CardsWindowState {
     /// while Import is on, and says what it did, or why it couldn't, and the
     /// preview stays. The table lists the cards as they are then. An Anki
     /// package's cards bring their progress onto the window's ladder while
-    /// Bring Progress is ticked.
+    /// Bring progress is ticked.
     public mutating func importCards() {
         guard let importing, importing.canImport, let preview = importing.preview else { return }
         do throws(EngineError) {
