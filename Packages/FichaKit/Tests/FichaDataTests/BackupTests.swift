@@ -110,7 +110,7 @@ final class BackupTests {
         #expect(try engine.copies() == saved.suffix(3).reversed())
     }
 
-    // So a slip on Settings' stepper loses nothing.
+    // So a slip in Settings' Backups to keep loses nothing.
     @Test("lowering the number kept deletes nothing until the next backup")
     func loweringTheNumberKeptWaitsForTheNextBackup() throws {
         let engine = try openEngine()
