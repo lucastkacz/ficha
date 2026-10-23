@@ -70,6 +70,23 @@ struct SettingAsideTests {
         #expect(next == .review(petricor))
     }
 
+    @Test("a card with a set-aside tag and a priority tag is left out of appearances, review now and See more")
+    func aCardWithASetAsideTagAndAPriorityTagIsLeftOut() throws {
+        let ubuntu = try meetCard("ubuntu", tags: ["lenguaje"], dueAt: try at(10, 0))
+        let eudaimonia = try meetCard("eudaimonía", tags: ["filosofía", "historia"], dueAt: try at(10, 1))
+        let mayo = try meetCard("Revolución de Mayo", tags: ["historia"], dueAt: try at(10, 2))
+        time.move(to: try at(10, 2))
+        try engine.togglePriority(of: "historia")
+        #expect(try engine.reviewNow(settings) == [.review(eudaimonia), .review(mayo), .review(ubuntu)])
+
+        try engine.setAside("filosofía")
+
+        let expected: [PanelCard] = [.review(mayo), .review(ubuntu)]
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show(expected))
+        #expect(try engine.reviewNow(settings) == expected)
+        #expect(try engine.openPanel(.reviewNow, with: [], settings: settings).moreCards == expected)
+    }
+
     @Test("a card with a set-aside tag and other tags is set aside")
     func aCardWithASetAsideTagAndOthersIsSetAside() throws {
         let ubuntu = try approveCard("ubuntu", tags: ["lenguaje", "filosofía", "ética"])

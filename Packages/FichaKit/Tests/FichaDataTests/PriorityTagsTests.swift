@@ -55,7 +55,9 @@ struct PriorityTagsTests {
 
     @Test("once Lucas has met 5 new cards today, no new card comes, priority or not")
     func noNewCardComesPastTheDailyLimit() throws {
-        try ["uno", "dos", "tres", "cuatro", "cinco"].forEach { try meetCard($0, tags: ["filosofía"]) }
+        for front in ["uno", "dos", "tres", "cuatro", "cinco"] {
+            try meetCard(front, tags: ["filosofía"])
+        }
         try approveCard("ataraxia", tags: [])
         try approveCard("eudaimonía", tags: ["filosofía"])
 
@@ -250,7 +252,11 @@ struct PriorityTagsTests {
         #expect(try engine.cards().first == ubuntu)
     }
 
-    @Test("priority tags survive reopening the database, kept with the cards")
+    // The Mac's preferences are the app's, whichever database it opens, so a
+    // priority tag kept there would show in another database too.
+    @Test(
+        "priority tags survive reopening the database, and another database has none, so nothing goes in the Mac's preferences"
+    )
     func priorityTagsSurviveReopening() throws {
         let folder = URL.temporaryDirectory.appending(
             path: "FichaDataTests-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -262,9 +268,15 @@ struct PriorityTagsTests {
         try engine.togglePriority(of: "filosofía")
 
         let reopened = try Engine(location: .folder(folder), time: time, calendar: calendar)
+        let another = try Engine(location: .inMemory, time: time, calendar: calendar)
+        let anotherUbuntu = try approve(
+            card(.word, front: "ubuntu", back: "Humanidad.", tags: ["lenguaje"]), in: another)
+        try approve(card(.word, front: "eudaimonía", back: "Plenitud.", tags: ["filosofía"]), in: another)
 
-        #expect(try reopened.prioritizeMenu().tags.filter(\.isPriority).map(\.name) == ["filosofía"])
+        #expect(try reopened.prioritizeMenu().priorityTagNames == ["filosofía"])
         #expect(try reopened.reviewNow(settings) == [.firstView(eudaimonia)])
+        #expect(try another.prioritizeMenu().priorityTagNames.isEmpty)
+        #expect(try another.reviewNow(settings) == [.firstView(anotherUbuntu)])
     }
 
     /// Approves a card with this front and these tags and meets it now, so
