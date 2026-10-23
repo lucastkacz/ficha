@@ -60,6 +60,37 @@ final class InstructionsForAnAITests {
             ])
     }
 
+    @Test("the instructions' example with images imports from a zip with the images it names")
+    func theExampleWithImagesImportsFromAZip() throws {
+        let example = try fencedBlock(
+            after: "### An example with images", in: String(contentsOf: document, encoding: .utf8))
+        let file = folder.appending(path: "Birds.zip")
+        try writeZip(
+            [
+                ("Birds.txt", Data(example.utf8)),
+                ("hornero.jpg", try picture(width: 800, height: 600, red: 0.8)),
+                ("lapwing.jpg", try picture(width: 800, height: 600, red: 0.2)),
+            ], to: file)
+        let calendar = try buenosAiresCalendar()
+        let engine = try Engine(
+            location: .inMemory, time: ManualTimeSource(now: try morning(of: 23, in: calendar)), calendar: calendar)
+
+        let preview = try engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Birds": ""]))
+
+        #expect(preview.leftOut == [])
+        let cards = try engine.cards()
+        #expect(cards.map(\.front) == ["What bird is this?", ""])
+        #expect(
+            cards.map(\.back) == [
+                "The rufous hornero, which builds its nest of mud.",
+                "The southern lapwing, which shouts when anyone nears its nest.",
+            ])
+        #expect(cards.map(\.type) == [.question, nil])
+        #expect(cards.map(\.tags) == [["birds"], ["birds"]])
+        #expect(cards.allSatisfy { $0.frontImage != nil && $0.backImage == nil })
+    }
+
     /// The lines of the first fenced code block after the line `heading` in
     /// `text`, each ending in a line break.
     private func fencedBlock(after heading: String, in text: String) throws -> String {

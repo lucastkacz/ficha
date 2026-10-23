@@ -220,18 +220,25 @@ final class ImagesInZipsTests {
         }
     }
 
-    /// Writes a zip named `name` in the test's folder, holding `files`, each
-    /// a path in the zip and what the file there holds, and returns it.
+    /// Writes a zip named `name` in the test's folder, holding `files`, and
+    /// returns it.
     private func zip(_ files: [(path: String, data: Data)], named name: String) throws -> URL {
         let file = folder.appending(path: name)
-        let archive = try Archive(url: file, accessMode: .create, pathEncoding: nil)
-        for (path, data) in files {
-            try archive.addEntry(
-                with: path, type: .file, uncompressedSize: Int64(data.count), compressionMethod: .deflate
-            ) { position, size in
-                data.subdata(in: Int(position)..<Int(position) + size)
-            }
-        }
+        try writeZip(files, to: file)
         return file
+    }
+}
+
+/// Writes a zip to `file`, holding `files`, each a path in the zip and what
+/// the file there holds, compressed: a test's own zip, as a person or a zip
+/// tool makes one.
+func writeZip(_ files: [(path: String, data: Data)], to file: URL) throws {
+    let archive = try Archive(url: file, accessMode: .create, pathEncoding: nil)
+    for (path, data) in files {
+        try archive.addEntry(
+            with: path, type: .file, uncompressedSize: Int64(data.count), compressionMethod: .deflate
+        ) { position, size in
+            data.subdata(in: Int(position)..<Int(position) + size)
+        }
     }
 }
