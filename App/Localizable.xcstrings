@@ -178,6 +178,9 @@
         }
       }
     },
+    "+%lld" : {
+      "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
+    },
     "A book, a podcast…" : {
       "comment" : "In the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
     },
