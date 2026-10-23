@@ -1,6 +1,6 @@
 # Sharing a card as an image
 
-Ficha doesn't turn a card into an image to send or post, such as a quote and its author on a clean card with a small "Ficha" at the bottom, shared through the system's Share menu.
+Cards are passed on to other people as files, in the format the app imports (#86), as `card-sharing-website.md` says. Ficha doesn't turn a card into an image to send or post, such as a quote and its author on a clean card with a small "Ficha" at the bottom, shared through the system's Share menu.
 
 ## Why this is out of scope
 
