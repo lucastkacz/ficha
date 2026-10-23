@@ -38,7 +38,7 @@ private struct ImportButtonAndSheet: ViewModifier {
                 if let importing = state.importing {
                     ImportSheet(
                         importing: importing, failure: failure, preview: { state.previewImport(of: $0) },
-                        nameTag: { state.nameImportTag($0, as: $1) },
+                        nameTag: { state.nameImportTag($0, as: $1) }, removeTag: { state.removeImportTag($0) },
                         chooseForRepeatedCards: { state.chooseForRepeatedCards($0) },
                         importCards: { state.importCards() })
                 }
@@ -99,14 +99,16 @@ private struct ImportButtonAndSheet: ViewModifier {
 
 /// The sheet the Cards window's Import button opens. First it says in a line
 /// what Ficha reads, Copy Instructions for an AI copies how to write such a
-/// file, and Choose File… opens a text file of cards, or a zip with one and
-/// its cards' images. Then it
-/// shows what importing the file would do: how many cards come in, how many
-/// repeat the user's cards, with Update or Skip for them, which lines stay
-/// out and why, and the tag every card gets, named after the file, which the
-/// user renames, or clears to leave it out; Import imports them. Last, it
-/// says what the import did. `CardsWindowState` holds the preview, the
-/// choices and the outcome, and the sheet draws them.
+/// file, and Choose File… opens a text file of cards, a zip with one and its
+/// cards' images, or an Anki package. Then it shows what importing the file
+/// would do: how many cards come in, how many repeat the user's cards, with
+/// Update or Skip for them, which lines stay out and why, or for an Anki
+/// package, how many of its cards and why, and the tags the cards get: for a
+/// text file, one named after the file, for every card; for an Anki package,
+/// one for each level of its decks and each of its tags. The user renames
+/// each, or clears it to leave it out; Import imports them. Last, it says
+/// what the import did. `CardsWindowState` holds the preview, the choices and
+/// the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
     /// What couldn't be done, as the alert over the sheet says it.
@@ -115,6 +117,8 @@ struct ImportSheet: View {
     let preview: (URL) -> Void
     /// Gives the field of a proposed tag what the user typed in it.
     let nameTag: (_ proposed: String, _ name: String) -> Void
+    /// Leaves a proposed tag out, clearing its field.
+    let removeTag: (_ proposed: String) -> Void
     /// Chooses Update or Skip for the repeated cards.
     let chooseForRepeatedCards: (ImportChoices.RepeatedCards) -> Void
     /// Imports the cards, as the user chose.
@@ -139,6 +143,10 @@ struct ImportSheet: View {
         .fileImporter(
             isPresented: $isChoosingFile,
             allowedContentTypes: [.plainText, .commaSeparatedText, .tabSeparatedText, .zip]
+                // Anki's packages, by their extension: Anki declares their
+                // type on a Mac that has it, and macOS makes one up on
+                // another.
+                + [UTType(filenameExtension: "apkg")].compactMap(\.self)
         ) { result in
             if case .success(let file) = result {
                 preview(file)
@@ -156,7 +164,8 @@ struct ImportSheet: View {
                     """
                     Ficha reads a text file with one card per line: its front, back, tags, type and source, \
                     separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text \
-                    save it. Cards with images come in a zip, with the text file and the images.
+                    save it. Cards with images come in a zip, with the text file and the images. Anki's decks come \
+                    in from the .apkg files Anki exports.
                     """,
                     comment: "Under the title of the Cards window's Import sheet, before a file is chosen."))
             HStack {
@@ -181,29 +190,29 @@ struct ImportSheet: View {
                     "\(preview.newCount) new cards come in, at the pace of your new cards per day.",
                     comment: "In the Import sheet's preview, with how many new cards the file brings."))
             if !preview.leftOut.isEmpty {
-                leftOutLines(preview.leftOut)
+                leftOut(of: preview)
             }
             if preview.repeatedCount > 0 {
-                repeatedCardsChoice(preview.repeatedCount)
+                repeatedCardsChoice(preview.repeatedCount, kind: preview.kind)
             }
-            ForEach(importing.tagFields, id: \.proposed) { field in
-                LabeledContent {
-                    TextField(
-                        String(localized: "Tag", comment: "The Import sheet's field for the tag every card gets."),
-                        text: Binding(get: { field.name }, set: { nameTag(field.proposed, $0) }),
-                        prompt: Text(
-                            "No tag",
-                            comment: "The Import sheet's tag field, empty: the cards get no tag of the file's.")
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    // A focused text field keeps Return from reaching the
-                    // default button. The state imports only while Import
-                    // is on.
-                    .onSubmit(importCards)
-                } label: {
-                    Text(
-                        "Tag every card with",
-                        comment: "In the Import sheet, before the field for the tag every card it imports gets.")
+            switch preview.kind {
+            case .cardsFile:
+                ForEach(importing.tagFields, id: \.proposed) { field in
+                    LabeledContent {
+                        tagTextField(
+                            field,
+                            prompt: Text(
+                                "No tag",
+                                comment: "The Import sheet's tag field, empty: the cards get no tag of the file's."))
+                    } label: {
+                        Text(
+                            "Tag every card with",
+                            comment: "In the Import sheet, before the field for the tag every card it imports gets.")
+                    }
+                }
+            case .ankiPackage:
+                if !importing.tagFields.isEmpty {
+                    ankiTags
                 }
             }
             HStack {
@@ -266,17 +275,37 @@ struct ImportSheet: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// The lines the file can't read, how many and each with its number and
-    /// why, in a list that scrolls when they're many.
-    private func leftOutLines(_ lines: [LeftOutLine]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(
-                "\(lines.count) lines can't be read, and stay out:",
-                comment: "In the Import sheet's preview, above the lines of the file it can't read, with how many.")
+    /// What stays out, in a list that scrolls when it's long: the lines a
+    /// file can't read, how many and each with its number and why; or an
+    /// Anki package's cards that make none, how many, and how many for each
+    /// reason, since a card's place in the package says nothing.
+    private func leftOut(of preview: ImportPreview) -> some View {
+        let (title, rows): (Text, [String]) =
+            switch preview.kind {
+            case .cardsFile:
+                (
+                    Text(
+                        "\(preview.leftOut.count) lines can't be read, and stay out:",
+                        comment:
+                            "In the Import sheet's preview, above the lines of the file it can't read, with how many."),
+                    preview.leftOut.compactMap(reason)
+                )
+            case .ankiPackage:
+                (
+                    Text(
+                        "\(preview.leftOut.count) cards stay out:",
+                        comment:
+                            "In the Import sheet's preview of an Anki package, above why its cards that stay out do, with how many."
+                    ),
+                    preview.leftOutCounts.compactMap(reason)
+                )
+            }
+        return VStack(alignment: .leading, spacing: 6) {
+            title
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(lines, id: \.line) { line in
-                        Text(reason(line))
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        Text(row)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -288,19 +317,88 @@ struct ImportSheet: View {
         }
     }
 
+    /// The tags an Anki package's cards get, each in a field the user
+    /// renames, with a button that leaves it out, in a list that scrolls
+    /// when they're many.
+    private var ankiTags: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(
+                "The cards get these tags, from Anki's decks and tags:",
+                comment: "In the Import sheet's preview of an Anki package, above the tags its cards get.")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(importing.tagFields, id: \.proposed) { field in
+                        HStack(spacing: 6) {
+                            tagTextField(
+                                field,
+                                prompt: Text(
+                                    "Left out",
+                                    comment:
+                                        "The Import sheet's field for a tag of an Anki package, empty: the cards don't get it."
+                                ))
+                            Button {
+                                removeTag(field.proposed)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(field.name.isEmpty)
+                            .help(
+                                Text(
+                                    "Leave Out “\(field.proposed)”",
+                                    comment: "The tooltip of the Import sheet's button that leaves out a tag.")
+                            )
+                            .accessibilityLabel(
+                                Text(
+                                    "Leave Out “\(field.proposed)”",
+                                    comment: "The Import sheet's button that leaves out a tag, which shows a minus."))
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+                .padding(.horizontal, 4)
+            }
+            .frame(maxHeight: 156)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The field that names the proposed tag `field`, with `prompt` while
+    /// it's empty.
+    private func tagTextField(_ field: CardsWindowState.TagField, prompt: Text) -> some View {
+        TextField(
+            String(localized: "Tag", comment: "The Import sheet's field for a tag the imported cards get."),
+            text: Binding(get: { field.name }, set: { nameTag(field.proposed, $0) }),
+            prompt: prompt
+        )
+        .textFieldStyle(.roundedBorder)
+        // A focused text field keeps Return from reaching the default
+        // button. The state imports only while Import is on.
+        .onSubmit(importCards)
+    }
+
     /// How many of the file's cards repeat the user's, and Update or Skip
     /// for them, under it.
-    private func repeatedCardsChoice(_ count: Int) -> some View {
+    private func repeatedCardsChoice(_ count: Int, kind: ImportPreview.Kind) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(
                 "\(count) cards repeat cards you have, by their front:",
                 comment: "In the Import sheet, above Update and Skip, with how many cards of the file repeat.")
             Picker(selection: repeatedCards) {
-                Text(
-                    "Update them with the file's back, tags, type and source, keeping their progress",
-                    comment: "In the Import sheet, the choice that updates the cards the file repeats."
-                )
-                .tag(ImportChoices.RepeatedCards.update)
+                switch kind {
+                case .cardsFile:
+                    Text(
+                        "Update them with the file's back, tags, type and source, keeping their progress",
+                        comment: "In the Import sheet, the choice that updates the cards the file repeats."
+                    )
+                    .tag(ImportChoices.RepeatedCards.update)
+                case .ankiPackage:
+                    Text(
+                        "Update them with Anki's back and tags, keeping their progress",
+                        comment: "In the Import sheet, the choice that updates the cards an Anki package repeats."
+                    )
+                    .tag(ImportChoices.RepeatedCards.update)
+                }
                 Text("Skip them", comment: "In the Import sheet, the choice that leaves the cards the file repeats.")
                     .tag(ImportChoices.RepeatedCards.skip)
             } label: {
@@ -313,8 +411,9 @@ struct ImportSheet: View {
         }
     }
 
-    /// Why `line` stays out, with its number.
-    private func reason(_ line: LeftOutLine) -> String {
+    /// Why `line`, of a text file, stays out, with its number; nil for an
+    /// Anki card's reason, which the sheet counts instead.
+    private func reason(_ line: LeftOutLine) -> String? {
         let number = line.line
         return switch line.reason {
         case .oneColumn:
@@ -348,6 +447,31 @@ struct ImportSheet: View {
                 localized:
                     "Line \(number) has a side with only the image “\(image)”, which Ficha can't read as an image.",
                 comment: "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.")
+        case .emptyAnkiSide, .ankiImageOcclusion, .brokenAnkiTemplate:
+            nil
+        }
+    }
+
+    /// How many of an Anki package's cards stay out for a reason, and why;
+    /// nil for a text file's reason, which the sheet lists line by line.
+    private func reason(_ counted: ImportPreview.LeftOutCount) -> String? {
+        let count = counted.count
+        return switch counted.reason {
+        case .emptyAnkiSide:
+            String(
+                localized: "\(count) cards have a side with no text once sounds and images are left out.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .ankiImageOcclusion:
+            String(
+                localized: "\(count) cards are Image Occlusion cards, which hide parts of an image.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .brokenAnkiTemplate:
+            String(
+                localized: "\(count) cards have a template with a mistake, so Anki shows an error for them too.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .oneColumn, .blankFront, .blankBack, .unknownType, .unclosedQuote, .strayQuote, .missingImage,
+            .notAnImage:
+            nil
         }
     }
 

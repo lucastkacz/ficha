@@ -234,6 +234,15 @@ public enum CardsFileProblem: Error, Sendable, Equatable {
     /// It's a zip that holds several text files of cards, these, of which
     /// Ficha wouldn't know which to import.
     case severalTextFilesInZip([String])
+    /// It's an Anki package that can't be read: it's damaged, or it doesn't
+    /// hold what Anki writes.
+    case unreadableAnkiPackage
+    /// It's an Anki package in the format current Anki exports by default,
+    /// which Ficha can't read yet, unlike the one it exports with "Support
+    /// older Anki versions" ticked.
+    case ankiPackageNotReadableYet
+    /// It's an Anki package in a format newer than any Ficha knows.
+    case ankiPackageTooNew
 }
 
 /// The separators a `#separator` header can name, by the names it takes for

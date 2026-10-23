@@ -117,7 +117,7 @@ private func pathExtension(of path: String) -> String {
 
 /// What `entry` of `archive` holds, uncompressed, checked against its
 /// checksum.
-private func contents(of entry: Entry, in archive: Archive) throws -> Data {
+func contents(of entry: Entry, in archive: Archive) throws -> Data {
     var data = Data()
     _ = try archive.extract(entry) { chunk in
         data.append(chunk)

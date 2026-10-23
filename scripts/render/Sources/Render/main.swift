@@ -2,6 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import FichaCore
 import FichaData
+import SQLite3
 
 // Draws one of the app's windows as a PNG, with Ficha Dev's sample cards,
 // without showing anything on screen: `make render ARGS="cards --dark"`. The
@@ -22,6 +23,9 @@ enum Window: String {
     /// The Cards window with its Import sheet showing the preview of a file,
     /// which the tool can't choose in the open panel.
     case cardsImport = "cards-import"
+    /// The Cards window with its Import sheet showing the preview of an Anki
+    /// package.
+    case cardsImportAnki = "cards-import-anki"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -196,8 +200,8 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
-      <window>   cards, cards-import (its Import sheet, previewing a file), backups (Settings, on its Backups tab)
-                 or backups-failed (once a backup failed)
+      <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
+                 package), backups (Settings, on its Backups tab) or backups-failed (once a backup failed)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -447,6 +451,160 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
     return state
 }
 
+/// The Cards window's state partway through importing an Anki package, as
+/// the Import sheet shows it once the user chose one: the preview of a deck
+/// of medicine the tool writes in its scratch home, with two subdecks and
+/// Anki tags, a card the sample cards have, a card whose back is only a
+/// sound and an Image Occlusion note, which stay out. The file goes once
+/// it's read.
+func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
+    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try writeSampleAnkiPackage(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    state.startImport()
+    state.previewImport(of: file)
+    guard state.importing?.preview != nil else {
+        throw RenderError(
+            description: "The sample Anki package has no preview: \(String(describing: state.importing))")
+    }
+    return state
+}
+
+/// Writes the sample Anki package to `file`, as current Anki exports a deck
+/// with "Support older Anki versions" ticked: a zip with `meta` at version
+/// 2, `collection.anki21`, a SQLite database at schema 11 with only what
+/// Ficha reads, and an empty media list. The tests' `AnkiPackages.swift`
+/// writes such packages too, from Anki's source.
+func writeSampleAnkiPackage(to file: URL) throws {
+    let folder = file.deletingLastPathComponent().appending(path: "Anki package", directoryHint: .isDirectory)
+    try? FileManager.default.removeItem(at: folder)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let collection = folder.appending(path: "collection.anki21")
+    try runSQLite(try sampleAnkiCollectionSQL(), in: collection)
+    let meta = folder.appending(path: "meta")
+    try Data([0x08, 0x02]).write(to: meta)
+    let media = folder.appending(path: "media")
+    try Data("{}".utf8).write(to: media)
+    try? FileManager.default.removeItem(at: file)
+    let zip = Process()
+    zip.executableURL = URL(filePath: "/usr/bin/zip")
+    zip.arguments = ["-q", "-j"] + [file, meta, collection, media].map { $0.path(percentEncoded: false) }
+    try zip.run()
+    zip.waitUntilExit()
+    guard zip.terminationStatus == 0 else {
+        throw RenderError(
+            description:
+                "zip couldn't make the sample Anki package (exit \(zip.terminationStatus)). \(whenMacOSRefuses)"
+        )
+    }
+}
+
+/// Runs `sql` on the SQLite database at `file`, which it makes.
+func runSQLite(_ sql: String, in file: URL) throws {
+    var database: OpaquePointer?
+    defer { sqlite3_close(database) }
+    guard sqlite3_open(file.path(percentEncoded: false), &database) == SQLITE_OK,
+        sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK
+    else {
+        throw RenderError(
+            description: "SQLite couldn't write the sample Anki package: \(String(cString: sqlite3_errmsg(database)))")
+    }
+}
+
+/// The SQL that makes the sample Anki package's collection: Anki's tables at
+/// schema 11 (`rslib/src/storage/schema11.sql`), its Basic, Cloze and Image
+/// Occlusion note types, a deck of medicine with two subdecks, and the
+/// notes, each new, with its cards.
+func sampleAnkiCollectionSQL() throws -> String {
+    let basicAnswer = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
+    let noteTypes: [String: Any] = [
+        "1": [
+            "id": 1, "name": "Basic", "type": 0, "originalStockKind": 1,
+            "flds": [["name": "Front"], ["name": "Back"]],
+            "tmpls": [["name": "Card 1", "qfmt": "{{Front}}", "afmt": basicAnswer]],
+        ],
+        "2": [
+            "id": 2, "name": "Cloze", "type": 1, "originalStockKind": 5,
+            "flds": [["name": "Text"], ["name": "Back Extra"]],
+            "tmpls": [["name": "Cloze", "qfmt": "{{cloze:Text}}", "afmt": "{{cloze:Text}}<br>\n{{Back Extra}}"]],
+        ],
+        "3": [
+            "id": 3, "name": "Image Occlusion", "type": 1, "originalStockKind": 6,
+            "flds": [["name": "Occlusion"], ["name": "Image"], ["name": "Header"], ["name": "Back Extra"]],
+            "tmpls": [
+                [
+                    "name": "Image Occlusion", "qfmt": "{{cloze:Occlusion}}{{Image}}",
+                    "afmt": "{{cloze:Occlusion}}{{Image}}<br>{{Back Extra}}",
+                ]
+            ],
+        ],
+    ]
+    let decks: [String: Any] = [
+        "1": ["id": 1, "name": "Default"], "2": ["id": 2, "name": "Medicina"],
+        "3": ["id": 3, "name": "Medicina::Anatomía"], "4": ["id": 4, "name": "Medicina::Fisiología"],
+    ]
+    // Each note: its note type, its deck, its tags, its fields, and its
+    // cards' template indexes.
+    let notes: [(type: Int, deck: Int, tags: String, fields: [String], cards: [Int])] = [
+        (1, 3, "huesos", ["fémur", "El hueso del muslo, el más largo del cuerpo."], [0]),
+        (2, 4, "repaso", ["El {{c1::corazón}} bombea la sangre por las {{c2::arterias::unos vasos}}.", ""], [0, 1]),
+        (1, 4, "", ["mitocondria", "La parte de la célula que produce su energía."], [0]),
+        (1, 4, "", ["latido", "[sound:latido.mp3]"], [0]),
+        (
+            3, 3, "huesos",
+            ["{{c1::image-occlusion:rect:left=.2:top=.3:width=.1:height=.1}}", "<img src=\"pie.png\">", "", ""],
+            [0]
+        ),
+        (1, 4, "corazón leech", ["sístole", "La contracción del corazón, que empuja la sangre."], [0]),
+    ]
+    var sql = """
+        CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
+          ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
+          models text NOT NULL, decks text NOT NULL, dconf text NOT NULL, tags text NOT NULL);
+        CREATE TABLE notes (id integer PRIMARY KEY, guid text NOT NULL, mid integer NOT NULL, mod integer NOT NULL,
+          usn integer NOT NULL, tags text NOT NULL, flds text NOT NULL, sfld integer NOT NULL, csum integer NOT NULL,
+          flags integer NOT NULL, data text NOT NULL);
+        CREATE TABLE cards (id integer PRIMARY KEY, nid integer NOT NULL, did integer NOT NULL, ord integer NOT NULL,
+          mod integer NOT NULL, usn integer NOT NULL, type integer NOT NULL, queue integer NOT NULL,
+          due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
+          lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
+          flags integer NOT NULL, data text NOT NULL);
+        INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2}', \
+        \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
+
+        """
+    for (index, note) in notes.enumerated() {
+        let noteID = 1_700_000_000_000 + index
+        let tags = note.tags.isEmpty ? "" : " \(note.tags) "
+        sql += """
+            INSERT INTO notes VALUES (\(noteID), 'n\(index)', \(note.type), 0, 0, \(sqlText(tags)), \
+            \(sqlText(note.fields.joined(separator: "\u{1F}"))), '', 0, 0, '');
+
+            """
+        for ordinal in note.cards {
+            sql += """
+                INSERT INTO cards VALUES (\(noteID * 10 + ordinal), \(noteID), \(note.deck), \(ordinal), 0, 0, 0, 0, \
+                \(index + 1), 0, 2500, 0, 0, 0, 0, 0, 0, '');
+
+                """
+        }
+    }
+    return sql
+}
+
+/// `object` as JSON text.
+func jsonText(_ object: Any) throws -> String {
+    String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+}
+
+/// `text` as a string literal of SQL.
+func sqlText(_ text: String) -> String {
+    "'\(text.replacingOccurrences(of: "'", with: "''"))'"
+}
+
 /// A span of whole hours, in seconds.
 func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
@@ -456,7 +614,7 @@ func hours(_ count: Int) -> TimeInterval {
 /// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsImport: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cards, .cardsImport, .cardsImportAnki: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .backups: return AppModel(engine: try backupsEngine())
     case .backupsFailed:
         let model = AppModel(engine: try backupsEngine())
@@ -480,6 +638,10 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .cardsImport:
         let window = CardsWindow(model: model)
         window.makeContent(opening: try importingState(of: model))
+        return window
+    case .cardsImportAnki:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try ankiImportingState(of: model))
         return window
     case .backups, .backupsFailed:
         let window = AppWindow(

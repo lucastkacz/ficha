@@ -25,13 +25,20 @@ public struct ImportedCard: Sendable, Equatable {
     /// an import that updates a card the user has keeps the card's own
     /// fields that the file doesn't give, and sets the others, even blank.
     public let fields: Set<CardField>
-    /// The line of the file it starts on, counted from 1.
+    /// The line of the file it starts on, counted from 1; for a card of an
+    /// Anki package, its place among the package's cards, in the order they
+    /// come in.
     public let line: Int
+    /// The tags the import proposes for it, on top of its own, which the
+    /// user may rename or leave out in the preview: a text file's name, or
+    /// an Anki card's deck and its note's tags.
+    public let proposedTags: [String]
 
-    public init(content: CardContent, fields: Set<CardField>, line: Int) {
+    public init(content: CardContent, fields: Set<CardField>, line: Int, proposedTags: [String] = []) {
         self.content = content
         self.fields = fields
         self.line = line
+        self.proposedTags = proposedTags
     }
 }
 
@@ -59,7 +66,7 @@ public enum ImageLookup: Sendable, Equatable {
 }
 
 /// A line of a file of cards that makes no card, and why, for the preview to
-/// list.
+/// list; for an Anki package, a card of it that makes no card.
 public struct LeftOutLine: Sendable, Equatable {
     /// Why a line makes no card.
     public enum Reason: Sendable, Equatable {
@@ -83,6 +90,16 @@ public struct LeftOutLine: Sendable, Equatable {
         /// A side of it has no text, and what comes as the image it names
         /// for that side, this, isn't an image Ficha can read.
         case notAnImage(String)
+        /// An Anki card with a side left without text once its sounds and
+        /// images are dropped, such as one that holds only a sound.
+        case emptyAnkiSide
+        /// An Anki card of an Image Occlusion note type, which hides parts
+        /// of an image.
+        case ankiImageOcclusion
+        /// An Anki card whose template Anki can't render either, and shows
+        /// an error in its place: it names a field its note type doesn't
+        /// have, or it opens what it never closes.
+        case brokenAnkiTemplate
     }
 
     /// The line it is, or starts on, counted from 1.

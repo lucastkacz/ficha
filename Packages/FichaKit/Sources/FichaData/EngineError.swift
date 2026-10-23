@@ -285,6 +285,27 @@ extension CardsFileProblem {
                     time. Zip each with its images on its own, and import them one by one.
                     """
             )
+        case .unreadableAnkiPackage:
+            String(
+                localized: """
+                    Ficha couldn't read “\(name)” as an Anki package: it may be damaged. Export the deck from Anki \
+                    again, and import that.
+                    """
+            )
+        case .ankiPackageNotReadableYet:
+            String(
+                localized: """
+                    “\(name)” is in the format current Anki exports by default, which Ficha can't read yet. In \
+                    Anki, export the deck again with “Support older Anki versions” ticked, and import that.
+                    """
+            )
+        case .ankiPackageTooNew:
+            String(
+                localized: """
+                    “\(name)” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with \
+                    “Support older Anki versions” ticked, and import that.
+                    """
+            )
         }
     }
 }

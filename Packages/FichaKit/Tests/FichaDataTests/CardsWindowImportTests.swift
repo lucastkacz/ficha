@@ -126,6 +126,56 @@ final class CardsWindowImportTests {
         #expect(window.importing == nil)
     }
 
+    @Test("the preview of an Anki package lists every tag it adds, each of which the user renames or removes")
+    func anAnkiPackagesTagsAreRenamedOrRemoved() throws {
+        let package = AnkiPackage(notes: [
+            AnkiNote(
+                type: .basic, fields: ["fémur", "El hueso del muslo."], tags: ["repaso"], deck: "Medicina::Anatomía"),
+            AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+        ])
+        let file = folder.appending(path: "Medicina.apkg")
+        try package.write(to: file)
+        var window = engine.openCardsWindow(on: ladder)
+        window.startImport()
+        window.previewImport(of: file)
+        let tagFields = window.importing?.tagFields
+
+        window.nameImportTag("Anatomía", as: "anatomía humana")
+        window.removeImportTag("repaso")
+        window.importCards()
+
+        #expect(
+            tagFields == ["Medicina", "Anatomía", "repaso"].map { CardsWindowState.TagField(proposed: $0, name: $0) })
+        #expect(try engine.cards().map(\.tags) == [["Medicina", "anatomía humana"], ["Medicina"]])
+    }
+
+    @Test("the preview of an Anki package counts the cards that stay out by why, in the order each reason first comes")
+    func anAnkiPackagesCardsLeftOutAreCounted() throws {
+        let package = AnkiPackage(notes: [
+            AnkiNote(type: .basic, fields: ["perro", "[sound:dog.mp3]"]),
+            AnkiNote(
+                type: .imageOcclusion,
+                fields: ["{{c1::image-occlusion:rect:left=.1:top=.2:width=.3:height=.1}}", "", "", "", ""]),
+            AnkiNote(type: .basic, fields: ["[sound:gato.mp3]", "cat"]),
+            AnkiNote(type: .basic, fields: ["casa", "house"]),
+        ])
+        let file = folder.appending(path: "Inglés.apkg")
+        try package.write(to: file)
+        var window = engine.openCardsWindow(on: ladder)
+        window.startImport()
+
+        window.previewImport(of: file)
+
+        let preview = try #require(window.importing?.preview)
+        #expect(preview.kind == .ankiPackage)
+        #expect(preview.newCount == 1)
+        #expect(
+            preview.leftOutCounts == [
+                ImportPreview.LeftOutCount(reason: .emptyAnkiSide, count: 2),
+                ImportPreview.LeftOutCount(reason: .ankiImageOcclusion, count: 1),
+            ])
+    }
+
     @Test("a file that can't be read leaves the sheet where it was, saying why until it's dismissed")
     func aFileThatCantBeReadSaysWhy() throws {
         var window = engine.openCardsWindow(on: ladder)

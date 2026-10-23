@@ -51,9 +51,9 @@ extension CardsWindowState {
         }
     }
 
-    /// The field that names a tag the preview proposes for every card.
+    /// The field that names a tag the preview proposes.
     public struct TagField: Sendable, Equatable {
-        /// The tag as proposed, like the file's name.
+        /// The tag as proposed, like the file's name, or an Anki deck's.
         public let proposed: String
         /// What the field holds: at first the proposed name. A blank one
         /// leaves the tag out.
@@ -109,6 +109,12 @@ extension CardsWindowState {
     public mutating func nameImportTag(_ proposed: String, as name: String) {
         guard let index = importing?.tagFields.firstIndex(where: { $0.proposed == proposed }) else { return }
         importing?.tagFields[index].name = name
+    }
+
+    /// Leaves out the tag the preview proposes as `proposed`, clearing its
+    /// field, where the user can type a name again.
+    public mutating func removeImportTag(_ proposed: String) {
+        nameImportTag(proposed, as: "")
     }
 
     /// Chooses what happens to the file's cards that repeat the user's.

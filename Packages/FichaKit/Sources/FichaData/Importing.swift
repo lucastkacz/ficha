@@ -4,24 +4,61 @@ internal import GRDB
 
 /// What importing a file would do, as the engine read it, before anything
 /// changes: the cards that come in, in the file's order, how many of them
-/// repeat the user's cards, the lines it left out, and the tags it proposes
-/// for every card.
+/// repeat the user's cards, the lines it left out, and the tags it proposes.
 public struct ImportPreview: Sendable, Equatable {
+    /// What kind of file an import reads.
+    public enum Kind: Sendable, Equatable {
+        /// A text file of cards, or a zip with one and its cards' images.
+        case cardsFile
+        /// An Anki package, with Anki's decks.
+        case ankiPackage
+    }
+
     /// The file's name, as Finder shows it.
     public let fileName: String
+    public let kind: Kind
     /// The cards the file holds, in its order.
     let cards: [ImportedCard]
     /// The images the cards refer to, as they came in with the file, which
     /// Ficha keeps once they're imported.
     let images: [ImageName: CardImage]
-    /// The lines that make no card, with why, in the file's order.
+    /// The lines that make no card, with why, in the file's order: for an
+    /// Anki package, its cards that make none.
     public let leftOut: [LeftOutLine]
-    /// The tags the import proposes to add to every card, on top of each
-    /// card's own: for a text file, its name without its extension.
+    /// The tags the import proposes to add to its cards, on top of each
+    /// card's own, each once, in the order they first come: for a text
+    /// file, its name without its extension, for every card; for an Anki
+    /// package, the levels of each card's deck and its note's tags, for the
+    /// cards that have them.
     public let proposedTags: [String]
     /// How many of the file's cards repeat one of the user's, by the
     /// duplicate rule, as the user's cards were when the file was read.
     public let repeatedCount: Int
+
+    /// How many of the file's lines, or an Anki package's cards, stay out
+    /// for a reason.
+    public struct LeftOutCount: Sendable, Equatable {
+        public let reason: LeftOutLine.Reason
+        public let count: Int
+
+        public init(reason: LeftOutLine.Reason, count: Int) {
+            self.reason = reason
+            self.count = count
+        }
+    }
+
+    /// How many lines stay out for each reason, in the order each reason
+    /// first comes: as the preview of an Anki package lists its cards that
+    /// stay out, whose places in the package say nothing to the user.
+    public var leftOutCounts: [LeftOutCount] {
+        leftOut.reduce(into: []) { counts, line in
+            if let index = counts.firstIndex(where: { $0.reason == line.reason }) {
+                counts[index] = LeftOutCount(reason: line.reason, count: counts[index].count + 1)
+            } else {
+                counts.append(LeftOutCount(reason: line.reason, count: 1))
+            }
+        }
+    }
 
     /// How many cards the file holds.
     public var cardCount: Int {
@@ -82,9 +119,9 @@ public struct ImportOutcome: Sendable, Equatable {
 }
 
 extension Engine {
-    /// Reads the file of cards at `file`, a text file or a zip with a text
-    /// file and its cards' images, and says what importing it would do,
-    /// without changing anything.
+    /// Reads the file of cards at `file`, a text file, a zip with a text
+    /// file and its cards' images, or an Anki package, and says what
+    /// importing it would do, without changing anything.
     public func previewImport(of file: URL) throws(EngineError) -> ImportPreview {
         let name = file.lastPathComponent
         let data: Data
@@ -102,41 +139,58 @@ extension Engine {
             logger.error("Couldn't read a file to import: \(String(describing: error))")
             throw .unreadableFile(name, .cannotOpen)
         }
-        let reading: ImportReading
+        var reading: ImportReading
         var images: [ImageName: CardImage] = [:]
+        let kind: ImportPreview.Kind
         do throws(CardsFileProblem) {
-            if isZip(data) {
+            if isZip(data) && isAnkiPackage(data) {
+                reading = try readAnkiPackage(data)
+                kind = .ankiPackage
+            } else if isZip(data) {
                 (reading, images) = try readZipOfCards(data)
+                kind = .cardsFile
+            } else if file.pathExtension.lowercased() == "apkg" {
+                throw .unreadableAnkiPackage
             } else {
                 reading = try CardsTextFile.read(data)
+                kind = .cardsFile
             }
         } catch {
             throw .unreadableFile(name, error)
         }
-        let tag = file.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
-        return try preview(reading, of: name, proposing: tag.isEmpty ? [] : [tag], images: images)
+        if kind == .cardsFile {
+            // Every card of a text file gets a tag named after the file.
+            let tag = file.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+            reading = reading.proposing(tag.isEmpty ? [] : [tag])
+        }
+        return try preview(reading, of: name, kind: kind, images: images)
     }
 
     /// What importing `reading`, read from the file named `fileName`, would
-    /// do, with `tags` proposed for every card, whatever reader read it.
+    /// do, whatever reader read it, with the tags each card proposes.
     /// `images` are the images that came in with the file, of which the
     /// preview holds those its cards refer to, until they're imported.
     func preview(
-        _ reading: ImportReading, of fileName: String, proposing tags: [String],
-        images: [ImageName: CardImage] = [:]
+        _ reading: ImportReading, of fileName: String, kind: ImportPreview.Kind, images: [ImageName: CardImage] = [:]
     ) throws(EngineError) -> ImportPreview {
         let repeated = try read { db in try repeatedCards(of: reading.cards, in: db) }
         let referred = Set(reading.cards.flatMap { [$0.content.frontImage, $0.content.backImage].compactMap(\.self) })
+        var proposedTags: [String] = []
+        var seen = Set<String>()
+        for tag in reading.cards.flatMap(\.proposedTags) where seen.insert(tag).inserted {
+            proposedTags.append(tag)
+        }
         return ImportPreview(
-            fileName: fileName, cards: reading.cards, images: images.filter { referred.contains($0.key) },
-            leftOut: reading.leftOut, proposedTags: tags, repeatedCount: repeated.count { $0 != nil })
+            fileName: fileName, kind: kind, cards: reading.cards, images: images.filter { referred.contains($0.key) },
+            leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil })
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that
     /// repeats none of the user's comes in as new, in the file's order, so
     /// new cards come up for their first view in that order; each one that
     /// repeats a card of the user's updates it or is skipped. Every card that
-    /// comes in or is updated gets the proposed tags, as the user named them.
+    /// comes in or is updated gets the tags it proposes, as the user named
+    /// them.
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
@@ -147,8 +201,9 @@ extension Engine {
     public func importCards(_ preview: ImportPreview, choosing choices: ImportChoices) throws(EngineError)
         -> ImportOutcome
     {
-        let addedTags = preview.proposedTags.map {
-            (choices.tagNames[$0] ?? $0).trimmingCharacters(in: .whitespacesAndNewlines)
+        /// The tags `card` proposes, as the user named them.
+        func addedTags(_ card: ImportedCard) -> [String] {
+            card.proposedTags.map { (choices.tagNames[$0] ?? $0).trimmingCharacters(in: .whitespacesAndNewlines) }
         }
         let repeatedCount = try read { db in try repeatedCards(of: preview.cards, in: db) }.count { $0 != nil }
         let skippedCount = choices.repeatedCards == .skip ? repeatedCount : 0
@@ -172,11 +227,12 @@ extension Engine {
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
-                        try insertCard(try card.content(adding: addedTags), capturedAs: nil, at: importedAt, in: db)
+                        try insertCard(
+                            try card.content(adding: addedTags(card)), capturedAs: nil, at: importedAt, in: db)
                         added += 1
                     case (let repeated?, .update):
                         let updatedCard = try replaceContent(
-                            of: repeated.id, with: try card.update(of: repeated, adding: addedTags), in: db)
+                            of: repeated.id, with: try card.update(of: repeated, adding: addedTags(card)), in: db)
                         letGo.formUnion(repeated.images.subtracting(updatedCard.images))
                         updated += 1
                     case (_?, .skip):
@@ -236,6 +292,20 @@ extension ImportedCard {
             throw unreadable("The card on line \(line) has a blank front or back after its import")
         }
         return content
+    }
+}
+
+extension ImportReading {
+    /// The reading with `tags` proposed for every card, on top of what it
+    /// proposes.
+    fileprivate func proposing(_ tags: [String]) -> ImportReading {
+        ImportReading(
+            cards: cards.map { card in
+                ImportedCard(
+                    content: card.content, fields: card.fields, line: card.line,
+                    proposedTags: card.proposedTags.adding(tags))
+            },
+            leftOut: leftOut)
     }
 }
 
