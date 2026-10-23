@@ -16,8 +16,8 @@ struct FixCommand: EngineCommand {
                "tags": ["lenguaje"], "source": "Un ensayo de Borges"}
               EOF
 
-            Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, and \
-            the command prints it.
+            Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, \
+            unless one of its tags is set aside, and the command prints it.
             """
     )
 

@@ -107,6 +107,24 @@ final class DatabaseFileTests {
             ])
     }
 
+    @Test("a database from before tags of their own migrates with every card where it stood, and no tag set aside")
+    func cardsKeepTheirStandingThroughTheTagMigration() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeTags(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(
+            try engine.cards().map(\.standing) == [
+                .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
+                .buried(at: time.now, flag: nil),
+            ])
+        #expect(
+            try engine.standing(of: 1, on: ReviewSettings.defaults.ladder)
+                == .onLadder(step: 0, due: time.now + hours(1)))
+        #expect(try engine.sidebarTags() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
+    }
+
     // Ficha opens its database every time it starts, and the CLI on every
     // command: copying it each time would fill the data folder.
     @Test("a new database, or one already up to date, isn't copied")
@@ -189,6 +207,36 @@ final class DatabaseFileTests {
         }
         try database.close()
     }
+}
+
+/// Saves a database at `file` as Ficha left it before tags had anything of
+/// their own, through the schema's migrations up to the one before them,
+/// with three cards tagged "filosofía" and "lenguaje", approved at `time`:
+/// one in Lucas's reviews, met then, one flagged then, and one buried then.
+func saveDatabaseBeforeTags(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v10 planned appearances")
+    try database.write { db in
+        try db.execute(
+            sql: "INSERT INTO capture (id, text, createdAt, refinedAt) VALUES (1, 'ubuntu', ?, ?)",
+            arguments: [time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt, captureId, flagNote, flaggedAt, buriedAt)
+                VALUES (1, 'word', 'ubuntu', 'Humanidad.', '["filosofía"]', ?, 1, NULL, NULL, NULL),
+                    (2, 'word', 'eudaimonía', 'Vida plena.', '["filosofía", "lenguaje"]', ?, 1,
+                        'Falta un ejemplo', ?, NULL),
+                    (3, 'word', 'ataraxia', 'Serenidad.', '["filosofía"]', ?, 1, NULL, NULL, ?)
+                """,
+            arguments: [time, time, time, time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                VALUES (1, 'firstView', NULL, ?, 8.25, 'reviewNow', 0)
+                """,
+            arguments: [time])
+    }
+    try database.close()
 }
 
 /// Saves a database at `file` as the first version of Ficha left it, written
