@@ -375,6 +375,9 @@
     "Couldn't bury the card" : {
 
     },
+    "Couldn't change the priority tags" : {
+
+    },
     "Couldn't change whether %@ starts at login" : {
 
     },
@@ -441,6 +444,9 @@
           }
         }
       }
+    },
+    "Couldn't read your tags" : {
+
     },
     "Couldn't restore the copy" : {
       "comment" : "An alert's title in Settings' Backups tab."
@@ -849,6 +855,9 @@
     "No words" : {
       "comment" : "In the Cards window: no word card that isn't buried."
     },
+    "None" : {
+      "comment" : "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them."
+    },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
     },
@@ -910,6 +919,12 @@
     },
     "Open Login Items" : {
 
+    },
+    "Prioritize" : {
+      "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked."
+    },
+    "Prioritize: %@" : {
+      "comment" : "The Prioritize submenu's title while some tags are priority tags, which it lists by name."
     },
     "Process %d" : {
       "comment" : "A process with no name, by its id, in Diagnostics: a noun."

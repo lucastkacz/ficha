@@ -1,4 +1,5 @@
 import AppKit
+import FichaData
 import SwiftUI
 
 /// The menu under Ficha's icon in the menu bar.
@@ -42,6 +43,7 @@ struct MenuContent: View {
         Button("Capture…", action: openCapture)
             .keyboardShortcut(captureShortcut.shortcut?.keyboardShortcut)
         Button(reviewNowTitle, action: openReviewPanel)
+        prioritizeMenu
         Divider()
         Text(progressLine)
         Button(
@@ -71,6 +73,69 @@ struct MenuContent: View {
             return String(localized: "Review now")
         }
         return String(localized: "Review now (\(due) due)")
+    }
+
+    /// The Prioritize submenu, as the engine offers it: "None", ticked while
+    /// no tag is a priority tag, which clears them, and then each tag, its
+    /// emoji before its name, ticked while it's a priority tag, which toggles
+    /// it. A change applies from the next appearance, review now or "See
+    /// more" on.
+    private var prioritizeMenu: some View {
+        Menu(prioritizeTitle) {
+            if let tags = model.tagsToPrioritize {
+                Toggle(
+                    isOn: Binding(
+                        get: { !tags.contains(where: \.isPriority) },
+                        set: { _ in changePriority { () throws(EngineError) in try model.clearPriorityTags() } })
+                ) {
+                    Text(
+                        "None",
+                        comment: "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.")
+                }
+                if !tags.isEmpty {
+                    Divider()
+                }
+                ForEach(tags, id: \.name) { tag in
+                    Toggle(
+                        isOn: Binding(
+                            get: { tag.isPriority },
+                            set: { _ in
+                                changePriority { () throws(EngineError) in try model.togglePriority(of: tag.name) }
+                            })
+                    ) {
+                        Text(verbatim: tag.emoji.map { "\($0) \(tag.name)" } ?? tag.name)
+                    }
+                }
+            } else {
+                Text("Couldn't read your tags")
+            }
+        }
+    }
+
+    /// "Prioritize", naming the priority tags while there are some, so Lucas
+    /// sees that priority is on without opening the submenu.
+    private var prioritizeTitle: String {
+        let names = (model.tagsToPrioritize ?? []).filter(\.isPriority).map(\.name)
+        guard !names.isEmpty else {
+            return String(
+                localized: "Prioritize",
+                comment: "A menu-bar submenu that picks the tags whose cards come first, while none is picked.")
+        }
+        return String(
+            localized: "Prioritize: \(names.formatted(.list(type: .and, width: .narrow)))",
+            comment: "The Prioritize submenu's title while some tags are priority tags, which it lists by name.")
+    }
+
+    /// Makes a change to the priority tags, or says in an alert why it
+    /// couldn't be saved.
+    private func changePriority(_ change: () throws(EngineError) -> Void) {
+        do {
+            try change()
+        } catch {
+            showAlert(
+                String(localized: "Couldn't change the priority tags"), explaining: error, style: .warning,
+                button: String(localized: "OK"))
+        }
     }
 
     /// How many cards Lucas learned and how many captures and flagged cards
