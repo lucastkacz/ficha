@@ -298,7 +298,7 @@ struct ReviewPanelView: View {
     private enum TopButtons {
         /// Undo, flag, bury, and close, with Esc.
         case forTheCard
-        /// Close alone, without Esc, which goes back to the card while Lucas
+        /// Close alone, without Esc, which goes back to the card while the user
         /// writes a note to flag it.
         case closeWithoutEsc
     }
@@ -357,7 +357,7 @@ struct ReviewPanelView: View {
         .help(Text("Bury (e)", comment: "The tooltip of the button that buries the card, with its key."))
     }
 
-    /// The button that undoes what Lucas did with the last card: ⌘Z, unless
+    /// The button that undoes what the user did with the last card: ⌘Z, unless
     /// `withKeys` is false.
     private func undoButton(of panel: ReviewPanelModel, withKeys: Bool = true) -> some View {
         Button("Undo", systemImage: "arrow.uturn.backward") {
@@ -419,7 +419,7 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The line at the top of a card Lucas reviews: the badge of a review
+    /// The line at the top of a card the user reviews: the badge of a review
     /// ahead, when it's one, and the card's tags, when it has some.
     @ViewBuilder
     private func topLine(isAhead: Bool, tags: [CardTag]) -> some View {

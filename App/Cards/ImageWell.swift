@@ -9,7 +9,7 @@ import os
 // its own.
 private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "images")
 
-/// Where a side of the card Lucas makes or edits takes its image, under the
+/// Where a side of the card the user makes or edits takes its image, under the
 /// side's text: an image dragged from Finder or a browser onto it, or pasted
 /// with ⌘V once it has the focus, which a click or Tab gives it. With an
 /// image, it shows it, with a button that removes it, as Delete does while it

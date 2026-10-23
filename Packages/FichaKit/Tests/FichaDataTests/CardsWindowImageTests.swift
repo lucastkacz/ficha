@@ -144,7 +144,7 @@ struct CardsWindowImageTests {
 }
 
 extension CardsWindowState {
-    /// Types into the form's sides, in place of what they held, as Lucas
+    /// Types into the form's sides, in place of what they held, as the user
     /// would, leaving alone each side whose text is nil.
     fileprivate mutating func typeInForm(front: String? = nil, back: String? = nil) {
         guard var draft = cardForm?.draft else { return }

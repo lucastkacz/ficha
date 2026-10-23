@@ -109,7 +109,7 @@ extension CardsWindowState {
         showImages()
     }
 
-    /// Puts the image `dropped` brings on `side` of the card Lucas edits, in
+    /// Puts the image `dropped` brings on `side` of the card the user edits, in
     /// place of the one it had, shrunk as every image that comes in. The
     /// window holds it until Save saves the card. Something that isn't an
     /// image, or a file that can't be read, stays out, and the window
@@ -120,7 +120,7 @@ extension CardsWindowState {
         showImages()
     }
 
-    /// Removes the image on `side` of the card Lucas edits, which Save then
+    /// Removes the image on `side` of the card the user edits, which Save then
     /// takes away from the card.
     public mutating func removeImageFromEditor(on side: CardSide) {
         guard case .card = editing else { return }
@@ -160,7 +160,7 @@ extension CardsWindowState {
         images.held(among: Set([content.frontImage, content.backImage].compactMap(\.self)))
     }
 
-    /// Shows the images of the card the detail shows, of the card Lucas
+    /// Shows the images of the card the detail shows, of the card the user
     /// edits and of the card the form makes, and lets go of the others.
     mutating func showImages() {
         var names = Set<ImageName>()

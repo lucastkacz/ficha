@@ -262,7 +262,7 @@ enum Schema {
                 // when the card is due on it.
                 table.column("step", .integer)
                 table.column("due", .datetime)
-                // When Lucas answered, or when the import placed the card.
+                // When the user answered, or when the import placed the card.
                 table.column("answeredAt", .datetime).notNull()
                 // From showing the card to the answer, in seconds, when
                 // something measured it.

@@ -21,7 +21,7 @@ public struct Card: Sendable, Equatable, Encodable {
     public let backImage: ImageName?
     public let tags: [String]
     public let source: String?
-    /// When it came in: when Lucas approved it, or the user created it.
+    /// When it came in: when the user approved it in a refine session, or created it.
     public let createdAt: Date
     /// The capture it was refined from, or nil when it came in another way,
     /// such as the Cards window's form or an import.

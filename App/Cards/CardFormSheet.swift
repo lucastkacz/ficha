@@ -88,7 +88,7 @@ struct ConvertToCardButton: View {
 /// after each change, whether Add is on, what it warns about, and what
 /// closing does to the capture; the sheet draws it, and keeps which field has
 /// the focus. When a card can't be added, an alert says why, and the fields
-/// stay as Lucas left them.
+/// stay as the user left them.
 private struct CardFormSheet: View {
     @Binding var state: CardsWindowState
     /// What couldn't be saved, as the alert over the sheet says it.
@@ -269,7 +269,7 @@ private struct CardFormSheet: View {
         }
     }
 
-    /// A field of the form's draft, which the state changes as Lucas types.
+    /// A field of the form's draft, which the state changes as the user types.
     private func draft<Value>(_ field: WritableKeyPath<CardsWindowState.CardForm.Draft, Value>) -> Binding<Value> {
         Binding {
             // The form is open while the sheet shows it.

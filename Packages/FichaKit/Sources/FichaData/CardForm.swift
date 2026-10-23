@@ -4,7 +4,7 @@ import Foundation
 extension CardsWindowState {
     /// The form that creates cards in the Cards window, a sheet over it,
     /// opened by New Card, or by Convert to Card on a capture in the inbox,
-    /// and open until Lucas closes it. It stays open after each card, as
+    /// and open until the user closes it. It stays open after each card, as
     /// Anki's Add window does.
     public struct CardForm: Sendable, Equatable {
         /// The capture the form was opened from, which it shows beside its
@@ -44,7 +44,7 @@ extension CardsWindowState.CardForm {
 }
 
 extension CardsWindowState.CardForm {
-    /// What the form's fields hold, as Lucas types them.
+    /// What the form's fields hold, as the user types them.
     public struct Draft: Sendable, Equatable {
         /// The type, or nil for None, which the form starts at.
         public var type: CardType?
@@ -83,7 +83,7 @@ extension CardsWindowState.CardForm {
     }
 
     /// One side of the card the form makes, a front or a back, as its field
-    /// holds it, and the image Lucas dragged or pasted on it, if any, which
+    /// holds it, and the image the user dragged or pasted on it, if any, which
     /// the window holds until Add keeps it (`CardsWindowImages.swift`).
     public struct Side: Sendable, Equatable {
         public var text = ""
@@ -167,7 +167,7 @@ extension CardsWindowState {
     }
 
     /// Add: saves what the form holds as a new card, while Add is on, straight
-    /// into Lucas's reviews as new, with the images on its sides, which Ficha
+    /// into the user's reviews as new, with the images on its sides, which Ficha
     /// keeps from then on. A card added from a capture keeps it as its
     /// capture, and the capture stays in the inbox until the form closes.
     /// Then it clears the front and the back, their images too, and keeps the

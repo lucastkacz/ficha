@@ -19,7 +19,7 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
-    /// When Lucas last saw it: its review log's latest first view or review,
+    /// When the user last saw it: its review log's latest first view or review,
     /// or nil while it's new, or while it has only the placement an import
     /// put it on its step with (ADR 0013).
     public let lastSeen: Date?

@@ -2,14 +2,14 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The fields Lucas edits a card in, in place of its detail: its type, or
+/// The fields the user edits a card in, in place of its detail: its type, or
 /// None, front and back, each with its text and its image, dragged or pasted
-/// under it, tags and source, under his note when it's flagged. Return
+/// under it, tags and source, under the flag's note when it's flagged. Return
 /// saves, Option-Return starts a new line, and Escape cancels, as in the
-/// capture window, unless he's in the window's search field. Saving with a
-/// side that has neither text nor an image says, under it, what's missing.
-/// When the card can't be saved, the window's alert says why, and the fields
-/// stay as Lucas left them.
+/// capture window, unless the search field has the focus. Saving with a side
+/// that has neither text nor an image says, under it, what's missing. When
+/// the card can't be saved, the window's alert says why, and the fields stay
+/// as the user left them.
 struct CardEditor: View {
     /// The card as it was when Lucas started editing it.
     let card: Card

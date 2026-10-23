@@ -45,7 +45,7 @@ struct CardsView: View {
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
 
-    /// The content for Lucas's cards in `model`, opening with `state` when
+    /// The content for the user's cards in `model`, opening with `state` when
     /// it's given, as `make render` opens it partway through an import, and
     /// on All cards otherwise.
     init(model: AppModel, state: CardsWindowState? = nil) {

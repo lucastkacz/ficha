@@ -174,9 +174,9 @@ private struct AnswerDot: View {
     }
 }
 
-/// How long Lucas took to answer, in seconds, or a dash when nothing measured
-/// it: an answer from a card notification has no time. A placement, which
-/// Lucas didn't answer, has nothing there.
+/// How long the user took to answer, in seconds, or a dash when nothing
+/// measured it: an answer from a card notification has no time. A placement,
+/// which the user didn't answer, has nothing there.
 private struct ResponseTime: View {
     let entry: ReviewLogEntry
 
@@ -212,8 +212,8 @@ extension ReviewLogRow {
         step + 1
     }
 
-    /// The entry as the review log's list names it: what Lucas answered, or
-    /// for a placement, the step the import put the card on.
+    /// The entry as the review log's list names it: what the user answered,
+    /// or for a placement, the step the import put the card on.
     fileprivate var entryName: String {
         guard case .placement = entry.kind else {
             return entry.kind.name
@@ -221,14 +221,14 @@ extension ReviewLogRow {
         return String(
             localized: "Imported on step \(stepNumber)",
             comment:
-                "In the Cards window's review log: an import from Anki put the card on this step of Lucas's ladder, counted from 1."
+                "In the Cards window's review log: an import from Anki put the card on this step of the user's ladder, counted from 1."
         )
     }
 }
 
 extension ReviewLogEntry.Kind {
-    /// What Lucas answered, as the review log names it in the Cards window:
-    /// "First view", or his rating as the review panel's buttons name it; or
+    /// What the user answered, as the review log names it in the Cards window:
+    /// "First view", or the rating as the review panel's buttons name it; or
     /// "Imported", for the placement an import put the card on its step with.
     fileprivate var name: String {
         switch self {
@@ -240,7 +240,7 @@ extension ReviewLogEntry.Kind {
             String(
                 localized: "Imported",
                 comment:
-                    "In the Cards window's review log chart's key: an import from Anki put the card on a step of Lucas's ladder."
+                    "In the Cards window's review log chart's key: an import from Anki put the card on a step of the user's ladder."
             )
         case .review(.again):
             String(

@@ -255,7 +255,7 @@ struct CardFormTests {
 }
 
 extension CardsWindowState {
-    /// Types into the form's fields, in place of what they held, as Lucas
+    /// Types into the form's fields, in place of what they held, as the user
     /// would, leaving alone each field whose text is nil.
     fileprivate mutating func type(
         front: String? = nil, back: String? = nil, tags: String? = nil, source: String? = nil

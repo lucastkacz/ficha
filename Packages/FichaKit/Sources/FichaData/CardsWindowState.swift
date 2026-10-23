@@ -209,8 +209,8 @@ public struct CardsWindowState: Sendable {
     /// typed, or why they couldn't be read: read with the cards while the
     /// form is open, and nil otherwise.
     var frontsInUse: Result<FrontsInUse, EngineError>?
-    /// The images on the sides of the card Lucas edits, as Save would give
-    /// them to it, while he edits one: `CardsWindowImages.swift`.
+    /// The images on the sides of the card the user edits, as Save would give
+    /// them to it, while they edit one: `CardsWindowImages.swift`.
     public internal(set) var editedImages = SideImages()
     /// The images the window shows, in the detail, the editor and the form,
     /// each read, or held until it's saved: `CardsWindowImages.swift`.
@@ -306,9 +306,9 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// What Lucas can do with what the detail shows: with a capture, edit it,
-    /// convert it to cards and discard it; with an expansion, edit it and
-    /// discard it; with one card, edit it, flag it while it's in his
+    /// What the user can do with what the detail shows: with a capture, edit
+    /// it, convert it to cards and discard it; with an expansion, edit it and
+    /// discard it; with one card, edit it, flag it while it's in the user's
     /// reviews, bury or unbury it, and delete it; with several, bury or
     /// unbury them and delete them.
     public var actions: Set<Action> {
@@ -386,10 +386,10 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Saves the card Lucas edits with `content`, its images as
+    /// Saves the card the user edits with `content`, its images as
     /// `editedImages` holds them, and ends the edit, or records why it
     /// couldn't and goes on with it. The card keeps its step and its review
-    /// log, and a flagged one is fixed, back in his reviews unless it's
+    /// log, and a flagged one is fixed, back in the reviews unless it's
     /// buried. The detail shows it as saved at once, without waiting for the
     /// engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
@@ -420,7 +420,7 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Ends the edit without saving it, nor the images Lucas put on it.
+    /// Ends the edit without saving it, nor the images the user put on it.
     public mutating func cancelEditing() {
         editing = nil
         editedImages = SideImages()

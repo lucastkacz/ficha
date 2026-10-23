@@ -6,9 +6,9 @@ import Foundation
 public struct ReviewLogEntry: Sendable, Equatable {
     /// What happened to the card.
     public enum Kind: Sendable, Equatable {
-        /// Lucas met it whole, in its first view.
+        /// The user met it whole, in its first view.
         case firstView
-        /// He reviewed it, and rated it.
+        /// The user reviewed it, and rated it.
         case review(Rating)
         /// An import that brought its progress from another app, such as
         /// Anki, placed it on this step of the ladder, counted from 0, the
