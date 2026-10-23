@@ -76,6 +76,9 @@ public enum EngineError: Error, Equatable {
     /// The file of cards with this name can't be imported, for the reason
     /// the problem gives, so nothing was read from it.
     case unreadableFile(String, CardsFileProblem)
+    /// The file with this name couldn't be written, so the cards weren't
+    /// exported to it. The engine logs why.
+    case unwritableFile(String)
 }
 
 extension EngineError: LocalizedError {
@@ -188,6 +191,13 @@ extension EngineError: LocalizedError {
             )
         case .unreadableFile(let name, let problem):
             problem.message(forFileNamed: name)
+        case .unwritableFile(let name):
+            String(
+                localized: """
+                    Ficha couldn't save “\(name)”. Check that the disk has room and that you can save in that \
+                    folder, or choose another one, and try again.
+                    """
+            )
         }
     }
 }

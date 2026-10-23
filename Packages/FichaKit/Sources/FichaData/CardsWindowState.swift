@@ -14,7 +14,8 @@ import Foundation
 /// from the tag's context menu, it asks which emoji the tag gets, and it
 /// records what couldn't be saved, for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
-/// and runs the Import sheet, from a file's preview to what the import did.
+/// runs the Import sheet, from a file's preview to what the import did, and
+/// the Export sheet, from what it offers to export to the file it writes.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, or the
     /// inbox.
@@ -158,6 +159,8 @@ public struct CardsWindowState: Sendable {
         case setColor(tag: String)
         /// He gave this tag an emoji, or took its emoji away.
         case setEmoji(tag: String)
+        /// He exported cards, which couldn't be read or saved to the file.
+        case export
     }
 
     /// What the sidebar chose: All cards, until Lucas picks another group or
@@ -200,6 +203,9 @@ public struct CardsWindowState: Sendable {
     /// The Import sheet, while it's open, which `CardsWindowImport.swift`
     /// runs.
     public internal(set) var importing: Importing?
+    /// The Export sheet, while it's open, which `CardsWindowExport.swift`
+    /// runs.
+    public internal(set) var exporting: Exporting?
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 

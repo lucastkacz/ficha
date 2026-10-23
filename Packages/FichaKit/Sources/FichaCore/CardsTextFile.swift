@@ -58,6 +58,60 @@ public enum CardsTextFile {
         return tags
     }
 
+    /// The text of a file holding `cards`, in their order, as Ficha exports
+    /// them: `read` reads it back as the same cards, and Anki as notes with a
+    /// front, a back and tags. Its headers say that tabs separate its
+    /// columns, that its fields hold no HTML, which columns it has, by their
+    /// names, and which one holds the tags; then each card has a line with
+    /// its front, back, tags, type and source, and a blank field for what it
+    /// lacks.
+    public static func text(of cards: [CardContent]) -> String {
+        let columns = Column.allCases
+        var lines = [
+            "#separator:tab",
+            "#html:false",
+            "#columns:" + columns.map(\.rawValue).joined(separator: "\t"),
+        ]
+        if let tags = columns.firstIndex(of: .tags) {
+            lines.append("#tags column:\(tags + 1)")
+        }
+        for card in cards {
+            lines.append(columns.map { written(field($0, of: card)) }.joined(separator: "\t"))
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// What `card` holds in `column`, before it's written.
+    private static func field(_ column: Column, of card: CardContent) -> String {
+        switch column {
+        case .front: card.front
+        case .back: card.back
+        case .tags: tagsColumn(holding: card.tags)
+        case .type: card.type?.rawValue ?? ""
+        case .source: card.source ?? ""
+        }
+    }
+
+    /// What a tags column holds for `tags`, which `tags(inColumn:)` reads
+    /// back: the tags separated by spaces, with an underscore for each space
+    /// inside a tag.
+    private static func tagsColumn(holding tags: [String]) -> String {
+        tags.map { tag in String(tag.map { $0.isWhitespace ? "_" : $0 }) }.joined(separator: " ")
+    }
+
+    /// `field` as a line of the file holds it: in quotes, with each quote in
+    /// it doubled, when it holds a tab, a quote or a line break, or starts
+    /// with `#`, which would make the line a comment; as it is otherwise.
+    private static func written(_ field: String) -> String {
+        let needsQuotes =
+            field.unicodeScalars.first == "#"
+            || field.unicodeScalars.contains { ["\t", "\"", "\n", "\r"].contains($0) }
+        guard needsQuotes else {
+            return field
+        }
+        return "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }
+
     /// The card that `fields`, the columns of the record on `line`, make,
     /// each the column `columns` says, and as plain text when `isHTML`, but
     /// its tags; or the line left out, with why it makes none.
