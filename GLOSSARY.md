@@ -120,7 +120,7 @@ Sending a card back to the inbox with a note on what to fix. It stays out of rev
 _Avoid_: mark, report
 
 **Forgotten often**:
-A card the user rated again in eight reviews, or as many as their settings say, since its front or back last changed. The review panel offers then to flag it, so it gets rewritten, and if the user says no, offers again after half as many more.
+A card the user rated again, "Don't know", in eight reviews in all, or as many as they set, since its front or back last changed. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
 _Avoid_: leech, hard card
 
 **Bury**:
