@@ -151,6 +151,21 @@ struct UpcomingAppearanceTests {
         #expect(after == UpcomingAppearance(time: try at(14, 0), cards: [.review(serendipia)]))
     }
 
+    @Test("planned appearances leave out a flagged card and a buried card that are due")
+    func plannedAppearancesLeaveOutFlaggedAndBuriedCards() throws {
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let petricor = try meetCard("petricor", dueAt: try at(10, 0))
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        try engine.flag(petricor.id, note: note("Falta decir de dónde viene"))
+        try engine.bury(serendipia.id)
+        time.move(to: try at(10, 0))
+
+        let plan = try engine.upcomingAppearances(settings)
+
+        #expect(plan.first?.time == (try at(10, 0)))
+        #expect(plan.map(\.cards) == Array(repeating: [.review(ubuntu)], count: Engine.mostUpcomingAppearances))
+    }
+
     /// Approves a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.

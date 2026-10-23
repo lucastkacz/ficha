@@ -122,6 +122,23 @@ struct SeeMoreTests {
         #expect(panel.moreCards.isEmpty)
     }
 
+    @Test("\"See more\" leaves out a flagged card and a buried card that are due")
+    func seeMoreLeavesOutFlaggedAndBuriedCards() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        let serendipia = try approveCard("serendipia", in: engine)
+        for card in [ubuntu, petricor, serendipia] {
+            try engine.meet(card)
+        }
+        try engine.flag(petricor.id, note: note("Falta decir de dónde viene"))
+        try engine.bury(serendipia.id)
+        time.advance(by: hours(1))
+
+        let panel = engine.openPanel(.reviewNow, with: [], settings: settings)
+
+        #expect(panel.moreCards == [.review(ubuntu)])
+    }
+
     // Lucas, in #14: once "See more?" keeps the panel open, a slip on the
     // last card can be undone.
     @Test("⌘Z at the end undoes what Lucas did with the last card, a first view too, and goes back to it")
