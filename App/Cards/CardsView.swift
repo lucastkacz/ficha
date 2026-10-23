@@ -590,6 +590,8 @@ struct CardsView: View {
             .defaultVisibility(.hidden)
         }
         .focused($isTableFocused)
+        // The card Show Card selected, which may be far down the list.
+        .revealingRow(state.cardToReveal) { state.cardRevealed() }
         .overlay {
             if rows.isEmpty, case .cards(let group) = state.sidebarItem {
                 noCards(in: group)

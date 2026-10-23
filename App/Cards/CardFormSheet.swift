@@ -82,8 +82,9 @@ struct ConvertToCardButton: View {
 /// front and the back cleared for the next one, as Anki's Add
 /// window does; Return adds too, Option-Return starts a new line, and Escape
 /// closes, as Close does. While the front repeats another card's, the form
-/// says so under it, with Show Card (⌘R), which closes the form and selects
-/// that card in the window. `CardsWindowState` decides what the form holds
+/// says so under it, with Show Card (⌘R), which sets the form aside, as it
+/// is, until it's opened the same way again, and selects that card in the
+/// window. `CardsWindowState` decides what the form holds
 /// after each change, whether Add is on, what it warns about, and what
 /// closing does to the capture; the sheet draws it, and keeps which field has
 /// the focus. When a card can't be added, an alert says why, and the fields

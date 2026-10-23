@@ -143,7 +143,10 @@ struct CardFormTests {
         #expect(try engine.inbox().captures == [bostezo])
     }
 
-    @Test("showing the card a front repeats closes the form and selects the card where the sidebar lists it")
+    // So that what was typed isn't lost.
+    @Test(
+        "showing the card a front repeats sets the form aside and selects the card where the sidebar lists it, scrolled to, and New Card brings the form back as it was"
+    )
     func showingTheRepeatedCardSelectsIt() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ataraxia = try approveCard("ataraxia", in: engine)
@@ -153,10 +156,15 @@ struct CardFormTests {
         window.search(for: "algo")
 
         window.openNewCardForm()
-        window.type(front: "Serendipia")
+        window.type(front: "Serendipia", back: "Un hallazgo por casualidad.")
+        window.putImageInForm(.data(try picture(width: 800, height: 600)), on: .back)
         window.showRepeatedCard()
         let shownFirst = (window.sidebarItem, window.search, window.selectedRows.map(\.id), window.cardForm)
+        let revealedFirst = window.cardToReveal
+        // The table scrolled to it.
+        window.cardRevealed()
         window.openNewCardForm()
+        let broughtBack = try #require(window.cardForm)
         window.type(front: "ataraxia")
         window.showRepeatedCard()
 
@@ -164,8 +172,48 @@ struct CardFormTests {
         #expect(shownFirst.1 == "")
         #expect(shownFirst.2 == [serendipia.id])
         #expect(shownFirst.3 == nil)
+        #expect(revealedFirst == serendipia.id)
+        #expect(broughtBack.draft.front.text == "Serendipia")
+        #expect(broughtBack.draft.back.text == "Un hallazgo por casualidad.")
+        #expect(broughtBack.frontWarning == .repeats(serendipia))
+        let image = try #require(broughtBack.draft.back.image)
+        #expect(try window.images[image]?.get() != nil)
         #expect(window.sidebarItem == .cards(.buried))
         #expect(window.selectedRows.map(\.id) == [ataraxia.id])
+        #expect(window.cardToReveal == ataraxia.id)
+    }
+
+    @Test(
+        "a form from a capture that Show Card set aside comes back with Convert to Card, and approves the capture only once it closes"
+    )
+    func aFormFromACaptureSetAsideApprovesItOnlyOnceItCloses() throws {
+        try approveCard("serendipia", in: engine)
+        let capture = try engine.newCapture("Serendipia: un hallazgo por casualidad")
+        var window = openWindow()
+        window.choose(.inbox)
+        window.selectInInbox(.capture(capture.id))
+        window.convertToCard()
+        window.type(front: "hallazgo", back: "Lo que se encuentra.")
+        window.addCard()
+        window.type(front: "serendipia", back: "Un hallazgo por casualidad.")
+
+        window.showRepeatedCard()
+        let inboxWhileSetAside = try engine.inbox().captures
+        window.choose(.inbox)
+        window.selectInInbox(.capture(capture.id))
+        window.convertToCard()
+        let broughtBack = window.cardForm
+        window.showRepeatedCard()
+        // A new card's form: the one set aside closes first.
+        window.openNewCardForm()
+
+        #expect(inboxWhileSetAside == [capture])
+        #expect(broughtBack?.capture == capture)
+        #expect(broughtBack?.addedCards.map(\.front) == ["hallazgo"])
+        #expect(broughtBack?.draft.front.text == "serendipia")
+        #expect(window.cardForm?.capture == nil)
+        #expect(window.cardForm?.draft.front.text == "")
+        #expect(try engine.inbox().captures == [])
     }
 
     @Test("Add from a capture that left the inbox meanwhile saves nothing, records why and keeps the fields")

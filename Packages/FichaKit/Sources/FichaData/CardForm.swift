@@ -92,19 +92,41 @@ extension CardsWindowState.CardForm {
 }
 
 extension CardsWindowState {
-    /// Opens the form on a new card: every field empty, and the type None.
+    /// Opens the form on a new card: every field empty, and the type None;
+    /// or brings back the new card's form Show Card set aside, as it was.
     public mutating func openNewCardForm() {
         guard cardForm == nil else { return }
-        cardForm = CardForm(capture: nil)
+        openCardForm(CardForm(capture: nil))
     }
 
     /// Convert to Card: opens the form from the capture the detail shows,
-    /// while it's offered, with the capture's source filled in.
+    /// while it's offered, with the capture's source filled in; or brings
+    /// back the form from that capture Show Card set aside, as it was.
     public mutating func convertToCard() {
         guard cardForm == nil, actions.contains(.convertToCard), case .capture(let capture) = detail else { return }
         var form = CardForm(capture: capture)
         form.draft.source = capture.source ?? ""
-        cardForm = form
+        openCardForm(form)
+    }
+
+    /// Opens `form`, or the form Show Card set aside when it was opened the
+    /// same way, from the same capture or from none, with what its front
+    /// repeats checked again. A form set aside that was opened another way
+    /// closes for good first.
+    private mutating func openCardForm(_ form: CardForm) {
+        guard let setAside = setAsideCardForm else {
+            cardForm = form
+            return
+        }
+        setAsideCardForm = nil
+        guard setAside.capture?.id == form.capture?.id else {
+            finishClosing(setAside)
+            cardForm = form
+            return
+        }
+        var broughtBack = setAside
+        broughtBack.frontWarning = frontWarning(for: setAside.draft.front)
+        cardForm = broughtBack
     }
 
     /// Changes what the form's fields hold to `draft`, as Lucas types. When
@@ -154,14 +176,23 @@ extension CardsWindowState {
     }
 
     /// Shows the card the front repeats, while the form warns about one: the
-    /// form closes, as Close closes it, and the window selects the card in
-    /// All cards, or in Buried when it's buried, with no search.
+    /// form goes, set aside as it is, with the images on its sides, until
+    /// it's opened the same way again, and the window selects the card in
+    /// All cards, or in Buried when it's buried, with no search, and scrolls
+    /// to it. A capture the form came from stays in the inbox meanwhile.
     public mutating func showRepeatedCard() {
         guard case .repeats(let card)? = cardForm?.frontWarning else { return }
-        closeCardForm()
+        setAsideCardForm = cardForm
+        cardForm = nil
         choose(.cards(card.standing.isInAllCards ? .all : .buried))
         search(for: "")
         select([card.id])
+        cardToReveal = card.id
+    }
+
+    /// Says the table scrolled to the card it was to reveal.
+    public mutating func cardRevealed() {
+        cardToReveal = nil
     }
 
     /// Close: closes the form. Opened from a capture, once a card was added
@@ -172,6 +203,11 @@ extension CardsWindowState {
     public mutating func closeCardForm() {
         guard let form = cardForm else { return }
         cardForm = nil
+        finishClosing(form)
+    }
+
+    /// Closes `form` for good, once it's no longer open, as Close does.
+    private mutating func finishClosing(_ form: CardForm) {
         // Images put on the last card, which Add never saved, go.
         showImages()
         if form.approvesCaptureOnClose, let capture = form.capture {

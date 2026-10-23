@@ -170,8 +170,8 @@ extension CardsWindowState {
         if case .card = editing {
             names.formUnion(editedImages.all)
         }
-        if let draft = cardForm?.draft {
-            names.formUnion([draft.front.image, draft.back.image].compactMap(\.self))
+        for form in [cardForm, setAsideCardForm].compactMap(\.self) {
+            names.formUnion([form.draft.front.image, form.draft.back.image].compactMap(\.self))
         }
         images.show(names, readingWith: engine)
     }

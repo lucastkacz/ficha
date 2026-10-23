@@ -177,6 +177,9 @@ public struct CardsWindowState: Sendable {
     /// The row Lucas selected in the inbox, one at a time, which the table
     /// may no longer list, as with the cards.
     public private(set) var inboxSelection: InboxRow.ID?
+    /// The card the table scrolls to, until it has: the one Show Card
+    /// selected, which may be far down the list.
+    public internal(set) var cardToReveal: CardRow.ID?
     /// The review log of the card the detail shows, while it shows one: read
     /// with the cards, and again when Lucas selects another card.
     private var reviewLog: CardReviewLog?
@@ -199,6 +202,9 @@ public struct CardsWindowState: Sendable {
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
     public internal(set) var cardForm: CardForm?
+    /// The form Show Card set aside, as it was, until it's opened the same
+    /// way again, or closes for good: `CardForm.swift`.
+    var setAsideCardForm: CardForm?
     /// The images on the sides of the card Lucas edits, as Save would give
     /// them to it, while he edits one: `CardsWindowImages.swift`.
     public internal(set) var editedImages = SideImages()
