@@ -37,7 +37,7 @@ extension Engine {
             try allCards(in: db).filter(cards.takes).map(exportedContent(of:))
         }
         var images: [CardImage] = []
-        let names = Set(contents.flatMap { [$0.frontImage, $0.backImage].compactMap(\.self) })
+        let names = Set(contents.flatMap(\.images))
         for name in names.sorted(by: { $0.rawValue < $1.rawValue }) {
             images.append(CardImage(name: name, data: try image(name)))
         }

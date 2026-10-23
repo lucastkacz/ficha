@@ -61,6 +61,11 @@ public struct CardContent: Sendable, Equatable {
         isBlank(text) && image == nil
     }
 
+    /// The images on its sides, each once.
+    public var images: Set<ImageName> {
+        Set([frontImage, backImage].compactMap(\.self))
+    }
+
     /// This content with the images `front` and `back` in place of its own,
     /// where they aren't nil: as a refine session's content keeps the images
     /// of the card it changes, since refining never adds one. Each side keeps

@@ -157,7 +157,7 @@ extension CardsWindowState {
     /// The images on `content`'s sides that came in and aren't kept yet,
     /// which saving it keeps.
     func heldImages(of content: CardContent) -> [CardImage] {
-        images.held(among: Set([content.frontImage, content.backImage].compactMap(\.self)))
+        images.held(among: content.images)
     }
 
     /// Shows the images of the card the detail shows, of the card the user

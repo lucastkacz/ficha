@@ -203,7 +203,7 @@ extension Engine {
         _ reading: ImportReading, of fileName: String, kind: ImportPreview.Kind, images: [ImageName: CardImage] = [:]
     ) throws(EngineError) -> ImportPreview {
         let repeated = try read { db in try repeatedCards(of: reading.cards, in: db) }
-        let referred = Set(reading.cards.flatMap { [$0.content.frontImage, $0.content.backImage].compactMap(\.self) })
+        let referred = Set(reading.cards.flatMap(\.content.images))
         var proposedTags: [String] = []
         var seen = Set<String>()
         for tag in reading.cards.flatMap(\.proposedTags) where seen.insert(tag).inserted {
