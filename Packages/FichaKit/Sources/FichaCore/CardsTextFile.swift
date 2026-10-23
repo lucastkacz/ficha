@@ -237,10 +237,6 @@ public enum CardsFileProblem: Error, Sendable, Equatable {
     /// It's an Anki package that can't be read: it's damaged, or it doesn't
     /// hold what Anki writes.
     case unreadableAnkiPackage
-    /// It's an Anki package in the format current Anki exports by default,
-    /// which Ficha can't read yet, unlike the one it exports with "Support
-    /// older Anki versions" ticked.
-    case ankiPackageNotReadableYet
     /// It's an Anki package in a format newer than any Ficha knows.
     case ankiPackageTooNew
 }

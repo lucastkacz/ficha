@@ -3,8 +3,13 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on importing a deck from an Anki package written by an older Anki,
-/// or by a current one with "Support older Anki versions" ticked: which
+/// A package of each schema Anki writes: schema 11, as current Anki exports
+/// a deck with "Support older Anki versions" ticked, and as older Ankis do;
+/// and schema 18, compressed with zstd, as current Anki exports it by
+/// default.
+private let schemas: [AnkiPackage.Format] = [.supportOlderAnkiVersions, .current]
+
+/// Tests on importing a deck from an Anki package, from any Anki: which
 /// cards there are once the import is done, with which sides and tags, and
 /// what the preview reports, from packages the tests write in a folder of
 /// their own, into an engine in memory on a Mac in Buenos Aires.
@@ -45,13 +50,15 @@ final class AnkiImportingTests {
         try engine.importCards(engine.previewImport(of: file(name, package)), choosing: choices)
     }
 
-    @Test("a Basic note becomes one card, with its Front and Back as plain text")
-    func aBasicNoteBecomesOneCard() throws {
-        let package = AnkiPackage(notes: [
-            AnkiNote(
-                type: .basic,
-                fields: ["<b>corazón</b>", "El órgano que bombea<br>la sangre&nbsp;por el cuerpo."])
-        ])
+    @Test("a Basic note becomes one card, with its Front and Back as plain text", arguments: schemas)
+    func aBasicNoteBecomesOneCard(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic,
+                    fields: ["<b>corazón</b>", "El órgano que bombea<br>la sangre&nbsp;por el cuerpo."])
+            ])
 
         let outcome = try importPackage(package)
 
@@ -62,19 +69,21 @@ final class AnkiImportingTests {
         #expect(card.source == nil)
     }
 
-    @Test("a reversed note becomes two cards")
-    func aReversedNoteBecomesTwoCards() throws {
-        let package = AnkiPackage(notes: [
-            AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"])
-        ])
+    @Test("a reversed note becomes two cards", arguments: schemas)
+    func aReversedNoteBecomesTwoCards(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"])
+            ])
 
         try importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"], ["dog", "perro"]])
     }
 
-    @Test("a field shown only on the answer side, like Extra, comes in on the back")
-    func aFieldShownOnTheAnswerComesInOnTheBack() throws {
+    @Test("a field shown only on the answer side, like Extra, comes in on the back", arguments: schemas)
+    func aFieldShownOnTheAnswerComesInOnTheBack(format: AnkiPackage.Format) throws {
         // A note type of someone's own, with a hint on the question, and an
         // example on the answer, or a line saying there's none.
         let vocabulary = AnkiNoteType(
@@ -93,15 +102,17 @@ final class AnkiImportingTests {
                         {{^Ejemplo}}<br>Sin ejemplo.{{/Ejemplo}}
                         """)
             ])
-        let package = AnkiPackage(notes: [
-            AnkiNote(
-                type: vocabulary,
-                fields: ["serendipia", "Un hallazgo por casualidad.", "Fue <b>pura</b> serendipia.", "Suerte"]),
-            AnkiNote(type: vocabulary, fields: ["petricor", "El olor de la lluvia.", "<br>", ""]),
-            AnkiNote(
-                type: .cloze,
-                fields: ["La {{c1::mitocondria}} produce energía.", "La llaman <i>la central</i> de la célula."]),
-        ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: vocabulary,
+                    fields: ["serendipia", "Un hallazgo por casualidad.", "Fue <b>pura</b> serendipia.", "Suerte"]),
+                AnkiNote(type: vocabulary, fields: ["petricor", "El olor de la lluvia.", "<br>", ""]),
+                AnkiNote(
+                    type: .cloze,
+                    fields: ["La {{c1::mitocondria}} produce energía.", "La llaman <i>la central</i> de la célula."]),
+            ])
 
         try importPackage(package)
 
@@ -116,13 +127,17 @@ final class AnkiImportingTests {
             ])
     }
 
-    @Test("a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"")
-    func aClozeNoteBecomesACardForEachGap() throws {
-        let package = AnkiPackage(notes: [
-            AnkiNote(
-                type: .cloze,
-                fields: ["{{c1::Buenos Aires}} es la capital de {{c2::la Argentina::un país}}.", ""])
-        ])
+    @Test(
+        "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
+        arguments: schemas)
+    func aClozeNoteBecomesACardForEachGap(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .cloze,
+                    fields: ["{{c1::Buenos Aires}} es la capital de {{c2::la Argentina::un país}}.", ""])
+            ])
 
         try importPackage(package)
 
@@ -136,21 +151,24 @@ final class AnkiImportingTests {
     // Default, which every package has, names no subject, so it gives no
     // tag, not even to the decks below it.
     @Test(
-        "subdecks become one tag per part, Anki tags come as they are, an underscore as a space, and renamed or removed tags apply"
-    )
-    func decksAndAnkiTagsBecomeTags() throws {
-        let package = AnkiPackage(notes: [
-            AnkiNote(
-                type: .basic, fields: ["fémur", "El hueso del muslo."], tags: ["repaso", "hueso_largo"],
-                deck: "Medicina::Anatomía"),
-            AnkiNote(
-                type: .basic, fields: ["sístole", "La contracción del corazón."], tags: ["repaso"],
-                deck: "Medicina::Fisiología"),
-            AnkiNote(
-                type: .basic, fields: ["arritmia", "Un ritmo irregular del corazón."], tags: ["Medicina::Cardio"]),
-            AnkiNote(
-                type: .basic, fields: ["gripe", "Una infección por el virus de la influenza."], deck: "Default::Viejas"),
-        ])
+        "subdecks become one tag per part, Anki tags come as they are, an underscore as a space, and renamed or removed tags apply",
+        arguments: schemas)
+    func decksAndAnkiTagsBecomeTags(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["fémur", "El hueso del muslo."], tags: ["repaso", "hueso_largo"],
+                    deck: "Medicina::Anatomía"),
+                AnkiNote(
+                    type: .basic, fields: ["sístole", "La contracción del corazón."], tags: ["repaso"],
+                    deck: "Medicina::Fisiología"),
+                AnkiNote(
+                    type: .basic, fields: ["arritmia", "Un ritmo irregular del corazón."], tags: ["Medicina::Cardio"]),
+                AnkiNote(
+                    type: .basic, fields: ["gripe", "Una infección por el virus de la influenza."],
+                    deck: "Default::Viejas"),
+            ])
         let preview = try engine.previewImport(of: file("Medicina.apkg", package))
 
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Medicina": "medicina", "repaso": " "]))
@@ -165,27 +183,31 @@ final class AnkiImportingTests {
             ])
     }
 
-    @Test("a card whose side holds only a sound, and an Image Occlusion card, stay out with their reasons")
-    func soundOnlySidesAndImageOcclusionStayOut() throws {
+    @Test(
+        "a card whose side holds only a sound, and an Image Occlusion card, stay out with their reasons",
+        arguments: schemas)
+    func soundOnlySidesAndImageOcclusionStayOut(format: AnkiPackage.Format) throws {
         // A note type whose template names a field it lacks, for which Anki
         // shows an error.
         let broken = AnkiNoteType(
             name: "Rota", fields: ["Frente", "Dorso"],
             templates: [AnkiCardTemplate(name: "Tarjeta 1", question: "{{Frente}}", answer: "{{Reverso}}")])
-        let package = AnkiPackage(notes: [
-            AnkiNote(type: .basic, fields: ["[sound:perro.mp3]", "dog"]),
-            AnkiNote(type: .basic, fields: ["gato", "cat [sound:cat.mp3]"]),
-            AnkiNote(
-                type: .imageOcclusion,
-                fields: [
-                    """
-                    {{c1::image-occlusion:rect:left=.1:top=.2:width=.3:height=.1:oi=1}}<br>\
-                    {{c2::image-occlusion:ellipse:left=.5:top=.6:rx=.1:ry=.1:oi=1}}
-                    """,
-                    "<img src=\"esqueleto.png\">", "Los huesos", "", "",
-                ]),
-            AnkiNote(type: broken, fields: ["casa", "house"]),
-        ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["[sound:perro.mp3]", "dog"]),
+                AnkiNote(type: .basic, fields: ["gato", "cat [sound:cat.mp3]"]),
+                AnkiNote(
+                    type: .imageOcclusion,
+                    fields: [
+                        """
+                        {{c1::image-occlusion:rect:left=.1:top=.2:width=.3:height=.1:oi=1}}<br>\
+                        {{c2::image-occlusion:ellipse:left=.5:top=.6:rx=.1:ry=.1:oi=1}}
+                        """,
+                        "<img src=\"esqueleto.png\">", "Los huesos", "", "",
+                    ]),
+                AnkiNote(type: broken, fields: ["casa", "house"]),
+            ])
 
         let preview = try engine.previewImport(of: file("Inglés.apkg", package))
         try engine.importCards(preview, choosing: ImportChoices())
@@ -212,15 +234,17 @@ final class AnkiImportingTests {
     }
 
     @Test(
-        "every card comes in new, the new ones first in Anki's order of new cards, then the rest by note and template"
-    )
-    func everyCardComesInNewInAnkisOrder() throws {
-        let package = AnkiPackage(notes: [
-            AnkiNote(type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 10)),
-            AnkiNote(type: .basic, fields: ["dos", "two"], progress: .newAt(position: 5)),
-            AnkiNote(type: .basicAndReversed, fields: ["tres", "three"], progress: .newAt(position: 2)),
-            AnkiNote(type: .basicAndReversed, fields: ["cuatro", "four"], progress: .review(due: 5, interval: 3)),
-        ])
+        "every card comes in new, the new ones first in Anki's order of new cards, then the rest by note and template",
+        arguments: schemas)
+    func everyCardComesInNewInAnkisOrder(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 10)),
+                AnkiNote(type: .basic, fields: ["dos", "two"], progress: .newAt(position: 5)),
+                AnkiNote(type: .basicAndReversed, fields: ["tres", "three"], progress: .newAt(position: 2)),
+                AnkiNote(type: .basicAndReversed, fields: ["cuatro", "four"], progress: .review(due: 5, interval: 3)),
+            ])
 
         try importPackage(package)
 
@@ -231,16 +255,18 @@ final class AnkiImportingTests {
 
     @Test(
         "repeated cards are updated with the deck's back and tags, keeping their type and source, or skipped, as chosen",
-        arguments: [ImportChoices.RepeatedCards.update, .skip])
-    func repeatedCardsAreUpdatedOrSkipped(choice: ImportChoices.RepeatedCards) throws {
+        arguments: schemas, [ImportChoices.RepeatedCards.update, .skip])
+    func repeatedCardsAreUpdatedOrSkipped(format: AnkiPackage.Format, choice: ImportChoices.RepeatedCards) throws {
         let heart = try approve(
             card(.word, front: "Corazón", back: "Un órgano.", tags: ["biología"], source: "Un libro"), in: engine)
-        let package = AnkiPackage(notes: [
-            AnkiNote(
-                type: .basic, fields: ["corazón", "El órgano que bombea la sangre."], tags: ["anatomía"],
-                deck: "Medicina"),
-            AnkiNote(type: .basic, fields: ["pulmón", "El órgano de la respiración."], deck: "Medicina"),
-        ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["corazón", "El órgano que bombea la sangre."], tags: ["anatomía"],
+                    deck: "Medicina"),
+                AnkiNote(type: .basic, fields: ["pulmón", "El órgano de la respiración."], deck: "Medicina"),
+            ])
         let preview = try engine.previewImport(of: file("Medicina.apkg", package))
 
         let outcome = try engine.importCards(preview, choosing: ImportChoices(repeatedCards: choice))
@@ -263,12 +289,45 @@ final class AnkiImportingTests {
         }
     }
 
-    @Test("a package current Anki exports by default is listed as not readable yet")
-    func aCurrentPackageIsNotReadableYet() throws {
+    @Test("a deck whose package holds images and sounds comes in", arguments: schemas)
+    func aDeckWithMediaComesIn(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["perro <img src=\"perro.jpg\">", "dog [sound:dog.mp3]"]),
+                AnkiNote(type: .basic, fields: ["gato", "cat"]),
+            ],
+            media: ["perro.jpg": Data("una foto".utf8), "dog.mp3": Data("un ladrido".utf8)])
+
+        try importPackage(package)
+
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"], ["gato", "cat"]])
+    }
+
+    // Its collection decompresses to several times the buffer zstd hands
+    // out at a time, 128 KB.
+    @Test("a long card comes in whole from a package current Anki exports by default")
+    func aLongCardComesInWhole() throws {
+        let back = Array(repeating: "En un lugar de la Mancha, de cuyo nombre no quiero acordarme.", count: 8_000)
+        let package = AnkiPackage(
+            format: .current,
+            notes: [AnkiNote(type: .basic, fields: ["El Quijote", back.joined(separator: "<br>")])])
+
+        try importPackage(package)
+
+        #expect(try engine.cards().map(\.back) == [back.joined(separator: "\n")])
+    }
+
+    // The placeholder holds a note asking to update Anki, which would come
+    // in as a card of its own.
+    @Test(
+        "a package current Anki exports by default imports from its collection.anki21b, never the placeholder beside it"
+    )
+    func aCurrentPackageNeverReadsItsPlaceholder() throws {
         let package = AnkiPackage(format: .current, notes: [AnkiNote(type: .basic, fields: ["perro", "dog"])])
 
-        #expect(throws: EngineError.unreadableFile("Mazo.apkg", .ankiPackageNotReadableYet)) {
-            try self.engine.previewImport(of: self.file("Mazo.apkg", package))
-        }
+        try importPackage(package)
+
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"]])
     }
 }

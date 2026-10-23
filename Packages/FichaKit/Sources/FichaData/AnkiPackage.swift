@@ -9,9 +9,10 @@ internal import ZIPFoundation
 // package/`): Anki 2.0 wrote `collection.anki2`, at schema 11; Anki 2.1, and
 // current Anki with "Support older Anki versions" ticked, `collection.anki21`,
 // also at schema 11, beside a `collection.anki2` that holds only a note asking
-// to update Anki; and current Anki by default, `collection.anki21b`,
-// compressed with zstd, at schema 18, which Ficha can't read yet. ZIPFoundation
-// reads the zip (ADR 0014), and GRDB the database (ADR 0004).
+// to update Anki; and current Anki by default, `collection.anki21b`, at
+// schema 18, compressed with zstd (ADR 0015), as its media list and media
+// files are. ZIPFoundation reads the zip (ADR 0014), and GRDB the database
+// (ADR 0004).
 
 /// The members that hold a package's collection, oldest first.
 private let collectionMembers: Set = ["collection.anki2", "collection.anki21", "collection.anki21b"]
@@ -33,8 +34,14 @@ func readAnkiPackage(_ data: Data, in calendar: Calendar) throws(CardsFileProble
     do {
         let archive = try Archive(data: data, accessMode: .read, pathEncoding: nil)
         let entries = Dictionary(archive.map { ($0.path, $0) }) { first, _ in first }
-        let member = try collectionMember(of: entries, in: archive)
-        collection = try readCollection(try contents(of: member, in: archive))
+        let format = try PackageFormat(of: entries, in: archive)
+        guard let member = entries[format.collectionMember] else {
+            throw unreadable("An Anki package has no \(format.collectionMember)")
+        }
+        collection = try readCollection(try format.uncompressed(member, in: archive))
+        // The media the cards' images come from: read now, so that a
+        // package whose media list is damaged can't be read, as in Anki.
+        _ = try AnkiMedia(of: entries, in: archive, format: format)
     } catch let problem as CardsFileProblem {
         throw problem
     } catch {
@@ -49,72 +56,94 @@ func readAnkiPackage(_ data: Data, in calendar: Calendar) throws(CardsFileProble
     }
 }
 
-/// The member of a package with `entries`, by their paths, that holds its
-/// collection, as Anki picks it (`package/meta.rs`, `from_archive`): the one
-/// the version in `meta` names, or without `meta`, `collection.anki21` when
-/// it's there, and `collection.anki2` otherwise, which Anki 2.0 wrote. A
-/// version Ficha can't read yet, or doesn't know, is a problem of its own.
-private func collectionMember(of entries: [String: Entry], in archive: Archive) throws -> Entry {
-    let name: String
-    if let meta = entries["meta"] {
-        switch try packageVersion(inMeta: contents(of: meta, in: archive)) {
-        case 1: name = "collection.anki2"
-        case 2: name = "collection.anki21"
-        case 3: throw CardsFileProblem.ankiPackageNotReadableYet
+/// How a package holds its collection and its media, as Anki tells (`package/
+/// meta.rs`, `from_archive`): by the version in `meta`, or without `meta`,
+/// by the members it has.
+struct PackageFormat {
+    /// The member that holds the collection.
+    let collectionMember: String
+    /// Whether it's the format current Anki exports by default, `meta`'s
+    /// version 3: its collection, its media list and each media file are
+    /// compressed with zstd, and its media list is protobuf rather than
+    /// JSON.
+    let isLatest: Bool
+
+    /// The format of a package with `entries`, by their paths: the one the
+    /// version in `meta` names, or without `meta`, the one whose collection
+    /// is `collection.anki21` when it's there, and `collection.anki2`
+    /// otherwise, which Anki 2.0 wrote. A version Ficha doesn't know is a
+    /// problem of its own.
+    init(of entries: [String: Entry], in archive: Archive) throws {
+        guard let meta = entries["meta"] else {
+            collectionMember = entries["collection.anki21"] != nil ? "collection.anki21" : "collection.anki2"
+            isLatest = false
+            return
+        }
+        // PackageMetadata { Version version = 1; }, never compressed
+        // (`proto/anki/import_export.proto`): empty, it says 0.
+        switch try ProtobufFields(contents(of: meta, in: archive)).varint(1) {
+        case 1: (collectionMember, isLatest) = ("collection.anki2", false)
+        case 2: (collectionMember, isLatest) = ("collection.anki21", false)
+        case 3: (collectionMember, isLatest) = ("collection.anki21b", true)
         default: throw CardsFileProblem.ankiPackageTooNew
         }
-    } else {
-        name = entries["collection.anki21"] != nil ? "collection.anki21" : "collection.anki2"
     }
-    guard let member = entries[name] else {
-        throw unreadable("An Anki package has no \(name)")
+
+    /// What `entry` of `archive` holds, decompressed when the format
+    /// compresses its members with zstd.
+    func uncompressed(_ entry: Entry, in archive: Archive) throws -> Data {
+        let data = try contents(of: entry, in: archive)
+        return isLatest ? try zstdDecompressed(data) : data
     }
-    return member
 }
 
-/// The version that `meta`, Anki's `PackageMetadata` in protobuf, holds in
-/// its field 1, a varint, or 0 when it holds none, as an empty one does
-/// (`proto/anki/import_export.proto`). Other fields are skipped by their wire
-/// type.
-private func packageVersion(inMeta meta: Data) throws -> UInt64 {
-    var bytes = meta[...]
-    var version: UInt64 = 0
-    while !bytes.isEmpty {
-        let key = try varint(from: &bytes)
-        switch key & 7 {
-        case 0:
-            let value = try varint(from: &bytes)
-            if key >> 3 == 1 {
-                version = value
+/// A package's media files, by the names the cards' fields refer to them
+/// by: its `media` list says which member holds each (`package/media.rs`).
+/// A package without the list, as an older AnkiDroid wrote, has none.
+struct AnkiMedia {
+    private let archive: Archive
+    private let format: PackageFormat
+    private let entries: [String: Entry]
+    /// The member that holds each file, by the file's name.
+    private let members: [String: String]
+
+    /// The media of the package `archive`, with `entries` by their paths, in
+    /// `format`.
+    init(of entries: [String: Entry], in archive: Archive, format: PackageFormat) throws {
+        self.archive = archive
+        self.format = format
+        self.entries = entries
+        guard let list = entries["media"] else {
+            members = [:]
+            return
+        }
+        let data = try format.uncompressed(list, in: archive)
+        let files: [(name: String, member: String)]
+        if format.isLatest {
+            // MediaEntries { repeated MediaEntry entries = 1; }, each with
+            // its name in field 1: the file at position i is in member "i".
+            files = try ProtobufFields(data).repeated(1).enumerated().map { position, entry in
+                (try ProtobufFields(entry).string(1), "\(position)")
             }
-        case 1:
-            bytes = bytes.dropFirst(8)
-        case 2:
-            bytes = bytes.dropFirst(Int(clamping: try varint(from: &bytes)))
-        case 5:
-            bytes = bytes.dropFirst(4)
-        default:
-            throw unreadable("An Anki package's meta has a field of wire type \(key & 7)")
+        } else {
+            // A JSON object that maps each member to its file's name.
+            files = try JSONDecoder().decode([String: String].self, from: data).map { ($1, $0) }
         }
+        members = Dictionary(files) { first, _ in first }
     }
-    return version
-}
 
-/// The varint at the start of `bytes`, which it drops.
-private func varint(from bytes: inout Data.SubSequence) throws -> UInt64 {
-    var value: UInt64 = 0
-    var shift: UInt64 = 0
-    while let byte = bytes.popFirst() {
-        guard shift < 64 else {
-            break
+    /// What the media file named `name` holds, decompressed, or nil when
+    /// the package has no file by that name. A file its list names, but
+    /// that it lacks, is an error.
+    func contents(ofFileNamed name: String) throws -> Data? {
+        guard let member = members[name] else {
+            return nil
         }
-        value |= UInt64(byte & 0x7F) << shift
-        if byte & 0x80 == 0 {
-            return value
+        guard let entry = entries[member] else {
+            throw unreadable("An Anki package's media list names the member \(member), which it lacks")
         }
-        shift += 7
+        return try format.uncompressed(entry, in: archive)
     }
-    throw unreadable("An Anki package's meta ends in the middle of a number")
 }
 
 /// The collection `data` holds, a database Anki wrote, read from a copy in
@@ -127,16 +156,23 @@ private func readCollection(_ data: Data) throws -> AnkiCollection {
     defer { try? FileManager.default.removeItem(at: folder) }
     let file = folder.appending(path: "collection.anki2")
     try data.write(to: file)
+    // Opened for writing, though Ficha only reads it: Anki leaves a
+    // collection at schema 18 in WAL mode, where SQLite makes its `-shm`
+    // file beside it even to read, which a read-only connection can't. And
+    // with Anki's collation, which schema 18 declares its names with.
     var configuration = Configuration()
-    configuration.readonly = true
+    configuration.prepareDatabase { db in
+        db.add(collation: unicase)
+    }
     let database = try DatabaseQueue(path: file.path(percentEncoded: false), configuration: configuration)
     defer { try? database.close() }
     return try database.read { db in
-        let version: Int? = try Int.fetchOne(db, sql: "SELECT ver FROM col")
-        guard version == 11 else {
+        switch try Int.fetchOne(db, sql: "SELECT ver FROM col") {
+        case 11: try schema11Collection(in: db)
+        case 18: try schema18Collection(in: db)
+        case let version:
             throw unreadable("An Anki package's collection is at schema \(String(describing: version))")
         }
-        return try schema11Collection(in: db)
     }
 }
 

@@ -18,6 +18,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
         // Zips, for cards exported and imported with their images (ADR 0014).
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
+        // zstd, which current Anki's packages are compressed with (ADR 0015).
+        .package(url: "https://github.com/facebook/zstd.git", exact: "1.5.7"),
     ],
     targets: [
         .target(
@@ -30,6 +32,7 @@ let package = Package(
                 "FichaCore",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(name: "libzstd", package: "zstd"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
@@ -56,6 +59,7 @@ let package = Package(
                 "FichaData",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(name: "libzstd", package: "zstd"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
