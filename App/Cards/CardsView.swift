@@ -6,7 +6,8 @@ import SwiftUI
 /// sidebar to choose a group of cards or the inbox, a table with one row per
 /// card in it, or per capture and flagged card in the inbox, narrowed by the
 /// toolbar's search field, and the selected row whole beside it, with what
-/// Lucas can do with it at its foot. The cards' table opens with the columns
+/// Lucas can do with it at its foot. A tag's context menu in the sidebar sets
+/// the tag aside. The cards' table opens with the columns
 /// and the order Lucas left it with, which he changes in its headers. He
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the table wait. He selects several cards with
