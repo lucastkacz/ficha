@@ -66,7 +66,8 @@ func schema18Collection(in db: Database) throws -> AnkiCollection {
         return (try row.decode(forColumn: "id") as Int64, AnkiDeck(name: name.components(separatedBy: "\u{1F}")))
     }
     return AnkiCollection(
-        creationTime: creationTime, noteTypes: Dictionary(noteTypes) { first, _ in first },
+        creationTime: creationTime, daySettings: try ankiDaySettings(inConfigTableOf: db),
+        noteTypes: Dictionary(noteTypes) { first, _ in first },
         decks: Dictionary(decks) { first, _ in first }, notes: try ankiNotes(in: db), cards: try ankiCards(in: db))
 }
 

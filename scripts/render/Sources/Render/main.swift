@@ -26,6 +26,9 @@ enum Window: String {
     /// The Cards window with its Import sheet showing the preview of an Anki
     /// package.
     case cardsImportAnki = "cards-import-anki"
+    /// The Cards window once that Anki package came in with its progress,
+    /// with a card it put on a step selected, and reviewed since.
+    case cardsAnkiImported = "cards-anki-imported"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -201,7 +204,8 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
-                 package), backups (Settings, on its Backups tab) or backups-failed (once a backup failed)
+                 package), cards-anki-imported (once it came in, a card it put on a step selected), backups
+                 (Settings, on its Backups tab) or backups-failed (once a backup failed)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -454,9 +458,9 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
 /// The Cards window's state partway through importing an Anki package, as
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
-/// Anki tags, a card the sample cards have, a card whose back is only a
-/// sound and an Image Occlusion note, which stay out. The file goes once
-/// it's read.
+/// Anki tags, two cards Anki was reviewing, which Bring progress puts on a
+/// step, a card the sample cards have, a card whose back is only a sound and
+/// an Image Occlusion note, which stay out. The file goes once it's read.
 func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
     try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -469,6 +473,39 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
         throw RenderError(
             description: "The sample Anki package has no preview: \(String(describing: state.importing))")
     }
+    return state
+}
+
+/// The app's model on the sample cards, once the sample Anki package came in
+/// with its progress, and four days later, the card of the femur, which it
+/// put on the 12-day step, was reviewed with Know it, on time.
+func ankiImportedModel() throws -> AppModel {
+    let (engine, time) = try sampleEngine(at: .inMemory)
+    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try writeSampleAnkiPackage(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    let settings = ReviewSettings.defaults
+    _ = try engine.importCards(
+        engine.previewImport(of: file), choosing: ImportChoices(progress: .brought(onto: settings.ladder)))
+    guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
+        throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
+    }
+    time.advance(by: hours(4 * 24))
+    try engine.record(.review(.good), of: femur.id, responseTime: .seconds(4), trigger: .reviewNow, settings: settings)
+    return AppModel(engine: engine)
+}
+
+/// The Cards window's state once the sample Anki package came in, with the
+/// card of the femur selected, so the detail shows its review log.
+func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
+    var state = model.openCardsWindow()
+    state.read(on: state.ladder)
+    guard case .success(.cards(let rows)) = state.listing, let femur = rows.first(where: { $0.card.front == "fémur" })
+    else {
+        throw RenderError(description: "The Cards window doesn't list the sample Anki package's card of the femur.")
+    }
+    state.select([femur.id])
     return state
 }
 
@@ -515,9 +552,12 @@ func runSQLite(_ sql: String, in file: URL) throws {
 }
 
 /// The SQL that makes the sample Anki package's collection: Anki's tables at
-/// schema 11 (`rslib/src/storage/schema11.sql`), its Basic, Cloze and Image
-/// Occlusion note types, a deck of medicine with two subdecks, and the
-/// notes, each new, with its cards.
+/// schema 11 (`rslib/src/storage/schema11.sql`), created on 1 October 2026
+/// at 4 in the morning in Buenos Aires, its Basic, Cloze and Image Occlusion
+/// note types, a deck of medicine with two subdecks, and the notes, with
+/// their cards: the femur's in review, every 10 days, due on Anki's day 22,
+/// 23 October; the systole's relearning, due on day 20, 21 October; and the
+/// rest new.
 func sampleAnkiCollectionSQL() throws -> String {
     let basicAnswer = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
     let noteTypes: [String: Any] = [
@@ -560,6 +600,9 @@ func sampleAnkiCollectionSQL() throws -> String {
         ),
         (1, 4, "corazón leech", ["sístole", "La contracción del corazón, que empuja la sangre."], [0]),
     ]
+    // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
+    // by the notes' places above: in review, and relearning across days.
+    let progress: [Int: (type: Int, queue: Int, due: Int, interval: Int)] = [0: (2, 2, 22, 10), 5: (3, 3, 20, 1)]
     var sql = """
         CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
           ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
@@ -572,7 +615,7 @@ func sampleAnkiCollectionSQL() throws -> String {
           due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
           lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
           flags integer NOT NULL, data text NOT NULL);
-        INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2}', \
+        INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2,"creationOffset":180}', \
         \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
 
         """
@@ -584,10 +627,12 @@ func sampleAnkiCollectionSQL() throws -> String {
             \(sqlText(note.fields.joined(separator: "\u{1F}"))), '', 0, 0, '');
 
             """
+        // A new card's due is its position.
+        let (type, queue, due, interval) = progress[index] ?? (0, 0, index + 1, 0)
         for ordinal in note.cards {
             sql += """
-                INSERT INTO cards VALUES (\(noteID * 10 + ordinal), \(noteID), \(note.deck), \(ordinal), 0, 0, 0, 0, \
-                \(index + 1), 0, 2500, 0, 0, 0, 0, 0, 0, '');
+                INSERT INTO cards VALUES (\(noteID * 10 + ordinal), \(noteID), \(note.deck), \(ordinal), 0, 0, \
+                \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
 
                 """
         }
@@ -615,6 +660,7 @@ func hours(_ count: Int) -> TimeInterval {
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsImport, .cardsImportAnki: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsAnkiImported: return try ankiImportedModel()
     case .backups: return AppModel(engine: try backupsEngine())
     case .backupsFailed:
         let model = AppModel(engine: try backupsEngine())
@@ -642,6 +688,10 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .cardsImportAnki:
         let window = CardsWindow(model: model)
         window.makeContent(opening: try ankiImportingState(of: model))
+        return window
+    case .cardsAnkiImported:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try ankiImportedState(of: model))
         return window
     case .backups, .backupsFailed:
         let window = AppWindow(

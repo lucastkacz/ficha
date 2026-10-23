@@ -40,6 +40,7 @@ private struct ImportButtonAndSheet: ViewModifier {
                         importing: importing, failure: failure, preview: { state.previewImport(of: $0) },
                         nameTag: { state.nameImportTag($0, as: $1) }, removeTag: { state.removeImportTag($0) },
                         chooseForRepeatedCards: { state.chooseForRepeatedCards($0) },
+                        chooseToBringProgress: { state.chooseToBringProgress($0) },
                         importCards: { state.importCards() })
                 }
             }
@@ -107,9 +108,11 @@ private struct ImportButtonAndSheet: ViewModifier {
 /// first of several images on a side, and the tags the cards get: for a
 /// text file, one named after the file, for every card; for an Anki package,
 /// one for each level of its decks and each of its tags. The user renames
-/// each, or clears it to leave it out; Import imports them. Last, it says
-/// what the import did. `CardsWindowState` holds the preview, the choices and
-/// the outcome, and the sheet draws them.
+/// each, or clears it to leave it out. An Anki package's cards come in where
+/// Anki had them while Bring progress is ticked (ADR 0013), and how many of
+/// them land on a step goes in the line under the title. Import imports
+/// them. Last, it says what the import did. `CardsWindowState` holds the
+/// preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
     /// What couldn't be done, as the alert over the sheet says it.
@@ -122,6 +125,8 @@ struct ImportSheet: View {
     let removeTag: (_ proposed: String) -> Void
     /// Chooses Update or Skip for the repeated cards.
     let chooseForRepeatedCards: (ImportChoices.RepeatedCards) -> Void
+    /// Ticks or unticks Bring progress.
+    let chooseToBringProgress: (Bool) -> Void
     /// Imports the cards, as the user chose.
     let importCards: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -187,9 +192,7 @@ struct ImportSheet: View {
                 Text(
                     "Import “\(preview.fileName)”",
                     comment: "The title of the Cards window's Import sheet, with the name of the file chosen."),
-                Text(
-                    "\(preview.newCount) new cards come in, at the pace of your new cards per day.",
-                    comment: "In the Import sheet's preview, with how many new cards the file brings."))
+                cardsComingIn(preview))
             if preview.cardsWithImagesDropped > 0 {
                 Text(
                     "\(preview.cardsWithImagesDropped) cards have more than one image on a side, and come in with the first.",
@@ -203,6 +206,9 @@ struct ImportSheet: View {
             }
             if preview.repeatedCount > 0 {
                 repeatedCardsChoice(preview.repeatedCount, kind: preview.kind)
+            }
+            if importing.offersProgress {
+                bringProgressChoice
             }
             switch preview.kind {
             case .cardsFile:
@@ -270,6 +276,46 @@ struct ImportSheet: View {
                 }
                 .keyboardShortcut(.defaultAction)
             }
+        }
+    }
+
+    /// How many cards the import of `preview` brings in: new ones, and while
+    /// Bring progress is ticked, those that land on a step.
+    private func cardsComingIn(_ preview: ImportPreview) -> Text {
+        guard importing.offersProgress, importing.bringsProgress, preview.placedCount > 0 else {
+            return Text(
+                "\(preview.newCount) new cards come in, at the pace of your new cards per day.",
+                comment: "In the Import sheet's preview, with how many new cards the file brings.")
+        }
+        return Text(
+            "\(preview.newCount - preview.placedCount) new cards come in, at the pace of your new cards per day, and \(preview.placedCount) on a step, as Anki had them.",
+            comment:
+                "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of Lucas's ladder."
+        )
+    }
+
+    /// Bring progress, ticked until the user unticks it, and what it does,
+    /// under it.
+    private var bringProgressChoice: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: bringsProgress) {
+                Text(
+                    "Bring progress",
+                    comment:
+                        "In the Import sheet's preview of an Anki package, the checkbox that keeps Anki's progress.")
+            }
+            .toggleStyle(.checkbox)
+            Text(
+                """
+                Cards Anki was learning or reviewing land on the step nearest their interval, due when Anki said, \
+                and suspended cards come in buried. Unticked, every card comes in new.
+                """,
+                comment: "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 20)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -520,6 +566,15 @@ struct ImportSheet: View {
             importing.repeatedCards
         } set: {
             chooseForRepeatedCards($0)
+        }
+    }
+
+    /// Whether Bring progress is ticked, as the state holds it.
+    private var bringsProgress: Binding<Bool> {
+        Binding {
+            importing.bringsProgress
+        } set: {
+            chooseToBringProgress($0)
         }
     }
 }

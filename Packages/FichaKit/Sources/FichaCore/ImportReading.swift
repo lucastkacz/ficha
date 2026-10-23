@@ -33,6 +33,10 @@ public struct ImportedCard: Sendable, Equatable {
     /// user may rename or leave out in the preview: a text file's name, or
     /// an Anki card's deck and its note's tags.
     public let proposedTags: [String]
+    /// Where it stood in the app the file comes from, which an import that
+    /// brings progress gives it when it comes in new to Ficha: an Anki
+    /// card's; nil for a text file's, which says nothing of it.
+    public let progress: ImportedProgress?
     /// Whether the file gives the card images it comes in without, since a
     /// side holds one image at most: an Anki card with more than one image
     /// on a side, which brings the first.
@@ -40,13 +44,40 @@ public struct ImportedCard: Sendable, Equatable {
 
     public init(
         content: CardContent, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
-        hasImagesDropped: Bool = false
+        progress: ImportedProgress? = nil, hasImagesDropped: Bool = false
     ) {
         self.content = content
         self.fields = fields
         self.line = line
         self.proposedTags = proposedTags
+        self.progress = progress
         self.hasImagesDropped = hasImagesDropped
+    }
+}
+
+/// Where a card stood in the app a file comes from, such as Anki, which an
+/// import that brings progress gives it (ADR 0013).
+public struct ImportedProgress: Sendable, Equatable {
+    /// How far along it was.
+    public enum Stage: Sendable, Equatable {
+        /// It hadn't been studied yet: it comes in new.
+        case new
+        /// It was being learned, or relearned after a lapse, due at `due`:
+        /// it comes in on the first step, due then.
+        case learning(due: Date)
+        /// It was in review, every `interval`, due at `due`: it comes in on
+        /// the step whose wait is nearest the interval, due then.
+        case review(interval: Duration, due: Date)
+    }
+
+    public let stage: Stage
+    /// Whether it was taken out of reviews for good there, as Anki suspends
+    /// a card: it comes in buried, on its step.
+    public let isSuspended: Bool
+
+    public init(stage: Stage, isSuspended: Bool) {
+        self.stage = stage
+        self.isSuspended = isSuspended
     }
 }
 

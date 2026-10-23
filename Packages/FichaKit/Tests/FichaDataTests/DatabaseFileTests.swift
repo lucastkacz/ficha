@@ -140,6 +140,41 @@ final class DatabaseFileTests {
         #expect(try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia.")).id == 5)
     }
 
+    // The review log's table is made again for placements, which have no
+    // trigger.
+    @Test("a database from before placements migrates with every card's step, due time and review log as they were")
+    func cardsKeepTheirStepsThroughTheMigrationToPlacements() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforePlacements(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+        let ladder = ReviewSettings.defaults.ladder
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        // serendipia: its first view, good an hour later, then a review ahead
+        // that doesn't count: the second step, four hours from the good.
+        #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
+        // ubuntu: its first view, from a card notification, then again.
+        #expect(try engine.standing(of: 2, on: ladder) == .onLadder(step: 0, due: time.now + hours(3)))
+        #expect(try engine.standing(of: 3, on: ladder) == .new)
+        #expect(
+            try engine.reviewLog() == [
+                ReviewLogEntry(
+                    cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow),
+                ReviewLogEntry(
+                    cardID: 2, kind: .firstView, answeredAt: time.now, responseTime: nil, trigger: .appearance),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.good), answeredAt: time.now + hours(1), responseTime: .seconds(3),
+                    trigger: .appearance),
+                ReviewLogEntry(
+                    cardID: 2, kind: .review(.again), answeredAt: time.now + hours(2), responseTime: .seconds(5),
+                    trigger: .reviewNow),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.good), answeredAt: time.now + hours(3), responseTime: .seconds(2),
+                    trigger: .reviewNow, isAhead: true),
+            ])
+    }
+
     // Ficha opens its database every time it starts, and the CLI on every
     // command: copying it each time would fill the data folder.
     @Test("a new database, or one already up to date, isn't copied")
@@ -293,6 +328,37 @@ func saveDatabaseBeforeOptionalTypes(at file: URL, at time: Date) throws {
                     (3, 'firstView', NULL, ?, 6, 'appearance', 0)
                 """,
             arguments: [time, time + hours(1), time])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before placements, through
+/// the schema's migrations up to the one before them, with three cards made
+/// at `time`: serendipia, met then, good an hour later and good again ahead
+/// of time two hours after that; ubuntu, met then from a card notification,
+/// and again two hours later; and petricor, new.
+func saveDatabaseBeforePlacements(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v13 images on cards")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?),
+                    (2, NULL, 'ubuntu', 'Soy porque somos.', '[]', ?),
+                    (3, 'word', 'petricor', 'El olor de la lluvia.', '[]', ?)
+                """,
+            arguments: [time, time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                VALUES (1, 'firstView', NULL, ?, 8.25, 'reviewNow', 0),
+                    (2, 'firstView', NULL, ?, NULL, 'appearance', 0),
+                    (1, 'review', 'good', ?, 3, 'appearance', 0),
+                    (2, 'review', 'again', ?, 5, 'reviewNow', 0),
+                    (1, 'review', 'good', ?, 2, 'reviewNow', 1)
+                """,
+            arguments: [time, time, time + hours(1), time + hours(2), time + hours(3)])
     }
     try database.close()
 }

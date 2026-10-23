@@ -2,21 +2,25 @@ import Foundation
 
 extension AnkiCollection {
     /// Ficha's cards of the collection's cards, as an import reads them: one
-    /// for each Anki card, new, whose front is its question side as Anki
-    /// renders it, and whose back is its answer side, from where the answer
-    /// starts, both as plain text, without sounds, each with the first image
-    /// it shows, as `images` finds it by its name in the package: a side
-    /// whose image isn't found comes in without it, and its other images
-    /// are dropped. Each proposes a tag for each level of its home deck's
-    /// name, but Default's, and its note's tags, an underscore in them
-    /// standing for a space. The new cards come first, in Anki's order of
-    /// new cards, then the rest by note and template. A card of an Image
-    /// Occlusion note type stays out, and so do a card whose template Anki
-    /// can't render and one with a side left with neither text nor an
-    /// image, each with its place in that order and why.
-    /// Throws when a card's note, note type, template or deck isn't in the
-    /// collection, as in a damaged one.
-    public func importReading(images: (String) -> ImageLookup) throws(AnkiCollectionProblem) -> ImportReading {
+    /// for each Anki card, whose front is its question side as Anki renders
+    /// it, and whose back is its answer side, from where the answer starts,
+    /// both as plain text, without sounds, each with the first image it
+    /// shows, as `images` finds it by its name in the package: a side whose
+    /// image isn't found comes in without it, and its other images are
+    /// dropped. Each proposes a tag for each level of its home deck's name,
+    /// but Default's, and its note's tags, an underscore in them standing
+    /// for a space, and brings where it stands in Anki, its due days as
+    /// dates in `calendar`, the user's, for an import that brings progress.
+    /// The new cards come first, in Anki's order of new cards, then the rest
+    /// by note and template. A card of an Image Occlusion note type stays
+    /// out, and so do a card whose template Anki can't render and one with a
+    /// side left with neither text nor an image, each with its place in that
+    /// order and why. Throws when a card's note, note type, template or deck
+    /// isn't in the collection, or its type isn't one Anki has, as in a
+    /// damaged one.
+    public func importReading(in calendar: Calendar, images: (String) -> ImageLookup)
+        throws(AnkiCollectionProblem) -> ImportReading
+    {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
         var cards: [ImportedCard] = []
         var leftOut: [LeftOutLine] = []
@@ -24,7 +28,9 @@ extension AnkiCollection {
             let line = index + 1
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
-                switch rendered.importedCard(line: line, images: images) {
+                switch rendered.importedCard(
+                    line: line, progress: try progress(of: card, in: calendar), images: images)
+                {
                 case .card(let imported):
                     cards.append(imported)
                 case .leftOut(let reason):
@@ -174,10 +180,11 @@ private struct RenderedAnkiCard {
     let back: String
     let tags: [String]
 
-    /// The card as Ficha imports it, new, each side as plain text without
-    /// sounds, with its first image as `images` finds it; or why it stays
-    /// out, when a side is left with neither.
-    func importedCard(line: Int, images: (String) -> ImageLookup) -> Imported {
+    /// The card as Ficha imports it, each side as plain text without sounds,
+    /// with its first image as `images` finds it, and with `progress`, where
+    /// it stands in Anki; or why it stays out, when a side is left with
+    /// neither text nor an image.
+    func importedCard(line: Int, progress: ImportedProgress, images: (String) -> ImageLookup) -> Imported {
         let (front, back) = (AnkiSide(html: front, images: images), AnkiSide(html: back, images: images))
         guard
             let content = CardContent(
@@ -190,7 +197,7 @@ private struct RenderedAnkiCard {
         // updates.
         return .card(
             ImportedCard(
-                content: content, fields: [.backImage], line: line, proposedTags: tags,
+                content: content, fields: [.backImage], line: line, proposedTags: tags, progress: progress,
                 hasImagesDropped: front.dropsImages || back.dropsImages))
     }
 }

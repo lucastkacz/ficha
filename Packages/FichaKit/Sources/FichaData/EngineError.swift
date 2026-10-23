@@ -25,8 +25,8 @@ public enum EngineError: Error, Equatable {
     case noCards
     /// There's no card with this id: it was deleted, or it never existed.
     case cardNotFound(Int64)
-    /// The card with this id already had its first view, so it can't have
-    /// another.
+    /// The card with this id already had its first view, or an import placed
+    /// it on a step, so it can't have a first view.
     case cardNotNew(Int64)
     /// The card with this id is still new, so it can't be reviewed before its
     /// first view.
@@ -36,6 +36,9 @@ public enum EngineError: Error, Equatable {
     /// The card with this id isn't one of the cards its appearance brought,
     /// so its answer from a card notification can't be recorded.
     case cardNotInAppearance(Int64)
+    /// A placement was recorded as an answer to the card with this id, and
+    /// refused: only an import places a card on a step, as it comes in.
+    case placementIsNotAnAnswer(Int64)
     /// The card with this id is flagged, so it waits in the inbox: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
@@ -59,8 +62,8 @@ public enum EngineError: Error, Equatable {
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
     /// The review log of the card with this id doesn't start with its first
-    /// view, or has a second one, so it isn't known where the card stands.
-    /// The engine logs it.
+    /// view or a placement, or has a second one later, so it isn't known
+    /// where the card stands. The engine logs it.
     case unreadableReviewLog(Int64)
     /// SQLite couldn't open, read or write the database. The engine logs why.
     case storage
@@ -121,7 +124,9 @@ extension EngineError: LocalizedError {
                 localized:
                     "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
         case .cardNotNew(let id):
-            String(localized: "Card \(id) already had its first view. \(reopenReviewNow)")
+            String(
+                localized:
+                    "Card \(id) isn't new: it already had its first view, or came in on a step. \(reopenReviewNow)")
         case .cardStillNew(let id):
             String(
                 localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")
@@ -132,6 +137,13 @@ extension EngineError: LocalizedError {
                 localized: """
                     Card \(id) isn't one of the cards its appearance brought, so its answer wasn't recorded. \
                     Report it.
+                    """
+            )
+        case .placementIsNotAnAnswer(let id):
+            String(
+                localized: """
+                    Card \(id) can't be placed on a step as an answer: only an import places a card. Nothing was \
+                    recorded. Report it.
                     """
             )
         case .cardFlagged(let id):
@@ -324,6 +336,7 @@ extension EngineError {
             case .notNew: .cardNotNew(cardID)
             case .stillNew: .cardStillNew(cardID)
             case .notDue: .cardNotDue(cardID)
+            case .notAnAnswer: .placementIsNotAnAnswer(cardID)
             }
     }
 }

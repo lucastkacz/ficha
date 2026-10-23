@@ -1,11 +1,12 @@
 import Foundation
 
-/// Where a card stands on the ladder: new until its first view, and on a step
-/// from then on, as its review log says. A flagged, buried or set-aside card
-/// keeps it, so it comes back on its step; `CardStanding` says whether the
-/// card is in Lucas's reviews.
+/// Where a card stands on the ladder: new until its first view, or until an
+/// import places it on a step, and on a step from then on, as its review log
+/// says. A flagged, buried or set-aside card keeps it, so it comes back on
+/// its step; `CardStanding` says whether the card is in Lucas's reviews.
 public enum LadderStanding: Sendable, Equatable {
-    /// It hasn't had its first view yet.
+    /// It hasn't had its first view yet, nor come in on a step with an
+    /// import.
     case new
     /// It's on this step of the ladder, counted from 0, the first step, and
     /// it's due once `due` comes.
@@ -32,7 +33,8 @@ extension LadderStanding {
     /// Checks that Lucas can answer the card with `kind` at `time`: a first
     /// view only while it's new, and a review only once it's due, or due
     /// within `lookAhead`, as when an appearance brings it along. That way a
-    /// review ahead never counts as one on time (ADR 0002).
+    /// review ahead never counts as one on time (ADR 0002). A placement is
+    /// never an answer: only an import places a card.
     public func check(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration)
         throws(RefusedAnswer)
     {
@@ -47,6 +49,8 @@ extension LadderStanding {
             guard isDue(at: time.adding(lookAhead)) else {
                 throw .notDue
             }
+        case (.placement, _):
+            throw .notAnAnswer
         }
     }
 }
@@ -65,10 +69,14 @@ extension LadderStanding {
 
 /// Why an answer can't go into a card's review log.
 public enum RefusedAnswer: Error, Equatable {
-    /// A first view, for a card that already had one.
+    /// A first view, for a card that already had one, or that an import
+    /// placed on a step.
     case notNew
-    /// A review, for a card that hasn't had its first view yet.
+    /// A review, for a card that hasn't had its first view yet, nor come in
+    /// on a step.
     case stillNew
     /// A review, for a card that isn't due yet.
     case notDue
+    /// A placement, which only an import gives a card, as it comes in.
+    case notAnAnswer
 }

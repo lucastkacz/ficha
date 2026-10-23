@@ -37,6 +37,13 @@ struct AnkiPackage {
     var notes: [AnkiNote]
     /// Its media files, by the names the notes' fields refer to them by.
     var media: [String: Data] = [:]
+    /// `creationOffset` in the collection's configuration: the UTC offset
+    /// it was created at, in minutes west of UTC, Buenos Aires's by default,
+    /// or nil to leave it out, as Anki 2.0 did.
+    var creationOffset: Int? = 180
+    /// `rollover` in the collection's configuration: the hour Anki's day
+    /// starts at, or nil to leave it out, as current Anki's packages do.
+    var rollover: Int? = nil
 
     /// Writes the package to `file`, as a zip, as Anki does: `meta`, the
     /// collection, the placeholder, each media file, and the media list.
@@ -134,9 +141,7 @@ struct AnkiPackage {
                 try db.execute(sql: schema11)
                 try db.execute(
                     sql: "INSERT INTO col VALUES (1, ?, 0, 0, 11, 0, 0, 0, ?, ?, ?, '{}', '{}')",
-                    arguments: [
-                        creationTime, try json(["schedVer": 2]), try json(noteTypesJSON), try json(decksJSON),
-                    ])
+                    arguments: [creationTime, try json(confJSON), try json(noteTypesJSON), try json(decksJSON)])
             }
             var nextPosition = 1
             for (index, note) in notes.enumerated() {
@@ -156,16 +161,26 @@ struct AnkiPackage {
                     nextPosition += 1
                 }
                 for ordinal in note.cardOrdinals {
-                    let (type, queue, due, interval) =
-                        switch note.progress {
-                        case .new, .newAt: (0, 0, position, 0)
-                        case .review(let due, let interval): (2, 2, due, interval)
-                        }
+                    let columns = note.progress.columns(position: position)
+                    var (queue, due) = (columns.queue, columns.due)
+                    switch note.queue {
+                    case .asItsTypeSays: break
+                    case .suspended: queue = -1
+                    case .buriedForTheDay: queue = -2
+                    }
+                    // A filtered deck keeps the card's home deck and its due
+                    // in `odid` and `odue`, and gives it a position of its
+                    // own, below zero, as rescheduling filtered decks do.
+                    var (deck, originalDeck, originalDue) = (deckID(of: note.deck), Int64(0), Int64(0))
+                    if let filteredDeck = note.filteredDeck {
+                        (deck, originalDeck, originalDue) = (deckID(of: filteredDeck), deck, due)
+                        due = -100_000 + Int64(index)
+                    }
                     try db.execute(
-                        sql: "INSERT INTO cards VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 2500, 0, 0, 0, 0, 0, 0, '')",
+                        sql: "INSERT INTO cards VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 2500, 0, 0, 0, ?, ?, 0, '')",
                         arguments: [
-                            noteID * 10 + Int64(ordinal), noteID, deckID(of: note.deck), ordinal, type, queue, due,
-                            interval,
+                            noteID * 10 + Int64(ordinal), noteID, deck, ordinal, columns.type, queue, due,
+                            columns.interval, originalDue, originalDeck,
                         ])
                 }
             }
@@ -196,7 +211,8 @@ struct AnkiPackage {
     }
 
     /// The decks' names, the notes' and their parents', each once, in the
-    /// order they first come, after Default, which every collection has.
+    /// order they first come, after Default, which every collection has,
+    /// and then the filtered decks'.
     private var deckNames: [String] {
         notes.flatMap { note in
             let parts = note.deck.components(separatedBy: "::")
@@ -206,7 +222,27 @@ struct AnkiPackage {
             if !names.contains(name) {
                 names.append(name)
             }
+        } + filteredDeckNames
+    }
+
+    /// The filtered decks' names, each once, in the order they first come.
+    private var filteredDeckNames: [String] {
+        notes.compactMap(\.filteredDeck).reduce(into: []) { names, name in
+            if !names.contains(name) {
+                names.append(name)
+            }
         }
+    }
+
+    /// The collection's configuration, with what a reader needs: the
+    /// scheduler's version, and how the collection counts its days. Schema
+    /// 11 keeps it in `col.conf`, and schema 18 a row for each key in its
+    /// `config` table.
+    private var confJSON: [String: Int] {
+        var conf = ["schedVer": 2]
+        conf["creationOffset"] = creationOffset
+        conf["rollover"] = rollover
+        return conf
     }
 
     /// The id of the deck named `name`: Default's is 1, as in every
@@ -245,7 +281,8 @@ struct AnkiPackage {
         Dictionary(
             uniqueKeysWithValues: deckNames.map { name in
                 let id = deckID(of: name)
-                return ("\(id)", ["id": id, "name": name, "dyn": 0] as [String: Any])
+                let isFiltered = filteredDeckNames.contains(name)
+                return ("\(id)", ["id": id, "name": name, "dyn": isFiltered ? 1 : 0] as [String: Any])
             })
     }
 
@@ -262,7 +299,10 @@ struct AnkiPackage {
         try db.execute(sql: schema18)
         try db.execute(
             sql: "INSERT INTO col VALUES (1, ?, 0, 0, 18, 0, 0, 0, '', '', '', '', '')", arguments: [creationTime])
-        try db.execute(sql: "INSERT INTO config VALUES ('schedVer', 0, 0, ?)", arguments: [Data("2".utf8)])
+        // Each key's value is JSON, as bytes (`rslib/src/storage/config/`).
+        for (key, value) in confJSON.sorted(by: { $0.key < $1.key }) {
+            try db.execute(sql: "INSERT INTO config VALUES (?, 0, 0, ?)", arguments: [key, Data("\(value)".utf8)])
+        }
         for type in noteTypes {
             let id = noteTypeID(of: type)
             // Notetype.Config: kind = 1 (0 normal, left out, or 1 cloze),
@@ -372,7 +412,8 @@ private struct ZstdHelperError: Error, CustomStringConvertible {
 
 /// A note of a test's Anki package.
 struct AnkiNote {
-    /// How a note's cards stand in Anki.
+    /// How a note's cards stand in Anki, as its `cards` table says it
+    /// (`rslib/src/card/mod.rs`).
     enum Progress {
         /// New, at the next new-card position, in the notes' order.
         case new
@@ -381,14 +422,50 @@ struct AnkiNote {
         /// In review, due on this day, counted from the collection's
         /// creation, with this interval in days.
         case review(due: Int, interval: Int)
+        /// Being learned, due at this time, in seconds since 1970.
+        case learning(dueAt: Int64)
+        /// Being relearned after a lapse, with steps of a day or more, due on
+        /// this day, counted from the collection's creation.
+        case relearningAcrossDays(due: Int)
+        /// Being relearned after a lapse, due at this time, in seconds since
+        /// 1970, as Anki 2.0's scheduler kept it: a review card in the
+        /// learning queue.
+        case anki20Relearning(dueAt: Int64)
+
+        /// Its `type`, `queue`, `due` and `ivl`, with `position` as a new
+        /// card's position.
+        func columns(position: Int) -> (type: Int, queue: Int, due: Int64, interval: Int) {
+            switch self {
+            case .new, .newAt: (0, 0, Int64(position), 0)
+            case .review(let due, let interval): (2, 2, Int64(due), interval)
+            case .learning(let dueAt): (1, 1, dueAt, 0)
+            case .relearningAcrossDays(let due): (3, 3, Int64(due), 1)
+            case .anki20Relearning(let dueAt): (2, 1, dueAt, 1)
+            }
+        }
+    }
+
+    /// Whether a note's cards are suspended or buried, which Anki says in
+    /// their queue.
+    enum Queue {
+        /// The queue its progress gives it.
+        case asItsTypeSays
+        /// Suspended, until the user unsuspends it.
+        case suspended
+        /// Buried until the next day.
+        case buriedForTheDay
     }
 
     var type: AnkiNoteType
     var fields: [String]
     var tags: [String] = []
-    /// Its cards' deck, with `::` between levels.
+    /// Its cards' deck, with `::` between levels: their home deck while
+    /// they're in a filtered deck.
     var deck = "Default"
     var progress = Progress.new
+    var queue = Queue.asItsTypeSays
+    /// The filtered deck its cards were moved to, or nil.
+    var filteredDeck: String? = nil
 
     /// The template index, from 0, of each card the note has, as Anki makes
     /// them: one for each template of a standard note type, and one for each
