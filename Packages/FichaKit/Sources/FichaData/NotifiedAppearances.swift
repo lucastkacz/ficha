@@ -50,11 +50,10 @@ extension Engine {
             try recordAnswer(
                 kind, of: cardID, at: answeredAt, responseTime: nil, trigger: .appearance, settings: settings,
                 reviewingAhead: false, in: db)
-            let cards = try cardsInReviews(in: db)
+            let cards = try cardsThatShowUp(in: db)
             let next = try settings.nextCard(
-                after: cardID, in: appearance.cardIDs, cardIDs: cards.map(\.id), log: logEntries(in: db),
-                now: answeredAt)
-            let nextCard = try panelCards(next, from: cards).first
+                after: cardID, in: appearance.cardIDs, cards: cards.inReviews, now: answeredAt)
+            let nextCard = try cards.panelCards(next).first
             try noteClosing(of: appearance, at: answeredAt, finished: nextCard == nil, in: db)
             return nextCard
         }

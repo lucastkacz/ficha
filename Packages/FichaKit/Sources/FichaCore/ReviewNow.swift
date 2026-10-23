@@ -12,36 +12,31 @@ public struct PanelCardIDs: Sendable, Equatable {
 }
 
 extension ReviewSettings {
-    /// The cards review now brings at `now`, out of the cards in Lucas's
-    /// reviews, neither flagged nor buried, by id in the order he approved
-    /// them, and the whole review log, in the order it was written: the due
-    /// cards, and a new card, as `pickCards` picks them.
+    /// The cards review now brings at `now`, out of `cards`: the due cards,
+    /// and a new card, as `pickCards` picks them.
     public func reviewNowCards(
-        cardIDs: [Int64],
-        log: [ReviewLogEntry],
+        cards: CardsInReviews,
         now: Date,
         calendar: Calendar
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
-        pickCards(
-            after: try ladder.standings(of: cardIDs, after: log), log: log, dueBy: now, now: now, calendar: calendar)
+        pickCards(after: try cards.standings(on: ladder), of: cards, dueBy: now, now: now, calendar: calendar)
     }
 
-    /// The cards the review panel brings at `now`, out of where each card in
-    /// Lucas's reviews stands, by id in the order he approved them, and the
-    /// whole review log: the cards due by `horizon`, lowest step first and
-    /// then the longest overdue, up to `cardsPerAppearance`, and then the first
-    /// new card he approved, if there's room (ADR 0003) and he hasn't met
-    /// `newCardsPerDay` today, by `calendar`'s day.
+    /// The cards the review panel brings at `now`, out of `cards`, standing
+    /// on the ladder as `standings` says: the cards due by `horizon`, lowest
+    /// step first and then the longest overdue, up to `cardsPerAppearance`,
+    /// and then the first new card Lucas approved, if there's room (ADR 0003)
+    /// and he hasn't met `newCardsPerDay` today, by `calendar`'s day.
     func pickCards(
         after standings: [(cardID: Int64, standing: LadderStanding)],
-        log: [ReviewLogEntry],
+        of cards: CardsInReviews,
         dueBy horizon: Date,
         now: Date,
         calendar: Calendar
     ) -> PanelCardIDs {
         let sorted = SortedStandings(standings, dueBy: horizon)
         let reviews = Array(sorted.due.prefix(cardsPerAppearance))
-        let metToday = log.count { $0.kind == .firstView && calendar.isDate($0.answeredAt, inSameDayAs: now) }
+        let metToday = cards.log.count { $0.kind == .firstView && calendar.isDate($0.answeredAt, inSameDayAs: now) }
         return PanelCardIDs(
             reviews: reviews, reviewsAhead: [],
             firstView: bringsNewCard(after: reviews.count, metToday: metToday) ? sorted.new.first : nil)
@@ -54,19 +49,19 @@ extension ReviewSettings {
         reviews < cardsPerAppearance && metToday < newCardsPerDay
     }
 
-    /// The cards "See more" brings at `now`, once Lucas went through the
-    /// review panel's cards, out of the other cards in his reviews, by id in
-    /// the order he approved them, and the whole review log, in the order it
-    /// was written: the cards due by `horizon` that didn't fit, as `pickCards`
-    /// orders them, and then, if there's room, the cards closest to being due,
-    /// as reviews ahead, up to `cardsPerAppearance`. Never a new card, so the
-    /// day's new cards keep Lucas's load in the coming weeks as it was.
+    /// The cards "See more" brings once Lucas went through the review panel's
+    /// cards, those in `shown`, out of the other cards in `cards`: the cards
+    /// due by `horizon` that didn't fit, as `pickCards` orders them, and then,
+    /// if there's room, the cards closest to being due, as reviews ahead, up
+    /// to `cardsPerAppearance`. Never a new card, so the day's new cards keep
+    /// Lucas's load in the coming weeks as it was.
     public func seeMoreCards(
-        cardIDs: [Int64],
-        log: [ReviewLogEntry],
+        cards: CardsInReviews,
+        leavingOut shown: Set<Int64>,
         dueBy horizon: Date
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
-        let sorted = SortedStandings(try ladder.standings(of: cardIDs, after: log), dueBy: horizon)
+        let others = try cards.standings(on: ladder).filter { !shown.contains($0.cardID) }
+        let sorted = SortedStandings(others, dueBy: horizon)
         let reviews = Array(sorted.due.prefix(cardsPerAppearance))
         let reviewsAhead = Array(sorted.notDue.prefix(cardsPerAppearance - reviews.count))
         return PanelCardIDs(reviews: reviews, reviewsAhead: reviewsAhead, firstView: nil)

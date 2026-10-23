@@ -10,10 +10,9 @@ extension Engine {
     public func reviewNow(_ settings: ReviewSettings) throws(EngineError) -> [PanelCard] {
         let now = time.now
         return try read { db in
-            let cards = try cardsInReviews(in: db)
-            let picked = try settings.reviewNowCards(
-                cardIDs: cards.map(\.id), log: logEntries(in: db), now: now, calendar: calendar)
-            return try panelCards(picked, from: cards)
+            let cards = try cardsThatShowUp(in: db)
+            let picked = try settings.reviewNowCards(cards: cards.inReviews, now: now, calendar: calendar)
+            return try cards.panelCards(picked)
         }
     }
 
@@ -47,8 +46,7 @@ extension Engine {
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in
-            let cardIDs = try cardsInReviews(in: db).map(\.id)
-            let counts = try settings.ladder.counts(of: cardIDs, after: logEntries(in: db), at: now)
+            let counts = try settings.ladder.counts(of: cardsThatShowUp(in: db).inReviews, at: now)
             return ProgressCounts(
                 due: counts.due, learned: counts.learned,
                 inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsWaiting(in: db).count)
@@ -65,9 +63,9 @@ extension Engine {
     {
         let horizon = time.now.adding(trigger.lookAhead(in: settings))
         return try read { db in
-            let cards = try cardsInReviews(in: db).filter { !shown.contains($0.id) }
-            let picked = try settings.seeMoreCards(cardIDs: cards.map(\.id), log: logEntries(in: db), dueBy: horizon)
-            return try panelCards(picked, from: cards)
+            let cards = try cardsThatShowUp(in: db)
+            let picked = try settings.seeMoreCards(cards: cards.inReviews, leavingOut: shown, dueBy: horizon)
+            return try cards.panelCards(picked)
         }
     }
 
@@ -83,27 +81,6 @@ extension Engine {
             try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
         }
     }
-}
-
-/// The cards the review panel brings, picked by id out of `cards`, in the
-/// order it shows them: the cards to review, the cards to review ahead, and
-/// then the new card.
-func panelCards(_ picked: PanelCardIDs, from cards: [Card]) throws -> [PanelCard] {
-    let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
-    var panelCards = try picked.reviews.map { PanelCard.review(try card($0, in: cardsByID)) }
-    panelCards += try picked.reviewsAhead.map { PanelCard.reviewAhead(try card($0, in: cardsByID)) }
-    if let id = picked.firstView {
-        panelCards.append(.firstView(try card(id, in: cardsByID)))
-    }
-    return panelCards
-}
-
-/// The card with this id, out of `cards`.
-private func card(_ id: Int64, in cards: [Int64: Card]) throws -> Card {
-    guard let card = cards[id] else {
-        throw EngineError.cardNotFound(id)
-    }
-    return card
 }
 
 /// The review log's entries, in the order they happened.
