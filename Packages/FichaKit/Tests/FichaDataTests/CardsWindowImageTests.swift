@@ -29,7 +29,7 @@ struct CardsWindowImageTests {
         window.openNewCardForm()
         window.typeInForm(back: "Un hornero.")
 
-        window.putImageInForm(try picture(width: 800, height: 600), on: .front)
+        window.putImageInForm(.data(try picture(width: 800, height: 600)), on: .front)
         let withImage = try #require(window.cardForm)
         window.removeImageFromForm(on: .front)
         let withoutImage = try #require(window.cardForm)
@@ -44,10 +44,10 @@ struct CardsWindowImageTests {
         var window = openWindow()
         window.openNewCardForm()
         window.typeInForm(front: "¿Qué pájaro es?", back: "Un hornero.")
-        window.putImageInForm(try picture(width: 800, height: 600, red: 0.8), on: .front)
-        window.putImageInForm(try picture(width: 800, height: 600, red: 0.1), on: .back)
+        window.putImageInForm(.data(try picture(width: 800, height: 600, red: 0.8)), on: .front)
+        window.putImageInForm(.data(try picture(width: 800, height: 600, red: 0.1)), on: .back)
         // Dropping another image on a side replaces its image.
-        window.putImageInForm(try picture(width: 3000, height: 2000, red: 0.3), on: .back)
+        window.putImageInForm(.data(try picture(width: 3000, height: 2000, red: 0.3)), on: .back)
         let bird = try #require(window.cardForm?.draft.front.image)
         let nest = try #require(window.cardForm?.draft.back.image)
         let shownBird = try #require(try window.images[bird]?.get())
@@ -72,11 +72,33 @@ struct CardsWindowImageTests {
         window.openNewCardForm()
         window.typeInForm(front: "¿Qué pájaro es?", back: "Un hornero.")
 
-        window.putImageInForm(Data("hornero.txt".utf8), on: .front)
+        window.putImageInForm(.data(Data("hornero.txt".utf8)), on: .front)
 
         #expect(window.cardForm?.draft.front.image == nil)
         #expect(window.failure?.action == .putImage)
         #expect(window.failure?.error == .notAnImage)
+    }
+
+    @Test("an image file dropped on a side comes in, and one that can't be read stays off, and the window names it")
+    func anImageFileComesIn() throws {
+        let folder = URL.temporaryDirectory.appending(
+            path: "FichaCardsWindowImageTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let nest = folder.appending(path: "nido.jpg")
+        try picture(width: 800, height: 600).write(to: nest)
+        var window = openWindow()
+        window.openNewCardForm()
+        window.typeInForm(back: "Un hornero.")
+
+        window.putImageInForm(.file(nest), on: .front)
+        // Gone from its folder before it was read.
+        window.putImageInForm(.file(folder.appending(path: "hornero.jpg")), on: .back)
+
+        #expect(window.cardForm?.draft.front.image != nil)
+        #expect(window.cardForm?.draft.back.image == nil)
+        #expect(window.failure?.action == .putImage)
+        #expect(window.failure?.error == .unreadableImageFile("hornero.jpg"))
     }
 
     @Test("the detail shows the selected card's images")
@@ -105,7 +127,7 @@ struct CardsWindowImageTests {
         window.cancelEditing()
         window.startEditing()
         let editing = window.editedImages
-        window.putImageInEditor(try picture(width: 800, height: 600, red: 0.1), on: .front)
+        window.putImageInEditor(.data(try picture(width: 800, height: 600, red: 0.1)), on: .front)
         window.removeImageFromEditor(on: .back)
         let egg = try #require(window.editedImages.front)
         window.saveCard(

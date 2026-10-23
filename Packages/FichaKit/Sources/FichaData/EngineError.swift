@@ -80,6 +80,9 @@ public enum EngineError: Error, Equatable {
     /// What came in for a side of a card, dragged or pasted, isn't an image
     /// the system can read.
     case notAnImage
+    /// The file with this name, dragged or pasted for a side of a card,
+    /// couldn't be read. The engine logs why.
+    case unreadableImageFile(String)
     /// An image in the Images folder couldn't be read, saved, brought back
     /// from the Backups folder or removed, or isn't there. The engine logs
     /// why.
@@ -213,6 +216,13 @@ extension EngineError: LocalizedError {
             String(
                 localized: """
                     That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG.
+                    """
+            )
+        case .unreadableImageFile(let name):
+            String(
+                localized: """
+                    Ficha couldn't read “\(name)”. Check that the file is still there and that you can open it, and \
+                    try again.
                     """
             )
         case .imagesFolder:

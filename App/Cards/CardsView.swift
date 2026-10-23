@@ -675,8 +675,8 @@ struct CardsView: View {
         case .card(let card):
             CardEditor(
                 card: card, images: state.editedImages, shownImages: state.images, isSearching: isSearchFocused
-            ) { data, side in
-                state.putImageInEditor(data, on: side)
+            ) { dropped, side in
+                state.putImageInEditor(dropped, on: side)
             } removeImage: { side in
                 state.removeImageFromEditor(on: side)
             } save: { content in

@@ -261,8 +261,8 @@ private struct CardFormSheet: View {
     private func imageWell(on side: CardSide, of form: CardsWindowState.CardForm) -> some View {
         ImageWell(
             image: side == .front ? form.draft.front.image : form.draft.back.image, images: state.images
-        ) { data in
-            state.putImageInForm(data, on: side)
+        ) { dropped in
+            state.putImageInForm(dropped, on: side)
         } remove: {
             state.removeImageFromForm(on: side)
         }

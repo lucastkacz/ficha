@@ -3,6 +3,11 @@ import FichaCore
 import FichaData
 import SwiftUI
 import UniformTypeIdentifiers
+import os
+
+// Nonisolated, for the item provider's handler, which comes on a queue of
+// its own.
+private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "images")
 
 /// Where a side of the card Lucas makes or edits takes its image, under the
 /// side's text: an image dragged from Finder or a browser onto it, or pasted
@@ -16,7 +21,7 @@ struct ImageWell: View {
     /// The images the window shows, the side's among them.
     let images: ShownImages
     /// Puts what was dragged or pasted on the side, as its image.
-    let put: (Data) -> Void
+    let put: (DroppedImage) -> Void
     /// Removes the side's image.
     let remove: () -> Void
     /// Whether something is dragged over it.
@@ -94,31 +99,30 @@ struct ImageWell: View {
     private static let imageTypes: [UTType] = [.fileURL, .image]
 
     /// Puts the image in the first of `providers` on the side, once it's
-    /// loaded. What doesn't load goes to the window as no data, which it
+    /// loaded. What holds no image goes to the window as no data, which it
     /// refuses, saying so.
     private func take(_ providers: [NSItemProvider]) {
         Task {
-            put(await imageData(in: providers) ?? Data())
+            put(await droppedImage(in: providers) ?? .data(Data()))
         }
     }
 }
 
 /// The image in the first of `providers` that holds a local file or an
-/// image's data: the file's contents, as Finder drags or copies it, or the
-/// data, as a browser or the pasteboard holds it, or nil when none does. A
-/// web address is never fetched: Ficha makes no network calls.
-private func imageData(in providers: [NSItemProvider]) async -> Data? {
+/// image's data: the file, as Finder drags or copies it, which the window
+/// reads, or the data, as a browser or the pasteboard holds it, or nil when
+/// none does. A web address is never fetched: Ficha makes no network calls.
+private func droppedImage(in providers: [NSItemProvider]) async -> DroppedImage? {
     for provider in providers {
         if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier),
-            let file = await localFile(in: provider),
-            let data = try? Data(contentsOf: file)
+            let file = await localFile(in: provider)
         {
-            return data
+            return .file(file)
         }
         if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
             let data = await imageRepresentation(in: provider)
         {
-            return data
+            return .data(data)
         }
     }
     return nil
@@ -135,10 +139,13 @@ private func localFile(in provider: NSItemProvider) async -> URL? {
 }
 
 /// The image's data `provider` holds, in its first image format, or nil when
-/// it can't be loaded.
+/// it can't be loaded, which the app logs.
 private func imageRepresentation(in provider: NSItemProvider) async -> Data? {
     await withCheckedContinuation { continuation in
-        _ = provider.loadDataRepresentation(for: .image) { data, _ in
+        _ = provider.loadDataRepresentation(for: .image) { data, error in
+            if let error {
+                logger.error("Couldn't load a dropped image: \(String(describing: error), privacy: .public)")
+            }
             continuation.resume(returning: data)
         }
     }

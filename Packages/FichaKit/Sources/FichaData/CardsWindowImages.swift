@@ -78,13 +78,23 @@ public struct ShownImages: Sendable, Equatable {
     }
 }
 
+/// What's dragged or pasted onto a side of a card, as its image.
+public enum DroppedImage: Sendable, Equatable {
+    /// A file, as Finder drags or copies it, which the window reads.
+    case file(URL)
+    /// An image's data, as a browser or the pasteboard holds it: none when
+    /// what came in holds neither a file nor an image, as a web address.
+    case data(Data)
+}
+
 extension CardsWindowState {
-    /// Puts the image in `data`, dragged or pasted, on `side` of the card the
-    /// form makes, in place of the one it had, shrunk as every image that
-    /// comes in. The window holds it until Add saves the card. Something that
-    /// isn't an image stays out, and the window records why.
-    public mutating func putImageInForm(_ data: Data, on side: CardSide) {
-        guard let form = cardForm, let image = imageComingIn(data) else { return }
+    /// Puts the image `dropped` brings on `side` of the card the form makes,
+    /// in place of the one it had, shrunk as every image that comes in. The
+    /// window holds it until Add saves the card. Something that isn't an
+    /// image, or a file that can't be read, stays out, and the window
+    /// records why.
+    public mutating func putImageInForm(_ dropped: DroppedImage, on side: CardSide) {
+        guard let form = cardForm, let image = imageComingIn(dropped) else { return }
         var draft = form.draft
         draft[side].image = image.name
         changeDraft(draft)
@@ -99,12 +109,13 @@ extension CardsWindowState {
         showImages()
     }
 
-    /// Puts the image in `data`, dragged or pasted, on `side` of the card
-    /// Lucas edits, in place of the one it had, shrunk as every image that
-    /// comes in. The window holds it until Save saves the card. Something
-    /// that isn't an image stays out, and the window records why.
-    public mutating func putImageInEditor(_ data: Data, on side: CardSide) {
-        guard case .card = editing, let image = imageComingIn(data) else { return }
+    /// Puts the image `dropped` brings on `side` of the card Lucas edits, in
+    /// place of the one it had, shrunk as every image that comes in. The
+    /// window holds it until Save saves the card. Something that isn't an
+    /// image, or a file that can't be read, stays out, and the window
+    /// records why.
+    public mutating func putImageInEditor(_ dropped: DroppedImage, on side: CardSide) {
+        guard case .card = editing, let image = imageComingIn(dropped) else { return }
         editedImages[side] = image.name
         showImages()
     }
@@ -117,11 +128,26 @@ extension CardsWindowState {
         showImages()
     }
 
-    /// The image in `data`, shrunk and held until a card that has it is
-    /// saved, or nil when it isn't an image, which the window records.
-    private mutating func imageComingIn(_ data: Data) -> CardImage? {
+    /// The image `dropped` brings, shrunk and held until a card that has it
+    /// is saved, or nil when it isn't an image, or its file can't be read,
+    /// which the window records.
+    private mutating func imageComingIn(_ dropped: DroppedImage) -> CardImage? {
         var image: CardImage?
-        perform(.putImage) { _ throws(EngineError) in image = try CardImage(shrinking: data) }
+        perform(.putImage) { _ throws(EngineError) in
+            switch dropped {
+            case .file(let file):
+                let data: Data
+                do {
+                    data = try Data(contentsOf: file)
+                } catch {
+                    logger.error("Couldn't read a file dropped for an image: \(String(describing: error))")
+                    throw .unreadableImageFile(file.lastPathComponent)
+                }
+                image = try CardImage(shrinking: data)
+            case .data(let data):
+                image = try CardImage(shrinking: data)
+            }
+        }
         if let image {
             images.hold(image)
         }

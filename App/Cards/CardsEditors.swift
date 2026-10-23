@@ -22,7 +22,7 @@ struct CardEditor: View {
     /// and Escape: Escape there clears the search, and leaves his edit alone.
     let isSearching: Bool
     /// Puts what was dragged or pasted on a side, as its image.
-    let putImage: (Data, CardSide) -> Void
+    let putImage: (DroppedImage, CardSide) -> Void
     /// Removes a side's image.
     let removeImage: (CardSide) -> Void
     /// Saves the card with `content`, which ends the edit once it's saved.
@@ -46,7 +46,7 @@ struct CardEditor: View {
         images: SideImages,
         shownImages: ShownImages,
         isSearching: Bool,
-        putImage: @escaping (Data, CardSide) -> Void,
+        putImage: @escaping (DroppedImage, CardSide) -> Void,
         removeImage: @escaping (CardSide) -> Void,
         save: @escaping (CardContent) -> Void,
         cancel: @escaping () -> Void
@@ -179,8 +179,8 @@ struct CardEditor: View {
 
     /// The place for the image on `side`.
     private func imageWell(on side: CardSide) -> some View {
-        ImageWell(image: images[side], images: shownImages) { data in
-            putImage(data, side)
+        ImageWell(image: images[side], images: shownImages) { dropped in
+            putImage(dropped, side)
         } remove: {
             removeImage(side)
         }
