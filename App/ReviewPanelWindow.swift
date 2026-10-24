@@ -99,6 +99,7 @@ final class ReviewPanelWindow: NSPanel {
         failureMayHaveKeyboard = true
         place()
         makeKeyAndOrderFront(nil)
+        dropInitialFocus()
         watch()
     }
 
@@ -111,6 +112,7 @@ final class ReviewPanelWindow: NSPanel {
         self.mac = mac
         place()
         orderFrontRegardless()
+        dropInitialFocus()
         takeKeyboardIfItsTime()
         watch()
     }
@@ -135,6 +137,17 @@ final class ReviewPanelWindow: NSPanel {
         watching?.cancel()
         watching = nil
         super.close()
+    }
+
+    /// Takes the focus from the button AppKit gave it as the panel showed, so
+    /// no button holds it. With Keyboard navigation on, in System Settings,
+    /// the first time a window shows, AppKit gives the focus to its first view
+    /// that takes it: in the panel, the flag button, since undo is off on the
+    /// first card. The button looked pressed, and Space, on a card it doesn't
+    /// flip, pressed it (#231). Every action in the panel has its key, so no
+    /// button needs the focus until Lucas moves it there with Tab.
+    private func dropInitialFocus() {
+        makeFirstResponder(nil)
     }
 
     /// Lets the panel have the keyboard, since Lucas asked for it.
