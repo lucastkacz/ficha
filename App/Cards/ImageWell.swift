@@ -129,8 +129,8 @@ private func droppedImage(in providers: [NSItemProvider]) async -> DroppedImage?
 }
 
 /// The local file `provider` holds, or nil when it holds none, or a web
-/// address.
-private func localFile(in provider: NSItemProvider) async -> URL? {
+/// address, for the places for a side's image and sound.
+func localFile(in provider: NSItemProvider) async -> URL? {
     await withCheckedContinuation { continuation in
         _ = provider.loadObject(ofClass: URL.self) { url, _ in
             continuation.resume(returning: url.flatMap { $0.isFileURL ? $0 : nil })

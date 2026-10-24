@@ -35,8 +35,8 @@ struct CardsView: View {
     /// header, and at first the newest cards first.
     @State private var sortOrder = Preferences.cardsSortOrder
     /// The table's columns as Lucas left them: which ones show, in what order
-    /// and how wide. At first Front, Step and Due, until he adds others from
-    /// the headers' menu.
+    /// and how wide. At first Front, Media, Step and Due, until he adds
+    /// others from the headers' menu.
     @State private var columns = Preferences.cardsColumns
     /// The inbox's order: the latest added first, until Lucas clicks a
     /// column's header.
@@ -44,6 +44,9 @@ struct CardsView: View {
     /// Whether the table has the keyboard, which it gets back once Lucas
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
+    /// Plays the sound the window says plays, in the form, the editor or the
+    /// detail.
+    @State private var player = SoundPlayer()
 
     /// The content for the user's cards in `model`, opening with `state` when
     /// it's given, as `make render` opens it partway through an import, and
@@ -151,12 +154,30 @@ struct CardsView: View {
         .onChange(of: model.debugTools?.timeShift) {
             readCards()
         }
+        .onChange(of: state.playingSound) {
+            play(state.playingSound)
+        }
+        .onDisappear {
+            player.stop()
+        }
     }
 
     /// Reads Lucas's cards, as they are now, on the ladder he set in
     /// Settings.
     private func readCards() {
         state.read(on: model.settings.ladder)
+    }
+
+    /// Plays `playing`, the sound the window says plays, from the start, or
+    /// stops the one that played when it's nil.
+    private func play(_ playing: PlayingSound?) {
+        guard let playing, case .success(let sound)? = state.sounds[playing.name] else {
+            player.stop()
+            return
+        }
+        player.play(sound.data) {
+            state.soundEnded(playing)
+        }
     }
 
     /// The card the window asks Lucas to flag, while the flag sheet asks for
@@ -273,6 +294,14 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't add the image",
                     comment: "An alert's title in the Cards window, after dragging or pasting onto a side of a card."),
+                error: error)
+        case .putSound:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add the sound",
+                    comment:
+                        "An alert's title in the Cards window, after dragging or pasting a file onto a side's sound."
+                ),
                 error: error)
         case .flag:
             return Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
@@ -517,6 +546,16 @@ struct CardsView: View {
             // Always there, as Finder's Name: it says which card a row is.
             .disabledCustomizationBehavior(.visibility)
             TableColumn(
+                Text(
+                    "Media", comment: "A column of the Cards window: whether the card's sides have an image or a sound."
+                ),
+                sortUsing: CardRowOrder(.media)
+            ) { row in
+                MediaCell(card: row.card)
+            }
+            .width(min: 48, ideal: 56, max: 80)
+            .customizationID(CardRowOrder.Column.media.rawValue)
+            TableColumn(
                 Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
                 sortUsing: CardRowOrder(.step)
             ) { row in
@@ -688,11 +727,23 @@ struct CardsView: View {
         switch state.editing {
         case .card(let card):
             CardEditor(
-                card: card, images: state.editedImages, shownImages: state.images, isSearching: isSearchFocused
+                card: card, images: state.editedImages, shownImages: state.images, sounds: state.editedSounds,
+                canSave: state.canSaveCard, isSearching: isSearchFocused
             ) { dropped, side in
                 state.putImageInEditor(dropped, on: side)
             } removeImage: { side in
                 state.removeImageFromEditor(on: side)
+            } soundWell: { side in
+                SoundWell(
+                    sound: state.editedSounds[side], sounds: state.sounds,
+                    isComingIn: state.isSoundComingInEditor(on: side), isPlaying: state.isPlaying(at: .editor(side))
+                ) {
+                    state.playOrStopSound(at: .editor(side))
+                } put: { file in
+                    convert(state.putSoundInEditor(file, on: side), for: $state)
+                } remove: {
+                    state.removeSoundFromEditor(on: side)
+                }
             } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()
@@ -736,7 +787,14 @@ struct CardsView: View {
             case .card(let row, let reviewLog):
                 CardDetail(
                     row: row, images: state.images, now: state.now, reviewLog: reviewLog, ladder: state.ladder
-                )
+                ) { side in
+                    SoundControls(
+                        sound: row.card.sound(on: side).flatMap { state.sounds[$0] },
+                        isPlaying: state.isPlaying(at: .detail(cardID: row.id, side))
+                    ) {
+                        state.playOrStopSound(at: .detail(cardID: row.id, side))
+                    }
+                }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     actionBar
                 }

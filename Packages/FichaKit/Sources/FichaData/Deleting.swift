@@ -8,14 +8,15 @@ extension Engine {
     /// doesn't exist. An expansion attached to one of them, or a follow-up
     /// tied to it, stays in the inbox as a plain capture, so nothing he jotted
     /// down is lost, and the capture a card was approved from stays as it is.
-    /// Their images go too, those no other card uses. Nothing undoes it.
-    /// Returns the cards as they were, in the order Lucas approved them.
+    /// Their images and sounds go too, those no other card uses. Nothing
+    /// undoes it. Returns the cards as they were, in the order Lucas approved
+    /// them.
     @discardableResult
     public func delete(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         let deleted = try write { db in
             try cardIDs.sorted().map { try delete($0, in: db) }
         }
-        removeImagesNoCardUses(among: Set(deleted.flatMap(\.images)))
+        removeFilesNoCardUses(images: Set(deleted.flatMap(\.images)), sounds: Set(deleted.flatMap(\.sounds)))
         return deleted
     }
 

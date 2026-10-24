@@ -4,7 +4,6 @@ import FichaCore
 import Foundation
 internal import GRDB
 import ImageIO
-import Synchronization
 import UniformTypeIdentifiers
 
 /// The longest side, in pixels, an image keeps once it comes in: sharp on the
@@ -26,7 +25,7 @@ extension Engine {
 
     /// Keeps `image` where Ficha keeps images, unless it's there already.
     func keepImage(_ image: CardImage) throws(EngineError) {
-        try images.keep(image)
+        try images.keep(image.data, as: image.name)
     }
 
     /// The image named `name`, as Ficha keeps it: a JPEG, or a PNG for an
@@ -39,53 +38,18 @@ extension Engine {
     func keptImages() throws(EngineError) -> Set<ImageName> {
         try images.names()
     }
-
-    /// Removes the images among `names` that no card refers to any more, now
-    /// that a change let go of them, such as deleting a card or replacing
-    /// its image. One that couldn't be removed stays, and the engine logs
-    /// why: the change is saved all the same.
-    func removeImagesNoCardUses(among names: Set<ImageName>) {
-        guard !names.isEmpty else { return }
-        do throws(EngineError) {
-            let unused = try read { db in try names.subtracting(imagesReferred(in: db)) }
-            try images.remove(unused)
-        } catch {
-            logger.error("Couldn't remove the images no card uses: \(String(describing: error), privacy: .public)")
-        }
-    }
 }
 
 /// The Images folder in the data folder `folder`, where the engine keeps the
 /// images on cards, beside the database and the Backups folder.
 func folderOfImages(in folder: URL) -> URL {
-    folder.appending(path: "Images", directoryHint: .isDirectory)
+    FichaData.folder(of: ImageName.self, in: folder)
 }
 
-/// Every image the cards in `db` refer to, on either side: none for a
-/// database from before images on cards, such as an old backup, or from
-/// before cards. A name that isn't an image's fails, as a card the engine
-/// never saved.
+/// Every image the cards in `db` refer to, on either side, as
+/// `namesReferred(_:in:)` reads them.
 func imagesReferred(in db: Database) throws -> Set<ImageName> {
-    guard try db.tableExists("card") else {
-        return []
-    }
-    let columns = try db.columns(in: "card").map(\.name)
-    guard columns.contains("frontImage"), columns.contains("backImage") else {
-        return []
-    }
-    let names = try String.fetchAll(
-        db,
-        sql: """
-            SELECT frontImage FROM card WHERE frontImage IS NOT NULL
-            UNION SELECT backImage FROM card WHERE backImage IS NOT NULL
-            """)
-    return try Set(
-        names.map { name in
-            guard let image = ImageName(rawValue: name) else {
-                throw unreadable("A card has an image that isn't named as Ficha names them")
-            }
-            return image
-        })
+    try namesReferred(ImageName.self, in: db)
 }
 
 /// An image on its way to a side of a card, shrunk as every image that comes
@@ -181,93 +145,4 @@ private func hasTransparency(_ image: CGImage) -> Bool {
     }
     let bytes = UnsafeBufferPointer(start: pixels.assumingMemoryBound(to: UInt8.self), count: width * height * 4)
     return stride(from: 3, to: bytes.count, by: 4).contains { bytes[$0] < 255 }
-}
-
-/// Where the engine keeps the images on cards, each once, by its name: an
-/// Images folder beside the database, with a file for each, or memory, for
-/// an engine in memory.
-enum ImageStore: Sendable {
-    case folder(URL)
-    case memory(ImagesInMemory)
-
-    /// Keeps `image`, unless an image with its name is kept already: being
-    /// named by its content, it's the same image.
-    func keep(_ image: CardImage) throws(EngineError) {
-        switch self {
-        case .folder(let folder):
-            let file = folder.appending(path: image.name.rawValue)
-            guard !FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else { return }
-            try reportingImageErrors {
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                try image.data.write(to: file, options: .atomic)
-            }
-        case .memory(let memory):
-            memory.images.withLock { $0[image.name] = image.data }
-        }
-    }
-
-    /// The image named `name`, or an error when it isn't kept.
-    func data(of name: ImageName) throws(EngineError) -> Data {
-        switch self {
-        case .folder(let folder):
-            try reportingImageErrors { try Data(contentsOf: folder.appending(path: name.rawValue)) }
-        case .memory(let memory):
-            try memory.images.withLock { images throws(EngineError) in
-                guard let data = images[name] else {
-                    logger.error("No image named \(name.rawValue, privacy: .public) is kept in memory")
-                    throw .imagesFolder
-                }
-                return data
-            }
-        }
-    }
-
-    /// Every image kept, by name.
-    func names() throws(EngineError) -> Set<ImageName> {
-        switch self {
-        case .folder(let folder):
-            guard FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) else { return [] }
-            let files = try reportingImageErrors {
-                try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
-            }
-            return Set(files.compactMap(ImageName.init(rawValue:)))
-        case .memory(let memory):
-            return memory.images.withLock { Set($0.keys) }
-        }
-    }
-
-    /// Removes the images named `names`, those kept: one that isn't is
-    /// already gone.
-    func remove(_ names: Set<ImageName>) throws(EngineError) {
-        switch self {
-        case .folder(let folder):
-            for name in names {
-                let file = folder.appending(path: name.rawValue)
-                guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else { continue }
-                try reportingImageErrors { try FileManager.default.removeItem(at: file) }
-            }
-        case .memory(let memory):
-            memory.images.withLock { images in
-                for name in names {
-                    images[name] = nil
-                }
-            }
-        }
-    }
-}
-
-/// The images of an engine in memory, gone with it.
-final class ImagesInMemory: Sendable {
-    let images = Mutex<[ImageName: Data]>([:])
-}
-
-/// Runs `work` on the Images folder, and when it fails, logs why and throws
-/// the engine's error, whose message the user can read.
-private func reportingImageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
-    do {
-        return try work()
-    } catch {
-        logger.error("The Images folder failed: \(String(describing: error), privacy: .public)")
-        throw .imagesFolder
-    }
 }

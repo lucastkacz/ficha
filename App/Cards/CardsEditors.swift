@@ -3,13 +3,14 @@ import FichaData
 import SwiftUI
 
 /// The fields the user edits a card in, in place of its detail: its type, or
-/// None, front and back, each with its text and its image, dragged or pasted
-/// under it, tags and source, under the flag's note when it's flagged. Return
-/// saves, Option-Return starts a new line, and Escape cancels, as in the
-/// capture window, unless the search field has the focus. Saving with a side
-/// that has neither text nor an image says, under it, what's missing. When
-/// the card can't be saved, the window's alert says why, and the fields stay
-/// as the user left them.
+/// None, front and back, each with its text, its image and its sound, dragged
+/// or pasted under it, tags and source, under the flag's note when it's
+/// flagged. Return saves, Option-Return starts a new line, and Escape
+/// cancels, as in the capture window, unless the search field has the focus.
+/// Save is off while a sound converts. Saving with a side that has neither
+/// text, an image nor a sound says, under it, what's missing. When the card
+/// can't be saved, the window's alert says why, and the fields stay as the
+/// user left them.
 struct CardEditor: View {
     /// The card as it was when Lucas started editing it.
     let card: Card
@@ -18,6 +19,11 @@ struct CardEditor: View {
     let images: SideImages
     /// The images the window shows, those on its sides among them.
     let shownImages: ShownImages
+    /// The sounds on its sides as Save would give them to it, which the
+    /// window holds.
+    let sounds: SideSounds
+    /// Whether Save is on: not while a sound converts.
+    let canSave: Bool
     /// Whether Lucas is in the window's search field, which then keeps Return
     /// and Escape: Escape there clears the search, and leaves his edit alone.
     let isSearching: Bool
@@ -25,6 +31,8 @@ struct CardEditor: View {
     let putImage: (DroppedImage, CardSide) -> Void
     /// Removes a side's image.
     let removeImage: (CardSide) -> Void
+    /// The place for a side's sound, which the window fills.
+    let soundWell: (CardSide) -> SoundWell
     /// Saves the card with `content`, which ends the edit once it's saved.
     let save: (CardContent) -> Void
     /// Ends the edit without saving it.
@@ -45,18 +53,24 @@ struct CardEditor: View {
         card: Card,
         images: SideImages,
         shownImages: ShownImages,
+        sounds: SideSounds,
+        canSave: Bool,
         isSearching: Bool,
         putImage: @escaping (DroppedImage, CardSide) -> Void,
         removeImage: @escaping (CardSide) -> Void,
+        soundWell: @escaping (CardSide) -> SoundWell,
         save: @escaping (CardContent) -> Void,
         cancel: @escaping () -> Void
     ) {
         self.card = card
         self.images = images
         self.shownImages = shownImages
+        self.sounds = sounds
+        self.canSave = canSave
         self.isSearching = isSearching
         self.putImage = putImage
         self.removeImage = removeImage
+        self.soundWell = soundWell
         self.save = save
         self.cancel = cancel
         _type = State(initialValue: card.type)
@@ -76,7 +90,7 @@ struct CardEditor: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            EditorActions(isSearching: isSearching, cancel: cancel, save: submit)
+            EditorActions(isSearching: isSearching, canSave: canSave, cancel: cancel, save: submit)
         }
         .onAppear {
             isFrontFocused = true
@@ -98,13 +112,14 @@ struct CardEditor: View {
                     TextField("Front", text: $front, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($isFrontFocused)
-                    if showsMissingSides && CardContent.isBlank(front, image: images.front) {
+                    if showsMissingSides && CardContent.isBlank(front, image: images.front, sound: sounds.front) {
                         missing(
                             Text(
                                 "A card needs a front.",
                                 comment: "In the Cards window, under a card's front, when Lucas saves it blank."))
                     }
                     imageWell(on: .front)
+                    soundWell(.front)
                 }
             }
             GridRow {
@@ -113,13 +128,14 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Back", text: $back, axis: .vertical)
                         .lineLimit(4...12)
-                    if showsMissingSides && CardContent.isBlank(back, image: images.back) {
+                    if showsMissingSides && CardContent.isBlank(back, image: images.back, sound: sounds.back) {
                         missing(
                             Text(
                                 "A card needs a back.",
                                 comment: "In the Cards window, under a card's back, when Lucas saves it blank."))
                     }
                     imageWell(on: .back)
+                    soundWell(.back)
                 }
             }
             GridRow {
@@ -167,13 +183,15 @@ struct CardEditor: View {
         }
     }
 
-    /// Saves the card with what the fields hold and the images on its sides,
-    /// unless a side has neither text nor an image.
+    /// Saves the card with what the fields hold and the images and sounds on
+    /// its sides, while Save is on, unless a side has neither text, an image
+    /// nor a sound.
     private func submit() {
+        guard canSave else { return }
         guard
             let content = CardContent(
                 type: type, front: front, back: back, tags: tags, source: source, frontImage: images.front,
-                backImage: images.back)
+                backImage: images.back, frontSound: sounds.front, backSound: sounds.back)
         else {
             showsMissingSides = true
             return
@@ -308,6 +326,8 @@ private func missing(_ text: Text) -> some View {
 private struct EditorActions: View {
     /// Whether Lucas is in the window's search field.
     let isSearching: Bool
+    /// Whether Save is on.
+    var canSave = true
     let cancel: () -> Void
     let save: () -> Void
 
@@ -318,6 +338,7 @@ private struct EditorActions: View {
                 .keyboardShortcut(isSearching ? nil : .cancelAction)
             Button("Save", action: save)
                 .keyboardShortcut(isSearching ? nil : .defaultAction)
+                .disabled(!canSave)
         }
     }
 }

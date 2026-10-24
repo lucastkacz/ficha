@@ -4,8 +4,8 @@ import Foundation
 import Testing
 
 /// A card for a test to approve a capture into: it always has a front and a
-/// back, and no tags, source or images unless the test gives them. A nil type
-/// is no type.
+/// back, and no tags, source, images or sounds unless the test gives them. A
+/// nil type is no type.
 func card(
     _ type: CardType?,
     front: String,
@@ -13,20 +13,23 @@ func card(
     tags: [String] = [],
     source: String? = nil,
     frontImage: ImageName? = nil,
-    backImage: ImageName? = nil
+    backImage: ImageName? = nil,
+    frontSound: SoundName? = nil,
+    backSound: SoundName? = nil
 ) throws -> CardContent {
     try #require(
         CardContent(
             type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
-            backImage: backImage))
+            backImage: backImage, frontSound: frontSound, backSound: backSound))
 }
 
-/// What `card` holds, its images included, as a card is made from it, to
-/// compare with the content a test gave it.
+/// What `card` holds, its images and sounds included, as a card is made from
+/// it, to compare with the content a test gave it.
 func content(of card: Card) -> CardContent? {
     CardContent(
         type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source,
-        frontImage: card.frontImage, backImage: card.backImage)
+        frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
+        backSound: card.backSound)
 }
 
 /// Lucas's note on what to fix in a card he flags, which isn't blank.

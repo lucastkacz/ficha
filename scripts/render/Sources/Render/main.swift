@@ -1,3 +1,4 @@
+import AVFoundation
 import AppKit
 import Carbon.HIToolbox
 import FichaCore
@@ -55,6 +56,9 @@ enum Action: CustomStringConvertible {
     case type(String)
     /// A picture, copied to the tool's own pasteboard, for ⌘V to paste.
     case copyImage(SamplePicture)
+    /// A sound file, copied to the tool's own pasteboard as Finder copies
+    /// one, for ⌘V to paste.
+    case copySound
 
     /// The action as its arguments ask for it, like `--key cmd+f`.
     var description: String {
@@ -63,8 +67,72 @@ enum Action: CustomStringConvertible {
         case .key(let press): "--key \(press.name)"
         case .type(let text): "--type \"\(text)\""
         case .copyImage(let picture): "--copy-image \(picture.rawValue)"
+        case .copySound: "--copy-sound"
         }
     }
+}
+
+/// Writes a tone to `file`, a WAV file, for the sample's card with a sound
+/// and for `--copy-sound`, since the tool can't drag a file: an A, 440 Hz,
+/// lasting `seconds`, at half its loudest.
+func writeSampleTone(seconds: Double, to file: URL) throws {
+    let frames = AVAudioFrameCount(44_100 * seconds)
+    guard
+        let format = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32, sampleRate: 44_100, channels: 1, interleaved: false),
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames),
+        let samples = buffer.floatChannelData
+    else {
+        throw RenderError(description: "Couldn't make the sample tone. \(whenMacOSRefuses)")
+    }
+    buffer.frameLength = frames
+    for frame in 0..<Int(frames) {
+        samples[0][frame] = Float(sin(2 * Double.pi * 440 * Double(frame) / 44_100) * 0.5)
+    }
+    // The file is written once it's let go, at the end of this scope.
+    let wav = try AVAudioFile(
+        forWriting: file,
+        settings: [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 44_100, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false,
+        ], commonFormat: .pcmFormatFloat32, interleaved: false)
+    try wav.write(from: buffer)
+}
+
+/// The sample tone lasting `seconds`, added to `engine` as the Cards window
+/// adds a sound dropped on a side: converted as every sound that comes in.
+func addSampleTone(seconds: Double, to engine: Engine) async throws -> SoundName {
+    let file = URL.temporaryDirectory.appending(path: "RenderTone-\(UUID().uuidString).wav")
+    defer { try? FileManager.default.removeItem(at: file) }
+    try writeSampleTone(seconds: seconds, to: file)
+    return try await engine.addSound(Data(contentsOf: file), named: file.lastPathComponent)
+}
+
+/// What `work` returns, or throws, waited for on the main run loop. The
+/// tool's top-level code stays synchronous, and doesn't await: awaiting
+/// there would run all of it as one job of the main actor, during which
+/// `wait(_:)` lets no other job of the main actor run, such as the window's
+/// tasks, which read its cards.
+func waitFor<Value>(_ work: @escaping () async throws -> Value) throws -> Value {
+    let awaited = Awaited<Value>()
+    Task {
+        do {
+            awaited.result = .success(try await work())
+        } catch {
+            awaited.result = .failure(error)
+        }
+    }
+    while true {
+        if let result = awaited.result {
+            return try result.get()
+        }
+        RunLoop.main.run(until: Date.now.addingTimeInterval(0.05))
+    }
+}
+
+/// What `waitFor(_:)` waits for, once it's there.
+final class Awaited<Value> {
+    var result: Result<Value, any Error>?
 }
 
 /// A picture the tool draws, for the sample's card with images and for
@@ -213,9 +281,10 @@ let usage = """
                  keys: a-z, 0-9, return, escape, tab, space, delete; modifiers: cmd, shift
       --type     text typed into what holds the focus, like a text field
       --copy-image  a picture, flag or sun, copied to the tool's own pasteboard, for --key cmd+v to paste
+      --copy-sound  a sound file, a tone of 12 seconds, copied to the tool's own pasteboard, for --key cmd+v
       --out      the PNG, by default .build/render/<window>-<light|dark>.png
-    --click, --key, --type and --copy-image run in the order given, and after each one the tool prints what holds
-    the focus.
+    --click, --key, --type, --copy-image and --copy-sound run in the order given, and after each one the tool
+    prints what holds the focus.
     While the window has a sheet, an alert or a confirmation open, they go to it.
     """
 
@@ -290,6 +359,8 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
                 throw RenderError(description: "--copy-image takes a picture: flag or sun.\n\(usage)")
             }
             request.actions.append(.copyImage(picture))
+        case "--copy-sound":
+            request.actions.append(.copySound)
         case "--out":
             guard let path = arguments.popFirst() else {
                 throw RenderError(description: "--out takes the PNG's path.\n\(usage)")
@@ -312,8 +383,9 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// the first day and climbing at different paces, two sent back to the first
 /// step, one flagged with a note and one buried, and the rest new, with a
 /// capture waiting in the inbox; and then a new card with a flag on its front
-/// and the Sun of May on its back, and two new cards made by hand, with no
-/// type and no capture. The time it's on stays where the twelve days left it.
+/// and the Sun of May and a sound on its back, and two new cards made by
+/// hand, with no type and no capture. The time it's on stays where the twelve
+/// days left it.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -364,12 +436,14 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     }
     try engine.flag(cards[2].id, note: note)
     try engine.bury(cards[5].id)
-    // A card made in the Cards window with an image on each side.
+    // A card made in the Cards window with an image on each side, and a
+    // sound on its back, as the anthem would be.
     guard
         let withImages = CardContent(
             type: nil, front: "¿De qué país es esta bandera?", back: "De la Argentina. En el centro, el Sol de Mayo.",
             tags: ["geografía"], source: nil, frontImage: try engine.addImage(SamplePicture.flag.png()),
-            backImage: try engine.addImage(SamplePicture.sun.png()))
+            backImage: try engine.addImage(SamplePicture.sun.png()),
+            backSound: try waitFor { try await addSampleTone(seconds: 12, to: engine) })
     else {
         throw RenderError(description: "The sample's card with images has a blank side.")
     }
@@ -1050,6 +1124,9 @@ do {
     // The data folder a window may leave in the scratch home goes as the
     // tool ends.
     defer { try? FileManager.default.removeItem(at: renderDataFolder) }
+    // The sound file `--copy-sound` copies, which goes too.
+    let copiedSound = URL.temporaryDirectory.appending(path: "RenderSound-\(UUID().uuidString).wav")
+    defer { try? FileManager.default.removeItem(at: copiedSound) }
     let model = try model(for: name)
     let window = try window(name, model: model)
     window.level = belowDesktop
@@ -1066,6 +1143,10 @@ do {
         case .copyImage(let picture):
             pasteboard.clearContents()
             pasteboard.setData(try picture.png(), forType: .png)
+        case .copySound:
+            try writeSampleTone(seconds: 12, to: copiedSound)
+            pasteboard.clearContents()
+            pasteboard.writeObjects([copiedSound as NSURL])
         }
         try wait(0.5)
         print("\(action): the focus is on \(focus(in: window))")

@@ -3,8 +3,7 @@ import FichaData
 import SwiftUI
 
 /// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says, since a buried card keeps its flag, and
-/// after a photo when the front has an image.
+/// buried, as where it stands says, since a buried card keeps its flag.
 struct FrontCell: View {
     let card: Card
     /// Whether a long front goes on over more lines, as below a capture in
@@ -24,22 +23,73 @@ struct FrontCell: View {
                 }
                 BuriedIcon()
             }
-            if card.frontImage != nil {
-                Image(systemName: "photo")
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(
-                        Text(
-                            "Image",
-                            comment: "The icon beside a card's front in the Cards window, when it has an image.")
-                    )
-                    .help(
-                        Text(
-                            "The front has an image",
-                            comment: "The tooltip of the icon beside a card's front, when it has an image."))
-            }
             Text(card.front)
                 .lineLimit(wraps ? nil : 1)
                 .fixedSize(horizontal: false, vertical: wraps)
+        }
+    }
+}
+
+/// What the card holds besides its text, in the table's Media column: a
+/// photo when a side has an image and a speaker when one has a sound, each
+/// saying which sides in its tooltip, and nothing for a card of text alone.
+struct MediaCell: View {
+    let card: Card
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let sides = card.sidesWithImages {
+                mark("photo", saying: imagesText(sides))
+            }
+            if let sides = card.sidesWithSounds {
+                mark("speaker.wave.2", saying: soundsText(sides))
+            }
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    /// The icon named `systemName`, which says `text` in its tooltip and to
+    /// VoiceOver.
+    private func mark(_ systemName: String, saying text: Text) -> some View {
+        Image(systemName: systemName)
+            .accessibilityLabel(text)
+            .help(text)
+    }
+
+    /// Which sides have an image, as the photo's tooltip says it.
+    private func imagesText(_ sides: WhichSides) -> Text {
+        switch sides {
+        case .front:
+            Text(
+                "The front has an image",
+                comment: "The tooltip of the photo in the Cards window's Media column, when the card's front has one.")
+        case .back:
+            Text(
+                "The back has an image",
+                comment: "The tooltip of the photo in the Cards window's Media column, when the card's back has one.")
+        case .both:
+            Text(
+                "Both sides have an image",
+                comment: "The tooltip of the photo in the Cards window's Media column, when both sides have one.")
+        }
+    }
+
+    /// Which sides have a sound, as the speaker's tooltip says it.
+    private func soundsText(_ sides: WhichSides) -> Text {
+        switch sides {
+        case .front:
+            Text(
+                "The front has a sound",
+                comment: "The tooltip of the speaker in the Cards window's Media column, when the card's front has one."
+            )
+        case .back:
+            Text(
+                "The back has a sound",
+                comment: "The tooltip of the speaker in the Cards window's Media column, when the card's back has one.")
+        case .both:
+            Text(
+                "Both sides have a sound",
+                comment: "The tooltip of the speaker in the Cards window's Media column, when both sides have one.")
         }
     }
 }
@@ -76,9 +126,9 @@ private struct SetAsideIcon: View {
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
 /// buried it when it's buried, and its set-aside tags when it's set aside,
-/// its type and tags, its front and back, each side's image above its text,
-/// and its source, where it stands, and its review log, in a chart and in
-/// full.
+/// its type and tags, its front and back, each side's image above its text
+/// and its sound below it, and its source, where it stands, and its review
+/// log, in a chart and in full.
 struct CardDetail: View {
     let row: CardRow
     /// The images the window shows, the card's among them.
@@ -90,6 +140,8 @@ struct CardDetail: View {
     let reviewLog: Result<[ReviewLogRow], EngineError>?
     /// The ladder Lucas set, whose steps the chart spans.
     let ladder: Ladder
+    /// The ▶ and the length of a side's sound, which the window fills.
+    let soundControls: (CardSide) -> SoundControls
 
     var body: some View {
         ScrollView {
@@ -104,9 +156,14 @@ struct CardDetail: View {
                         .font(.title2.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if row.card.frontImage != nil || row.card.backImage != nil {
-                    // Which side is which, once an image makes them more
-                    // than two lines of text.
+                if row.card.frontSound != nil {
+                    soundControls(.front)
+                }
+                if [row.card.frontImage, row.card.backImage].contains(where: { $0 != nil })
+                    || [row.card.frontSound, row.card.backSound].contains(where: { $0 != nil })
+                {
+                    // Which side is which, once an image or a sound makes
+                    // them more than two lines of text.
                     Divider()
                 }
                 if let image = row.card.backImage {
@@ -115,6 +172,9 @@ struct CardDetail: View {
                 if !row.card.back.isEmpty {
                     Text(row.card.back)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                if row.card.backSound != nil {
+                    soundControls(.back)
                 }
                 if let source = row.card.source {
                     Text(source)

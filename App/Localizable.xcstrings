@@ -680,6 +680,12 @@
     "Blue" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Both sides have a sound" : {
+      "comment" : "The tooltip of the speaker in the Cards window's Media column, when both sides have one."
+    },
+    "Both sides have an image" : {
+      "comment" : "The tooltip of the photo in the Cards window's Media column, when both sides have one."
+    },
     "Bring along cards due within" : {
       "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
     },
@@ -785,6 +791,9 @@
     "Convert to Card (⇧⌘N)" : {
       "comment" : "The tooltip of the Cards window's button that opens the card form from the capture."
     },
+    "Converting the sound…" : {
+      "comment" : "In the place for the sound on a side of a card."
+    },
     "Copies instructions to paste into an AI chat, so that it writes a file of cards Ficha imports (⇧⌘C)" : {
       "comment" : "The tooltip of the Import sheet's button that copies the instructions for an AI."
     },
@@ -796,6 +805,9 @@
     },
     "Couldn't add the image" : {
       "comment" : "An alert's title in the Cards window, after dragging or pasting onto a side of a card."
+    },
+    "Couldn't add the sound" : {
+      "comment" : "An alert's title in the Cards window, after dragging or pasting a file onto a side's sound."
     },
     "Couldn't bury %lld cards" : {
       "comment" : "An alert's title in the Cards window.",
@@ -1035,6 +1047,9 @@
     "Done" : {
       "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in."
     },
+    "Drop or paste a sound" : {
+      "comment" : "In the empty place for the sound on a side of a card."
+    },
     "Drop or paste an image" : {
       "comment" : "In the empty place for the image on a side of a card."
     },
@@ -1221,7 +1236,7 @@
       "comment" : "A button that drops a capture that repeats a card or a capture."
     },
     "Image" : {
-      "comment" : "The accessibility label of an image on a card's side.\nThe icon beside a card's front in the Cards window, when it has an image."
+      "comment" : "The accessibility label of an image on a card's side."
     },
     "Images they share: %@" : {
       "comment" : "Settings, under Backups, below how many copies there are: what the images on their cards weigh, each kept once for all the copies."
@@ -1423,6 +1438,9 @@
     "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
 
     },
+    "Media" : {
+      "comment" : "A column of the Cards window: whether the card's sides have an image or a sound."
+    },
     "Meetings" : {
 
     },
@@ -1601,6 +1619,9 @@
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Play Sound" : {
+      "comment" : "The button that plays the sound on a side of a card.\nThe tooltip of the button that plays the sound on a card's side."
+    },
     "Prioritize" : {
       "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked."
     },
@@ -1642,6 +1663,12 @@
     },
     "Remove Image (⌫)" : {
       "comment" : "The tooltip of the button that removes the image on a side of a card."
+    },
+    "Remove Sound" : {
+      "comment" : "The button that removes the sound on a side of a card."
+    },
+    "Remove Sound (⌫)" : {
+      "comment" : "The tooltip of the button that removes the sound on a side of a card."
     },
     "Remove Step %lld" : {
       "comment" : "Settings: removes a step of the ladder."
@@ -1769,6 +1796,9 @@
     "Step %lld" : {
       "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings: a step of the ladder, counted from 1."
     },
+    "Stop Sound" : {
+      "comment" : "The button that stops the sound of a card's side as it plays.\nThe tooltip of the button that stops the sound of a card's side as it plays."
+    },
     "Tag" : {
       "comment" : "The Import sheet's field for a tag the imported cards get."
     },
@@ -1783,6 +1813,12 @@
     },
     "Text" : {
       "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
+    },
+    "The back has a sound" : {
+      "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's back has one."
+    },
+    "The back has an image" : {
+      "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's back has one."
     },
     "The camera or the microphone in use" : {
 
@@ -1799,8 +1835,11 @@
     "The cards you create with New Card show up here, and the ones you bury, in Buried." : {
       "comment" : "In the Cards window, when All cards is empty."
     },
+    "The front has a sound" : {
+      "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's front has one."
+    },
     "The front has an image" : {
-      "comment" : "The tooltip of the icon beside a card's front, when it has an image."
+      "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's front has one."
     },
     "Their review logs go too, and you can't bring them back." : {
       "comment" : "Under the title of the Cards window's question before it deletes several cards."

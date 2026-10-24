@@ -4,27 +4,34 @@ internal import GRDB
 
 /// One small thing Lucas wants to remember, with a front and a back, as the
 /// engine saved it when he approved it or the user created it. Each side
-/// holds text, an image, or both. The `ficha` CLI prints it as JSON, without
-/// the type, images, source, edited time, capture, flag, burial or set-aside
-/// tags it doesn't have.
+/// holds text, an image, a sound, or any of them together. The `ficha` CLI
+/// prints it as JSON, without the type, images, sounds, source, edited time,
+/// capture, flag, burial or set-aside tags it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none.
     public let type: CardType?
-    /// The front's text, or empty when the front holds only an image.
+    /// The front's text, or empty when the front holds only an image or a
+    /// sound.
     public let front: String
-    /// The back's text, or empty when the back holds only an image.
+    /// The back's text, or empty when the back holds only an image or a
+    /// sound.
     public let back: String
     /// The front's image, or nil when it has none.
     public let frontImage: ImageName?
     /// The back's image, or nil when it has none.
     public let backImage: ImageName?
+    /// The front's sound, or nil when it has none.
+    public let frontSound: SoundName?
+    /// The back's sound, or nil when it has none.
+    public let backSound: SoundName?
     public let tags: [String]
     public let source: String?
     /// When it came in: when the user approved it in a refine session, or created it.
     public let createdAt: Date
-    /// When its front or back last changed, a side's image included, or nil
-    /// when neither changed since it came in, or since before Ficha kept it.
+    /// When its front or back last changed, a side's image or sound included,
+    /// or nil when neither changed since it came in, or since before Ficha
+    /// kept it.
     public let editedAt: Date?
     /// The capture it was refined from, or nil when it came in another way,
     /// such as the Cards window's form or an import.
@@ -62,8 +69,10 @@ extension Card {
         }
         front = try row.decode(forColumn: "front")
         back = try row.decode(forColumn: "back")
-        frontImage = try imageName(in: row, column: "frontImage", ofCard: id)
-        backImage = try imageName(in: row, column: "backImage", ofCard: id)
+        frontImage = try fileName(in: row, column: ImageName.columns.front, ofCard: id)
+        backImage = try fileName(in: row, column: ImageName.columns.back, ofCard: id)
+        frontSound = try fileName(in: row, column: SoundName.columns.front, ofCard: id)
+        backSound = try fileName(in: row, column: SoundName.columns.back, ofCard: id)
         let tagsColumn: String = try row.decode(forColumn: "tags")
         tags = try JSONDecoder().decode([String].self, from: Data(tagsColumn.utf8))
         source = try row.decode(forColumn: "source")
@@ -87,18 +96,72 @@ extension Card {
     var images: Set<ImageName> {
         Set([frontImage, backImage].compactMap(\.self))
     }
+
+    /// The sounds on its sides, each once.
+    var sounds: Set<SoundName> {
+        Set([frontSound, backSound].compactMap(\.self))
+    }
+
+    /// The sound on `side`, or nil for none.
+    public func sound(on side: CardSide) -> SoundName? {
+        switch side {
+        case .front: frontSound
+        case .back: backSound
+        }
+    }
+
+    /// Which sides have an image, as the Cards window's Media column says,
+    /// or nil when neither does.
+    public var sidesWithImages: WhichSides? {
+        WhichSides(front: frontImage != nil, back: backImage != nil)
+    }
+
+    /// Which sides have a sound, as the Cards window's Media column says, or
+    /// nil when neither does.
+    public var sidesWithSounds: WhichSides? {
+        WhichSides(front: frontSound != nil, back: backSound != nil)
+    }
 }
 
-/// The image a side of card `cardID` refers to in `column` of its row, or
-/// nil for none. A name that isn't an image's fails, as a card the engine
-/// never saved.
-private func imageName(in row: Row, column: String, ofCard cardID: Int64) throws -> ImageName? {
-    let name: String? = try row.decode(forColumn: column)
-    return try name.map { name in
-        guard let image = ImageName(rawValue: name) else {
-            throw unreadable("Card \(cardID) has an image that isn't named as Ficha names them")
+/// Which sides of a card have something: its front, its back or both.
+public enum WhichSides: Sendable, Equatable {
+    case front
+    case back
+    case both
+
+    /// The sides that have something, as `front` and `back` say, or nil when
+    /// neither does.
+    init?(front: Bool, back: Bool) {
+        switch (front, back) {
+        case (false, false): return nil
+        case (true, false): self = .front
+        case (false, true): self = .back
+        case (true, true): self = .both
         }
-        return image
+    }
+}
+
+/// The file, an image or a sound, a side of card `cardID` refers to in
+/// `column` of its row, or nil for none. A name that isn't one of `Name`
+/// fails, as a card the engine never saved.
+private func fileName<Name: NameOfFileOnCard>(in row: Row, column: String, ofCard cardID: Int64) throws -> Name? {
+    let rawName: String? = try row.decode(forColumn: column)
+    return try rawName.map { rawName in
+        guard let name = Name(rawValue: rawName) else {
+            throw unreadable("Card \(cardID) refers to a file that isn't named as Ficha names its \(Name.kind)s")
+        }
+        return name
+    }
+}
+
+extension CardContent {
+    /// This content with the images and sounds of `card` where it has none
+    /// of its own, as a refine session's content keeps those of the card it
+    /// changes, since refining never adds one.
+    func keepingFiles(of card: Card) -> CardContent {
+        keepingFiles(
+            frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
+            backSound: card.backSound)
     }
 }
 
@@ -134,23 +197,27 @@ func updateCard(
     return try existingCard(cardID, in: db)
 }
 
-/// Replaces a card's content with `content`, its images included, keeping its
-/// review log, its flag and its burial, at `now`, which becomes when its
-/// front or back last changed when either differs from before, a side's image
-/// included; a change to its type, tags or source alone leaves that time as
-/// it was. Returns the card as it is then. Every change to a card's content
-/// goes through here, with content `CardContent` checked, as every new card
-/// goes through `insertCard`. An image the card no longer refers to stays
-/// where Ficha keeps it: the engine removes it once no card uses it.
+/// Replaces a card's content with `content`, its images and sounds included,
+/// keeping its review log, its flag and its burial, at `now`, which becomes
+/// when its front or back last changed when either differs from before, a
+/// side's image or sound included; a change to its type, tags or source alone
+/// leaves that time as it was. Returns the card as it is then. Every change
+/// to a card's content goes through here, with content `CardContent` checked,
+/// as every new card goes through `insertCard`. An image or a sound the card
+/// no longer refers to stays where Ficha keeps it: the engine removes it once
+/// no card uses it.
 func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
     let before = try existingCard(cardID, in: db)
     return try updateCard(
         cardID,
-        setting: "type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, tags = ?, source = ?, editedAt = ?",
+        setting: """
+            type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, frontSound = ?, backSound = ?, tags = ?, \
+            source = ?, editedAt = ?
+            """,
         to: [
             content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
-            content.backImage?.rawValue, try tagsJSON(content.tags), content.source,
-            before.hasSides(of: content) ? before.editedAt : now,
+            content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
+            try tagsJSON(content.tags), content.source, before.hasSides(of: content) ? before.editedAt : now,
         ],
         in: db
     )
@@ -158,9 +225,13 @@ func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, i
 
 extension Card {
     /// Whether the card's front and back are those of `content`, each with
-    /// its image.
+    /// its image and its sound.
     fileprivate func hasSides(of content: CardContent) -> Bool {
-        (front, back, frontImage, backImage) == (content.front, content.back, content.frontImage, content.backImage)
+        (front, back, frontImage, backImage, frontSound, backSound)
+            == (
+                content.front, content.back, content.frontImage, content.backImage, content.frontSound,
+                content.backSound
+            )
     }
 }
 

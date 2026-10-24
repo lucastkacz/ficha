@@ -84,13 +84,24 @@ public enum EngineError: Error, Equatable {
     /// What came in for a side of a card, dragged or pasted, isn't an image
     /// the system can read.
     case notAnImage
-    /// The file with this name, dragged or pasted for a side of a card,
-    /// couldn't be read. The engine logs why.
-    case unreadableImageFile(String)
+    /// What came in for a side of a card, dragged or pasted, holds no sound
+    /// the system can read, as an image or a video without sound.
+    case notASound
+    /// A sound that came in for a side of a card couldn't be converted, past
+    /// reading it: the temporary files it converts through couldn't be
+    /// written or read, or what the system wrote isn't laid out as Ficha
+    /// expects. The engine logs why.
+    case soundConversion
+    /// The file with this name, dragged or pasted for a side of a card, as
+    /// its image or its sound, couldn't be read. The engine logs why.
+    case unreadableDroppedFile(String)
     /// An image in the Images folder couldn't be read, saved, brought back
     /// from the Backups folder or removed, or isn't there. The engine logs
     /// why.
     case imagesFolder
+    /// A sound in the Sounds folder couldn't be read, saved or removed, or
+    /// isn't there. The engine logs why.
+    case soundsFolder
     /// The file of cards with this name can't be imported, for the reason
     /// the problem gives, so nothing was read from it.
     case unreadableFile(String, CardsFileProblem)
@@ -229,7 +240,21 @@ extension EngineError: LocalizedError {
                     That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG.
                     """
             )
-        case .unreadableImageFile(let name):
+        case .notASound:
+            String(
+                localized: """
+                    That holds no sound Ficha can read. Drag or paste a sound or a video with sound instead, such as \
+                    an MP3, an M4A or a MOV.
+                    """
+            )
+        case .soundConversion:
+            String(
+                localized: """
+                    Ficha read the sound but couldn't convert it. Check that the disk has room and try again, and if \
+                    it keeps happening, report it.
+                    """
+            )
+        case .unreadableDroppedFile(let name):
             String(
                 localized: """
                     Ficha couldn't read “\(name)”. Check that the file is still there and that you can open it, and \
@@ -240,6 +265,13 @@ extension EngineError: LocalizedError {
             String(
                 localized: """
                     Ficha couldn't read or save an image in its Images folder. Check that the disk has room and try \
+                    again, and if it keeps happening, report it.
+                    """
+            )
+        case .soundsFolder:
+            String(
+                localized: """
+                    Ficha couldn't read or save a sound in its Sounds folder. Check that the disk has room and try \
                     again, and if it keeps happening, report it.
                     """
             )

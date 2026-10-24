@@ -142,10 +142,10 @@ enum Preferences {
 
     /// The Cards window's table columns as Lucas left them: which ones show,
     /// in what order and how wide, as SwiftUI keeps them. At first the
-    /// table's own: Front, Step and Due. One that can't be read is only
-    /// logged, as the tab Settings opens on: the window opens with its first
-    /// columns, and Lucas's next change to them replaces it. Keeping them
-    /// here, with the other preferences, rather than through SwiftUI's
+    /// table's own: Front, Media, Step and Due. One that can't be read is
+    /// only logged, as the tab Settings opens on: the window opens with its
+    /// first columns, and Lucas's next change to them replaces it. Keeping
+    /// them here, with the other preferences, rather than through SwiftUI's
     /// `@AppStorage`, is our own.
     static var cardsColumns: TableColumnCustomization<CardRow> {
         get { read(.cardsColumns, decoding: TableColumnCustomization<CardRow>.self) ?? TableColumnCustomization() }

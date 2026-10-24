@@ -44,6 +44,28 @@ struct EditedTimeTests {
         #expect(try engine.cards().map(\.editedAt) == [start + hours(4)])
     }
 
+    @Test("putting, replacing or removing a side's sound keeps when, each time")
+    func changingASoundKeepsWhen() async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let coloratura = try approve(card(.word, front: "coloratura", back: "Ornamentos del canto."), in: engine)
+        var edits: [Date?] = []
+
+        for (frontSound, backSound) in [(nil, la), (mi, la), (mi, nil), (mi, nil)] as [(SoundName?, SoundName?)] {
+            time.advance(by: hours(1))
+            edits.append(
+                try engine.edit(
+                    coloratura.id,
+                    with: card(
+                        .word, front: "coloratura", back: "Ornamentos del canto.", frontSound: frontSound,
+                        backSound: backSound)
+                ).editedAt)
+        }
+
+        let start = try morning(of: 14, in: calendar)
+        #expect(edits == [start + hours(1), start + hours(2), start + hours(3), start + hours(3)])
+    }
+
     @Test(
         "changing only a card's tags, type or source, or saving it as it was, leaves when its front or back last changed"
     )

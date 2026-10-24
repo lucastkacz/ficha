@@ -26,17 +26,15 @@ extension Engine {
     /// Fixes a flagged card in the inbox with `content`, as a refine session
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
     /// back to his reviews, on the step its review log puts it on, unless one
-    /// of its tags is set aside. It keeps its images, since refining never
-    /// adds or removes one; a new front or back keeps when it changed.
-    /// Returns the card.
+    /// of its tags is set aside. It keeps its images and sounds, since
+    /// refining never adds or removes one; a new front or back keeps when it
+    /// changed. Returns the card.
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
         let fixedAt = time.now
         return try write { db in
             let card = try unflag(cardID, in: db)
-            return try replaceContent(
-                of: cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage),
-                at: fixedAt, in: db)
+            return try replaceContent(of: cardID, with: content.keepingFiles(of: card), at: fixedAt, in: db)
         }
     }
 

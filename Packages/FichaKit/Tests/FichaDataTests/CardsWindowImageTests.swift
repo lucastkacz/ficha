@@ -98,7 +98,7 @@ struct CardsWindowImageTests {
         #expect(window.cardForm?.draft.front.image != nil)
         #expect(window.cardForm?.draft.back.image == nil)
         #expect(window.failure?.action == .putImage)
-        #expect(window.failure?.error == .unreadableImageFile("hornero.jpg"))
+        #expect(window.failure?.error == .unreadableDroppedFile("hornero.jpg"))
     }
 
     @Test("the detail shows the selected card's images")
@@ -146,7 +146,7 @@ struct CardsWindowImageTests {
 extension CardsWindowState {
     /// Types into the form's sides, in place of what they held, as the user
     /// would, leaving alone each side whose text is nil.
-    fileprivate mutating func typeInForm(front: String? = nil, back: String? = nil) {
+    mutating func typeInForm(front: String? = nil, back: String? = nil) {
         guard var draft = cardForm?.draft else { return }
         draft.front.text = front ?? draft.front.text
         draft.back.text = back ?? draft.back.text

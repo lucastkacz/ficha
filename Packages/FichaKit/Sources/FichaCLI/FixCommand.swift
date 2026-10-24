@@ -9,7 +9,7 @@ struct FixCommand: EngineCommand {
         abstract: "Fix a flagged card with new content, read as JSON from standard input.",
         discussion: """
             The card is a JSON object with \(cardFields). It replaces the card's content, and the card keeps its \
-            images. For example:
+            images and sounds. For example:
 
               ficha fix 7 <<'EOF'
               {"type": "word", "front": "serendipia",

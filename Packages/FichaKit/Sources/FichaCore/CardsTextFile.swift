@@ -170,7 +170,8 @@ public enum CardsTextFile {
                 source: values[.source], frontImage: frontImage, backImage: backImage)
         else {
             throw LeftOut(
-                line: line, reason: CardContent.isBlank(front, image: frontImage) ? .blankFront : .blankBack)
+                line: line, reason: CardContent.isBlank(front, image: frontImage, sound: nil) ? .blankFront : .blankBack
+            )
         }
         let given: [(Column, CardField)] = [
             (.tags, .tags), (.type, .type), (.source, .source), (.backImage, .backImage),

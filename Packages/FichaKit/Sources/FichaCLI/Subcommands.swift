@@ -123,9 +123,9 @@ struct CardsCommand: EngineCommand {
             A flagged card has your note on what to fix in "flag", a buried one says when you buried it in \
             "buriedAt", and one with tags you set aside in the Cards window lists them in "setAsideBy". A card \
             leaves out "type", "source" or "captureID" when it has no type, no source, or didn't come from a \
-            capture. A card with an image on its front or back names it in "frontImage" or "backImage", left out \
-            when that side has none; a side with only an image has an empty text. Images are added in the Cards \
-            window, never through the CLI. A card whose front or back changed since it came in says when it last \
+            capture. A card with an image or a sound on its front or back names it in "frontImage", "backImage", \
+            "frontSound" or "backSound", left out when that side has none; a side with only an image or a sound \
+            has an empty text. Images and sounds are added in the Cards window, never through the CLI. A card whose front or back changed since it came in says when it last \
             did in "editedAt": an edit, a fix, an approved expansion or an import; a change to its tags, type or \
             source alone doesn't count.
             """

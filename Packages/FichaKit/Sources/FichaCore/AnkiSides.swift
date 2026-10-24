@@ -42,7 +42,7 @@ struct AnkiSide {
     /// neither text nor an image: the image it shows isn't in the package,
     /// or Ficha can't read it, or it shows none. Nil when it isn't blank.
     var reasonItsCardStaysOut: LeftOutLine.Reason? {
-        guard CardContent.isBlank(text, image: image) else {
+        guard CardContent.isBlank(text, image: image, sound: nil) else {
             return nil
         }
         return switch lookup {

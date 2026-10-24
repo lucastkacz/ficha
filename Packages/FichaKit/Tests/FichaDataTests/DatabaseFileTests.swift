@@ -381,6 +381,24 @@ func saveDatabaseBeforeEditedTimes(at file: URL, at time: Date) throws {
     try database.close()
 }
 
+/// Saves a database at `file` as Ficha left it before sounds on cards,
+/// through the schema's migrations up to the one before them, with two cards
+/// approved at `time`: hornero, with `image` on its front, and ubuntu.
+func saveDatabaseBeforeSounds(at file: URL, at time: Date, image: ImageName) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v16 follow-ups")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, frontImage, tags, createdAt)
+                VALUES (1, 'word', 'hornero', 'Un pájaro.', ?, '[]', ?),
+                    (2, 'concept', 'ubuntu', 'Soy porque somos.', NULL, '[]', ?)
+                """,
+            arguments: [image.rawValue, time, time])
+    }
+    try database.close()
+}
+
 /// Checks that `engine` has every card of `saveDatabaseBeforeOptionalTypes`
 /// as it was saved at `time`: its type, capture, standing, step and review
 /// log, and the expansion still attached to its card, which follows none up.

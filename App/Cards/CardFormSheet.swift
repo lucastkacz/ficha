@@ -77,8 +77,8 @@ struct ConvertToCardButton: View {
 }
 
 /// The card form, a sheet over the Cards window: an optional type, a front
-/// and a back, each with its text and an image, dragged or pasted under it,
-/// tags and a source, and, when it was opened from a capture, the capture
+/// and a back, each with its text, an image and a sound, dragged or pasted
+/// under it, tags and a source, and, when it was opened from a capture, the capture
 /// beside them, whole, with the card it follows up below it when it's a
 /// follow-up. Add saves the card and keeps the form open, with the
 /// front and the back cleared for the next one, as Anki's Add
@@ -178,6 +178,7 @@ private struct CardFormSheet: View {
                         }
                     }
                     imageWell(on: .front, of: form)
+                    soundWell(on: .front, of: form)
                 }
             }
             GridRow {
@@ -186,6 +187,7 @@ private struct CardFormSheet: View {
                     TextField("Back", text: draft(\.back.text), axis: .vertical)
                         .lineLimit(4...10)
                     imageWell(on: .back, of: form)
+                    soundWell(on: .back, of: form)
                 }
             }
             GridRow {
@@ -256,6 +258,20 @@ private struct CardFormSheet: View {
             state.putImageInForm(dropped, on: side)
         } remove: {
             state.removeImageFromForm(on: side)
+        }
+    }
+
+    /// The place for the sound on `side` of the card the form makes.
+    private func soundWell(on side: CardSide, of form: CardsWindowState.CardForm) -> some View {
+        SoundWell(
+            sound: side == .front ? form.draft.front.sound : form.draft.back.sound, sounds: state.sounds,
+            isComingIn: form.isSoundComingIn(on: side), isPlaying: state.isPlaying(at: .form(side))
+        ) {
+            state.playOrStopSound(at: .form(side))
+        } put: { file in
+            convert(state.putSoundInForm(file, on: side), for: $state)
+        } remove: {
+            state.removeSoundFromForm(on: side)
         }
     }
 

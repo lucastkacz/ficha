@@ -7,7 +7,7 @@ nonisolated private protocol ColumnOrder: SortComparator {}
 nonisolated extension ColumnOrder {
     /// How two values compare, the table's way.
     fileprivate func ordered<Value: Comparable>(_ lhs: Value, _ rhs: Value) -> ComparisonResult {
-        ordered(lhs < rhs ? .orderedAscending : lhs > rhs ? .orderedDescending : .orderedSame)
+        ordered(compared(lhs, rhs))
     }
 
     /// How two values that compare as `result` do, the table's way.
@@ -47,6 +47,9 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         /// together, the order he approved them in.
         case created
         case front
+        /// Cards with images first, then those with sounds, then those with
+        /// both, and cards of text alone after the others.
+        case media
         case step
         case due
         /// By what the Type column says, alphabetically, and cards with no
@@ -82,6 +85,8 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
                 ? ordered(lhs.card.id, rhs.card.id) : ordered(lhs.card.createdAt, rhs.card.createdAt)
         case .front:
             ordered(lhs.card.front.localizedStandardCompare(rhs.card.front))
+        case .media:
+            ordered(lhs.media, rhs.media, by: compared)
         case .step:
             ordered(lhs.stepNumber, rhs.stepNumber)
         case .due:
@@ -111,6 +116,22 @@ extension CardRow {
     nonisolated fileprivate var tagsIfAny: [String]? {
         card.tags.isEmpty ? nil : card.tags
     }
+
+    /// What the card holds besides its text, in the Media column's order:
+    /// 0 for images, 1 for sounds, 2 for both, or nil for text alone.
+    nonisolated fileprivate var media: Int? {
+        switch (card.sidesWithImages, card.sidesWithSounds) {
+        case (nil, nil): nil
+        case (_?, nil): 0
+        case (nil, _?): 1
+        case (_?, _?): 2
+        }
+    }
+}
+
+/// How two values compare: ascending when `lhs` is the smaller.
+nonisolated private func compared<Value: Comparable>(_ lhs: Value, _ rhs: Value) -> ComparisonResult {
+    lhs < rhs ? .orderedAscending : lhs > rhs ? .orderedDescending : .orderedSame
 }
 
 /// How two lists of tags compare, alphabetically: by their first tags, then
