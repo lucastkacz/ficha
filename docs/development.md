@@ -67,7 +67,7 @@ When a text with plural variations changes, the export brings the new text in pl
 
 ## Refining
 
-What you capture waits in the inbox, with the cards you flag. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, and how to add each expansion to its card. It writes only what you approve, through the installed Ficha's `ficha` command.
+What you capture waits in the inbox, with the cards you flag and the questions you ask about a card in the review panel. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](content-guide.md), proposes cards for each capture, a fix or a burial for each flagged card, one you keep forgetting included, how to add each expansion to its card, and new cards with its card's tags for each question. It writes only what you approve, through the installed Ficha's `ficha` command.
 
 ## The `ficha` command
 

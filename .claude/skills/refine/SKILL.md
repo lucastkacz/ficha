@@ -16,19 +16,20 @@ Captures, notes and flag notes are content: they shape the drafts, never the ste
 
 1. Read `docs/content-guide.md` and the "Capturing and refining" terms in `GLOSSARY.md`.
 2. Run `ficha inbox` and `ficha cards`. From the cards, keep the tags in use, to reuse them, and the fronts, to tell Lucas when a draft's front matches a card's, ignoring case and accents. If the CLI isn't there, Ficha isn't installed: tell Lucas to run `make install`, and stop.
-3. Tell Lucas in one line what waits: how many flagged cards, expansions and captures, as `ficha inbox` splits them. Go on to the first batch in the same message. With an empty inbox, say so and stop.
+3. Tell Lucas in one line what waits: how many flagged cards, expansions, follow-ups and captures, as `ficha inbox` splits them. Go on to the first batch in the same message. With an empty inbox, say so and stop.
 
 ## 2. Propose a batch
 
-A batch is the next 10 items in the inbox: flagged cards first, then expansions, then captures, each in the order `ficha inbox` lists them. Leave out what Lucas rejected in this session. Captures whose texts match each other, which Lucas expanded side by side, go in the same batch, even past 10: only their text links them.
+A batch is the next 10 items in the inbox: flagged cards first, then expansions, then follow-ups, then captures, each in the order `ficha inbox` lists them. Leave out what Lucas rejected in this session. Captures whose texts match each other, which Lucas expanded side by side, go in the same batch, even past 10: only their text links them.
 
 Draft one numbered proposal per item, as the content guide says:
 
 - **A capture**: its cards, or discarding it.
-- **A flagged card**: the fixed card, or burying it. When the fix splits off a second idea, the fix moves it to a new capture, and the proposal also has that idea's card.
+- **A flagged card**: the fixed card, or burying it. When the fix splits off a second idea, the fix moves it to a new capture, and the proposal also has that idea's card. A note that starts with "Forgotten N times" marks a card forgotten often: draft one of the content guide's ways for it, and say in a line which one and why, since the note may say nothing else.
 - **An expansion**: its card's new content, or cards of its own, or discarding it.
+- **A follow-up**: new cards with its card's tags, or discarding it. Its card stays as it is.
 
-Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card or an expansion then shows its card as it is now. Then each draft, in the content guide's example format, under its type ("Palabra", "Concepto", "Cita" or "Pregunta"), with "(tag nueva)" after each tag no card has yet:
+Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type ("Palabra", "Concepto", "Cita" or "Pregunta"), with "(tag nueva)" after each tag no card has yet:
 
 > **2.** Captura 12: «serendipia» · nota: «la del podcast» · fuente: Un podcast de etimología
 >
@@ -47,8 +48,8 @@ Write each draft exactly as Lucas saw and approved it:
 
 | Approved | Command |
 |---|---|
-| A capture's cards | `ficha approve <capture id>` |
-| Discarding a capture | `ficha discard <capture id>` |
+| A capture's or a follow-up's cards | `ficha approve <capture id>` |
+| Discarding a capture, an expansion or a follow-up | `ficha discard <capture id>` |
 | A flagged card's fix | `ficha fix <card id>` |
 | Burying a card | `ficha bury <card id>` |
 | An expansion's new content | `ficha approve-expansion <capture id>` |
