@@ -17,9 +17,9 @@ public func plainText(fromHTML html: String) -> String {
     return String(reader.text)
 }
 
-/// `html` without what `plainText(fromHTML:)` leaves out whole, its
-/// comments, `<script>`s and `<style>`s, each ended where it ends them, and
-/// with the rest as it is.
+/// `html` without its comments, `<script>`s and `<style>`s, which
+/// `plainText(fromHTML:)` leaves out whole, each ended where it ends them,
+/// and with the rest as it is.
 func htmlWithoutHiddenMarkup(_ html: String) -> String {
     var reader = HTMLReader(Array(html.unicodeScalars))
     return reader.withoutHiddenMarkup()
@@ -70,6 +70,10 @@ private let blockElements: Set<String> = [
     "ul",
 ]
 
+/// The elements of a ruby: the text it's over, `<rb>`, its text, `<rt>` and
+/// `<rtc>`, and its parentheses, `<rp>`.
+private let rubyElements: Set<String> = ["ruby", "rb", "rt", "rtc", "rp"]
+
 /// The character references a field may hold by name: HTML's own, the
 /// quotes and dashes a word processor types, and the Latin-1 letters and
 /// signs.
@@ -106,8 +110,19 @@ private struct HTMLReader {
     /// Whether spaces or line breaks in the HTML came after the text so far,
     /// which are a space before the next text on the line.
     private var isSpacePending = false
-    /// Whether a ruby's text, its `<rt>`, is being read, after its `（`.
-    private var isInRubyText = false
+    /// The part of a ruby being read, if any.
+    private var rubyPart: RubyPart?
+
+    /// A part of a ruby that the plain text shows apart from the text it's
+    /// over: its text, the reading, or a parenthesis for a browser without
+    /// ruby.
+    private enum RubyPart: Equatable {
+        /// Its text, `<rt>`, after its `（`, at its start before anything
+        /// shows in it.
+        case text(isAtStart: Bool)
+        /// A parenthesis, `<rp>`, which shows nothing.
+        case parenthesis
+    }
 
     init(_ html: [Unicode.Scalar]) {
         self.html = html
@@ -129,7 +144,7 @@ private struct HTMLReader {
                 index += 1
             }
         }
-        endRubyText()
+        endRubyPart()
     }
 
     /// The HTML without the comments, `<script>`s and `<style>`s that
@@ -150,13 +165,20 @@ private struct HTMLReader {
     }
 
     /// Adds `scalar` to the text, after the space pending, if any, within a
-    /// line. A no-break space is a space.
+    /// line and not at the start of a ruby's text. A no-break space is a
+    /// space. In a ruby's parenthesis it shows nothing.
     private mutating func append(_ scalar: Unicode.Scalar) {
-        if isSpacePending, let last = text.last, last != "\n" {
+        guard rubyPart != .parenthesis else {
+            return
+        }
+        if isSpacePending, let last = text.last, last != "\n", rubyPart != .text(isAtStart: true) {
             text.append(" ")
         }
         isSpacePending = false
         text.append(scalar == "\u{A0}" ? " " : scalar)
+        if rubyPart == .text(isAtStart: true) {
+            rubyPart = .text(isAtStart: false)
+        }
     }
 
     /// Ends the line, without the spaces at its end.
@@ -185,45 +207,56 @@ private struct HTMLReader {
     }
 
     /// Reads the tag or the comment between `index` and `end`, its `>`: a
-    /// line break for `<br>` and around a block, a parenthesis around a
-    /// ruby's text, and nothing else. A `<script>`, a `<style>` or an `<rp>`
-    /// is skipped up to its end. Returns where what it read ends.
+    /// line break for `<br>` and around a block, a ruby's tag, and nothing
+    /// else. A `<script>` or a `<style>` is skipped up to its end. Returns
+    /// where what it read ends.
     private mutating func readMarkup(upTo end: Int) -> Int {
         let name = tagName(upTo: end)
         if let hiddenEnd = endOfHiddenMarkup(upTo: end, named: name) {
             return hiddenEnd
         }
-        let isClosing = html[index + 1] == "/"
         if name == "br" {
             breakLine()
         } else if blockElements.contains(name) {
             if let last = text.last, last != "\n" {
                 breakLine()
             }
-        } else if name == "rt" && !isClosing {
-            endRubyText()
-            isSpacePending = false
-            append("（")
-            isInRubyText = true
-        } else if name == "rt" || name == "ruby" {
-            endRubyText()
-        } else if name == "rp" && !isClosing,
-            let closing = firstIndex(of: "</rp", from: end + 1, ignoringCase: true),
-            let closingEnd = html[closing...].firstIndex(of: ">")
-        {
-            return closingEnd
+        } else if rubyElements.contains(name) {
+            readRubyTag(named: name, isClosing: html[index + 1] == "/")
         }
         return end
     }
 
-    /// Ends the ruby's text being read, if any, with its `）`.
-    private mutating func endRubyText() {
-        guard isInRubyText else {
+    /// Reads a ruby's tag named `name`: its text, `<rt>`, starts after a
+    /// `（`, and its parenthesis, `<rp>`, starts showing nothing. Each ends
+    /// at the next of the ruby's tags, as HTML ends it when its closing tag
+    /// is left out, and a space at its ends, or at the ruby's end, shows
+    /// nothing, as in a browser.
+    private mutating func readRubyTag(named name: String, isClosing: Bool) {
+        endRubyPart()
+        if isClosing {
+            if name == "ruby" {
+                isSpacePending = false
+            }
+        } else if name == "rt" {
+            isSpacePending = false
+            append("（")
+            rubyPart = .text(isAtStart: true)
+        } else if name == "rp" {
+            rubyPart = .parenthesis
+        }
+    }
+
+    /// Ends the part of a ruby being read, if any: its text with its `）`.
+    private mutating func endRubyPart() {
+        guard let part = rubyPart else {
             return
         }
+        rubyPart = nil
         isSpacePending = false
-        append("）")
-        isInRubyText = false
+        if part != .parenthesis {
+            append("）")
+        }
     }
 
     /// Whether a comment starts at `index`.

@@ -259,6 +259,14 @@ final class AnkiImportingTests {
                         "<ruby>私<rt>わたし</rt></ruby>の<ruby><rb>名前</rb><rp>(</rp><rt>なまえ</rt><rp>)</rp></ruby>",
                         "mi nombre",
                     ]),
+                // HTML lets a ruby's text and parentheses go without their
+                // closing tags, and a browser shows no space at their ends.
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "<ruby>漢<rp>(<rt> かん <rp>)</ruby><ruby>字<rt>じ<rb>辞</rb><rt>じ</rt><rb>典</rb><rt>てん</rt>\n</ruby>です",
+                        "Es un diccionario de kanji.",
+                    ]),
             ])
 
         try importPackage(package)
@@ -274,6 +282,7 @@ final class AnkiImportingTests {
                     """,
                 ],
                 ["私（わたし）の名前（なまえ）", "mi nombre"],
+                ["漢（かん）字（じ）辞（じ）典（てん）です", "Es un diccionario de kanji."],
             ])
     }
 
