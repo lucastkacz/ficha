@@ -4,10 +4,11 @@ extension AnkiCollection {
     /// Ficha's cards of the collection's cards, as an import reads them: one
     /// for each Anki card, whose front is its question side as Anki renders
     /// it, and whose back is its answer side, from where the answer starts,
-    /// both as plain text, without sounds, each with the first image it
-    /// shows, as `images` finds it by its name in the package: a side whose
-    /// image isn't found comes in without it, and its other images are
-    /// dropped. Each proposes a tag for each level of its home deck's name,
+    /// both as Anki's reviewer shows them when nothing was typed in a box to
+    /// type the answer in, as plain text, without sounds, each with the first
+    /// image it shows, as `images` finds it by its name in the package: a
+    /// side whose image isn't found comes in without it, and its other images
+    /// are dropped. Each proposes a tag for each level of its home deck's name,
     /// but Default's, and its note's tags, an underscore in them standing
     /// for a space, and brings where it stands in Anki, its due days as
     /// dates in `calendar`, the user's, for an import that brings progress.
@@ -85,9 +86,12 @@ extension AnkiCollection {
                 of: card, numbered: number, note: note, noteType: noteType, template: template, deck: deck)
             let question = try parsed.get().question.render(fields: fields, cardNumber: number, frontSide: nil)
             let answer = try parsed.get().answer.render(fields: fields, cardNumber: number, frontSide: question)
+            let front = questionWithoutTypedAnswers(question)
+            let shownAnswer = answerShowingTypedAnswers(
+                answer, question: question, note: note, noteType: noteType, cardNumber: number)
             return .rendered(
                 RenderedAnkiCard(
-                    card: card, front: question, back: back(ofAnswer: answer, question: question),
+                    card: card, front: front, back: back(ofAnswer: shownAnswer, question: front),
                     tags: tags(of: note, inDeck: card.homeDeckID)))
         } catch {
             return .leftOut(.brokenAnkiTemplate)
@@ -113,7 +117,7 @@ extension AnkiCollection {
             "c\(number)": "1",
         ]
         for (index, name) in noteType.fields.enumerated() {
-            fields[name] = note.fields.indices.contains(index) ? note.fields[index] : ""
+            fields[name] = note.field(at: index)
         }
         return fields
     }

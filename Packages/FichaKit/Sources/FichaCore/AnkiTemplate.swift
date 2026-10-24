@@ -171,7 +171,7 @@ private struct Renderer {
                 guard let value else {
                     throw .unknownField(field)
                 }
-                output += applying(filters, to: value)
+                output += applying(filters, to: value, of: field)
             case .section(let key, let isNegated, let nodes):
                 if try isFilled(key) != isNegated {
                     try render(nodes)
@@ -198,23 +198,24 @@ private struct Renderer {
         return false
     }
 
-    /// `value` through `filters`, in order, as Anki applies its own
-    /// (`rslib/src/template_filters.rs`). `type:cloze:` and `type:nc:` are
-    /// one filter each.
-    private func applying(_ filters: [String], to value: String) -> String {
+    /// `value`, the field `field`'s, through `filters`, in order, as Anki
+    /// applies its own (`rslib/src/template_filters.rs`). `type:cloze:` and
+    /// `type:nc:` are one filter each.
+    private func applying(_ filters: [String], to value: String, of field: String) -> String {
         let filters =
             switch filters {
             case ["cloze", "type"]: ["type-cloze"]
             case ["nc", "type"]: ["type-nc"]
             default: filters
             }
-        return filters.reduce(value) { text, filter in applying(filter, to: text) }
+        return filters.reduce(value) { text, filter in applying(filter, to: text, of: field) }
     }
 
-    /// `text` through `filter`, as Anki shows what it gives: what its
-    /// reviewer shows in place of a box to type the answer in, and nothing
-    /// for text it speaks. A filter Anki doesn't have passes the text on.
-    private func applying(_ filter: String, to text: String) -> String {
+    /// `text`, from the field `field`, through `filter`, as Anki renders
+    /// what it gives: a box to type the answer in is the placeholder that
+    /// Anki's reviewer, and `AnkiTypedAnswers.swift`, replace, and text Anki
+    /// speaks is nothing. A filter Anki doesn't have passes the text on.
+    private func applying(_ filter: String, to text: String, of field: String) -> String {
         let isQuestion = frontSide == nil
         switch filter {
         case "text":
@@ -222,10 +223,12 @@ private struct Renderer {
         case "hint":
             // Anki shows a link that reveals the text: Ficha shows the text.
             return text
-        case "type", "type-nc":
-            return isQuestion ? "" : escapingHTML(plainText(fromHTML: text))
+        case "type":
+            return typedAnswerBox(asking: field)
+        case "type-nc":
+            return typedAnswerBox(asking: "nc:" + field)
         case "type-cloze":
-            return isQuestion ? "" : escapingHTML(plainText(fromHTML: clozeText(of: text, number: cardNumber)))
+            return typedAnswerBox(asking: "cloze:" + field)
         case "cloze":
             return revealingClozes(in: text, number: cardNumber, onQuestion: isQuestion)
         case "cloze-only":
@@ -250,7 +253,7 @@ private func isEmptyField(_ field: String) -> Bool {
 }
 
 /// `text`, plain text, as HTML that shows it as it is.
-private func escapingHTML(_ text: String) -> String {
+func escapingHTML(_ text: String) -> String {
     text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
         .replacingOccurrences(of: ">", with: "&gt;")
 }
