@@ -6,8 +6,8 @@ import Foundation
 /// the card he's on, its tags included, whether the panel may have the
 /// keyboard, and how it closes. He ends a new card's first view, and flips
 /// and rates a due card, or one he reviews ahead. He plays a side's sound
-/// only when he asks, one at a time, until the card leaves or the panel
-/// closes. He can also flag any card
+/// only when he asks, one at a time, until he answers the card, writes about
+/// it or leaves it, or the panel closes. He can also flag any card
 /// with a note on what to fix, or bury it, and ask questions about it, each a
 /// follow-up in the inbox, without leaving it. When his rating of again makes
 /// a card forgotten often, the panel offers to flag it, with a note that says
@@ -247,7 +247,7 @@ public struct ReviewPanelState: Sendable {
 
     /// Whether Lucas is on a card, as it shows, to answer, flag, bury or ask
     /// about it.
-    private var isOnACard: Bool {
+    var isOnACard: Bool {
         switch content {
         case .firstView, .front, .back: true
         case .nothingToReview, .flagging, .asking, .done: false
@@ -291,10 +291,12 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Starts flagging the card Lucas is on: the panel asks for a note on
-    /// what to fix, and the card's response time waits while he writes it.
+    /// what to fix, the card's response time waits while he writes it, and
+    /// its sound stops.
     public mutating func startFlagging() {
         guard isOnACard else { return }
         flagging = Flagging(note: "", timeOnCard: timeOnCard, isOffer: false)
+        playingSound = nil
         touch()
     }
 
@@ -330,11 +332,12 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Starts asking about the card Lucas is on, on its first view, its front
-    /// or its back: the panel asks for his question, and the card's response
-    /// time waits while he writes it.
+    /// or its back: the panel asks for his question, the card's response
+    /// time waits while he writes it, and its sound stops.
     public mutating func startAsking() {
         guard isOnACard else { return }
         asking = Asking(question: "", timeOnCard: timeOnCard)
+        playingSound = nil
         touch()
     }
 
@@ -516,7 +519,6 @@ public struct ReviewPanelState: Sendable {
         if let followUpID = followUpsOnCard.last, let current {
             try engine.takeBackFollowUp(followUpID, of: current.card.id)
             followUpsOnCard.removeLast()
-            playingSound = nil
             touch()
             return
         }
@@ -529,7 +531,6 @@ public struct ReviewPanelState: Sendable {
             wentThrough[wentThrough.count - 1].actions.removeLast()
         }
         wentThrough.removeLast()
-        playingSound = nil
         showSounds()
         followUpsOnCard = last.followUps
         moreCards = []
@@ -561,7 +562,6 @@ public struct ReviewPanelState: Sendable {
     private mutating func moveOn(after actions: [PanelAction], timeOnCard: Duration) {
         wentThrough.append(
             Visit(actions: actions, followUps: followUpsOnCard, showedBack: isFlipped, timeOnCard: timeOnCard))
-        playingSound = nil
         showSounds()
         followUpsOnCard = []
         isFlipped = false

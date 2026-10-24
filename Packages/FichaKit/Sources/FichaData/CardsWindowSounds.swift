@@ -93,7 +93,8 @@ public enum SoundPlace: Sendable, Hashable {
     case detail(cardID: Int64, CardSide)
 }
 
-/// The sound that plays in a window, and where its ▶ is, which shows ■.
+/// The sound that plays in the Cards window, and where its ▶ is, which shows
+/// ■. The review panel has its own, `ReviewPanelState.PlayingSound`.
 public struct PlayingSound: Sendable, Equatable {
     public let place: SoundPlace
     public let name: SoundName

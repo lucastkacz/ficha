@@ -12,14 +12,21 @@ extension ReviewPanelState {
         public let name: SoundName
     }
 
+    /// Whether a sound plays when Lucas asks: while he's on a card as it
+    /// shows, and the panel is open. Not while he writes a note or a question
+    /// about it: Esc would throw away what he writes, and R goes into it, so
+    /// nothing would stop the sound from the keyboard.
+    public var canPlaySounds: Bool {
+        outcome == nil && isOnACard
+    }
+
     /// Plays the sound on `side` of the card Lucas is on, stopping the one
     /// that plays, or stops it when it's the one that plays, as its ■ does.
-    /// Nothing plays once the panel closed.
     public mutating func playOrStopSound(on side: CardSide) {
-        guard outcome == nil else { return }
+        guard canPlaySounds else { return }
         if playingSound?.side == side {
             playingSound = nil
-        } else if let current, let name = current.card.sound(on: side), case .success = sounds[name] {
+        } else if let current, let name = readSound(on: side) {
             playingSound = PlayingSound(cardID: current.card.id, side: side, name: name)
         }
         touch()
@@ -31,29 +38,25 @@ extension ReviewPanelState {
         playOrStopSound(on: side)
     }
 
-    /// The side whose sound R plays or stops, while Lucas is on a card as it
-    /// shows, or nil when it has none: the side whose sound plays, which R
-    /// stops, or else the back's once the back shows, on a flipped card or
-    /// in a first view, or the front's when the back has none or doesn't
-    /// show.
+    /// The side whose sound R plays or stops, while a sound plays when Lucas
+    /// asks, or nil when the card has none: the side whose sound plays,
+    /// which R stops, or else the back's once the back shows, on a flipped
+    /// card or in a first view, or the front's when the back has none or
+    /// doesn't show. A sound that couldn't be read counts as none.
     public var sideForR: CardSide? {
-        let card: Card
-        let showsBack: Bool
-        switch content {
-        case .firstView(let shown), .back(let shown, _):
-            (card, showsBack) = (shown, true)
-        case .front(let shown, _):
-            (card, showsBack) = (shown, false)
-        case .nothingToReview, .flagging, .asking, .done:
-            return nil
-        }
+        guard canPlaySounds else { return nil }
         if let playingSound {
             return playingSound.side
         }
-        if showsBack, card.backSound != nil {
+        let showsBack =
+            switch content {
+            case .firstView, .back: true
+            case .nothingToReview, .front, .flagging, .asking, .done: false
+            }
+        if showsBack, readSound(on: .back) != nil {
             return .back
         }
-        return card.frontSound != nil ? .front : nil
+        return readSound(on: .front) != nil ? .front : nil
     }
 
     /// Whether the sound on `side` of the card Lucas is on plays, so its ▶
@@ -70,9 +73,19 @@ extension ReviewPanelState {
         }
     }
 
+    /// The sound on `side` of the card Lucas is on, once it was read, or nil.
+    private func readSound(on side: CardSide) -> SoundName? {
+        guard let name = current?.card.sound(on: side), case .success = sounds[name] else { return nil }
+        return name
+    }
+
     /// Reads the sounds on the sides of the card Lucas is on, with their
-    /// lengths, and lets go of the others.
+    /// lengths, and lets go of the others. A sound that plays on another
+    /// card stops: that card left.
     mutating func showSounds() {
         sounds.show(current?.card.sounds ?? [], readingWith: engine)
+        if let playingSound, playingSound.cardID != current?.card.id {
+            self.playingSound = nil
+        }
     }
 }

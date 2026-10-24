@@ -628,7 +628,7 @@ struct ReviewPanelView: View {
     }
 
     /// The ▶ of `sound`, on `side` of the card, with its length: ■ while it
-    /// plays.
+    /// plays, and off while Lucas writes about the card.
     private func soundControls(_ sound: SoundName, on side: CardSide, in panel: ReviewPanelModel) -> some View {
         SoundControls(
             sound: panel.state.sounds[sound], isPlaying: panel.state.isPlaying(on: side),
@@ -636,6 +636,7 @@ struct ReviewPanelView: View {
         ) {
             panel.state.playOrStopSound(on: side)
         }
+        .disabled(!panel.state.canPlaySounds)
     }
 
     private func ratingButton(
