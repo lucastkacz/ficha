@@ -85,9 +85,12 @@ extension AnkiCollection {
                 of: card, numbered: number, note: note, noteType: noteType, template: template, deck: deck)
             let question = try parsed.get().question.render(fields: fields, cardNumber: number, frontSide: nil)
             let answer = try parsed.get().answer.render(fields: fields, cardNumber: number, frontSide: question)
+            let front = questionWithoutTypedAnswers(question)
+            let shownAnswer = answerShowingTypedAnswers(
+                answer, question: question, fields: fields, cardNumber: number)
             return .rendered(
                 RenderedAnkiCard(
-                    card: card, front: question, back: back(ofAnswer: answer, question: question),
+                    card: card, front: front, back: back(ofAnswer: shownAnswer, question: front),
                     tags: tags(of: note, inDeck: card.homeDeckID)))
         } catch {
             return .leftOut(.brokenAnkiTemplate)

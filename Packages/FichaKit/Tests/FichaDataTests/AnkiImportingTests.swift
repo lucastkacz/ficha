@@ -127,6 +127,41 @@ final class AnkiImportingTests {
             ])
     }
 
+    @Test("a typed answer comes in on the back, also when the answer shows it through FrontSide", arguments: schemas)
+    func aTypedAnswerComesInOnTheBack(format: AnkiPackage.Format) throws {
+        // Anki's Basic (type in the answer), and the reversed card of a
+        // shared deck, whose answer is its question and the line, so Anki
+        // shows the right answer where the box was, and moves the line above
+        // it.
+        let typing = AnkiNoteType(
+            name: "Basic (type in the answer)", originalStockKind: 4, fields: ["Front", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{Front}}\n\n{{type:Back}}",
+                    answer: "{{Front}}\n\n<hr id=answer>\n\n{{type:Back}}")
+            ])
+        let terms = AnkiNoteType(
+            name: "Términos", fields: ["Término", "Definición"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Definición", question: "{{Definición}}\n{{type:Término}}",
+                    answer: "{{FrontSide}}\n\n<hr id=answer>\n\n")
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: typing, fields: ["perro", "dog"]),
+                AnkiNote(type: terms, fields: ["fémur", "El hueso del <b>muslo</b>."]),
+            ])
+
+        try importPackage(package)
+
+        #expect(
+            try engine.cards().map { [$0.front, $0.back] } == [
+                ["perro", "dog"], ["El hueso del muslo.", "fémur"],
+            ])
+    }
+
     @Test(
         "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
         arguments: schemas)
