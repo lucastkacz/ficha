@@ -25,13 +25,16 @@ extension Engine {
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
     /// back to his reviews, on the step its review log puts it on, unless one
     /// of its tags is set aside. It keeps its images, since refining never
-    /// adds or removes one. Returns the card.
+    /// adds or removes one; a new front or back keeps when it changed.
+    /// Returns the card.
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
-        try write { db in
+        let fixedAt = time.now
+        return try write { db in
             let card = try unflag(cardID, in: db)
             return try replaceContent(
-                of: cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage), in: db)
+                of: cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage),
+                at: fixedAt, in: db)
         }
     }
 

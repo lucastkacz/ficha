@@ -292,6 +292,24 @@ final class BackupTests {
         try expectEveryCardAsItWasBeforeOptionalTypes(in: engine, at: time.now)
     }
 
+    @Test("a copy from before Ficha kept when a card was edited restores with every card never edited, until it is")
+    func copyFromBeforeEditedTimesRestoresWithEveryCardNeverEdited() throws {
+        let engine = try openEngine()
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeEditedTimes(at: backups.appending(path: name), at: time.now - days(1))
+
+        try engine.restore(name)
+        let restored = try engine.cards()
+        let edited = try engine.edit(1, with: card(.word, front: "serendipia", back: "Un hallazgo por casualidad."))
+
+        #expect(restored.map(\.front) == ["serendipia", "ubuntu"])
+        #expect(restored.map(\.back) == ["Un hallazgo.", "Soy porque somos."])
+        #expect(restored.map(\.editedAt) == [nil, nil])
+        #expect(edited.editedAt == time.now)
+    }
+
     @Test("a copy that isn't in the Backups folder can't be restored")
     func missingCopyIsRefused() throws {
         let engine = try openEngine()

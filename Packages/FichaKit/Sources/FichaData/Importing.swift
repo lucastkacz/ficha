@@ -267,7 +267,8 @@ extension Engine {
                         added += 1
                     case (let repeated?, .update):
                         let updatedCard = try replaceContent(
-                            of: repeated.id, with: try card.update(of: repeated, adding: addedTags(card)), in: db)
+                            of: repeated.id, with: try card.update(of: repeated, adding: addedTags(card)),
+                            at: importedAt, in: db)
                         letGo.formUnion(repeated.images.subtracting(updatedCard.images))
                         updated += 1
                     case (_?, .skip):
