@@ -121,6 +121,12 @@ public struct AnkiNote: Sendable, Equatable {
         self.fields = fields
         self.tags = tags
     }
+
+    /// Its field at `index` among its note type's: an empty one when it has
+    /// fewer fields than its note type.
+    func field(at index: Int) -> String {
+        fields.indices.contains(index) ? fields[index] : ""
+    }
 }
 
 /// A card of an Anki collection, with the columns of Anki's `cards` table

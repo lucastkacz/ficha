@@ -163,6 +163,77 @@ final class AnkiImportingTests {
     }
 
     @Test(
+        "a typed answer to a cloze comes once when its gaps say the same, and one compared without accents comes too",
+        arguments: schemas)
+    func typedAnswersToAClozeAndWithoutAccentsComeInOnTheBack(format: AnkiPackage.Format) throws {
+        // A cloze to type in, as Anki's manual has it, with no line, and a
+        // card that compares what's typed without accents.
+        let typedCloze = AnkiNoteType(
+            name: "Cloze (type in the answer)", isCloze: true, fields: ["Text", "Back Extra"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Cloze", question: "{{cloze:Text}}\n{{type:cloze:Text}}",
+                    answer: "{{cloze:Text}}\n{{type:cloze:Text}}")
+            ])
+        let withoutAccents = AnkiNoteType(
+            name: "Sin acentos", fields: ["Front", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{Front}}\n{{type:nc:Back}}", answer: "{{FrontSide}}\n<hr id=answer>")
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: typedCloze,
+                    fields: ["Todos los caminos llevan a {{c1::Roma}}, y {{c1::Roma}} no se hizo en un día.", ""]),
+                AnkiNote(type: withoutAccents, fields: ["heart", "corazón"]),
+            ])
+
+        try importPackage(package)
+
+        #expect(
+            try engine.cards().map { [$0.front, $0.back] } == [
+                [
+                    "Todos los caminos llevan a [...], y [...] no se hizo en un día.",
+                    "Todos los caminos llevan a Roma, y Roma no se hizo en un día. Roma",
+                ],
+                ["heart", "corazón"],
+            ])
+    }
+
+    @Test(
+        "a box to type the answer in shows nothing when only the answer has it, or it asks for a special field",
+        arguments: schemas)
+    func typedAnswersAnkiCantFillShowNothing(format: AnkiPackage.Format) throws {
+        // Anki's reviewer takes the right answer from the question's box,
+        // and from the note's fields alone.
+        let onTheAnswerOnly = AnkiNoteType(
+            name: "Solo en la respuesta", fields: ["Front", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{Front}}", answer: "{{Front}}\n<hr id=answer>\n{{Back}}\n{{type:Back}}")
+            ])
+        let askingForTags = AnkiNoteType(
+            name: "Etiquetas", fields: ["Front", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{Front}}\n{{type:Tags}}",
+                    answer: "{{FrontSide}}\n<hr id=answer>\n{{Back}}")
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: onTheAnswerOnly, fields: ["dog", "perro"]),
+                AnkiNote(type: askingForTags, fields: ["cat", "gato"], tags: ["animales"]),
+            ])
+
+        try importPackage(package)
+
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["dog", "perro"], ["cat", "gato"]])
+    }
+
+    @Test(
         "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
         arguments: schemas)
     func aClozeNoteBecomesACardForEachGap(format: AnkiPackage.Format) throws {

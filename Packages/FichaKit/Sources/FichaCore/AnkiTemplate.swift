@@ -212,10 +212,9 @@ private struct Renderer {
     }
 
     /// `text`, from the field `field`, through `filter`, as Anki renders
-    /// what it gives: a box to type the answer in is the placeholder Anki's
-    /// reviewer replaces, `[[type:Field]]`, which `AnkiTypedAnswers.swift`
-    /// replaces, and text Anki speaks is nothing. A filter Anki doesn't have
-    /// passes the text on.
+    /// what it gives: a box to type the answer in is the placeholder that
+    /// Anki's reviewer, and `AnkiTypedAnswers.swift`, replace, and text Anki
+    /// speaks is nothing. A filter Anki doesn't have passes the text on.
     private func applying(_ filter: String, to text: String, of field: String) -> String {
         let isQuestion = frontSide == nil
         switch filter {
@@ -225,11 +224,11 @@ private struct Renderer {
             // Anki shows a link that reveals the text: Ficha shows the text.
             return text
         case "type":
-            return "[[type:\(field)]]"
+            return typedAnswerBox(asking: field)
         case "type-nc":
-            return "[[type:nc:\(field)]]"
+            return typedAnswerBox(asking: "nc:" + field)
         case "type-cloze":
-            return "[[type:cloze:\(field)]]"
+            return typedAnswerBox(asking: "cloze:" + field)
         case "cloze":
             return revealingClozes(in: text, number: cardNumber, onQuestion: isQuestion)
         case "cloze-only":

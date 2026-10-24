@@ -25,12 +25,24 @@ func revealingClozes(in field: String, number: Int, onQuestion: Bool) -> String 
 }
 
 /// The text of the clozes numbered `number` in `field`, separated by
-/// commas, as Anki gives them for its box to type the answer in.
+/// commas, as Anki's `cloze-only` filter gives them.
 func clozeText(of field: String, number: Int) -> String {
+    clozeTexts(of: field, number: number).joined(separator: ", ")
+}
+
+/// The text of the clozes numbered `number` in `field`, as Anki gives it
+/// for its box to type the answer in: once when they all say the same, and
+/// otherwise separated by commas.
+func typedClozeText(of field: String, number: Int) -> String {
+    let texts = clozeTexts(of: field, number: number)
+    return Set(texts).count == 1 ? texts[0] : texts.joined(separator: ", ")
+}
+
+/// The text of each cloze numbered `number` in `field`, in order.
+private func clozeTexts(of field: String, number: Int) -> [String] {
     clozes(numbered: number, in: clozeParts(of: field)).map { cloze in
         cloze.parts.map { revealed($0, number: number, onQuestion: false) }.joined()
     }
-    .joined(separator: ", ")
 }
 
 /// The hints of the clozes numbered `number` in `field`, or "..." for one
