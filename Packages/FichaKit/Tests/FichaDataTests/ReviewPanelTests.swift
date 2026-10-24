@@ -294,6 +294,107 @@ struct ReviewPanelTests {
         #expect(try engine.reviewLog().map(\.responseTime) == [.seconds(8)])
     }
 
+    @Test(
+        "after the eighth “Don't know”, the panel stays on the card, flagging it with the note “Forgotten 8 times”, which Lucas can add to, and Return flags it and moves on"
+    )
+    func theEighthAgainOffersToFlagTheCard() throws {
+        let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        panel.flip()
+
+        panel.rate(.again)
+        #expect(panel.content == .flagging(cards[0], showsBack: true))
+        #expect(panel.offersToFlag)
+        #expect(panel.note == "Forgotten 8 times")
+        panel.write(note: "Forgotten 8 times. Falta un ejemplo.")
+        panel.finishFlagging()
+
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(!panel.offersToFlag)
+        #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Forgotten 8 times. Falta un ejemplo."])
+        #expect(try engine.reviewLog().last?.kind == .review(.again))
+        #expect(try engine.reviewLog().filter { $0.cardID == cards[0].id }.count == 9)
+    }
+
+    @Test("Esc on the offer to flag a card leaves it in the reviews, its “Don't know” recorded, and moves on")
+    func cancellingTheOfferMovesOnWithoutFlagging() throws {
+        let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        panel.flip()
+        panel.rate(.again)
+
+        panel.cancelFlagging()
+
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(!panel.offersToFlag)
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(
+            try engine.standing(of: cards[0].id, on: settings.ladder) == .onLadder(step: 0, due: time.now + hours(1)))
+        #expect(try engine.reviewNow(settings) == [.review(cards[1])])
+    }
+
+    @Test(
+        "one ⌘Z after the offer undoes the flag and the “Don't know”, and shows the card's back again, its time going on from the answer; rating it again offers again"
+    )
+    func undoAfterTheOfferUndoesTheFlagAndTheRating() throws {
+        let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
+        let standing = try engine.standing(of: cards[0].id, on: settings.ladder)
+        let log = try engine.reviewLog()
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
+        clock.advance(by: .seconds(4))
+        panel.flip()
+        panel.rate(.again)
+        clock.advance(by: .seconds(20))
+        panel.finishFlagging()
+
+        panel.undoLastCard()
+        #expect(panel.content == .back(cards[0], isAhead: false))
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
+        #expect(try engine.reviewLog() == log)
+        #expect(!panel.canUndo)
+        clock.advance(by: .seconds(1))
+        panel.rate(.again)
+
+        #expect(panel.content == .flagging(cards[0], showsBack: true))
+        #expect(panel.note == "Forgotten 8 times")
+        #expect(try engine.reviewLog().last?.responseTime == .seconds(5))
+        #expect(panel.failure == nil)
+    }
+
+    // Lucas answered the card, so the panel went through it.
+    @Test("closing the panel while it offers to flag its last card finishes it, and leaves the card in the reviews")
+    func closingDuringTheOfferFinishesThePanel() throws {
+        let cards = try dueCards(forgottenSevenTimes: "ubuntu")
+        var panel = try engine.openPanel(.appearance, with: [.review(cards[0])], settings: settings)
+        panel.flip()
+        panel.rate(.again)
+
+        panel.close(.byLucas)
+
+        #expect(panel.outcome == .finished)
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.reviewLog().last?.kind == .review(.again))
+    }
+
+    @Test("a “Don't know” under the number, or with the offer turned off, moves on without offering to flag the card")
+    func noOfferBelowTheNumberOrWhenTurnedOff() throws {
+        var turnedOff = settings
+        turnedOff.forgottenOftenAfter = nil
+        let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
+        var belowTheNumber = try engine.openPanel(.reviewNow, with: [.review(cards[1])], settings: settings)
+        var offerOff = try engine.openPanel(.reviewNow, with: [.review(cards[0])], settings: turnedOff)
+
+        belowTheNumber.flip()
+        belowTheNumber.rate(.again)
+        offerOff.flip()
+        offerOff.rate(.again)
+
+        #expect(belowTheNumber.content == .done)
+        #expect(offerOff.content == .done)
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+    }
+
     // Lucas, 2026-10-15: nothing was reviewed, so there's nothing to wait
     // after.
     @Test("an empty review now isn't logged, so it doesn't hold the next appearance back")
@@ -307,5 +408,24 @@ struct ReviewPanelTests {
         #expect(try engine.appearanceLog().isEmpty)
         let serendipia = try approveCard("serendipia", in: engine)
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.firstView(serendipia)]))
+    }
+
+    /// Approves a word card with the front `forgotten`, meets it and rates it
+    /// again in seven reviews, one under the default number of a card
+    /// forgotten often, and then approves and meets a card for each of
+    /// `others`, so that they all come due an hour later, when this moves the
+    /// time. Review now brings them in that order.
+    private func dueCards(forgottenSevenTimes forgotten: String, then others: String...) throws -> [Card] {
+        let forgottenCard = try approveCard(forgotten, in: engine)
+        try engine.meet(forgottenCard)
+        for _ in 1...7 {
+            try engine.reviewWhenDue(forgottenCard, .again, movingForward: time)
+        }
+        let otherCards = try others.map { try approveCard($0, in: engine) }
+        for card in otherCards {
+            try engine.meet(card)
+        }
+        time.advance(by: hours(1))
+        return [forgottenCard] + otherCards
     }
 }

@@ -251,6 +251,25 @@ final class ImportingTests {
         #expect(try engine.reviewLog() == reviewLog)
     }
 
+    // A card's edited time, which EditedTimeTests checks for every other way
+    // a card changes.
+    @Test("an import that updates a repeated card with a new back keeps when; one that brings the same back doesn't")
+    func anImportThatUpdatesABackKeepsWhen() throws {
+        try approve(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
+        try approve(card(.word, front: "petricor", back: "El olor de la tierra mojada."), in: engine)
+        time.advance(by: hours(1))
+        let file = try file(
+            "Palabras.txt", "serendipia\tUn hallazgo valioso, por casualidad.\npetricor\tEl olor de la tierra mojada.\n"
+        )
+
+        let outcome = try importFile(file)
+
+        #expect(outcome.updated == 2)
+        let cards = try engine.cards()
+        #expect(cards.map(\.tags) == [["Palabras"], ["Palabras"]])
+        #expect(cards.map(\.editedAt) == [time.now, nil])
+    }
+
     @Test("repeated cards are skipped when chosen, and stay as they were")
     func repeatedCardsAreSkippedWhenChosen() throws {
         let serendipia = try approve(

@@ -208,6 +208,107 @@ struct CardsWindowStateTests {
         #expect(window.actions == [.edit, .discard])
     }
 
+    @Test(
+        "the inbox lists a follow-up with its card, among the rest by when it was added, and a search finds it by its text"
+    )
+    func theInboxListsAFollowUpWithItsCard() throws {
+        let poderes = try approve(
+            card(
+                .concept, front: "La división de poderes en la Argentina",
+                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
+            in: engine)
+        time.advance(by: hours(1))
+        let navaja = try engine.newCapture("Navaja de Ockham")
+        time.advance(by: hours(1))
+        try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        time.advance(by: hours(1))
+        let bostezo = try engine.newCapture("¿Por qué bostezamos?")
+        let followUp = try #require(try engine.inbox().followUps.first)
+        var window = openWindow()
+
+        window.choose(.inbox)
+        let listed = window.listedInboxRows
+        window.search(for: "JUECES")
+
+        #expect(followUp.card == poderes)
+        #expect(listed?.map(\.item) == [.capture(bostezo), .followUp(followUp), .capture(navaja)])
+        #expect(listed?.map(\.text) == ["¿Por qué bostezamos?", "¿Cómo se eligen los jueces?", "Navaja de Ockham"])
+        #expect(window.listedInboxRows?.map(\.item) == [.followUp(followUp)])
+    }
+
+    @Test(
+        "selecting a follow-up in the inbox shows it, with its card, and offers Edit, Convert to Card and Discard")
+    func aFollowUpInTheInboxShowsItsCard() throws {
+        let poderes = try approve(
+            card(
+                .concept, front: "La división de poderes en la Argentina",
+                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
+            in: engine)
+        let saved = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        var window = openWindow()
+        window.choose(.inbox)
+
+        window.selectInInbox(.capture(saved.id))
+
+        let followUp = try #require(window.shownFollowUp)
+        #expect(window.selectedRows.isEmpty)
+        #expect(followUp.capture == saved)
+        #expect(followUp.card == poderes)
+        #expect(window.actions == [.edit, .convertToCard, .discard])
+    }
+
+    @Test("editing a follow-up keeps its card, and discarding it takes it out of the inbox")
+    func editingAFollowUpKeepsItsCard() throws {
+        let poderes = try approveCard("La división de poderes", in: engine)
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        var window = openWindow()
+        window.choose(.inbox)
+        window.selectInInbox(.capture(followUp.id))
+
+        window.startEditing()
+        let editing = window.editing
+        window.saveCapture(
+            text: "¿Cómo se eligen los jueces de la Corte?", note: "Y quién los puede remover", source: "")
+        let edited = window.shownFollowUp
+        window.askToDiscard()
+        let asked = window.question
+        let toDiscard = try #require(edited?.capture)
+        window.discard(toDiscard)
+        // As the window does once the engine says the inbox changed.
+        window.read(on: ladder)
+
+        #expect(editing == .capture(followUp))
+        #expect(edited?.capture.text == "¿Cómo se eligen los jueces de la Corte?")
+        #expect(edited?.capture.note == "Y quién los puede remover")
+        #expect(edited?.capture.followsUpCardID == poderes.id)
+        #expect(edited?.card == poderes)
+        #expect(asked == .discard(toDiscard))
+        #expect(window.failure == nil)
+        #expect(window.listedInboxRows == [])
+        #expect(try engine.inbox().followUps.isEmpty)
+        #expect(try engine.cards() == [poderes])
+    }
+
+    @Test("a follow-up whose card was deleted shows as a plain capture")
+    func aFollowUpWhoseCardWasDeletedShowsAsACapture() throws {
+        let poderes = try approveCard("La división de poderes", in: engine)
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        var window = openWindow()
+        window.select([poderes.id])
+        window.askToDelete()
+        window.delete(try #require(window.cardsToDelete))
+
+        window.choose(.inbox)
+        window.selectInInbox(.capture(followUp.id))
+
+        let capture = try #require(try engine.inbox().captures.first)
+        #expect(capture.text == "¿Cómo se eligen los jueces?")
+        #expect(capture.followsUpCardID == nil)
+        #expect(window.listedInboxRows?.map(\.item) == [.capture(capture)])
+        #expect(window.detail == .capture(capture))
+        #expect(window.actions == [.edit, .convertToCard, .discard])
+    }
+
     // No group of the sidebar lists buried cards with others, so a selection
     // of both, which offers neither, can't be made here.
     @Test("Bury is offered while none of the selected cards is buried, and Unbury while all of them are")
@@ -338,6 +439,35 @@ struct CardsWindowStateTests {
         #expect(window.editing == nil)
         #expect(window.shownCard?.row.card.back == "Un hallazgo valioso que se da por accidente.")
     }
+
+    // The Edited column shows and sorts by it, in the app's `CardRowOrder`,
+    // since a table's order stays in the app.
+    @Test("the table lists a card with when its front or back last changed, and one never edited with none")
+    func theTableListsWhenACardWasEdited() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try approveCard("petricor", in: engine)
+        var window = openWindow()
+        time.advance(by: hours(1))
+        window.select([serendipia.id])
+        window.startEditing()
+        window.saveCard(try card(.word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente."))
+        let serendipiaEditedAt = time.now
+        time.advance(by: hours(1))
+
+        window.select([ubuntu.id])
+        window.startEditing()
+        window.saveCard(try card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        window.select([serendipia.id])
+        window.startEditing()
+        window.saveCard(
+            try card(
+                .word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente.", tags: ["lenguaje"]))
+
+        let rows = try #require(window.listedCardRows)
+        #expect(rows.map(\.card.front) == ["serendipia", "ubuntu", "petricor"])
+        #expect(rows.map(\.card.editedAt) == [serendipiaEditedAt, time.now, nil])
+    }
 }
 
 extension CardsWindowState {
@@ -354,6 +484,24 @@ extension CardsWindowState {
             return nil
         }
         return rows
+    }
+
+    /// What the table lists in the inbox, in the order the engine read it,
+    /// or nil when it lists cards or couldn't read the inbox.
+    fileprivate var listedInboxRows: [InboxRow]? {
+        guard case .success(.inbox(let rows)) = listing else {
+            return nil
+        }
+        return rows
+    }
+
+    /// The follow-up the detail shows, with its card, or nil when it shows
+    /// something else.
+    fileprivate var shownFollowUp: FollowUp? {
+        guard case .followUp(let followUp) = detail else {
+            return nil
+        }
+        return followUp
     }
 
     /// The card the detail shows whole, with its review log, or nil when it

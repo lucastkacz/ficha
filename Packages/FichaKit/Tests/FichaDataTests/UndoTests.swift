@@ -144,6 +144,115 @@ struct UndoTests {
         #expect(burying.current == .review(cards[2]))
     }
 
+    // A refine session can bury a flagged card instead of fixing it.
+    @Test("⌘Z doesn't undo a flag once the card was buried outside the panel, and says so")
+    func undoRefusesAFlaggedCardBuriedOutsideThePanel() throws {
+        let cards = try dueCards("ubuntu", "petricor")
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        try panel.flag(note: note("Falta un ejemplo"))
+        let buried = try engine.bury(cards[0].id)
+
+        #expect(throws: EngineError.cannotUndo(cards[0].id)) {
+            try panel.undo()
+        }
+        #expect(panel.current == .review(cards[1]))
+        #expect(try engine.cards()[0] == buried)
+    }
+
+    @Test(
+        "⌘Z deletes the follow-ups asked on the card Lucas is on, the last first, before going back to the card before, and leaves nothing in the inbox"
+    )
+    func undoDeletesTheFollowUpsOnTheCurrentCardFirst() throws {
+        let cards = try dueCards("ubuntu", "petricor")
+        let standing = try engine.standing(of: cards[0].id, on: settings.ladder)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        panel.flip()
+        panel.rate(.good)
+        ask("¿Quién inventó la palabra?", in: &panel)
+        ask("¿Hay una palabra para el olor de la tierra seca?", in: &panel)
+
+        panel.undoLastCard()
+        #expect(try engine.inbox().followUps.map(\.capture.text) == ["¿Quién inventó la palabra?"])
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        panel.undoLastCard()
+        #expect(try engine.inbox().followUps.isEmpty)
+        #expect(try engine.inbox().captures.isEmpty)
+        #expect(try engine.progress(settings).inInbox == 0)
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        panel.undoLastCard()
+
+        #expect(panel.content == .back(cards[0], isAhead: false))
+        #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
+        #expect(!panel.canUndo)
+        #expect(panel.failure == nil)
+    }
+
+    @Test(
+        "after a card was flagged or buried, ⌘Z goes back to it first, and the next ⌘Z deletes its last follow-up"
+    )
+    func undoGoesBackToTheCardBeforeItsFollowUps() throws {
+        let cards = try dueCards("ubuntu", "petricor", "serendipia")
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        ask("¿De qué idioma viene?", in: &panel)
+        #expect(panel.canUndo)
+        panel.startFlagging()
+        panel.write(note: "Falta un ejemplo")
+        panel.finishFlagging()
+        ask("¿Quién inventó la palabra?", in: &panel)
+        panel.buryCard()
+
+        panel.undoLastCard()
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(try engine.cards().map(\.buriedAt) == [nil, nil, nil])
+        #expect(try engine.inbox().followUps.map(\.card.id) == [cards[0].id, cards[1].id])
+        panel.undoLastCard()
+        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(try engine.inbox().followUps.map(\.card.id) == [cards[0].id])
+        panel.undoLastCard()
+        #expect(panel.content == .front(cards[0], isAhead: false))
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.inbox().followUps.map(\.card.id) == [cards[0].id])
+        panel.undoLastCard()
+
+        #expect(panel.content == .front(cards[0], isAhead: false))
+        #expect(try engine.inbox().followUps.isEmpty)
+        #expect(!panel.canUndo)
+        #expect(try engine.reviewNow(settings) == cards.map(PanelCard.review))
+    }
+
+    // A refine session can approve or discard a follow-up while the panel is
+    // open.
+    @Test("⌘Z doesn't undo a follow-up approved or discarded outside the panel, and says so")
+    func undoRefusesAFollowUpRefinedOutsideThePanel() throws {
+        let cards = try dueCards("ubuntu", "petricor")
+        var approving = try engine.openPanel(.reviewNow, with: [.review(cards[0])], settings: settings)
+        ask("¿De qué idioma viene?", in: &approving)
+        var discarding = try engine.openPanel(.reviewNow, with: [.review(cards[1])], settings: settings)
+        ask("¿Quién inventó la palabra?", in: &discarding)
+        let followUps = try engine.inbox().followUps.map(\.capture)
+        let approved = try engine.approve(
+            followUps[0].id, into: [card(.word, front: "zulú", back: "Una lengua de Sudáfrica.")])
+        try engine.discard(followUps[1].id)
+
+        #expect(throws: EngineError.cannotUndoFollowUp(cards[0].id)) {
+            try approving.undo()
+        }
+        #expect(throws: EngineError.cannotUndoFollowUp(cards[1].id)) {
+            try discarding.undo()
+        }
+        #expect(try engine.cards() == cards + approved)
+        #expect(approving.content == .front(cards[0], isAhead: false))
+        #expect(discarding.content == .front(cards[1], isAhead: false))
+    }
+
+    /// Asks `question` about the card the panel is on, as Lucas does with A,
+    /// and saves it as a follow-up.
+    private func ask(_ question: String, in panel: inout ReviewPanelState) {
+        panel.startAsking()
+        panel.write(question: question)
+        panel.finishAsking()
+    }
+
     /// Approves a word card for each front, in order, and meets them all now,
     /// so that they come due together an hour later, when this moves the
     /// time. Review now brings them in the order given.

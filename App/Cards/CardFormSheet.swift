@@ -6,7 +6,8 @@ extension View {
     /// The Cards window's way to create cards: New Card in its toolbar, and
     /// ⌘N, which open the card form on a new card, and the form itself, a
     /// sheet over the window while `state` has it open, from New Card or from
-    /// Convert to Card on a capture. `failure` is the alert over the sheet.
+    /// Convert to Card on a capture or a follow-up. `failure` is the alert
+    /// over the sheet.
     func creatingCards(_ state: Binding<CardsWindowState>, failure: Binding<Failure?>) -> some View {
         modifier(CreatingCards(state: state, failure: failure))
     }
@@ -53,8 +54,8 @@ private struct CreatingCards: ViewModifier {
     }
 }
 
-/// Convert to Card, at the foot of a capture's detail beside Edit and
-/// Discard…, which opens the card form from the capture: ⇧⌘N, as New Card's
+/// Convert to Card, at the foot of a capture's or a follow-up's detail beside
+/// Edit and Discard…, which opens the card form from it: ⇧⌘N, as New Card's
 /// ⌘N with Shift.
 struct ConvertToCardButton: View {
     let convert: () -> Void
@@ -78,7 +79,8 @@ struct ConvertToCardButton: View {
 /// The card form, a sheet over the Cards window: an optional type, a front
 /// and a back, each with its text and an image, dragged or pasted under it,
 /// tags and a source, and, when it was opened from a capture, the capture
-/// beside them, whole. Add saves the card and keeps the form open, with the
+/// beside them, whole, with the card it follows up below it when it's a
+/// follow-up. Add saves the card and keeps the form open, with the
 /// front and the back cleared for the next one, as Anki's Add
 /// window does; Return adds too, Option-Return starts a new line, and Escape
 /// closes, as Close does. While the front repeats another card's, the form
@@ -99,7 +101,7 @@ private struct CardFormSheet: View {
         if let form = state.cardForm {
             HStack(alignment: .top, spacing: 0) {
                 if let capture = form.capture {
-                    captureColumn(capture, approvedOnClose: form.approvesCaptureOnClose)
+                    captureColumn(capture, followUp: form.followUp, approvedOnClose: form.approvesCaptureOnClose)
                         .frame(width: 260)
                     Divider()
                 }
@@ -125,10 +127,16 @@ private struct CardFormSheet: View {
     }
 
     /// The capture the form was opened from, whole, as the inbox's detail
-    /// shows it, and what closing the form does to it.
-    private func captureColumn(_ capture: Capture, approvedOnClose: Bool) -> some View {
+    /// shows it, with its card below it when it's a follow-up, and what
+    /// closing the form does to it.
+    private func captureColumn(_ capture: Capture, followUp: FollowUp?, approvedOnClose: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, expandedCard: nil)
+            if let followUp {
+                CaptureDetail(
+                    capture: capture, kind: InboxRow.Item.followUp(followUp).kindName, tie: .followsUp(followUp.card))
+            } else {
+                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
+            }
             Group {
                 if approvedOnClose {
                     Text(

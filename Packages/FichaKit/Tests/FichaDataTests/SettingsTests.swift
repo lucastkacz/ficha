@@ -172,6 +172,41 @@ struct SettingsTests {
         #expect(takesItAfterTwoSeconds)
     }
 
+    @Test(
+        "a card is forgotten often after as many “Don't know” as the settings say, and again every half of that, rounded down"
+    )
+    func forgottenOftenComesFromTheSettings() throws {
+        var settings = ReviewSettings.defaults
+        settings.forgottenOftenAfter = 5
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.meet(ubuntu)
+
+        let saidSo = try (1...10).map { _ in try forget(ubuntu, with: settings)?.times }
+
+        #expect(saidSo == [nil, nil, nil, nil, 5, nil, 7, nil, 9, nil])
+    }
+
+    @Test("with the offer turned off, no card is ever forgotten often")
+    func forgottenOftenCanBeTurnedOff() throws {
+        var settings = ReviewSettings.defaults
+        settings.forgottenOftenAfter = nil
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.meet(ubuntu)
+
+        let saidSo = try (1...16).map { _ in try forget(ubuntu, with: settings) }
+
+        #expect(saidSo.allSatisfy { $0 == nil })
+    }
+
+    /// Moves the time forward until `card` is due, rates it again with
+    /// `settings`, as the review panel does, and returns whether it's now
+    /// forgotten often.
+    private func forget(_ card: Card, with settings: ReviewSettings) throws -> ForgottenOften? {
+        time.move(to: try #require(try engine.standing(of: card.id, on: settings.ladder).due))
+        return try engine.record(
+            .review(.again), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+    }
+
     /// Approves a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.

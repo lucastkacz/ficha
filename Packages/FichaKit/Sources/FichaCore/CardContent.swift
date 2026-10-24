@@ -67,6 +67,12 @@ public struct CardContent: Sendable, Equatable {
         text.split(separator: ",").map(String.init)
     }
 
+    /// What a Tags field holds for `tags` when it starts with them, as when
+    /// the user edits a card: separated by commas, each after a space.
+    public static func tagsField(of tags: [String]) -> String {
+        tags.joined(separator: ", ")
+    }
+
     /// The images on its sides, each once.
     public var images: Set<ImageName> {
         Set([frontImage, backImage].compactMap(\.self))

@@ -172,7 +172,8 @@ struct AppearancesSettings: View {
 }
 
 /// The Review panel tab of Settings: how the panel behaves when it shows up
-/// on its own.
+/// on its own, and whether it offers to flag a card forgotten often, after
+/// how many “Don't know”.
 struct ReviewPanelSettings: View {
     @Bindable var model: AppModel
 
@@ -217,6 +218,44 @@ struct ReviewPanelSettings: View {
         } footer: {
             Text("When it shows up on its own. Opened with Review now, it takes the keyboard at once.")
         }
+        Section {
+            Toggle(isOn: offersToFlag) {
+                Text(
+                    "Offer to flag a card you forget often",
+                    comment:
+                        "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Don't know” to, so it gets fixed."
+                )
+                Text(
+                    "So it gets fixed. Ficha never flags a card on its own.",
+                    comment: "Settings, under Review panel: below the offer to flag a card forgotten often.")
+            }
+            // While the offer is on.
+            if let number = Binding($model.settings.forgottenOftenAfter) {
+                Stepper(value: number, in: 4...20) {
+                    Text(
+                        "After forgetting it \(number.wrappedValue) times",
+                        comment:
+                            "Settings, under Review panel: how many “Don't know” answers to a card, since its front or back last changed, bring the offer to flag it."
+                    )
+                }
+            }
+        } footer: {
+            Text(
+                """
+                Each “Don't know” counts, since the card's front or back last changed. If you don't flag it, the \
+                panel offers again after half as many more.
+                """)
+        }
+    }
+
+    /// Whether the panel offers to flag a card forgotten often: turned on,
+    /// it offers after the default number.
+    private var offersToFlag: Binding<Bool> {
+        Binding(
+            get: { model.settings.forgottenOftenAfter != nil },
+            set: { offers in
+                model.settings.forgottenOftenAfter = offers ? ReviewSettings.defaults.forgottenOftenAfter : nil
+            })
     }
 }
 

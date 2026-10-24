@@ -2,6 +2,10 @@ import FichaCore
 import Foundation
 internal import GRDB
 
+/// Flagging, unflagging, burying and unburying, and taking a flag off as
+/// editing does (`takeFlagOff(_:in:)`, below): this file is the one place
+/// that sets and clears a card's flag and its burial, as
+/// `CODING_STANDARDS.md` says.
 extension Engine {
     /// Flags a card in Lucas's reviews, or set aside, with his note on what
     /// to fix: it waits in the inbox until it's fixed, in a refine session or
@@ -23,18 +27,27 @@ extension Engine {
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
     /// back to his reviews, on the step its review log puts it on, unless one
     /// of its tags is set aside. It keeps its images, since refining never
-    /// adds or removes one. Returns the card.
+    /// adds or removes one; a new front or back keeps when it changed.
+    /// Returns the card.
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
+        let fixedAt = time.now
+        return try write { db in
+            let card = try unflag(cardID, in: db)
+            return try replaceContent(
+                of: cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage),
+                at: fixedAt, in: db)
+        }
+    }
+
+    /// Unflags a flagged card in the inbox: its flag goes and its content
+    /// stays, and it goes back to Lucas's reviews, on the step its review log
+    /// puts it on, unless one of its tags is set aside. The review panel's ⌘Z
+    /// unflags a card Lucas flagged there. Returns the card.
+    @discardableResult
+    public func unflag(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in
-            let card = try existingCard(cardID, in: db)
-            switch card.standing {
-            case .inInbox: break
-            case .inReviews, .setAside: throw EngineError.cardNotFlagged(cardID)
-            case .buried: throw EngineError.cardBuried(cardID)
-            }
-            return try editCard(
-                cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage), in: db)
+            try unflag(cardID, in: db)
         }
     }
 
@@ -79,9 +92,21 @@ extension Engine {
         }
     }
 
+    /// Unflags the card with this id, and returns it, or throws when it isn't
+    /// flagged in the inbox, as a buried card isn't, or doesn't exist.
+    private func unflag(_ cardID: Int64, in db: Database) throws -> Card {
+        switch try existingCard(cardID, in: db).standing {
+        case .inInbox: break
+        case .inReviews, .setAside: throw EngineError.cardNotFlagged(cardID)
+        case .buried: throw EngineError.cardBuried(cardID)
+        }
+        return try takeFlagOff(cardID, in: db)
+    }
+
     /// Buries the card with this id, as buried at `buriedAt`, and returns it,
-    /// or throws when it's already buried or doesn't exist.
-    private func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
+    /// or throws when it's already buried or doesn't exist. An import buries
+    /// here a card that was suspended in the app it comes from.
+    func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
         switch try existingCard(cardID, in: db).standing {
         case .inReviews, .inInbox, .setAside: break
         case .buried: throw EngineError.cardBuried(cardID)
@@ -98,4 +123,11 @@ extension Engine {
         }
         return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
     }
+}
+
+/// Takes the flag off the card with this id, if it has one, buried or not,
+/// and returns the card, or throws when it doesn't exist: unflagging it, and
+/// editing it, which fixes a flagged card, buried too.
+func takeFlagOff(_ cardID: Int64, in db: Database) throws -> Card {
+    try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
 }

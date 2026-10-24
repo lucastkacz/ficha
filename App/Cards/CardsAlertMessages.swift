@@ -21,8 +21,9 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardSetAside, .notOneEmoji,
-            .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder,
-            .notAnImage, .unreadableImageFile, .imagesFolder, .unreadableFile, .unwritableFile:
+            .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .storage, .copyNotFound,
+            .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .unreadableImageFile, .imagesFolder,
+            .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }
@@ -39,9 +40,9 @@ extension EngineError {
             message
         case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
-            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage,
-            .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .unreadableImageFile,
-            .imagesFolder, .unreadableFile, .unwritableFile:
+            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp,
+            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage,
+            .unreadableImageFile, .imagesFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }

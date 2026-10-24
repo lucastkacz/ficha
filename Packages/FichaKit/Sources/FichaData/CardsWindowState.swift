@@ -38,6 +38,9 @@ public struct CardsWindowState: Sendable {
         /// The expansion selected in the inbox, whole, with the card it
         /// expands.
         case expansion(Expansion)
+        /// The follow-up selected in the inbox, whole, with the card it
+        /// follows up.
+        case followUp(FollowUp)
         /// The selected card, whole, while it's the only one selected, with
         /// its review log, oldest first, or why it couldn't be read: nil only
         /// until it's read.
@@ -262,13 +265,16 @@ public struct CardsWindowState: Sendable {
         return rows.first { $0.id == inboxSelection }
     }
 
-    /// The capture the detail shows, on its own or as an expansion.
+    /// The capture the detail shows, on its own, as an expansion or as a
+    /// follow-up.
     private var shownCapture: Capture? {
         switch detail {
         case .capture(let capture):
             capture
         case .expansion(let expansion):
             expansion.capture
+        case .followUp(let followUp):
+            followUp.capture
         case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
             nil
         }
@@ -280,15 +286,17 @@ public struct CardsWindowState: Sendable {
         return rows.count == 1 ? rows.first : nil
     }
 
-    /// What the detail shows: the capture or the expansion selected in the
-    /// inbox, the selected cards the table lists, or that nothing is
-    /// selected.
+    /// What the detail shows: the capture, the expansion or the follow-up
+    /// selected in the inbox, the selected cards the table lists, or that
+    /// nothing is selected.
     public var detail: Detail {
         switch selectedInboxRow?.item {
         case .capture(let capture):
             return .capture(capture)
         case .expansion(let expansion):
             return .expansion(expansion)
+        case .followUp(let followUp):
+            return .followUp(followUp)
         case .flaggedCard, nil:
             // A flagged card shows as a card, below.
             break
@@ -306,14 +314,14 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// What the user can do with what the detail shows: with a capture, edit
-    /// it, convert it to cards and discard it; with an expansion, edit it and
-    /// discard it; with one card, edit it, flag it while it's in the user's
-    /// reviews, bury or unbury it, and delete it; with several, bury or
-    /// unbury them and delete them.
+    /// What the user can do with what the detail shows: with a capture or a
+    /// follow-up, edit it, convert it to cards and discard it; with an
+    /// expansion, edit it and discard it; with one card, edit it, flag it
+    /// while it's in the user's reviews, bury or unbury it, and delete it;
+    /// with several, bury or unbury them and delete them.
     public var actions: Set<Action> {
         switch detail {
-        case .capture:
+        case .capture, .followUp:
             return [.edit, .convertToCard, .discard]
         case .expansion:
             return [.edit, .discard]
@@ -407,8 +415,9 @@ public struct CardsWindowState: Sendable {
 
     /// Saves the capture Lucas edits with its text, note and source, as its
     /// fields hold them, and ends the edit, or records why it couldn't and
-    /// goes on with it. An expansion stays attached to its card. As with a
-    /// card, the detail shows it as saved at once.
+    /// goes on with it. An expansion stays attached to its card, and a
+    /// follow-up tied to its own. As with a card, the detail shows it as
+    /// saved at once.
     public mutating func saveCapture(text: String, note: String, source: String) {
         guard case .capture(let capture) = editing else { return }
         let saved = perform(.saveCapture) { engine throws(EngineError) in
@@ -478,8 +487,8 @@ public struct CardsWindowState: Sendable {
         perform(.delete(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.delete(cardIDs) }
     }
 
-    /// Asks whether to discard the capture or the expansion the detail shows,
-    /// while Discard is offered.
+    /// Asks whether to discard the capture, the expansion or the follow-up
+    /// the detail shows, while Discard is offered.
     public mutating func askToDiscard() {
         guard actions.contains(.discard), let capture = shownCapture else { return }
         question = .discard(capture)

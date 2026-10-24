@@ -37,6 +37,10 @@ public struct ReviewSettings: Sendable, Equatable {
     /// How long Lucas must be idle before the review panel takes the
     /// keyboard, in the once-idle focus mode.
     public var idleBeforeTakingKeyboard: Duration
+    /// How many reviews Lucas rates a card again in, since its front or back
+    /// last changed, before the review panel offers to flag it as forgotten
+    /// often, at least 1, or nil when it never offers.
+    public var forgottenOftenAfter: Int?
 
     /// The settings Ficha starts with.
     public static let defaults = ReviewSettings(
@@ -52,6 +56,8 @@ public struct ReviewSettings: Sendable, Equatable {
         suppressionsThatApply: Set(Suppression.allCases),
         autoClose: .seconds(10 * 60),
         focusMode: .onceIdle,
-        idleBeforeTakingKeyboard: .seconds(5)
+        idleBeforeTakingKeyboard: .seconds(5),
+        // Anki's number of lapses for a leech.
+        forgottenOftenAfter: 8
     )
 }

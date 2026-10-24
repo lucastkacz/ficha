@@ -106,14 +106,16 @@ public struct Engine: Sendable {
         }
     }
 
-    /// What waits in the inbox: the captures and the expansions, oldest first,
-    /// and the flagged cards, the first flagged first.
+    /// What waits in the inbox: the captures, the expansions and the
+    /// follow-ups, oldest first, and the flagged cards, the first flagged
+    /// first.
     public func inbox() throws(EngineError) -> Inbox {
         try read { db in
             let captures = try capturesWaiting(in: db)
             return Inbox(
-                captures: captures.filter { $0.expandsCardID == nil },
+                captures: captures.filter { $0.expandsCardID == nil && $0.followsUpCardID == nil },
                 expansions: try captures.compactMap { try $0.expansion(in: db) },
+                followUps: try captures.compactMap { try $0.followUp(in: db) },
                 flaggedCards: try flaggedCardsWaiting(in: db)
             )
         }

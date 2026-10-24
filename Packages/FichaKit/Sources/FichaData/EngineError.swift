@@ -42,8 +42,8 @@ public enum EngineError: Error, Equatable {
     /// The card with this id is flagged, so it waits in the inbox: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
-    /// The card with this id isn't flagged, so there's no flag to fix: it was
-    /// already fixed, or it was never flagged.
+    /// The card with this id isn't flagged, so there's no flag to fix or take
+    /// off: it was already fixed, or it was never flagged.
     case cardNotFlagged(Int64)
     /// The card with this id is buried, so it can't be answered, flagged,
     /// expanded or buried again, nor fixed in a refine session, until it's
@@ -61,6 +61,10 @@ public enum EngineError: Error, Equatable {
     /// The card with this id changed outside the review panel, as a refine
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
+    /// A follow-up Lucas asked in the review panel about the card with this
+    /// id was approved or discarded outside the panel, as a refine session or
+    /// the Cards window can, so ⌘Z can't take it back. The card didn't change.
+    case cannotUndoFollowUp(Int64)
     /// The review log of the card with this id doesn't start with its first
     /// view or a placement, or has a second one later, so it isn't known
     /// where the card stands. The engine logs it.
@@ -181,6 +185,13 @@ extension EngineError: LocalizedError {
         case .cannotUndo(let id):
             String(
                 localized: "Card \(id) changed outside the review panel, so ⌘Z can't undo it. \(reopenReviewNow)")
+        case .cannotUndoFollowUp(let id):
+            String(
+                localized: """
+                    Your question about card \(id) was approved or discarded outside the review panel, so ⌘Z can't \
+                    take it back. If it became cards you don't want, delete them in the Cards window.
+                    """
+            )
         case .unreadableReviewLog(let id):
             String(
                 localized: """

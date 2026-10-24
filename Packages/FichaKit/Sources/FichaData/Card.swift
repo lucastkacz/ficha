@@ -5,8 +5,8 @@ internal import GRDB
 /// One small thing Lucas wants to remember, with a front and a back, as the
 /// engine saved it when he approved it or the user created it. Each side
 /// holds text, an image, or both. The `ficha` CLI prints it as JSON, without
-/// the type, images, capture, source, flag, burial or set-aside tags it
-/// doesn't have.
+/// the type, images, source, edited time, capture, flag, burial or set-aside
+/// tags it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none.
@@ -23,6 +23,9 @@ public struct Card: Sendable, Equatable, Encodable {
     public let source: String?
     /// When it came in: when the user approved it in a refine session, or created it.
     public let createdAt: Date
+    /// When its front or back last changed, a side's image included, or nil
+    /// when neither changed since it came in, or since before Ficha kept it.
+    public let editedAt: Date?
     /// The capture it was refined from, or nil when it came in another way,
     /// such as the Cards window's form or an import.
     public let captureID: Int64?
@@ -65,6 +68,7 @@ extension Card {
         tags = try JSONDecoder().decode([String].self, from: Data(tagsColumn.utf8))
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
+        editedAt = try row.decode(forColumn: "editedAt")
         captureID = try row.decode(forColumn: "captureId")
         switch (try row.decode(forColumn: "flagNote") as String?, try row.decode(forColumn: "flaggedAt") as Date?) {
         case (nil, nil):
@@ -131,28 +135,33 @@ func updateCard(
 }
 
 /// Replaces a card's content with `content`, its images included, keeping its
-/// review log, and sets `others` too, as `updateCard` says. Returns the card
-/// as it is then. Every change to a card's content goes through here, with
-/// content `CardContent` checked, as every new card goes through
-/// `insertCard`. An image the card no longer refers to stays where Ficha
-/// keeps it: the engine removes it once no card uses it.
-func replaceContent(
-    of cardID: Int64,
-    with content: CardContent,
-    alsoSetting others: String? = nil,
-    in db: Database
-) throws -> Card {
-    try updateCard(
+/// review log, its flag and its burial, at `now`, which becomes when its
+/// front or back last changed when either differs from before, a side's image
+/// included; a change to its type, tags or source alone leaves that time as
+/// it was. Returns the card as it is then. Every change to a card's content
+/// goes through here, with content `CardContent` checked, as every new card
+/// goes through `insertCard`. An image the card no longer refers to stays
+/// where Ficha keeps it: the engine removes it once no card uses it.
+func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
+    let before = try existingCard(cardID, in: db)
+    return try updateCard(
         cardID,
-        setting: [
-            "type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, tags = ?, source = ?", others,
-        ].compactMap(\.self).joined(separator: ", "),
+        setting: "type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, tags = ?, source = ?, editedAt = ?",
         to: [
             content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
             content.backImage?.rawValue, try tagsJSON(content.tags), content.source,
+            before.hasSides(of: content) ? before.editedAt : now,
         ],
         in: db
     )
+}
+
+extension Card {
+    /// Whether the card's front and back are those of `content`, each with
+    /// its image.
+    fileprivate func hasSides(of content: CardContent) -> Bool {
+        (front, back, frontImage, backImage) == (content.front, content.back, content.frontImage, content.backImage)
+    }
 }
 
 /// The flagged cards that wait in the inbox to be fixed, as their standing

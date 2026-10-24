@@ -48,9 +48,13 @@ struct CaptureCommand: EngineCommand {
 struct InboxCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "inbox",
-        abstract: "List what waits in the inbox: your captures, your cards' expansions and the cards you flagged.",
+        abstract: """
+            List what waits in the inbox: your captures, your cards' expansions, your follow-ups on them and the \
+            cards you flagged.
+            """,
         discussion: """
             It prints "captures", oldest first; "expansions", each a capture with the card it expands, oldest \
+            first; "followUps", each a capture you asked in the review panel with the card it follows up, oldest \
             first; and "flaggedCards", each with your note on what to fix in "flag", the first flagged first.
             """
     )
@@ -121,7 +125,9 @@ struct CardsCommand: EngineCommand {
             leaves out "type", "source" or "captureID" when it has no type, no source, or didn't come from a \
             capture. A card with an image on its front or back names it in "frontImage" or "backImage", left out \
             when that side has none; a side with only an image has an empty text. Images are added in the Cards \
-            window, never through the CLI.
+            window, never through the CLI. A card whose front or back changed since it came in says when it last \
+            did in "editedAt": an edit, a fix, an approved expansion or an import; a change to its tags, type or \
+            source alone doesn't count.
             """
     )
 

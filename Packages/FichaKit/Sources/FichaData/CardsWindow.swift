@@ -128,10 +128,13 @@ public enum CardGroup: Sendable, Hashable {
 public struct InboxRow: Sendable, Equatable, Identifiable {
     /// What waits in the inbox.
     public enum Item: Sendable, Equatable {
-        /// A capture that expands no card.
+        /// A capture that expands no card and follows none up.
         case capture(Capture)
         /// A capture attached to the card it repeats, with the card.
         case expansion(Expansion)
+        /// A capture Lucas asked about a card in the review panel, tied to
+        /// it, with the card.
+        case followUp(FollowUp)
         /// A flagged card that isn't buried, with where it stands.
         case flaggedCard(CardRow)
     }
@@ -150,6 +153,7 @@ public struct InboxRow: Sendable, Equatable, Identifiable {
         switch item {
         case .capture(let capture): .capture(capture.id)
         case .expansion(let expansion): .capture(expansion.capture.id)
+        case .followUp(let followUp): .capture(followUp.capture.id)
         case .flaggedCard(let row): .card(row.id)
         }
     }
@@ -159,21 +163,24 @@ public struct InboxRow: Sendable, Equatable, Identifiable {
         switch item {
         case .capture(let capture): capture.text
         case .expansion(let expansion): expansion.capture.text
+        case .followUp(let followUp): followUp.capture.text
         case .flaggedCard(let row): row.card.front
         }
     }
 
-    /// The capture it is, or the expansion's, or nil for a flagged card.
+    /// The capture it is, or the expansion's or the follow-up's, or nil for
+    /// a flagged card.
     public var capture: Capture? {
         switch item {
         case .capture(let capture): capture
         case .expansion(let expansion): expansion.capture
+        case .followUp(let followUp): followUp.capture
         case .flaggedCard: nil
         }
     }
 
-    /// The flagged card it is, with where it stands, or nil for a capture or
-    /// an expansion.
+    /// The flagged card it is, with where it stands, or nil for a capture, an
+    /// expansion or a follow-up.
     public var flaggedCard: CardRow? {
         guard case .flaggedCard(let row) = item else {
             return nil
@@ -196,16 +203,17 @@ extension Engine {
     }
 
     /// What waits in the inbox that mentions `search`, as the Cards window
-    /// lists it, the latest added first: the captures and the expansions that
-    /// mention it in their text or source, and the flagged cards that
-    /// mention it in their front, back or source, as Flagged lists them, each
-    /// standing on `ladder`. A blank search narrows nothing.
+    /// lists it, the latest added first: the captures, the expansions and the
+    /// follow-ups that mention it in their text or source, and the flagged
+    /// cards that mention it in their front, back or source, as Flagged lists
+    /// them, each standing on `ladder`. A blank search narrows nothing.
     public func inboxRows(matching search: String = "", on ladder: Ladder) throws(EngineError) -> [InboxRow] {
         let now = time.now
         return try read { db in
             let captures = try capturesWaiting(in: db).filter { $0.matches(search) }.map { capture in
                 InboxRow(
-                    item: try capture.expansion(in: db).map(InboxRow.Item.expansion) ?? .capture(capture),
+                    item: try capture.expansion(in: db).map(InboxRow.Item.expansion)
+                        ?? capture.followUp(in: db).map(InboxRow.Item.followUp) ?? .capture(capture),
                     addedAt: capture.createdAt)
             }
             let flaggedCards = try FichaData.cardRows(in: .flagged, matching: search, on: ladder, at: now, in: db)

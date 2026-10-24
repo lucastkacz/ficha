@@ -363,9 +363,27 @@ func saveDatabaseBeforePlacements(at file: URL, at time: Date) throws {
     try database.close()
 }
 
+/// Saves a database at `file` as Ficha left it before it kept when a card's
+/// front or back last changed, through the schema's migrations up to the one
+/// before it, with two cards approved at `time`: serendipia and ubuntu.
+func saveDatabaseBeforeEditedTimes(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v14 placements in the review log")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo.', '[]', ?),
+                    (2, 'concept', 'ubuntu', 'Soy porque somos.', '[]', ?)
+                """,
+            arguments: [time, time])
+    }
+    try database.close()
+}
+
 /// Checks that `engine` has every card of `saveDatabaseBeforeOptionalTypes`
 /// as it was saved at `time`: its type, capture, standing, step and review
-/// log, and the expansion still attached to its card.
+/// log, and the expansion still attached to its card, which follows none up.
 func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date) throws {
     let cards = try engine.cards()
     #expect(cards.map(\.id) == [1, 2, 3])
@@ -398,6 +416,7 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
                 cardID: 3, kind: .firstView, answeredAt: time, responseTime: .seconds(6), trigger: .appearance),
         ])
     #expect(try engine.inbox().expansions.map(\.card.id) == [1])
+    #expect(try engine.inbox().followUps.isEmpty)
 }
 
 /// Saves a database at `file` as the first version of Ficha left it, written

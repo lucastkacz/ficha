@@ -168,6 +168,50 @@ struct FlaggingTests {
         #expect(try engine.cards() == [serendipia, buried])
     }
 
+    // The review panel's ⌘Z unflags a card Lucas flagged there.
+    @Test("unflagging a flagged card keeps its content and brings it back to its step in Lucas's reviews")
+    func unflaggingBringsTheCardBackToItsStep() throws {
+        // serendipia climbs to the second step, 4 hours, and Lucas flags it
+        // before it's due.
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.climb(serendipia, to: 1, movingForward: time)
+        let due = try #require(try engine.standing(of: serendipia.id, on: settings.ladder).due)
+        try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
+        time.advance(by: hours(1))
+
+        let unflagged = try engine.unflag(serendipia.id)
+
+        #expect(unflagged == serendipia)
+        #expect(try engine.cards() == [serendipia])
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.progress(settings).inInbox == 0)
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: due))
+        time.move(to: due)
+        #expect(try engine.reviewNow(settings) == [.review(serendipia)])
+    }
+
+    // The panel's ⌘Z unflags a card it flagged, which a refine session can
+    // fix or bury meanwhile. A burial wins over a flag: the card is out of
+    // the inbox too.
+    @Test("only a flagged card in the inbox can be unflagged: not one in the reviews, nor a buried one")
+    func onlyAFlaggedCardCanBeUnflagged() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
+        let buried = try engine.bury(ubuntu.id)
+
+        #expect(throws: EngineError.cardNotFlagged(serendipia.id)) {
+            try engine.unflag(serendipia.id)
+        }
+        #expect(throws: EngineError.cardBuried(ubuntu.id)) {
+            try engine.unflag(ubuntu.id)
+        }
+        #expect(throws: EngineError.cardNotFound(99)) {
+            try engine.unflag(99)
+        }
+        #expect(try engine.cards() == [serendipia, buried])
+    }
+
     // The panel passes the note as Lucas typed it.
     @Test("a flag's note is saved without surrounding spaces, and a blank one is no note")
     func theNoteIsSavedCleanedUp() throws {

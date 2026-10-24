@@ -3,19 +3,37 @@ import Foundation
 
 extension CardsWindowState {
     /// The form that creates cards in the Cards window, a sheet over it,
-    /// opened by New Card, or by Convert to Card on a capture in the inbox,
-    /// and open until the user closes it. It stays open after each card, as
-    /// Anki's Add window does.
+    /// opened by New Card, or by Convert to Card on a capture or a follow-up
+    /// in the inbox, and open until the user closes it. It stays open after
+    /// each card, as Anki's Add window does.
     public struct CardForm: Sendable, Equatable {
-        /// The capture the form was opened from, which it shows beside its
-        /// fields, or nil for a new card.
-        public let capture: Capture?
+        /// What opened the form.
+        let openedBy: Opener
         /// What the form's fields hold.
         public internal(set) var draft = Draft()
         /// The cards added since the form opened, oldest first.
         public internal(set) var addedCards: [Card] = []
         /// What the form says under the front, while it says something.
         public internal(set) var frontWarning: FrontWarning?
+
+        /// The capture the form was opened from, a follow-up's included,
+        /// which it shows beside its fields, or nil for a new card.
+        public var capture: Capture? {
+            switch openedBy {
+            case .newCard: nil
+            case .capture(let capture): capture
+            case .followUp(let followUp): followUp.capture
+            }
+        }
+
+        /// The follow-up the form was opened from, with its card as it was
+        /// then, which the form shows below the capture, or nil when it was
+        /// opened from a plain capture or for a new card. The cards the form
+        /// adds sit beside that card, which stays as it is.
+        public var followUp: FollowUp? {
+            guard case .followUp(let followUp) = openedBy else { return nil }
+            return followUp
+        }
 
         /// Whether Add is on: while both sides have text, whatever the front
         /// repeats.
@@ -32,6 +50,16 @@ extension CardsWindowState {
 }
 
 extension CardsWindowState.CardForm {
+    /// What opened the form.
+    enum Opener: Sendable, Equatable {
+        /// New Card.
+        case newCard
+        /// Convert to Card on this capture.
+        case capture(Capture)
+        /// Convert to Card on this follow-up, with its card as it was then.
+        case followUp(FollowUp)
+    }
+
     /// What the form says under the front.
     public enum FrontWarning: Sendable, Equatable {
         /// That it repeats this card's front, by the duplicate rule, which
@@ -96,16 +124,27 @@ extension CardsWindowState {
     /// or brings back the new card's form Show Card set aside, as it was.
     public mutating func openNewCardForm() {
         guard cardForm == nil else { return }
-        openCardForm(CardForm(capture: nil))
+        openCardForm(CardForm(openedBy: .newCard))
     }
 
     /// Convert to Card: opens the form from the capture the detail shows,
-    /// while it's offered, with the capture's source filled in; or brings
-    /// back the form from that capture Show Card set aside, as it was.
+    /// while it's offered, with the capture's source filled in, or from the
+    /// follow-up it shows, with its card beside it and the card's tags filled
+    /// in, so the new cards land next to it; or brings back the form from
+    /// that capture or follow-up Show Card set aside, as it was.
     public mutating func convertToCard() {
-        guard cardForm == nil, actions.contains(.convertToCard), case .capture(let capture) = detail else { return }
-        var form = CardForm(capture: capture)
-        form.draft.source = capture.source ?? ""
+        guard cardForm == nil, actions.contains(.convertToCard) else { return }
+        var form: CardForm
+        switch detail {
+        case .capture(let capture):
+            form = CardForm(openedBy: .capture(capture))
+        case .followUp(let followUp):
+            form = CardForm(openedBy: .followUp(followUp))
+            form.draft.tags = CardContent.tagsField(of: followUp.card.tags)
+        case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+            return
+        }
+        form.draft.source = form.capture?.source ?? ""
         openCardForm(form)
     }
 
