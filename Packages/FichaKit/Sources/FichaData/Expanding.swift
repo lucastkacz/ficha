@@ -30,7 +30,8 @@ extension Engine {
     /// Approves an expansion in the inbox: replaces its card's content with
     /// `content`, which a refine session drafted from the card and the
     /// expansion and Lucas approved, and takes the expansion out of the inbox.
-    /// The card stays on the step its review log puts it on. Returns the card.
+    /// The card stays on the step its review log puts it on, and keeps its
+    /// images, since refining never adds or removes one. Returns the card.
     @discardableResult
     public func approveExpansion(_ captureID: Int64, into content: CardContent) throws(EngineError) -> Card {
         let refinedAt = time.now
@@ -38,11 +39,13 @@ extension Engine {
             guard let cardID = try takeOutOfInbox(captureID, at: refinedAt, in: db).expandsCardID else {
                 throw EngineError.notAnExpansion(captureID)
             }
-            switch try existingCard(cardID, in: db).standing {
+            let card = try existingCard(cardID, in: db)
+            switch card.standing {
             case .inReviews, .inInbox, .setAside: break
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            return try replaceContent(of: cardID, with: content, in: db)
+            return try replaceContent(
+                of: cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage), in: db)
         }
     }
 }

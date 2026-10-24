@@ -4,16 +4,19 @@ internal import GRDB
 
 extension Engine {
     /// Edits a card, as Lucas does in the Cards window: replaces its content
-    /// with `content`, and keeps its review log, and so its step and due
-    /// time, when he approved it and the capture it came from. Editing a
-    /// flagged card fixes it: its flag goes, and it's back in his reviews, on
-    /// its step, unless it's buried, since an edited card stays buried.
-    /// Returns the card.
+    /// with `content`, its images included, which Ficha already keeps, and
+    /// keeps its review log, and so its step and due time, when he approved
+    /// it and the capture it came from. Editing a flagged card fixes it: its
+    /// flag goes, and it's back in his reviews, on its step, unless it's
+    /// buried, since an edited card stays buried. An image it no longer has
+    /// goes, unless another card uses it. Returns the card.
     @discardableResult
     public func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
-        try write { db in
-            try editCard(cardID, with: content, in: db)
+        let (before, edited) = try write { db in
+            (try existingCard(cardID, in: db), try editCard(cardID, with: content, in: db))
         }
+        removeImagesNoCardUses(among: before.images.subtracting(edited.images))
+        return edited
     }
 
     /// Edits a capture in the inbox, as Lucas does in the Cards window:

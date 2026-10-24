@@ -19,8 +19,9 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     public let standing: LadderStanding
     /// How long its step waits, or nil while it's new.
     public let wait: Duration?
-    /// When Lucas last saw it: its review log's latest entry, its first view
-    /// or a review, or nil while it's new.
+    /// When the user last saw it: its review log's latest first view or review,
+    /// or nil while it's new, or while it has only the placement an import
+    /// put it on its step with (ADR 0013).
     public let lastSeen: Date?
 
     public var id: Int64 {
@@ -87,10 +88,10 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 }
 
 /// An entry of a card's review log as the Cards window shows it under the
-/// card, in its chart and its list: the first view or review, and the step
-/// the card stood on after it.
+/// card, in its chart and its list: the first view, review or placement, and
+/// the step the card stood on after it.
 public struct ReviewLogRow: Sendable, Equatable {
-    /// The first view or review, as the review log keeps it.
+    /// The first view, review or placement, as the review log keeps it.
     public let entry: ReviewLogEntry
     /// The step the card stood on after it, counted from 0, the first step.
     public let step: Int
@@ -117,6 +118,9 @@ public enum CardGroup: Sendable, Hashable {
     case tag(String)
     /// The cards of this type that aren't buried.
     case type(CardType)
+    /// The cards with no type that aren't buried, which the sidebar offers
+    /// only while there are some.
+    case noType
 }
 
 /// Something that waits in the inbox, as the Cards window lists it, with when
@@ -216,9 +220,21 @@ extension Engine {
         }
     }
 
+    /// The type groups the Cards window's sidebar lists: one for each card
+    /// type, in `CardType`'s order, and No Type after them while a card that
+    /// isn't buried has no type.
+    func sidebarTypeGroups() throws(EngineError) -> [CardGroup] {
+        try read { db in
+            let someCardHasNoType = try allCards(in: db).contains { card in
+                card.type == nil && card.standing.isInAllCards
+            }
+            return CardType.allCases.map(CardGroup.type) + (someCardHasNoType ? [.noType] : [])
+        }
+    }
+
     /// A card's review log as the Cards window shows it under the card,
-    /// oldest first: each first view and review, with the step of `ladder`
-    /// the card stood on after it. Empty while the card is new.
+    /// oldest first: each first view, review and placement, with the step of
+    /// `ladder` the card stood on after it. Empty while the card is new.
     public func reviewLogRows(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> [ReviewLogRow] {
         try read { db in
             let entries = try logEntries(ofExisting: cardID, in: db)
@@ -290,6 +306,7 @@ extension CardGroup {
             }
         case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
+        case .noType: row.card.type == nil && row.cardStanding.isInAllCards
         }
     }
 }
@@ -317,7 +334,11 @@ extension CardRow {
         tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
         standing = try ladder.standing(after: entries)
-        lastSeen = entries.last?.answeredAt
+        lastSeen =
+            entries.last { entry in
+                if case .placement = entry.kind { false } else { true }
+            }?
+            .answeredAt
         if case .onLadder(let step, _) = standing {
             wait = ladder.waits[step]
         } else {

@@ -2,6 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import FichaCore
 import FichaData
+import SQLite3
 
 // Draws one of the app's windows as a PNG, with Ficha Dev's sample cards,
 // without showing anything on screen: `make render ARGS="cards --dark"`. The
@@ -19,6 +20,15 @@ import FichaData
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
     case cards
+    /// The Cards window with its Import sheet showing the preview of a file,
+    /// which the tool can't choose in the open panel.
+    case cardsImport = "cards-import"
+    /// The Cards window with its Import sheet showing the preview of an Anki
+    /// package.
+    case cardsImportAnki = "cards-import-anki"
+    /// The Cards window once that Anki package came in with its progress,
+    /// with a card it put on a step selected, and reviewed since.
+    case cardsAnkiImported = "cards-anki-imported"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -43,6 +53,8 @@ enum Action: CustomStringConvertible {
     case key(KeyPress)
     /// Text, typed into what holds the focus.
     case type(String)
+    /// A picture, copied to the tool's own pasteboard, for ⌘V to paste.
+    case copyImage(SamplePicture)
 
     /// The action as its arguments ask for it, like `--key cmd+f`.
     var description: String {
@@ -50,8 +62,75 @@ enum Action: CustomStringConvertible {
         case .click(let mouseClick): "--click \(mouseClick.name)"
         case .key(let press): "--key \(press.name)"
         case .type(let text): "--type \"\(text)\""
+        case .copyImage(let picture): "--copy-image \(picture.rawValue)"
         }
     }
+}
+
+/// A picture the tool draws, for the sample's card with images and for
+/// `--copy-image`, since it can't drag a file nor reach a clipboard with an
+/// image on it.
+enum SamplePicture: String, CaseIterable {
+    /// Argentina's flag, 1,800 × 1,125 pixels, which Ficha shrinks as it
+    /// comes in.
+    case flag
+    /// The flag's Sun of May alone, 600 × 600 pixels, on a transparent
+    /// background, which Ficha keeps as a PNG.
+    case sun
+
+    /// The picture, as a PNG.
+    func png() throws(RenderError) -> Data {
+        let size = self == .flag ? CGSize(width: 1800, height: 1125) : CGSize(width: 600, height: 600)
+        guard let sRGB = CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+                space: sRGB, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            throw RenderError(description: "Couldn't draw the sample picture \(rawValue). \(whenMacOSRefuses)")
+        }
+        switch self {
+        case .flag:
+            let stripe = size.height / 3
+            context.setFillColor(CGColor(srgbRed: 0.455, green: 0.675, blue: 0.875, alpha: 1))
+            context.fill(CGRect(origin: .zero, size: size))
+            context.setFillColor(CGColor(gray: 1, alpha: 1))
+            context.fill(CGRect(x: 0, y: stripe, width: size.width, height: stripe))
+            drawSunOfMay(in: context, center: CGPoint(x: size.width / 2, y: size.height / 2), radius: stripe * 0.45)
+        case .sun:
+            drawSunOfMay(in: context, center: CGPoint(x: size.width / 2, y: size.height / 2), radius: 290)
+        }
+        guard let image = context.makeImage(),
+            let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        else {
+            throw RenderError(description: "Couldn't draw the sample picture \(rawValue). \(whenMacOSRefuses)")
+        }
+        return png
+    }
+}
+
+/// Draws the Sun of May in `context`: a golden disk and 32 rays, the longest
+/// reaching `radius` from `center`.
+func drawSunOfMay(in context: CGContext, center: CGPoint, radius: CGFloat) {
+    /// The point `distance` from `center` at `angle`, in radians.
+    func point(_ distance: CGFloat, _ angle: CGFloat) -> CGPoint {
+        CGPoint(x: center.x + distance * cos(angle), y: center.y + distance * sin(angle))
+    }
+    context.setFillColor(CGColor(srgbRed: 0.965, green: 0.706, blue: 0.055, alpha: 1))
+    context.setStrokeColor(CGColor(srgbRed: 0.522, green: 0.204, blue: 0.039, alpha: 1))
+    context.setLineWidth(radius * 0.02)
+    let disk = radius * 0.45
+    for index in 0..<32 {
+        let angle = CGFloat(index) * .pi / 16
+        let ray = CGMutablePath()
+        ray.move(to: point(disk * 0.9, angle - .pi / 40))
+        ray.addLine(to: point(index.isMultiple(of: 2) ? radius : radius * 0.8, angle))
+        ray.addLine(to: point(disk * 0.9, angle + .pi / 40))
+        ray.closeSubpath()
+        context.addPath(ray)
+        context.drawPath(using: .fillStroke)
+    }
+    context.addEllipse(in: CGRect(x: center.x - disk, y: center.y - disk, width: disk * 2, height: disk * 2))
+    context.drawPath(using: .fillStroke)
 }
 
 /// A click, with the modifier keys held down, like `cmd+280,121`.
@@ -124,15 +203,19 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
-      <window>   cards, backups (Settings, on its Backups tab) or backups-failed (once a backup failed)
+      <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
+                 package), cards-anki-imported (once it came in, a card it put on a step selected), backups
+                 (Settings, on its Backups tab) or backups-failed (once a backup failed)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
       --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
                  keys: a-z, 0-9, return, escape, tab, space, delete; modifiers: cmd, shift
       --type     text typed into what holds the focus, like a text field
+      --copy-image  a picture, flag or sun, copied to the tool's own pasteboard, for --key cmd+v to paste
       --out      the PNG, by default .build/render/<window>-<light|dark>.png
-    --click, --key and --type run in the order given, and after each one the tool prints what holds the focus.
+    --click, --key, --type and --copy-image run in the order given, and after each one the tool prints what holds
+    the focus.
     While the window has a sheet, an alert or a confirmation open, they go to it.
     """
 
@@ -202,6 +285,11 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
                 throw RenderError(description: "--type takes the text to type.\n\(usage)")
             }
             request.actions.append(.type(text))
+        case "--copy-image":
+            guard let name = arguments.popFirst(), let picture = SamplePicture(rawValue: name) else {
+                throw RenderError(description: "--copy-image takes a picture: flag or sun.\n\(usage)")
+            }
+            request.actions.append(.copyImage(picture))
         case "--out":
             guard let path = arguments.popFirst() else {
                 throw RenderError(description: "--out takes the PNG's path.\n\(usage)")
@@ -222,8 +310,10 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
 /// the first day and climbing at different paces, two sent back to the first
-/// step, one flagged with a note and one buried, and the rest new. The time
-/// it's on stays where the twelve days left it.
+/// step, one flagged with a note and one buried, and the rest new, with a
+/// capture waiting in the inbox; and then a new card with a flag on its front
+/// and the Sun of May on its back, and two new cards made by hand, with no
+/// type and no capture. The time it's on stays where the twelve days left it.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -260,12 +350,42 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
     try review(0..<8, .good)
+    // A capture that waits in the inbox, for Convert to Card: the inbox lists
+    // it after the flagged card, which comes later.
+    let capture = try engine.capture(
+        text: "La paradoja de Teseo: si le cambiás todas las tablas a un barco, ¿sigue siendo el mismo barco?",
+        note: "Una tarjeta para la paradoja y otra para la pregunta", source: "Un video de filosofía")
+    guard case .saved = capture else {
+        throw RenderError(description: "The sample's capture repeats a sample card.")
+    }
     time.advance(by: hours(4 * 24 + 3))
     guard let note = FlagNote("El ejemplo no se entiende: cambiarlo por uno más cotidiano.") else {
         throw RenderError(description: "The sample's flag note is blank.")
     }
     try engine.flag(cards[2].id, note: note)
     try engine.bury(cards[5].id)
+    // A card made in the Cards window with an image on each side.
+    guard
+        let withImages = CardContent(
+            type: nil, front: "¿De qué país es esta bandera?", back: "De la Argentina. En el centro, el Sol de Mayo.",
+            tags: ["geografía"], source: nil, frontImage: try engine.addImage(SamplePicture.flag.png()),
+            backImage: try engine.addImage(SamplePicture.sun.png()))
+    else {
+        throw RenderError(description: "The sample's card with images has a blank side.")
+    }
+    try engine.create(withImages)
+    // The sample cards all have a type, and cards from a capture: these two
+    // are as someone who doesn't refine with Claude makes them.
+    let madeByHand = [
+        ("¿Cuál es la capital de Mongolia?", "Ulán Bator."),
+        ("mitocondria", "La parte de la célula que produce su energía."),
+    ]
+    for (front, back) in madeByHand {
+        guard let content = CardContent(type: nil, front: front, back: back, tags: [], source: nil) else {
+            throw RenderError(description: "A card made by hand for the sample has a blank front or back.")
+        }
+        try engine.create(content)
+    }
     return (engine, time)
 }
 
@@ -300,6 +420,256 @@ func backupsEngine() throws -> Engine {
     return engine
 }
 
+/// The Cards window's state partway through an import, as the Import sheet
+/// shows it once the user chose a file: the preview of a text file the tool
+/// writes in its scratch home, with words from other languages as someone
+/// might type them in a spreadsheet, two of which the sample cards have, and
+/// three lines that can't be read. The file goes once it's read.
+func importingState(of model: AppModel) throws -> CardsWindowState {
+    let file = URL.documentsDirectory.appending(path: "Palabras del mundo.txt")
+    let lines = [
+        "#separator:tab",
+        "#html:false",
+        "#columns:Front\tBack\tTags\tType\tSource",
+        "hygge\tPalabra danesa: el bienestar de un rato cálido y sencillo con gente querida.\tdanés\tword\t",
+        "wabi-sabi\tIdea japonesa: la belleza de lo imperfecto, lo pasajero y lo incompleto.\tjaponés\tconcept\t",
+        "lagom\tPalabra sueca: ni mucho ni poco, lo justo.\tsueco\tword\t",
+        "sisu",
+        "ubuntu\tPalabra zulú: soy porque somos.\tzulú\tword\tDesmond Tutu",
+        "Fernweh\tPalabra alemana: las ganas de estar lejos, en lugares que no conocés.\talemán\tword\t",
+        "Kummerspeck\tPalabra alemana: los kilos que se ganan comiendo por tristeza.\talemán\tsustantivo\t",
+        "tsundoku\tPalabra japonesa: comprar libros y dejarlos apilados sin leer.\tjaponés\tword\t",
+        "\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
+        "mamihlapinatapai\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
+    ]
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(lines.joined(separator: "\n").utf8).write(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    state.startImport()
+    previewImportAtOnce(of: file, in: &state)
+    guard state.importing?.preview != nil else {
+        throw RenderError(
+            description: "The sample file to import has no preview: \(String(describing: state.importing))")
+    }
+    return state
+}
+
+/// Reads `file` for the Import sheet in `state`, as the app does once the
+/// user chose it, the reading run at once rather than away from the main
+/// actor, so that the picture shows its preview.
+func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) {
+    if let work = state.previewImport(of: file) {
+        state.finishImportWork(work.run())
+    }
+}
+
+/// The Cards window's state partway through importing an Anki package, as
+/// the Import sheet shows it once the user chose one: the preview of a deck
+/// of medicine the tool writes in its scratch home, with two subdecks and
+/// Anki tags, two cards Anki was reviewing, which Bring progress puts on a
+/// step, a card the sample cards have, a card with two images on its front,
+/// of which the first comes in, and a card whose back is only a sound, one
+/// whose front is only an image the package lacks and an Image Occlusion
+/// note, which stay out. The file goes once it's read.
+func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
+    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try writeSampleAnkiPackage(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    state.startImport()
+    previewImportAtOnce(of: file, in: &state)
+    guard state.importing?.preview != nil else {
+        throw RenderError(
+            description: "The sample Anki package has no preview: \(String(describing: state.importing))")
+    }
+    return state
+}
+
+/// The app's model on the sample cards, once the sample Anki package came in
+/// with its progress, and four days later, the card of the femur, which it
+/// put on the 12-day step, was reviewed with Know it, on time.
+func ankiImportedModel() throws -> AppModel {
+    let (engine, time) = try sampleEngine(at: .inMemory)
+    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try writeSampleAnkiPackage(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    let settings = ReviewSettings.defaults
+    _ = try engine.importCards(
+        engine.previewImport(of: file), choosing: ImportChoices(progress: .brought(onto: settings.ladder)))
+    guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
+        throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
+    }
+    time.advance(by: hours(4 * 24))
+    try engine.record(.review(.good), of: femur.id, responseTime: .seconds(4), trigger: .reviewNow, settings: settings)
+    return AppModel(engine: engine)
+}
+
+/// The Cards window's state once the sample Anki package came in, with the
+/// card of the femur selected, so the detail shows its review log.
+func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
+    var state = model.openCardsWindow()
+    state.read(on: state.ladder)
+    guard case .success(.cards(let rows)) = state.listing, let femur = rows.first(where: { $0.card.front == "fémur" })
+    else {
+        throw RenderError(description: "The Cards window doesn't list the sample Anki package's card of the femur.")
+    }
+    state.select([femur.id])
+    return state
+}
+
+/// Writes the sample Anki package to `file`, as current Anki exports a deck
+/// with "Support older Anki versions" ticked: a zip with `meta` at version
+/// 2, `collection.anki21`, a SQLite database at schema 11 with only what
+/// Ficha reads, and its media, the flag and the Sun of May, in members `0`
+/// and `1`, with the JSON list that names them. The tests'
+/// `AnkiPackages.swift` writes such packages too, from Anki's source.
+func writeSampleAnkiPackage(to file: URL) throws {
+    let folder = file.deletingLastPathComponent().appending(path: "Anki package", directoryHint: .isDirectory)
+    try? FileManager.default.removeItem(at: folder)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let collection = folder.appending(path: "collection.anki21")
+    try runSQLite(try sampleAnkiCollectionSQL(), in: collection)
+    let meta = folder.appending(path: "meta")
+    try Data([0x08, 0x02]).write(to: meta)
+    let flag = folder.appending(path: "0")
+    try SamplePicture.flag.png().write(to: flag)
+    let sun = folder.appending(path: "1")
+    try SamplePicture.sun.png().write(to: sun)
+    let media = folder.appending(path: "media")
+    try Data(#"{"0":"bandera.png","1":"sol.png"}"#.utf8).write(to: media)
+    try? FileManager.default.removeItem(at: file)
+    let zip = Process()
+    zip.executableURL = URL(filePath: "/usr/bin/zip")
+    zip.arguments = ["-q", "-j"] + [file, meta, collection, flag, sun, media].map { $0.path(percentEncoded: false) }
+    try zip.run()
+    zip.waitUntilExit()
+    guard zip.terminationStatus == 0 else {
+        throw RenderError(
+            description:
+                "zip couldn't make the sample Anki package (exit \(zip.terminationStatus)). \(whenMacOSRefuses)"
+        )
+    }
+}
+
+/// Runs `sql` on the SQLite database at `file`, which it makes.
+func runSQLite(_ sql: String, in file: URL) throws {
+    var database: OpaquePointer?
+    defer { sqlite3_close(database) }
+    guard sqlite3_open(file.path(percentEncoded: false), &database) == SQLITE_OK,
+        sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK
+    else {
+        throw RenderError(
+            description: "SQLite couldn't write the sample Anki package: \(String(cString: sqlite3_errmsg(database)))")
+    }
+}
+
+/// The SQL that makes the sample Anki package's collection: Anki's tables at
+/// schema 11 (`rslib/src/storage/schema11.sql`), created on 1 October 2026
+/// at 4 in the morning in Buenos Aires, its Basic, Cloze and Image Occlusion
+/// note types, a deck of medicine with two subdecks, and the notes, with
+/// their cards: the femur's in review, every 10 days, due on Anki's day 22,
+/// 23 October; the systole's relearning, due on day 20, 21 October; and the
+/// rest new, among them one in Default whose front shows the flag and the
+/// Sun of May, of which the first comes in, and one whose front is only an
+/// image the package lacks.
+func sampleAnkiCollectionSQL() throws -> String {
+    let basicAnswer = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
+    let noteTypes: [String: Any] = [
+        "1": [
+            "id": 1, "name": "Basic", "type": 0, "originalStockKind": 1,
+            "flds": [["name": "Front"], ["name": "Back"]],
+            "tmpls": [["name": "Card 1", "qfmt": "{{Front}}", "afmt": basicAnswer]],
+        ],
+        "2": [
+            "id": 2, "name": "Cloze", "type": 1, "originalStockKind": 5,
+            "flds": [["name": "Text"], ["name": "Back Extra"]],
+            "tmpls": [["name": "Cloze", "qfmt": "{{cloze:Text}}", "afmt": "{{cloze:Text}}<br>\n{{Back Extra}}"]],
+        ],
+        "3": [
+            "id": 3, "name": "Image Occlusion", "type": 1, "originalStockKind": 6,
+            "flds": [["name": "Occlusion"], ["name": "Image"], ["name": "Header"], ["name": "Back Extra"]],
+            "tmpls": [
+                [
+                    "name": "Image Occlusion", "qfmt": "{{cloze:Occlusion}}{{Image}}",
+                    "afmt": "{{cloze:Occlusion}}{{Image}}<br>{{Back Extra}}",
+                ]
+            ],
+        ],
+    ]
+    let decks: [String: Any] = [
+        "1": ["id": 1, "name": "Default"], "2": ["id": 2, "name": "Medicina"],
+        "3": ["id": 3, "name": "Medicina::Anatomía"], "4": ["id": 4, "name": "Medicina::Fisiología"],
+    ]
+    // Each note: its note type, its deck, its tags, its fields, and its
+    // cards' template indexes.
+    let notes: [(type: Int, deck: Int, tags: String, fields: [String], cards: [Int])] = [
+        (1, 3, "huesos", ["fémur", "El hueso del muslo, el más largo del cuerpo."], [0]),
+        (2, 4, "repaso", ["El {{c1::corazón}} bombea la sangre por las {{c2::arterias::unos vasos}}.", ""], [0, 1]),
+        (1, 4, "", ["mitocondria", "La parte de la célula que produce su energía."], [0]),
+        (1, 4, "", ["latido", "[sound:latido.mp3]"], [0]),
+        (
+            3, 3, "huesos",
+            ["{{c1::image-occlusion:rect:left=.2:top=.3:width=.1:height=.1}}", "<img src=\"pie.png\">", "", ""],
+            [0]
+        ),
+        (1, 4, "corazón leech", ["sístole", "La contracción del corazón, que empuja la sangre."], [0]),
+        (1, 1, "", ["<img src=\"bandera.png\"><img src=\"sol.png\">", "La bandera de la Argentina."], [0]),
+        (1, 3, "huesos", ["<img src=\"tibia.png\">", "La tibia."], [0]),
+    ]
+    // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
+    // by the notes' places above: in review, and relearning across days.
+    let progress: [Int: (type: Int, queue: Int, due: Int, interval: Int)] = [0: (2, 2, 22, 10), 5: (3, 3, 20, 1)]
+    var sql = """
+        CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
+          ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
+          models text NOT NULL, decks text NOT NULL, dconf text NOT NULL, tags text NOT NULL);
+        CREATE TABLE notes (id integer PRIMARY KEY, guid text NOT NULL, mid integer NOT NULL, mod integer NOT NULL,
+          usn integer NOT NULL, tags text NOT NULL, flds text NOT NULL, sfld integer NOT NULL, csum integer NOT NULL,
+          flags integer NOT NULL, data text NOT NULL);
+        CREATE TABLE cards (id integer PRIMARY KEY, nid integer NOT NULL, did integer NOT NULL, ord integer NOT NULL,
+          mod integer NOT NULL, usn integer NOT NULL, type integer NOT NULL, queue integer NOT NULL,
+          due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
+          lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
+          flags integer NOT NULL, data text NOT NULL);
+        INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2,"creationOffset":180}', \
+        \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
+
+        """
+    for (index, note) in notes.enumerated() {
+        let noteID = 1_700_000_000_000 + index
+        let tags = note.tags.isEmpty ? "" : " \(note.tags) "
+        sql += """
+            INSERT INTO notes VALUES (\(noteID), 'n\(index)', \(note.type), 0, 0, \(sqlText(tags)), \
+            \(sqlText(note.fields.joined(separator: "\u{1F}"))), '', 0, 0, '');
+
+            """
+        // A new card's due is its position.
+        let (type, queue, due, interval) = progress[index] ?? (0, 0, index + 1, 0)
+        for ordinal in note.cards {
+            sql += """
+                INSERT INTO cards VALUES (\(noteID * 10 + ordinal), \(noteID), \(note.deck), \(ordinal), 0, 0, \
+                \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
+
+                """
+        }
+    }
+    return sql
+}
+
+/// `object` as JSON text.
+func jsonText(_ object: Any) throws -> String {
+    String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+}
+
+/// `text` as a string literal of SQL.
+func sqlText(_ text: String) -> String {
+    "'\(text.replacingOccurrences(of: "'", with: "''"))'"
+}
+
 /// A span of whole hours, in seconds.
 func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
@@ -309,7 +679,8 @@ func hours(_ count: Int) -> TimeInterval {
 /// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cards, .cardsImport, .cardsImportAnki: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsAnkiImported: return try ankiImportedModel()
     case .backups: return AppModel(engine: try backupsEngine())
     case .backupsFailed:
         let model = AppModel(engine: try backupsEngine())
@@ -324,11 +695,23 @@ func model(for name: Window) throws -> AppModel {
 
 /// The app's window for `name`, closed, with its content, at the size it
 /// opens at.
-func window(_ name: Window, model: AppModel) -> NSWindow {
+func window(_ name: Window, model: AppModel) throws -> NSWindow {
     switch name {
     case .cards:
         let window = CardsWindow(model: model)
         window.makeContent()
+        return window
+    case .cardsImport:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try importingState(of: model))
+        return window
+    case .cardsImportAnki:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try ankiImportingState(of: model))
+        return window
+    case .cardsAnkiImported:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try ankiImportedState(of: model))
         return window
     case .backups, .backupsFailed:
         let window = AppWindow(
@@ -668,7 +1051,7 @@ do {
     // tool ends.
     defer { try? FileManager.default.removeItem(at: renderDataFolder) }
     let model = try model(for: name)
-    let window = window(name, model: model)
+    let window = try window(name, model: model)
     window.level = belowDesktop
     window.ignoresMouseEvents = true
     try actAsKey(window, isMain: true)
@@ -680,6 +1063,9 @@ do {
         case .click(let mouseClick): try click(mouseClick, in: window)
         case .key(let keyPress): try press(keyPress, in: window)
         case .type(let text): try typeText(text, in: window)
+        case .copyImage(let picture):
+            pasteboard.clearContents()
+            pasteboard.setData(try picture.png(), forType: .png)
         }
         try wait(0.5)
         print("\(action): the focus is on \(focus(in: window))")

@@ -25,8 +25,8 @@ public enum EngineError: Error, Equatable {
     case noCards
     /// There's no card with this id: it was deleted, or it never existed.
     case cardNotFound(Int64)
-    /// The card with this id already had its first view, so it can't have
-    /// another.
+    /// The card with this id already had its first view, or an import placed
+    /// it on a step, so it can't have a first view.
     case cardNotNew(Int64)
     /// The card with this id is still new, so it can't be reviewed before its
     /// first view.
@@ -36,6 +36,9 @@ public enum EngineError: Error, Equatable {
     /// The card with this id isn't one of the cards its appearance brought,
     /// so its answer from a card notification can't be recorded.
     case cardNotInAppearance(Int64)
+    /// A placement was recorded as an answer to the card with this id, and
+    /// refused: only an import places a card on a step, as it comes in.
+    case placementIsNotAnAnswer(Int64)
     /// The card with this id is flagged, so it waits in the inbox: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
@@ -59,8 +62,8 @@ public enum EngineError: Error, Equatable {
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
     /// The review log of the card with this id doesn't start with its first
-    /// view, or has a second one, so it isn't known where the card stands.
-    /// The engine logs it.
+    /// view or a placement, or has a second one later, so it isn't known
+    /// where the card stands. The engine logs it.
     case unreadableReviewLog(Int64)
     /// SQLite couldn't open, read or write the database. The engine logs why.
     case storage
@@ -71,8 +74,25 @@ public enum EngineError: Error, Equatable {
     /// refuses to restore it, as it refuses such a database.
     case copyMigratedByNewerVersion(String)
     /// A copy in the Backups folder couldn't be listed, named, moved or
-    /// removed. The engine logs why.
+    /// removed, or the images the copies share couldn't be kept or weighed.
+    /// The engine logs why.
     case backupsFolder
+    /// What came in for a side of a card, dragged or pasted, isn't an image
+    /// the system can read.
+    case notAnImage
+    /// The file with this name, dragged or pasted for a side of a card,
+    /// couldn't be read. The engine logs why.
+    case unreadableImageFile(String)
+    /// An image in the Images folder couldn't be read, saved, brought back
+    /// from the Backups folder or removed, or isn't there. The engine logs
+    /// why.
+    case imagesFolder
+    /// The file of cards with this name can't be imported, for the reason
+    /// the problem gives, so nothing was read from it.
+    case unreadableFile(String, CardsFileProblem)
+    /// The file with this name couldn't be written, so the cards weren't
+    /// exported to it. The engine logs why.
+    case unwritableFile(String)
 }
 
 extension EngineError: LocalizedError {
@@ -107,7 +127,9 @@ extension EngineError: LocalizedError {
                 localized:
                     "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
         case .cardNotNew(let id):
-            String(localized: "Card \(id) already had its first view. \(reopenReviewNow)")
+            String(
+                localized:
+                    "Card \(id) isn't new: it already had its first view, or came in on a step. \(reopenReviewNow)")
         case .cardStillNew(let id):
             String(
                 localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")
@@ -118,6 +140,13 @@ extension EngineError: LocalizedError {
                 localized: """
                     Card \(id) isn't one of the cards its appearance brought, so its answer wasn't recorded. \
                     Report it.
+                    """
+            )
+        case .placementIsNotAnAnswer(let id):
+            String(
+                localized: """
+                    Card \(id) can't be placed on a step as an answer: only an import places a card. Nothing was \
+                    recorded. Report it.
                     """
             )
         case .cardFlagged(let id):
@@ -183,6 +212,115 @@ extension EngineError: LocalizedError {
                     and if it keeps happening, report it.
                     """
             )
+        case .notAnImage:
+            String(
+                localized: """
+                    That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG.
+                    """
+            )
+        case .unreadableImageFile(let name):
+            String(
+                localized: """
+                    Ficha couldn't read “\(name)”. Check that the file is still there and that you can open it, and \
+                    try again.
+                    """
+            )
+        case .imagesFolder:
+            String(
+                localized: """
+                    Ficha couldn't read or save an image in its Images folder. Check that the disk has room and try \
+                    again, and if it keeps happening, report it.
+                    """
+            )
+        case .unreadableFile(let name, let problem):
+            problem.message(forFileNamed: name)
+        case .unwritableFile(let name):
+            String(
+                localized: """
+                    Ficha couldn't save “\(name)”. Check that the disk has room and that you can save in that \
+                    folder, or choose another one, and try again.
+                    """
+            )
+        }
+    }
+}
+
+extension CardsFileProblem {
+    /// What happened to the file named `name`, and what to do about it.
+    fileprivate func message(forFileNamed name: String) -> String {
+        switch self {
+        case .cannotOpen:
+            String(localized: "Ficha couldn't open “\(name)”. Check that the file is still there, and try again.")
+        case .notUTF8:
+            String(
+                localized: """
+                    “\(name)” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a \
+                    spreadsheet as “CSV UTF-8”, and import that.
+                    """
+            )
+        case .unknownSeparator(let separator):
+            String(
+                localized: """
+                    The #separator line of “\(name)” says “\(separator)”, which Ficha can't separate columns by. Make \
+                    it Tab, Comma or Semicolon, or remove it.
+                    """
+            )
+        case .unknownHTML(let value):
+            String(
+                localized: """
+                    The #html line of “\(name)” says “\(value)”: make it true when the file holds HTML, or false when \
+                    it doesn't.
+                    """
+            )
+        case .unknownColumnNumber(let header, let value):
+            String(
+                localized: """
+                    The #\(header) line of “\(name)” says “\(value)”, which isn't a column's number. Make it the \
+                    number of the column, counting the first one as 1.
+                    """
+            )
+        case .missingColumn(let column):
+            String(
+                localized: """
+                    The #columns line of “\(name)” names no \(column.rawValue) column, which every card needs. Name \
+                    its columns Front, Back, Tags, Type and Source, or remove the line.
+                    """
+            )
+        case .unreadableZip:
+            String(
+                localized: """
+                    Ficha couldn't open “\(name)” as a zip: it may be damaged. Zip the text file of cards and its \
+                    images again, and import that.
+                    """
+            )
+        case .noTextFileInZip:
+            String(
+                localized: """
+                    “\(name)” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside \
+                    the images. Add it, zip them again, and import that.
+                    """
+            )
+        case .severalTextFilesInZip(let files):
+            String(
+                localized: """
+                    “\(name)” holds several text files of cards, \(quotedList(files)), and Ficha imports one at a \
+                    time. Zip each with its images on its own, and import them one by one.
+                    """
+            )
+        case .unreadableAnkiPackage:
+            String(
+                localized: """
+                    Ficha couldn't read “\(name)” as an Anki package: it may be damaged. Export the deck from Anki \
+                    again, and import that.
+                    """
+            )
+        case .ankiPackageTooNew:
+            String(
+                localized: """
+                    “\(name)” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with \
+                    “Support older Anki versions” ticked, and import that.
+                    """
+            )
         }
     }
 }
@@ -208,6 +346,7 @@ extension EngineError {
             case .notNew: .cardNotNew(cardID)
             case .stillNew: .cardStillNew(cardID)
             case .notDue: .cardNotDue(cardID)
+            case .notAnAnswer: .placementIsNotAnAnswer(cardID)
             }
     }
 }

@@ -13,9 +13,14 @@ import SwiftUI
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the table wait. He selects several cards with
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
-/// can do with all of them. `CardsWindowState` decides what the window lists,
-/// shows, offers and asks, and what happens when Lucas acts, and the view
-/// draws it. It reads the cards again whenever
+/// can do with all of them. New Card in the toolbar, or ⌘N, and Convert to
+/// Card on a capture open the card form, a sheet of its own
+/// (`CardFormSheet.swift`), Import… in the toolbar opens the Import sheet
+/// (`ImportSheet.swift`), which imports a text file of cards, and Export…
+/// opens the Export sheet (`ExportSheet.swift`), which saves cards to one.
+/// `CardsWindowState` decides what the window lists, shows, offers and asks,
+/// and what happens when Lucas acts, and the view draws it. It reads the cards
+/// again whenever
 /// the engine says they changed, from the app or the `ficha` CLI, when Lucas
 /// changes the ladder in Settings, and every minute, since cards come due as
 /// time passes, or at once when Ficha Dev's debug menu moves the time.
@@ -40,9 +45,12 @@ struct CardsView: View {
     /// saves or cancels an edit, for him to go on with the arrow keys.
     @FocusState private var isTableFocused: Bool
 
-    init(model: AppModel) {
+    /// The content for the user's cards in `model`, opening with `state` when
+    /// it's given, as `make render` opens it partway through an import, and
+    /// on All cards otherwise.
+    init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
-        _state = State(initialValue: model.openCardsWindow())
+        _state = State(initialValue: state ?? model.openCardsWindow())
     }
 
     var body: some View {
@@ -60,6 +68,10 @@ struct CardsView: View {
         }
         .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
+        // The toolbar lists the outer modifier's buttons first: New Card,
+        // then Import…, then Export….
+        .exportButtonAndSheet($state, failure: failure(overSheet: true))
+        .importButtonAndSheet($state)
         .background {
             // ⌘F puts Lucas in the search field, as in Mail and Finder. The
             // search field doesn't take it on its own.
@@ -71,6 +83,7 @@ struct CardsView: View {
             .keyboardShortcut("f")
             .hidden()
         }
+        .creatingCards($state, failure: failure(overSheet: true))
         .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
             FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
                 state.flag(note: note)
@@ -173,13 +186,14 @@ struct CardsView: View {
     }
 
     /// What Lucas did that couldn't be saved, as an alert says it, which
-    /// closing it clears: over the flag sheet or the emoji sheet while one is
-    /// open, since the window's own alert can't show over its sheet, and over
-    /// the window otherwise. `overSheet` says which of the two alerts this is
-    /// for.
+    /// closing it clears: over the flag sheet, the emoji sheet, the card form
+    /// or the Export sheet while one is open, since the window's own alert
+    /// can't show over its sheet, and over the window otherwise. `overSheet`
+    /// says which of the two alerts this is for.
     private func failure(overSheet: Bool) -> Binding<Failure?> {
         Binding {
-            guard overSheet == (cardToFlag != nil || tagForEmoji != nil) else { return nil }
+            let isSheetOpen = cardToFlag != nil || tagForEmoji != nil || state.cardForm != nil || state.exporting != nil
+            guard overSheet == isSheetOpen else { return nil }
             return state.failure.map(alert(for:))
         } set: {
             if $0 == nil {
@@ -224,6 +238,42 @@ struct CardsView: View {
                         comment:
                             "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
                     )))
+        case .addCard:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add the card", comment: "An alert's title over the Cards window's card form."),
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            The capture this form was opened from left the inbox outside this window meanwhile, \
+                            approved or discarded in a refine session, so the card wasn't added. To keep what you \
+                            typed, copy it before you close the form.
+                            """,
+                        comment:
+                            "An alert's message over the Cards window's card form, when its capture already left the inbox."
+                    )))
+        case .approveCapture:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't take the capture out of the inbox",
+                    comment: "An alert's title in the Cards window, after closing the card form opened from a capture."),
+                message: error.messageForCaptureInCardsWindow(
+                    ifItLeft: String(
+                        localized: """
+                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
+                            refine session. The cards you added from it are saved.
+                            """,
+                        comment: """
+                            An alert's message in the Cards window, after closing the card form, when its capture \
+                            already left the inbox.
+                            """
+                    )))
+        case .putImage:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add the image",
+                    comment: "An alert's title in the Cards window, after dragging or pasting onto a side of a card."),
+                error: error)
         case .flag:
             return Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
         case .bury(let count):
@@ -267,12 +317,19 @@ struct CardsView: View {
                     "Couldn't change the emoji of “\(tag)”",
                     comment: "An alert's title in the Cards window's emoji sheet, after OK, with the tag."),
                 error: error)
+        case .export:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't export the cards",
+                    comment: "An alert's title in the Cards window, after Export… or over its Export sheet."),
+                error: error)
         }
     }
 
     /// What Lucas chooses from: the cards by where they stand, then the
     /// inbox, with how many things wait in it, as the menu counts them, then
-    /// the cards by tag, then by type. One is chosen at a time, always.
+    /// the cards by tag, then by type, with No Type while the state offers
+    /// it. One is chosen at a time, always.
     private var sidebar: some View {
         List(selection: chosenItem) {
             Section {
@@ -304,9 +361,9 @@ struct CardsView: View {
                 }
             }
             Section {
-                ForEach(CardType.allCases, id: \.self) { type in
-                    Label(type.pluralName, systemImage: type.symbol)
-                        .tag(SidebarItem.cards(.type(type)))
+                ForEach(state.typeGroups, id: \.self) { group in
+                    Label(group.title, systemImage: group.symbol)
+                        .tag(SidebarItem.cards(group))
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
@@ -399,7 +456,7 @@ struct CardsView: View {
             ContentUnavailableView(
                 group.emptyTitle, systemImage: group.symbol,
                 description: Text(
-                    "The cards you approve in a refine session show up here, and the ones you bury, in Buried.",
+                    "The cards you create with New Card show up here, and the ones you bury, in Buried.",
                     comment: "In the Cards window, when All cards is empty."))
         } else {
             ContentUnavailableView(group.emptyTitle, systemImage: group.symbol)
@@ -479,7 +536,8 @@ struct CardsView: View {
                 Text("Type", comment: "A column of the Cards window: the card's type."),
                 sortUsing: CardRowOrder(.type)
             ) { row in
-                Text(row.card.type.name)
+                // Blank for a card with no type.
+                Text(row.card.type?.name ?? "")
             }
             .width(min: 60, ideal: 76, max: 110)
             .customizationID(CardRowOrder.Column.type.rawValue)
@@ -532,6 +590,8 @@ struct CardsView: View {
             .defaultVisibility(.hidden)
         }
         .focused($isTableFocused)
+        // The card Show Card selected, which may be far down the list.
+        .revealingRow(state.cardToReveal) { state.cardRevealed() }
         .overlay {
             if rows.isEmpty, case .cards(let group) = state.sidebarItem {
                 noCards(in: group)
@@ -615,7 +675,13 @@ struct CardsView: View {
     private var detail: some View {
         switch state.editing {
         case .card(let card):
-            CardEditor(card: card, isSearching: isSearchFocused) { content in
+            CardEditor(
+                card: card, images: state.editedImages, shownImages: state.images, isSearching: isSearchFocused
+            ) { dropped, side in
+                state.putImageInEditor(dropped, on: side)
+            } removeImage: { side in
+                state.removeImageFromEditor(on: side)
+            } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()
             } cancel: {
@@ -648,10 +714,12 @@ struct CardsView: View {
             case .cards(let rows):
                 selectionSummary(rows)
             case .card(let row, let reviewLog):
-                CardDetail(row: row, now: state.now, reviewLog: reviewLog, ladder: state.ladder)
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        actionBar
-                    }
+                CardDetail(
+                    row: row, images: state.images, now: state.now, reviewLog: reviewLog, ladder: state.ladder
+                )
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    actionBar
+                }
             case .nothingSelectedInInbox:
                 ContentUnavailableView(
                     String(
@@ -715,8 +783,8 @@ struct CardsView: View {
     }
 
     /// A button for each thing Lucas can do with what the detail shows, as
-    /// the state offers them: Edit, Flag…, Bury or Unbury, Delete… and
-    /// Discard…, in that order. Each button calls the state, which reads the
+    /// the state offers them: Edit, Convert to Card, Flag…, Bury or Unbury,
+    /// Delete… and Discard…, in that order. Each button calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
     /// so ⌘E would bury the cards selected back then.
@@ -725,6 +793,11 @@ struct CardsView: View {
         let actions = state.actions
         if actions.contains(.edit) {
             editButton
+        }
+        if actions.contains(.convertToCard) {
+            ConvertToCardButton {
+                state.convertToCard()
+            }
         }
         if actions.contains(.flag) {
             flagButton

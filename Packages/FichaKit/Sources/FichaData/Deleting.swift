@@ -7,13 +7,16 @@ extension Engine {
     /// window, with their review logs, in one write, or none of them when one
     /// doesn't exist. An expansion attached to one of them stays in the inbox
     /// as a plain capture, so nothing he jotted down is lost, and the capture
-    /// a card was approved from stays as it is. Nothing undoes it. Returns
-    /// the cards as they were, in the order Lucas approved them.
+    /// a card was approved from stays as it is. Their images go too, those no
+    /// other card uses. Nothing undoes it. Returns the cards as they were, in
+    /// the order Lucas approved them.
     @discardableResult
     public func delete(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
-        try write { db in
+        let deleted = try write { db in
             try cardIDs.sorted().map { try delete($0, in: db) }
         }
+        removeImagesNoCardUses(among: Set(deleted.flatMap(\.images)))
+        return deleted
     }
 
     /// Deletes the card with this id, with its review log, and returns it as

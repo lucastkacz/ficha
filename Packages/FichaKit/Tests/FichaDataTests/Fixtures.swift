@@ -4,15 +4,29 @@ import Foundation
 import Testing
 
 /// A card for a test to approve a capture into: it always has a front and a
-/// back, and no tags or source unless the test gives them.
+/// back, and no tags, source or images unless the test gives them. A nil type
+/// is no type.
 func card(
-    _ type: CardType,
+    _ type: CardType?,
     front: String,
     back: String,
     tags: [String] = [],
-    source: String? = nil
+    source: String? = nil,
+    frontImage: ImageName? = nil,
+    backImage: ImageName? = nil
 ) throws -> CardContent {
-    try #require(CardContent(type: type, front: front, back: back, tags: tags, source: source))
+    try #require(
+        CardContent(
+            type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
+            backImage: backImage))
+}
+
+/// What `card` holds, its images included, as a card is made from it, to
+/// compare with the content a test gave it.
+func content(of card: Card) -> CardContent? {
+    CardContent(
+        type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source,
+        frontImage: card.frontImage, backImage: card.backImage)
 }
 
 /// Lucas's note on what to fix in a card he flags, which isn't blank.
@@ -132,5 +146,23 @@ extension CaptureResult {
             return nil
         }
         return capture
+    }
+}
+
+extension CardsWindowState {
+    /// Reads `file` for the Import sheet's preview, as the app does, the
+    /// reading run at once rather than away from the main actor.
+    mutating func previewImportAndWait(of file: URL) {
+        if let work = previewImport(of: file) {
+            finishImportWork(work.run())
+        }
+    }
+
+    /// Imports the cards the Import sheet previews, as the app does, the
+    /// import run at once rather than away from the main actor.
+    mutating func importCardsAndWait() {
+        if let work = importCards() {
+            finishImportWork(work.run())
+        }
     }
 }

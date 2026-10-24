@@ -185,6 +185,116 @@ enum Schema {
                 table.check(sql: "switchedOn IS NOT NULL OR color IS NOT NULL OR emoji IS NOT NULL")
             }
         }
+        migrator.registerMigration("v12 cards without a type or a capture") { db in
+            // A card's type is optional, and so is its capture, since cards
+            // come in by hand and from files too (ADR 0012). SQLite can't
+            // drop a column's NOT NULL, so the card table is made again, with
+            // every card as it was, the way GRDB's guide to migrations
+            // recreates a table, as "v9 answers from card notifications" did.
+            try db.create(table: "new_card") { table in
+                table.autoIncrementedPrimaryKey("id")
+                // As `CardType` names it, or NULL for none.
+                table.column("type", .text)
+                table.column("front", .text).notNull()
+                table.column("back", .text).notNull()
+                // A JSON array of strings.
+                table.column("tags", .jsonText).notNull()
+                table.column("source", .text)
+                table.column("createdAt", .datetime).notNull()
+                // The capture it was approved from, or NULL when it came in
+                // another way. Its index comes once the table has its name.
+                table.belongsTo("capture", indexed: false)
+                table.column("flagNote", .text)
+                table.column("flaggedAt", .datetime)
+                    .check(sql: "(flagNote IS NULL) = (flaggedAt IS NULL)")
+                table.column("buriedAt", .datetime)
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_card
+                        (id, type, front, back, tags, source, createdAt, captureId, flagNote, flaggedAt, buriedAt)
+                    SELECT id, type, front, back, tags, source, createdAt, captureId, flagNote, flaggedAt, buriedAt
+                    FROM card
+                    """
+            )
+            // A deleted card's id is never given again, so a refine session
+            // that names an old card never reaches another one. Dropping the
+            // table drops its last id too, so the new one starts from it.
+            let lastID = try Int64.fetchOne(db, sql: "SELECT seq FROM sqlite_sequence WHERE name = 'card'")
+            try db.drop(table: "card")
+            try db.rename(table: "new_card", to: "card")
+            if let lastID {
+                try db.execute(sql: "DELETE FROM sqlite_sequence WHERE name = 'card'")
+                try db.execute(sql: "INSERT INTO sqlite_sequence (name, seq) VALUES ('card', ?)", arguments: [lastID])
+            }
+            try db.create(index: "card_on_captureId", on: "card", columns: ["captureId"])
+        }
+        migrator.registerMigration("v13 images on cards") { db in
+            // Each side of a card holds text, an image, or both, one image at
+            // most, so a side with only an image has an empty text. An image
+            // is a file of its own in the Images folder beside the database,
+            // named by its content, as `ImageName` says, and a side refers to
+            // it by that name, or is NULL for none. Many sides can refer to
+            // one image.
+            try db.alter(table: "card") { table in
+                table.add(column: "frontImage", .text)
+                table.add(column: "backImage", .text)
+            }
+        }
+        migrator.registerMigration("v14 placements in the review log") { db in
+            // An import that brings a card's progress from another app, such
+            // as Anki, starts the card's log with a placement in place of a
+            // first view: the step it puts the card on, and when the card is
+            // due there (ADR 0013). Nothing brought a placement and no one
+            // answered it, so it has no trigger and no response time. SQLite
+            // can't drop the trigger's NOT NULL, so the review log is made
+            // again, with every entry as it was, as "v9 answers from card
+            // notifications" did.
+            try db.create(table: "new_reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                // Its index comes once the table has its name.
+                table.belongsTo("card", indexed: false).notNull()
+                // "firstView", "review" or "placement".
+                table.column("kind", .text).notNull()
+                // A review's rating: "again", "hard" or "good".
+                table.column("rating", .text)
+                // A placement's step, counted from 0, the first step, and
+                // when the card is due on it.
+                table.column("step", .integer)
+                table.column("due", .datetime)
+                // When the user answered, or when the import placed the card.
+                table.column("answeredAt", .datetime).notNull()
+                // From showing the card to the answer, in seconds, when
+                // something measured it.
+                table.column("responseTime", .double)
+                // What brought the card, as `Trigger` names it, or NULL for a
+                // placement.
+                table.column("trigger", .text)
+                table.column("isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+                table.check(
+                    sql: """
+                        (kind = 'firstView' AND rating IS NULL)
+                        OR (kind = 'review' AND rating IN ('again', 'hard', 'good'))
+                        OR (kind = 'placement' AND rating IS NULL)
+                        """
+                )
+                table.check(sql: "(kind = 'placement') = (step IS NOT NULL)")
+                table.check(sql: "step IS NULL OR step >= 0")
+                table.check(sql: "(kind = 'placement') = (due IS NOT NULL)")
+                table.check(sql: "(kind = 'placement') = (trigger IS NULL)")
+                table.check(sql: "kind <> 'placement' OR responseTime IS NULL")
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_reviewLog (id, cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                    SELECT id, cardId, kind, rating, answeredAt, responseTime, trigger, isAhead FROM reviewLog
+                    """
+            )
+            try db.drop(table: "reviewLog")
+            try db.rename(table: "new_reviewLog", to: "reviewLog")
+            try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
+        }
         return migrator
     }()
 }

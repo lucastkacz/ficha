@@ -9,8 +9,10 @@ import SwiftUI
 /// Esc closes the panel, which snoozes an appearance. Once Lucas went through
 /// every card, the panel stays open until he closes it, and offers more cards
 /// if there are any, which Enter brings; review now with nothing due offers
-/// to review ahead the same way. `ReviewPanelState` decides what the panel
-/// shows and what happens when Lucas acts, and the view draws it.
+/// to review ahead the same way. A card taller than the panel's maximum
+/// height scrolls between the line at its top and what's under it, which
+/// stay in view. `ReviewPanelState` decides what the panel shows and what
+/// happens when Lucas acts, and the view draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
@@ -22,37 +24,46 @@ struct ReviewPanelView: View {
     let model: Result<ReviewPanelModel, EngineError>
     /// Closes the panel's window.
     let closeWindow: () -> Void
+    /// The tallest the panel grows, which its window sets by the screen it
+    /// shows on: a card taller than that scrolls.
+    var maximumHeight = CGFloat.infinity
+    /// The tallest a side's image shows: a third of the panel's tallest, so a
+    /// card with an image on each side and a line or two of text on each fits
+    /// without scrolling, and never more than 280 pt.
+    private var imageHeight: CGFloat { min(280, maximumHeight / 3) }
     /// Whether the note's field has the keyboard. Whatever shows the note
     /// sets it, in the same action, as the flag button does.
     @FocusState private var noteIsFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            switch model {
-            case .success(let panel):
-                content(of: panel)
-                    .onChange(of: panel.state.outcome != nil) { _, isClosed in
-                        if isClosed {
-                            closeWindow()
+        HeightUpTo(maximum: maximumHeight) {
+            VStack(alignment: .leading, spacing: 16) {
+                switch model {
+                case .success(let panel):
+                    content(of: panel)
+                        .onChange(of: panel.state.outcome != nil) { _, isClosed in
+                            if isClosed {
+                                closeWindow()
+                            }
                         }
+                        .failureAlert(failure(of: panel))
+                case .failure(let failure):
+                    header {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Couldn't load the cards")
+                                .font(.headline)
+                            Text(failure.localizedDescription)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    } buttons: {
+                        closeButton(closeWindow)
                     }
-                    .failureAlert(failure(of: panel))
-            case .failure(let failure):
-                header {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Couldn't load the cards")
-                            .font(.headline)
-                        Text(failure.localizedDescription)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                } buttons: {
-                    closeButton(closeWindow)
                 }
             }
+            .padding(20)
+            .frame(width: 400, alignment: .leading)
         }
-        .padding(20)
-        .frame(width: 400, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: Self.cornerRadius, style: .continuous))
     }
 
@@ -109,27 +120,17 @@ struct ReviewPanelView: View {
                 closeButton(closeByLucas)
             }
         case .firstView(let card):
-            header {
-                VStack(alignment: .leading, spacing: 8) {
-                    TagLine(tags: panel.state.tags) {
-                        newBadge
-                    }
-                    front(of: card)
+            sides(of: card, showingBack: true, buttons: .forTheCard, in: panel) {
+                TagLine(tags: panel.state.tags) {
+                    newBadge
                 }
-            } buttons: {
-                cardButtons(of: panel)
-                closeButton(closeByLucas)
             }
-            back(of: card)
             enterButton(Text("Got it")) {
                 panel.state.endFirstView()
             }
         case .front(let card, let isAhead):
-            header {
-                front(of: card, isAhead: isAhead, tags: panel.state.tags)
-            } buttons: {
-                cardButtons(of: panel)
-                closeButton(closeByLucas)
+            sides(of: card, showingBack: false, buttons: .forTheCard, in: panel) {
+                topLine(isAhead: isAhead, tags: panel.state.tags)
             }
             HStack {
                 Spacer()
@@ -145,29 +146,16 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.space, modifiers: [])
             }
         case .back(let card, let isAhead):
-            header {
-                front(of: card, isAhead: isAhead, tags: panel.state.tags)
-            } buttons: {
-                cardButtons(of: panel)
-                closeButton(closeByLucas)
+            sides(of: card, showingBack: true, buttons: .forTheCard, in: panel) {
+                topLine(isAhead: isAhead, tags: panel.state.tags)
             }
-            back(of: card)
             HStack {
                 ratingButton("Don't know", key: "1", rating: .again, in: panel)
                 ratingButton("Sort of", key: "2", rating: .hard, in: panel)
                 ratingButton("Know it", key: "3", rating: .good, in: panel)
             }
         case .flagging(let card, let showsBack):
-            // Esc goes back to the card here, so the close button doesn't
-            // take it.
-            header {
-                front(of: card)
-            } buttons: {
-                closeButton(closeByLucas, withEsc: false)
-            }
-            if showsBack {
-                back(of: card)
-            }
+            sides(of: card, showingBack: showsBack, buttons: .closeWithoutEsc, in: panel) {}
             noteEditor(of: panel)
         case .done where panel.state.canSeeMore:
             header {
@@ -225,11 +213,107 @@ struct ReviewPanelView: View {
         HStack(alignment: .top) {
             title()
             Spacer(minLength: 12)
-            HStack(spacing: 2) {
-                buttons()
+            iconButtons(buttons)
+        }
+    }
+
+    /// Buttons in a row at the end of the panel's first line, as icons.
+    private func iconButtons(@ViewBuilder _ buttons: () -> some View) -> some View {
+        HStack(spacing: 2) {
+            buttons()
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+    }
+
+    /// A card's sides, under the line at its top and beside the buttons at
+    /// the panel's top right: its front, and its back when it shows. The
+    /// panel's window stops at its share of the screen (`ReviewPanelWindow`).
+    /// A card that doesn't fit has its front go under the line at its top,
+    /// the panel's width, and when it still doesn't fit, its front and its
+    /// back scroll, each card from its top, while the line at its top and the
+    /// buttons stay in view, as what's under the card does. The scroll never
+    /// takes the keyboard, so the panel's keys work as on a short card. The
+    /// buttons show once, over the room each layout keeps for them, so no key
+    /// belongs to two buttons.
+    private func sides<TopLine: View>(
+        of card: Card, showingBack: Bool, buttons: TopButtons, in panel: ReviewPanelModel,
+        @ViewBuilder topLine: () -> TopLine
+    ) -> some View {
+        let line = topLine()
+        let room = topButtons(buttons, of: panel, withKeys: false).hidden()
+        let frontAndBack = VStack(alignment: .leading, spacing: 16) {
+            front(of: card, in: panel)
+            if showingBack {
+                back(of: card, in: panel)
             }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        return ViewThatFits(in: .vertical) {
+            VStack(alignment: .leading, spacing: 16) {
+                header {
+                    VStack(alignment: .leading, spacing: 8) {
+                        line
+                        front(of: card, in: panel)
+                    }
+                } buttons: {
+                    room
+                }
+                if showingBack {
+                    back(of: card, in: panel)
+                }
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                header {
+                    line
+                } buttons: {
+                    room
+                }
+                frontAndBack
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                header {
+                    line
+                } buttons: {
+                    room
+                }
+                ScrollView {
+                    frontAndBack
+                        // The scroller sits in the panel's margin, beside the
+                        // text rather than over it.
+                        .padding(.horizontal, 20)
+                }
+                .padding(.horizontal, -20)
+                .id(card.id)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            iconButtons {
+                topButtons(buttons, of: panel, withKeys: true)
+            }
+        }
+    }
+
+    /// Which buttons a card has at the panel's top right.
+    private enum TopButtons {
+        /// Undo, flag, bury, and close, with Esc.
+        case forTheCard
+        /// Close alone, without Esc, which goes back to the card while the user
+        /// writes a note to flag it.
+        case closeWithoutEsc
+    }
+
+    /// The buttons at a card's top right, with their keys, or, `withKeys`
+    /// false, a copy without them that only keeps their room.
+    @ViewBuilder
+    private func topButtons(_ buttons: TopButtons, of panel: ReviewPanelModel, withKeys: Bool) -> some View {
+        let closeByLucas = { panel.state.close(.byLucas) }
+        switch buttons {
+        case .forTheCard:
+            cardButtons(of: panel, withKeys: withKeys)
+            closeButton(closeByLucas, withEsc: withKeys)
+        case .closeWithoutEsc:
+            closeButton(closeByLucas, withEsc: false)
         }
     }
 
@@ -242,10 +326,11 @@ struct ReviewPanelView: View {
     }
 
     /// The buttons for the card Lucas is on: ⌘Z undoes what he did with the
-    /// last card, M flags this one with a note, and E buries it.
+    /// last card, M flags this one with a note, and E buries it. Without
+    /// `withKeys`, none of them has its key.
     @ViewBuilder
-    private func cardButtons(of panel: ReviewPanelModel) -> some View {
-        undoButton(of: panel)
+    private func cardButtons(of panel: ReviewPanelModel, withKeys: Bool) -> some View {
+        undoButton(of: panel, withKeys: withKeys)
         Button(
             String(
                 localized: "Flag…",
@@ -258,7 +343,7 @@ struct ReviewPanelView: View {
             // SwiftUI never focused it while the panel had the keyboard (#61).
             noteIsFocused = true
         }
-        .keyboardShortcut("m", modifiers: [])
+        .keyboardShortcut(withKeys ? KeyboardShortcut("m", modifiers: []) : nil)
         .help(Text("Flag… (m)", comment: "The tooltip of the button that flags the card, with its key."))
         Button(
             String(
@@ -268,16 +353,17 @@ struct ReviewPanelView: View {
         ) {
             panel.state.buryCard()
         }
-        .keyboardShortcut("e", modifiers: [])
+        .keyboardShortcut(withKeys ? KeyboardShortcut("e", modifiers: []) : nil)
         .help(Text("Bury (e)", comment: "The tooltip of the button that buries the card, with its key."))
     }
 
-    /// The button that undoes what Lucas did with the last card: ⌘Z.
-    private func undoButton(of panel: ReviewPanelModel) -> some View {
+    /// The button that undoes what the user did with the last card: ⌘Z, unless
+    /// `withKeys` is false.
+    private func undoButton(of panel: ReviewPanelModel, withKeys: Bool = true) -> some View {
         Button("Undo", systemImage: "arrow.uturn.backward") {
             panel.state.undoLastCard()
         }
-        .keyboardShortcut("z", modifiers: .command)
+        .keyboardShortcut(withKeys ? KeyboardShortcut("z", modifiers: .command) : nil)
         .disabled(!panel.state.canUndo)
         .help("Undo (⌘Z)")
     }
@@ -333,33 +419,46 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The card's front, under the line of the badge of a review ahead, when
-    /// it's one, and the card's tags, when it has some.
-    private func front(of card: Card, isAhead: Bool, tags: [CardTag]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if isAhead || !tags.isEmpty {
-                TagLine(tags: tags) {
-                    if isAhead {
-                        AheadBadge()
-                    }
+    /// The line at the top of a card the user reviews: the badge of a review
+    /// ahead, when it's one, and the card's tags, when it has some.
+    @ViewBuilder
+    private func topLine(isAhead: Bool, tags: [CardTag]) -> some View {
+        if isAhead || !tags.isEmpty {
+            TagLine(tags: tags) {
+                if isAhead {
+                    AheadBadge()
                 }
             }
-            front(of: card)
         }
     }
 
-    private func front(of card: Card) -> some View {
-        Text(card.front)
-            .font(.title2.weight(.semibold))
-            .fixedSize(horizontal: false, vertical: true)
+    /// The card's front: its image, fitted to the panel's width, above its
+    /// text, each when it has one.
+    private func front(of card: Card, in panel: ReviewPanelModel) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let image = card.frontImage {
+                SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
+            }
+            if !card.front.isEmpty {
+                Text(card.front)
+                    .font(.title2.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
-    /// The card's back, and its source, small, when it has one.
-    private func back(of card: Card) -> some View {
+    /// The card's back: its image, fitted to the panel's width, above its
+    /// text, each when it has one, and its source, small, when it has one.
+    private func back(of card: Card, in panel: ReviewPanelModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Text(card.back)
-                .fixedSize(horizontal: false, vertical: true)
+            if let image = card.backImage {
+                SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
+            }
+            if !card.back.isEmpty {
+                Text(card.back)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let source = card.source {
                 Text(source)
                     .font(.caption)
@@ -453,6 +552,32 @@ private struct MoreTagsCapsule: View {
     }
 }
 
+/// The review panel's content at its ideal height, or, when that's more than
+/// `maximum`, as the content lays itself out in `maximum`, whatever height
+/// it's offered: the panel's window takes the view's smallest and largest
+/// size as its own, which this makes the same, so the window fits the content
+/// as it changes. In `maximum`, a card taller than that scrolls, and one that
+/// fits in less, once its front moves under the line at its top, takes less.
+/// SwiftUI's `Layout` is standard; this one is ours.
+private struct HeightUpTo: Layout {
+    let maximum: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else {
+            return .zero
+        }
+        let ideal = content.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        guard ideal.height > maximum else {
+            return ideal
+        }
+        return content.sizeThatFits(ProposedViewSize(width: proposal.width, height: maximum))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
+}
+
 /// A button's title, followed by the key that does the same, small. The key
 /// shows as it's given: a symbol, a digit, or a key's name, like Space's,
 /// which the caller translates.
@@ -487,9 +612,10 @@ extension EngineError {
                 comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .cardFlagged, .cardNotFlagged, .cardBuried,
-            .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage, .copyNotFound,
-            .copyMigratedByNewerVersion, .backupsFolder:
+            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
+            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage,
+            .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .unreadableImageFile,
+            .imagesFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }

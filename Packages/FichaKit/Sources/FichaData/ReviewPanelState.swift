@@ -89,6 +89,9 @@ public struct ReviewPanelState: Sendable {
     public private(set) var outcome: AppearanceLogEntry.Outcome?
     /// What Lucas did that couldn't be saved, while the panel says so.
     public private(set) var failure: Failure?
+    /// The images on the cards' sides, read once the panel has the cards,
+    /// as it opens and as "See more" adds them.
+    public private(set) var images = ShownImages()
     /// What every tag has of its own, as it was when the panel opened: a tag
     /// changed while it's open shows from the next panel on, so the card
     /// Lucas is on doesn't change under him.
@@ -127,6 +130,7 @@ public struct ReviewPanelState: Sendable {
         touchedAt = shownAt
         let openedAt = clock.now
         sinceOpening = { openedAt.duration(to: clock.now) }
+        showImages()
         lookForMore()
     }
 
@@ -344,8 +348,14 @@ public struct ReviewPanelState: Sendable {
         guard outcome == nil, current == nil else { return }
         cards += moreCards
         moreCards = []
+        showImages()
         startTiming()
         touch()
+    }
+
+    /// Reads the images on the sides of the panel's cards.
+    private mutating func showImages() {
+        images.show(Set(cards.flatMap(\.card.images)), readingWith: engine)
     }
 
     /// Flags the current card with Lucas's note on what to fix, which sends

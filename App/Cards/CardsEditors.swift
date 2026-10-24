@@ -2,24 +2,35 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The fields Lucas edits a card in, in place of its detail: its type,
-/// front, back, tags and source, under his note when it's flagged. Return
+/// The fields the user edits a card in, in place of its detail: its type, or
+/// None, front and back, each with its text and its image, dragged or pasted
+/// under it, tags and source, under the flag's note when it's flagged. Return
 /// saves, Option-Return starts a new line, and Escape cancels, as in the
-/// capture window, unless he's in the window's search field. Saving with the
-/// front or the back blank says, under it, what's missing. When the card
-/// can't be saved, the window's alert says why, and the fields stay as Lucas
-/// left them.
+/// capture window, unless the search field has the focus. Saving with a side
+/// that has neither text nor an image says, under it, what's missing. When
+/// the card can't be saved, the window's alert says why, and the fields stay
+/// as the user left them.
 struct CardEditor: View {
     /// The card as it was when Lucas started editing it.
     let card: Card
+    /// The images on its sides as Save would give them to it, which the
+    /// window holds.
+    let images: SideImages
+    /// The images the window shows, those on its sides among them.
+    let shownImages: ShownImages
     /// Whether Lucas is in the window's search field, which then keeps Return
     /// and Escape: Escape there clears the search, and leaves his edit alone.
     let isSearching: Bool
+    /// Puts what was dragged or pasted on a side, as its image.
+    let putImage: (DroppedImage, CardSide) -> Void
+    /// Removes a side's image.
+    let removeImage: (CardSide) -> Void
     /// Saves the card with `content`, which ends the edit once it's saved.
     let save: (CardContent) -> Void
     /// Ends the edit without saving it.
     let cancel: () -> Void
-    @State private var type: CardType
+    /// The card's type, or nil for None.
+    @State private var type: CardType?
     @State private var front: String
     @State private var back: String
     /// The card's tags as the Tags field holds them, separated by commas.
@@ -32,12 +43,20 @@ struct CardEditor: View {
 
     init(
         card: Card,
+        images: SideImages,
+        shownImages: ShownImages,
         isSearching: Bool,
+        putImage: @escaping (DroppedImage, CardSide) -> Void,
+        removeImage: @escaping (CardSide) -> Void,
         save: @escaping (CardContent) -> Void,
         cancel: @escaping () -> Void
     ) {
         self.card = card
+        self.images = images
+        self.shownImages = shownImages
         self.isSearching = isSearching
+        self.putImage = putImage
+        self.removeImage = removeImage
         self.save = save
         self.cancel = cancel
         _type = State(initialValue: card.type)
@@ -70,16 +89,7 @@ struct CardEditor: View {
                 let label = Text(
                     "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
                 gridLabel(label)
-                Picker(selection: $type) {
-                    ForEach(CardType.allCases, id: \.self) { type in
-                        Text(type.name)
-                            .tag(type)
-                    }
-                } label: {
-                    label
-                }
-                .labelsHidden()
-                .fixedSize()
+                CardTypePicker(type: $type, label: label)
             }
             GridRow {
                 gridLabel(
@@ -88,12 +98,13 @@ struct CardEditor: View {
                     TextField("Front", text: $front, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($isFrontFocused)
-                    if showsMissingSides && CardContent.isBlank(front) {
+                    if showsMissingSides && CardContent.isBlank(front, image: images.front) {
                         missing(
                             Text(
                                 "A card needs a front.",
                                 comment: "In the Cards window, under a card's front, when Lucas saves it blank."))
                     }
+                    imageWell(on: .front)
                 }
             }
             GridRow {
@@ -102,12 +113,13 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Back", text: $back, axis: .vertical)
                         .lineLimit(4...12)
-                    if showsMissingSides && CardContent.isBlank(back) {
+                    if showsMissingSides && CardContent.isBlank(back, image: images.back) {
                         missing(
                             Text(
                                 "A card needs a back.",
                                 comment: "In the Cards window, under a card's back, when Lucas saves it blank."))
                     }
+                    imageWell(on: .back)
                 }
             }
             GridRow {
@@ -141,16 +153,28 @@ struct CardEditor: View {
         .onSubmit(submit)
     }
 
-    /// The tags in the Tags field, which `CardContent` cleans up as it does
-    /// wherever a card comes from.
+    /// The tags in the Tags field.
     private var tags: [String] {
-        tagsText.split(separator: ",").map(String.init)
+        CardContent.tags(inField: tagsText)
     }
 
-    /// Saves the card with what the fields hold, unless the front or the back
-    /// is blank.
+    /// The place for the image on `side`.
+    private func imageWell(on side: CardSide) -> some View {
+        ImageWell(image: images[side], images: shownImages) { dropped in
+            putImage(dropped, side)
+        } remove: {
+            removeImage(side)
+        }
+    }
+
+    /// Saves the card with what the fields hold and the images on its sides,
+    /// unless a side has neither text nor an image.
     private func submit() {
-        guard let content = CardContent(type: type, front: front, back: back, tags: tags, source: source) else {
+        guard
+            let content = CardContent(
+                type: type, front: front, back: back, tags: tags, source: source, frontImage: images.front,
+                backImage: images.back)
+        else {
             showsMissingSides = true
             return
         }

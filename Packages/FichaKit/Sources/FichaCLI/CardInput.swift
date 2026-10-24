@@ -7,8 +7,8 @@ import Foundation
 /// help and their errors list them. The types are listed the British way,
 /// with no comma before "or", like the rest of the text.
 let cardFields = """
-    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en_GB"))))), \
-    front, back, tags (a list, which can be empty) and source (null when there's none)
+    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en_GB")))), \
+    or null when there's none), front, back, tags (a list, which can be empty) and source (null when there's none)
     """
 
 /// What a command reads as JSON on standard input, where Claude can pass any
@@ -92,10 +92,10 @@ func standardInput() throws -> Data {
 
 /// A card as `ficha approve`, `ficha approve-expansion` and `ficha fix` read
 /// it. Every field must be
-/// there, `source` too, as null when there's none, so a misspelled field
-/// fails instead of passing for a missing one.
+/// there, `type` and `source` too, as null when there's none, so a
+/// misspelled field fails instead of passing for a missing one.
 private struct CardInput: Decodable {
-    let type: CardType
+    let type: CardType?
     let front: String
     let back: String
     let tags: [String]
@@ -103,7 +103,7 @@ private struct CardInput: Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        type = try container.decode(CardType.self, forKey: .type)
+        type = try container.decode(CardType?.self, forKey: .type)
         front = try container.decode(String.self, forKey: .front)
         back = try container.decode(String.self, forKey: .back)
         tags = try container.decode([String].self, forKey: .tags)

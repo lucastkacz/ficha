@@ -53,6 +53,18 @@ struct DuplicateTests {
         #expect(result == .duplicate(of: .card(try #require(cards.first))))
     }
 
+    // A card made in the Cards window's form, or imported, has no capture.
+    @Test("a capture whose text matches the front of a card with no capture is a duplicate")
+    func repeatingTheFrontOfACardWithNoCaptureIsADuplicate() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let created = try engine.create(card(nil, front: "Petricor", back: "El olor de la lluvia."))
+
+        let result = try engine.capture(text: " petricor ", note: nil, source: nil)
+
+        #expect(result == .duplicate(of: .card(created)))
+        #expect(try engine.capture(text: "serendipia", note: nil, source: nil).saved?.text == "serendipia")
+    }
+
     @Test("a capture that repeats a discarded capture is saved")
     func discardedCapturesAreNotRepeated() throws {
         let engine = try Engine(location: .inMemory, time: time)

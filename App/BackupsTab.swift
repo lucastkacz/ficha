@@ -45,8 +45,8 @@ struct BackupsTab: View {
             } footer: {
                 Text(
                     """
-                    As each backup is saved, the oldest ones beyond that number go. Copies before an update or a \
-                    restore stay until you delete them.
+                    As each backup is saved, the oldest ones beyond that number go. Copies before an update, a \
+                    restore or an import stay until you delete them.
                     """,
                     comment: """
                         Settings, under Backups, below its settings: "that number" is the one in Backups to keep, \
@@ -203,11 +203,22 @@ struct BackupsTab: View {
         }
     }
 
-    /// How many `copies` there are, and what they weigh in all.
+    /// How many `copies` there are and what they weigh in all, and under
+    /// it what the images they share weigh, when they share any.
     private func summary(_ copies: [DatabaseCopy]) -> some View {
-        Text(
-            "\(copies.count) copies, \(model.backups.totalSize.formatted(.byteCount(style: .file))) in all",
-            comment: "Settings, under Backups: how many copies there are, and what they weigh in all.")
+        VStack(alignment: .leading, spacing: 2) {
+            Text(
+                "\(copies.count) copies, \(model.backups.totalSize.formatted(.byteCount(style: .file))) in all",
+                comment: "Settings, under Backups: how many copies there are, and what they weigh in all.")
+            if let imagesSize = model.backups.sharedImagesSize {
+                Text(
+                    "Images they share: \(imagesSize.formatted(.byteCount(style: .file)))",
+                    comment: """
+                        Settings, under Backups, below how many copies there are: what the images on their cards \
+                        weigh, each kept once for all the copies.
+                        """)
+            }
+        }
     }
 
     /// Restore…, which asks whether to restore the selected copy: ⌘R.
@@ -316,6 +327,10 @@ struct BackupsTab: View {
             String(
                 localized: "Before a restore",
                 comment: "Settings, under Backups: a copy's kind, saved before a restore.")
+        case .beforeImport:
+            String(
+                localized: "Before an import",
+                comment: "Settings, under Backups: a copy's kind, saved before cards were imported from a file.")
         }
     }
 }

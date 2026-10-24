@@ -117,7 +117,11 @@ struct CardsCommand: EngineCommand {
         abstract: "List your cards, in the order you approved them.",
         discussion: """
             A flagged card has your note on what to fix in "flag", a buried one says when you buried it in \
-            "buriedAt", and one with tags you set aside in the Cards window lists them in "setAsideBy".
+            "buriedAt", and one with tags you set aside in the Cards window lists them in "setAsideBy". A card \
+            leaves out "type", "source" or "captureID" when it has no type, no source, or didn't come from a \
+            capture. A card with an image on its front or back names it in "frontImage" or "backImage", left out \
+            when that side has none; a side with only an image has an empty text. Images are added in the Cards \
+            window, never through the CLI.
             """
     )
 
