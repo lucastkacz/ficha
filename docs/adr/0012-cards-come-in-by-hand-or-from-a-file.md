@@ -11,5 +11,5 @@ Ficha was Lucas's app, and his cards come from captures he refines with Claude t
 
 - This widens who ADR 0001 is about, not what it rules: the app makes no network calls and holds no AI, and Claude still changes Lucas's cards only through the CLI.
 - An export holds what the cards say, never the user's progress: a person's own cards reach another Mac through a backup, and later through iCloud sync (#161).
-- Images travel in a zip, with the text file and a column naming each side's image. Sound could follow the same way.
+- Images travel in a zip, with the text file and a column naming each side's image. Sounds follow the same way, since #232.
 - A card's type is optional, since cards from files and from other people rarely have one.

@@ -11,6 +11,6 @@ Someone leaving Anki has years of reviews, and starting over at a few new cards 
 
 - This changes ADR 0002's consequence that a card always starts on the first step: a card imported with its progress starts on the step the import placed it on, without a first view.
 - Current Anki compresses its packages with zstd, which Apple's Compression framework lacks, so reading them adds a dependency, with an ADR of its own in the pull request that adds it. Ficha reads every package version Anki writes.
-- Each Anki card becomes one Ficha card, with what Anki showed on each side as plain text, so a cloze card comes in with "[...]" on its front and the whole sentence on its back. Suspended cards come in buried. Image Occlusion cards, and cards left with an empty side, such as a side with only a sound, stay out.
+- Each Anki card becomes one Ficha card, with what Anki showed on each side as plain text, so a cloze card comes in with "[...]" on its front and the whole sentence on its back. Suspended cards come in buried. Image Occlusion cards, and cards left with an empty side, such as a side whose only sound Ficha can't read, stay out. Before #232 brought each side's first sound in, every side with only a sound was empty.
 - The import brings progress unless the user unticks it, since shared decks rarely carry any, while a person leaving Anki brings their own.
 - Statistics per ladder step (#168) count an imported card's reviews from its import on.
