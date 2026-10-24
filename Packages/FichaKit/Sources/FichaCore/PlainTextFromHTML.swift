@@ -10,16 +10,16 @@ import Foundation
 /// such as a `<` before a space or an `&` before no known name, stays as it
 /// is.
 public func plainText(fromHTML html: String) -> String {
-    var converter = HTMLToText(Array(html.unicodeScalars))
-    converter.convert()
-    return String(converter.text)
+    var reader = HTMLReader(Array(html.unicodeScalars))
+    reader.convert()
+    return String(reader.text)
 }
 
 /// `html` without what `plainText(fromHTML:)` leaves out whole, its
 /// comments, `<script>`s and `<style>`s, each ended where it ends them, and
 /// with the rest as it is.
 func htmlWithoutHiddenMarkup(_ html: String) -> String {
-    var reader = HTMLToText(Array(html.unicodeScalars))
+    var reader = HTMLReader(Array(html.unicodeScalars))
     return reader.withoutHiddenMarkup()
 }
 
@@ -94,9 +94,9 @@ private let namedReferences: [String: Unicode.Scalar] = {
     return references
 }()
 
-/// HTML being turned into plain text, or read without its hidden markup,
-/// from its start.
-private struct HTMLToText {
+/// HTML being read from its start, into plain text or without its hidden
+/// markup.
+private struct HTMLReader {
     private let html: [Unicode.Scalar]
     private var index = 0
     /// The plain text so far.
@@ -132,7 +132,9 @@ private struct HTMLToText {
     mutating func withoutHiddenMarkup() -> String {
         var kept = String.UnicodeScalarView()
         while index < html.count {
-            if html[index] == "<", let end = endOfMarkup(), let hiddenEnd = endOfHiddenMarkup(upTo: end) {
+            if html[index] == "<", let end = endOfMarkup(),
+                let hiddenEnd = endOfHiddenMarkup(upTo: end, named: tagName(upTo: end))
+            {
                 index = hiddenEnd + 1
             } else {
                 kept.append(html[index])
@@ -167,10 +169,10 @@ private struct HTMLToText {
         guard index + 1 < html.count else {
             return nil
         }
-        let next = html[index + 1]
-        if next == "!", starts(with: "<!--", at: index) {
+        if isAtComment {
             return firstIndex(of: "-->", from: index + 4).map { $0 + 2 } ?? html.count - 1
         }
+        let next = html[index + 1]
         guard next == "/" || next == "!" || next.properties.isAlphabetic else {
             return nil
         }
@@ -182,10 +184,10 @@ private struct HTMLToText {
     /// `<script>` or a `<style>` is skipped up to its end. Returns where what
     /// it read ends.
     private mutating func readMarkup(upTo end: Int) -> Int {
-        if let hiddenEnd = endOfHiddenMarkup(upTo: end) {
+        let name = tagName(upTo: end)
+        if let hiddenEnd = endOfHiddenMarkup(upTo: end, named: name) {
             return hiddenEnd
         }
-        let name = tagName(upTo: end)
         if name == "br" {
             breakLine()
         } else if blockElements.contains(name) {
@@ -196,15 +198,19 @@ private struct HTMLToText {
         return end
     }
 
+    /// Whether a comment starts at `index`.
+    private var isAtComment: Bool {
+        html[index + 1] == "!" && starts(with: "<!--", at: index)
+    }
+
     /// Where the comment, `<script>` or `<style>` that starts at `index`, with
-    /// a comment or an opening tag that ends at `end`, its `>`, ends: the
+    /// a comment or a tag named `name` that ends at `end`, its `>`, ends: the
     /// comment's end, or the `>` of the element's closing tag, or the HTML's
     /// end when it has none. Nil when what starts there shows.
-    private func endOfHiddenMarkup(upTo end: Int) -> Int? {
-        if html[index + 1] == "!", starts(with: "<!--", at: index) {
+    private func endOfHiddenMarkup(upTo end: Int, named name: String) -> Int? {
+        if isAtComment {
             return end
         }
-        let name = tagName(upTo: end)
         guard html[index + 1] != "/", name == "script" || name == "style" else {
             return nil
         }
