@@ -588,6 +588,16 @@ struct CardsView: View {
             .width(min: 80, ideal: 96, max: 140)
             .customizationID(CardRowOrder.Column.created.rawValue)
             .defaultVisibility(.hidden)
+            TableColumn(
+                Text("Edited", comment: "A column of the Cards window: when the card's front or back last changed."),
+                sortUsing: CardRowOrder(.edited)
+            ) { row in
+                // Blank for a card never edited.
+                Text(row.card.editedAt?.formatted(date: .abbreviated, time: .omitted) ?? "")
+            }
+            .width(min: 80, ideal: 96, max: 140)
+            .customizationID(CardRowOrder.Column.edited.rawValue)
+            .defaultVisibility(.hidden)
         }
         .focused($isTableFocused)
         // The card Show Card selected, which may be far down the list.

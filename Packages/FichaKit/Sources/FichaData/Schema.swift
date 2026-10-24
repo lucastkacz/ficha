@@ -295,6 +295,15 @@ enum Schema {
             try db.rename(table: "new_reviewLog", to: "reviewLog")
             try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
         }
+        migrator.registerMigration("v15 when a card's sides last changed") { db in
+            // When the card's front or back last changed, a side's image
+            // included: an edit, a fix, an approved expansion or an import
+            // that updated it. NULL while neither changed since the card came
+            // in, as for every card from before this migration.
+            try db.alter(table: "card") { table in
+                table.add(column: "editedAt", .datetime)
+            }
+        }
         return migrator
     }()
 }

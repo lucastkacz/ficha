@@ -338,6 +338,35 @@ struct CardsWindowStateTests {
         #expect(window.editing == nil)
         #expect(window.shownCard?.row.card.back == "Un hallazgo valioso que se da por accidente.")
     }
+
+    // The Edited column shows and sorts by it, in the app's `CardRowOrder`,
+    // since a table's order stays in the app.
+    @Test("the table lists a card with when its front or back last changed, and one never edited with none")
+    func theTableListsWhenACardWasEdited() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try approveCard("petricor", in: engine)
+        var window = openWindow()
+        time.advance(by: hours(1))
+        window.select([serendipia.id])
+        window.startEditing()
+        window.saveCard(try card(.word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente."))
+        let serendipiaEditedAt = time.now
+        time.advance(by: hours(1))
+
+        window.select([ubuntu.id])
+        window.startEditing()
+        window.saveCard(try card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        window.select([serendipia.id])
+        window.startEditing()
+        window.saveCard(
+            try card(
+                .word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente.", tags: ["lenguaje"]))
+
+        let rows = try #require(window.listedCardRows)
+        #expect(rows.map(\.card.front) == ["serendipia", "ubuntu", "petricor"])
+        #expect(rows.map(\.card.editedAt) == [serendipiaEditedAt, time.now, nil])
+    }
 }
 
 extension CardsWindowState {

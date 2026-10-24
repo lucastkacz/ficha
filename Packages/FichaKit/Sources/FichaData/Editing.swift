@@ -8,13 +8,15 @@ extension Engine {
     /// keeps its review log, and so its step and due time, when he approved
     /// it and the capture it came from. Editing a flagged card fixes it: its
     /// flag goes, and it's back in his reviews, on its step, unless it's
-    /// buried, since an edited card stays buried. An image it no longer has
-    /// goes, unless another card uses it. Returns the card.
+    /// buried, since an edited card stays buried. An edit that changes its
+    /// front or back keeps when. An image it no longer has goes, unless
+    /// another card uses it. Returns the card.
     @discardableResult
     public func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
+        let editedAt = time.now
         let (before, edited) = try write { db in
             let before = try existingCard(cardID, in: db)
-            _ = try replaceContent(of: cardID, with: content, in: db)
+            _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
             return (before, try takeFlagOff(cardID, in: db))
         }
         removeImagesNoCardUses(among: before.images.subtracting(edited.images))
