@@ -95,6 +95,12 @@ extension InboxRow.Item {
             String(
                 localized: "inbox-kind.expansion", defaultValue: "Expansion",
                 comment: "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.")
+        case .followUp:
+            String(
+                localized: "inbox-kind.follow-up", defaultValue: "Follow-up",
+                comment:
+                    "In the Cards window's inbox, the kind of a row: a capture asked about a card in the review panel, tied to it."
+            )
         case .flaggedCard:
             String(
                 localized: "inbox-kind.flagged", defaultValue: "Flagged",

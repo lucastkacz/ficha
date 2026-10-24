@@ -616,8 +616,9 @@ struct CardsView: View {
         }
     }
 
-    /// What waits in the inbox, one row each: the captures, the expansions
-    /// and the flagged cards, which Lucas selects one at a time.
+    /// What waits in the inbox, one row each: the captures, the expansions,
+    /// the follow-ups and the flagged cards, which Lucas selects one at a
+    /// time.
     private func inboxTable(_ rows: [InboxRow]) -> some View {
         Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
             TableColumn(
@@ -637,7 +638,8 @@ struct CardsView: View {
             TableColumn(
                 Text(
                     "Kind",
-                    comment: "A column of the Cards window's inbox: whether a row is a capture, an expansion or a card."
+                    comment:
+                        "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card."
                 ),
                 sortUsing: InboxRowOrder(.kind)
             ) { row in
@@ -709,14 +711,22 @@ struct CardsView: View {
         case nil:
             switch state.detail {
             case .capture(let capture):
-                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, expandedCard: nil)
+                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         actionBar
                     }
             case .expansion(let expansion):
                 CaptureDetail(
                     capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
-                    expandedCard: expansion.card
+                    tie: .expands(expansion.card)
+                )
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    actionBar
+                }
+            case .followUp(let followUp):
+                CaptureDetail(
+                    capture: followUp.capture, kind: InboxRow.Item.followUp(followUp).kindName,
+                    tie: .followsUp(followUp.card)
                 )
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     actionBar

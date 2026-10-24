@@ -62,7 +62,7 @@ struct CardEditor: View {
         _type = State(initialValue: card.type)
         _front = State(initialValue: card.front)
         _back = State(initialValue: card.back)
-        _tagsText = State(initialValue: card.tags.joined(separator: ", "))
+        _tagsText = State(initialValue: CardContent.field(of: card.tags))
         _source = State(initialValue: card.source ?? "")
     }
 

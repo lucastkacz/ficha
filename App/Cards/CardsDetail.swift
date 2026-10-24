@@ -7,9 +7,12 @@ import SwiftUI
 /// after a photo when the front has an image.
 struct FrontCell: View {
     let card: Card
+    /// Whether a long front goes on over more lines, as below a capture in
+    /// its detail, rather than being cut short, as in a table's row.
+    var wraps = false
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
             switch card.standing {
             case .inReviews, .setAside:
                 EmptyView()
@@ -35,7 +38,8 @@ struct FrontCell: View {
                             comment: "The tooltip of the icon beside a card's front, when it has an image."))
             }
             Text(card.front)
-                .lineLimit(1)
+                .lineLimit(wraps ? nil : 1)
+                .fixedSize(horizontal: false, vertical: wraps)
         }
     }
 }
@@ -210,14 +214,28 @@ private struct TypeAndTags: View {
 }
 
 /// The capture selected in the inbox, whole: what kind it is, its text, its
-/// note and source, when Lucas captured it, and, for an expansion, the card
-/// it expands.
+/// note and source, when Lucas captured it, and, for an expansion or a
+/// follow-up, the card it's tied to.
 struct CaptureDetail: View {
+    /// The card a capture is tied to, which its detail shows below it.
+    enum Tie {
+        /// The card an expansion expands.
+        case expands(Card)
+        /// The card a follow-up was asked about, in the review panel.
+        case followsUp(Card)
+
+        var card: Card {
+            switch self {
+            case .expands(let card), .followsUp(let card): card
+            }
+        }
+    }
+
     let capture: Capture
     /// What kind it is, as the inbox's Kind column says it.
     let kind: String
-    /// The card it expands, when it's an expansion.
-    let expandedCard: Card?
+    /// The card it's tied to, when it's an expansion or a follow-up.
+    let tie: Tie?
 
     var body: some View {
         ScrollView {
@@ -250,16 +268,9 @@ struct CaptureDetail: View {
                         Text(capture.createdAt.formatted(date: .abbreviated, time: .shortened))
                     }
                 }
-                if let expandedCard {
+                if let tie {
                     Divider()
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(
-                            "Expands this card",
-                            comment: "In the Cards window's detail of an expansion, above the card it's attached to."
-                        )
-                        .foregroundStyle(.secondary)
-                        ExpandedCard(card: expandedCard)
-                    }
+                    tied(tie)
                 }
             }
             .textSelection(.enabled)
@@ -267,17 +278,39 @@ struct CaptureDetail: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+
+    /// The card the capture is tied to, under what ties them.
+    private func tied(_ tie: Tie) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            switch tie {
+            case .expands:
+                Text(
+                    "Expands this card",
+                    comment: "In the Cards window's detail of an expansion, above the card it's attached to."
+                )
+                .foregroundStyle(.secondary)
+            case .followsUp:
+                Text(
+                    "Asked about this card",
+                    comment:
+                        "In the Cards window's detail of a follow-up, above the card it was asked about in the review panel."
+                )
+                .foregroundStyle(.secondary)
+            }
+            TiedCard(card: tie.card)
+        }
+    }
 }
 
-/// The card an expansion expands, in the expansion's detail: its type and
-/// tags, its front, with the marks the table gives it, and its back.
-private struct ExpandedCard: View {
+/// The card an expansion or a follow-up is tied to, in its detail: its type
+/// and tags, its front, with the marks the table gives it, and its back.
+private struct TiedCard: View {
     let card: Card
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             TypeAndTags(card: card)
-            FrontCell(card: card)
+            FrontCell(card: card, wraps: true)
                 .font(.headline)
             Text(card.back)
                 .fixedSize(horizontal: false, vertical: true)

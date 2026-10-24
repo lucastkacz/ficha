@@ -78,7 +78,7 @@ flowchart LR
   <img src="docs/images/capture-window.png" width="564" alt="The Capture window, with three fields: “A word, a concept, a quote or a question”, “Note (optional)” and “Source (optional): a book, a podcast…”, and the buttons Cancel and Save.">
 </p>
 
-**Convert to Card.** When you have a moment, pick a capture in the Cards window's inbox and convert it: the card form opens beside what you jotted down, for one card or several, and the capture leaves the inbox once you close the form.
+**Convert to Card.** When you have a moment, pick a capture in the Cards window's inbox and convert it: the card form opens beside what you jotted down, for one card or several, and the capture leaves the inbox once you close the form. A question you asked in the review panel shows with its card, and its new cards start with that card's tags, so they land beside it.
 
 **Refine.** Lucas, who builds Ficha, turns his own captures into cards another way, outside the app: he goes through his inbox with Claude, Anthropic's AI assistant, in a session he starts. Claude drafts cards for each capture, following [a guide](docs/content-guide.md) for how Lucas's cards are written, and proposes a fix for each card he flagged. Nothing becomes a card without his OK.
 

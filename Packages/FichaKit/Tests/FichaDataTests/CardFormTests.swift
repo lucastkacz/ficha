@@ -160,6 +160,73 @@ struct CardFormTests {
         #expect(try engine.inbox().captures == [bostezo])
     }
 
+    @Test(
+        "Convert to Card on a follow-up opens the form with its card beside the question and the card's tags filled in")
+    func theFormFromAFollowUpShowsItsCard() throws {
+        let poderes = try approve(
+            card(
+                .concept, front: "La división de poderes en la Argentina",
+                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"],
+                source: "La Constitución Nacional"),
+            in: engine)
+        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        var window = openWindow()
+        window.choose(.inbox)
+        window.selectInInbox(.capture(question.id))
+
+        window.convertToCard()
+
+        let form = try #require(window.cardForm)
+        #expect(form.capture == question)
+        #expect(form.followUp?.capture == question)
+        #expect(form.followUp?.card == poderes)
+        #expect(form.draft.tags == "política, argentina")
+        #expect(form.draft.type == nil)
+        #expect(form.draft.front.text == "")
+        #expect(form.draft.back.text == "")
+        #expect(form.draft.source == "")
+    }
+
+    @Test(
+        "adding cards from a follow-up leaves its card as it is, and closing the form after them takes the follow-up out of the inbox"
+    )
+    func closingTheFormFromAFollowUpLeavesItsCard() throws {
+        let poderes = try approve(
+            card(
+                .concept, front: "La división de poderes en la Argentina",
+                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
+            in: engine)
+        try engine.climb(poderes, to: 2, movingForward: time)
+        let standing = try engine.standing(of: poderes.id, on: ladder)
+        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        var window = openWindow()
+        window.choose(.inbox)
+        window.selectInInbox(.capture(question.id))
+        window.convertToCard()
+        window.type(front: "¿Quién propone a los jueces de la Corte Suprema?", back: "El presidente.")
+        window.addCard()
+        window.type(front: "¿Quién aprueba a los jueces de la Corte Suprema?", back: "El Senado, con dos tercios.")
+        window.addCard()
+        let followUpsWhileOpen = try engine.inbox().followUps
+
+        window.closeCardForm()
+
+        let cards = try engine.cards()
+        #expect(followUpsWhileOpen.map(\.capture) == [question])
+        #expect(window.cardForm == nil)
+        #expect(window.failure == nil)
+        #expect(cards.first == poderes)
+        #expect(try engine.standing(of: poderes.id, on: ladder) == standing)
+        #expect(
+            cards.dropFirst().map(\.front) == [
+                "¿Quién propone a los jueces de la Corte Suprema?", "¿Quién aprueba a los jueces de la Corte Suprema?",
+            ])
+        #expect(cards.dropFirst().map(\.tags) == [["política", "argentina"], ["política", "argentina"]])
+        #expect(cards.dropFirst().map(\.captureID) == [question.id, question.id])
+        #expect(try engine.inbox().followUps.isEmpty)
+        #expect(try engine.inbox().captures.isEmpty)
+    }
+
     // So that what was typed isn't lost.
     @Test(
         "showing the card a front repeats sets the form aside and selects the card where the sidebar lists it, scrolled to, and New Card brings the form back as it was"
