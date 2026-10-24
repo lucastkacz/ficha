@@ -213,7 +213,8 @@ private struct Renderer {
 
     /// `text`, from the field `field`, through `filter`, as Anki renders
     /// what it gives: a box to type the answer in is the placeholder that
-    /// Anki's reviewer, and `AnkiTypedAnswers.swift`, replace, and text Anki
+    /// Anki's reviewer, and `AnkiTypedAnswers.swift`, replace; a reading
+    /// drawn over its kanji comes after them, `話（はなし）`; and text Anki
     /// speaks is nothing. A filter Anki doesn't have passes the text on.
     private func applying(_ filter: String, to text: String, of field: String) -> String {
         let isQuestion = frontSide == nil
@@ -233,10 +234,17 @@ private struct Renderer {
             return revealingClozes(in: text, number: cardNumber, onQuestion: isQuestion)
         case "cloze-only":
             return isQuestion ? clozeHint(of: text, number: cardNumber) : clozeText(of: text, number: cardNumber)
-        case "kanji", "kana":
-            return text.replacing(/\ ?([^ >]+?)\[(.+?)\]/) { match in
-                match.output.2.hasPrefix("sound:")
-                    ? match.output.0 : filter == "kanji" ? match.output.1 : match.output.2
+        case "furigana", "kanji", "kana":
+            return text.replacing("&nbsp;", with: " ").replacing(/\ ?([^ >]+?)\[(.+?)\]/) { match in
+                let (whole, kanji, reading) = match.output
+                guard !reading.hasPrefix("sound:") else { return String(whole) }
+                return switch filter {
+                case "kanji": String(kanji)
+                case "kana": String(reading)
+                // Anki draws the reading small over the kanji: plain text
+                // writes it after them, in parentheses.
+                default: "\(kanji)（\(reading)）"
+                }
             }
         case _ where filter == "tts" || filter.hasPrefix("tts "):
             return ""

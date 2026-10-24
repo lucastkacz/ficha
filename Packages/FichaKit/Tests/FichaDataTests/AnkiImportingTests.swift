@@ -234,6 +234,39 @@ final class AnkiImportingTests {
     }
 
     @Test(
+        "furigana comes in as the reading in parentheses after its kanji, and kanji and kana as Anki shows them",
+        arguments: schemas)
+    func furiganaComesInAsTheReadingInParentheses(format: AnkiPackage.Format) throws {
+        // A shared Japanese deck's note type: Anki draws the reading small
+        // over the kanji, which Ficha's plain text can't.
+        let japanese = AnkiNoteType(
+            name: "Japonés", fields: ["Oración", "Significado"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{kanji:Oración}}",
+                    answer: "{{FrontSide}}\n<hr id=answer>\n{{furigana:Oración}}<br>{{kana:Oración}}<br>{{Significado}}"
+                )
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: japanese,
+                    fields: ["それはとってもいい&nbsp;話[はなし]だ。[sound:hanashi.mp3]", "Es una muy buena historia."])
+            ])
+
+        try importPackage(package)
+
+        #expect(
+            try engine.cards().map { [$0.front, $0.back] } == [
+                [
+                    "それはとってもいい話だ。",
+                    "それはとってもいい話（はなし）だ。\nそれはとってもいいはなしだ。\nEs una muy buena historia.",
+                ]
+            ])
+    }
+
+    @Test(
         "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
         arguments: schemas)
     func aClozeNoteBecomesACardForEachGap(format: AnkiPackage.Format) throws {
