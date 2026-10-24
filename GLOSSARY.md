@@ -15,11 +15,19 @@ What a card holds, if it has one: a word, a concept, a quote or a question.
 _Avoid_: kind, category
 
 **Front**:
-The side of a card the review panel shows first.
+The side of a card the review panel shows first, unless the card goes back first.
 
 **Back**:
-The side of a card the user turns to after trying to remember it.
+The side of a card the user turns to after trying to remember it, unless the card goes back first.
 _Avoid_: answer, solution
+
+**Both ways**:
+A card the user also reviews back first, because they switched that on for it. Each way has its own progress: its own first view, ladder step, due time and reviews.
+_Avoid_: reverse, reversed card, sibling
+
+**Back first**:
+The other way of a card that goes both ways: the review panel shows its back, and its front when the user flips it.
+_Avoid_: reverse, backwards
 
 **Sound**:
 What the user hears on one side of a card, from a file they added or imported, such as an excerpt of an aria or a word's pronunciation. It plays only when they ask for it.
@@ -100,11 +108,11 @@ How well the user says they knew a card in a review: again, hard or good, which 
 _Avoid_: grade, score, ease
 
 **First view**:
-The first time the user sees a card, whole, before it's on the ladder. It isn't a review.
+The first time the user sees a card, whole, before it's on the ladder. Back first, they see its back, and its front once they flip it. It isn't a review.
 _Avoid_: introduction, first review, learning step
 
 **Review log**:
-Every first view and review, with when the user answered, whether an appearance or a review now brought the card, their rating, and how long they took, except from a card notification; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it.
+Every first view and review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, and how long they took, except from a card notification; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it, for each way apart.
 _Avoid_: history, review history
 
 **Review now**:
@@ -124,7 +132,7 @@ Sending a card back to the inbox with a note on what to fix. It stays out of rev
 _Avoid_: mark, report
 
 **Forgotten often**:
-A card the user rated again, "Don't know", in eight reviews in all, or as many as they set, since its front or back last changed. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
+A card the user rated again, "Don't know", in eight reviews in all, or as many as they set, since its front or back last changed, counting each way apart. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
 _Avoid_: leech, hard card
 
 **Bury**:
@@ -154,7 +162,7 @@ Bringing cards into Ficha from a file: a text file with one card per line, zippe
 _Avoid_: load, refine
 
 **Export**:
-Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, never the user's progress.
+Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, and which go both ways, never the user's progress.
 _Avoid_: backup, share
 
 ### Spacing
@@ -172,7 +180,7 @@ A card on the ladder whose wait is over.
 _Avoid_: pending, ready
 
 **New**:
-A card that isn't on the ladder yet: it hasn't had its first view, nor come in on a step with an import.
+A card, or a card's back-first way, that isn't on the ladder yet: it hasn't had its first view, nor come in on a step with an import.
 _Avoid_: unseen, fresh
 
 **Learned**:
