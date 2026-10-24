@@ -131,22 +131,15 @@ func updateCard(
 }
 
 /// Replaces a card's content with `content`, its images included, keeping its
-/// review log, and sets `others` too, as `updateCard` says. Returns the card
-/// as it is then. Every change to a card's content goes through here, with
-/// content `CardContent` checked, as every new card goes through
-/// `insertCard`. An image the card no longer refers to stays where Ficha
-/// keeps it: the engine removes it once no card uses it.
-func replaceContent(
-    of cardID: Int64,
-    with content: CardContent,
-    alsoSetting others: String? = nil,
-    in db: Database
-) throws -> Card {
+/// review log, its flag and its burial. Returns the card as it is then. Every
+/// change to a card's content goes through here, with content `CardContent`
+/// checked, as every new card goes through `insertCard`. An image the card no
+/// longer refers to stays where Ficha keeps it: the engine removes it once no
+/// card uses it.
+func replaceContent(of cardID: Int64, with content: CardContent, in db: Database) throws -> Card {
     try updateCard(
         cardID,
-        setting: [
-            "type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, tags = ?, source = ?", others,
-        ].compactMap(\.self).joined(separator: ", "),
+        setting: "type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, tags = ?, source = ?",
         to: [
             content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
             content.backImage?.rawValue, try tagsJSON(content.tags), content.source,

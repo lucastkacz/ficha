@@ -40,6 +40,17 @@ extension Engine {
         }
     }
 
+    /// Takes back Lucas's last answer to a card, the last entry of its review
+    /// log, as the review panel's ⌘Z does: it leaves the log, as an answer
+    /// undone never happened, the way Anki's undo deletes it too, and the
+    /// card stands where it stood before it. When the card has no entry left,
+    /// nothing is taken back, and ⌘Z can't undo it.
+    public func takeBackAnswer(of cardID: Int64) throws(EngineError) {
+        try write { db in
+            try deleteLastEntry(of: cardID, in: db)
+        }
+    }
+
     /// What the menu shows of Lucas's progress: how many cards in his reviews
     /// are due, how many he learned, and how many captures and flagged cards
     /// wait in the inbox.
@@ -128,6 +139,20 @@ func recordAnswer(
             cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
             isAhead: isAhead),
         in: db)
+}
+
+/// Deletes the last entry of the review log of the card with this id, which
+/// takes back Lucas's last answer to it, as `Engine.takeBackAnswer` says, or
+/// throws when the card has none or doesn't exist.
+private func deleteLastEntry(of cardID: Int64, in db: Database) throws {
+    _ = try existingCard(cardID, in: db)
+    try db.execute(
+        sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ?)",
+        arguments: [cardID]
+    )
+    guard db.changesCount == 1 else {
+        throw EngineError.cannotUndo(cardID)
+    }
 }
 
 /// Adds `placement` to the review log of the card with this id, which an

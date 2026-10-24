@@ -382,12 +382,25 @@ public struct ReviewPanelState: Sendable {
     /// Undoes what Lucas did with the last card he went through, which puts
     /// the card back where it stood, and goes back to it, as he left it, its
     /// back showing or not, with its time going on from where it was: ⌘Z,
-    /// also once he went through every card. Nothing is left to undo once
-    /// the panel closed. The panel's ⌘Z undoes through `undoLastCard()`,
-    /// which says what failed.
+    /// also once he went through every card. The engine takes back his
+    /// answer, unflags the card or unburies it. When the card changed outside
+    /// the panel since, nothing is undone. Nothing is left to undo once the
+    /// panel closed. The panel's ⌘Z undoes through `undoLastCard()`, which
+    /// says what failed.
     public mutating func undo() throws(EngineError) {
         guard canUndo, let last = wentThrough.last else { return }
-        try engine.undo(last.action, to: cards[wentThrough.count - 1].card.id)
+        let cardID = cards[wentThrough.count - 1].card.id
+        do throws(EngineError) {
+            switch last.action {
+            case .answered: try engine.takeBackAnswer(of: cardID)
+            case .flagged: try engine.unflag(cardID)
+            case .buried: try engine.unbury(cardID)
+            }
+        } catch .cardNotFlagged, .cardBuried, .cardNotBuried {
+            // A refine session or the Cards window fixed, buried or unburied
+            // the card since.
+            throw .cannotUndo(cardID)
+        }
         wentThrough.removeLast()
         moreCards = []
         isFlipped = last.showedBack
@@ -457,7 +470,7 @@ public struct ReviewPanelState: Sendable {
 }
 
 /// What Lucas did with a card in the review panel, which ⌘Z undoes.
-enum PanelAction: Sendable {
+private enum PanelAction: Sendable {
     /// He answered it: he ended its first view, or rated it.
     case answered
     /// He flagged it.
@@ -493,39 +506,5 @@ extension Engine {
         ReviewPanelState(
             trigger: trigger, cards: cards, ownTags: try read(OwnTags.init(in:)), engine: self,
             settings: settings, clock: clock)
-    }
-
-    /// Undoes `action`, which Lucas did to a card in the review panel, so the
-    /// card stands where it stood before it. His answer leaves the review
-    /// log, as an answer undone never happened, the way Anki's undo deletes it
-    /// too; his flag or burial leaves the card. When the card changed outside
-    /// the panel since, nothing is undone.
-    fileprivate func undo(_ action: PanelAction, to cardID: Int64) throws(EngineError) {
-        try write { db in
-            let card = try existingCard(cardID, in: db)
-            switch action {
-            case .answered:
-                // The panel's answer is the card's last entry.
-                try db.execute(
-                    sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ?)",
-                    arguments: [cardID]
-                )
-                guard db.changesCount == 1 else {
-                    throw EngineError.cannotUndo(cardID)
-                }
-            case .flagged:
-                switch card.standing {
-                case .inInbox: break
-                case .inReviews, .buried, .setAside: throw EngineError.cannotUndo(cardID)
-                }
-                _ = try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
-            case .buried:
-                switch card.standing {
-                case .buried: break
-                case .inReviews, .inInbox, .setAside: throw EngineError.cannotUndo(cardID)
-                }
-                _ = try updateCard(cardID, setting: "buriedAt = NULL", in: db)
-            }
-        }
     }
 }

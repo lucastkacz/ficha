@@ -144,6 +144,21 @@ struct UndoTests {
         #expect(burying.current == .review(cards[2]))
     }
 
+    // A refine session can bury a flagged card instead of fixing it.
+    @Test("⌘Z doesn't undo a flag once the card was buried outside the panel, and says so")
+    func undoRefusesAFlaggedCardBuriedOutsideThePanel() throws {
+        let cards = try dueCards("ubuntu", "petricor")
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        try panel.flag(note: note("Falta un ejemplo"))
+        let buried = try engine.bury(cards[0].id)
+
+        #expect(throws: EngineError.cannotUndo(cards[0].id)) {
+            try panel.undo()
+        }
+        #expect(panel.current == .review(cards[1]))
+        #expect(try engine.cards()[0] == buried)
+    }
+
     /// Approves a word card for each front, in order, and meets them all now,
     /// so that they come due together an hour later, when this moves the
     /// time. Review now brings them in the order given.

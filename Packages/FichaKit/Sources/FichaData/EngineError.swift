@@ -42,8 +42,8 @@ public enum EngineError: Error, Equatable {
     /// The card with this id is flagged, so it waits in the inbox: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
-    /// The card with this id isn't flagged, so there's no flag to fix: it was
-    /// already fixed, or it was never flagged.
+    /// The card with this id isn't flagged, so there's no flag to fix or take
+    /// off: it was already fixed, or it was never flagged.
     case cardNotFlagged(Int64)
     /// The card with this id is buried, so it can't be answered, flagged,
     /// expanded or buried again, nor fixed in a refine session, until it's

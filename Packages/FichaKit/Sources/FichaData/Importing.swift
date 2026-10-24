@@ -295,7 +295,7 @@ extension Engine {
             try place(cardID, on: placement, at: importedAt, in: db)
         }
         if progress.isSuspended {
-            _ = try updateCard(cardID, setting: "buriedAt = ?", to: [importedAt], in: db)
+            _ = try bury(cardID, at: importedAt, in: db)
         }
     }
 

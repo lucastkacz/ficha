@@ -13,7 +13,9 @@ extension Engine {
     @discardableResult
     public func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
         let (before, edited) = try write { db in
-            (try existingCard(cardID, in: db), try editCard(cardID, with: content, in: db))
+            let before = try existingCard(cardID, in: db)
+            _ = try replaceContent(of: cardID, with: content, in: db)
+            return (before, try takeFlagOff(cardID, in: db))
         }
         removeImagesNoCardUses(among: before.images.subtracting(edited.images))
         return edited
@@ -41,11 +43,4 @@ extension Engine {
             return try captureInInbox(captureID, in: db)
         }
     }
-}
-
-/// Gives the card with this id `content` and takes its flag away, keeping the
-/// rest: an edit in the Cards window, and the fix a refine session makes once
-/// it checked the card is flagged and not buried.
-func editCard(_ cardID: Int64, with content: CardContent, in db: Database) throws -> Card {
-    try replaceContent(of: cardID, with: content, alsoSetting: "flagNote = NULL, flaggedAt = NULL", in: db)
 }
