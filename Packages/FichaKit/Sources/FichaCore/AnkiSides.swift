@@ -60,15 +60,39 @@ struct AnkiSide {
 /// tag's other attributes are skipped whole, so that a `src=` inside one
 /// isn't taken. A `src` with a colon is an address, such as an image's on
 /// the web, and names no file of the package, since Anki keeps colons out
-/// of its media's names (`rslib/src/media/files.rs`).
+/// of its media's names (`rslib/src/media/files.rs`). An image the HTML
+/// hides shows nothing, as in Anki's reviewer: one in a comment, a
+/// `<script>` or a `<style>`, as `plainText(fromHTML:)` leaves their text
+/// out, and one whose own tag hides it, with `hidden` or `display: none`,
+/// such as an icon a template's script shows now and then.
 private func fileNames(shownIn html: String) -> [String] {
-    html.matches(of: #/(?i)<img\b(?:[^>"']|"[^"]*"|'[^']*')*?\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/#)
-        .compactMap { match in
-            (match.output.1 ?? match.output.2 ?? match.output.3).map { characterReferencesDecoded(in: String($0)) }
+    // Each ends where `plainText(fromHTML:)` ends it, whatever the case of
+    // its closing tag, which a backreference would compare.
+    let shown = html.replacing(
+        #/(?is)<!--.*?(?:-->|\z)|<script\b.*?(?:</script[^>]*>|\z)|<style\b.*?(?:</style[^>]*>|\z)/#, with: "")
+    return shown.matches(of: #/(?i)<img\b((?:[^>"']|"[^"]*"|'[^']*')*)/#)
+        .compactMap { match -> String? in
+            let attributes = tagAttributes(in: String(match.output.1))
+            guard attributes["hidden"] == nil, attributes["style"]?.contains(/(?i)display\s*:\s*none/) != true else {
+                return nil
+            }
+            return attributes["src"].map(characterReferencesDecoded(in:))
         }
         .reduce(into: []) { names, name in
             if !name.isEmpty, !name.contains(":"), !names.contains(name) {
                 names.append(name)
             }
         }
+}
+
+/// The attributes of a tag, by their names in lowercase, from `text`, what
+/// follows the tag's name: each one's value, double-quoted, single-quoted or
+/// bare, or an empty value for one without, such as `hidden`. An attribute
+/// the tag repeats keeps its first value, as in a browser.
+private func tagAttributes(in text: String) -> [String: String] {
+    Dictionary(
+        text.matches(of: #/([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/#).map { match in
+            (match.output.1.lowercased(), String(match.output.2 ?? match.output.3 ?? match.output.4 ?? ""))
+        }
+    ) { first, _ in first }
 }

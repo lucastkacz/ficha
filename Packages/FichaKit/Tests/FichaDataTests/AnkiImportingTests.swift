@@ -220,6 +220,36 @@ final class AnkiImportingTests {
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["gato", "cat"]])
     }
 
+    // Shared decks still carry it, under its own name or another, and its
+    // cards would show the whole image, the answer with it.
+    @Test(
+        "a card of Image Occlusion Enhanced, the add-on before Anki's own, stays out as an Image Occlusion card",
+        arguments: schemas)
+    func imageOcclusionEnhancedStaysOut(format: AnkiPackage.Format) throws {
+        var renamed = AnkiNoteType.imageOcclusionEnhanced
+        renamed.name = "Oclusión"
+        let fields = [
+            "e2f1-ao-1", "Los huesos", "<img src=\"esqueleto.png\">", "<img src=\"e2f1-ao-1-Q.svg\">", "", "", "",
+            "", "", "<img src=\"e2f1-ao-1-A.svg\">", "<img src=\"e2f1-ao-O.svg\">",
+        ]
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .imageOcclusionEnhanced, fields: fields),
+                AnkiNote(type: renamed, fields: fields),
+                AnkiNote(type: .basic, fields: ["gato", "cat"]),
+            ])
+
+        let preview = try engine.previewImport(of: file("Huesos.apkg", package))
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(
+            preview.leftOut == [
+                LeftOutLine(line: 1, reason: .ankiImageOcclusion), LeftOutLine(line: 2, reason: .ankiImageOcclusion),
+            ])
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["gato", "cat"]])
+    }
+
     // Anki 2.1 before 2.1.50 also wrote no `meta`, and its collection.anki21
     // beside a placeholder collection.anki2, which Ficha never reads.
     @Test(

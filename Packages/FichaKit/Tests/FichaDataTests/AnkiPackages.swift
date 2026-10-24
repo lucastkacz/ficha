@@ -564,6 +564,41 @@ struct AnkiNoteType: Hashable {
                     """)
         ])
 
+    /// The note type of Image Occlusion Enhanced, the add-on Anki users had
+    /// before Anki's own Image Occlusion: an ordinary note type, which keeps
+    /// the image and each mask, an SVG, in fields of its own (`config.py`'s
+    /// `IO_MODEL_NAME` and `IO_FLDS`), with its template cut short.
+    static let imageOcclusionEnhanced = AnkiNoteType(
+        name: "Image Occlusion Enhanced",
+        fields: [
+            "ID (hidden)", "Header", "Image", "Question Mask", "Footer", "Remarks", "Sources", "Extra 1", "Extra 2",
+            "Answer Mask", "Original Mask",
+        ],
+        templates: [
+            AnkiCardTemplate(
+                name: "IO Card",
+                question: """
+                    {{#Image}}
+                    <div id="io-header">{{Header}}</div>
+                    <div id="io-wrapper">
+                      <div id="io-overlay">{{Question Mask}}</div>
+                      <div id="io-original">{{Image}}</div>
+                    </div>
+                    <div id="io-footer">{{Footer}}</div>
+                    {{/Image}}
+                    """,
+                answer: """
+                    {{#Image}}
+                    <div id="io-header">{{Header}}</div>
+                    <div id="io-wrapper">
+                      <div id="io-overlay">{{Answer Mask}}</div>
+                      <div id="io-original">{{Image}}</div>
+                    </div>
+                    {{#Remarks}}<div id="io-extra">{{Remarks}}</div>{{/Remarks}}
+                    {{/Image}}
+                    """)
+        ])
+
     /// A stock answer of Anki's: the question, the line that marks where
     /// the answer starts, and `back`.
     private static func basicAnswer(_ back: String) -> String {
