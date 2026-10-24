@@ -5,7 +5,9 @@ import Foundation
 /// it brought, which Lucas goes through one at a time, what the panel shows of
 /// the card he's on, its tags included, whether the panel may have the
 /// keyboard, and how it closes. He ends a new card's first view, and flips
-/// and rates a due card, or one he reviews ahead. He can also flag any card
+/// and rates a due card, or one he reviews ahead. He plays a side's sound
+/// only when he asks, one at a time, until the card leaves or the panel
+/// closes. He can also flag any card
 /// with a note on what to fix, or bury it, and ask questions about it, each a
 /// follow-up in the inbox, without leaving it. When his rating of again makes
 /// a card forgotten often, the panel offers to flag it, with a note that says
@@ -101,11 +103,16 @@ public struct ReviewPanelState: Sendable {
     /// The images on the cards' sides, read once the panel has the cards,
     /// as it opens and as "See more" adds them.
     public private(set) var images = ShownImages()
+    /// The sounds on the sides of the card Lucas is on, with their lengths,
+    /// read as it shows.
+    public internal(set) var sounds = ShownSounds()
+    /// The sound that plays, which Lucas asked for, if any.
+    public internal(set) var playingSound: PlayingSound?
     /// What every tag has of its own, as it was when the panel opened: a tag
     /// changed while it's open shows from the next panel on, so the card
     /// Lucas is on doesn't change under him.
     private let ownTags: OwnTags
-    private let engine: Engine
+    let engine: Engine
     private let settings: ReviewSettings
     /// The note the panel offers to flag a card forgotten often with, for
     /// how many times Lucas forgot it, in the Mac's language.
@@ -151,6 +158,7 @@ public struct ReviewPanelState: Sendable {
         let openedAt = clock.now
         sinceOpening = { openedAt.duration(to: clock.now) }
         showImages()
+        showSounds()
         lookForMore()
     }
 
@@ -440,6 +448,8 @@ public struct ReviewPanelState: Sendable {
         let forgottenOften = try engine.record(
             kind, of: answering.card.id, responseTime: responseTime, trigger: trigger, settings: settings,
             reviewingAhead: answering.isAhead)
+        // Also when the panel stays on the card, to offer to flag it.
+        playingSound = nil
         guard let forgottenOften else {
             moveOn(after: [.answered], timeOnCard: responseTime)
             return
@@ -455,6 +465,7 @@ public struct ReviewPanelState: Sendable {
         cards += moreCards
         moreCards = []
         showImages()
+        showSounds()
         startTiming()
         touch()
     }
@@ -505,6 +516,7 @@ public struct ReviewPanelState: Sendable {
         if let followUpID = followUpsOnCard.last, let current {
             try engine.takeBackFollowUp(followUpID, of: current.card.id)
             followUpsOnCard.removeLast()
+            playingSound = nil
             touch()
             return
         }
@@ -517,6 +529,8 @@ public struct ReviewPanelState: Sendable {
             wentThrough[wentThrough.count - 1].actions.removeLast()
         }
         wentThrough.removeLast()
+        playingSound = nil
+        showSounds()
         followUpsOnCard = last.followUps
         moreCards = []
         isFlipped = last.showedBack
@@ -547,6 +561,8 @@ public struct ReviewPanelState: Sendable {
     private mutating func moveOn(after actions: [PanelAction], timeOnCard: Duration) {
         wentThrough.append(
             Visit(actions: actions, followUps: followUpsOnCard, showedBack: isFlipped, timeOnCard: timeOnCard))
+        playingSound = nil
+        showSounds()
         followUpsOnCard = []
         isFlipped = false
         flagging = nil
@@ -595,6 +611,7 @@ public struct ReviewPanelState: Sendable {
             case (false, .onItsOwn): .autoClosed
             }
         self.outcome = outcome
+        playingSound = nil
         guard !cards.isEmpty else { return }
         do {
             try engine.recordClosing(of: trigger, shownAt: shownAt, outcome: outcome)

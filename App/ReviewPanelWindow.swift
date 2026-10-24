@@ -24,9 +24,11 @@ final class ReviewPanelWindow: NSPanel {
 
     /// The panel's cards, or why they couldn't be brought.
     private let model: Result<ReviewPanelModel, EngineError>
+    /// Plays the sound the panel says plays, until the panel closes.
+    private let player = SoundPlayer()
     /// What the panel shows, which sizes the panel as it changes.
     private lazy var content = NSHostingView(
-        rootView: ReviewPanelView(model: model) { [weak self] in
+        rootView: ReviewPanelView(model: model, player: player) { [weak self] in
             self?.close()
         }
     )
@@ -136,6 +138,9 @@ final class ReviewPanelWindow: NSPanel {
     override func close() {
         watching?.cancel()
         watching = nil
+        // However the panel closes, as Ficha quits or the Mac goes to sleep
+        // too, before its view could stop the sound.
+        player.stop()
         super.close()
     }
 

@@ -6,7 +6,8 @@ private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", categ
 
 /// Plays a card's sound, one at a time, as a window's state says: it only
 /// plays and stops what it's handed, and tells when a sound ended on its own,
-/// or couldn't play. The Cards window has one.
+/// or couldn't play. The Cards window has one, and so has the review panel's
+/// window.
 @MainActor
 final class SoundPlayer: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?

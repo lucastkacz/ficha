@@ -410,6 +410,221 @@ struct ReviewPanelTests {
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.firstView(serendipia)]))
     }
 
+    @Test("a side's ▶ plays its sound, with its length, showing ■, and pressing it again stops it")
+    func aSidesPlayButtonPlaysItsSound() async throws {
+        let la = try await addTone(440, to: engine)
+        let coloratura = try dueCard("coloratura", frontSound: la)
+        var panel = try engine.openPanel(.reviewNow, with: [.review(coloratura)], settings: settings)
+
+        panel.playOrStopSound(on: .front)
+        let playing = panel.playingSound
+        let showsStop = panel.isPlaying(on: .front)
+        panel.playOrStopSound(on: .front)
+
+        #expect(playing?.side == .front)
+        #expect(playing?.name == la)
+        #expect(showsStop)
+        #expect(panel.playingSound == nil)
+        #expect(!panel.isPlaying(on: .front))
+        let length = try #require(try panel.sounds[la]?.get().length)
+        #expect(length > .milliseconds(950) && length < .milliseconds(1_050))
+    }
+
+    @Test("R plays the front's sound while only the front shows, and the back's once the back shows")
+    func rPlaysTheSoundOfTheSideThatShows() async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let coloratura = try dueCard("coloratura", frontSound: la, backSound: mi)
+        var panel = try engine.openPanel(.reviewNow, with: [.review(coloratura)], settings: settings)
+
+        let rOnTheFront = panel.sideForR
+        panel.playOrStopSound()
+        let playedOnTheFront = panel.playingSound
+        panel.playOrStopSound()
+        panel.flip()
+        let rOnTheBack = panel.sideForR
+        panel.playOrStopSound()
+
+        #expect(rOnTheFront == .front)
+        #expect(playedOnTheFront?.side == .front)
+        #expect(playedOnTheFront?.name == la)
+        #expect(rOnTheBack == .back)
+        #expect(panel.playingSound?.side == .back)
+        #expect(panel.playingSound?.name == mi)
+    }
+
+    @Test(
+        "in a first view, which shows the whole card, R plays the back's sound, or the front's when the back has none")
+    func rPlaysTheBacksSoundInAFirstView() async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let coloratura = try soundCard("coloratura", frontSound: la, backSound: mi)
+        let aria = try soundCard("aria", frontSound: la)
+        var withBoth = try engine.openPanel(.reviewNow, with: [.firstView(coloratura)], settings: settings)
+        var withFront = try engine.openPanel(.reviewNow, with: [.firstView(aria)], settings: settings)
+
+        withBoth.playOrStopSound()
+        withFront.playOrStopSound()
+
+        #expect(withBoth.playingSound?.side == .back)
+        #expect(withFront.playingSound?.side == .front)
+    }
+
+    @Test("once the back shows, R plays the front's sound when the back has none, and nothing on a card without sounds")
+    func rPlaysTheFrontsSoundWhenTheBackHasNone() async throws {
+        let la = try await addTone(440, to: engine)
+        let aria = try dueCard("aria", frontSound: la)
+        let tenor = try dueCard("tenor")
+        var panel = try engine.openPanel(.reviewNow, with: [.review(aria), .review(tenor)], settings: settings)
+
+        panel.flip()
+        panel.playOrStopSound()
+        let played = panel.playingSound
+        panel.rate(.good)
+        panel.playOrStopSound()
+
+        #expect(played?.side == .front)
+        #expect(panel.sideForR == nil)
+        #expect(panel.playingSound == nil)
+    }
+
+    // So Lucas keeps hearing the front's sound while he reads the back.
+    @Test(
+        "one sound plays at a time, flipping doesn't stop it, R stops the one that plays, and pressing it again plays it from the start"
+    )
+    func oneSoundPlaysAtATime() async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let coloratura = try dueCard("coloratura", frontSound: la, backSound: mi)
+        var panel = try engine.openPanel(.reviewNow, with: [.review(coloratura)], settings: settings)
+
+        panel.playOrStopSound(on: .front)
+        panel.flip()
+        let afterTheFlip = panel.playingSound
+        let rAfterTheFlip = panel.sideForR
+        panel.playOrStopSound(on: .back)
+        let frontAfterTheBack = panel.isPlaying(on: .front)
+        let backAfterTheBack = panel.isPlaying(on: .back)
+        panel.playOrStopSound()
+        let afterR = panel.playingSound
+        panel.playOrStopSound()
+
+        #expect(afterTheFlip?.side == .front)
+        #expect(rAfterTheFlip == .front)
+        #expect(!frontAfterTheBack)
+        #expect(backAfterTheBack)
+        #expect(afterR == nil)
+        #expect(panel.playingSound?.side == .back)
+    }
+
+    /// How the card Lucas is on leaves the review panel, or how the panel
+    /// closes.
+    enum Leaving: CaseIterable, Sendable {
+        case answer, flag, bury, undo, closeWithEsc, closeOnItsOwn
+    }
+
+    @Test(
+        "a sound stops as its card leaves, with an answer, a flag, a burial or an undo, or as the panel closes, with Esc or on its own",
+        arguments: Leaving.allCases)
+    func aSoundStopsAsItsCardLeaves(_ leaving: Leaving) async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let aria = try dueCard("aria", frontSound: la)
+        let coloratura = try dueCard("coloratura", frontSound: mi)
+        var panel = try engine.openPanel(.reviewNow, with: [.review(aria), .review(coloratura)], settings: settings)
+        panel.flip()
+        panel.rate(.good)
+
+        panel.playOrStopSound(on: .front)
+        let played = panel.playingSound
+        switch leaving {
+        case .answer:
+            panel.flip()
+            panel.rate(.good)
+        case .flag:
+            panel.startFlagging()
+            panel.write(note: "Falta el compositor.")
+            panel.finishFlagging()
+        case .bury:
+            panel.buryCard()
+        case .undo:
+            panel.undoLastCard()
+        case .closeWithEsc:
+            panel.close(.byLucas)
+        case .closeOnItsOwn:
+            time.advance(by: minutes(10))
+            panel.closeIfUntouched()
+        }
+        let afterLeaving = panel.playingSound
+        panel.playOrStopSound()
+
+        #expect(played?.name == mi)
+        #expect(afterLeaving == nil)
+        #expect(panel.failure == nil)
+        // R then plays the card ⌘Z brought back, and nothing once every card
+        // was gone through or the panel closed.
+        #expect(panel.playingSound?.name == (leaving == .undo ? la : nil))
+    }
+
+    @Test("a “Don't know” stops the sound also when the panel stays on the card, to offer to flag it")
+    func dontKnowStopsTheSoundAsThePanelOffersToFlag() async throws {
+        let la = try await addTone(440, to: engine)
+        let aria = try soundCard("aria", frontSound: la)
+        try engine.meet(aria)
+        for _ in 1...7 {
+            try engine.reviewWhenDue(aria, .again, movingForward: time)
+        }
+        time.advance(by: hours(1))
+        var panel = try engine.openPanel(.reviewNow, with: [.review(aria)], settings: settings)
+
+        panel.playOrStopSound(on: .front)
+        let played = panel.playingSound
+        panel.flip()
+        panel.rate(.again)
+
+        #expect(played?.name == la)
+        #expect(panel.offersToFlag)
+        #expect(panel.playingSound == nil)
+    }
+
+    @Test("a sound that ends on its own turns its ■ back into ▶, unless another sound started meanwhile")
+    func aSoundThatEndsTurnsItsStopBackIntoPlay() async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let coloratura = try dueCard("coloratura", frontSound: la, backSound: mi)
+        var panel = try engine.openPanel(.reviewNow, with: [.review(coloratura)], settings: settings)
+        panel.flip()
+
+        panel.playOrStopSound(on: .front)
+        let front = try #require(panel.playingSound)
+        panel.playOrStopSound(on: .back)
+        let back = try #require(panel.playingSound)
+        panel.soundEnded(front)
+        let afterTheFrontEnded = panel.playingSound
+        panel.soundEnded(back)
+
+        #expect(afterTheFrontEnded == back)
+        #expect(panel.playingSound == nil)
+        #expect(!panel.isPlaying(on: .back))
+    }
+
+    /// Creates a word card with `front` and the sounds `frontSound` and
+    /// `backSound` on its sides: a new card.
+    private func soundCard(_ front: String, frontSound: SoundName? = nil, backSound: SoundName? = nil) throws -> Card {
+        try engine.create(
+            card(.word, front: front, back: "Una palabra de la ópera.", frontSound: frontSound, backSound: backSound))
+    }
+
+    /// Creates a word card with `front` and the sounds `frontSound` and
+    /// `backSound` on its sides, and meets it, so that it's due an hour
+    /// later, when this moves the time.
+    private func dueCard(_ front: String, frontSound: SoundName? = nil, backSound: SoundName? = nil) throws -> Card {
+        let created = try soundCard(front, frontSound: frontSound, backSound: backSound)
+        try engine.meet(created)
+        time.advance(by: hours(1))
+        return created
+    }
+
     /// Approves a word card with the front `forgotten`, meets it and rates it
     /// again in seven reviews, one under the default number of a card
     /// forgotten often, and then approves and meets a card for each of

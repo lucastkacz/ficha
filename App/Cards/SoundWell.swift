@@ -132,13 +132,16 @@ struct SoundWell: View {
 
 /// A sound's ▶, which plays it and becomes ■ while it plays, and its length,
 /// such as "3:42", or why it couldn't be read, in the card form, the card
-/// editor and a card's detail.
+/// editor, a card's detail and the review panel.
 struct SoundControls: View {
     /// The sound, with its length, or why it couldn't be read, or nil while
     /// the window doesn't show it.
     let sound: Result<ShownSound, EngineError>?
     /// Whether it plays.
     let isPlaying: Bool
+    /// Whether R plays it or stops it, in the review panel, which its
+    /// tooltip says.
+    var takesR = false
     /// Plays it, or stops it while it plays.
     let playOrStop: () -> Void
 
@@ -156,13 +159,7 @@ struct SoundControls: View {
                         ? Text("Stop Sound", comment: "The button that stops the sound of a card's side as it plays.")
                         : Text("Play Sound", comment: "The button that plays the sound on a side of a card.")
                 )
-                .help(
-                    isPlaying
-                        ? Text(
-                            "Stop Sound",
-                            comment: "The tooltip of the button that stops the sound of a card's side as it plays.")
-                        : Text(
-                            "Play Sound", comment: "The tooltip of the button that plays the sound on a card's side."))
+                .help(help)
                 Text(soundLengthText(shown.length))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -172,6 +169,27 @@ struct SoundControls: View {
                 .foregroundStyle(.secondary)
         case nil:
             EmptyView()
+        }
+    }
+
+    /// The button's tooltip, with R when R does the same.
+    private var help: Text {
+        switch (isPlaying, takesR) {
+        case (true, false):
+            Text("Stop Sound", comment: "The tooltip of the button that stops the sound of a card's side as it plays.")
+        case (true, true):
+            Text(
+                "Stop Sound (r)",
+                comment:
+                    "The tooltip of the review panel's button that stops the sound of a card's side as it plays, with its key."
+            )
+        case (false, false):
+            Text("Play Sound", comment: "The tooltip of the button that plays the sound on a card's side.")
+        case (false, true):
+            Text(
+                "Play Sound (r)",
+                comment: "The tooltip of the review panel's button that plays the sound on a card's side, with its key."
+            )
         }
     }
 }

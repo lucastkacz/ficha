@@ -7,7 +7,9 @@ import SwiftUI
 /// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, A asks a
 /// question about it, which waits in the inbox as a follow-up, M flags it with
 /// a note, E buries it, ⌘Z undoes the last thing Lucas did, and Esc closes the
-/// panel, which snoozes an appearance. When 1 makes a card forgotten often,
+/// panel, which snoozes an appearance. A side with a sound has a ▶ under its
+/// text, which plays it and shows ■ while it plays, and R plays or stops the
+/// sound of the side that shows. When 1 makes a card forgotten often,
 /// the panel offers to flag it, its note written: Enter flags it, and Esc
 /// leaves it in his reviews. Once Lucas went through every card, the
 /// panel stays open until he closes it, and offers more cards if there are
@@ -36,6 +38,8 @@ struct ReviewPanelView: View {
     /// The cards a review now or an appearance brought, or why review now
     /// couldn't bring them.
     let model: Result<ReviewPanelModel, EngineError>
+    /// Plays the sound the panel says plays.
+    let player: SoundPlayer
     /// Closes the panel's window.
     let closeWindow: () -> Void
     /// The tallest the panel grows, which its window sets by the screen it
@@ -87,10 +91,35 @@ struct ReviewPanelView: View {
                     }
                 }
             }
+            // Here, around the panel's content rather than on it, so it's
+            // one view.
+            .onChange(of: playingSound) { _, playing in
+                play(playing)
+            }
             .padding(20)
             .frame(width: 400, alignment: .leading)
         }
         .glassEffect(.regular, in: .rect(cornerRadius: Self.cornerRadius, style: .continuous))
+    }
+
+    /// The sound the panel says plays, if any.
+    private var playingSound: ReviewPanelState.PlayingSound? {
+        guard case .success(let panel) = model else { return nil }
+        return panel.state.playingSound
+    }
+
+    /// Plays `playing`, the sound the panel says plays, from the start, or
+    /// stops the one that played when it's nil.
+    private func play(_ playing: ReviewPanelState.PlayingSound?) {
+        guard case .success(let panel) = model, let playing,
+            case .success(let sound)? = panel.state.sounds[playing.name]
+        else {
+            player.stop()
+            return
+        }
+        player.play(sound.data) {
+            panel.state.soundEnded(playing)
+        }
     }
 
     /// What Lucas did in the panel that couldn't be saved, as an alert says
@@ -322,6 +351,25 @@ struct ReviewPanelView: View {
                 topButtons(buttons, of: panel, withKeys: true)
             }
         }
+        .background {
+            // R, as M and E, while the card shows with its buttons. It works
+            // through a hidden button, since the ▶ it presses changes with
+            // the side that shows.
+            if buttons == .forTheCard {
+                Button {
+                    panel.state.playOrStopSound()
+                } label: {
+                    Text(
+                        "Play or Stop Sound",
+                        comment:
+                            "A hidden button of the review panel: R, which plays the sound of the side that shows, or stops the one that plays."
+                    )
+                }
+                .keyboardShortcut("r", modifiers: [])
+                .disabled(panel.state.sideForR == nil)
+                .hidden()
+            }
+        }
     }
 
     /// Which buttons a card has at the panel's top right.
@@ -537,7 +585,7 @@ struct ReviewPanelView: View {
     }
 
     /// The card's front: its image, fitted to the panel's width, above its
-    /// text, each when it has one.
+    /// text, and its sound's ▶ under them, each when it has one.
     private func front(of card: Card, in panel: ReviewPanelModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let image = card.frontImage {
@@ -548,11 +596,15 @@ struct ReviewPanelView: View {
                     .font(.title2.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let sound = card.frontSound {
+                soundControls(sound, on: .front, in: panel)
+            }
         }
     }
 
     /// The card's back: its image, fitted to the panel's width, above its
-    /// text, each when it has one, and its source, small, when it has one.
+    /// text, and its sound's ▶ under them, each when it has one, and its
+    /// source, small, when it has one.
     private func back(of card: Card, in panel: ReviewPanelModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
@@ -563,12 +615,26 @@ struct ReviewPanelView: View {
                 Text(card.back)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let sound = card.backSound {
+                soundControls(sound, on: .back, in: panel)
+            }
             if let source = card.source {
                 Text(source)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    /// The ▶ of `sound`, on `side` of the card, with its length: ■ while it
+    /// plays.
+    private func soundControls(_ sound: SoundName, on side: CardSide, in panel: ReviewPanelModel) -> some View {
+        SoundControls(
+            sound: panel.state.sounds[sound], isPlaying: panel.state.isPlaying(on: side),
+            takesR: panel.state.sideForR == side
+        ) {
+            panel.state.playOrStopSound(on: side)
         }
     }
 

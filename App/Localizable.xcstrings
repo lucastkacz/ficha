@@ -1619,8 +1619,14 @@
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Play or Stop Sound" : {
+      "comment" : "A hidden button of the review panel: R, which plays the sound of the side that shows, or stops the one that plays."
+    },
     "Play Sound" : {
       "comment" : "The button that plays the sound on a side of a card.\nThe tooltip of the button that plays the sound on a card's side."
+    },
+    "Play Sound (r)" : {
+      "comment" : "The tooltip of the review panel's button that plays the sound on a card's side, with its key."
     },
     "Prioritize" : {
       "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked."
@@ -1798,6 +1804,9 @@
     },
     "Stop Sound" : {
       "comment" : "The button that stops the sound of a card's side as it plays.\nThe tooltip of the button that stops the sound of a card's side as it plays."
+    },
+    "Stop Sound (r)" : {
+      "comment" : "The tooltip of the review panel's button that stops the sound of a card's side as it plays, with its key."
     },
     "Tag" : {
       "comment" : "The Import sheet's field for a tag the imported cards get."
