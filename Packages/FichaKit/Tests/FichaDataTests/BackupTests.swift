@@ -310,6 +310,28 @@ final class BackupTests {
         #expect(edited.editedAt == time.now)
     }
 
+    @Test("a copy from before sounds on cards restores with every card as it was and no sound, until one is put")
+    func copyFromBeforeSoundsRestoresWithNoSound() async throws {
+        let engine = try openEngine()
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let la = try await addTone(440, to: engine)
+        try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeSounds(at: backups.appending(path: name), at: time.now - days(1), image: bird)
+
+        try engine.restore(name)
+        let restored = try engine.cards()
+        let edited = try engine.edit(
+            2, with: card(.concept, front: "ubuntu", back: "Soy porque somos.", backSound: la))
+
+        #expect(restored.map(\.front) == ["hornero", "ubuntu"])
+        #expect(restored.map(\.frontImage) == [bird, nil])
+        #expect(restored.allSatisfy { $0.frontSound == nil && $0.backSound == nil })
+        #expect(edited.backSound == la)
+    }
+
     @Test("a copy that isn't in the Backups folder can't be restored")
     func missingCopyIsRefused() throws {
         let engine = try openEngine()

@@ -98,7 +98,7 @@ extension CardsWindowState {
         var draft = form.draft
         draft[side].image = image.name
         changeDraft(draft)
-        showImages()
+        showFiles()
     }
 
     /// Removes the image on `side` of the card the form makes.
@@ -106,7 +106,7 @@ extension CardsWindowState {
         guard var draft = cardForm?.draft else { return }
         draft[side].image = nil
         changeDraft(draft)
-        showImages()
+        showFiles()
     }
 
     /// Puts the image `dropped` brings on `side` of the card the user edits, in
@@ -117,7 +117,7 @@ extension CardsWindowState {
     public mutating func putImageInEditor(_ dropped: DroppedImage, on side: CardSide) {
         guard case .card = editing, let image = imageComingIn(dropped) else { return }
         editedImages[side] = image.name
-        showImages()
+        showFiles()
     }
 
     /// Removes the image on `side` of the card the user edits, which Save then
@@ -125,7 +125,7 @@ extension CardsWindowState {
     public mutating func removeImageFromEditor(on side: CardSide) {
         guard case .card = editing else { return }
         editedImages[side] = nil
-        showImages()
+        showFiles()
     }
 
     /// The image `dropped` brings, shrunk and held until a card that has it
@@ -141,7 +141,7 @@ extension CardsWindowState {
                     data = try Data(contentsOf: file)
                 } catch {
                     logger.error("Couldn't read a file dropped for an image: \(String(describing: error))")
-                    throw .unreadableImageFile(file.lastPathComponent)
+                    throw .unreadableDroppedFile(file.lastPathComponent)
                 }
                 image = try CardImage(shrinking: data)
             case .data(let data):
@@ -154,15 +154,16 @@ extension CardsWindowState {
         return image
     }
 
-    /// The images on `content`'s sides that came in and aren't kept yet,
-    /// which saving it keeps.
-    func heldImages(of content: CardContent) -> [CardImage] {
-        images.held(among: content.images)
+    /// The images and sounds on `content`'s sides that came in and aren't
+    /// kept yet, which saving it keeps.
+    func heldFiles(of content: CardContent) -> HeldFiles {
+        HeldFiles(images: images.held(among: content.images), sounds: sounds.held(among: content.sounds))
     }
 
-    /// Shows the images of the card the detail shows, of the card the user
-    /// edits and of the card the form makes, and lets go of the others.
-    mutating func showImages() {
+    /// Shows the images and sounds of the card the detail shows, of the card
+    /// the user edits and of the card the form makes, and lets go of the
+    /// others.
+    mutating func showFiles() {
         var names = Set<ImageName>()
         if case .card(let row, _) = detail {
             names.formUnion(row.card.images)
@@ -174,40 +175,49 @@ extension CardsWindowState {
             names.formUnion([form.draft.front.image, form.draft.back.image].compactMap(\.self))
         }
         images.show(names, readingWith: engine)
+        showSounds()
     }
 }
 
+/// The images and sounds that came in for a card and aren't kept yet, which
+/// saving it keeps.
+struct HeldFiles {
+    let images: [CardImage]
+    let sounds: [CardSound]
+}
+
 extension Engine {
-    /// Creates a card with `content`, as `create(_:from:)` does, once
-    /// `images`, which came in for it, are kept. When the card can't be
-    /// created, the images no card uses go again.
+    /// Creates a card with `content`, as `create(_:from:)` does, once the
+    /// images and sounds `held` for it are kept. When the card can't be
+    /// created, those no card uses go again.
     @discardableResult
-    func create(keeping images: [CardImage], _ content: CardContent, from captureID: Int64?) throws(EngineError)
-        -> Card
-    {
-        try keepingImages(images) { () throws(EngineError) in try create(content, from: captureID) }
+    func create(keeping held: HeldFiles, _ content: CardContent, from captureID: Int64?) throws(EngineError) -> Card {
+        try keeping(held) { () throws(EngineError) in try create(content, from: captureID) }
     }
 
-    /// Edits a card with `content`, as `edit(_:with:)` does, once `images`,
-    /// which came in for it, are kept. When the card can't be edited, the
-    /// images no card uses go again.
+    /// Edits a card with `content`, as `edit(_:with:)` does, once the images
+    /// and sounds `held` for it are kept. When the card can't be edited,
+    /// those no card uses go again.
     @discardableResult
-    func edit(_ cardID: Int64, keeping images: [CardImage], with content: CardContent) throws(EngineError) -> Card {
-        try keepingImages(images) { () throws(EngineError) in try edit(cardID, with: content) }
+    func edit(_ cardID: Int64, keeping held: HeldFiles, with content: CardContent) throws(EngineError) -> Card {
+        try keeping(held) { () throws(EngineError) in try edit(cardID, with: content) }
     }
 
-    /// Keeps `images`, then does `work`, and when either fails, removes those
-    /// of `images` no card uses.
-    private func keepingImages<Value>(_ images: [CardImage], _ work: () throws(EngineError) -> Value)
-        throws(EngineError) -> Value
+    /// Keeps the images and sounds `held`, then does `work`, and when either
+    /// fails, removes those of them no card uses.
+    private func keeping<Value>(_ held: HeldFiles, _ work: () throws(EngineError) -> Value) throws(EngineError)
+        -> Value
     {
         do throws(EngineError) {
-            for image in images {
+            for image in held.images {
                 try keepImage(image)
+            }
+            for sound in held.sounds {
+                try keepSound(sound)
             }
             return try work()
         } catch {
-            removeImagesNoCardUses(among: Set(images.map(\.name)))
+            removeFilesNoCardUses(images: Set(held.images.map(\.name)), sounds: Set(held.sounds.map(\.name)))
             throw error
         }
     }

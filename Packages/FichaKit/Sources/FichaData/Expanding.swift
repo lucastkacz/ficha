@@ -45,9 +45,7 @@ extension Engine {
             case .inReviews, .inInbox, .setAside: break
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            return try replaceContent(
-                of: cardID, with: content.keepingImages(front: card.frontImage, back: card.backImage),
-                at: refinedAt, in: db)
+            return try replaceContent(of: cardID, with: content.keepingFiles(of: card), at: refinedAt, in: db)
         }
     }
 }

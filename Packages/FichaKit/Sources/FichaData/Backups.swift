@@ -94,7 +94,7 @@ extension Engine {
             try migrate(database, savingACopyIn: backupsFolder, at: time.now)
             return (Restoration(restored: copy, copyBeforeRestore: copyBeforeRestore), replacedImages)
         }
-        removeImagesNoCardUses(among: replacedImages)
+        removeFilesNoCardUses(images: replacedImages)
         databaseChanges.post()
         logger.notice("Restored \(name, privacy: .public)")
         return restoration

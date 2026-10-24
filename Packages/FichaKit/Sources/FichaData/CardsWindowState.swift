@@ -149,6 +149,9 @@ public struct CardsWindowState: Sendable {
         /// He dragged or pasted something onto a side of the card he makes
         /// or edits, as its image.
         case putImage
+        /// He dragged or pasted something onto a side of the card he makes
+        /// or edits, as its sound.
+        case putSound
         /// He flagged a card.
         case flag
         /// He buried this many cards.
@@ -218,6 +221,19 @@ public struct CardsWindowState: Sendable {
     /// The images the window shows, in the detail, the editor and the form,
     /// each read, or held until it's saved: `CardsWindowImages.swift`.
     public internal(set) var images = ShownImages()
+    /// The sounds on the sides of the card the user edits, as Save would give
+    /// them to it, while they edit one: `CardsWindowSounds.swift`.
+    public internal(set) var editedSounds = SideSounds()
+    /// The work converting a sound dropped or pasted on a side of the card
+    /// the user edits, by side, while it converts.
+    var editedSoundsComingIn: [CardSide: UUID] = [:]
+    /// The sounds the window shows, in the detail, the editor and the form,
+    /// each read with its length, or held until it's saved:
+    /// `CardsWindowSounds.swift`.
+    public internal(set) var sounds = ShownSounds()
+    /// The sound that plays, while one does, which the app's player plays:
+    /// `CardsWindowSounds.swift`.
+    public internal(set) var playingSound: PlayingSound?
     /// What the window asks before it acts, while it asks.
     public private(set) var question: Question?
     /// What Lucas did that couldn't be saved, while the window says so.
@@ -391,24 +407,26 @@ public struct CardsWindowState: Sendable {
         } else if case .card(let row, _) = detail {
             editing = .card(row.card)
             editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
+            editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
+            // The editor takes the detail's place, and its sound's.
+            showFiles()
         }
     }
 
-    /// Saves the card the user edits with `content`, its images as
-    /// `editedImages` holds them, and ends the edit, or records why it
-    /// couldn't and goes on with it. The card keeps its step and its review
-    /// log, and a flagged one is fixed, back in the reviews unless it's
-    /// buried. The detail shows it as saved at once, without waiting for the
-    /// engine to say it changed.
+    /// Saves the card the user edits with `content`, its images and sounds as
+    /// `editedImages` and `editedSounds` hold them, and ends the edit, while
+    /// Save is on, or records why it couldn't and goes on with it. The card
+    /// keeps its step and its review log, and a flagged one is fixed, back in
+    /// the reviews unless it's buried. The detail shows it as saved at once,
+    /// without waiting for the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
-        guard case .card(let card) = editing else { return }
-        let images = heldImages(of: content)
+        guard case .card(let card) = editing, canSaveCard else { return }
+        let files = heldFiles(of: content)
         let saved = perform(.saveCard) { engine throws(EngineError) in
-            try engine.edit(card.id, keeping: images, with: content)
+            try engine.edit(card.id, keeping: files, with: content)
         }
         if saved {
-            editing = nil
-            editedImages = SideImages()
+            endEditing()
             read(on: ladder)
         }
     }
@@ -429,11 +447,20 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Ends the edit without saving it, nor the images the user put on it.
+    /// Ends the edit without saving it, nor the images and sounds the user
+    /// put on it.
     public mutating func cancelEditing() {
+        endEditing()
+        showFiles()
+    }
+
+    /// Ends the edit, with the images and sounds it put on the card, and the
+    /// sounds still converting for it, which are let go once they come in.
+    private mutating func endEditing() {
         editing = nil
         editedImages = SideImages()
-        showImages()
+        editedSounds = SideSounds()
+        editedSoundsComingIn = [:]
     }
 
     /// Asks what needs fixing in the card the detail shows, to flag it, while
@@ -600,9 +627,15 @@ public struct CardsWindowState: Sendable {
             try work(engine)
             return true
         } catch {
-            failure = Failure(action: action, error: error)
+            record(error, for: action)
             return false
         }
+    }
+
+    /// Records that `action` couldn't be done, and why, which the window says
+    /// until Lucas closes it.
+    mutating func record(_ error: EngineError, for action: FailedAction) {
+        failure = Failure(action: action, error: error)
     }
 
     /// Reads the tags and what the sidebar chose, as they are now, on
@@ -645,9 +678,9 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Reads the review log of the card the detail shows, while it shows one,
-    /// and the images the window shows.
+    /// and the images and sounds the window shows.
     private mutating func readReviewLog() {
-        showImages()
+        showFiles()
         guard let row = shownCard else {
             reviewLog = nil
             return

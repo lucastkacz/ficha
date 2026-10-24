@@ -315,6 +315,18 @@ enum Schema {
                     .check(sql: "followsUpCardId IS NULL OR expandsCardId IS NULL")
             }
         }
+        migrator.registerMigration("v17 sounds on cards") { db in
+            // Each side of a card holds text, an image, a sound, or any of
+            // them together, one sound at most, so a side with only a sound
+            // has an empty text and no image. A sound is a file of its own in
+            // the Sounds folder beside the database, named by its content, as
+            // `SoundName` says, and a side refers to it by that name, or is
+            // NULL for none. Many sides can refer to one sound.
+            try db.alter(table: "card") { table in
+                table.add(column: "frontSound", .text)
+                table.add(column: "backSound", .text)
+            }
+        }
         return migrator
     }()
 }

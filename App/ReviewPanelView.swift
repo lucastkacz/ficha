@@ -728,7 +728,8 @@ extension EngineError {
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
             .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp,
             .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage,
-            .unreadableImageFile, .imagesFolder, .unreadableFile, .unwritableFile:
+            .notASound, .soundConversion, .unreadableDroppedFile, .imagesFolder, .soundsFolder, .unreadableFile,
+            .unwritableFile:
             localizedDescription
         }
     }

@@ -55,8 +55,8 @@ struct FrontsInUse: Sendable, Equatable {
     private var firstCardIDs: [String: Int64] = [:]
 
     /// The id of the first card whose front `front` repeats, or nil when it
-    /// repeats none. A front without text, which holds only an image, repeats
-    /// none.
+    /// repeats none. A front without text, which holds only an image or a
+    /// sound, repeats none.
     func cardID(repeatedBy front: String) -> Int64? {
         guard !CardContent.isBlank(front) else {
             return nil
@@ -96,12 +96,14 @@ extension Engine {
 func insertCard(_ content: CardContent, capturedAs captureID: Int64?, at time: Date, in db: Database) throws -> Int64 {
     try db.execute(
         sql: """
-            INSERT INTO card (type, front, back, frontImage, backImage, tags, source, createdAt, captureId)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO card (
+                type, front, back, frontImage, backImage, frontSound, backSound, tags, source, createdAt, captureId)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
             content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
-            content.backImage?.rawValue, try tagsJSON(content.tags), content.source, time, captureID,
+            content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
+            try tagsJSON(content.tags), content.source, time, captureID,
         ]
     )
     return db.lastInsertedRowID

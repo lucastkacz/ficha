@@ -28,7 +28,10 @@ public struct Engine: Sendable {
     let calendar: Calendar
     /// Where the images on cards are kept: the Images folder beside the
     /// database, or memory with it.
-    let images: ImageStore
+    let images: FileStore<ImageName>
+    /// Where the sounds on cards are kept: the Sounds folder beside the
+    /// database, or memory with it.
+    let sounds: FileStore<SoundName>
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
@@ -63,13 +66,15 @@ public struct Engine: Sendable {
             databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
             dataFolder = folder
             images = .folder(folderOfImages(in: folder))
+            sounds = .folder(FichaData.folder(of: SoundName.self, in: folder))
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
             try migrate(queue, savingACopyIn: nil, at: time.now)
             database = queue
             databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
             dataFolder = nil
-            images = .memory(ImagesInMemory())
+            images = .memory(FilesInMemory())
+            sounds = .memory(FilesInMemory())
         }
         self.time = time
         self.calendar = calendar

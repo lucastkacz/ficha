@@ -38,7 +38,7 @@ Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 1
 > Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».
 > _lenguaje_ (tag nueva) · Un podcast de etimología
 
-A card with an image on a side names it in `frontImage` or `backImage` in `ficha cards`: show "(con imagen)" after that side. Its fix or new content keeps the image, since the CLI never changes images. A side with only an image has an empty text, which the CLI refuses, so propose that Lucas fixes such a card in the Cards window instead.
+A card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound` in `ficha cards`: show "(con imagen)" or "(con sonido)" after that side. Its fix or new content keeps them, since the CLI never changes images or sounds. A side with only an image or a sound has an empty text, which the CLI refuses, so propose that Lucas fixes such a card in the Cards window instead.
 
 End the batch by asking for his OK: he approves, changes or rejects each proposal, or all of them at once. What he rejects stays in the inbox, untouched, unless he says what he wants instead: then redraft it.
 

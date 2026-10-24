@@ -278,10 +278,10 @@ extension Engine {
                 return (added, updated, skipped, letGo)
             }
         } catch {
-            removeImagesNoCardUses(among: comingIn)
+            removeFilesNoCardUses(images: comingIn)
             throw error
         }
-        removeImagesNoCardUses(among: comingIn.union(letGo))
+        removeFilesNoCardUses(images: comingIn.union(letGo))
         return ImportOutcome(added: added, updated: updated, skipped: skipped, copyBeforeImport: copy)
     }
 
@@ -321,9 +321,9 @@ extension ImportedCard {
     }
 
     /// What `card`, the user's card it repeats, holds once it's updated: its
-    /// own front, with its image, the back and every field the file gives,
-    /// the back's image among them, its own fields that the file doesn't,
-    /// and `tags` added to its tags.
+    /// own front, with its image and its sound, the back and every field the
+    /// file gives, the back's image among them, its own fields that the file
+    /// doesn't, its back's sound among them, and `tags` added to its tags.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
@@ -333,7 +333,9 @@ extension ImportedCard {
                 tags: ((fields.contains(.tags) ? content.tags : card.tags) + tags).uniqued(),
                 source: fields.contains(.source) ? content.source : card.source,
                 frontImage: card.frontImage,
-                backImage: fields.contains(.backImage) ? content.backImage : card.backImage))
+                backImage: fields.contains(.backImage) ? content.backImage : card.backImage,
+                frontSound: card.frontSound,
+                backSound: card.backSound))
     }
 
     /// `content`, which a front and a back already checked make, or an error

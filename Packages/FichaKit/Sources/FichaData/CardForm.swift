@@ -15,6 +15,9 @@ extension CardsWindowState {
         public internal(set) var addedCards: [Card] = []
         /// What the form says under the front, while it says something.
         public internal(set) var frontWarning: FrontWarning?
+        /// The work converting a sound dropped or pasted on a side, by side,
+        /// while it converts: `CardsWindowSounds.swift`.
+        var soundsComingIn: [CardSide: UUID] = [:]
 
         /// The capture the form was opened from, a follow-up's included,
         /// which it shows beside its fields, or nil for a new card.
@@ -35,10 +38,11 @@ extension CardsWindowState {
             return followUp
         }
 
-        /// Whether Add is on: while both sides have text, whatever the front
-        /// repeats.
+        /// Whether Add is on: while both sides have text, an image or a
+        /// sound, whatever the front repeats, and no sound is converting for
+        /// a side.
         public var canAdd: Bool {
-            draft.content != nil
+            draft.content != nil && soundsComingIn.isEmpty
         }
 
         /// Whether closing the form approves the capture it was opened from,
@@ -86,11 +90,12 @@ extension CardsWindowState.CardForm {
         public init() {}
 
         /// What Add saves, checked as every card is, or nil while a side is
-        /// blank: it has neither text nor an image.
+        /// blank: it has neither text, an image nor a sound.
         var content: CardContent? {
             CardContent(
                 type: type, front: front.text, back: back.text, tags: CardContent.tags(inField: tags),
-                source: source, frontImage: front.image, backImage: back.image)
+                source: source, frontImage: front.image, backImage: back.image, frontSound: front.sound,
+                backSound: back.sound)
         }
 
         /// The side `side` of the draft.
@@ -111,11 +116,13 @@ extension CardsWindowState.CardForm {
     }
 
     /// One side of the card the form makes, a front or a back, as its field
-    /// holds it, and the image the user dragged or pasted on it, if any, which
-    /// the window holds until Add keeps it (`CardsWindowImages.swift`).
+    /// holds it, and the image and the sound the user dragged or pasted on
+    /// it, if any, which the window holds until Add keeps them
+    /// (`CardsWindowImages.swift` and `CardsWindowSounds.swift`).
     public struct Side: Sendable, Equatable {
         public var text = ""
         public internal(set) var image: ImageName?
+        public internal(set) var sound: SoundName?
     }
 }
 
@@ -206,18 +213,19 @@ extension CardsWindowState {
     }
 
     /// Add: saves what the form holds as a new card, while Add is on, straight
-    /// into the user's reviews as new, with the images on its sides, which Ficha
-    /// keeps from then on. A card added from a capture keeps it as its
-    /// capture, and the capture stays in the inbox until the form closes.
-    /// Then it clears the front and the back, their images too, and keeps the
-    /// type, the tags and the source, for the next card. When the card can't
-    /// be saved, it records why, and the fields stay as they were.
+    /// into the user's reviews as new, with the images and sounds on its
+    /// sides, which Ficha keeps from then on. A card added from a capture
+    /// keeps it as its capture, and the capture stays in the inbox until the
+    /// form closes. Then it clears the front and the back, their images and
+    /// sounds too, and keeps the type, the tags and the source, for the next
+    /// card. When the card can't be saved, it records why, and the fields
+    /// stay as they were.
     public mutating func addCard() {
-        guard let form = cardForm, let content = form.draft.content else { return }
+        guard let form = cardForm, form.canAdd, let content = form.draft.content else { return }
         var added: Card?
-        let images = heldImages(of: content)
+        let files = heldFiles(of: content)
         perform(.addCard) { engine throws(EngineError) in
-            added = try engine.create(keeping: images, content, from: form.capture?.id)
+            added = try engine.create(keeping: files, content, from: form.capture?.id)
         }
         guard let added else { return }
         cardForm?.addedCards.append(added)
@@ -229,10 +237,11 @@ extension CardsWindowState {
     }
 
     /// Shows the card the front repeats, while the form warns about one: the
-    /// form goes, set aside as it is, with the images on its sides, until
-    /// it's opened the same way again, and the window selects the card in
-    /// All cards, or in Buried when it's buried, with no search, and scrolls
-    /// to it. A capture the form came from stays in the inbox meanwhile.
+    /// form goes, set aside as it is, with the images and sounds on its
+    /// sides, until it's opened the same way again, and the window selects
+    /// the card in All cards, or in Buried when it's buried, with no search,
+    /// and scrolls to it. A capture the form came from stays in the inbox
+    /// meanwhile.
     public mutating func showRepeatedCard() {
         guard case .repeats(let card)? = cardForm?.frontWarning else { return }
         setAsideCardForm = cardForm
@@ -262,8 +271,8 @@ extension CardsWindowState {
 
     /// Closes `form` for good, once it's no longer open, as Close does.
     private mutating func finishClosing(_ form: CardForm) {
-        // Images put on the last card, which Add never saved, go.
-        showImages()
+        // Images and sounds put on the last card, which Add never saved, go.
+        showFiles()
         if form.approvesCaptureOnClose, let capture = form.capture {
             perform(.approveCapture) { engine throws(EngineError) in try engine.approve(capture.id) }
             read(on: ladder)

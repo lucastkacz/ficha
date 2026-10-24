@@ -42,7 +42,7 @@ extension Engine {
     /// dropped, since it may refer to any of them.
     func dropImagesNoCopyUses() {
         guard let backupsFolder else { return }
-        let shared = ImageStore.folder(folderOfSharedImages(in: backupsFolder))
+        let shared = FileStore<ImageName>.folder(folderOfSharedImages(in: backupsFolder))
         do throws(EngineError) {
             var referred: Set<ImageName> = []
             for copy in try copies() {
