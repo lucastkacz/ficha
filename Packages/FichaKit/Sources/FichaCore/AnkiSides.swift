@@ -66,13 +66,8 @@ struct AnkiSide {
 /// out, and one whose own tag hides it, with `hidden` or `display: none`,
 /// such as an icon a template's script shows now and then.
 private func fileNames(shownIn html: String) -> [String] {
-    // Each ends where `plainText(fromHTML:)` ends it, whatever the case of
-    // its closing tag, which a backreference would compare.
-    let shown = html.replacing(
-        #/(?is)<!--.*?(?:-->|\z)|<script\b.*?(?:</script[^>]*>|\z)|<style\b.*?(?:</style[^>]*>|\z)/#, with: "")
-    return shown.matches(of: #/(?i)<img\b((?:[^>"']|"[^"]*"|'[^']*')*)/#)
-        .compactMap { match -> String? in
-            let attributes = tagAttributes(in: String(match.output.1))
+    imageTags(in: htmlWithoutHiddenMarkup(html))
+        .compactMap { attributes -> String? in
             guard attributes["hidden"] == nil, attributes["style"]?.contains(/(?i)display\s*:\s*none/) != true else {
                 return nil
             }
@@ -85,14 +80,101 @@ private func fileNames(shownIn html: String) -> [String] {
         }
 }
 
-/// The attributes of a tag, by their names in lowercase, from `text`, what
-/// follows the tag's name: each one's value, double-quoted, single-quoted or
-/// bare, or an empty value for one without, such as `hidden`. An attribute
-/// the tag repeats keeps its first value, as in a browser.
-private func tagAttributes(in text: String) -> [String: String] {
-    Dictionary(
-        text.matches(of: #/([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/#).map { match in
-            (match.output.1.lowercased(), String(match.output.2 ?? match.output.3 ?? match.output.4 ?? ""))
+/// The attributes of each `<img>` tag in `html`, in its order, by their
+/// names in lowercase: each one's value, double-quoted, single-quoted or
+/// bare, or an empty value for one without, such as `hidden`. A tag ends at
+/// its first `>` outside a quoted value, or at a quote it never closes. An
+/// attribute the tag repeats keeps its first value, as in a browser. Read by
+/// hand, since Swift's regexes took a second on a deck's 6,000 images.
+private func imageTags(in html: String) -> [[String: String]] {
+    let html = Array(html.unicodeScalars)
+    var tags: [[String: String]] = []
+    var index = 0
+    while index + 4 <= html.count {
+        guard startsImageTag(html, at: index) else {
+            index += 1
+            continue
         }
-    ) { first, _ in first }
+        let end = endOfTag(html, from: index + 4)
+        tags.append(attributes(in: html[(index + 4)..<end]))
+        index = end
+    }
+    return tags
+}
+
+/// Whether an `<img>` tag starts at `index` of `html`: `<img`, in any case,
+/// then neither a letter, a digit nor `_`.
+private func startsImageTag(_ html: [Unicode.Scalar], at index: Int) -> Bool {
+    guard html[index] == "<", String(String.UnicodeScalarView(html[(index + 1)..<(index + 4)])).lowercased() == "img"
+    else {
+        return false
+    }
+    guard index + 4 < html.count else {
+        return true
+    }
+    let next = html[index + 4]
+    return !(next.properties.isAlphabetic || next.properties.numericType != nil || next == "_")
+}
+
+/// Where the tag whose name ends at `start` ends: at its first `>` outside a
+/// quoted value, at a quote it never closes, or at the HTML's end.
+private func endOfTag(_ html: [Unicode.Scalar], from start: Int) -> Int {
+    var index = start
+    while index < html.count, html[index] != ">" {
+        if html[index] == "\"" || html[index] == "'" {
+            guard let close = html[(index + 1)...].firstIndex(of: html[index]) else {
+                return index
+            }
+            index = close
+        }
+        index += 1
+    }
+    return index
+}
+
+/// The attributes in `text`, what follows a tag's name, by their names in
+/// lowercase, each with the first value the tag gives it.
+private func attributes(in text: ArraySlice<Unicode.Scalar>) -> [String: String] {
+    var attributes: [String: String] = [:]
+    var index = text.startIndex
+    while index < text.endIndex {
+        guard !endsAttributeName(text[index]) else {
+            index += 1
+            continue
+        }
+        let nameEnd = text[index...].firstIndex(where: endsAttributeName) ?? text.endIndex
+        let name = String(String.UnicodeScalarView(text[index..<nameEnd])).lowercased()
+        let (value, valueEnd) = attributeValue(in: text, after: nameEnd) ?? ("", nameEnd)
+        if attributes[name] == nil {
+            attributes[name] = value
+        }
+        index = valueEnd
+    }
+    return attributes
+}
+
+/// Whether `scalar` ends an attribute's name: a space, a quote, `>`, `/` or
+/// `=`.
+private func endsAttributeName(_ scalar: Unicode.Scalar) -> Bool {
+    scalar.properties.isWhitespace || "\"'>/=".unicodeScalars.contains(scalar)
+}
+
+/// The value an attribute whose name ends at `nameEnd` of `text` is given,
+/// after an `=` and any spaces around it, double-quoted, single-quoted or
+/// bare, and where it ends; nil when it's given none.
+private func attributeValue(in text: ArraySlice<Unicode.Scalar>, after nameEnd: Int) -> (String, Int)? {
+    let isSpace = { (scalar: Unicode.Scalar) in scalar.properties.isWhitespace }
+    guard let equals = text[nameEnd...].firstIndex(where: { !isSpace($0) }), text[equals] == "=",
+        let start = text[(equals + 1)...].firstIndex(where: { !isSpace($0) })
+    else {
+        return nil
+    }
+    let quote = text[start]
+    if quote == "\"" || quote == "'" {
+        return text[(start + 1)...].firstIndex(of: quote).map { close in
+            (String(String.UnicodeScalarView(text[(start + 1)..<close])), close + 1)
+        }
+    }
+    let end = text[start...].firstIndex { isSpace($0) || "\"'>".unicodeScalars.contains($0) } ?? text.endIndex
+    return (String(String.UnicodeScalarView(text[start..<end])), end)
 }
