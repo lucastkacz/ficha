@@ -58,8 +58,9 @@ public enum EngineError: Error, Equatable {
     /// What Lucas gave a tag as its emoji isn't one emoji: a word, two
     /// emoji, a letter or nothing.
     case notOneEmoji
-    /// The card with this id changed outside the review panel, as a refine
-    /// session can change it, so ⌘Z can't undo what Lucas did with it.
+    /// The card with this id, or a follow-up Lucas asked about it, changed
+    /// outside the review panel, as a refine session can change them, so ⌘Z
+    /// can't undo what Lucas did with it.
     case cannotUndo(Int64)
     /// The review log of the card with this id doesn't start with its first
     /// view or a placement, or has a second one later, so it isn't known

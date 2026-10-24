@@ -295,6 +295,17 @@ enum Schema {
             try db.rename(table: "new_reviewLog", to: "reviewLog")
             try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
         }
+        migrator.registerMigration("v16 follow-ups") { db in
+            // A follow-up: a capture Lucas jots down in the review panel
+            // about the card in front of him, such as a question it raised,
+            // which waits in the inbox tied to that card, so that refining
+            // turns it into new cards beside it. A capture expands a card,
+            // follows one up, or neither, never both.
+            try db.alter(table: "capture") { table in
+                table.add(column: "followsUpCardId", .integer).references("card")
+                    .check(sql: "followsUpCardId IS NULL OR expandsCardId IS NULL")
+            }
+        }
         return migrator
     }()
 }

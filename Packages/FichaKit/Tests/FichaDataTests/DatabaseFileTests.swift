@@ -365,7 +365,7 @@ func saveDatabaseBeforePlacements(at file: URL, at time: Date) throws {
 
 /// Checks that `engine` has every card of `saveDatabaseBeforeOptionalTypes`
 /// as it was saved at `time`: its type, capture, standing, step and review
-/// log, and the expansion still attached to its card.
+/// log, and the expansion still attached to its card, which follows none up.
 func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date) throws {
     let cards = try engine.cards()
     #expect(cards.map(\.id) == [1, 2, 3])
@@ -398,6 +398,7 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
                 cardID: 3, kind: .firstView, answeredAt: time, responseTime: .seconds(6), trigger: .appearance),
         ])
     #expect(try engine.inbox().expansions.map(\.card.id) == [1])
+    #expect(try engine.inbox().followUps.isEmpty)
 }
 
 /// Saves a database at `file` as the first version of Ficha left it, written

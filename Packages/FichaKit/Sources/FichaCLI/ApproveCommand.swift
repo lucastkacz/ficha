@@ -17,7 +17,8 @@ struct ApproveCommand: EngineCommand {
                 "tags": ["lenguaje"], "source": null}]
               EOF
 
-            It saves the cards as new, in that order, takes the capture out of the inbox and prints the cards.
+            It saves the cards as new, in that order, takes the capture out of the inbox and prints the cards. A \
+            follow-up is approved the same way, and the card it follows up stays as it is.
             """
     )
 

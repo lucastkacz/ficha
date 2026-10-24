@@ -48,9 +48,13 @@ struct CaptureCommand: EngineCommand {
 struct InboxCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "inbox",
-        abstract: "List what waits in the inbox: your captures, your cards' expansions and the cards you flagged.",
+        abstract: """
+            List what waits in the inbox: your captures, your cards' expansions, your follow-ups on them and the \
+            cards you flagged.
+            """,
         discussion: """
             It prints "captures", oldest first; "expansions", each a capture with the card it expands, oldest \
+            first; "followUps", each a capture you asked in the review panel with the card it follows up, oldest \
             first; and "flaggedCards", each with your note on what to fix in "flag", the first flagged first.
             """
     )

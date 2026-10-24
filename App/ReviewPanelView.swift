@@ -4,12 +4,13 @@ import SwiftUI
 
 /// What the review panel shows, on Liquid Glass: the cards a review now or an
 /// appearance brought, one at a time. Every action has a key and a button:
-/// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, M flags it
-/// with a note, E buries it, ⌘Z undoes what Lucas did with the last card, and
-/// Esc closes the panel, which snoozes an appearance. Once Lucas went through
-/// every card, the panel stays open until he closes it, and offers more cards
-/// if there are any, which Enter brings; review now with nothing due offers
-/// to review ahead the same way. A card taller than the panel's maximum
+/// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, A asks a
+/// question about it, which waits in the inbox as a follow-up, M flags it with
+/// a note, E buries it, ⌘Z undoes the last thing Lucas did, and Esc closes the
+/// panel, which snoozes an appearance. Once Lucas went through every card, the
+/// panel stays open until he closes it, and offers more cards if there are
+/// any, which Enter brings; review now with nothing due offers to review
+/// ahead the same way. A card taller than the panel's maximum
 /// height scrolls between the line at its top and what's under it, which
 /// stay in view. `ReviewPanelState` decides what the panel shows and what
 /// happens when Lucas acts, and the view draws it.
@@ -34,6 +35,9 @@ struct ReviewPanelView: View {
     /// Whether the note's field has the keyboard. Whatever shows the note
     /// sets it, in the same action, as the flag button does.
     @FocusState private var noteIsFocused: Bool
+    /// Whether the question's field has the keyboard. Whatever shows the
+    /// question sets it, in the same action, as the ask button does.
+    @FocusState private var questionIsFocused: Bool
 
     var body: some View {
         HeightUpTo(maximum: maximumHeight) {
@@ -87,6 +91,7 @@ struct ReviewPanelView: View {
         case .answer: Failure(title: "Couldn't save your answer", message: error.messageInReviewPanel)
         case .flag: Failure(title: "Couldn't flag the card", message: error.messageInReviewPanel)
         case .bury: Failure(title: "Couldn't bury the card", message: error.messageInReviewPanel)
+        case .ask: Failure(title: "Couldn't save your question", message: error.messageInReviewPanel)
         case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
         case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
         }
@@ -157,6 +162,9 @@ struct ReviewPanelView: View {
         case .flagging(let card, let showsBack):
             sides(of: card, showingBack: showsBack, buttons: .closeWithoutEsc, in: panel) {}
             noteEditor(of: panel)
+        case .asking(let card, let showsBack):
+            sides(of: card, showingBack: showsBack, buttons: .closeWithoutEsc, in: panel) {}
+            questionEditor(of: panel)
         case .done where panel.state.canSeeMore:
             header {
                 VStack(alignment: .leading, spacing: 6) {
@@ -296,10 +304,10 @@ struct ReviewPanelView: View {
 
     /// Which buttons a card has at the panel's top right.
     private enum TopButtons {
-        /// Undo, flag, bury, and close, with Esc.
+        /// Undo, ask, flag, bury, and close, with Esc.
         case forTheCard
         /// Close alone, without Esc, which goes back to the card while the user
-        /// writes a note to flag it.
+        /// writes a note to flag it or a question about it.
         case closeWithoutEsc
     }
 
@@ -325,12 +333,27 @@ struct ReviewPanelView: View {
             .help(withEsc ? Text("Close (esc)") : Text("Close"))
     }
 
-    /// The buttons for the card Lucas is on: ⌘Z undoes what he did with the
-    /// last card, M flags this one with a note, and E buries it. Without
-    /// `withKeys`, none of them has its key.
+    /// The buttons for the card Lucas is on: ⌘Z undoes the last thing he did,
+    /// A asks a question about this card, M flags it with a note, and E buries
+    /// it. Without `withKeys`, none of them has its key.
     @ViewBuilder
     private func cardButtons(of panel: ReviewPanelModel, withKeys: Bool) -> some View {
         undoButton(of: panel, withKeys: withKeys)
+        Button(
+            String(
+                localized: "Ask…",
+                comment:
+                    "A button that asks a question about the card the review panel shows, which waits in the inbox tied to the card."
+            ),
+            systemImage: "questionmark.bubble"
+        ) {
+            panel.state.startAsking()
+            // The question's field gets the keyboard in the same action that
+            // shows it, as the note's does (#61).
+            questionIsFocused = true
+        }
+        .keyboardShortcut(withKeys ? KeyboardShortcut("a", modifiers: []) : nil)
+        .help(Text("Ask… (a)", comment: "The tooltip of the button that asks a question about the card, with its key."))
         Button(
             String(
                 localized: "Flag…",
@@ -357,7 +380,7 @@ struct ReviewPanelView: View {
         .help(Text("Bury (e)", comment: "The tooltip of the button that buries the card, with its key."))
     }
 
-    /// The button that undoes what the user did with the last card: ⌘Z, unless
+    /// The button that undoes the last thing the user did: ⌘Z, unless
     /// `withKeys` is false.
     private func undoButton(of panel: ReviewPanelModel, withKeys: Bool = true) -> some View {
         Button("Undo", systemImage: "arrow.uturn.backward") {
@@ -371,41 +394,77 @@ struct ReviewPanelView: View {
     /// Where Lucas writes what to fix in the card he flags: Enter flags it,
     /// Option-Enter starts a new line, and Esc goes back to the card.
     private func noteEditor(of panel: ReviewPanelModel) -> some View {
+        writingField(
+            Text("Note"),
+            text: Binding(get: { panel.state.note ?? "" }, set: { panel.state.write(note: $0) }),
+            prompt: Text("What needs fixing?"),
+            isFocused: $noteIsFocused,
+            finishTitle: Text("Flag", comment: "The button that flags the card with the note written above it."),
+            canFinish: panel.state.noteSaysWhatToFix,
+            cancel: { panel.state.cancelFlagging() },
+            finish: { panel.state.finishFlagging() }
+        )
+    }
+
+    /// Where Lucas writes a question about the card he's on: Enter saves it
+    /// as a follow-up and stays on the card, Option-Enter starts a new line,
+    /// and Esc goes back to the card.
+    private func questionEditor(of panel: ReviewPanelModel) -> some View {
+        writingField(
+            Text(
+                "Question",
+                comment:
+                    "The label of the field where the user writes a question about the card the review panel shows."
+            ),
+            text: Binding(get: { panel.state.question ?? "" }, set: { panel.state.write(question: $0) }),
+            prompt: Text(
+                "What do you want to know?",
+                comment:
+                    "The prompt of the field where the user writes a question about the card the review panel shows."
+            ),
+            isFocused: $questionIsFocused,
+            finishTitle: Text(
+                "Ask",
+                comment:
+                    "The button that saves the question written above it, which waits in the inbox tied to the card."),
+            canFinish: panel.state.questionAsksSomething,
+            cancel: { panel.state.cancelAsking() },
+            finish: { panel.state.finishAsking() }
+        )
+    }
+
+    /// A field under the card where Lucas writes about it, which has the
+    /// keyboard while `isFocused` says so: Enter does `finish`, which its
+    /// button, titled `finishTitle`, does only when `canFinish`, Option-Enter
+    /// starts a new line, and Esc does `cancel`.
+    private func writingField(
+        _ label: Text, text: Binding<String>, prompt: Text, isFocused: FocusState<Bool>.Binding, finishTitle: Text,
+        canFinish: Bool, cancel: @escaping () -> Void, finish: @escaping () -> Void
+    ) -> some View {
         VStack(alignment: .trailing, spacing: 12) {
-            TextField(
-                "Note",
-                text: Binding(get: { panel.state.note ?? "" }, set: { panel.state.write(note: $0) }),
-                prompt: Text("What needs fixing?"),
-                axis: .vertical
-            )
+            TextField(text: text, prompt: prompt, axis: .vertical) {
+                label
+            }
             .textFieldStyle(.roundedBorder)
             .lineLimit(1...4)
-            .focused($noteIsFocused)
+            .focused(isFocused)
             // A focused text field keeps Return from reaching the default
             // button.
-            .onSubmit {
-                panel.state.finishFlagging()
-            }
+            .onSubmit(finish)
             HStack {
-                Button {
-                    panel.state.cancelFlagging()
-                } label: {
+                Button(action: cancel) {
                     KeyLabel(
                         title: Text("Cancel"),
                         key: String(localized: "esc", comment: "The Esc key's name, next to the button it presses.")
                     )
                 }
                 .keyboardShortcut(.cancelAction)
-                Button {
-                    panel.state.finishFlagging()
-                } label: {
-                    KeyLabel(
-                        title: Text("Flag", comment: "The button that flags the card with the note written above it."),
-                        key: "↩")
+                Button(action: finish) {
+                    KeyLabel(title: finishTitle, key: "↩")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(!panel.state.noteSaysWhatToFix)
+                .disabled(!canFinish)
             }
         }
     }
