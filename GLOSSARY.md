@@ -7,7 +7,7 @@ An app that shows its user small cards to remember, every so often, on the Mac, 
 ### Cards
 
 **Card**:
-One small thing the user wants to remember, with a front and a back. Each side holds text, an image, or both, and one image at most.
+One small thing the user wants to remember, with a front and a back. Each side holds text, an image, a sound, or any of them together, with one image and one sound at most.
 _Avoid_: flashcard, note, item
 
 **Card type**:
@@ -20,6 +20,10 @@ The side of a card the review panel shows first.
 **Back**:
 The side of a card the user turns to after trying to remember it.
 _Avoid_: answer, solution
+
+**Sound**:
+What the user hears on one side of a card, from a file they added or imported, such as an excerpt of an aria or a word's pronunciation. It plays only when they ask for it.
+_Avoid_: audio, clip, recording
 
 **Tag**:
 A subject a card belongs to, like "historia" or "filosofía". A card can have several.
@@ -48,7 +52,7 @@ What waits to be turned into cards or fixed: captures, including expansions and 
 _Avoid_: queue, backlog
 
 **Duplicate**:
-A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano".
+A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano". A front without text, with only an image or a sound, matches none.
 
 **Expand**:
 Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that approving it adds to that card; or next to the capture it repeats, to be turned into cards with it.
@@ -146,11 +150,11 @@ Taking a card out of Ficha for good, with its review log, which burying keeps. A
 _Avoid_: remove, erase
 
 **Import**:
-Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a deck exported from Anki, with its progress unless the user leaves it out.
+Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a deck exported from Anki, with its progress unless the user leaves it out.
 _Avoid_: load, refine
 
 **Export**:
-Saving cards to a text file with one card per line, zipped with their images if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, never the user's progress.
+Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, never the user's progress.
 _Avoid_: backup, share
 
 ### Spacing
@@ -220,7 +224,7 @@ _Avoid_: history, session log
 ### Backups
 
 **Backup**:
-A copy of everything Ficha keeps, images included, as it was at one moment, which Ficha saves on its own every day, or as often as the user sets, or when they ask. Ficha keeps the last 7, or as many as they set.
+A copy of everything Ficha keeps, images and sounds included, as it was at one moment, which Ficha saves on its own every day, or as often as the user sets, or when they ask. Ficha keeps the last 7, or as many as they set.
 _Avoid_: snapshot, export
 
 **Copy before an update**:
