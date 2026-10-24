@@ -234,10 +234,10 @@ struct UndoTests {
             followUps[0].id, into: [card(.word, front: "zulú", back: "Una lengua de Sudáfrica.")])
         try engine.discard(followUps[1].id)
 
-        #expect(throws: EngineError.cannotUndo(cards[0].id)) {
+        #expect(throws: EngineError.cannotUndoFollowUp(cards[0].id)) {
             try approving.undo()
         }
-        #expect(throws: EngineError.cannotUndo(cards[1].id)) {
+        #expect(throws: EngineError.cannotUndoFollowUp(cards[1].id)) {
             try discarding.undo()
         }
         #expect(try engine.cards() == cards + approved)

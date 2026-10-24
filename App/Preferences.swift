@@ -39,7 +39,7 @@ enum Preferences {
             read(.idleBeforeTakingKeyboard, as: Int.self) { (0...longest).contains($0) ? .seconds($0) : nil }
             ?? settings.idleBeforeTakingKeyboard
         if let offer = read(.forgottenOftenAfter, as: Int.self, StoredOffer.init(stored:)) {
-            settings.forgottenOftenAfter = offer.after
+            settings.forgottenOftenAfter = offer.timesForgotten
         }
         return settings
     }
@@ -311,24 +311,24 @@ private enum StoredShortcut {
 /// The offer to flag a card forgotten often, as the preferences store it:
 /// the number of reviews rated again that brings it, or 0 when it's off.
 private struct StoredOffer {
-    /// The number, or nil when the offer is off.
-    let after: Int?
+    /// How many reviews rated again bring the offer, or nil when it's off.
+    let timesForgotten: Int?
 
-    init(_ after: Int?) {
-        self.after = after
+    init(_ timesForgotten: Int?) {
+        self.timesForgotten = timesForgotten
     }
 
     /// The offer `stored` says, or nil unless it's 0 or a number from 1 up.
     init?(stored: Int) {
         switch stored {
-        case 0: after = nil
-        case 1...: after = stored
+        case 0: timesForgotten = nil
+        case 1...: timesForgotten = stored
         default: return nil
         }
     }
 
     /// The number the preferences store.
     var stored: Int {
-        after ?? 0
+        timesForgotten ?? 0
     }
 }

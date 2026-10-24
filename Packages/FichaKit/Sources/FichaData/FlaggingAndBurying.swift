@@ -2,8 +2,10 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// Flagging, unflagging, burying and unburying: the one place that sets and
-/// clears a card's flag and its burial, as `CODING_STANDARDS.md` says.
+/// Flagging, unflagging, burying and unburying, and taking a flag off as
+/// editing does (`takeFlagOff(_:in:)`, below): this file is the one place
+/// that sets and clears a card's flag and its burial, as
+/// `CODING_STANDARDS.md` says.
 extension Engine {
     /// Flags a card in Lucas's reviews, or set aside, with his note on what
     /// to fix: it waits in the inbox until it's fixed, in a refine session or

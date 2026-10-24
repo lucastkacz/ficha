@@ -36,7 +36,7 @@ extension Engine {
                 arguments: [captureID, cardID]
             )
             guard db.changesCount == 1 else {
-                throw EngineError.cannotUndo(cardID)
+                throw EngineError.cannotUndoFollowUp(cardID)
             }
         }
     }

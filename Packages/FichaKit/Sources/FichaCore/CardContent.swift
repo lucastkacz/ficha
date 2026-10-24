@@ -69,7 +69,7 @@ public struct CardContent: Sendable, Equatable {
 
     /// What a Tags field holds for `tags` when it starts with them, as when
     /// the user edits a card: separated by commas, each after a space.
-    public static func field(of tags: [String]) -> String {
+    public static func tagsField(of tags: [String]) -> String {
         tags.joined(separator: ", ")
     }
 

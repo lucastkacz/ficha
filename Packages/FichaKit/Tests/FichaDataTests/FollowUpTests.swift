@@ -72,7 +72,7 @@ struct FollowUpTests {
         #expect(try engine.inbox().captures.isEmpty)
     }
 
-    // So the question isn't lost, as an expansion isn't.
+    // So what Lucas asked isn't lost, as an expansion isn't.
     @Test("deleting a follow-up's card leaves the follow-up in the inbox as a plain capture")
     func aFollowUpOfADeletedCardBecomesACapture() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
@@ -110,7 +110,7 @@ struct FollowUpTests {
         #expect(try engine.cards()[2].standing == .setAside(by: ["historia"]))
     }
 
-    // A question never changes the card it came from.
+    // A follow-up never changes the card it came from.
     @Test("approving a follow-up creates new cards and leaves its card as it is")
     func approvingAFollowUpCreatesNewCards() throws {
         let poderes = try approve(
@@ -214,7 +214,7 @@ struct FollowUpTests {
         #expect(try engine.inbox().followUps.isEmpty)
     }
 
-    @Test("a blank question isn't saved, and the panel keeps asking")
+    @Test("a blank question isn't saved as a follow-up, and the panel keeps asking")
     func aBlankQuestionIsntSaved() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -295,8 +295,8 @@ struct FollowUpTests {
     }
 
     // The Cards window can delete the card the panel shows.
-    @Test("a question about a card deleted meanwhile isn't saved: the panel keeps it, and says why")
-    func aFailedQuestionStays() throws {
+    @Test("a follow-up about a card deleted meanwhile isn't saved: the panel keeps its question, and says why")
+    func aFollowUpAboutADeletedCardIsntSaved() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try engine.delete([ubuntu.id])

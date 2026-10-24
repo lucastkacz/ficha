@@ -51,11 +51,14 @@ struct ReviewPanelView: View {
     /// Where the cursor is in the note, or what's selected: at the end of the
     /// note the panel offers, which the field would otherwise select whole as
     /// it takes the keyboard, so Lucas adds to it rather than replacing it.
+    /// Whatever shows the note clears it first, in the same action, since a
+    /// selection in the last note may lie past the end of the new one.
     @State private var noteSelection: TextSelection?
     /// Whether the question's field has the keyboard. Whatever shows the
     /// question sets it, in the same action, as the ask button does.
     @FocusState private var questionIsFocused: Bool
-    /// Where the cursor is in the question, or what's selected.
+    /// Where the cursor is in the question, or what's selected, which the ask
+    /// button clears as the note's is.
     @State private var questionSelection: TextSelection?
 
     var body: some View {
@@ -368,7 +371,9 @@ struct ReviewPanelView: View {
         ) {
             panel.state.startAsking()
             // The question's field gets the keyboard in the same action that
-            // shows it, as the note's does (#61).
+            // shows it, as the note's does (#61), with no selection left from
+            // the last question.
+            questionSelection = nil
             questionIsFocused = true
         }
         .keyboardShortcut(withKeys ? KeyboardShortcut("a", modifiers: []) : nil)
@@ -381,8 +386,10 @@ struct ReviewPanelView: View {
         ) {
             panel.state.startFlagging()
             // The note's field gets the keyboard in the same action that
-            // shows it. Asked from the field's `onAppear` instead, after M,
-            // SwiftUI never focused it while the panel had the keyboard (#61).
+            // shows it, with no selection left from the last note. Asked from
+            // the field's `onAppear` instead, after M, SwiftUI never focused
+            // it while the panel had the keyboard (#61).
+            noteSelection = nil
             noteIsFocused = true
         }
         .keyboardShortcut(withKeys ? KeyboardShortcut("m", modifiers: []) : nil)
@@ -572,8 +579,11 @@ struct ReviewPanelView: View {
             panel.state.rate(rating)
             // When the rating makes the card forgotten often, the panel
             // offers to flag it: the note's field gets the keyboard in the
-            // same action that shows it, as after M (#61).
+            // same action that shows it, as after M (#61), with no selection
+            // left from the last note. Once it has the keyboard, the cursor
+            // goes after the note.
             if panel.state.offersToFlag {
+                noteSelection = nil
                 noteIsFocused = true
             }
         } label: {
@@ -716,9 +726,9 @@ extension EngineError {
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
             .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
-            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .unreadableReviewLog, .storage,
-            .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .unreadableImageFile,
-            .imagesFolder, .unreadableFile, .unwritableFile:
+            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp,
+            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage,
+            .unreadableImageFile, .imagesFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }

@@ -104,10 +104,7 @@ final class AppModel {
     /// through, or why they couldn't be brought.
     func startReviewNow() -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            ReviewPanelModel(
-                try engine.openPanel(
-                    .reviewNow, with: engine.reviewNow(settings), settings: settings, clock: ContinuousClock(),
-                    forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(times: $0) }))
+            try openPanel(.reviewNow, with: engine.reviewNow(settings))
         }
     }
 
@@ -128,11 +125,18 @@ final class AppModel {
     /// panel to go through, or why the panel couldn't open them.
     func startAppearance(with cards: [PanelCard]) -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            ReviewPanelModel(
-                try engine.openPanel(
-                    .appearance, with: cards, settings: settings, clock: ContinuousClock(),
-                    forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(times: $0) }))
+            try openPanel(.appearance, with: cards)
         }
+    }
+
+    /// Opens the review panel with `cards`, which `trigger` brought: it times
+    /// Lucas on the system's continuous clock, and writes the note it offers
+    /// to flag a card forgotten often with in the Mac's language.
+    private func openPanel(_ trigger: Trigger, with cards: [PanelCard]) throws(EngineError) -> ReviewPanelModel {
+        ReviewPanelModel(
+            try engine.openPanel(
+                trigger, with: cards, settings: settings, clock: ContinuousClock(),
+                forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(times: $0) }))
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder

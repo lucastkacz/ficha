@@ -244,15 +244,15 @@ struct CardsWindowStateTests {
                 .concept, front: "La división de poderes en la Argentina",
                 back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
             in: engine)
-        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        let saved = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
         var window = openWindow()
         window.choose(.inbox)
 
-        window.selectInInbox(.capture(question.id))
+        window.selectInInbox(.capture(saved.id))
 
         let followUp = try #require(window.shownFollowUp)
         #expect(window.selectedRows.isEmpty)
-        #expect(followUp.capture == question)
+        #expect(followUp.capture == saved)
         #expect(followUp.card == poderes)
         #expect(window.actions == [.edit, .convertToCard, .discard])
     }
@@ -260,10 +260,10 @@ struct CardsWindowStateTests {
     @Test("editing a follow-up keeps its card, and discarding it takes it out of the inbox")
     func editingAFollowUpKeepsItsCard() throws {
         let poderes = try approveCard("La división de poderes", in: engine)
-        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
         var window = openWindow()
         window.choose(.inbox)
-        window.selectInInbox(.capture(question.id))
+        window.selectInInbox(.capture(followUp.id))
 
         window.startEditing()
         let editing = window.editing
@@ -277,7 +277,7 @@ struct CardsWindowStateTests {
         // As the window does once the engine says the inbox changed.
         window.read(on: ladder)
 
-        #expect(editing == .capture(question))
+        #expect(editing == .capture(followUp))
         #expect(edited?.capture.text == "¿Cómo se eligen los jueces de la Corte?")
         #expect(edited?.capture.note == "Y quién los puede remover")
         #expect(edited?.capture.followsUpCardID == poderes.id)
@@ -292,14 +292,14 @@ struct CardsWindowStateTests {
     @Test("a follow-up whose card was deleted shows as a plain capture")
     func aFollowUpWhoseCardWasDeletedShowsAsACapture() throws {
         let poderes = try approveCard("La división de poderes", in: engine)
-        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
         var window = openWindow()
         window.select([poderes.id])
         window.askToDelete()
         window.delete(try #require(window.cardsToDelete))
 
         window.choose(.inbox)
-        window.selectInInbox(.capture(question.id))
+        window.selectInInbox(.capture(followUp.id))
 
         let capture = try #require(try engine.inbox().captures.first)
         #expect(capture.text == "¿Cómo se eligen los jueces?")

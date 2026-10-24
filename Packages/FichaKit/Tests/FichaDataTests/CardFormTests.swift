@@ -161,7 +161,8 @@ struct CardFormTests {
     }
 
     @Test(
-        "Convert to Card on a follow-up opens the form with its card beside the question and the card's tags filled in")
+        "Convert to Card on a follow-up opens the form beside the follow-up and its card, with the card's tags filled in"
+    )
     func theFormFromAFollowUpShowsItsCard() throws {
         let poderes = try approve(
             card(
@@ -169,16 +170,16 @@ struct CardFormTests {
                 back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"],
                 source: "La Constitución Nacional"),
             in: engine)
-        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
         var window = openWindow()
         window.choose(.inbox)
-        window.selectInInbox(.capture(question.id))
+        window.selectInInbox(.capture(followUp.id))
 
         window.convertToCard()
 
         let form = try #require(window.cardForm)
-        #expect(form.capture == question)
-        #expect(form.followUp?.capture == question)
+        #expect(form.capture == followUp)
+        #expect(form.followUp?.capture == followUp)
         #expect(form.followUp?.card == poderes)
         #expect(form.draft.tags == "política, argentina")
         #expect(form.draft.type == nil)
@@ -198,10 +199,10 @@ struct CardFormTests {
             in: engine)
         try engine.climb(poderes, to: 2, movingForward: time)
         let standing = try engine.standing(of: poderes.id, on: ladder)
-        let question = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
         var window = openWindow()
         window.choose(.inbox)
-        window.selectInInbox(.capture(question.id))
+        window.selectInInbox(.capture(followUp.id))
         window.convertToCard()
         window.type(front: "¿Quién propone a los jueces de la Corte Suprema?", back: "El presidente.")
         window.addCard()
@@ -212,7 +213,7 @@ struct CardFormTests {
         window.closeCardForm()
 
         let cards = try engine.cards()
-        #expect(followUpsWhileOpen.map(\.capture) == [question])
+        #expect(followUpsWhileOpen.map(\.capture) == [followUp])
         #expect(window.cardForm == nil)
         #expect(window.failure == nil)
         #expect(cards.first == poderes)
@@ -222,7 +223,7 @@ struct CardFormTests {
                 "¿Quién propone a los jueces de la Corte Suprema?", "¿Quién aprueba a los jueces de la Corte Suprema?",
             ])
         #expect(cards.dropFirst().map(\.tags) == [["política", "argentina"], ["política", "argentina"]])
-        #expect(cards.dropFirst().map(\.captureID) == [question.id, question.id])
+        #expect(cards.dropFirst().map(\.captureID) == [followUp.id, followUp.id])
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(try engine.inbox().captures.isEmpty)
     }
