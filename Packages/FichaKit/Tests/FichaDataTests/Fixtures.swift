@@ -91,6 +91,16 @@ extension Engine {
     func openPanel(_ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings) throws -> ReviewPanelState {
         try openPanel(trigger, with: cards, settings: settings, clock: ManualClock())
     }
+
+    /// Opens the review panel with `cards`, timing Lucas on `clock`, with the
+    /// note it offers to flag a card forgotten often with in English, as the
+    /// app writes it on a Mac in English.
+    func openPanel(
+        _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>
+    ) throws -> ReviewPanelState {
+        try openPanel(
+            trigger, with: cards, settings: settings, clock: clock, forgottenOftenNote: { "Forgotten \($0) times" })
+    }
 }
 
 extension ManualTimeSource {

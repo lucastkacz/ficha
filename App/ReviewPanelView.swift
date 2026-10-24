@@ -7,7 +7,9 @@ import SwiftUI
 /// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, A asks a
 /// question about it, which waits in the inbox as a follow-up, M flags it with
 /// a note, E buries it, ⌘Z undoes the last thing Lucas did, and Esc closes the
-/// panel, which snoozes an appearance. Once Lucas went through every card, the
+/// panel, which snoozes an appearance. When 1 makes a card forgotten often,
+/// the panel offers to flag it, its note written: Enter flags it, and Esc
+/// leaves it in his reviews. Once Lucas went through every card, the
 /// panel stays open until he closes it, and offers more cards if there are
 /// any, which Enter brings; review now with nothing due offers to review
 /// ahead the same way. A card taller than the panel's maximum
@@ -19,6 +21,17 @@ struct ReviewPanelView: View {
     /// panel's window clips its content to it, which matches the glass while
     /// the glass is the view's outermost modifier.
     static let cornerRadius: CGFloat = 24
+
+    /// The note the panel offers to flag a card forgotten often with, which
+    /// says how many times Lucas forgot it, and which he can add to.
+    nonisolated static func forgottenOftenNote(times: Int) -> String {
+        String(
+            localized: "Forgotten \(times) times",
+            comment: """
+                The note the review panel offers to flag a card with, once the user answered “Don't know” to it \
+                this many times since its front or back last changed. They can add to it.
+                """)
+    }
 
     /// The cards a review now or an appearance brought, or why review now
     /// couldn't bring them.
@@ -35,9 +48,15 @@ struct ReviewPanelView: View {
     /// Whether the note's field has the keyboard. Whatever shows the note
     /// sets it, in the same action, as the flag button does.
     @FocusState private var noteIsFocused: Bool
+    /// Where the cursor is in the note, or what's selected: at the end of the
+    /// note the panel offers, which the field would otherwise select whole as
+    /// it takes the keyboard, so Lucas adds to it rather than replacing it.
+    @State private var noteSelection: TextSelection?
     /// Whether the question's field has the keyboard. Whatever shows the
     /// question sets it, in the same action, as the ask button does.
     @FocusState private var questionIsFocused: Bool
+    /// Where the cursor is in the question, or what's selected.
+    @State private var questionSelection: TextSelection?
 
     var body: some View {
         HeightUpTo(maximum: maximumHeight) {
@@ -392,18 +411,33 @@ struct ReviewPanelView: View {
     }
 
     /// Where Lucas writes what to fix in the card he flags: Enter flags it,
-    /// Option-Enter starts a new line, and Esc goes back to the card.
+    /// Option-Enter starts a new line, and Esc goes back to the card, or, when
+    /// the panel offered to flag it, moves on without flagging it.
     private func noteEditor(of panel: ReviewPanelModel) -> some View {
         writingField(
             Text("Note"),
             text: Binding(get: { panel.state.note ?? "" }, set: { panel.state.write(note: $0) }),
             prompt: Text("What needs fixing?"),
+            selection: $noteSelection,
             isFocused: $noteIsFocused,
+            cancelTitle: panel.state.offersToFlag
+                ? Text(
+                    "Don't flag",
+                    comment:
+                        "The button that declines the review panel's offer to flag a card the user forgot often: the card stays in their reviews."
+                ) : Text("Cancel"),
             finishTitle: Text("Flag", comment: "The button that flags the card with the note written above it."),
             canFinish: panel.state.noteSaysWhatToFix,
             cancel: { panel.state.cancelFlagging() },
             finish: { panel.state.finishFlagging() }
         )
+        // Set once the field has the keyboard: it selects its whole text as
+        // it takes it, which would replace the note the panel offers.
+        .onChange(of: noteIsFocused) { _, isFocused in
+            if isFocused, let note = panel.state.note {
+                noteSelection = TextSelection(insertionPoint: note.endIndex)
+            }
+        }
     }
 
     /// Where Lucas writes a question about the card he's on: Enter saves it
@@ -422,7 +456,9 @@ struct ReviewPanelView: View {
                 comment:
                     "The prompt of the field where the user writes a question about the card the review panel shows."
             ),
+            selection: $questionSelection,
             isFocused: $questionIsFocused,
+            cancelTitle: Text("Cancel"),
             finishTitle: Text(
                 "Ask",
                 comment:
@@ -433,16 +469,18 @@ struct ReviewPanelView: View {
         )
     }
 
-    /// A field under the card where Lucas writes about it, which has the
-    /// keyboard while `isFocused` says so: Enter does `finish`, which its
-    /// button, titled `finishTitle`, does only when `canFinish`, Option-Enter
-    /// starts a new line, and Esc does `cancel`.
+    /// A field under the card where Lucas writes about it, with its cursor or
+    /// what's selected in `selection`, which has the keyboard while
+    /// `isFocused` says so: Enter does `finish`, which its button, titled
+    /// `finishTitle`, does only when `canFinish`, Option-Enter starts a new
+    /// line, and Esc does `cancel`, as its button, titled `cancelTitle`, does.
     private func writingField(
-        _ label: Text, text: Binding<String>, prompt: Text, isFocused: FocusState<Bool>.Binding, finishTitle: Text,
-        canFinish: Bool, cancel: @escaping () -> Void, finish: @escaping () -> Void
+        _ label: Text, text: Binding<String>, prompt: Text, selection: Binding<TextSelection?>,
+        isFocused: FocusState<Bool>.Binding, cancelTitle: Text, finishTitle: Text, canFinish: Bool,
+        cancel: @escaping () -> Void, finish: @escaping () -> Void
     ) -> some View {
         VStack(alignment: .trailing, spacing: 12) {
-            TextField(text: text, prompt: prompt, axis: .vertical) {
+            TextField(text: text, selection: selection, prompt: prompt, axis: .vertical) {
                 label
             }
             .textFieldStyle(.roundedBorder)
@@ -454,7 +492,7 @@ struct ReviewPanelView: View {
             HStack {
                 Button(action: cancel) {
                     KeyLabel(
-                        title: Text("Cancel"),
+                        title: cancelTitle,
                         key: String(localized: "esc", comment: "The Esc key's name, next to the button it presses.")
                     )
                 }
@@ -532,6 +570,12 @@ struct ReviewPanelView: View {
     ) -> some View {
         Button {
             panel.state.rate(rating)
+            // When the rating makes the card forgotten often, the panel
+            // offers to flag it: the note's field gets the keyboard in the
+            // same action that shows it, as after M (#61).
+            if panel.state.offersToFlag {
+                noteIsFocused = true
+            }
         } label: {
             KeyLabel(title: Text(title), key: String(key))
                 .frame(maxWidth: .infinity)

@@ -7,7 +7,9 @@ import Foundation
 /// keyboard, and how it closes. He ends a new card's first view, and flips
 /// and rates a due card, or one he reviews ahead. He can also flag any card
 /// with a note on what to fix, or bury it, and ask questions about it, each a
-/// follow-up in the inbox, without leaving it. Each is saved as he does it,
+/// follow-up in the inbox, without leaving it. When his rating of again makes
+/// a card forgotten often, the panel offers to flag it, with a note that says
+/// how many times he forgot it. Each is saved as he does it,
 /// and ⌘Z undoes it, the last first, while the panel is open, and shows the
 /// card again as he left it. Once he went through every card, the panel stays
 /// open and offers more cards, if there are any, until he closes it. The
@@ -38,7 +40,8 @@ public struct ReviewPanelState: Sendable {
         /// to rate it.
         case back(Card, isAhead: Bool)
         /// The card Lucas is on, as it showed, its back included or not,
-        /// while he writes a note on what to fix in it.
+        /// while he writes a note on what to fix in it, also when the panel
+        /// offers to flag it.
         case flagging(Card, showsBack: Bool)
         /// The card Lucas is on, as it showed, its back included or not,
         /// while he writes a question about it, to follow it up.
@@ -104,6 +107,9 @@ public struct ReviewPanelState: Sendable {
     private let ownTags: OwnTags
     private let engine: Engine
     private let settings: ReviewSettings
+    /// The note the panel offers to flag a card forgotten often with, for
+    /// how many times Lucas forgot it, in the Mac's language.
+    private let forgottenOftenNote: @Sendable (Int) -> String
     private let shownAt: Date
     /// When Lucas last did something in the panel, or when it showed.
     private var touchedAt: Date
@@ -130,7 +136,7 @@ public struct ReviewPanelState: Sendable {
 
     init(
         trigger: Trigger, cards: [PanelCard], ownTags: OwnTags, engine: Engine, settings: ReviewSettings,
-        clock: some Clock<Duration>
+        clock: some Clock<Duration>, forgottenOftenNote: @escaping @Sendable (Int) -> String
     ) {
         self.trigger = trigger
         self.cards = cards
@@ -138,6 +144,7 @@ public struct ReviewPanelState: Sendable {
         self.ownTags = ownTags
         self.engine = engine
         self.settings = settings
+        self.forgottenOftenNote = forgottenOftenNote
         mayHaveKeyboard = trigger == .reviewNow
         shownAt = engine.now
         touchedAt = shownAt
@@ -204,6 +211,13 @@ public struct ReviewPanelState: Sendable {
         note.flatMap(FlagNote.init) != nil
     }
 
+    /// Whether the panel offers to flag the card Lucas is on, which he just
+    /// rated again and forgot often: then cancelling moves on without
+    /// flagging it.
+    public var offersToFlag: Bool {
+        flagging?.isOffer == true
+    }
+
     /// The question Lucas is writing about the card he's on, while he writes
     /// it.
     public var question: String? {
@@ -257,8 +271,10 @@ public struct ReviewPanelState: Sendable {
 
     /// Rates the card Lucas reviews, once its back shows, which moves it on
     /// the ladder, with how long he took, and moves on to the next card: in a
-    /// review ahead, only again moves it. When it can't be saved, the card
-    /// stays, and the panel says why.
+    /// review ahead, only again moves it. When a rating of again makes the
+    /// card forgotten often, the panel stays on it and offers to flag it
+    /// instead. When it can't be saved, the card stays, and the panel says
+    /// why.
     public mutating func rate(_ rating: Rating) {
         guard case .back = content else { return }
         perform(.answer) { panel throws(EngineError) in
@@ -270,7 +286,7 @@ public struct ReviewPanelState: Sendable {
     /// what to fix, and the card's response time waits while he writes it.
     public mutating func startFlagging() {
         guard isOnACard else { return }
-        flagging = Flagging(note: "", timeOnCard: timeOnCard)
+        flagging = Flagging(note: "", timeOnCard: timeOnCard, isOffer: false)
         touch()
     }
 
@@ -282,17 +298,24 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Stops flagging the card: it stays as it showed, and its response time
-    /// goes on from where it waited.
+    /// goes on from where it waited. When the panel offered to flag it, the
+    /// card stays in Lucas's reviews, with his rating, and the panel moves on
+    /// to the next card.
     public mutating func cancelFlagging() {
         guard let flagging else { return }
+        if flagging.isOffer {
+            moveOn(after: [.answered], timeOnCard: flagging.timeOnCard)
+            return
+        }
         self.flagging = nil
         startTiming(from: flagging.timeOnCard)
         touch()
     }
 
     /// Flags the card with the note Lucas wrote, which sends it to the inbox
-    /// until it's fixed, and moves on to the next card. When it can't be
-    /// saved, the card stays, with the note, and the panel says why.
+    /// until it's fixed, and moves on to the next card, also when the panel
+    /// offered it, after his rating. When it can't be saved, the card stays,
+    /// with the note, and the panel says why.
     public mutating func finishFlagging() {
         guard let note = note.flatMap(FlagNote.init) else { return }
         perform(.flag) { panel throws(EngineError) in try panel.flag(note: note) }
@@ -407,14 +430,22 @@ public struct ReviewPanelState: Sendable {
 
     /// Records Lucas's answer to the current card in the review log, with how
     /// long he took, and moves on to the next card: in a review ahead, as one.
-    /// The panel's buttons answer through `endFirstView()` and `rate(_:)`,
-    /// which time him on the steady clock, and say what failed.
+    /// When the engine says a rating of again made the card forgotten often,
+    /// the panel stays on it instead, flagging it, with the note written as
+    /// how many times he forgot it, and the card's time stopped at his
+    /// answer. The panel's buttons answer through `endFirstView()` and
+    /// `rate(_:)`, which time him on the steady clock, and say what failed.
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
-        try engine.record(
+        let forgottenOften = try engine.record(
             kind, of: answering.card.id, responseTime: responseTime, trigger: trigger, settings: settings,
             reviewingAhead: answering.isAhead)
-        moveOn(after: .answered, timeOnCard: responseTime)
+        guard let forgottenOften else {
+            moveOn(after: [.answered], timeOnCard: responseTime)
+            return
+        }
+        flagging = Flagging(note: forgottenOftenNote(forgottenOften.times), timeOnCard: responseTime, isOffer: true)
+        touch()
     }
 
     /// Adds the cards "See more" offers, and goes on to the first of them,
@@ -434,14 +465,16 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Flags the current card with Lucas's note on what to fix, which sends
-    /// it to the inbox, and moves on to the next card. The panel's button
+    /// it to the inbox, and moves on to the next card. When the panel offered
+    /// it, ⌘Z then undoes his rating along with the flag. The panel's button
     /// flags it through `finishFlagging()`, with the note he wrote, which
     /// says what failed.
     public mutating func flag(note: FlagNote) throws(EngineError) {
         guard outcome == nil, let flagging = current else { return }
         let timeOnCard = self.timeOnCard
+        let answered: [PanelAction] = offersToFlag ? [.answered] : []
         try engine.flag(flagging.card.id, note: note)
-        moveOn(after: .flagged, timeOnCard: timeOnCard)
+        moveOn(after: answered + [.flagged], timeOnCard: timeOnCard)
     }
 
     /// Buries the current card, which takes it out of Lucas's reviews for
@@ -451,7 +484,7 @@ public struct ReviewPanelState: Sendable {
         guard outcome == nil, let burying = current else { return }
         let timeOnCard = self.timeOnCard
         try engine.bury(burying.card.id)
-        moveOn(after: .buried, timeOnCard: timeOnCard)
+        moveOn(after: [.buried], timeOnCard: timeOnCard)
     }
 
     /// Undoes the last thing Lucas did, ⌘Z, the last first. On the card he's
@@ -462,10 +495,11 @@ public struct ReviewPanelState: Sendable {
     /// showing or not, with its time going on from where it was, and with the
     /// follow-ups he asked about it, which the next ⌘Z takes back: also once
     /// he went through every card. The engine takes back his answer, unflags
-    /// the card or unburies it. When the card or the follow-up changed outside
-    /// the panel since, nothing is undone. Nothing is left to undo once the
-    /// panel closed. The panel's ⌘Z undoes through `undoLastCard()`, which
-    /// says what failed.
+    /// the card or unburies it, or, for a card he flagged when the panel
+    /// offered it, unflags it and then takes back his answer. When the card
+    /// or the follow-up changed outside the panel since, nothing more is
+    /// undone. Nothing is left to undo once the panel closed. The panel's ⌘Z
+    /// undoes through `undoLastCard()`, which says what failed.
     public mutating func undo() throws(EngineError) {
         guard canUndo else { return }
         if let followUpID = followUpsOnCard.last, let current {
@@ -475,7 +509,13 @@ public struct ReviewPanelState: Sendable {
             return
         }
         guard let last = wentThrough.last else { return }
-        try takeBack(last.action, of: cards[wentThrough.count - 1].card.id)
+        let cardID = cards[wentThrough.count - 1].card.id
+        // The last first. What's taken back leaves the visit at once, so
+        // when the next can't be, the next ⌘Z tries only what's left.
+        for action in last.actions.reversed() {
+            try takeBack(action, of: cardID)
+            wentThrough[wentThrough.count - 1].actions.removeLast()
+        }
         wentThrough.removeLast()
         followUpsOnCard = last.followUps
         moreCards = []
@@ -501,11 +541,12 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Moves on to the next card, from its front, with its time starting now,
-    /// once Lucas did `action` with the current one after `timeOnCard` on it.
-    /// After the last one, the panel looks for more cards to offer.
-    private mutating func moveOn(after action: PanelAction, timeOnCard: Duration) {
+    /// once Lucas did `actions`, in order, with the current one after
+    /// `timeOnCard` on it. After the last one, the panel looks for more cards
+    /// to offer.
+    private mutating func moveOn(after actions: [PanelAction], timeOnCard: Duration) {
         wentThrough.append(
-            Visit(action: action, followUps: followUpsOnCard, showedBack: isFlipped, timeOnCard: timeOnCard))
+            Visit(actions: actions, followUps: followUpsOnCard, showedBack: isFlipped, timeOnCard: timeOnCard))
         followUpsOnCard = []
         isFlipped = false
         flagging = nil
@@ -539,14 +580,16 @@ public struct ReviewPanelState: Sendable {
 
     /// Closes the panel, once: as finished when no card it brought was left,
     /// even if some that "See more" added were, and otherwise as a snooze,
-    /// Lucas's or the panel's own. It goes into the
+    /// Lucas's or the panel's own. A card the panel offers to flag isn't
+    /// left: he answered it, and it stays in his reviews. It goes into the
     /// appearance log, unless it brought no cards: an empty review now holds
     /// no appearance back (Lucas, 2026-10-15). When it can't be recorded, the
     /// panel closes anyway, and the engine logs why.
     public mutating func close(_ closing: Closing) {
         guard outcome == nil else { return }
+        let answered = wentThrough.count + (offersToFlag ? 1 : 0)
         let outcome: AppearanceLogEntry.Outcome =
-            switch (wentThrough.count >= broughtCount, closing) {
+            switch (answered >= broughtCount, closing) {
             case (true, _): .finished
             case (false, .byLucas): .snoozed
             case (false, .onItsOwn): .autoClosed
@@ -579,18 +622,23 @@ private enum PanelAction: Sendable {
 /// back on the card, and how he left it, which ⌘Z shows again: whether its
 /// back showed, and how long he had been on it.
 private struct Visit: Sendable {
-    let action: PanelAction
+    /// What he did with it, in order: one thing, or his answer and then a
+    /// flag, when the panel offered it. One ⌘Z undoes them all, the last
+    /// first.
+    var actions: [PanelAction]
     /// The ids of the follow-ups, in the order he asked them.
     let followUps: [Int64]
     let showedBack: Bool
     let timeOnCard: Duration
 }
 
-/// The note Lucas is writing to flag the card he's on, and how long he had
-/// been on the card when he started.
+/// The note Lucas is writing to flag the card he's on, how long he had been
+/// on the card when he started, and whether the panel offered it, after his
+/// rating of again made the card forgotten often, rather than him asking.
 private struct Flagging: Sendable {
     var note: String
     let timeOnCard: Duration
+    let isOffer: Bool
 }
 
 /// The question Lucas is writing about the card he's on, and how long he had
@@ -605,11 +653,15 @@ extension Engine {
     /// shows them from now on, with their tags' colors and emoji as they are
     /// now, and times Lucas on each on `clock`, a steady one, which moving the
     /// engine's time doesn't move: the system's continuous clock in the app.
+    /// `forgottenOftenNote` writes the note the panel offers to flag a card
+    /// forgotten often with, for how many times Lucas forgot it, in the Mac's
+    /// language, which the app translates.
     public func openPanel(
-        _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>
+        _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>,
+        forgottenOftenNote: @escaping @Sendable (Int) -> String
     ) throws(EngineError) -> ReviewPanelState {
         ReviewPanelState(
             trigger: trigger, cards: cards, ownTags: try read(OwnTags.init(in:)), engine: self,
-            settings: settings, clock: clock)
+            settings: settings, clock: clock, forgottenOftenNote: forgottenOftenNote)
     }
 }

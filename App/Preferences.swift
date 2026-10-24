@@ -38,6 +38,9 @@ enum Preferences {
         settings.idleBeforeTakingKeyboard =
             read(.idleBeforeTakingKeyboard, as: Int.self) { (0...longest).contains($0) ? .seconds($0) : nil }
             ?? settings.idleBeforeTakingKeyboard
+        if let offer = read(.forgottenOftenAfter, as: Int.self, StoredOffer.init(stored:)) {
+            settings.forgottenOftenAfter = offer.after
+        }
         return settings
     }
 
@@ -66,6 +69,9 @@ enum Preferences {
         write(
             settings.idleBeforeTakingKeyboard.components.seconds, for: .idleBeforeTakingKeyboard,
             unless: defaults.idleBeforeTakingKeyboard.components.seconds)
+        write(
+            StoredOffer(settings.forgottenOftenAfter).stored, for: .forgottenOftenAfter,
+            unless: StoredOffer(defaults.forgottenOftenAfter).stored)
     }
 
     /// How often Ficha backs up on its own, and how many backups it keeps, as
@@ -171,6 +177,9 @@ enum Preferences {
         case autoClose = "AutoCloseMinutes"
         case focusMode = "FocusMode"
         case idleBeforeTakingKeyboard = "IdleBeforeTakingKeyboardSeconds"
+        /// How many reviews rated again make a card forgotten often, or 0
+        /// when the review panel never offers to flag it.
+        case forgottenOftenAfter = "ForgottenOftenAfter"
         /// The raw value of how often Ficha backs up on its own.
         case backupFrequency = "BackupFrequency"
         case backupsKept = "BackupsKept"
@@ -297,4 +306,29 @@ private func suppressions(_ stored: [String]) -> Set<Suppression>? {
 private enum StoredShortcut {
     case on(CaptureShortcut)
     case off
+}
+
+/// The offer to flag a card forgotten often, as the preferences store it:
+/// the number of reviews rated again that brings it, or 0 when it's off.
+private struct StoredOffer {
+    /// The number, or nil when the offer is off.
+    let after: Int?
+
+    init(_ after: Int?) {
+        self.after = after
+    }
+
+    /// The offer `stored` says, or nil unless it's 0 or a number from 1 up.
+    init?(stored: Int) {
+        switch stored {
+        case 0: after = nil
+        case 1...: after = stored
+        default: return nil
+        }
+    }
+
+    /// The number the preferences store.
+    var stored: Int {
+        after ?? 0
+    }
 }

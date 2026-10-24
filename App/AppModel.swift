@@ -106,7 +106,8 @@ final class AppModel {
         Result { () throws(EngineError) in
             ReviewPanelModel(
                 try engine.openPanel(
-                    .reviewNow, with: engine.reviewNow(settings), settings: settings, clock: ContinuousClock()))
+                    .reviewNow, with: engine.reviewNow(settings), settings: settings, clock: ContinuousClock(),
+                    forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(times: $0) }))
         }
     }
 
@@ -128,7 +129,9 @@ final class AppModel {
     func startAppearance(with cards: [PanelCard]) -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
             ReviewPanelModel(
-                try engine.openPanel(.appearance, with: cards, settings: settings, clock: ContinuousClock()))
+                try engine.openPanel(
+                    .appearance, with: cards, settings: settings, clock: ContinuousClock(),
+                    forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(times: $0) }))
         }
     }
 

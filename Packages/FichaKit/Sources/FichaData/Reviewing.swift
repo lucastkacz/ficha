@@ -23,7 +23,11 @@ extension Engine {
     /// in an appearance, for one due within the look-ahead, which it brings
     /// along. When Lucas asked to review ahead, a review of a card that isn't
     /// due yet goes into the log as a review ahead, of which only again
-    /// counts; one of a card that came due by then is on time.
+    /// counts; one of a card that came due by then is on time. It returns
+    /// how many times he forgot the card when a rating of again makes it
+    /// forgotten often, as `settings` say, for the review panel to offer to
+    /// flag it, or nil.
+    @discardableResult
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
@@ -31,9 +35,9 @@ extension Engine {
         trigger: Trigger,
         settings: ReviewSettings,
         reviewingAhead: Bool = false
-    ) throws(EngineError) {
+    ) throws(EngineError) -> ForgottenOften? {
         let answeredAt = time.now
-        try write { db in
+        return try write { db in
             try recordAnswer(
                 kind, of: cardID, at: answeredAt, responseTime: responseTime, trigger: trigger, settings: settings,
                 reviewingAhead: reviewingAhead, in: db)
@@ -112,7 +116,9 @@ func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogE
 
 /// Adds Lucas's answer to a card in his reviews, given at `answeredAt`, at the
 /// end of the review log, as `Engine.record` says, with how long he took when
-/// something measured it, or throws when the card can't take the answer.
+/// something measured it, and returns whether the card is now forgotten
+/// often, or throws when the card can't take the answer.
+@discardableResult
 func recordAnswer(
     _ kind: ReviewLogEntry.Kind,
     of cardID: Int64,
@@ -122,10 +128,11 @@ func recordAnswer(
     settings: ReviewSettings,
     reviewingAhead: Bool,
     in db: Database
-) throws {
+) throws -> ForgottenOften? {
     let lookAhead = trigger.lookAhead(in: settings)
-    _ = try cardInReviews(cardID, in: db)
-    let standing = try settings.ladder.standing(after: logEntries(ofExisting: cardID, in: db))
+    let card = try cardInReviews(cardID, in: db)
+    let log = try logEntries(ofExisting: cardID, in: db)
+    let standing = try settings.ladder.standing(after: log)
     let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
     if !isAhead {
         do throws(RefusedAnswer) {
@@ -134,11 +141,11 @@ func recordAnswer(
             throw EngineError(refused: error, cardID: cardID)
         }
     }
-    try insert(
-        ReviewLogEntry(
-            cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
-            isAhead: isAhead),
-        in: db)
+    let entry = ReviewLogEntry(
+        cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
+        isAhead: isAhead)
+    try insert(entry, in: db)
+    return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
 }
 
 /// Deletes the last entry of the review log of the card with this id, which
