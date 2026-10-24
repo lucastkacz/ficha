@@ -5,10 +5,12 @@ import Foundation
 /// `<br>` and around each block, such as a `<div>` or a `<p>`, and with its
 /// character references decoded, a no-break space as a space. Spaces and
 /// line breaks in the HTML itself are one space, as a browser shows them,
-/// and none at the start or the end of a line. A comment, a `<script>` and a
-/// `<style>` are left out whole. What only looks like a tag or a reference,
-/// such as a `<` before a space or an `&` before no known name, stays as it
-/// is.
+/// and none at the start or the end of a line. A ruby's text, the reading a
+/// browser shows small over the text before it, comes after that text in
+/// parentheses, `話（はなし）`, and the parentheses a browser without ruby
+/// shows, its `<rp>`s, are left out. A comment, a `<script>` and a `<style>`
+/// are left out whole. What only looks like a tag or a reference, such as a
+/// `<` before a space or an `&` before no known name, stays as it is.
 public func plainText(fromHTML html: String) -> String {
     var reader = HTMLReader(Array(html.unicodeScalars))
     reader.convert()
@@ -104,6 +106,8 @@ private struct HTMLReader {
     /// Whether spaces or line breaks in the HTML came after the text so far,
     /// which are a space before the next text on the line.
     private var isSpacePending = false
+    /// Whether a ruby's text, its `<rt>`, is being read, after its `（`.
+    private var isInRubyText = false
 
     init(_ html: [Unicode.Scalar]) {
         self.html = html
@@ -125,6 +129,7 @@ private struct HTMLReader {
                 index += 1
             }
         }
+        endRubyText()
     }
 
     /// The HTML without the comments, `<script>`s and `<style>`s that
@@ -180,22 +185,45 @@ private struct HTMLReader {
     }
 
     /// Reads the tag or the comment between `index` and `end`, its `>`: a
-    /// line break for `<br>` and around a block, and nothing else. A
-    /// `<script>` or a `<style>` is skipped up to its end. Returns where what
-    /// it read ends.
+    /// line break for `<br>` and around a block, a parenthesis around a
+    /// ruby's text, and nothing else. A `<script>`, a `<style>` or an `<rp>`
+    /// is skipped up to its end. Returns where what it read ends.
     private mutating func readMarkup(upTo end: Int) -> Int {
         let name = tagName(upTo: end)
         if let hiddenEnd = endOfHiddenMarkup(upTo: end, named: name) {
             return hiddenEnd
         }
+        let isClosing = html[index + 1] == "/"
         if name == "br" {
             breakLine()
         } else if blockElements.contains(name) {
             if let last = text.last, last != "\n" {
                 breakLine()
             }
+        } else if name == "rt" && !isClosing {
+            endRubyText()
+            isSpacePending = false
+            append("（")
+            isInRubyText = true
+        } else if name == "rt" || name == "ruby" {
+            endRubyText()
+        } else if name == "rp" && !isClosing,
+            let closing = firstIndex(of: "</rp", from: end + 1, ignoringCase: true),
+            let closingEnd = html[closing...].firstIndex(of: ">")
+        {
+            return closingEnd
         }
         return end
+    }
+
+    /// Ends the ruby's text being read, if any, with its `）`.
+    private mutating func endRubyText() {
+        guard isInRubyText else {
+            return
+        }
+        isSpacePending = false
+        append("）")
+        isInRubyText = false
     }
 
     /// Whether a comment starts at `index`.

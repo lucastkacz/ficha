@@ -234,11 +234,11 @@ final class AnkiImportingTests {
     }
 
     @Test(
-        "furigana comes in as the reading in parentheses after its kanji, and kanji and kana as Anki shows them",
+        "furigana, from Anki's filter or in HTML, comes in as the reading in parentheses after its kanji, and kanji and kana as Anki shows them",
         arguments: schemas)
     func furiganaComesInAsTheReadingInParentheses(format: AnkiPackage.Format) throws {
-        // A shared Japanese deck's note type: Anki draws the reading small
-        // over the kanji, which Ficha's plain text can't.
+        // Shared Japanese decks' notes: Anki draws the reading small over the
+        // kanji, which Ficha's plain text can't.
         let japanese = AnkiNoteType(
             name: "Japonés", fields: ["Oración", "Significado"],
             templates: [
@@ -252,7 +252,13 @@ final class AnkiImportingTests {
             notes: [
                 AnkiNote(
                     type: japanese,
-                    fields: ["それはとってもいい&nbsp;話[はなし]だ。[sound:hanashi.mp3]", "Es una muy buena historia."])
+                    fields: ["それはとってもいい&nbsp;話[はなし]だ。この 本[ほん]も。[sound:hanashi.mp3]", "Es una muy buena historia."]),
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "<ruby>私<rt>わたし</rt></ruby>の<ruby><rb>名前</rb><rp>(</rp><rt>なまえ</rt><rp>)</rp></ruby>",
+                        "mi nombre",
+                    ]),
             ])
 
         try importPackage(package)
@@ -260,9 +266,14 @@ final class AnkiImportingTests {
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
                 [
-                    "それはとってもいい話だ。",
-                    "それはとってもいい話（はなし）だ。\nそれはとってもいいはなしだ。\nEs una muy buena historia.",
-                ]
+                    "それはとってもいい話だ。この本も。",
+                    """
+                    それはとってもいい話（はなし）だ。この本（ほん）も。
+                    それはとってもいいはなしだ。このほんも。
+                    Es una muy buena historia.
+                    """,
+                ],
+                ["私（わたし）の名前（なまえ）", "mi nombre"],
             ])
     }
 
