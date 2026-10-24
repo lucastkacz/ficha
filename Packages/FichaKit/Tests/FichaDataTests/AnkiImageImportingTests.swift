@@ -107,8 +107,8 @@ final class AnkiImageImportingTests {
                         <a href="https://example.com"><img style="DISPLAY:none" id="taza" src="taza.png"></a>
                         <img hidden src="taza.png"><img src='taza.png' hidden="">
                         <!-- <img src="taza.png"> -->
-                        <script>var icon = '<img src="taza.png">';</script>
-                        <style>/* <img src="taza.png"> */</style>
+                        <SCRIPT type="text/javascript">var icon = '<img src="taza.png">';</script>
+                        <style>/* <img src="taza.png"> */</STYLE>
                         {{Front}}
                         """,
                     answer: "{{FrontSide}}<hr id=answer>{{Back}}")
