@@ -92,6 +92,48 @@ final class AnkiImageImportingTests {
             try cards.map { try $0.backImage.map { try pixelSize(of: engine.image($0)).width } } == [400, nil, 300])
     }
 
+    // Shared decks' templates hide images of their own, such as an icon a
+    // script shows now and then, which Anki's reviewer doesn't show either.
+    @Test(
+        "an image a template hides, in a comment, a script or a hidden tag, isn't its side's image",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func anImageATemplateHidesIsntItsSidesImage(format: AnkiPackage.Format) throws {
+        let decorated = AnkiNoteType(
+            name: "Decorada", fields: ["Front", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1",
+                    question: """
+                        <a href="https://example.com"><img style="DISPLAY:none" id="taza" src="taza.png"></a>
+                        <img hidden src="taza.png"><img src='taza.png' hidden="">
+                        <!-- <img src="taza.png"> -->
+                        <script>var icon = '<img src="taza.png">';</script>
+                        <style>/* <img src="taza.png"> */</style>
+                        {{Front}}
+                        """,
+                    answer: "{{FrontSide}}<hr id=answer>{{Back}}")
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: decorated, fields: ["<img src=\"hornero.jpg\">", "hornero"]),
+                AnkiNote(type: decorated, fields: ["tero", "Grita cuando alguien se acerca."]),
+            ],
+            media: [
+                "hornero.jpg": try picture(width: 400, height: 300, red: 0.8),
+                "taza.png": try picture(width: 100, height: 100, red: 0.1),
+            ])
+
+        let preview = try preview(package)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.cardsWithImagesDropped == 0)
+        let cards = try engine.cards()
+        #expect(cards.map { [$0.front, $0.back] } == [["", "hornero"], ["tero", "Grita cuando alguien se acerca."]])
+        #expect(
+            try cards.map { try $0.frontImage.map { try pixelSize(of: engine.image($0)).width } } == [400, nil])
+    }
+
     // A side with text comes in without the image it lacks; one with only
     // the image keeps the card out, as does one with only a file Ficha
     // can't read as an image, such as an SVG Anki made of a formula.

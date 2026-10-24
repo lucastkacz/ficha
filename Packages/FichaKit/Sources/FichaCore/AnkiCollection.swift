@@ -68,9 +68,13 @@ public struct AnkiNoteType: Sendable, Equatable {
         self.templates = templates
     }
 
-    /// Whether Anki made it from its stock Image Occlusion note type.
+    /// Whether its cards hide parts of an image: Anki made it from its stock
+    /// Image Occlusion note type, or it's the note type of Image Occlusion
+    /// Enhanced, the add-on before it, which keeps each mask in a field of
+    /// its own (`IO_FLDS` in the add-on's `config.py`), whatever the note
+    /// type's name.
     var isImageOcclusion: Bool {
-        originalStockKind == 6
+        originalStockKind == 6 || Set(fields).isSuperset(of: ["Question Mask", "Answer Mask", "Original Mask"])
     }
 }
 
