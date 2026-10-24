@@ -15,6 +15,14 @@ public func plainText(fromHTML html: String) -> String {
     return String(converter.text)
 }
 
+/// `html` without what `plainText(fromHTML:)` leaves out whole, its
+/// comments, `<script>`s and `<style>`s, each ended where it ends them, and
+/// with the rest as it is.
+func htmlWithoutHiddenMarkup(_ html: String) -> String {
+    var reader = HTMLToText(Array(html.unicodeScalars))
+    return reader.withoutHiddenMarkup()
+}
+
 /// `value`, an attribute's value in HTML, such as the name of an image's
 /// file, with its character references decoded, a no-break space's as a
 /// space, as Anki decodes a name (`rslib/src/text.rs`, `decode_entities`).
@@ -86,7 +94,8 @@ private let namedReferences: [String: Unicode.Scalar] = {
     return references
 }()
 
-/// HTML being turned into plain text, from its start.
+/// HTML being turned into plain text, or read without its hidden markup,
+/// from its start.
 private struct HTMLToText {
     private let html: [Unicode.Scalar]
     private var index = 0
@@ -116,6 +125,21 @@ private struct HTMLToText {
                 index += 1
             }
         }
+    }
+
+    /// The HTML without the comments, `<script>`s and `<style>`s that
+    /// `convert()` leaves out whole, and with the rest as it is.
+    mutating func withoutHiddenMarkup() -> String {
+        var kept = String.UnicodeScalarView()
+        while index < html.count {
+            if html[index] == "<", let end = endOfMarkup(), let hiddenEnd = endOfHiddenMarkup(upTo: end) {
+                index = hiddenEnd + 1
+            } else {
+                kept.append(html[index])
+                index += 1
+            }
+        }
+        return String(kept)
     }
 
     /// Adds `scalar` to the text, after the space pending, if any, within a
@@ -153,10 +177,44 @@ private struct HTMLToText {
         return html[(index + 1)...].firstIndex(of: ">")
     }
 
-    /// Reads the tag between `index` and `end`, its `>`: a line break for
-    /// `<br>` and around a block, and nothing else. A `<script>` or a
-    /// `<style>` is skipped up to its end. Returns where what it read ends.
+    /// Reads the tag or the comment between `index` and `end`, its `>`: a
+    /// line break for `<br>` and around a block, and nothing else. A
+    /// `<script>` or a `<style>` is skipped up to its end. Returns where what
+    /// it read ends.
     private mutating func readMarkup(upTo end: Int) -> Int {
+        if let hiddenEnd = endOfHiddenMarkup(upTo: end) {
+            return hiddenEnd
+        }
+        let name = tagName(upTo: end)
+        if name == "br" {
+            breakLine()
+        } else if blockElements.contains(name) {
+            if let last = text.last, last != "\n" {
+                breakLine()
+            }
+        }
+        return end
+    }
+
+    /// Where the comment, `<script>` or `<style>` that starts at `index`, with
+    /// a comment or an opening tag that ends at `end`, its `>`, ends: the
+    /// comment's end, or the `>` of the element's closing tag, or the HTML's
+    /// end when it has none. Nil when what starts there shows.
+    private func endOfHiddenMarkup(upTo end: Int) -> Int? {
+        if html[index + 1] == "!", starts(with: "<!--", at: index) {
+            return end
+        }
+        let name = tagName(upTo: end)
+        guard html[index + 1] != "/", name == "script" || name == "style" else {
+            return nil
+        }
+        let closing = firstIndex(of: "</\(name)", from: end + 1, ignoringCase: true)
+        return closing.flatMap { html[$0...].firstIndex(of: ">") } ?? html.count - 1
+    }
+
+    /// The name, in lowercase, of the tag between `index` and `end`, its
+    /// `>`, whether it opens an element or closes one.
+    private func tagName(upTo end: Int) -> String {
         var nameStart = index + 1
         if html[nameStart] == "/" {
             nameStart += 1
@@ -165,19 +223,7 @@ private struct HTMLToText {
         while nameEnd < end, html[nameEnd].properties.isAlphabetic || ("0"..."9").contains(html[nameEnd]) {
             nameEnd += 1
         }
-        let name = String(String.UnicodeScalarView(html[nameStart..<nameEnd])).lowercased()
-        let isClosing = html[index + 1] == "/"
-        if name == "br" {
-            breakLine()
-        } else if blockElements.contains(name) {
-            if let last = text.last, last != "\n" {
-                breakLine()
-            }
-        } else if !isClosing, name == "script" || name == "style" {
-            let closing = firstIndex(of: "</\(name)", from: end + 1, ignoringCase: true)
-            return closing.flatMap { html[$0...].firstIndex(of: ">") } ?? html.count - 1
-        }
-        return end
+        return String(String.UnicodeScalarView(html[nameStart..<nameEnd])).lowercased()
     }
 
     /// The character the reference that starts at `index`, its `&`, stands

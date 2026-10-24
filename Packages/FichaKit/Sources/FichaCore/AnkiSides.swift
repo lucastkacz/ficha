@@ -66,11 +66,7 @@ struct AnkiSide {
 /// out, and one whose own tag hides it, with `hidden` or `display: none`,
 /// such as an icon a template's script shows now and then.
 private func fileNames(shownIn html: String) -> [String] {
-    // Each ends where `plainText(fromHTML:)` ends it, whatever the case of
-    // its closing tag, which a backreference would compare.
-    let shown = html.replacing(
-        #/(?is)<!--.*?(?:-->|\z)|<script\b.*?(?:</script[^>]*>|\z)|<style\b.*?(?:</style[^>]*>|\z)/#, with: "")
-    return shown.matches(of: #/(?i)<img\b((?:[^>"']|"[^"]*"|'[^']*')*)/#)
+    htmlWithoutHiddenMarkup(html).matches(of: #/(?i)<img\b((?:[^>"']|"[^"]*"|'[^']*')*)/#)
         .compactMap { match -> String? in
             let attributes = tagAttributes(in: String(match.output.1))
             guard attributes["hidden"] == nil, attributes["style"]?.contains(/(?i)display\s*:\s*none/) != true else {
