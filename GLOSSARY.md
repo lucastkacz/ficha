@@ -22,7 +22,7 @@ The side of a card the user turns to after trying to remember it.
 _Avoid_: answer, solution
 
 **Sound**:
-What the user hears on one side of a card, such as an excerpt of an aria or a word said aloud, played only when they ask for it.
+What the user hears on one side of a card, from a file they added or imported, such as an excerpt of an aria or a word's pronunciation. It plays only when they ask for it.
 _Avoid_: audio, clip, recording
 
 **Tag**:
@@ -52,7 +52,7 @@ What waits to be turned into cards or fixed: captures, including expansions and 
 _Avoid_: queue, backlog
 
 **Duplicate**:
-A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano".
+A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano". A front without text, with only an image or a sound, matches none.
 
 **Expand**:
 Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that approving it adds to that card; or next to the capture it repeats, to be turned into cards with it.
