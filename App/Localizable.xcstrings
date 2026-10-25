@@ -611,6 +611,9 @@
     "Allow it in System Settings, in Login Items." : {
 
     },
+    "Also review it back first: its back, then its front once you flip it." : {
+      "comment" : "In the Cards window, under a card's Both ways checkbox."
+    },
     "Always" : {
       "comment" : "Settings: the review panel takes the keyboard as it shows up."
     },
@@ -685,6 +688,21 @@
     },
     "Both sides have an image" : {
       "comment" : "The tooltip of the photo in the Cards window's Media column, when both sides have one."
+    },
+    "Both ways" : {
+      "comment" : "In the Cards window's detail, after a card's type and tags: it's also reviewed back first, its back, then its front.\nIn the Cards window, the checkbox of a card that is also reviewed back first: its back, then its front."
+    },
+    "both-ways.label" : {
+      "comment" : "In the Cards window's card form and card editor, the label of the Both ways checkbox's row.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Review"
+          }
+        }
+      }
     },
     "Bring along cards due within" : {
       "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
@@ -952,6 +970,52 @@
     },
     "Couldn't take the capture out of the inbox" : {
       "comment" : "An alert's title in the Cards window, after closing the card form opened from a capture."
+    },
+    "Couldn't turn off Both ways for %lld cards" : {
+      "comment" : "An alert's title in the Cards window, after Turn Off Both Ways on several cards.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't turn off Both ways for the card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't turn off Both ways for the %lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn't turn on Both ways for %lld cards" : {
+      "comment" : "An alert's title in the Cards window, after Turn On Both Ways on several cards.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't turn on Both ways for the card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't turn on Both ways for the %lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Couldn't turn on the capture shortcut" : {
 
@@ -1883,8 +1947,20 @@
     "To undo it, restore the copy saved before it, in Settings › Backups." : {
       "comment" : "In the Import sheet once it's done, when Ficha saved a copy before the import."
     },
+    "Turn Off Both Ways" : {
+      "comment" : "A button of the Cards window that has the selected cards reviewed front first only, no longer back first too."
+    },
+    "Turn Off Both Ways (⌘B)" : {
+      "comment" : "The tooltip of the Cards window's button that turns Both ways off for the cards."
+    },
     "Turn Off the Capture Shortcut" : {
 
+    },
+    "Turn On Both Ways" : {
+      "comment" : "A button of the Cards window that has the selected cards also reviewed back first: their back, then their front."
+    },
+    "Turn On Both Ways (⌘B)" : {
+      "comment" : "The tooltip of the Cards window's button that turns Both ways on for the cards."
     },
     "Type" : {
       "comment" : "A column of the Cards window: the card's type.\nIn the Cards window's card form, the label of the card's type.\nIn the Cards window, the label of a card's type, while Lucas edits it."

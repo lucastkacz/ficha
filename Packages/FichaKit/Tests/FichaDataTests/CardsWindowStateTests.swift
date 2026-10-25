@@ -327,8 +327,37 @@ struct CardsWindowStateTests {
         window.select([ojala.id, acaso.id])
         let offeredInBuried = window.actions
 
-        #expect(offeredInAllCards == [.bury, .delete])
-        #expect(offeredInBuried == [.unbury, .delete])
+        #expect(offeredInAllCards == [.bury, .turnOnBothWays, .delete])
+        #expect(offeredInBuried == [.unbury, .turnOnBothWays, .delete])
+    }
+
+    // So that a whole subject goes both ways from its tag, ⌘A and one click.
+    @Test("several selected cards offer Turn On Both Ways while any goes one way, and Turn Off once all go both ways")
+    func theSelectionTurnsBothWaysOnOrOff() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id])
+        var window = openWindow()
+
+        window.select([ubuntu.id])
+        let offeredForOne = window.actions
+        window.select([serendipia.id, petricor.id])
+        let offeredForOneWay = window.actions
+        window.select([serendipia.id, ubuntu.id, petricor.id])
+        let offeredForAMix = window.actions
+        window.turnOnBothWays()
+        let turnedOn = try engine.cards().map(\.bothWays)
+        let offeredForBothWays = window.actions
+        window.turnOffBothWays()
+
+        #expect(offeredForOne == [.edit, .flag, .bury, .delete])
+        #expect(offeredForOneWay == [.bury, .turnOnBothWays, .delete])
+        #expect(offeredForAMix == [.bury, .turnOnBothWays, .delete])
+        #expect(turnedOn == [true, true, true])
+        #expect(offeredForBothWays == [.bury, .turnOffBothWays, .delete])
+        #expect(try engine.cards().map(\.bothWays) == [false, false, false])
+        #expect(window.actions == [.bury, .turnOnBothWays, .delete])
     }
 
     @Test("Flag is offered only for a single card in Lucas's reviews")
@@ -438,6 +467,29 @@ struct CardsWindowStateTests {
         #expect(editing == .card(serendipia))
         #expect(window.editing == nil)
         #expect(window.shownCard?.row.card.back == "Un hallazgo valioso que se da por accidente.")
+    }
+
+    @Test("editing a card starts with its Both ways, and saving turns it on or off as the editor says")
+    func editingACardKeepsOrSwitchesBothWays() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id])
+        var window = openWindow()
+
+        window.select([serendipia.id])
+        window.startEditing()
+        let startedForSerendipia = window.editedBothWays
+        window.setBothWaysInEditor(true)
+        window.saveCard(try card(.word, front: serendipia.front, back: serendipia.back))
+        window.select([ubuntu.id])
+        window.startEditing()
+        let startedForUbuntu = window.editedBothWays
+        window.saveCard(try card(.word, front: ubuntu.front, back: "Soy porque somos."))
+
+        #expect(!startedForSerendipia)
+        #expect(startedForUbuntu)
+        #expect(try engine.cards().map(\.bothWays) == [true, true])
+        #expect(window.shownCard?.row.card.bothWays == true)
     }
 
     // The Edited column shows and sorts by it, in the app's `CardRowOrder`,

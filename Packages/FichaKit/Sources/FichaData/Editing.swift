@@ -10,17 +10,34 @@ extension Engine {
     /// it: its flag goes, and it's back in his reviews, on its step, unless
     /// it's buried, since an edited card stays buried. An edit that changes
     /// its front or back keeps when. An image or a sound it no longer has
-    /// goes, unless another card uses it. Returns the card.
+    /// goes, unless another card uses it. `bothWays` turns Both ways on or
+    /// off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
+    /// Returns the card.
     @discardableResult
-    public func edit(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
+    public func edit(_ cardID: Int64, with content: CardContent, bothWays: Bool? = nil) throws(EngineError) -> Card {
         let editedAt = time.now
         let (before, edited) = try write { db in
             let before = try existingCard(cardID, in: db)
             _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
+            if let bothWays {
+                _ = try updateCard(cardID, setting: "bothWays = ?", to: [bothWays], in: db)
+            }
             return (before, try takeFlagOff(cardID, in: db))
         }
         removeFilesNoCardUses(before: before, after: edited)
         return edited
+    }
+
+    /// Turns Both ways on for the cards with these ids when `bothWays` is
+    /// true, or off when it's false, in one write, or for none of them when
+    /// one doesn't exist. It's an edit that keeps each card's content, review
+    /// log and standing, and so when its front or back last changed. Returns
+    /// the cards, in the order they came in.
+    @discardableResult
+    public func setBothWays(_ bothWays: Bool, of cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
+        try write { db in
+            try cardIDs.sorted().map { try updateCard($0, setting: "bothWays = ?", to: [bothWays], in: db) }
+        }
     }
 
     /// Edits a capture in the inbox, as Lucas does in the Cards window:
