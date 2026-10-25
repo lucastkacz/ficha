@@ -234,6 +234,59 @@ final class AnkiImportingTests {
     }
 
     @Test(
+        "furigana, from Anki's filter or in HTML, comes in as the reading in parentheses after its kanji, and kanji and kana as Anki shows them",
+        arguments: schemas)
+    func furiganaComesInAsTheReadingInParentheses(format: AnkiPackage.Format) throws {
+        // Shared Japanese decks' notes: Anki draws the reading small over the
+        // kanji, which Ficha's plain text can't.
+        let japanese = AnkiNoteType(
+            name: "Japonés", fields: ["Oración", "Significado"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{kanji:Oración}}",
+                    answer: "{{FrontSide}}\n<hr id=answer>\n{{furigana:Oración}}<br>{{kana:Oración}}<br>{{Significado}}"
+                )
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: japanese,
+                    fields: ["それはとってもいい&nbsp;話[はなし]だ。この 本[ほん]も。[sound:hanashi.mp3]", "Es una muy buena historia."]),
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "<ruby>私<rt>わたし</rt></ruby>の<ruby><rb>名前</rb><rp>(</rp><rt>なまえ</rt><rp>)</rp></ruby>",
+                        "mi nombre",
+                    ]),
+                // HTML lets a ruby's text and parentheses go without their
+                // closing tags, and a browser shows no space at their ends.
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "<ruby>漢<rp>(<rt> かん <rp>)</ruby><ruby>字<rt>じ<rb>辞</rb><rt>じ</rt><rb>典</rb><rt>てん</rt>\n</ruby>です",
+                        "Es un diccionario de kanji.",
+                    ]),
+            ])
+
+        try importPackage(package)
+
+        #expect(
+            try engine.cards().map { [$0.front, $0.back] } == [
+                [
+                    "それはとってもいい話だ。この本も。",
+                    """
+                    それはとってもいい話（はなし）だ。この本（ほん）も。
+                    それはとってもいいはなしだ。このほんも。
+                    Es una muy buena historia.
+                    """,
+                ],
+                ["私（わたし）の名前（なまえ）", "mi nombre"],
+                ["漢（かん）字（じ）辞（じ）典（てん）です", "Es un diccionario de kanji."],
+            ])
+    }
+
+    @Test(
         "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
         arguments: schemas)
     func aClozeNoteBecomesACardForEachGap(format: AnkiPackage.Format) throws {
