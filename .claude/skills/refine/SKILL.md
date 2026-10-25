@@ -1,6 +1,6 @@
 ---
 name: refine
-description: Turn what waits in Ficha's inbox into cards, ten at a time, following the content guide; Claude writes only what you approve.
+description: Turn what waits in Ficha's inbox into cards, ten at a time, following the content guide, and put images and sounds on cards; Claude writes only what you approve.
 disable-model-invocation: true
 ---
 
@@ -38,7 +38,7 @@ Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 1
 > Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».
 > _lenguaje_ (tag nueva) · Un podcast de etimología
 
-A card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound` in `ficha cards`: show "(con imagen)" or "(con sonido)" after that side. Its fix or new content keeps them, since the CLI never changes images or sounds. A side with only an image or a sound has an empty text, which the CLI refuses, so propose that Lucas fixes such a card in the Cards window instead.
+A card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound`, in `ficha cards` and `ficha inbox`: show "(con imagen)" or "(con sonido)" after that side. Its fix or new content keeps them, and a side with only a file keeps its empty text. A file Lucas points to goes on a card as **Images and sounds** below says.
 
 End the batch by asking for his OK: he approves, changes or rejects each proposal, or all of them at once. What he rejects stays in the inbox, untouched, unless he says what he wants instead: then redraft it.
 
@@ -55,8 +55,11 @@ Write each draft exactly as Lucas saw and approved it:
 | An expansion's new content | `ficha approve-expansion <capture id>` |
 | An expansion's cards of its own | `ficha approve <capture id>` |
 | A fix that splits off an idea | `ficha fix <card id>`, then `ficha capture "<idea>"`, with the card's source in `--source` if it has one; if Lucas approved the idea's card too, `ficha approve` on the capture it printed |
+| A file put on or taken off a card in the batch | Its field in that card's JSON, as **Images and sounds** below says |
+| A file put on any other card | `ficha attach <card id> --front <file>`, or `--back` |
+| A file taken off any other card | `ficha detach <card id> --front image`, or `--back`, or `sound` |
 
-Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows.
+Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. Write a file field only for a file the change puts on or takes off: one left out keeps the card's.
 
 - **A change Lucas asks for**: when he gives the new text, write his text; when you redraft, show the redraft and wait for his OK on it.
 - **A command that fails**: a JSON mistake is yours, so fix the JSON and run it again with the same approved content. Any other error goes to Lucas, with what the CLI said, and that item waits for his answer.
@@ -66,3 +69,12 @@ Then report what was written in one line ("Guardé 7 tarjetas, arreglé 2, enter
 ## Unburying
 
 When Lucas asks to bring back a buried card, find it among `ficha cards`' buried ones, show it, and run `ficha unbury <card id>` on his OK. A card that was flagged when it was buried goes back to the inbox instead: propose its fix.
+
+## Images and sounds
+
+When Lucas points to an image or a sound file for a card, or asks to take one off, at any point in the session:
+
+1. Find the card: a draft of the current batch, or one of `ficha cards` by its front. When none fits, or several do, ask him which.
+2. Propose it as the content guide's "Images and sounds" says: the card as it will be, in the example format, with "(imagen nueva: <file>)" or "(sonido nuevo: <file>)" after the side the file goes on, with the file's full path, or "(sin imagen)" or "(sin sonido)" after the side that loses one. A draft of the batch gets it in its proposal, redrafted. Wait for his OK.
+3. Write it. A draft of the batch takes it in its card's JSON, in the field of the file's kind, a video's in the sound one: `frontImage`, `backImage`, `frontSound` or `backSound`, with the file's full path, or `null` to take one off. Any other card takes it with `ficha attach` or `ficha detach`, which leave the card where it stands, flagged or not.
+4. The card the command prints names the file on its side, as `ficha cards` does: check it's there, or that it's gone.

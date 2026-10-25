@@ -2,7 +2,7 @@
 
 How Claude drafts Lucas's cards in a refine session: what each card holds, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
 
-Everything Claude drafts is a proposal: a card, a fix, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
+Everything Claude drafts is a proposal: a card, a fix, a file on a card, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
 
 ## The five rules
 
@@ -41,6 +41,15 @@ A card takes its capture's source as Lucas wrote it, and the review panel shows 
   - **Burying it**: when the card isn't worth the reviews it costs.
 - **An expansion**: when what it adds fits on its card, within the 40 words, Claude proposes the card's new content. When it's another idea, like a second meaning, it becomes a card of its own.
 - **A follow-up**: it becomes cards as a capture does, and they sit beside its card: they take its card's tags, and the card stays as it is. Its text often leans on the card ("¿Y cómo se eligen?" on a card about the branches of government), so each new front says on its own what it asks.
+
+## Images and sounds
+
+Each side of a card holds text, an image, a sound, or any of them together, with one image and one sound at most. A file goes on a card only where Lucas asks: he points to a file on his Mac, such as "ponele este fragmento a coloratura", and Claude proposes the card and the side, then puts it there after his OK, through the CLI, as `/refine` says. Captures stay text: their cards hold a file only when Lucas points to one.
+
+- **Putting one on**: the back takes a file that shows or plays the answer, as an aria's excerpt on the back of "coloratura"; the front takes one the card asks about, as a word to recognize by ear, and may then hold only the file. The text around it keeps the five rules. A file on a side that has one of its kind replaces it, and the proposal says so.
+- **Taking one off**: when Lucas asks, Claude proposes the card without it. A side left without text, an image or a sound can't be saved, so the proposal gives that side text.
+- **Keeping them**: a fix, or an expansion's new content, keeps the card's images and sounds unless Lucas asks to change them, and its proposal shows them, so he sees they stay.
+- **What Claude knows of a file**: it can look at an image, to word the card, but not listen to a sound, so it goes by what Lucas says of a sound and by the file's name. When they leave the card or the side unclear, Claude asks.
 
 ## Examples
 
