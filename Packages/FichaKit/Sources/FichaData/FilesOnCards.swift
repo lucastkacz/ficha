@@ -182,6 +182,13 @@ extension Engine {
         removeFilesNoCardUses(among: sounds, from: self.sounds)
     }
 
+    /// Removes the images and sounds a card had `before` a change and no
+    /// longer has `after` it, which no card refers to any more.
+    func removeFilesNoCardUses(before: Card, after: Card) {
+        removeFilesNoCardUses(
+            images: before.images.subtracting(after.images), sounds: before.sounds.subtracting(after.sounds))
+    }
+
     /// Removes from `store` the files among `names` that no card refers to.
     private func removeFilesNoCardUses<Name>(among names: Set<Name>, from store: FileStore<Name>) {
         guard !names.isEmpty else { return }

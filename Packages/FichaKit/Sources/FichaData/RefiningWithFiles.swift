@@ -115,8 +115,7 @@ extension Engine {
                 try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
             }
         }
-        removeFilesNoCardUses(
-            images: before.images.subtracting(fixed.images), sounds: before.sounds.subtracting(fixed.sounds))
+        removeFilesNoCardUses(before: before, after: fixed)
         return fixed
     }
 
@@ -132,8 +131,7 @@ extension Engine {
                 try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
             }
         }
-        removeFilesNoCardUses(
-            images: before.images.subtracting(approved.images), sounds: before.sounds.subtracting(approved.sounds))
+        removeFilesNoCardUses(before: before, after: approved)
         return approved
     }
 
@@ -186,8 +184,7 @@ extension Engine {
             }
             return (card, try replaceContent(of: cardID, with: content, at: changedAt, in: db))
         }
-        removeFilesNoCardUses(
-            images: before.images.subtracting(changed.images), sounds: before.sounds.subtracting(changed.sounds))
+        removeFilesNoCardUses(before: before, after: changed)
         return changed
     }
 }

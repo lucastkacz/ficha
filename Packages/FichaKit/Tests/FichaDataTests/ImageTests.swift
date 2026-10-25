@@ -124,10 +124,11 @@ final class ImageTests {
         #expect(try engine.keptImages() == [nest, egg])
     }
 
-    // A content alone, as a refine session's draft that leaves the images
-    // out, which RefiningWithFilesTests changes.
+    // A content alone, as from a refine session's draft that leaves the
+    // images out. Drafts that put or take them off are in
+    // RefiningWithFilesTests.
     @Test("fixing or expanding a card with a content alone keeps its images")
-    func theCLIKeepsACardsImages() throws {
+    func fixingOrExpandingWithAContentAloneKeepsACardsImages() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))

@@ -19,8 +19,7 @@ extension Engine {
             _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
             return (before, try takeFlagOff(cardID, in: db))
         }
-        removeFilesNoCardUses(
-            images: before.images.subtracting(edited.images), sounds: before.sounds.subtracting(edited.sounds))
+        removeFilesNoCardUses(before: before, after: edited)
         return edited
     }
 

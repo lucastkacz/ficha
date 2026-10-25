@@ -156,8 +156,9 @@ final class SoundTests {
         #expect(try engine.keptSounds() == [mi, sol])
     }
 
-    // A content alone, as a refine session's draft that leaves the sounds
-    // out, which RefiningWithFilesTests changes.
+    // A content alone, as from a refine session's draft that leaves the
+    // sounds out. Drafts that put or take them off are in
+    // RefiningWithFilesTests.
     @Test("fixing or expanding a card with a content alone, or updating it from an import, keeps its sounds")
     func refiningAndImportingKeepACardsSounds() async throws {
         let engine = try Engine(location: .inMemory, time: time)

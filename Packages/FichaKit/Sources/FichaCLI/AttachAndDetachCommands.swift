@@ -55,9 +55,11 @@ struct AttachCommand: EngineCommand {
         return try await engine.attach(file.file, to: file.side, of: cardID)
     }
 
-    /// What to do when the command doesn't give one file for one side.
+    /// What went wrong, and what to do, when the command doesn't give one
+    /// file for one side.
     private static let oneFile = """
-        Give one file, with --front or --back: its path on your Mac, or its name as `ficha cards` prints it.
+        `ficha attach` puts one file on one side, and got none or two. Give one, with --front or --back: its path \
+        on your Mac, or its name as `ficha cards` prints it.
         """
 }
 
@@ -108,8 +110,12 @@ struct DetachCommand: EngineCommand {
         return try engine.detach(file.kind, from: file.side, of: cardID)
     }
 
-    /// What to do when the command doesn't say what to take off one side.
-    private static let oneSide = "Say what to take off one side, with --front or --back: image or sound."
+    /// What went wrong, and what to do, when the command doesn't say what to
+    /// take off one side.
+    private static let oneSide = """
+        `ficha detach` takes a file off one side, and got none or two. Say which side with --front or --back, and \
+        what to take off it: image or sound.
+        """
 }
 
 extension FileKind: ExpressibleByArgument {}
