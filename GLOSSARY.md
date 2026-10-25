@@ -60,7 +60,7 @@ What waits to be turned into cards or fixed: captures, including expansions and 
 _Avoid_: queue, backlog
 
 **Duplicate**:
-A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case and accents. The ñ isn't an accent: "año" doesn't match "ano". An imported card's front counts its image too: two fronts that each have an image match only when it's the same image, so a front with only an image matches one with only that image. Otherwise a front without text, with only an image or a sound, matches none.
+A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, ignoring case, accents, superscripts and subscripts: "H₂O" matches "H2O", and a minus sign, "−", matches "-". The ñ isn't an accent: "año" doesn't match "ano". An imported card's front counts its image too: two fronts that each have an image match only when it's the same image, so a front with only an image matches one with only that image. Otherwise a front without text, with only an image or a sound, matches none.
 
 **Expand**:
 Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that approving it adds to that card; or next to the capture it repeats, to be turned into cards with it.
