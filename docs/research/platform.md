@@ -86,7 +86,7 @@ Each claim says where it comes from: a link to Apple's documentation, the guidel
 
 ## 3. Moving Lucas's data into the container
 
-Lucas's data: `~/Library/Application Support/Ficha/` with `Ficha.sqlite` and its `-wal` and `-shm`, `Images/`, and `Backups/` with its shared images; and about 20 settings in `UserDefaults`. Ficha was never distributed, so this is a one-time move for one person; everyone else starts empty (our inference).
+Lucas's data: `~/Library/Application Support/Ficha/` with `Ficha.sqlite` and its `-wal` and `-shm`, `Images/`, `Sounds/`, and `Backups/` with its shared images and sounds; and about 20 settings in `UserDefaults`. Ficha was never distributed, so this is a one-time move for one person; everyone else starts empty (our inference).
 
 **Apple's container migration.** A `container-migration.plist` in the app lists what moves from the home folder into the container, at the app's first sandboxed launch, when its container is created ([Migrating your app's files to its App Sandbox container](https://developer.apple.com/documentation/security/migrating-your-app-s-files-to-its-app-sandbox-container)). It only moves: asked for a copy instead, Quinn answers "There's no way to do that as the container migration manifest is currently implemented" (Apple staff, [thread 763674](https://developer.apple.com/forums/thread/763674)). Its destinations are inside the app's own container, so it can't reach a group container; failures aren't reported (Apple staff, [thread 767586](https://developer.apple.com/forums/thread/767586)), and Ficha would then open an empty database. Moving the preferences file isn't documented. P6 tests it, if it's chosen after all.
 
@@ -97,9 +97,9 @@ Lucas's data: `~/Library/Application Support/Ficha/` with `Ficha.sqlite` and its
 | The sandboxed app asks Lucas to pick the old folder | Yes | Yes | Only if the path above exported them; otherwise set again by hand | One more step; the panel can open on the folder, and picking a folder gives access to all inside it ([Accessing files](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox)) |
 | Restoring one backup Lucas picks | Yes | Yes | No | Loses everything since that backup |
 
-**SQLite.** A plain copy of a database in use, or one separated from its `-wal`, can be corrupt; the backup API and `VACUUM INTO` copy it safely ([How to corrupt an SQLite database](https://www.sqlite.org/howtocorrupt.html)). Ficha already copies with the backup API (`saveCopy` in `Backups.swift`), and its backups are single files, so they and the images copy as plain files.
+**SQLite.** A plain copy of a database in use, or one separated from its `-wal`, can be corrupt; the backup API and `VACUUM INTO` copy it safely ([How to corrupt an SQLite database](https://www.sqlite.org/howtocorrupt.html)). Ficha already copies with the backup API (`saveCopy` in `Backups.swift`), and its backups are single files, so they, the images and the sounds copy as plain files.
 
-**The path that loses nothing** (our inference): the last unsandboxed build, signed by the team, copies the database with the backup API, copies `Images/` and `Backups/`, and exports the settings, into the group container, leaving the old folder untouched as the fallback. The sandboxed app, finding the old folder and nothing in the group container, refuses to start empty and says why. Picking the old folder by hand is the fallback for that copy.
+**The path that loses nothing** (our inference): the last unsandboxed build, signed by the team, copies the database with the backup API, copies `Images/`, `Sounds/` and `Backups/`, and exports the settings, into the group container, leaving the old folder untouched as the fallback. The sandboxed app, finding the old folder and nothing in the group container, refuses to start empty and says why. Picking the old folder by hand is the fallback for that copy.
 
 ## 4. Focus, Shortcuts and widgets (#166, #170, #171)
 

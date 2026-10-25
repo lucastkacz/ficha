@@ -1781,6 +1781,9 @@
     "Sort of" : {
       "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
+    "Sounds they share: %@" : {
+      "comment" : "Settings, under Backups, below how many copies there are: what the sounds on their cards weigh, each kept once for all the copies."
+    },
     "Source" : {
       "comment" : "A column of the Cards window: where Lucas came across the card's content.\nIn the Cards window's card form, the label of the card's source.\nIn the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
     },
