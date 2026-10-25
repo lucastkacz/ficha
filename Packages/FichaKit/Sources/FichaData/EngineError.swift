@@ -23,6 +23,17 @@ public enum EngineError: Error, Equatable {
     /// A capture was approved into no cards. One that becomes no cards is
     /// discarded instead.
     case noCards
+    /// A card a refine session drafted, the one at this position, from 0,
+    /// among the cards a capture is approved into, has a side, its front or
+    /// its back, with neither text, an image nor a sound.
+    case blankSideOnNewCard(position: Int)
+    /// A refine session's change would leave the card with this id with a
+    /// side, its front or its back, with neither text, an image nor a sound,
+    /// so it wasn't made.
+    case sideLeftBlank(Int64)
+    /// A refine session asked to take the image or the sound, as the kind
+    /// says, off a side of the card with this id, and that side has none.
+    case noFileOnSide(Int64, FileKind, CardSide)
     /// There's no card with this id: it was deleted, or it never existed.
     case cardNotFound(Int64)
     /// The card with this id already had its first view, or an import placed
@@ -92,9 +103,28 @@ public enum EngineError: Error, Equatable {
     /// written or read, or what the system wrote isn't laid out as Ficha
     /// expects. The engine logs why.
     case soundConversion
-    /// The file with this name, dragged or pasted for a side of a card, as
-    /// its image or its sound, couldn't be read. The engine logs why.
-    case unreadableDroppedFile(String)
+    /// The file with this name, dragged or pasted for a side of a card, or
+    /// given by a refine session, as its image or its sound, couldn't be
+    /// read. The engine logs why.
+    case unreadableFileForSide(String)
+    /// A refine session gave a side of a card the file at this path on the
+    /// Mac, and there's none there.
+    case noSuchFile(String)
+    /// A refine session gave a side of a card the file with this name, or
+    /// the sound Ficha holds by it, as its image, and it isn't an image the
+    /// system can read.
+    case fileNotAnImage(String)
+    /// A refine session gave a side of a card the file with this name, or
+    /// the image Ficha holds by it, as its sound, and it holds no sound the
+    /// system can read.
+    case fileNotASound(String)
+    /// A refine session gave a side of a card the file with this name to put
+    /// on it, and it's neither an image nor a sound the system can read.
+    case notAnImageOrSound(String)
+    /// A refine session gave a side of a card the image or the sound with
+    /// this name, and Ficha holds none by it: it was mistyped, or no card
+    /// uses it any more.
+    case noFileNamed(String)
     /// An image in the Images folder couldn't be read, saved, brought back
     /// from the Backups folder or removed, or isn't there. The engine logs
     /// why.
@@ -137,6 +167,44 @@ extension EngineError: LocalizedError {
             String(
                 localized:
                     "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
+            )
+        case .blankSideOnNewCard(let position):
+            String(
+                localized: "Card [\(position)] has a blank front or back: give each side text, an image or a sound.")
+        case .sideLeftBlank(let id):
+            String(
+                localized: """
+                    That would leave card \(id) with a blank front or back, so nothing changed: give each side text, \
+                    an image or a sound.
+                    """
+            )
+        case .noFileOnSide(let id, .image, .front):
+            String(
+                localized: """
+                    Card \(id) has no image on its front, so there's none to take off. `ficha cards` names each \
+                    side's image and sound.
+                    """
+            )
+        case .noFileOnSide(let id, .image, .back):
+            String(
+                localized: """
+                    Card \(id) has no image on its back, so there's none to take off. `ficha cards` names each \
+                    side's image and sound.
+                    """
+            )
+        case .noFileOnSide(let id, .sound, .front):
+            String(
+                localized: """
+                    Card \(id) has no sound on its front, so there's none to take off. `ficha cards` names each \
+                    side's image and sound.
+                    """
+            )
+        case .noFileOnSide(let id, .sound, .back):
+            String(
+                localized: """
+                    Card \(id) has no sound on its back, so there's none to take off. `ficha cards` names each \
+                    side's image and sound.
+                    """
             )
         case .cardNotFound(let id):
             String(
@@ -255,11 +323,46 @@ extension EngineError: LocalizedError {
                     it keeps happening, report it.
                     """
             )
-        case .unreadableDroppedFile(let name):
+        case .unreadableFileForSide(let name):
             String(
                 localized: """
                     Ficha couldn't read “\(name)”. Check that the file is still there and that you can open it, and \
                     try again.
+                    """
+            )
+        case .noSuchFile(let path):
+            String(
+                localized: """
+                    There's no file at “\(path)”. Check the path: a path that doesn't start with / or ~ starts from \
+                    the folder the command runs in.
+                    """
+            )
+        case .fileNotAnImage(let name):
+            String(
+                localized: """
+                    “\(name)” isn't an image Ficha can read. Give a picture as a side's image instead, such as a \
+                    JPEG or a PNG, and a sound as its sound.
+                    """
+            )
+        case .fileNotASound(let name):
+            String(
+                localized: """
+                    “\(name)” holds no sound Ficha can read. Give a sound or a video with sound as a side's sound \
+                    instead, such as an MP3, an M4A or a MOV, and a picture as its image.
+                    """
+            )
+        case .notAnImageOrSound(let name):
+            String(
+                localized: """
+                    “\(name)” isn't an image or a sound Ficha can read. Give a picture instead, such as a JPEG or a \
+                    PNG, or a sound or a video with sound, such as an MP3, an M4A or a MOV.
+                    """
+            )
+        case .noFileNamed(let name):
+            String(
+                localized: """
+                    Ficha holds no image or sound named “\(name)”. Give its name as `ficha cards` prints it, or the \
+                    path of a file on the Mac.
                     """
             )
         case .imagesFolder:

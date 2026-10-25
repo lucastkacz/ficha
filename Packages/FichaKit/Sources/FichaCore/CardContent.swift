@@ -97,9 +97,9 @@ public struct CardContent: Sendable, Equatable {
     }
 
     /// This content with the images and sounds given in place of its own,
-    /// where they aren't nil: as a refine session's content keeps the images
-    /// and sounds of the card it changes, since refining never adds one. Each
-    /// side keeps its text, so it's never blank.
+    /// where they aren't nil: as a card fixed or expanded with a content
+    /// alone keeps its own images and sounds. Each side keeps its text, so
+    /// it's never blank.
     public func keepingFiles(
         frontImage: ImageName?, backImage: ImageName?, frontSound: SoundName?, backSound: SoundName?
     ) -> CardContent {

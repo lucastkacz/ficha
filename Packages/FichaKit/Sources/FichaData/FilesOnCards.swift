@@ -110,6 +110,16 @@ enum FileStore<Name: NameOfFileOnCard>: Sendable {
         }
     }
 
+    /// Whether the file named `name` is kept.
+    func contains(_ name: Name) -> Bool {
+        switch self {
+        case .folder(let folder):
+            FileManager.default.fileExists(atPath: folder.appending(path: name.rawValue).path(percentEncoded: false))
+        case .memory(let memory):
+            memory.files.withLock { $0[name] != nil }
+        }
+    }
+
     /// Every file kept, by name.
     func names() throws(EngineError) -> Set<Name> {
         switch self {

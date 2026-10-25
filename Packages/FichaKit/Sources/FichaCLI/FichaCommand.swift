@@ -13,8 +13,8 @@ public struct FichaCommand: ParsableCommand {
         discussion: "Every command prints its result as JSON.",
         subcommands: [
             CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
-            DiscardCommand.self, FixCommand.self, BuryCommand.self, UnburyCommand.self, CardsCommand.self,
-            RestoreCommand.self,
+            DiscardCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, BuryCommand.self,
+            UnburyCommand.self, CardsCommand.self, RestoreCommand.self,
         ]
     )
 
@@ -28,8 +28,8 @@ public struct FichaCommand: ParsableCommand {
     /// change the cards under the app that the CLI belongs to, `appName`, is
     /// refused while `appIsRunning` says it runs, before the database opens.
     public static func main(
-        dataFolder: URL, runsOnDebugTime: Bool, appName: String, appIsRunning: () -> Bool
-    ) -> Never {
+        dataFolder: URL, runsOnDebugTime: Bool, appName: String, appIsRunning: @MainActor () -> Bool
+    ) async -> Never {
         do {
             var command = try parseAsRoot()
             guard let engineCommand = command as? any EngineCommand else {
@@ -37,7 +37,7 @@ public struct FichaCommand: ParsableCommand {
                 try command.run()
                 Self.exit()
             }
-            if let restore = engineCommand as? RestoreCommand, restore.copy != nil, appIsRunning() {
+            if let restore = engineCommand as? RestoreCommand, restore.copy != nil, await appIsRunning() {
                 throw AppIsRunningError(appName: appName)
             }
             let time: any TimeSource =
@@ -47,7 +47,7 @@ public struct FichaCommand: ParsableCommand {
                     SystemTimeSource()
                 }
             let engine = try Engine(location: .folder(dataFolder), time: time)
-            print(try json(engineCommand.run(on: engine)))
+            print(try json(await engineCommand.run(on: engine)))
             Self.exit()
         } catch {
             Self.exit(withError: error)
@@ -57,8 +57,9 @@ public struct FichaCommand: ParsableCommand {
 
 /// A `ficha` subcommand, which reads or writes Lucas's cards through the engine.
 protocol EngineCommand: ParsableCommand {
-    /// Does the command's work on the cards, and returns what it prints.
-    func run(on engine: Engine) throws -> any Encodable
+    /// Does the command's work on the cards, and returns what it prints: a
+    /// file it puts on a card can take a while to come in.
+    func run(on engine: Engine) async throws -> any Encodable
 }
 
 /// `value` as the CLI prints it: indented JSON, with its keys in order and its

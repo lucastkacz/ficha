@@ -31,10 +31,20 @@ extension Engine {
     /// `content`, which a refine session drafted from the card and the
     /// expansion and Lucas approved, and takes the expansion out of the inbox.
     /// The card stays on the step its review log puts it on, and keeps its
-    /// images, since refining never adds or removes one; a new front or back
+    /// images and sounds, as a draft that leaves them out does
+    /// (`approveExpansion(_:into:)` with a `CardDraft`); a new front or back
     /// keeps when it changed. Returns the card.
     @discardableResult
     public func approveExpansion(_ captureID: Int64, into content: CardContent) throws(EngineError) -> Card {
+        try approveExpansion(captureID) { card in content.keepingFiles(of: card) }.approved
+    }
+
+    /// Approves an expansion in the inbox, as `approveExpansion(_:into:)`
+    /// does, with the content `newContent` makes of its card as it is, or
+    /// nothing when it throws. Returns the card before and after.
+    func approveExpansion(
+        _ captureID: Int64, changingContentWith newContent: (Card) throws(EngineError) -> CardContent
+    ) throws(EngineError) -> (before: Card, approved: Card) {
         let refinedAt = time.now
         return try write { db in
             guard let cardID = try takeOutOfInbox(captureID, at: refinedAt, in: db).expandsCardID else {
@@ -45,7 +55,7 @@ extension Engine {
             case .inReviews, .inInbox, .setAside: break
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            return try replaceContent(of: cardID, with: content.keepingFiles(of: card), at: refinedAt, in: db)
+            return (card, try replaceContent(of: cardID, with: newContent(card), at: refinedAt, in: db))
         }
     }
 }

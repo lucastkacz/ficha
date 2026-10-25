@@ -19,11 +19,13 @@ extension EngineError {
                     """,
                 comment: "An alert's message in the Cards window, under what couldn't be done with the selected cards."
             )
-        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardSetAside, .notOneEmoji,
-            .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .storage, .copyNotFound,
-            .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
-            .unreadableDroppedFile, .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
+        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
+            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
+            .cardNotInAppearance, .placementIsNotAnAnswer, .cardSetAside, .notOneEmoji, .cannotUndo,
+            .cannotUndoFollowUp, .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion,
+            .backupsFolder, .notAnImage, .notASound, .soundConversion, .unreadableFileForSide, .noSuchFile,
+            .fileNotAnImage, .fileNotASound, .notAnImageOrSound, .noFileNamed, .imagesFolder, .soundsFolder,
+            .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }
@@ -38,12 +40,13 @@ extension EngineError {
         switch self {
         case .captureNotInInbox:
             message
-        case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .cardNotFound, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
-            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp,
-            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage,
-            .notASound, .soundConversion, .unreadableDroppedFile, .imagesFolder, .soundsFolder, .unreadableFile,
-            .unwritableFile:
+        case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .blankSideOnNewCard, .sideLeftBlank,
+            .noFileOnSide, .cardNotFound, .cardNotNew, .cardStillNew, .cardNotDue, .cardNotInAppearance,
+            .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried, .cardSetAside,
+            .notOneEmoji, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .storage, .copyNotFound,
+            .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
+            .unreadableFileForSide, .noSuchFile, .fileNotAnImage, .fileNotASound, .notAnImageOrSound, .noFileNamed,
+            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }

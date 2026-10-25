@@ -259,7 +259,7 @@ extension CardsWindowState {
     private mutating func soundWork(for file: URL) -> SoundWork? {
         guard FileManager.default.isReadableFile(atPath: file.path(percentEncoded: false)) else {
             logger.error("Couldn't read a file dropped for a sound")
-            record(.unreadableDroppedFile(file.lastPathComponent), for: .putSound)
+            record(.unreadableFileForSide(file.lastPathComponent), for: .putSound)
             return nil
         }
         return SoundWork(id: UUID(), file: file)

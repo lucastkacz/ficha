@@ -77,7 +77,7 @@ Ficha ships with a command-line tool inside the app. Claude uses it to turn your
 /Applications/Ficha.app/Contents/Helpers/ficha capture "serendipia" --source "Un ensayo de Borges"
 ```
 
-`ficha --help` lists its commands; each one prints JSON. `ficha unbury` brings back a card you buried. `ficha restore` lists the copies in Ficha's Backups folder, newest first, and `ficha restore <copy>`, with a copy's name, restores it, as the Backups tab in Settings does: only while Ficha isn't running, since it would go on with the cards it has open. To type just `ficha`, add an alias to `~/.zshrc`:
+`ficha --help` lists its commands; each one prints JSON. `ficha unbury` brings back a card you buried. `ficha attach` puts an image or a sound file from your Mac on a side of a card, and `ficha detach` takes one off; `ficha approve` and `ficha fix` take them too. `ficha restore` lists the copies in Ficha's Backups folder, newest first, and `ficha restore <copy>`, with a copy's name, restores it, as the Backups tab in Settings does: only while Ficha isn't running, since it would go on with the cards it has open. To type just `ficha`, add an alias to `~/.zshrc`:
 
 ```bash
 alias ficha="/Applications/Ficha.app/Contents/Helpers/ficha"

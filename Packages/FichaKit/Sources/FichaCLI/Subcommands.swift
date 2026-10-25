@@ -125,9 +125,10 @@ struct CardsCommand: EngineCommand {
             leaves out "type", "source" or "captureID" when it has no type, no source, or didn't come from a \
             capture. A card with an image or a sound on its front or back names it in "frontImage", "backImage", \
             "frontSound" or "backSound", left out when that side has none; a side with only an image or a sound \
-            has an empty text. Images and sounds are added in the Cards window, never through the CLI. A card whose front or back changed since it came in says when it last \
-            did in "editedAt": an edit, a fix, an approved expansion or an import; a change to its tags, type or \
-            source alone doesn't count.
+            has an empty text. `ficha attach` puts one on a side and `ficha detach` takes one off, and `ficha \
+            approve` and `ficha fix` take them too. A card whose front or back changed since it came in says when \
+            it last did in "editedAt": an edit, a fix, an approved expansion, a side's image or sound put on or \
+            taken off, or an import; a change to its tags, type or source alone doesn't count.
             """
     )
 

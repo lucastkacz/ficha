@@ -10,7 +10,7 @@ struct ApproveExpansionCommand: EngineCommand {
         abstract: "Approve an expansion: give its card new content, read as JSON from standard input.",
         discussion: """
             The card is a JSON object with \(cardFields). It replaces the content of the card the expansion \
-            expands, which keeps its step, its images and its sounds. For example:
+            expands, which keeps its step. \(fileFields) \(filesKept) For example:
 
               ficha approve-expansion 15 <<'EOF'
               {"type": "word", "front": "serendipia",
@@ -30,7 +30,7 @@ struct ApproveExpansionCommand: EngineCommand {
         try CardsInput.expandedCard.requireStandardInput()
     }
 
-    func run(on engine: Engine) throws -> any Encodable {
-        try engine.approveExpansion(captureID, into: card(in: standardInput(), as: .expandedCard))
+    func run(on engine: Engine) async throws -> any Encodable {
+        try await engine.approveExpansion(captureID, into: card(in: standardInput(), as: .expandedCard))
     }
 }

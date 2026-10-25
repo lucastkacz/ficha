@@ -791,12 +791,13 @@ extension EngineError {
                     """,
                 comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
             )
-        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards, .cardNotNew,
-            .cardStillNew, .cardNotDue, .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged,
-            .cardBuried, .cardNotBuried, .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp,
-            .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage,
-            .notASound, .soundConversion, .unreadableDroppedFile, .imagesFolder, .soundsFolder, .unreadableFile,
-            .unwritableFile:
+        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
+            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
+            .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
+            .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .storage,
+            .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
+            .unreadableFileForSide, .noSuchFile, .fileNotAnImage, .fileNotASound, .notAnImageOrSound, .noFileNamed,
+            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }
     }

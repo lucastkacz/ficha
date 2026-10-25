@@ -7,6 +7,6 @@ import FichaCLI
 // Whether that app runs, which a restore waits for, macOS says by its bundle
 // identifier.
 let variant = AppVariant.current
-FichaCommand.main(dataFolder: variant.dataFolder, runsOnDebugTime: variant.hasDebugMenu, appName: variant.name) {
+await FichaCommand.main(dataFolder: variant.dataFolder, runsOnDebugTime: variant.hasDebugMenu, appName: variant.name) {
     !NSRunningApplication.runningApplications(withBundleIdentifier: variant.bundleIdentifier).isEmpty
 }
