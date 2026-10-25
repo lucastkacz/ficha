@@ -57,11 +57,6 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.markdown-only != 'true' }}
     runs-on: macos-26
     timeout-minutes: 30
-    # TEMPORARY, for #277's measurements; the next commit reverts it.
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [main-key, main-key-no-modules, image-key-a, image-key-b]
     env:
       # What `make check`'s builds leave, which the next run builds from: the
       # package's, the render tool's, and Xcode's derived data. They pay off
@@ -135,14 +130,7 @@ jobs:
             echo "::error::The runner set no ImageOS or ImageVersion, so the builds' cache key can't name its image: name it another way in this step, from what the Set up job step's Runner Image section shows."
             exit 1
           fi
-          echo "Image: $ImageOS $ImageVersion, variant: $VARIANT"
-          if [[ $VARIANT == main-key* ]]; then
-            echo "name=macOS" >>"$GITHUB_OUTPUT"
-          else
-            echo "name=$ImageOS-$ImageVersion" >>"$GITHUB_OUTPUT"
-          fi
-        env:
-          VARIANT: ${{ matrix.variant }}
+          echo "name=$ImageOS-$ImageVersion" >>"$GITHUB_OUTPUT"
       - name: Restore the builds
         # The ones a run on main saved, with actions/cache's restore and save
         # actions, as its caching strategies show them. Other runs, pull
@@ -156,16 +144,11 @@ jobs:
         with:
           path: ${{ env.BUILDS }}
           key: builds-${{ steps.image.outputs.name }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
-      - name: Drop the module cache
-        if: matrix.variant == 'main-key-no-modules'
-        run: |
-          du -sh .build/DerivedData/ModuleCache.noindex || true
-          rm -rf .build/DerivedData/ModuleCache.noindex
       - run: make check
       - name: Save the builds
         # After a run on main, unless the cache had them already: a key, once
         # saved, can't be saved again.
-        if: startsWith(matrix.variant, 'image-key') && steps.cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILDS }}
