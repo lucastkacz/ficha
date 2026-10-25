@@ -7,12 +7,12 @@ internal import GRDB
 // file: changing it makes a pull request risk:high.
 
 /// The cards that show up, as the engine reads them for the planners: the
-/// cards in Lucas's reviews, which the planners pick from, and every card, by
-/// id, which what they pick maps back to.
+/// cards in Lucas's reviews, whose ways the planners pick from, and every
+/// card, by id, which what they pick maps back to.
 struct CardsThatShowUp {
     /// The cards in Lucas's reviews, with the whole review log, as the
-    /// planners take them: `CardsInReviews` keeps only the cards whose
-    /// standing is in his reviews.
+    /// planners take them: `CardsInReviews` keeps only the ways of the cards
+    /// whose standing is in his reviews.
     let inReviews: CardsInReviews
     /// Every card, by id.
     private let cards: [Int64: Card]
@@ -25,14 +25,14 @@ struct CardsThatShowUp {
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 
-    /// The cards the review panel brings, as a planner picked them by id, in
-    /// the order it shows them: the cards to review, the cards to review
-    /// ahead, and then the new card.
+    /// The cards the review panel brings, each the way a planner picked it, in
+    /// the order it shows them: the ways to review, the ways to review ahead,
+    /// and then the new way.
     func panelCards(_ picked: PanelCardIDs) throws -> [PanelCard] {
-        var panelCards = try picked.reviews.map { PanelCard.review(try card($0)) }
-        panelCards += try picked.reviewsAhead.map { PanelCard.reviewAhead(try card($0)) }
-        if let id = picked.firstView {
-            panelCards.append(.firstView(try card(id)))
+        var panelCards = try picked.reviews.map { PanelCard.review(try card($0.cardID), $0.way) }
+        panelCards += try picked.reviewsAhead.map { PanelCard.reviewAhead(try card($0.cardID), $0.way) }
+        if let firstView = picked.firstView {
+            panelCards.append(.firstView(try card(firstView.cardID), firstView.way))
         }
         return panelCards
     }

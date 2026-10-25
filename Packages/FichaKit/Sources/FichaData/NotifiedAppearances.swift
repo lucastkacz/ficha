@@ -20,6 +20,12 @@ public struct NotifiedAppearance: Sendable, Equatable {
     public init(_ upcoming: UpcomingAppearance) {
         self.init(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
     }
+
+    /// The ways it brought, in the order their notifications show: each card
+    /// front first, since card notifications don't go back first (#97).
+    var ways: [CardWay] {
+        cardIDs.map { CardWay(cardID: $0, way: .frontFirst) }
+    }
 }
 
 extension Engine {
@@ -52,7 +58,8 @@ extension Engine {
                 reviewingAhead: false, in: db)
             let cards = try cardsThatShowUp(in: db)
             let next = try settings.nextCard(
-                after: cardID, in: appearance.cardIDs, cards: cards.inReviews, now: answeredAt)
+                after: CardWay(cardID: cardID, way: .frontFirst), in: appearance.ways, cards: cards.inReviews,
+                now: answeredAt)
             let nextCard = try cards.panelCards(next).first
             try noteClosing(of: appearance, at: answeredAt, finished: nextCard == nil, in: db)
             return nextCard
