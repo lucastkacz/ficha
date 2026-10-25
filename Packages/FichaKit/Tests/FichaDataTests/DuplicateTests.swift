@@ -39,6 +39,20 @@ struct DuplicateTests {
         #expect(result.saved?.text == "ano")
     }
 
+    // A chemistry deck brings "H₂O", and someone types "H2O". A raised minus
+    // comes from a "-" or a "−", the minus sign.
+    @Test("words that differ only in superscripts and subscripts, or in a minus sign, are duplicates")
+    func superscriptsAndSubscriptsDontKeepCapturesApart() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let water = try approveCard("H₂O", in: engine)
+        let sulfate = try approveCard("SO42-", in: engine)
+        let inverse = try approveCard("x−1", in: engine)
+
+        #expect(try engine.capture(text: "h2o", note: nil, source: nil) == .duplicate(of: .card(water)))
+        #expect(try engine.capture(text: "SO₄²⁻", note: nil, source: nil) == .duplicate(of: .card(sulfate)))
+        #expect(try engine.capture(text: "x⁻¹", note: nil, source: nil) == .duplicate(of: .card(inverse)))
+    }
+
     // Fronts rarely repeat the capture word for word: "ubuntu" becomes "¿Qué
     // es el ubuntu?".
     @Test("a capture that repeats the capture a card was approved from repeats that card")

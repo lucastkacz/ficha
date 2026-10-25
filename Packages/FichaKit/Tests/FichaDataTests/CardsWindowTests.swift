@@ -170,6 +170,16 @@ struct CardsWindowTests {
         #expect(try engine.cardRows(in: .all, matching: " UBERRIMO ", on: ladder).map(\.card.id) == [uberrimo.id])
     }
 
+    @Test("searching \"h2o\" finds a card that says \"H₂O\", and \"x²\" one that says \"x2\"")
+    func aSearchIgnoresSuperscriptsAndSubscripts() throws {
+        let ladder = ReviewSettings.defaults.ladder
+        let water = try approve(card(.word, front: "H₂O", back: "El agua."), in: engine)
+        let square = try approve(card(.question, front: "¿Cuánto es x2 si x es 3?", back: "9."), in: engine)
+
+        #expect(try engine.cardRows(in: .all, matching: "h2o", on: ladder).map(\.card.id) == [water.id])
+        #expect(try engine.cardRows(in: .all, matching: "x²", on: ladder).map(\.card.id) == [square.id])
+    }
+
     @Test("a search finds text in a card's source")
     func aSearchFindsTextInTheSource() throws {
         let ladder = ReviewSettings.defaults.ladder

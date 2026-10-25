@@ -286,6 +286,48 @@ final class AnkiImportingTests {
             ])
     }
 
+    // Shared chemistry and pharmacology decks' notes. Unicode has no
+    // subscript d or q, and its other small letters, such as the i
+    // below, are phonetic signs, which the system font mostly lacks.
+    @Test(
+        "a superscript or a subscript comes in as Unicode's when Unicode has each of its characters as one, and as its text otherwise",
+        arguments: schemas)
+    func superscriptsAndSubscriptsComeInAsUnicodes(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "SO<sub>4</sub><sup>2-</sup>", "Ca<sup>2+</sup>, β<sub>1</sub> y x<sup><b>(n−1)</b></sup>",
+                    ]),
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "V<sub>max</sub> y K<sub style=\"font-weight: bold;\">m</sub>",
+                        "V<sub>d</sub>, G<sub>q</sub>, G<sub>i</sub>, GABA<sub>A</sub> y el 2<sup>nd</sup>",
+                    ]),
+                AnkiNote(type: .cloze, fields: ["La {{c1::K<sub>m</sub>}} de la enzima", ""]),
+                // A browser shows the spaces and the line break at its own
+                // size, a line break takes away the spaces before it, and
+                // what isn't closed isn't a superscript in Ficha.
+                AnkiNote(
+                    type: .basic,
+                    fields: ["Na<sup>+ ions</sup> y 10 <sup> 3 </sup>m", "a&nbsp;&nbsp;<sup><br>23</sup> y x<sup>2"]),
+            ])
+
+        try importPackage(package)
+
+        let sides = try engine.cards().map { [$0.front, $0.back] }
+        #expect(
+            sides == [
+                ["SO₄²⁻", "Ca²⁺, β₁ y x⁽ⁿ⁻¹⁾"],
+                ["Vₘₐₓ y Kₘ", "Vd, Gq, Gi, GABAA y el 2nd"],
+                ["La [...] de la enzima", "La Kₘ de la enzima"],
+                ["Na+ ions y 10 ³ m", "a\n²³ y x2"],
+            ])
+    }
+
     @Test(
         "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
         arguments: schemas)

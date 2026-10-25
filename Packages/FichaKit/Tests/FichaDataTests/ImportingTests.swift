@@ -284,6 +284,21 @@ final class ImportingTests {
         #expect(cards.map(\.front) == ["serendipia", "efímero"])
     }
 
+    // A deck imported before Ficha read HTML's superscripts and subscripts
+    // has them flat, and the same deck imported after brings them in Unicode.
+    @Test("an imported front repeats a card's front that differs only in superscripts and subscripts")
+    func superscriptsAndSubscriptsDontKeepImportedFrontsApart() throws {
+        let calcium = try approve(card(.word, front: "Ca2+", back: "Un ion."), in: engine)
+        let file = try file("Química.txt", "Ca²⁺\tEl ion del calcio.\nH₂O\tEl agua.\n")
+
+        let outcome = try importFile(file)
+
+        #expect(outcome == ImportOutcome(added: 1, updated: 1, skipped: 0, copyBeforeImport: nil))
+        let cards = try engine.cards()
+        #expect(cards.map(\.id).first == calcium.id)
+        #expect(cards.map(\.back) == ["El ion del calcio.", "El agua."])
+    }
+
     // Once with each card's first view as new cards come up, a day apart.
     @Test("imported new cards come up for their first view in the file's order")
     func importedNewCardsComeUpInTheFilesOrder() throws {
