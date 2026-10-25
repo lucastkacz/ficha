@@ -164,6 +164,52 @@ final class AnkiImageImportingTests {
         #expect(cards.map { [$0.frontImage, $0.backImage] } == [[nil, nil]])
     }
 
+    // Anki draws a field's formula with LaTeX, and a package carries the
+    // picture, named after the formula: these names are the ones Anki's own
+    // tests expect (`rslib/src/latex.rs`).
+    @Test(
+        "a side that is only one of Anki's formulas comes in as the picture Anki drew of it, and one beside text, one of several, or one without its picture, as its LaTeX",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func aFormulaAloneComesInAsAnkisPicture(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["Saludo", "[$]<b>hello</b>&nbsp; world[/$]"]),
+                AnkiNote(type: .basic, fields: ["<div>[$$]math &amp; stuff[/$$]</div>", "Mates"]),
+                // Anki reads `<br/>` as a line break in a formula, as `<br>`,
+                // but not `<br />`.
+                AnkiNote(type: .basic, fields: ["[latex]one<br/>and<div>two[/latex]", "Pasos"]),
+                AnkiNote(type: .basic, fields: ["Un paso", "a[latex]one<br>and<div>two[/latex]b"]),
+                AnkiNote(type: .basic, fields: ["Dos", "[$]x[/$] [$]y[/$]"]),
+                AnkiNote(type: .basic, fields: ["Sin dibujo", "[$]z[/$]"]),
+            ],
+            media: [
+                "latex-060219fbf3ddb74306abddaf4504276ad793b029.png": try picture(width: 300, height: 60, red: 0.1),
+                "latex-8899f3f849ffdef6e4e9f2f34a923a1f608ebc07.png": try picture(width: 200, height: 60, red: 0.2),
+                "latex-ef30b3f4141c33a5bf7044b0d1961d3399c05d50.png": try picture(width: 100, height: 60, red: 0.3),
+            ])
+
+        let preview = try preview(package)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.cardsWithImagesDropped == 0)
+        let cards = try engine.cards()
+        #expect(
+            cards.map { [$0.front, $0.back] } == [
+                ["Saludo", ""], ["", "Mates"], ["", "Pasos"], ["Un paso", "a[latex]one\nand\ntwo[/latex]b"],
+                ["Dos", "[$]x[/$] [$]y[/$]"],
+                ["Sin dibujo", "[$]z[/$]"],
+            ])
+        #expect(
+            try cards.map { try $0.frontImage.map { try pixelSize(of: engine.image($0)).width } } == [
+                nil, 200, 100, nil, nil, nil,
+            ])
+        #expect(
+            try cards.map { try $0.backImage.map { try pixelSize(of: engine.image($0)).width } } == [
+                300, nil, nil, nil, nil, nil,
+            ])
+    }
+
     // The rest of the package comes in, as when Anki exports a deck without
     // its media.
     @Test(
