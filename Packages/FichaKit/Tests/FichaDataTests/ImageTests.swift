@@ -86,6 +86,35 @@ final class ImageTests {
         #expect(try imageType(of: engine.image(seeThrough)) == UTType.png.identifier)
     }
 
+    // ImageIO writes the profile of a color space the system doesn't name,
+    // such as the one a PNG's gamma and chromaticities make, as Wikipedia's
+    // images often have, with the day's date in it. A PNG in Adobe RGB reads
+    // back in such a space.
+    @Test(
+        "an image comes in in its color space when the system names it, and otherwise in Display P3 when its colors are wider than sRGB's, or in sRGB, so it's named the same whatever day it comes in"
+    )
+    func anImageComesInInANamedColorSpace() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let gamma22 = try #require(
+            CGColorSpace(
+                calibratedRGBWhitePoint: [0.9505, 1, 1.089], blackPoint: [0, 0, 0], gamma: [2.2, 2.2, 2.2],
+                matrix: [0.4124, 0.2126, 0.0193, 0.3576, 0.7152, 0.1192, 0.1805, 0.0722, 0.9505]))
+        let adobeRGB = try #require(CGColorSpace(name: CGColorSpace.adobeRGB1998))
+        let displayP3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
+
+        let opaque = try engine.addImage(picture(width: 300, height: 200, in: gamma22))
+        let seeThrough = try engine.addImage(picture(width: 300, height: 200, alpha: 0.5, in: gamma22))
+        let wider = try engine.addImage(picture(width: 300, height: 200, in: adobeRGB))
+        let named = try engine.addImage(picture(width: 300, height: 200, in: displayP3))
+
+        #expect(
+            try [opaque, seeThrough, wider, named].map { try colorSpaceName(of: engine.image($0)) } == [
+                CGColorSpace.sRGB as String, CGColorSpace.sRGB as String, CGColorSpace.displayP3 as String,
+                CGColorSpace.displayP3 as String,
+            ])
+        #expect(try imageType(of: engine.image(seeThrough)) == UTType.png.identifier)
+    }
+
     @Test("deleting the only card that uses an image deletes it, and one another card uses stays")
     func deletingACardDeletesTheImagesNoOtherCardUses() throws {
         let engine = try Engine(location: .folder(folder), time: time)
@@ -190,7 +219,7 @@ final class ImageTests {
         #expect(encoded[1]["backImage"] == nil)
     }
 
-    @Test("a front with only an image repeats no other card's front")
+    @Test("a front with only an image repeats no other card's front in the Cards window's form")
     func aFrontWithOnlyAnImageRepeatsNone() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -247,13 +276,15 @@ final class ImageTests {
 }
 
 /// A picture `width` by `height` pixels in one color, as a PNG, opaque unless
-/// `alpha` is under 1: a test's own image. Pictures of other colors or sizes
-/// are other images.
-func picture(width: Int, height: Int, red: Double = 0.5, alpha: Double = 1) throws -> Data {
-    let sRGB = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+/// `alpha` is under 1, in the color space `space`, or sRGB: a test's own
+/// image. Pictures of other colors or sizes are other images.
+func picture(width: Int, height: Int, red: Double = 0.5, alpha: Double = 1, in space: CGColorSpace? = nil) throws
+    -> Data
+{
+    let space = try space ?? #require(CGColorSpace(name: CGColorSpace.sRGB))
     let context = try #require(
         CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: sRGB,
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
     context.setFillColor(CGColor(srgbRed: red, green: 0.6, blue: 0.4, alpha: alpha))
     context.fill(CGRect(x: 0, y: 0, width: width, height: height))
@@ -276,4 +307,12 @@ func pixelSize(of data: Data) throws -> (width: Int, height: Int) {
 func imageType(of data: Data) throws -> String {
     let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
     return try #require(CGImageSourceGetType(source)) as String
+}
+
+/// The name of the color space of the image in `data`, or nil when the
+/// system names none for it.
+private func colorSpaceName(of data: Data) throws -> String? {
+    let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    return image.colorSpace?.name as String?
 }

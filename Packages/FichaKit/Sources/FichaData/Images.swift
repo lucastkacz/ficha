@@ -70,9 +70,11 @@ struct CardImage: Sendable, Equatable {
     /// PNG, a HEIC or a TIFF, turned upright as its orientation says,
     /// shrunk to `longestImageSide` pixels on its long side, never grown, and
     /// written as a JPEG, or a PNG when it has transparency, without its
-    /// metadata, such as where a photo was taken. It's named by the SHA-256 of
-    /// what's written. Something the system can't read as an image is
-    /// refused.
+    /// metadata, such as where a photo was taken, in its color space when the
+    /// system names it, such as sRGB or Display P3, and otherwise in Display
+    /// P3 when its colors go past sRGB's, or in sRGB. It's named by the
+    /// SHA-256 of what's written. Something the system can't read as an image
+    /// is refused.
     init(shrinking data: Data) throws(EngineError) {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetCount(source) > 0,
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
@@ -90,10 +92,16 @@ struct CardImage: Sendable, Equatable {
             kCGImageSourceThumbnailMaxPixelSize: min(longestImageSide, max(width, height)),
             kCGImageSourceShouldCacheImmediately: true,
         ]
-        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
             throw .notAnImage
         }
-        let isTransparent = hasTransparency(image)
+        let isTransparent = hasTransparency(thumbnail)
+        guard let image = inNamedColorSpace(thumbnail, keepingAlpha: isTransparent) else {
+            logger.error(
+                "Core Graphics couldn't draw an image of \(thumbnail.width)×\(thumbnail.height) pixels in Display P3 or sRGB"
+            )
+            throw .notAnImage
+        }
         let written = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
@@ -116,6 +124,31 @@ struct CardImage: Sendable, Equatable {
         }
         self.name = name
     }
+}
+
+/// `image` itself when the system names its color space, such as sRGB or
+/// Display P3, and otherwise `image` drawn in Display P3 when its colors go
+/// past sRGB's, as a photo's in Adobe RGB do, or in sRGB, with its alpha
+/// when `keepingAlpha`; nil when it can't be drawn. ImageIO writes the
+/// profile of a space the system doesn't name, such as the one a PNG's gamma
+/// and chromaticities make, with the day's date in it, so the same image
+/// would be written, and named, apart on another day. Display P3 keeps most
+/// of the colors a wider space has, and sRGB is what a browser assumes of an
+/// image that names no space.
+private func inNamedColorSpace(_ image: CGImage, keepingAlpha: Bool) -> CGImage? {
+    guard let space = image.colorSpace, space.name == nil else {
+        return image
+    }
+    let alpha: CGImageAlphaInfo = keepingAlpha ? .premultipliedLast : .noneSkipLast
+    guard let named = CGColorSpace(name: space.isWideGamutRGB ? CGColorSpace.displayP3 : CGColorSpace.sRGB),
+        let context = CGContext(
+            data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0, space: named,
+            bitmapInfo: alpha.rawValue)
+    else {
+        return nil
+    }
+    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    return context.makeImage()
 }
 
 /// Whether `image` has a pixel that isn't fully opaque. One with an alpha
