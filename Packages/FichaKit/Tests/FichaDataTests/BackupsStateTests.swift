@@ -145,6 +145,30 @@ final class BackupsStateTests {
         #expect(backups.sharedImagesSize == nil)
     }
 
+    @Test("the tab says what the sounds the copies share weigh, once, and nothing about sounds while they share none")
+    func tabSaysWhatTheSharedSoundsWeigh() async throws {
+        var backups = engine.openBackups()
+        backups.backUpNow(.defaults)
+        let sharingNone = backups.sharedSoundsSize
+        let la = try await addTone(440, to: engine)
+        try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
+        let laSize = Int64(try engine.sound(la).count)
+        time.advance(by: hours(1))
+        backups.backUpNow(.defaults)
+        time.advance(by: hours(1))
+        backups.backUpNow(.defaults)
+        let sharingTheLa = backups.sharedSoundsSize
+        let withTheLa = Array(try #require(try backups.copies?.get()).prefix(2))
+
+        trashed += backups.delete(withTheLa)
+
+        #expect(sharingNone == nil)
+        #expect(sharingTheLa == laSize)
+        #expect(backups.sharedImagesSize == nil)
+        #expect(try backups.copies?.get().count == 1)
+        #expect(backups.sharedSoundsSize == nil)
+    }
+
     @Test("a failed backup shows in the tab and in the menu until a backup is saved")
     func failedBackupShowsUntilOneIsSaved() throws {
         var backups = engine.openBackups()

@@ -204,7 +204,8 @@ struct BackupsTab: View {
     }
 
     /// How many `copies` there are and what they weigh in all, and under
-    /// it what the images they share weigh, when they share any.
+    /// it what the images and the sounds they share weigh, when they share
+    /// any.
     private func summary(_ copies: [DatabaseCopy]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(
@@ -215,6 +216,14 @@ struct BackupsTab: View {
                     "Images they share: \(imagesSize.formatted(.byteCount(style: .file)))",
                     comment: """
                         Settings, under Backups, below how many copies there are: what the images on their cards \
+                        weigh, each kept once for all the copies.
+                        """)
+            }
+            if let soundsSize = model.backups.sharedSoundsSize {
+                Text(
+                    "Sounds they share: \(soundsSize.formatted(.byteCount(style: .file)))",
+                    comment: """
+                        Settings, under Backups, below how many copies there are: what the sounds on their cards \
                         weigh, each kept once for all the copies.
                         """)
             }

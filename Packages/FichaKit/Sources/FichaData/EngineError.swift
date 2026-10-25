@@ -78,8 +78,8 @@ public enum EngineError: Error, Equatable {
     /// refuses to restore it, as it refuses such a database.
     case copyMigratedByNewerVersion(String)
     /// A copy in the Backups folder couldn't be listed, named, moved or
-    /// removed, or the images the copies share couldn't be kept or weighed.
-    /// The engine logs why.
+    /// removed, or the images and sounds the copies share couldn't be kept
+    /// or weighed. The engine logs why.
     case backupsFolder
     /// What came in for a side of a card, dragged or pasted, isn't an image
     /// the system can read.
@@ -99,8 +99,9 @@ public enum EngineError: Error, Equatable {
     /// from the Backups folder or removed, or isn't there. The engine logs
     /// why.
     case imagesFolder
-    /// A sound in the Sounds folder couldn't be read, saved or removed, or
-    /// isn't there. The engine logs why.
+    /// A sound in the Sounds folder couldn't be read, saved, brought back
+    /// from the Backups folder or removed, or isn't there. The engine logs
+    /// why.
     case soundsFolder
     /// The file of cards with this name can't be imported, for the reason
     /// the problem gives, so nothing was read from it.

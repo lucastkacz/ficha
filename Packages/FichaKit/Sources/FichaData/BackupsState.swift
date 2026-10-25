@@ -72,6 +72,8 @@ public struct BackupsState: Sendable {
     private var lastAttemptFailure: EngineError?
     /// What the images the copies share weigh, in bytes, as last read.
     private var imagesSize: Int64 = 0
+    /// What the sounds the copies share weigh, in bytes, as last read.
+    private var soundsSize: Int64 = 0
     private let engine: Engine
 
     init(engine: Engine) {
@@ -116,7 +118,7 @@ public struct BackupsState: Sendable {
     }
 
     /// What the copies the list has weigh in all, in bytes: their databases,
-    /// without the images they share.
+    /// without the images and sounds they share.
     public var totalSize: Int64 {
         guard case .success(let copies) = copies else {
             return 0
@@ -135,16 +137,29 @@ public struct BackupsState: Sendable {
         return imagesSize
     }
 
+    /// What the sounds the copies share weigh, in bytes, each once however
+    /// many copies refer to it, which the tab says beside what the copies
+    /// and their images weigh; or nil while they share none, and the tab
+    /// says nothing about sounds.
+    public var sharedSoundsSize: Int64? {
+        guard case .success = copies, soundsSize > 0 else {
+            return nil
+        }
+        return soundsSize
+    }
+
     /// Reads the copies in the Backups folder again, as they are now, and
-    /// what the images they share weigh. When either can't be read, the tab
-    /// says why in place of the copies.
+    /// what the images and the sounds they share weigh. When any can't be
+    /// read, the tab says why in place of the copies.
     public mutating func read() {
         do throws(EngineError) {
             let read = try engine.copies()
             imagesSize = try engine.sharedImagesSize()
+            soundsSize = try engine.sharedSoundsSize()
             copies = .success(read)
         } catch {
             imagesSize = 0
+            soundsSize = 0
             copies = .failure(error)
         }
     }

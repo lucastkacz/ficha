@@ -469,6 +469,105 @@ final class BackupTests {
         #expect(try engine.image(bird) == image)
     }
 
+    @Test("seven backups of cards with the same sounds store each sound once")
+    func sevenBackupsStoreEachSoundOnce() async throws {
+        let engine = try openEngine()
+        let (la, mi) = try await twoSounds(in: engine)
+        try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la, backSound: mi))
+        try engine.create(card(nil, front: "¿Y esta?", back: "Mi.", frontSound: mi))
+
+        for _ in 0..<7 {
+            try engine.backUpNow(.defaults)
+            time.advance(by: days(1))
+        }
+
+        #expect(try engine.copies().count == 7)
+        #expect(try engine.sharedSoundsSize() == size(of: [la, mi], in: engine))
+    }
+
+    @Test("deleting a card and then restoring a backup that had it brings the card back with its sounds")
+    func restoringBringsBackADeletedCardsSounds() async throws {
+        let engine = try openEngine()
+        let (la, mi) = try await twoSounds(in: engine)
+        let nota = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la, backSound: mi))
+        let sounds = (try engine.sound(la), try engine.sound(mi))
+        let backup = try engine.backUpNow(.defaults)
+        try engine.delete([nota.id])
+        #expect(throws: EngineError.soundsFolder) { try engine.sound(la) }
+
+        time.advance(by: hours(1))
+        try engine.restore(backup.name)
+
+        #expect(try engine.cards() == [nota])
+        #expect(try engine.sound(la) == sounds.0)
+        #expect(try engine.sound(mi) == sounds.1)
+    }
+
+    @Test("deleting old backups drops the sounds no remaining copy uses, and keeps the rest")
+    func deletingOldBackupsDropsTheirSounds() async throws {
+        let engine = try openEngine()
+        let keepingTwo = try #require(BackupSettings(frequency: .daily, kept: 2))
+        let (la, mi) = try await twoSounds(in: engine)
+        let laCard = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
+        let miCard = try engine.create(card(nil, front: "¿Y esta?", back: "Mi.", backSound: mi))
+        let (bothSizes, miSize) = (try size(of: [la, mi], in: engine), try size(of: [mi], in: engine))
+        try engine.backUpNow(keepingTwo)
+        try engine.delete([laCard.id])
+        time.advance(by: days(1))
+        try engine.backUpNow(keepingTwo)
+        let beforePruning = try engine.sharedSoundsSize()
+
+        time.advance(by: days(1))
+        let newest = try engine.backUpNow(keepingTwo)
+
+        #expect(beforePruning == bothSizes)
+        #expect(try engine.sharedSoundsSize() == miSize)
+        try engine.delete([miCard.id])
+        try engine.restore(newest.name)
+        #expect(try engine.cards() == [miCard])
+        #expect(try Int64(engine.sound(mi).count) == miSize)
+    }
+
+    @Test("a restore lets go of the sounds only the cards it replaced used, and undoing it brings them back")
+    func undoingARestoreBringsBackItsSounds() async throws {
+        let engine = try openEngine()
+        let ubuntu = try engine.create(card(.word, front: "ubuntu", back: "Soy porque somos."))
+        let beforeSounds = try engine.backUpNow(.defaults)
+        let la = try await addTone(440, to: engine)
+        let nota = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
+        let sound = try engine.sound(la)
+
+        time.advance(by: hours(1))
+        let restoration = try engine.restore(beforeSounds.name)
+        let restored = try engine.cards()
+        #expect(throws: EngineError.soundsFolder) { try engine.sound(la) }
+        time.advance(by: minutes(1))
+        try engine.restore(restoration.copyBeforeRestore.name)
+
+        #expect(restored == [ubuntu])
+        #expect(try engine.cards() == [ubuntu, nota])
+        #expect(try engine.sound(la) == sound)
+    }
+
+    @Test("a copy before an import keeps the sounds too, so restoring it brings a card deleted since back whole")
+    func copyBeforeAnImportKeepsTheSounds() async throws {
+        let engine = try openEngine()
+        let la = try await addTone(440, to: engine)
+        let nota = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
+        let sound = try engine.sound(la)
+        let file = folder.appending(path: "notas.txt")
+        try Data("do\tLa primera nota de la escala.\n".utf8).write(to: file)
+        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let copy = try #require(outcome.copyBeforeImport)
+        try engine.delete([nota.id])
+
+        time.advance(by: minutes(1))
+        try engine.restore(copy.name)
+
+        #expect(try engine.cards() == [nota])
+        #expect(try engine.sound(la) == sound)
+    }
+
     /// Two images of different sizes, a bird and its nest, which `engine`
     /// keeps.
     private func twoImages(in engine: Engine) throws -> (bird: ImageName, nest: ImageName) {
@@ -481,6 +580,16 @@ final class BackupTests {
     /// What `images` weigh, each once, as `engine` keeps them.
     private func size(of images: [ImageName], in engine: Engine) throws -> Int64 {
         try images.reduce(0) { $0 + Int64(try engine.image($1).count) }
+    }
+
+    /// Two sounds of different pitches, an A and an E, which `engine` keeps.
+    private func twoSounds(in engine: Engine) async throws -> (la: SoundName, mi: SoundName) {
+        (try await addTone(440, to: engine), try await addTone(330, to: engine))
+    }
+
+    /// What `sounds` weigh, each once, as `engine` keeps them.
+    private func size(of sounds: [SoundName], in engine: Engine) throws -> Int64 {
+        try sounds.reduce(0) { $0 + Int64(try engine.sound($1).count) }
     }
 
     /// The path of `copy`'s file.
