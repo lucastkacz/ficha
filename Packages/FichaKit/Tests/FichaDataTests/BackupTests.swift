@@ -549,6 +549,25 @@ final class BackupTests {
         #expect(try engine.sound(la) == sound)
     }
 
+    @Test("a copy before an import keeps the sounds too, so restoring it brings a card deleted since back whole")
+    func copyBeforeAnImportKeepsTheSounds() async throws {
+        let engine = try openEngine()
+        let la = try await addTone(440, to: engine)
+        let nota = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
+        let sound = try engine.sound(la)
+        let file = folder.appending(path: "notas.txt")
+        try Data("do\tLa primera nota de la escala.\n".utf8).write(to: file)
+        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let copy = try #require(outcome.copyBeforeImport)
+        try engine.delete([nota.id])
+
+        time.advance(by: minutes(1))
+        try engine.restore(copy.name)
+
+        #expect(try engine.cards() == [nota])
+        #expect(try engine.sound(la) == sound)
+    }
+
     /// Two images of different sizes, a bird and its nest, which `engine`
     /// keeps.
     private func twoImages(in engine: Engine) throws -> (bird: ImageName, nest: ImageName) {

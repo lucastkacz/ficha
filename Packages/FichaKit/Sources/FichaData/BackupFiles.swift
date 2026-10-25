@@ -134,8 +134,8 @@ func folderOfShared<Name: NameOfFileOnCard>(_: Name.Type, in backups: URL) -> UR
 /// folder lacks too is left out, and the log says so: the copy keeps the
 /// cards all the same, as the database had them.
 func shareFiles(_ files: FilesReferred, from data: URL, into backups: URL) throws(EngineError) {
-    try shareFiles(files.images, from: data, into: backups)
-    try shareFiles(files.sounds, from: data, into: backups)
+    try share(files.images, from: data, into: backups)
+    try share(files.sounds, from: data, into: backups)
 }
 
 /// Brings back to the data folder `data` each of `files` it lacks, from the
@@ -144,13 +144,13 @@ func shareFiles(_ files: FilesReferred, from data: URL, into backups: URL) throw
 /// before copies kept files of its kind can refer to, is left out, and the
 /// log says so: its card shows without it.
 func bringBackFiles(_ files: FilesReferred, from backups: URL, into data: URL) throws(EngineError) {
-    try bringBackFiles(files.images, from: backups, into: data)
-    try bringBackFiles(files.sounds, from: backups, into: data)
+    try bringBack(files.images, from: backups, into: data)
+    try bringBack(files.sounds, from: backups, into: data)
 }
 
-/// Adds the files `names` to those the copies in `backups` share, as
+/// Adds the files named `names` to those the copies in `backups` share, as
 /// `shareFiles(_:from:into:)` says.
-private func shareFiles<Name: NameOfFileOnCard>(_ names: Set<Name>, from data: URL, into backups: URL)
+private func share<Name: NameOfFileOnCard>(_ names: Set<Name>, from data: URL, into backups: URL)
     throws(EngineError)
 {
     do {
@@ -168,9 +168,9 @@ private func shareFiles<Name: NameOfFileOnCard>(_ names: Set<Name>, from data: U
     }
 }
 
-/// Brings back the files `names` to the data folder `data`, as
+/// Brings back the files named `names` to the data folder `data`, as
 /// `bringBackFiles(_:from:into:)` says.
-private func bringBackFiles<Name: NameOfFileOnCard>(_ names: Set<Name>, from backups: URL, into data: URL)
+private func bringBack<Name: NameOfFileOnCard>(_ names: Set<Name>, from backups: URL, into data: URL)
     throws(EngineError)
 {
     do {
@@ -208,12 +208,11 @@ private func copyFiles<Name: NameOfFileOnCard>(
     }
 }
 
-/// Copies the file on a card `file` into `folder`, unless a file with its
-/// name is there already. It's copied under a hidden name first, and then
-/// given its own, so a file copied halfway never shows as one.
+/// Copies the file on a card `file` into `folder`, which lacked it. It's
+/// copied under a hidden name first, and then given its own, so a file
+/// copied halfway never shows as one.
 private func copyFile(_ file: URL, into folder: URL) throws {
     let destination = folder.appending(path: file.lastPathComponent)
-    guard !FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) else { return }
     let hidden = folder.appending(path: ".\(UUID().uuidString)")
     try FileManager.default.copyItem(at: file, to: hidden)
     do {
