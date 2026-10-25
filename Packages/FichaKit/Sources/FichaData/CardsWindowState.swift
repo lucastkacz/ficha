@@ -10,7 +10,8 @@ import Foundation
 /// Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
-/// buries and unburies at once, as it sets a tag aside or gives it a color
+/// buries and unburies at once, and turns Both ways on or off for several
+/// cards at once, as it sets a tag aside or gives it a color
 /// from the tag's context menu, it asks which emoji the tag gets, and it
 /// records what couldn't be saved, for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,

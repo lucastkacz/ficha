@@ -20,7 +20,7 @@ extension Engine {
             let before = try existingCard(cardID, in: db)
             _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
             if let bothWays {
-                _ = try updateCard(cardID, setting: "bothWays = ?", to: [bothWays], in: db)
+                _ = try setBothWays(bothWays, of: cardID, in: db)
             }
             return (before, try takeFlagOff(cardID, in: db))
         }
@@ -36,7 +36,7 @@ extension Engine {
     @discardableResult
     public func setBothWays(_ bothWays: Bool, of cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         try write { db in
-            try cardIDs.sorted().map { try updateCard($0, setting: "bothWays = ?", to: [bothWays], in: db) }
+            try cardIDs.sorted().map { try setBothWays(bothWays, of: $0, in: db) }
         }
     }
 
@@ -61,5 +61,11 @@ extension Engine {
             )
             return try captureInInbox(captureID, in: db)
         }
+    }
+
+    /// Turns Both ways on for the card with this id when `bothWays` is true,
+    /// or off when it's false, and returns the card as it is then.
+    private func setBothWays(_ bothWays: Bool, of cardID: Int64, in db: Database) throws -> Card {
+        try updateCard(cardID, setting: "bothWays = ?", to: [bothWays], in: db)
     }
 }
