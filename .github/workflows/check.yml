@@ -117,22 +117,25 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
       - name: Name the runner's image
-        # The derived data's modules of the SDK record each SDK file's
+        # The SDK's compiled modules in the derived data record each SDK file's
         # modification time, and Xcode refuses one whose files changed (#277).
-        # Each image of macos-26 installs its Xcodes anew, so the same Xcode's
-        # files have other times on another image. So the builds' key names
-        # the image, from the ImageOS and ImageVersion variables the image
-        # sets, as setup-go's docs put ImageOS in a cache key; ImageVersion is
-        # our own. A new image starts from no cache, once. Leaving the modules
-        # out of the cache instead made every run about as slow as that.
+        # Each image of macos-26 installs its Xcodes anew, and the same Xcode's
+        # files get other times on each. So the builds' key names the image,
+        # from the ImageOS and ImageVersion variables the image sets, as
+        # actions/setup-go's advanced usage docs put ImageOS in a cache key;
+        # ImageVersion is our own. Runs on a new image build from no cache
+        # until a run on main there saves one. Leaving the modules out of the
+        # cache instead slowed every run's Xcode builds to about no cache's,
+        # as #277 measured. With no image to name, a run builds uncached.
         id: image
         run: |
           if [[ -z ${ImageOS:-} || -z ${ImageVersion:-} ]]; then
-            echo "::error::The runner set no ImageOS or ImageVersion, so the builds' cache key can't name its image: name it another way in this step, from what the Set up job step's Runner Image section shows."
-            exit 1
+            echo "::warning::The runner set no ImageOS or ImageVersion, so the builds' cache key can't name its image, and this run builds without the cache: name the image another way in this step, from what the Set up job step's Runner Image section shows."
+            exit 0
           fi
           echo "name=$ImageOS-$ImageVersion" >>"$GITHUB_OUTPUT"
       - name: Restore the builds
+        if: steps.image.outputs.name != ''
         # The ones a run on main saved, with actions/cache's restore and save
         # actions, as its caching strategies show them. Other runs, pull
         # requests among them, read main's cache and save none: only runs of
@@ -149,7 +152,7 @@ jobs:
       - name: Save the builds
         # After a run on main, unless the cache had them already: a key, once
         # saved, can't be saved again.
-        if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && steps.image.outputs.name != '' && steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILDS }}
