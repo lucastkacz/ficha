@@ -116,19 +116,34 @@ jobs:
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      - name: Name the runner's image
+        # The derived data's modules of the SDK record each SDK file's
+        # modification time, and Xcode refuses one whose files changed (#277).
+        # Each image of macos-26 installs its Xcodes anew, so the same Xcode's
+        # files have other times on another image. So the builds' key names
+        # the image, from the ImageOS and ImageVersion variables the image
+        # sets, as setup-go's docs put ImageOS in a cache key. ImageVersion,
+        # which tells one image of macos26 from the next, is our own.
+        id: image
+        run: |
+          if [[ -z ${ImageOS:-} || -z ${ImageVersion:-} ]]; then
+            echo "::error::The runner set no ImageOS or ImageVersion, so the builds' cache key can't name its image: name it another way in this step, from what the Set up job step's Runner Image section shows."
+            exit 1
+          fi
+          echo "name=$ImageOS-$ImageVersion" >>"$GITHUB_OUTPUT"
       - name: Restore the builds
         # The ones a run on main saved, with actions/cache's restore and save
         # actions, as its caching strategies show them. Other runs, pull
         # requests among them, read main's cache and save none: only runs of
         # their own branch could read what they saved, and it would crowd out
         # main's, as "Caching dependencies to speed up workflows" in GitHub's
-        # docs says. A new Xcode, or new versions of the package's
-        # dependencies, start from no cache.
+        # docs says. A new image, a new Xcode, or new versions of the
+        # package's dependencies, start from no cache.
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILDS }}
-          key: builds-${{ runner.os }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
+          key: builds-${{ steps.image.outputs.name }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
       - run: make check
       - name: Save the builds
         # After a run on main, unless the cache had them already: a key, once
