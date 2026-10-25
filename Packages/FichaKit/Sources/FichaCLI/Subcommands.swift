@@ -9,7 +9,7 @@ struct CaptureCommand: EngineCommand {
         abstract: "Save a capture in the inbox, to refine later, and print the capture.",
         discussion: """
             A capture that repeats a card's front, the capture a card was approved from or a capture in the inbox, \
-            ignoring case and accents, isn't saved: the command says what it repeats and fails. To keep it, capture it again with --expand; to ignore it, do \
+            ignoring case, accents, superscripts and subscripts, isn't saved: the command says what it repeats and fails. To keep it, capture it again with --expand; to ignore it, do \
             nothing.
             """
     )
