@@ -58,6 +58,28 @@ final class AnkiImageImportingTests {
         #expect(try pixelSize(of: engine.image(image)) == (400, 300))
     }
 
+    // As shared decks of flags have them (#229). A drawing has no size in
+    // pixels, so it comes in as large as any image keeps; what it leaves
+    // transparent comes in white, as on Anki's cards.
+    @Test(
+        "an SVG comes in drawn, on white, 1,600 pixels on its long side",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func anSVGComesInDrawn(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [AnkiNote(type: .basic, fields: ["<img src=\"sol.svg\">", "el sol"])],
+            media: ["sol.svg": sunSVG])
+
+        try importPackage(package)
+
+        let card = try #require(try engine.cards().first)
+        #expect([card.front, card.back] == ["", "el sol"])
+        let image = try engine.image(#require(card.frontImage))
+        #expect(try pixelSize(of: image) == (1600, 1067))
+        #expect(try isNear(color(of: image, atX: 800, y: 533), [242, 180, 0]))
+        #expect(try isNear(color(of: image, atX: 10, y: 10), [255, 255, 255]))
+    }
+
     // The same image twice on a side drops none, and a side whose images
     // are on the web brings none, as sounds.
     @Test(
@@ -136,7 +158,7 @@ final class AnkiImageImportingTests {
 
     // A side with text comes in without the image it lacks; one with only
     // the image keeps the card out, as does one with only a file Ficha
-    // can't read as an image, such as an SVG Anki made of a formula.
+    // can't read as an image, such as a damaged SVG.
     @Test(
         "a side with only a missing image keeps the card out with its reason",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
@@ -149,7 +171,7 @@ final class AnkiImageImportingTests {
                 AnkiNote(type: .basic, fields: ["la fórmula del área del círculo", "<img src=\"latex-area.svg\">"]),
                 AnkiNote(type: .basic, fields: ["<div><img src=\"tero.jpg\"></div>", "<img src=\"tero.jpg\">"]),
             ],
-            media: ["latex-area.svg": Data("<svg xmlns=\"http://www.w3.org/2000/svg\"/>".utf8)])
+            media: ["latex-area.svg": Data("<svg xmlns=\"http://www.w3.org/2000/svg\"".utf8)])
 
         let preview = try preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
@@ -208,6 +230,24 @@ final class AnkiImageImportingTests {
             try cards.map { try $0.backImage.map { try pixelSize(of: engine.image($0)).width } } == [
                 300, nil, nil, nil, nil, nil,
             ])
+    }
+
+    // A note type set to draw scalable images has Anki draw its formulas as
+    // SVGs, named the same but for `.svg` (`rslib/src/latex.rs`).
+    @Test(
+        "a side that is only one of Anki's formulas comes in as Anki's picture of it as an SVG too",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func aFormulaAloneComesInAsAnkisSVG(format: AnkiPackage.Format) throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [AnkiNote(type: .basic, fields: ["Saludo", "[$]<b>hello</b>&nbsp; world[/$]"])],
+            media: ["latex-060219fbf3ddb74306abddaf4504276ad793b029.svg": sunSVG])
+
+        try importPackage(package)
+
+        let card = try #require(try engine.cards().first)
+        #expect([card.front, card.back] == ["Saludo", ""])
+        #expect(try card.backImage.map { try pixelSize(of: engine.image($0)).width } == 1600)
     }
 
     // The rest of the package comes in, as when Anki exports a deck without

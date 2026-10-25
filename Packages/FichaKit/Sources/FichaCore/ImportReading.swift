@@ -137,7 +137,7 @@ public struct LeftOutLine: Sendable, Equatable {
         /// lacks, as when Anki exports a deck without its media.
         case missingAnkiImage
         /// An Anki card with a side that holds only an image Ficha can't
-        /// read, such as an SVG.
+        /// read, such as a damaged file.
         case unreadableAnkiImage
         /// An Anki card of an Image Occlusion note type, which hides parts
         /// of an image.

@@ -95,11 +95,18 @@ struct CardImage: Sendable, Equatable {
         guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
             throw .notAnImage
         }
-        let isTransparent = hasTransparency(thumbnail)
-        guard let image = inNamedColorSpace(thumbnail, keepingAlpha: isTransparent) else {
+        try self.init(writing: thumbnail)
+    }
+
+    /// `image`, shrunk already, written as a JPEG, or a PNG when it has
+    /// transparency, in its color space when the system names it, and
+    /// otherwise in Display P3 or sRGB, as `init(shrinking:)` says, and named
+    /// by the SHA-256 of what's written.
+    init(writing shrunk: CGImage) throws(EngineError) {
+        let isTransparent = hasTransparency(shrunk)
+        guard let image = inNamedColorSpace(shrunk, keepingAlpha: isTransparent) else {
             logger.error(
-                "Core Graphics couldn't draw an image of \(thumbnail.width)×\(thumbnail.height) pixels in Display P3 or sRGB"
-            )
+                "Core Graphics couldn't draw an image of \(shrunk.width)×\(shrunk.height) pixels in Display P3 or sRGB")
             throw .notAnImage
         }
         let written = NSMutableData()

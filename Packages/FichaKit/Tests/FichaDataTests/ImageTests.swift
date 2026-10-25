@@ -274,6 +274,34 @@ final class ImageTests {
             try engine.addImage(Data("un hornero".utf8))
         }
     }
+
+    // So that a card whose front is an SVG repeats its own when its deck is
+    // imported again.
+    @Test("an SVG is drawn the same, and named the same, whatever was drawn before it")
+    func anSVGIsDrawnTheSame() throws {
+        let first = SVGDrawer()
+        let second = SVGDrawer()
+        let moon = Data(
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>
+            """.utf8)
+
+        let sun = try CardImage(drawing: sunSVG, with: first)
+        _ = try CardImage(drawing: moon, with: second)
+
+        #expect(try CardImage(drawing: sunSVG, with: second) == sun)
+    }
+
+    // WebKit draws on the main thread, which an import leaves free, as the
+    // app runs it away from the main actor; on it, an SVG isn't drawn, rather
+    // than waiting on itself.
+    @MainActor
+    @Test("an SVG isn't drawn on the main thread")
+    func anSVGIsntDrawnOnTheMainThread() {
+        #expect(throws: EngineError.notAnImage) {
+            try CardImage(drawing: sunSVG, with: SVGDrawer())
+        }
+    }
 }
 
 /// A picture `width` by `height` pixels in one color, as a PNG, opaque unless
@@ -303,6 +331,34 @@ func pixelSize(of data: Data) throws -> (width: Int, height: Int) {
     let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
     return (image.width, image.height)
 }
+
+/// The color of the pixel `x` across and `y` down the image in `data`, as
+/// its red, green and blue in sRGB, from 0 to 255.
+func color(of data: Data, atX x: Int, y: Int) throws -> [Int] {
+    let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+    let context = try #require(
+        CGContext(
+            data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: space,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    // Core Graphics counts rows up from the bottom.
+    context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
+    let pixel = try #require(context.data).assumingMemoryBound(to: UInt8.self)
+    return (0..<3).map { Int(pixel[$0]) }
+}
+
+/// Whether `color` is `expected`, give or take what a JPEG changes.
+func isNear(_ color: [Int], _ expected: [Int]) -> Bool {
+    color.count == expected.count && zip(color, expected).allSatisfy { abs($0 - $1) <= 8 }
+}
+
+/// An SVG of a sun, 300 by 200: a yellow circle on nothing, a test's own.
+let sunSVG = Data(
+    """
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">\
+    <circle cx="150" cy="100" r="80" fill="#f2b400"/></svg>
+    """.utf8)
 
 /// The format of the image in `data`, as its uniform type identifier.
 func imageType(of data: Data) throws -> String {

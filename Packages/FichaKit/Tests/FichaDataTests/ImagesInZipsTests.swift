@@ -133,6 +133,19 @@ final class ImagesInZipsTests {
         #expect(try pixelSize(of: engine.image(hornero)) == (1600, 1200))
     }
 
+    @Test("an SVG in a zip comes in drawn, 1,600 pixels on its long side")
+    func anSVGInAZipComesInDrawn() throws {
+        let text = "#columns:Front\tBack\tFront image\n\tEl sol.\tsol.svg\n"
+        let file = try zip([("Cielo.txt", Data(text.utf8)), ("sol.svg", sunSVG)], named: "Cielo.zip")
+
+        let preview = try engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.leftOut == [])
+        let sun = try #require(try engine.cards().first?.frontImage)
+        #expect(try pixelSize(of: engine.image(sun)) == (1600, 1067))
+    }
+
     @Test("a damaged image in a zip is one Ficha can't read, and the rest of the zip comes in")
     func aDamagedImageInAZipIsOneFichaCantRead() throws {
         let text = "#columns:Front\tBack\tFront image\n\tUn nido.\tnido.jpg\nhornero\tUn pájaro.\tnido.jpg\n"

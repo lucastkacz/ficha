@@ -20,12 +20,18 @@ struct AnkiSide {
 
     /// The side Anki renders as `html`, with its image as `images` finds it
     /// by the name the HTML gives it, or by the name of Anki's picture of
-    /// its formula, after the SHA-1 digest `sha1` gives as lowercase hex.
+    /// its formula, after the SHA-1 digest `sha1` gives as lowercase hex: a
+    /// PNG's, or an SVG's when the package has no PNG by that name.
     init(html: String, images: (String) -> ImageLookup, sha1: (String) -> String) {
         let html = html.replacing(/\[sound:.+?\]/, with: "")
         let names = fileNames(shownIn: html)
         dropsImages = names.count > 1
-        let formula = names.isEmpty ? pictureOfFormula(shownAloneIn: html, sha1: sha1).map(images) : nil
+        let formula =
+            names.isEmpty
+            ? pictureOfFormula(shownAloneIn: html, sha1: sha1).map { picture in
+                let png = images("\(picture).png")
+                return png == .missing ? images("\(picture).svg") : png
+            } : nil
         if case .found? = formula {
             text = ""
             lookup = formula

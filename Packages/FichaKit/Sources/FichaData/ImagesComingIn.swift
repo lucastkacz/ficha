@@ -4,11 +4,12 @@ import Foundation
 /// The images a file of cards names for its cards' sides, as an import reads
 /// them from a zip of cards or an Anki package: each name looked up once,
 /// however many sides name it, the file by that name read with `contents`,
-/// and brought in with `bring`, by the name Ficha keeps it by. A name the
-/// file holds nothing by is missing. What isn't an image Ficha reads, or
-/// can't be read whole, as in a damaged file, is an image Ficha can't read,
-/// which the engine logs: its side comes in without it, or its card stays
-/// out, saying why, and the rest of the file comes in.
+/// and brought in with `bring`, by the name Ficha keeps it by, or drawn,
+/// when its name ends in `.svg`, as Anki tells an SVG. A name the file holds
+/// nothing by is missing. What isn't an image Ficha reads, or can't be read
+/// whole, as in a damaged file, is an image Ficha can't read, which the
+/// engine logs: its side comes in without it, or its card stays out, saying
+/// why, and the rest of the file comes in.
 struct ImagesComingIn {
     /// The images found, by the names Ficha keeps them by.
     private(set) var found: [ImageName: CardImage] = [:]
@@ -18,6 +19,8 @@ struct ImagesComingIn {
     private let contents: (String) throws -> Data?
     /// The image in what the file holds by a name, as it comes in.
     private let bring: (Data, String) throws(EngineError) -> CardImage
+    /// Draws the file's SVGs, in one web view for all of them.
+    private let svgs = SVGDrawer()
 
     init(contents: @escaping (String) throws -> Data?, bring: @escaping (Data, String) throws(EngineError) -> CardImage)
     {
@@ -34,7 +37,9 @@ struct ImagesComingIn {
         let lookup: ImageLookup
         do {
             if let data = try contents(name) {
-                let image = try bring(data, name)
+                let image =
+                    URL(filePath: name).pathExtension.lowercased() == "svg"
+                    ? try CardImage(drawing: data, with: svgs) : try bring(data, name)
                 found[image.name] = image
                 lookup = .found(image.name)
             } else {
