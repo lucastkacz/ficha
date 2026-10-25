@@ -122,7 +122,7 @@ private func isAddedByFinder(_ path: String) -> Bool {
 }
 
 /// The extension of the file at `path`, in lowercase, or empty without one.
-private func pathExtension(of path: String) -> String {
+func pathExtension(of path: String) -> String {
     URL(filePath: path).pathExtension.lowercased()
 }
 

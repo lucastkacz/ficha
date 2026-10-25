@@ -60,9 +60,10 @@ final class AnkiImageImportingTests {
 
     // As shared decks of flags have them (#229). A drawing has no size in
     // pixels, so it comes in as large as any image keeps; what it leaves
-    // transparent comes in white, as on Anki's cards.
+    // transparent comes in white, as on Anki's cards; and a PNG keeps its
+    // sharp edges.
     @Test(
-        "an SVG comes in drawn, on white, 1,600 pixels on its long side",
+        "an SVG comes in drawn as a PNG, on white, 1,600 pixels on its long side",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
     func anSVGComesInDrawn(format: AnkiPackage.Format) throws {
         let package = AnkiPackage(
@@ -74,7 +75,9 @@ final class AnkiImageImportingTests {
 
         let card = try #require(try engine.cards().first)
         #expect([card.front, card.back] == ["", "el sol"])
-        let image = try engine.image(#require(card.frontImage))
+        let name = try #require(card.frontImage)
+        #expect(name.rawValue.hasSuffix(".png"))
+        let image = try engine.image(name)
         #expect(try pixelSize(of: image) == (1600, 1067))
         #expect(try isNear(color(of: image, atX: 800, y: 533), [242, 180, 0]))
         #expect(try isNear(color(of: image, atX: 10, y: 10), [255, 255, 255]))

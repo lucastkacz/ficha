@@ -114,7 +114,7 @@
         }
       }
     },
-    "%lld cards have a side with only an image Ficha can't read, such as an SVG." : {
+    "%lld cards have a side with only an image Ficha can't read, such as a damaged file." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
       "localizations" : {
         "en" : {
@@ -123,13 +123,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld card has a side with only an image Ficha can't read, such as an SVG."
+                  "value" : "%lld card has a side with only an image Ficha can't read, such as a damaged file."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld cards have a side with only an image Ficha can't read, such as an SVG."
+                  "value" : "%lld cards have a side with only an image Ficha can't read, such as a damaged file."
                 }
               }
             }

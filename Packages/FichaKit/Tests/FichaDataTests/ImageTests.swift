@@ -348,7 +348,7 @@ func color(of data: Data, atX x: Int, y: Int) throws -> [Int] {
     return (0..<3).map { Int(pixel[$0]) }
 }
 
-/// Whether `color` is `expected`, give or take what a JPEG changes.
+/// Whether `color` is `expected`, give or take what converting its colors changes.
 func isNear(_ color: [Int], _ expected: [Int]) -> Bool {
     color.count == expected.count && zip(color, expected).allSatisfy { abs($0 - $1) <= 8 }
 }

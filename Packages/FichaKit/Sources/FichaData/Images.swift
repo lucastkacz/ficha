@@ -29,7 +29,7 @@ extension Engine {
     }
 
     /// The image named `name`, as Ficha keeps it: a JPEG, or a PNG for an
-    /// image with transparency.
+    /// image with transparency or drawn from an SVG.
     public func image(_ name: ImageName) throws(EngineError) -> Data {
         try images.data(of: name)
     }
@@ -57,7 +57,7 @@ func imagesReferred(in db: Database) throws -> Set<ImageName> {
 struct CardImage: Sendable, Equatable {
     let name: ImageName
     /// The image as Ficha keeps it: a JPEG, or a PNG for an image with
-    /// transparency.
+    /// transparency or drawn from an SVG.
     let data: Data
 
     /// The image `data`, which came in shrunk and named `name` already.
@@ -98,12 +98,16 @@ struct CardImage: Sendable, Equatable {
         try self.init(writing: thumbnail)
     }
 
-    /// `image`, shrunk already, written as a JPEG, or a PNG when it has
-    /// transparency, in its color space when the system names it, and
-    /// otherwise in Display P3 or sRGB, as `init(shrinking:)` says, and named
-    /// by the SHA-256 of what's written.
-    init(writing shrunk: CGImage) throws(EngineError) {
+    /// `shrunk`, an image shrunk already, written as a JPEG, or a PNG when it
+    /// has transparency or `isDrawing`, since a JPEG would blur a drawing's
+    /// sharp edges and text; in its color space when the system names it,
+    /// and otherwise in Display P3 or sRGB, as `init(shrinking:)` says; and
+    /// named by the SHA-256 of what's written. A drawing's PNG is written
+    /// without PNG's filters, which its flat colors don't need: on a deck's
+    /// flags, it came out smaller, and four times as fast to write.
+    init(writing shrunk: CGImage, isDrawing: Bool = false) throws(EngineError) {
         let isTransparent = hasTransparency(shrunk)
+        let isPNG = isTransparent || isDrawing
         guard let image = inNamedColorSpace(shrunk, keepingAlpha: isTransparent) else {
             logger.error(
                 "Core Graphics couldn't draw an image of \(shrunk.width)×\(shrunk.height) pixels in Display P3 or sRGB")
@@ -112,20 +116,27 @@ struct CardImage: Sendable, Equatable {
         let written = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
-                written, (isTransparent ? UTType.png : UTType.jpeg).identifier as CFString, 1, nil)
+                written, (isPNG ? UTType.png : UTType.jpeg).identifier as CFString, 1, nil)
         else {
             logger.error("ImageIO couldn't start writing an image")
             throw .notAnImage
         }
-        let quality: [CFString: Any] = isTransparent ? [:] : [kCGImageDestinationLossyCompressionQuality: 0.8]
-        CGImageDestinationAddImage(destination, image, quality as CFDictionary)
+        let options: [CFString: Any] =
+            if isDrawing {
+                [kCGImagePropertyPNGDictionary: [kCGImagePropertyPNGCompressionFilter: IMAGEIO_PNG_FILTER_NONE]]
+            } else if isTransparent {
+                [:]
+            } else {
+                [kCGImageDestinationLossyCompressionQuality: 0.8]
+            }
+        CGImageDestinationAddImage(destination, image, options as CFDictionary)
         guard CGImageDestinationFinalize(destination) else {
             logger.error("ImageIO couldn't write an image of \(image.width)×\(image.height) pixels")
             throw .notAnImage
         }
         self.data = written as Data
         let hash = SHA256.hash(data: self.data).map { String(format: "%02x", $0) }.joined()
-        guard let name = ImageName(rawValue: "\(hash).\(isTransparent ? "png" : "jpg")") else {
+        guard let name = ImageName(rawValue: "\(hash).\(isPNG ? "png" : "jpg")") else {
             logger.error("An image's SHA-256 didn't make an image's name")
             throw .notAnImage
         }

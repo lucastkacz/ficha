@@ -19,13 +19,14 @@ import Synchronization
 extension CardImage {
     /// The SVG `data` as `svgs` draws it, at `longestImageSide` pixels on its
     /// long side, since a drawing has no size in pixels, and on white, as on
-    /// Anki's cards, written as every image that comes in. Something WebKit
-    /// can't draw as an SVG is refused.
+    /// Anki's cards, written as a PNG, as Anki's pictures of formulas are.
+    /// Something WebKit can't draw as an SVG is refused, as is every SVG once
+    /// WebKit stopped answering.
     init(drawing data: Data, with svgs: SVGDrawer) throws(EngineError) {
         guard let image = svgs.image(of: data, longestSide: longestImageSide) else {
             throw .notAnImage
         }
-        try self.init(writing: image)
+        try self.init(writing: image, isDrawing: true)
     }
 }
 
@@ -36,15 +37,12 @@ extension CardImage {
 /// on itself.
 final class SVGDrawer: Sendable {
     #if os(macOS)
-        /// The web view, once the first SVG opened it, or nil after WebKit
-        /// stopped answering.
+        /// The web view, once the first SVG opened it.
         private let page = Mutex<SVGPage?>(nil)
         /// Whether WebKit stopped answering, so that the rest of an import's
         /// SVGs don't each wait for it.
         private let gaveUp = Mutex(false)
-    #endif
 
-    #if os(macOS)
         deinit {
             if let page = page.withLock({ $0 }) {
                 Task { @MainActor in page.close() }
@@ -53,38 +51,52 @@ final class SVGDrawer: Sendable {
     #endif
 
     /// The SVG `data` drawn `longestSide` pixels on its long side, on white,
-    /// in sRGB, or nil when WebKit can't draw it as an SVG, or when called on
+    /// in sRGB, or nil when WebKit can't draw it as an SVG, when WebKit
+    /// stopped answering, for this SVG or one before it, or when called on
     /// the main thread.
     func image(of data: Data, longestSide: Int) -> CGImage? {
         #if os(macOS)
             guard !Thread.isMainThread, !gaveUp.withLock({ $0 }) else {
                 return nil
             }
-            let drawn = Drawn()
+            let drawing = PendingDrawing()
             let opened = page.withLock { $0 }
             Task { @MainActor [self] in
                 let open = opened ?? SVGPage()
                 if opened == nil {
                     page.withLock { $0 = open }
                 }
-                open.draw(data, longestSide: longestSide) { drawn.finish(with: $0) }
+                open.draw(data, longestSide: longestSide) { drawing.finish(with: $0) }
             }
-            // Far longer than a drawing takes, some 15 ms for a flag.
-            guard let image = drawn.wait(seconds: 10) else {
+            // Far longer than a drawing takes, some 25 ms for a flag.
+            switch drawing.wait(seconds: 10) {
+            case .drawn(let image):
+                return image
+            case .notDrawn:
+                return nil
+            case .unanswered:
                 logger.error("WebKit didn't draw an SVG in 10 seconds, so the import's other SVGs aren't drawn")
                 gaveUp.withLock { $0 = true }
                 return nil
             }
-            return image
         #else
             return nil
         #endif
     }
 }
 
-/// What a drawing ends with, which another thread waits for.
-private final class Drawn: Sendable {
-    private let image = Mutex<CGImage??>(nil)
+/// A drawing on the main actor that another thread waits for.
+private final class PendingDrawing: Sendable {
+    /// How a drawing ended, for the thread that waits for it.
+    enum Outcome {
+        case drawn(CGImage)
+        /// WebKit couldn't draw it as an SVG.
+        case notDrawn
+        /// It didn't end in the time the thread waited.
+        case unanswered
+    }
+
+    private let image = Mutex<CGImage?>(nil)
     private let done = DispatchSemaphore(value: 0)
 
     /// Ends the drawing with `image`, or nil when it couldn't be drawn.
@@ -93,13 +105,12 @@ private final class Drawn: Sendable {
         done.signal()
     }
 
-    /// What the drawing ended with, once it ended: the image, or nil when it
-    /// couldn't be drawn; or nil when it hasn't ended in `seconds`.
-    func wait(seconds: Int) -> CGImage?? {
+    /// How the drawing ended, waiting `seconds` at most for it to end.
+    func wait(seconds: Int) -> Outcome {
         guard done.wait(timeout: .now() + .seconds(seconds)) == .success else {
-            return nil
+            return .unanswered
         }
-        return image.withLock { $0 }
+        return image.withLock { $0 }.map(Outcome.drawn) ?? .notDrawn
     }
 }
 
@@ -226,13 +237,13 @@ private final class Drawn: Sendable {
         }
     }
 
-    /// `image` drawn `width` by `height` pixels, in sRGB, or nil when it
-    /// can't be.
+    /// `image` drawn `width` by `height` pixels, in sRGB, without an alpha
+    /// channel, since a snapshot is opaque, or nil when it can't be.
     private func sized(_ image: CGImage, _ width: Int, _ height: Int) -> CGImage? {
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
                 data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
         else {
             return nil
         }
