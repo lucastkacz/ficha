@@ -191,8 +191,9 @@ final class ImagesInZipsTests {
         }
     }
 
+    // A front's image counts when both fronts have one (#229's decision 3).
     @Test(
-        "a zip's cards update the cards they repeat with the back's image the file gives, keeping the front's, and one whose front is only an image comes in as new"
+        "a zip's cards update the cards they repeat with the back's image the file gives, keeping the front's, and a front with only an image repeats one with that image, but not a front with another"
     )
     func aZipsCardsUpdateTheBacksImage() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -203,7 +204,8 @@ final class ImagesInZipsTests {
         let onlyAnImage = try engine.create(card(nil, front: "", back: "Un hornero.", frontImage: bird))
         let text = """
             #columns:Front\tBack\tFront image\tBack image
-            hornero\tUn pájaro que hace su nido de barro.\totro-hornero.jpg\thuevo.jpg
+            hornero\tOtro hornero.\totro-hornero.jpg\t
+            hornero\tUn pájaro que hace su nido de barro.\t\thuevo.jpg
             tero\tUn ave que grita cuando alguien se acerca a su nido.\t\t
             \tUn hornero, otra vez.\thornero.jpg\t
 
@@ -219,17 +221,19 @@ final class ImagesInZipsTests {
         let preview = try engine.previewImport(of: file)
         let outcome = try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Aves": ""]))
 
-        #expect(preview.repeatedCount == 2)
-        #expect(outcome == ImportOutcome(added: 1, updated: 2, skipped: 0, copyBeforeImport: nil))
+        #expect(preview.repeatedCount == 3)
+        #expect(outcome == ImportOutcome(added: 1, updated: 3, skipped: 0, copyBeforeImport: nil))
         let cards = try engine.cards()
         #expect(cards.map(\.id).prefix(3) == [hornero.id, tero.id, onlyAnImage.id])
         #expect(
             cards.map(\.back) == [
                 "Un pájaro que hace su nido de barro.", "Un ave que grita cuando alguien se acerca a su nido.",
-                "Un hornero.", "Un hornero, otra vez.",
+                "Un hornero, otra vez.", "Otro hornero.",
             ])
         let egg = try #require(cards[0].backImage)
-        #expect(cards.map(\.frontImage) == [bird, nil, bird, bird])
+        let otherBird = try #require(cards[3].frontImage)
+        #expect(cards.map(\.frontImage) == [bird, nil, bird, otherBird])
+        #expect(otherBird != bird)
         #expect(cards.map(\.backImage) == [egg, nil, nil, nil])
         // The nest's image, which no card uses any more, is gone.
         _ = try engine.image(egg)

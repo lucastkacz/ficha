@@ -364,19 +364,29 @@ extension ImportReading {
 }
 
 /// For each card in `cards`, in order, the user's card it repeats by the
-/// duplicate rule, or nil when it repeats none. Each of the user's cards is
-/// repeated by one card of the file at most, the first that repeats it, so
-/// that importing a file again repeats it whole, two cards of it with the
-/// same front included. A front without text, which holds only an image,
-/// repeats none, as in the Cards window's form.
+/// duplicate rule, or nil when it repeats none. An import's rule compares a
+/// front's image too: two fronts repeat when their texts do, and their
+/// images, when both have one, are the same image. So a front with only an
+/// image repeats one with only that image, and fronts with one caption,
+/// such as a deck's "? · Location" over each country's map, repeat by their
+/// images. Among the user's cards a card may repeat, one whose front has the
+/// same image, or none as it has none, comes first. Each of the user's cards
+/// is repeated by one card of the file at most, the first that repeats it,
+/// so that importing a file again repeats it whole, two cards of it with
+/// the same front included. A front with neither text nor an image, which
+/// holds only a sound, repeats none.
 func repeatedCards(of cards: [ImportedCard], in db: Database) throws -> [Card?] {
     var cardsByFront = Dictionary(grouping: try allCards(in: db)) { duplicateKey($0.front) }
     return cards.map { card in
-        let key = duplicateKey(card.content.front)
-        guard !CardContent.isBlank(card.content.front), let repeated = cardsByFront[key]?.first else {
+        let (front, image) = (card.content.front, card.content.frontImage)
+        let key = duplicateKey(front)
+        guard !CardContent.isBlank(front, image: image, sound: nil), let candidates = cardsByFront[key],
+            let index = candidates.firstIndex(where: { $0.frontImage == image })
+                ?? (CardContent.isBlank(front) ? nil : candidates.firstIndex { $0.frontImage == nil || image == nil })
+        else {
             return nil
         }
-        cardsByFront[key]?.removeFirst()
-        return repeated
+        cardsByFront[key]?.remove(at: index)
+        return candidates[index]
     }
 }

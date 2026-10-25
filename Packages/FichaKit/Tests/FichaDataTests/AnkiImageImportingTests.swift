@@ -277,4 +277,50 @@ final class AnkiImageImportingTests {
         #expect(cards.map(\.frontImage) == [mine, nil])
         #expect(try cards.map { try $0.backImage.map { try pixelSize(of: engine.image($0)).width } } == [300, nil])
     }
+
+    // As Ultimate Geography's maps, each under "? · Location" (#229's
+    // decision 3).
+    @Test(
+        "a newer version of a deck repeats its fronts with only an image, and its fronts with one caption, by their images",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func aNewerDeckRepeatsFrontsByTheirImages(format: AnkiPackage.Format) throws {
+        let maps = [
+            "chile.png": try picture(width: 300, height: 200, red: 0.1),
+            "peru.png": try picture(width: 300, height: 200, red: 0.2),
+            "bolivia.png": try picture(width: 300, height: 200, red: 0.3),
+        ]
+        func note(_ front: String, _ map: String, _ back: String) -> AnkiNote {
+            AnkiNote(type: .basic, fields: ["\(front)<img src=\"\(map)\">", back])
+        }
+        try importPackage(
+            AnkiPackage(
+                format: format,
+                notes: [
+                    note("", "chile.png", "Chile"), note("", "peru.png", "Perú"), note("Mapa", "chile.png", "Chile"),
+                    note("Mapa", "peru.png", "Perú"),
+                ],
+                media: maps))
+        let (chile, peru) = try (#require(try engine.cards()[0].frontImage), #require(try engine.cards()[1].frontImage))
+        let newer = AnkiPackage(
+            format: format,
+            notes: [
+                note("", "bolivia.png", "Bolivia"), note("", "peru.png", "Perú, en los Andes"),
+                note("", "chile.png", "Chile, en los Andes"), note("Mapa", "bolivia.png", "Bolivia"),
+                note("Mapa", "peru.png", "Perú, en los Andes"), note("Mapa", "chile.png", "Chile, en los Andes"),
+            ],
+            media: maps)
+
+        let preview = try preview(newer)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.repeatedCount == 4)
+        let cards = try engine.cards()
+        let bolivia = try #require(cards.last?.frontImage)
+        #expect(
+            cards.map { [$0.front, $0.back] } == [
+                ["", "Chile, en los Andes"], ["", "Perú, en los Andes"], ["Mapa", "Chile, en los Andes"],
+                ["Mapa", "Perú, en los Andes"], ["", "Bolivia"], ["Mapa", "Bolivia"],
+            ])
+        #expect(cards.map(\.frontImage) == [chile, peru, chile, peru, bolivia, bolivia])
+    }
 }
