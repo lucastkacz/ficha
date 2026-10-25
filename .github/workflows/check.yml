@@ -122,8 +122,9 @@ jobs:
         # Each image of macos-26 installs its Xcodes anew, so the same Xcode's
         # files have other times on another image. So the builds' key names
         # the image, from the ImageOS and ImageVersion variables the image
-        # sets, as setup-go's docs put ImageOS in a cache key. ImageVersion,
-        # which tells one image of macos26 from the next, is our own.
+        # sets, as setup-go's docs put ImageOS in a cache key; ImageVersion is
+        # our own. A new image starts from no cache, once. Leaving the modules
+        # out of the cache instead made every run about as slow as that.
         id: image
         run: |
           if [[ -z ${ImageOS:-} || -z ${ImageVersion:-} ]]; then
