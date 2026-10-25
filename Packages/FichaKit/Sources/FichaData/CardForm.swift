@@ -85,8 +85,10 @@ extension CardsWindowState.CardForm {
         /// The tags as the Tags field holds them, separated by commas.
         public var tags = ""
         public var source = ""
+        /// Whether the card goes both ways, which the form starts off.
+        public var bothWays = false
 
-        /// Empty fields, and the type None.
+        /// Empty fields, the type None, and Both ways off.
         public init() {}
 
         /// What Add saves, checked as every card is, or nil while a side is
@@ -127,8 +129,9 @@ extension CardsWindowState.CardForm {
 }
 
 extension CardsWindowState {
-    /// Opens the form on a new card: every field empty, and the type None;
-    /// or brings back the new card's form Show Card set aside, as it was.
+    /// Opens the form on a new card: every field empty, the type None and
+    /// Both ways off; or brings back the new card's form Show Card set aside,
+    /// as it was.
     public mutating func openNewCardForm() {
         guard cardForm == nil else { return }
         openCardForm(CardForm(openedBy: .newCard))
@@ -214,18 +217,18 @@ extension CardsWindowState {
 
     /// Add: saves what the form holds as a new card, while Add is on, straight
     /// into the user's reviews as new, with the images and sounds on its
-    /// sides, which Ficha keeps from then on. A card added from a capture
-    /// keeps it as its capture, and the capture stays in the inbox until the
-    /// form closes. Then it clears the front and the back, their images and
-    /// sounds too, and keeps the type, the tags and the source, for the next
-    /// card. When the card can't be saved, it records why, and the fields
-    /// stay as they were.
+    /// sides, which Ficha keeps from then on, going both ways when the form
+    /// says so. A card added from a capture keeps it as its capture, and the
+    /// capture stays in the inbox until the form closes. Then it clears the
+    /// front and the back, their images and sounds too, and keeps the type,
+    /// the tags, the source and Both ways, for the next card. When the card
+    /// can't be saved, it records why, and the fields stay as they were.
     public mutating func addCard() {
         guard let form = cardForm, form.canAdd, let content = form.draft.content else { return }
         var added: Card?
         let files = heldFiles(of: content)
         perform(.addCard) { engine throws(EngineError) in
-            added = try engine.create(keeping: files, content, from: form.capture?.id)
+            added = try engine.create(keeping: files, content, bothWays: form.draft.bothWays, from: form.capture?.id)
         }
         guard let added else { return }
         cardForm?.addedCards.append(added)

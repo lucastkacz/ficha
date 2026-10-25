@@ -4,8 +4,8 @@ import SwiftUI
 
 /// The fields the user edits a card in, in place of its detail: its type, or
 /// None, front and back, each with its text, its image and its sound, dragged
-/// or pasted under it, tags and source, under the flag's note when it's
-/// flagged. Return saves, Option-Return starts a new line, and Escape
+/// or pasted under it, tags, source and Both ways, under the flag's note when
+/// it's flagged. Return saves, Option-Return starts a new line, and Escape
 /// cancels, as in the capture window, unless the search field has the focus.
 /// Save is off while a sound converts. Saving with a side that has neither
 /// text, an image nor a sound says, under it, what's missing. When the card
@@ -22,6 +22,9 @@ struct CardEditor: View {
     /// The sounds on its sides as Save would give them to it, which the
     /// window holds.
     let sounds: SideSounds
+    /// Whether it goes both ways as Save would set it, which the window
+    /// holds.
+    let bothWays: Bool
     /// Whether Save is on: not while a sound converts.
     let canSave: Bool
     /// Whether Lucas is in the window's search field, which then keeps Return
@@ -33,6 +36,8 @@ struct CardEditor: View {
     let removeImage: (CardSide) -> Void
     /// The place for a side's sound, which the window fills.
     let soundWell: (CardSide) -> SoundWell
+    /// Turns Both ways on or off, as Save will set it.
+    let setBothWays: (Bool) -> Void
     /// Saves the card with `content`, which ends the edit once it's saved.
     let save: (CardContent) -> Void
     /// Ends the edit without saving it.
@@ -54,11 +59,13 @@ struct CardEditor: View {
         images: SideImages,
         shownImages: ShownImages,
         sounds: SideSounds,
+        bothWays: Bool,
         canSave: Bool,
         isSearching: Bool,
         putImage: @escaping (DroppedImage, CardSide) -> Void,
         removeImage: @escaping (CardSide) -> Void,
         soundWell: @escaping (CardSide) -> SoundWell,
+        setBothWays: @escaping (Bool) -> Void,
         save: @escaping (CardContent) -> Void,
         cancel: @escaping () -> Void
     ) {
@@ -66,11 +73,13 @@ struct CardEditor: View {
         self.images = images
         self.shownImages = shownImages
         self.sounds = sounds
+        self.bothWays = bothWays
         self.canSave = canSave
         self.isSearching = isSearching
         self.putImage = putImage
         self.removeImage = removeImage
         self.soundWell = soundWell
+        self.setBothWays = setBothWays
         self.save = save
         self.cancel = cancel
         _type = State(initialValue: card.type)
@@ -162,6 +171,15 @@ struct CardEditor: View {
                     axis: .vertical
                 )
                 .lineLimit(1...3)
+            }
+            GridRow {
+                gridLabel(BothWaysToggle.label)
+                BothWaysToggle(
+                    bothWays: Binding {
+                        bothWays
+                    } set: {
+                        setBothWays($0)
+                    })
             }
         }
         .textFieldStyle(.roundedBorder)

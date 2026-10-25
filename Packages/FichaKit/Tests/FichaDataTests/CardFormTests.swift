@@ -113,6 +113,46 @@ struct CardFormTests {
         #expect(window.cardForm?.frontWarning == .repeats(petricor))
     }
 
+    // As the type does, so that several words in a row go both ways.
+    @Test("Both ways is off for a new card, Add saves the card going the way it says, and it stays for the next card")
+    func bothWaysIsOffForANewCardAndStaysAfterAdd() throws {
+        var window = openWindow()
+        window.openNewCardForm()
+        let opened = try #require(window.cardForm)
+        window.type(front: "petricor", back: "El olor de la lluvia.")
+        window.addCard()
+
+        window.switchBothWays(true)
+        window.type(front: "coloratura", back: "Los adornos rápidos del canto.")
+        window.addCard()
+
+        #expect(!opened.draft.bothWays)
+        #expect(try engine.cards().map(\.bothWays) == [false, true])
+        #expect(window.cardForm?.draft.bothWays == true)
+    }
+
+    @Test("the form from a capture starts with Both ways off, and a card added with it on goes both ways")
+    func theFormFromACaptureStartsWithBothWaysOff() throws {
+        let capture = try engine.newCapture("coloratura", source: "Una ópera de Mozart")
+        var window = openWindow()
+        window.openNewCardForm()
+        window.switchBothWays(true)
+        window.closeCardForm()
+        window.choose(.inbox)
+        window.selectInInbox(.capture(capture.id))
+
+        window.convertToCard()
+        let opened = try #require(window.cardForm)
+        window.type(front: "coloratura", back: "Los adornos rápidos del canto.")
+        window.switchBothWays(true)
+        window.addCard()
+
+        #expect(!opened.draft.bothWays)
+        let added = try #require(try engine.cards().first)
+        #expect(added.bothWays)
+        #expect(added.captureID == capture.id)
+    }
+
     @Test("the form from a capture shows its text, note and source, with the source filled in")
     func theFormFromACaptureShowsIt() throws {
         let capture = try engine.newCapture(
@@ -340,6 +380,13 @@ extension CardsWindowState {
     fileprivate mutating func choose(type: CardType?) {
         guard var draft = cardForm?.draft else { return }
         draft.type = type
+        changeDraft(draft)
+    }
+
+    /// Turns the form's Both ways switch on, or off when `bothWays` is false.
+    fileprivate mutating func switchBothWays(_ bothWays: Bool) {
+        guard var draft = cardForm?.draft else { return }
+        draft.bothWays = bothWays
         changeDraft(draft)
     }
 
