@@ -5,8 +5,8 @@ import Foundation
 // picture, named after the formula, and a package carries in its media
 // (`rslib/src/latex.rs`). Ficha's sides are plain text, so a side that is
 // one formula alone shows Anki's picture of it, and a formula among text,
-// one of several, or one whose picture the package lacks, shows as its
-// LaTeX.
+// one of several, or one whose picture the package lacks or Ficha can't
+// read, shows as its LaTeX.
 
 /// The name of Anki's picture of the formula `html`, a side as Anki renders
 /// it, shows alone, with nothing else that shows: a PNG named after the
@@ -30,21 +30,29 @@ func pictureOfFormula(shownAloneIn html: String, sha1: (String) -> String) -> St
         latex = String(standard)
     } else if let inline = match.output.2 {
         latex = "$\(inline)$"
+    } else if let display = match.output.3 {
+        latex = "\\begin{displaymath}\(display)\\end{displaymath}"
     } else {
-        latex = "\\begin{displaymath}\(match.output.3 ?? "")\\end{displaymath}"
+        return nil
     }
     return "latex-\(sha1(latexWithoutHTML(latex))).png"
 }
 
-/// `latex`, a formula's LaTeX as a field holds it, as Anki hands it to
-/// LaTeX (`strip_html_for_latex`): with a line break for each `<br>` and
-/// `<div>`, without its tags, comments, `<style>`s and `<script>`s, and
-/// with its character references decoded.
+/// `latex`, a formula's LaTeX as a side shows it, without its comments,
+/// `<style>`s and `<script>`s, as Anki hands it to LaTeX
+/// (`strip_html_for_latex`): with a line break for each `<br>`, `<br/>` and
+/// `<div>`, but not `<br />`, since Anki's pattern ignores its space,
+/// without its tags, and, when it holds an `&`, with its character
+/// references decoded and its no-break spaces as spaces. Anki knows every
+/// reference's name, and decodes none when one is malformed, so a formula
+/// with such a reference may be named apart from Anki's picture, and come in
+/// as its LaTeX.
 private func latexWithoutHTML(_ latex: String) -> String {
-    let lines = latex.replacing(/(?i)<br( \/)?>|<div>/, with: "\n")
-    let withoutTags = lines.replacing(
-        /(?si)<!--.*?-->|<style.*?>.*?<\/style>|<script.*?>.*?<\/script>|<.*?>/, with: "")
-    return characterReferencesDecoded(in: withoutTags)
+    let withoutTags = latex.replacing(/(?i)<br\/?>|<div>/, with: "\n").replacing(/(?s)<.*?>/, with: "")
+    guard withoutTags.contains("&") else {
+        return withoutTags
+    }
+    return characterReferencesDecoded(in: withoutTags).replacing("\u{A0}", with: " ")
 }
 
 /// Whether `html` may hold a formula: a `[` before a `$` or before `latex`,

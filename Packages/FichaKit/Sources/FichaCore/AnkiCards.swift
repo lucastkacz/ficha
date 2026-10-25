@@ -11,8 +11,8 @@ extension AnkiCollection {
     /// are dropped. A side that is one of Anki's formulas alone, such as
     /// `[$]x^2[/$]`, comes in as the picture Anki drew of it, found by its
     /// name, after the SHA-1 digest `sha1` gives of a text as lowercase hex,
-    /// and as its LaTeX when the package lacks it, as a formula among text
-    /// does. Each proposes a tag for each level of its home deck's name,
+    /// and as its LaTeX when the package lacks it or Ficha can't read it, as
+    /// a formula among text does. Each proposes a tag for each level of its home deck's name,
     /// but Default's, and its note's tags, an underscore in them standing
     /// for a space, and brings where it stands in Anki, its due days as
     /// dates in `calendar`, the user's, for an import that brings progress.

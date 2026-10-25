@@ -176,6 +176,9 @@ final class AnkiImageImportingTests {
             notes: [
                 AnkiNote(type: .basic, fields: ["Saludo", "[$]<b>hello</b>&nbsp; world[/$]"]),
                 AnkiNote(type: .basic, fields: ["<div>[$$]math &amp; stuff[/$$]</div>", "Mates"]),
+                // Anki reads `<br/>` as a line break in a formula, as `<br>`,
+                // but not `<br />`.
+                AnkiNote(type: .basic, fields: ["[latex]one<br/>and<div>two[/latex]", "Pasos"]),
                 AnkiNote(type: .basic, fields: ["Un paso", "a[latex]one<br>and<div>two[/latex]b"]),
                 AnkiNote(type: .basic, fields: ["Dos", "[$]x[/$] [$]y[/$]"]),
                 AnkiNote(type: .basic, fields: ["Sin dibujo", "[$]z[/$]"]),
@@ -193,17 +196,17 @@ final class AnkiImageImportingTests {
         let cards = try engine.cards()
         #expect(
             cards.map { [$0.front, $0.back] } == [
-                ["Saludo", ""], ["", "Mates"], ["Un paso", "a[latex]one\nand\ntwo[/latex]b"],
+                ["Saludo", ""], ["", "Mates"], ["", "Pasos"], ["Un paso", "a[latex]one\nand\ntwo[/latex]b"],
                 ["Dos", "[$]x[/$] [$]y[/$]"],
                 ["Sin dibujo", "[$]z[/$]"],
             ])
         #expect(
             try cards.map { try $0.frontImage.map { try pixelSize(of: engine.image($0)).width } } == [
-                nil, 200, nil, nil, nil,
+                nil, 200, 100, nil, nil, nil,
             ])
         #expect(
             try cards.map { try $0.backImage.map { try pixelSize(of: engine.image($0)).width } } == [
-                300, nil, nil, nil, nil,
+                300, nil, nil, nil, nil, nil,
             ])
     }
 

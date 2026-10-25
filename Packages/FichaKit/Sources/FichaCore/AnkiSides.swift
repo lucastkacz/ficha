@@ -7,7 +7,7 @@ import Foundation
 /// side's other images are dropped, since a side holds one image at most,
 /// and so are images on the web, which Ficha never fetches. A side that is
 /// one of Anki's formulas alone is the picture Anki drew of it, without
-/// text, when the package has it.
+/// text, when the package has it and Ficha can read it.
 struct AnkiSide {
     let text: String
     let image: ImageName?
@@ -24,25 +24,22 @@ struct AnkiSide {
     init(html: String, images: (String) -> ImageLookup, sha1: (String) -> String) {
         let html = html.replacing(/\[sound:.+?\]/, with: "")
         let names = fileNames(shownIn: html)
-        if names.isEmpty, let name = pictureOfFormula(shownAloneIn: html, sha1: sha1),
-            case .found(let picture) = images(name)
-        {
-            text = ""
-            image = picture
-            dropsImages = false
-            lookup = .found(picture)
-            return
-        }
-        text = plainText(fromHTML: html)
         dropsImages = names.count > 1
-        lookup = names.first.map { name in
-            // Some decks keep a name percent-encoded, as a browser's address
-            // has it, though Anki writes it as it is.
-            let lookup = images(name)
-            guard lookup == .missing, let decoded = name.removingPercentEncoding, decoded != name else {
-                return lookup
+        let formula = names.isEmpty ? pictureOfFormula(shownAloneIn: html, sha1: sha1).map(images) : nil
+        if case .found? = formula {
+            text = ""
+            lookup = formula
+        } else {
+            text = plainText(fromHTML: html)
+            lookup = names.first.map { name in
+                // Some decks keep a name percent-encoded, as a browser's
+                // address has it, though Anki writes it as it is.
+                let lookup = images(name)
+                guard lookup == .missing, let decoded = name.removingPercentEncoding, decoded != name else {
+                    return lookup
+                }
+                return images(decoded)
             }
-            return images(decoded)
         }
         if case .found(let image) = lookup {
             self.image = image
