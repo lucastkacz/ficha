@@ -120,7 +120,7 @@ final class CardsWindowSoundTests {
         #expect(gone == nil)
         #expect(window.cardForm?.isSoundComingIn(on: .back) == false)
         #expect(window.failure?.action == .putSound)
-        #expect(window.failure?.error == .unreadableDroppedFile("mi.mp3"))
+        #expect(window.failure?.error == .unreadableFileForSide("mi.mp3"))
     }
 
     @Test("a sound that comes in once another replaced it, or once the form closed, is let go")

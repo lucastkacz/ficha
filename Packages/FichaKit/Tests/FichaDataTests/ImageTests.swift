@@ -153,10 +153,11 @@ final class ImageTests {
         #expect(try engine.keptImages() == [nest, egg])
     }
 
-    // A refine session drafts text alone: `ficha fix` and `ficha
-    // approve-expansion` never add an image, nor take one away.
-    @Test("fixing or changing a card's text through the CLI keeps its images")
-    func theCLIKeepsACardsImages() throws {
+    // A content alone, as from a refine session's draft that leaves the
+    // images out. Drafts that put or take them off are in
+    // RefiningWithFilesTests.
+    @Test("fixing or expanding a card with a content alone keeps its images")
+    func fixingOrExpandingWithAContentAloneKeepsACardsImages() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))

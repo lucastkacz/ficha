@@ -155,9 +155,9 @@ private func fileName<Name: NameOfFileOnCard>(in row: Row, column: String, ofCar
 }
 
 extension CardContent {
-    /// This content with the images and sounds of `card` where it has none
-    /// of its own, as a refine session's content keeps those of the card it
-    /// changes, since refining never adds one.
+    /// This content with the images and sounds of `card` where the card has
+    /// them, as a card fixed or expanded with a content alone keeps its own,
+    /// as with a refine session's draft that leaves them out.
     func keepingFiles(of card: Card) -> CardContent {
         keepingFiles(
             frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,

@@ -8,8 +8,8 @@ struct FixCommand: EngineCommand {
         commandName: "fix",
         abstract: "Fix a flagged card with new content, read as JSON from standard input.",
         discussion: """
-            The card is a JSON object with \(cardFields). It replaces the card's content, and the card keeps its \
-            images and sounds. For example:
+            The card is a JSON object with \(cardFields). It replaces the card's content. \(fileFields) \
+            \(filesKept) For example:
 
               ficha fix 7 <<'EOF'
               {"type": "word", "front": "serendipia",
@@ -29,7 +29,7 @@ struct FixCommand: EngineCommand {
         try CardsInput.fixedCard.requireStandardInput()
     }
 
-    func run(on engine: Engine) throws -> any Encodable {
-        try engine.fix(cardID, with: card(in: standardInput(), as: .fixedCard))
+    func run(on engine: Engine) async throws -> any Encodable {
+        try await engine.fix(cardID, with: card(in: standardInput(), as: .fixedCard))
     }
 }

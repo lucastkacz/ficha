@@ -26,15 +26,24 @@ extension Engine {
     /// Fixes a flagged card in the inbox with `content`, as a refine session
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
     /// back to his reviews, on the step its review log puts it on, unless one
-    /// of its tags is set aside. It keeps its images and sounds, since
-    /// refining never adds or removes one; a new front or back keeps when it
-    /// changed. Returns the card.
+    /// of its tags is set aside. It keeps its images and sounds, as a draft
+    /// that leaves them out does (`fix(_:with:)` with a `CardDraft`); a new
+    /// front or back keeps when it changed. Returns the card.
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
+        try fix(cardID) { card in content.keepingFiles(of: card) }.fixed
+    }
+
+    /// Fixes a flagged card in the inbox, as `fix(_:with:)` does, with the
+    /// content `newContent` makes of the card as it is, or nothing when it
+    /// throws. Returns the card before and after.
+    func fix(_ cardID: Int64, changingContentWith newContent: (Card) throws(EngineError) -> CardContent)
+        throws(EngineError) -> (before: Card, fixed: Card)
+    {
         let fixedAt = time.now
         return try write { db in
             let card = try unflag(cardID, in: db)
-            return try replaceContent(of: cardID, with: content.keepingFiles(of: card), at: fixedAt, in: db)
+            return (card, try replaceContent(of: cardID, with: newContent(card), at: fixedAt, in: db))
         }
     }
 

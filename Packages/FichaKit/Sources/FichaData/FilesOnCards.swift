@@ -110,6 +110,16 @@ enum FileStore<Name: NameOfFileOnCard>: Sendable {
         }
     }
 
+    /// Whether the file named `name` is kept.
+    func contains(_ name: Name) -> Bool {
+        switch self {
+        case .folder(let folder):
+            FileManager.default.fileExists(atPath: folder.appending(path: name.rawValue).path(percentEncoded: false))
+        case .memory(let memory):
+            memory.files.withLock { $0[name] != nil }
+        }
+    }
+
     /// Every file kept, by name.
     func names() throws(EngineError) -> Set<Name> {
         switch self {
@@ -170,6 +180,13 @@ extension Engine {
     func removeFilesNoCardUses(images: Set<ImageName> = [], sounds: Set<SoundName> = []) {
         removeFilesNoCardUses(among: images, from: self.images)
         removeFilesNoCardUses(among: sounds, from: self.sounds)
+    }
+
+    /// Removes the images and sounds a card had `before` a change and no
+    /// longer has `after` it, which no card refers to any more.
+    func removeFilesNoCardUses(before: Card, after: Card) {
+        removeFilesNoCardUses(
+            images: before.images.subtracting(after.images), sounds: before.sounds.subtracting(after.sounds))
     }
 
     /// Removes from `store` the files among `names` that no card refers to.

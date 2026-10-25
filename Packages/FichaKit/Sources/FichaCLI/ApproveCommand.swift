@@ -17,6 +17,8 @@ struct ApproveCommand: EngineCommand {
                 "tags": ["lenguaje"], "source": null}]
               EOF
 
+            \(fileFields) Left out or null, a side has none.
+
             It saves the cards as new, in that order, takes the capture out of the inbox and prints the cards. A \
             follow-up is approved the same way, and the card it follows up stays as it is.
             """
@@ -29,7 +31,7 @@ struct ApproveCommand: EngineCommand {
         try CardsInput.list.requireStandardInput()
     }
 
-    func run(on engine: Engine) throws -> any Encodable {
-        try engine.approve(captureID, into: cards(in: standardInput()))
+    func run(on engine: Engine) async throws -> any Encodable {
+        try await engine.approve(captureID, into: cards(in: standardInput()))
     }
 }

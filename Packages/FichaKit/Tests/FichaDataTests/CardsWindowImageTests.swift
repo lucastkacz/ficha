@@ -98,7 +98,7 @@ struct CardsWindowImageTests {
         #expect(window.cardForm?.draft.front.image != nil)
         #expect(window.cardForm?.draft.back.image == nil)
         #expect(window.failure?.action == .putImage)
-        #expect(window.failure?.error == .unreadableDroppedFile("hornero.jpg"))
+        #expect(window.failure?.error == .unreadableFileForSide("hornero.jpg"))
     }
 
     @Test("the detail shows the selected card's images")

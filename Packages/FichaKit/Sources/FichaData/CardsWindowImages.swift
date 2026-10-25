@@ -141,7 +141,7 @@ extension CardsWindowState {
                     data = try Data(contentsOf: file)
                 } catch {
                     logger.error("Couldn't read a file dropped for an image: \(String(describing: error))")
-                    throw .unreadableDroppedFile(file.lastPathComponent)
+                    throw .unreadableFileForSide(file.lastPathComponent)
                 }
                 image = try CardImage(shrinking: data)
             case .data(let data):
@@ -205,7 +205,7 @@ extension Engine {
 
     /// Keeps the images and sounds `held`, then does `work`, and when either
     /// fails, removes those of them no card uses.
-    private func keeping<Value>(_ held: HeldFiles, _ work: () throws(EngineError) -> Value) throws(EngineError)
+    func keeping<Value>(_ held: HeldFiles, _ work: () throws(EngineError) -> Value) throws(EngineError)
         -> Value
     {
         do throws(EngineError) {
