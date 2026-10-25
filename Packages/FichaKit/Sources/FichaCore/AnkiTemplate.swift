@@ -233,16 +233,28 @@ private struct Renderer {
             return revealingClozes(in: text, number: cardNumber, onQuestion: isQuestion)
         case "cloze-only":
             return isQuestion ? clozeHint(of: text, number: cardNumber) : clozeText(of: text, number: cardNumber)
-        case "kanji", "kana":
-            return text.replacing(/\ ?([^ >]+?)\[(.+?)\]/) { match in
-                match.output.2.hasPrefix("sound:")
-                    ? match.output.0 : filter == "kanji" ? match.output.1 : match.output.2
-            }
+        case "furigana":
+            return replacingReadings(in: text) { kanji, reading in "<ruby><rb>\(kanji)</rb><rt>\(reading)</rt></ruby>" }
+        case "kanji":
+            return replacingReadings(in: text) { kanji, _ in String(kanji) }
+        case "kana":
+            return replacingReadings(in: text) { _, reading in String(reading) }
         case _ where filter == "tts" || filter.hasPrefix("tts "):
             return ""
         default:
             return text
         }
+    }
+}
+
+/// `text` with each reading in brackets after its kanji, `話[はなし]`, and
+/// the space before them, replaced with what `replacement` makes of the
+/// kanji and the reading, as Anki's furigana, kanji and kana filters find
+/// them. A sound, `[sound:…]`, stays as it is.
+private func replacingReadings(in text: String, with replacement: (Substring, Substring) -> String) -> String {
+    text.replacing("&nbsp;", with: " ").replacing(/\ ?([^ >]+?)\[(.+?)\]/) { match in
+        let (whole, kanji, reading) = match.output
+        return reading.hasPrefix("sound:") ? String(whole) : replacement(kanji, reading)
     }
 }
 
