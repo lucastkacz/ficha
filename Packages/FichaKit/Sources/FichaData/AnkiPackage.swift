@@ -1,3 +1,4 @@
+import CryptoKit
 import FichaCore
 import Foundation
 internal import GRDB
@@ -24,7 +25,7 @@ func isAnkiPackage(_ archive: Archive) -> Bool {
 }
 
 /// The cards of the Anki package `archive`, as `AnkiCollection.
-/// importReading(in:images:)` makes them of its collection, with their due
+/// importReading(in:images:sha1:)` makes them of its collection, with their due
 /// days as dates in `calendar`, and the images they show, by the names
 /// Ficha keeps them by, as they come in, from the package's media, each
 /// read on its own; or why it can't be read. An image the package lacks, or
@@ -56,7 +57,12 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFile
     }
     let reading: ImportReading
     do {
-        reading = try collection.importReading(in: calendar) { images.lookUp($0) }
+        reading = try collection.importReading(in: calendar) {
+            images.lookUp($0)
+        } sha1: { text in
+            // Anki names a formula's picture after it, not to keep it safe.
+            Insecure.SHA1.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+        }
     } catch {
         logger.error("An Anki package's collection is damaged: \(error.description, privacy: .public)")
         throw .unreadableAnkiPackage

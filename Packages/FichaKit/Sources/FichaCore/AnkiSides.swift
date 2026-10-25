@@ -5,7 +5,9 @@ import Foundation
 /// which the HTML's tags are; and its image, the first of the package's
 /// files the HTML shows, when the package has it and Ficha can read it. The
 /// side's other images are dropped, since a side holds one image at most,
-/// and so are images on the web, which Ficha never fetches.
+/// and so are images on the web, which Ficha never fetches. A side that is
+/// one of Anki's formulas alone is the picture Anki drew of it, without
+/// text, when the package has it.
 struct AnkiSide {
     let text: String
     let image: ImageName?
@@ -17,10 +19,21 @@ struct AnkiSide {
     private let lookup: ImageLookup?
 
     /// The side Anki renders as `html`, with its image as `images` finds it
-    /// by the name the HTML gives it.
-    init(html: String, images: (String) -> ImageLookup) {
-        text = plainText(fromHTML: html.replacing(/\[sound:.+?\]/, with: ""))
+    /// by the name the HTML gives it, or by the name of Anki's picture of
+    /// its formula, after the SHA-1 digest `sha1` gives as lowercase hex.
+    init(html: String, images: (String) -> ImageLookup, sha1: (String) -> String) {
+        let html = html.replacing(/\[sound:.+?\]/, with: "")
         let names = fileNames(shownIn: html)
+        if names.isEmpty, let name = pictureOfFormula(shownAloneIn: html, sha1: sha1),
+            case .found(let picture) = images(name)
+        {
+            text = ""
+            image = picture
+            dropsImages = false
+            lookup = .found(picture)
+            return
+        }
+        text = plainText(fromHTML: html)
         dropsImages = names.count > 1
         lookup = names.first.map { name in
             // Some decks keep a name percent-encoded, as a browser's address

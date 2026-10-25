@@ -8,7 +8,11 @@ extension AnkiCollection {
     /// type the answer in, as plain text, without sounds, each with the first
     /// image it shows, as `images` finds it by its name in the package: a
     /// side whose image isn't found comes in without it, and its other images
-    /// are dropped. Each proposes a tag for each level of its home deck's name,
+    /// are dropped. A side that is one of Anki's formulas alone, such as
+    /// `[$]x^2[/$]`, comes in as the picture Anki drew of it, found by its
+    /// name, after the SHA-1 digest `sha1` gives of a text as lowercase hex,
+    /// and as its LaTeX when the package lacks it, as a formula among text
+    /// does. Each proposes a tag for each level of its home deck's name,
     /// but Default's, and its note's tags, an underscore in them standing
     /// for a space, and brings where it stands in Anki, its due days as
     /// dates in `calendar`, the user's, for an import that brings progress.
@@ -19,9 +23,9 @@ extension AnkiCollection {
     /// order and why. Throws when a card's note, note type, template or deck
     /// isn't in the collection, or its type isn't one Anki has, as in a
     /// damaged one.
-    public func importReading(in calendar: Calendar, images: (String) -> ImageLookup)
-        throws(AnkiCollectionProblem) -> ImportReading
-    {
+    public func importReading(
+        in calendar: Calendar, images: (String) -> ImageLookup, sha1: (String) -> String
+    ) throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
         var cards: [ImportedCard] = []
         var leftOut: [LeftOutLine] = []
@@ -30,7 +34,7 @@ extension AnkiCollection {
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
                 switch rendered.importedCard(
-                    line: line, progress: try progress(of: card, in: calendar), images: images)
+                    line: line, progress: try progress(of: card, in: calendar), images: images, sha1: sha1)
                 {
                 case .card(let imported):
                     cards.append(imported)
@@ -188,11 +192,16 @@ private struct RenderedAnkiCard {
     let tags: [String]
 
     /// The card as Ficha imports it, each side as plain text without sounds,
-    /// with its first image as `images` finds it, and with `progress`, where
-    /// it stands in Anki; or why it stays out, when a side is left with
-    /// neither text nor an image.
-    func importedCard(line: Int, progress: ImportedProgress, images: (String) -> ImageLookup) -> Imported {
-        let (front, back) = (AnkiSide(html: front, images: images), AnkiSide(html: back, images: images))
+    /// with its first image as `images` finds it, or Anki's picture of its
+    /// formula, named after the digest `sha1` gives, and with `progress`,
+    /// where it stands in Anki; or why it stays out, when a side is left
+    /// with neither text nor an image.
+    func importedCard(
+        line: Int, progress: ImportedProgress, images: (String) -> ImageLookup, sha1: (String) -> String
+    ) -> Imported {
+        let (front, back) = (
+            AnkiSide(html: front, images: images, sha1: sha1), AnkiSide(html: back, images: images, sha1: sha1)
+        )
         guard
             let content = CardContent(
                 type: nil, front: front.text, back: back.text, tags: [], source: nil, frontImage: front.image,
