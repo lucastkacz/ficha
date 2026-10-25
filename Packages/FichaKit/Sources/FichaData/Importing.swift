@@ -369,24 +369,45 @@ extension ImportReading {
 /// images, when both have one, are the same image. So a front with only an
 /// image repeats one with only that image, and fronts with one caption,
 /// such as a deck's "? · Location" over each country's map, repeat by their
-/// images. Among the user's cards a card may repeat, one whose front has the
-/// same image, or none as it has none, comes first. Each of the user's cards
-/// is repeated by one card of the file at most, the first that repeats it,
-/// so that importing a file again repeats it whole, two cards of it with
-/// the same front included. A front with neither text nor an image, which
+/// images. Each of the user's cards is repeated by one card of the file at
+/// most, so that importing a file again repeats it whole, two cards of it
+/// with the same front included. The file's cards find theirs in the order
+/// of `FrontImageMatch`, each way across the whole file and in its order:
+/// so a card whose front lacks an image doesn't take the card a later one
+/// has the very image of. A front with neither text nor an image, which
 /// holds only a sound, repeats none.
 func repeatedCards(of cards: [ImportedCard], in db: Database) throws -> [Card?] {
     var cardsByFront = Dictionary(grouping: try allCards(in: db)) { duplicateKey($0.front) }
-    return cards.map { card in
-        let (front, image) = (card.content.front, card.content.frontImage)
-        let key = duplicateKey(front)
-        guard !CardContent.isBlank(front, image: image, sound: nil), let candidates = cardsByFront[key],
-            let index = candidates.firstIndex(where: { $0.frontImage == image })
-                ?? (CardContent.isBlank(front) ? nil : candidates.firstIndex { $0.frontImage == nil || image == nil })
-        else {
-            return nil
+    var repeated = [Card?](repeating: nil, count: cards.count)
+    for match in FrontImageMatch.allCases {
+        for (index, card) in cards.enumerated() where repeated[index] == nil {
+            let (front, image) = (card.content.front, card.content.frontImage)
+            let key = duplicateKey(front)
+            guard !CardContent.isBlank(front, image: image, sound: nil),
+                let found = cardsByFront[key]?.firstIndex(where: {
+                    match.matches(image, $0.frontImage, frontHasText: !CardContent.isBlank(front))
+                })
+            else {
+                continue
+            }
+            repeated[index] = cardsByFront[key]?.remove(at: found)
         }
-        cardsByFront[key]?.remove(at: index)
-        return candidates[index]
+    }
+    return repeated
+}
+
+/// The ways an imported front repeats one of the user's fronts with the same
+/// text, in the order an import tries them.
+private enum FrontImageMatch: CaseIterable {
+    /// Both fronts have the same image, or neither has one.
+    case sameImage
+    /// Only one of the two fronts has an image, and they have text.
+    case imageOnOneSide
+
+    func matches(_ image: ImageName?, _ other: ImageName?, frontHasText: Bool) -> Bool {
+        switch self {
+        case .sameImage: image == other
+        case .imageOnOneSide: frontHasText && (image == nil) != (other == nil)
+        }
     }
 }

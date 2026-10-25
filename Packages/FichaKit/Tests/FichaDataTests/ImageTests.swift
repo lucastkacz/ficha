@@ -88,9 +88,10 @@ final class ImageTests {
 
     // ImageIO writes the profile of a color space the system doesn't name,
     // such as the one a PNG's gamma and chromaticities make, as Wikipedia's
-    // images often have, with the day's date in it.
+    // images often have, with the day's date in it. A PNG in Adobe RGB reads
+    // back in such a space.
     @Test(
-        "an image comes in in its color space when the system names it, such as Display P3, and in sRGB otherwise, so it's named the same whatever day it comes in"
+        "an image comes in in its color space when the system names it, and otherwise in Display P3 when its colors are wider than sRGB's, or in sRGB, so it's named the same whatever day it comes in"
     )
     func anImageComesInInANamedColorSpace() throws {
         let engine = try Engine(location: .inMemory, time: time)
@@ -98,15 +99,18 @@ final class ImageTests {
             CGColorSpace(
                 calibratedRGBWhitePoint: [0.9505, 1, 1.089], blackPoint: [0, 0, 0], gamma: [2.2, 2.2, 2.2],
                 matrix: [0.4124, 0.2126, 0.0193, 0.3576, 0.7152, 0.1192, 0.1805, 0.0722, 0.9505]))
+        let adobeRGB = try #require(CGColorSpace(name: CGColorSpace.adobeRGB1998))
         let displayP3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
 
         let opaque = try engine.addImage(picture(width: 300, height: 200, in: gamma22))
         let seeThrough = try engine.addImage(picture(width: 300, height: 200, alpha: 0.5, in: gamma22))
-        let wide = try engine.addImage(picture(width: 300, height: 200, in: displayP3))
+        let wider = try engine.addImage(picture(width: 300, height: 200, in: adobeRGB))
+        let named = try engine.addImage(picture(width: 300, height: 200, in: displayP3))
 
         #expect(
-            try [opaque, seeThrough, wide].map { try colorSpaceName(of: engine.image($0)) } == [
+            try [opaque, seeThrough, wider, named].map { try colorSpaceName(of: engine.image($0)) } == [
                 CGColorSpace.sRGB as String, CGColorSpace.sRGB as String, CGColorSpace.displayP3 as String,
+                CGColorSpace.displayP3 as String,
             ])
         #expect(try imageType(of: engine.image(seeThrough)) == UTType.png.identifier)
     }
@@ -215,7 +219,7 @@ final class ImageTests {
         #expect(encoded[1]["backImage"] == nil)
     }
 
-    @Test("a front with only an image repeats no other card's front")
+    @Test("a front with only an image repeats no other card's front in the Cards window's form")
     func aFrontWithOnlyAnImageRepeatsNone() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))

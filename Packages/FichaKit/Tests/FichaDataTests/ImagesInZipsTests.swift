@@ -242,6 +242,31 @@ final class ImagesInZipsTests {
         }
     }
 
+    @Test(
+        "a zip's card with the very front image of a card repeats it, though a card before it with that front and no image could"
+    )
+    func aCardWithTheSameFrontImageRepeatsFirst() throws {
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird))
+        let text = """
+            #columns:Front\tBack\tFront image
+            hornero\tUn pájaro, sin foto.\t
+            hornero\tUn pájaro que hace su nido de barro.\thornero.jpg
+
+            """
+        let file = try zip(
+            [("Aves.txt", Data(text.utf8)), ("hornero.jpg", try engine.image(bird))], named: "Aves.zip")
+
+        let preview = try engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Aves": ""]))
+
+        #expect(preview.repeatedCount == 1)
+        let cards = try engine.cards()
+        #expect(cards.first?.id == hornero.id)
+        #expect(cards.map(\.back) == ["Un pájaro que hace su nido de barro.", "Un pájaro, sin foto."])
+        #expect(cards.map(\.frontImage) == [bird, nil])
+    }
+
     /// Writes a zip named `name` in the test's folder, holding `files`, and
     /// returns it.
     private func zip(_ files: [(path: String, data: Data)], named name: String) throws -> URL {
