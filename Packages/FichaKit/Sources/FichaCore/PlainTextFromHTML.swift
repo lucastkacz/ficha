@@ -8,13 +8,16 @@ import Foundation
 /// and none at the start or the end of a line. A ruby's text, the reading a
 /// browser shows small over the text before it, comes after that text in
 /// parentheses, `話（はなし）`, and the parentheses a browser without ruby
-/// shows, its `<rp>`s, are left out. A comment, a `<script>` and a `<style>`
-/// are left out whole. What only looks like a tag or a reference, such as a
-/// `<` before a space or an `&` before no known name, stays as it is.
+/// shows, its `<rp>`s, are left out. A superscript, `<sup>`, or a subscript,
+/// `<sub>`, comes in as Unicode's own superscripts or subscripts, `SO₄²⁻`,
+/// when Unicode has each of its characters as one, and as its text
+/// otherwise. A comment, a `<script>` and a `<style>` are left out whole.
+/// What only looks like a tag or a reference, such as a `<` before a space
+/// or an `&` before no known name, stays as it is.
 public func plainText(fromHTML html: String) -> String {
     var reader = HTMLReader(Array(html.unicodeScalars))
     reader.convert()
-    return String(reader.text)
+    return String(String.UnicodeScalarView(reader.text))
 }
 
 /// `html` without its comments, `<script>`s and `<style>`s, which
@@ -74,6 +77,29 @@ private let blockElements: Set<String> = [
 /// `<rtc>`, and its parentheses, `<rp>`.
 private let rubyElements: Set<String> = ["ruby", "rb", "rt", "rtc", "rp"]
 
+/// A superscript, `<sup>`, or a subscript, `<sub>`.
+private enum SuperOrSubscript: String {
+    case sup, sub
+
+    /// Unicode's superscript, or subscript, for each character that has
+    /// one: the digits, `+ - − = ( )`, and a few letters. They're the ones
+    /// in Unicode's Superscripts and Subscripts block, and Latin-1's ¹²³,
+    /// all of which the system font draws.
+    var unicodeForms: [Unicode.Scalar: Unicode.Scalar] {
+        switch self {
+        case .sup: superscripts
+        case .sub: subscripts
+        }
+    }
+}
+
+private let superscripts = Dictionary(
+    uniqueKeysWithValues: zip("0123456789+-−=()in".unicodeScalars, "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁱⁿ".unicodeScalars))
+
+private let subscripts = Dictionary(
+    uniqueKeysWithValues: zip(
+        "0123456789+-−=()aeoxəhklmnpst".unicodeScalars, "₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎ₐₑₒₓₔₕₖₗₘₙₚₛₜ".unicodeScalars))
+
 /// The character references a field may hold by name: HTML's own, the
 /// quotes and dashes a word processor types, and the Latin-1 letters and
 /// signs.
@@ -106,12 +132,15 @@ private struct HTMLReader {
     private let html: [Unicode.Scalar]
     private var index = 0
     /// The plain text so far.
-    private(set) var text = String.UnicodeScalarView()
+    private(set) var text: [Unicode.Scalar] = []
     /// Whether spaces or line breaks in the HTML came after the text so far,
     /// which are a space before the next text on the line.
     private var isSpacePending = false
     /// The part of a ruby being read, if any.
     private var rubyPart: RubyPart?
+    /// The superscripts and subscripts being read, the innermost last, each
+    /// with where its text starts in `text`.
+    private var openSuperOrSubscripts: [(element: SuperOrSubscript, start: Int)] = []
 
     /// A part of a ruby that the plain text shows apart from the text it's
     /// over: its text, the reading, or a parenthesis for a browser without
@@ -181,11 +210,13 @@ private struct HTMLReader {
         }
     }
 
-    /// Ends the line, without the spaces at its end.
+    /// Ends the line, without the spaces at its end, which no superscript or
+    /// subscript being read starts after any more.
     private mutating func breakLine() {
         while text.last == " " {
             text.removeLast()
         }
+        openSuperOrSubscripts = openSuperOrSubscripts.map { ($0.element, min($0.start, text.count)) }
         text.append("\n")
         isSpacePending = false
     }
@@ -207,9 +238,9 @@ private struct HTMLReader {
     }
 
     /// Reads the tag or the comment between `index` and `end`, its `>`: a
-    /// line break for `<br>` and around a block, a ruby's tag, and nothing
-    /// else. A `<script>` or a `<style>` is skipped up to its end. Returns
-    /// where what it read ends.
+    /// line break for `<br>` and around a block, a ruby's tag, a
+    /// superscript's or a subscript's, and nothing else. A `<script>` or a
+    /// `<style>` is skipped up to its end. Returns where what it read ends.
     private mutating func readMarkup(upTo end: Int) -> Int {
         let name = tagName(upTo: end)
         if let hiddenEnd = endOfHiddenMarkup(upTo: end, named: name) {
@@ -222,9 +253,36 @@ private struct HTMLReader {
                 breakLine()
             }
         } else if rubyElements.contains(name) {
-            readRubyTag(named: name, isClosing: html[index + 1] == "/")
+            readRubyTag(named: name, isClosing: isAtClosingTag)
+        } else if let element = SuperOrSubscript(rawValue: name) {
+            readSuperOrSubscriptTag(of: element, isClosing: isAtClosingTag)
         }
         return end
+    }
+
+    /// Reads a superscript's or a subscript's tag, `element`'s: its text
+    /// starts after the text so far, and once it ends it turns into
+    /// Unicode's forms of its characters when Unicode has each of them. Its
+    /// closing tag ends the innermost `element` being read; one without an
+    /// opening tag does nothing, and one without a closing tag leaves its
+    /// text as it is.
+    private mutating func readSuperOrSubscriptTag(of element: SuperOrSubscript, isClosing: Bool) {
+        guard isClosing else {
+            openSuperOrSubscripts.append((element, text.count))
+            return
+        }
+        guard let open = openSuperOrSubscripts.lastIndex(where: { $0.element == element }) else {
+            return
+        }
+        // Spaces and line breaks at its start, such as the space before its
+        // text, show in a browser the same at any size.
+        let start = text[openSuperOrSubscripts[open].start...].firstIndex { $0 != " " && $0 != "\n" } ?? text.count
+        openSuperOrSubscripts.removeSubrange(open...)
+        let forms = text[start...].map { element.unicodeForms[$0] }
+        guard !forms.isEmpty, forms.allSatisfy({ $0 != nil }) else {
+            return
+        }
+        text.replaceSubrange(start..., with: forms.compactMap { $0 })
     }
 
     /// Reads a ruby's tag named `name`: its text, `<rt>`, starts after a
@@ -264,6 +322,11 @@ private struct HTMLReader {
         html[index + 1] == "!" && starts(with: "<!--", at: index)
     }
 
+    /// Whether the tag that starts at `index` closes an element.
+    private var isAtClosingTag: Bool {
+        html[index + 1] == "/"
+    }
+
     /// Where the comment, `<script>` or `<style>` that starts at `index`, with
     /// a comment or a tag named `name` that ends at `end`, its `>`, ends: the
     /// comment's end, or the `>` of the element's closing tag, or the HTML's
@@ -272,7 +335,7 @@ private struct HTMLReader {
         if isAtComment {
             return end
         }
-        guard html[index + 1] != "/", name == "script" || name == "style" else {
+        guard !isAtClosingTag, name == "script" || name == "style" else {
             return nil
         }
         let closing = firstIndex(of: "</\(name)", from: end + 1, ignoringCase: true)
