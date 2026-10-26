@@ -29,9 +29,9 @@ final class ExportingTests {
 
     /// Another Ficha, with no cards, once it imports `file`, with every line
     /// read and without the tag named after the file.
-    private func anotherFicha(importing file: URL) throws -> Engine {
+    private func anotherFicha(importing file: URL) async throws -> Engine {
         let other = try Engine(location: .inMemory, time: time, calendar: calendar)
-        let preview = try other.previewImport(of: file)
+        let preview = try await other.previewImport(of: file)
         #expect(preview.leftOut == [])
         try other.importCards(
             preview,
@@ -41,7 +41,7 @@ final class ExportingTests {
 
     @Test(
         "exported cards import back as the same cards, with their types, tags and sources, a tag with a space included")
-    func exportedCardsImportBackAsTheSameCards() throws {
+    func exportedCardsImportBackAsTheSameCards() async throws {
         let contents = [
             try card(
                 .word, front: "serendipia", back: "Un hallazgo valioso que se da por casualidad.",
@@ -60,11 +60,11 @@ final class ExportingTests {
         let count = try engine.export(.all, to: file)
 
         #expect(count == 4)
-        #expect(try anotherFicha(importing: file).cards().map(content(of:)) == contents)
+        #expect(try await anotherFicha(importing: file).cards().map(content(of:)) == contents)
     }
 
     @Test("an export holds no progress, flag or burial, only what each card says")
-    func anExportHoldsNoProgressFlagOrBurial() throws {
+    func anExportHoldsNoProgressFlagOrBurial() async throws {
         let climbed = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo por casualidad.", tags: ["vocabulario"]), in: engine)
         let flagged = try approve(
@@ -89,7 +89,7 @@ final class ExportingTests {
                 petricor\tEl olor de la lluvia.\t\tword\t
 
                 """)
-        let other = try anotherFicha(importing: file)
+        let other = try await anotherFicha(importing: file)
         #expect(try other.cards().map(\.standing) == [.inReviews, .inReviews, .inReviews])
         #expect(try other.reviewLog() == [])
     }
@@ -97,7 +97,7 @@ final class ExportingTests {
     // Flagged, set-aside and buried ones too: an export holds what cards say,
     // and a burial is where a card stands, which it leaves out.
     @Test("exporting a tag's cards holds every card with that tag, and all cards every card, buried ones too")
-    func exportingATagsCardsHoldsEveryCardWithThatTag() throws {
+    func exportingATagsCardsHoldsEveryCardWithThatTag() async throws {
         try approveCard("Revolución de Mayo", tags: ["historia"])
         try approveCard("Sócrates", tags: ["filosofía", "historia"])
         try approveCard("ubuntu", tags: ["filosofía"])
@@ -115,12 +115,12 @@ final class ExportingTests {
 
         #expect(historyCount == 4)
         #expect(
-            try anotherFicha(importing: history).cards().map(\.front) == [
+            try await anotherFicha(importing: history).cards().map(\.front) == [
                 "Revolución de Mayo", "Sócrates", "Cabildo abierto", "Independencia",
             ])
         #expect(everythingCount == 5)
         #expect(
-            try anotherFicha(importing: everything).cards().map(\.front) == [
+            try await anotherFicha(importing: everything).cards().map(\.front) == [
                 "Revolución de Mayo", "Sócrates", "ubuntu", "Cabildo abierto", "Independencia",
             ])
     }

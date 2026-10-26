@@ -91,18 +91,29 @@ public enum CardField: Sendable, Hashable, CaseIterable {
     /// blank. The front's image goes with the front, which an import that
     /// updates a card keeps.
     case backImage
+    /// The back's sound, which a file gives with a column for it, as the
+    /// back's image. The front's sound goes with the front, as its image.
+    case backSound
 }
 
-/// What a reader finds for an image a file of cards names for a side, by the
-/// name the file gives it, such as the name of a file in a zip.
-public enum ImageLookup: Sendable, Equatable {
-    /// The image, which Ficha holds by this name for the card.
-    case found(ImageName)
+/// What a reader finds for a file a file of cards names for a side, an image
+/// or a sound, by the name the file gives it, such as the name of a file in a
+/// zip.
+public enum FileLookup<Name: Sendable & Equatable>: Sendable, Equatable {
+    /// The file, which Ficha holds by this name for the card.
+    case found(Name)
     /// Nothing by that name comes with the file.
     case missing
-    /// What comes by that name isn't an image Ficha can read.
-    case notAnImage
+    /// What comes by that name isn't a file of its kind Ficha can read: an
+    /// image, or a sound.
+    case unreadable
 }
+
+/// What a reader finds for an image a file of cards names for a side.
+public typealias ImageLookup = FileLookup<ImageName>
+
+/// What a reader finds for a sound a file of cards names for a side.
+public typealias SoundLookup = FileLookup<SoundName>
 
 /// A line of a file of cards that makes no card, and why, for the preview to
 /// list; for an Anki package, a card of it that makes no card.
@@ -129,6 +140,13 @@ public struct LeftOutLine: Sendable, Equatable {
         /// A side of it has no text, and what comes as the image it names
         /// for that side, this, isn't an image Ficha can read.
         case notAnImage(String)
+        /// A side of it has neither text nor an image, and the sound it
+        /// names for that side, this, doesn't come with the file, as in a zip
+        /// that lacks it.
+        case missingSound(String)
+        /// A side of it has neither text nor an image, and what comes as the
+        /// sound it names for that side, this, isn't a sound Ficha can read.
+        case notASound(String)
         /// An Anki card with a side left with neither text nor an image once
         /// its sounds and its images on the web are dropped, such as one
         /// that holds only a sound.

@@ -54,25 +54,25 @@ extension CardsWindowState {
         }
 
         /// Whether Export writes a zip, with the text file and the cards'
-        /// images, rather than a text file: when a card it takes has an
-        /// image.
+        /// images and sounds, rather than a text file: when a card it takes
+        /// has an image or a sound.
         public var writesZip: Bool {
-            choices.first { $0.cards == chosen }?.holdsImages ?? false
+            choices.first { $0.cards == chosen }?.holdsFiles ?? false
         }
     }
 
     /// Something the Export sheet offers to export, with how many cards it
-    /// takes, and whether one of them has an image, as they were when the
-    /// sheet opened.
+    /// takes, and whether one of them has an image or a sound, as they were
+    /// when the sheet opened.
     public struct ExportChoice: Sendable, Equatable {
         public let cards: CardsToExport
         public let cardCount: Int
-        public let holdsImages: Bool
+        public let holdsFiles: Bool
 
-        public init(cards: CardsToExport, cardCount: Int, holdsImages: Bool = false) {
+        public init(cards: CardsToExport, cardCount: Int, holdsFiles: Bool = false) {
             self.cards = cards
             self.cardCount = cardCount
-            self.holdsImages = holdsImages
+            self.holdsFiles = holdsFiles
         }
 
         /// Whether it's a tag's cards.
@@ -93,7 +93,7 @@ extension CardsWindowState {
         let selected = Set(selectedRows.map(\.id))
         let offered: [CardsToExport] =
             (selected.isEmpty ? [] : [.cards(selected)]) + [.all] + tags.map { .tag($0.name) }
-        var counts: [(count: Int, holdsImages: Bool)] = []
+        var counts: [(count: Int, holdsFiles: Bool)] = []
         let isRead = perform(.export) { engine throws(EngineError) in
             counts = try engine.cardCounts(toExport: offered)
         }
@@ -102,7 +102,7 @@ extension CardsWindowState {
             if case .tag = cards, counted.count == 0 {
                 return nil
             }
-            return ExportChoice(cards: cards, cardCount: counted.count, holdsImages: counted.holdsImages)
+            return ExportChoice(cards: cards, cardCount: counted.count, holdsFiles: counted.holdsFiles)
         }
         let pointedAt: CardsToExport? =
             if selected.count > 1 {

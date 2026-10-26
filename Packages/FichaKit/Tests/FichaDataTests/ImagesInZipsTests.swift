@@ -31,9 +31,9 @@ final class ImagesInZipsTests {
 
     /// Another Ficha, with no cards, once it imports `file`, with every line
     /// read and without the tag named after the file.
-    private func anotherFicha(importing file: URL) throws -> Engine {
+    private func anotherFicha(importing file: URL) async throws -> Engine {
         let other = try Engine(location: .inMemory, time: time, calendar: calendar)
-        let preview = try other.previewImport(of: file)
+        let preview = try await other.previewImport(of: file)
         #expect(preview.leftOut == [])
         try other.importCards(
             preview,
@@ -42,7 +42,7 @@ final class ImagesInZipsTests {
     }
 
     @Test("cards with images export as a zip and import back with the same images on the same sides")
-    func cardsWithImagesExportAsAZipAndImportBack() throws {
+    func cardsWithImagesExportAsAZipAndImportBack() async throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         // A PNG, since it has transparency.
         let nest = try engine.addImage(picture(width: 600, height: 800, red: 0.3, alpha: 0.5))
@@ -64,7 +64,7 @@ final class ImagesInZipsTests {
         #expect(count == 4)
         let archive = try Archive(url: file, accessMode: .read)
         #expect(Set(archive.map(\.path)) == ["Aves.txt", bird.rawValue, nest.rawValue])
-        let other = try anotherFicha(importing: file)
+        let other = try await anotherFicha(importing: file)
         #expect(try other.cards().map(content(of:)) == contents)
         #expect(try other.image(bird) == engine.image(bird))
         #expect(try other.image(nest) == engine.image(nest))
@@ -97,7 +97,7 @@ final class ImagesInZipsTests {
     @Test(
         "a missing image in a zip leaves its side without it, and a card left with an empty side stays out with its reason"
     )
-    func aMissingImageLeavesItsSideWithoutIt() throws {
+    func aMissingImageLeavesItsSideWithoutIt() async throws {
         let text = """
             #separator:tab
             #html:false
@@ -117,7 +117,7 @@ final class ImagesInZipsTests {
                 ("cardenal.png", try picture(width: 300, height: 400, red: 0.9)),
             ], named: "Pájaros.zip")
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Pájaros": ""]))
 
         #expect(
@@ -134,11 +134,11 @@ final class ImagesInZipsTests {
     }
 
     @Test("an SVG in a zip comes in drawn, 1,600 pixels on its long side")
-    func anSVGInAZipComesInDrawn() throws {
+    func anSVGInAZipComesInDrawn() async throws {
         let text = "#columns:Front\tBack\tFront image\n\tEl sol.\tsol.svg\n"
         let file = try zip([("Cielo.txt", Data(text.utf8)), ("sol.svg", sunSVG)], named: "Cielo.zip")
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.leftOut == [])
@@ -147,7 +147,7 @@ final class ImagesInZipsTests {
     }
 
     @Test("a damaged image in a zip is one Ficha can't read, and the rest of the zip comes in")
-    func aDamagedImageInAZipIsOneFichaCantRead() throws {
+    func aDamagedImageInAZipIsOneFichaCantRead() async throws {
         let text = "#columns:Front\tBack\tFront image\n\tUn nido.\tnido.jpg\nhornero\tUn pájaro.\tnido.jpg\n"
         // The image first, so that its name first comes in its header.
         let file = try zip(
@@ -158,14 +158,14 @@ final class ImagesInZipsTests {
         bytes[name.upperBound + 20] ^= 0xFF
         try bytes.write(to: file)
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
 
         #expect(preview.leftOut == [LeftOutLine(line: 2, reason: .notAnImage("nido.jpg"))])
         #expect(preview.cardCount == 1)
     }
 
     @Test("a zip Finder made of a folder imports the text file in it with its images, whatever their case")
-    func aZipFinderMadeOfAFolderImports() throws {
+    func aZipFinderMadeOfAFolderImports() async throws {
         let file = try zip(
             [
                 ("Aves/Aves.txt", Data("#columns:Front\tBack\tFront image\n\tUn hornero.\thornero.jpg\n".utf8)),
@@ -174,7 +174,7 @@ final class ImagesInZipsTests {
                 ("__MACOSX/Aves/._Aves.txt", Data("Finder".utf8)),
             ], named: "Aves.zip")
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.leftOut == [])
@@ -185,7 +185,7 @@ final class ImagesInZipsTests {
     }
 
     @Test("a zip without one text file of cards, or that can't be opened as a zip, isn't read at all")
-    func aZipWithoutOneTextFileIsntRead() throws {
+    func aZipWithoutOneTextFileIsntRead() async throws {
         let photos = try zip([("hornero.jpg", try picture(width: 300, height: 200))], named: "Fotos.zip")
         let two = try zip(
             [("Aves.txt", Data("hornero\tUn pájaro.\n".utf8)), ("Más aves.csv", Data("tero,Un ave.\n".utf8))],
@@ -193,14 +193,16 @@ final class ImagesInZipsTests {
         let broken = folder.appending(path: "Rota.zip")
         try Data([0x50, 0x4B, 0x03, 0x04] + Array("no es un zip".utf8)).write(to: broken)
 
-        #expect(throws: EngineError.unreadableFile("Fotos.zip", .noTextFileInZip)) {
-            try engine.previewImport(of: photos)
+        await #expect(throws: EngineError.unreadableFile("Fotos.zip", .noTextFileInZip)) {
+            try await engine.previewImport(of: photos)
         }
-        #expect(throws: EngineError.unreadableFile("Dos.zip", .severalTextFilesInZip(["Aves.txt", "Más aves.csv"]))) {
-            try engine.previewImport(of: two)
+        await #expect(
+            throws: EngineError.unreadableFile("Dos.zip", .severalTextFilesInZip(["Aves.txt", "Más aves.csv"]))
+        ) {
+            try await engine.previewImport(of: two)
         }
-        #expect(throws: EngineError.unreadableFile("Rota.zip", .unreadableZip)) {
-            try engine.previewImport(of: broken)
+        await #expect(throws: EngineError.unreadableFile("Rota.zip", .unreadableZip)) {
+            try await engine.previewImport(of: broken)
         }
     }
 
@@ -208,7 +210,7 @@ final class ImagesInZipsTests {
     @Test(
         "a zip's cards update the cards they repeat with the back's image the file gives, keeping the front's, and a front with only an image repeats one with that image, but not a front with another"
     )
-    func aZipsCardsUpdateTheBacksImage() throws {
+    func aZipsCardsUpdateTheBacksImage() async throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
         let hornero = try engine.create(
@@ -231,7 +233,7 @@ final class ImagesInZipsTests {
                 ("hornero.jpg", try engine.image(bird)),
             ], named: "Aves.zip")
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         let outcome = try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Aves": ""]))
 
         #expect(preview.repeatedCount == 3)
@@ -258,7 +260,7 @@ final class ImagesInZipsTests {
     @Test(
         "a zip's card with the very front image of a card repeats it, though a card before it with that front and no image could"
     )
-    func aCardWithTheSameFrontImageRepeatsFirst() throws {
+    func aCardWithTheSameFrontImageRepeatsFirst() async throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird))
         let text = """
@@ -270,7 +272,7 @@ final class ImagesInZipsTests {
         let file = try zip(
             [("Aves.txt", Data(text.utf8)), ("hornero.jpg", try engine.image(bird))], named: "Aves.zip")
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Aves": ""]))
 
         #expect(preview.repeatedCount == 1)

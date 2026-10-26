@@ -132,26 +132,26 @@ private struct ImportButtonAndSheet: ViewModifier {
 /// importing its cards, takes seconds, while the window goes on answering.
 @concurrent
 private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Done {
-    work.run()
+    await work.run()
 }
 
 /// The sheet the Cards window's Import button opens. First it says in a line
 /// what Ficha reads, Copy Instructions for an AI copies how to write such a
 /// file, and Choose File… opens a text file of cards, a zip with one and its
-/// cards' images, or an Anki package. Then it shows what importing the file
-/// would do: how many cards come in, how many repeat the user's cards, with
-/// Update or Skip for them, which lines stay out and why, or for an Anki
-/// package, how many of its cards and why, and how many come in with the
-/// first of several images on a side, and the tags the cards get: for a
-/// text file, one named after the file, for every card; for an Anki package,
-/// one for each level of its decks and each of its tags. The user renames
-/// each, or clears it to leave it out. An Anki package's cards come in where
-/// Anki had them while Bring progress is ticked (ADR 0013), and how many of
-/// them land on a step goes in the line under the title. Import imports
-/// them. While it reads the file or imports, it says so beside a spinner.
-/// A preview taller than the window scrolls between the title and the
-/// buttons. Last, it says what the import did. `CardsWindowState` holds the
-/// preview, the choices and the outcome, and the sheet draws them.
+/// cards' images and sounds, or an Anki package. Then it shows what
+/// importing the file would do: how many cards come in, how many repeat the
+/// user's cards, with Update or Skip for them, which lines stay out and why,
+/// or for an Anki package, how many of its cards and why, and how many come
+/// in with the first of several images on a side, and the tags the cards
+/// get: for a text file, one named after the file, for every card; for an
+/// Anki package, one for each level of its decks and each of its tags. The
+/// user renames each, or clears it to leave it out. An Anki package's cards
+/// come in where Anki had them while Bring progress is ticked (ADR 0013), and
+/// how many of them land on a step goes in the line under the title. Import
+/// imports them. While it reads the file or imports, it says so beside a
+/// spinner. A preview taller than the window scrolls between the title and
+/// the buttons. Last, it says what the import did. `CardsWindowState` holds
+/// the preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
     /// The tallest the sheet gets, as the window is.
@@ -226,8 +226,8 @@ struct ImportSheet: View {
                     """
                     Ficha reads a text file with one card per line: its front, back, tags, type and source, \
                     separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text \
-                    save it. Cards with images come in a zip, with the text file and the images. Anki's decks come \
-                    in from the .apkg files Anki exports.
+                    save it. Cards with images or sounds come in a zip, with the text file and those files. Anki's \
+                    decks come in from the .apkg files Anki exports.
                     """,
                     comment: "Under the title of the Cards window's Import sheet, before a file is chosen."))
             HStack {
@@ -615,6 +615,15 @@ struct ImportSheet: View {
                 localized:
                     "Line \(number) has a side with only the image “\(image)”, which Ficha can't read as an image.",
                 comment: "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.")
+        case .missingSound(let sound):
+            String(
+                localized: "Line \(number) has a side with only the sound “\(sound)”, which isn't in the zip.",
+                comment: "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.")
+        case .notASound(let sound):
+            String(
+                localized:
+                    "Line \(number) has a side with only the sound “\(sound)”, which Ficha can't read as a sound.",
+                comment: "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.")
         case .emptyAnkiSide, .missingAnkiImage, .unreadableAnkiImage, .ankiImageOcclusion, .brokenAnkiTemplate:
             nil
         }
@@ -648,7 +657,7 @@ struct ImportSheet: View {
                 localized: "\(count) cards have a template with a mistake, so Anki shows an error for them too.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
         case .oneColumn, .blankFront, .blankBack, .unknownType, .unclosedQuote, .strayQuote, .missingImage,
-            .notAnImage:
+            .notAnImage, .missingSound, .notASound:
             nil
         }
     }

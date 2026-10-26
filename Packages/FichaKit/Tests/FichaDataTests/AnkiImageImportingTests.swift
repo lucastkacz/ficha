@@ -29,27 +29,27 @@ final class AnkiImageImportingTests {
     }
 
     /// The preview of `package`, written as `name` in the test's folder.
-    private func preview(_ package: AnkiPackage, named name: String = "Pájaros.apkg") throws -> ImportPreview {
+    private func preview(_ package: AnkiPackage, named name: String = "Pájaros.apkg") async throws -> ImportPreview {
         let file = folder.appending(path: name)
         try package.write(to: file)
-        return try engine.previewImport(of: file)
+        return try await engine.previewImport(of: file)
     }
 
     /// Previews `package` and imports it, with `choices`.
-    private func importPackage(_ package: AnkiPackage, choosing choices: ImportChoices = ImportChoices()) throws {
-        try engine.importCards(preview(package), choosing: choices)
+    private func importPackage(_ package: AnkiPackage, choosing choices: ImportChoices = ImportChoices()) async throws {
+        try await engine.importCards(preview(package), choosing: choices)
     }
 
     @Test(
         "a card with an image on its front and its name on its back comes in with the image on its front",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aFrontImageComesInOnTheFront(format: AnkiPackage.Format) throws {
+    func aFrontImageComesInOnTheFront(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [AnkiNote(type: .basic, fields: ["<img src=\"hornero.jpg\">", "hornero"])],
             media: ["hornero.jpg": try picture(width: 400, height: 300, red: 0.8)])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let card = try #require(try engine.cards().first)
         #expect([card.front, card.back] == ["", "hornero"])
@@ -65,13 +65,13 @@ final class AnkiImageImportingTests {
     @Test(
         "an SVG comes in drawn as a PNG, on white, 1,600 pixels on its long side",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func anSVGComesInDrawn(format: AnkiPackage.Format) throws {
+    func anSVGComesInDrawn(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [AnkiNote(type: .basic, fields: ["<img src=\"sol.svg\">", "el sol"])],
             media: ["sol.svg": sunSVG])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let card = try #require(try engine.cards().first)
         #expect([card.front, card.back] == ["", "el sol"])
@@ -88,7 +88,7 @@ final class AnkiImageImportingTests {
     @Test(
         "a side with two images brings the first, and the preview counts it",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aSideWithTwoImagesBringsTheFirst(format: AnkiPackage.Format) throws {
+    func aSideWithTwoImagesBringsTheFirst(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -105,7 +105,7 @@ final class AnkiImageImportingTests {
                 "hembra.jpg": try picture(width: 300, height: 400, red: 0.2),
             ])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.cardsWithImagesDropped == 1)
@@ -122,7 +122,7 @@ final class AnkiImageImportingTests {
     @Test(
         "an image a template hides, in a comment, a script or a hidden tag, isn't its side's image",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func anImageATemplateHidesIsntItsSidesImage(format: AnkiPackage.Format) throws {
+    func anImageATemplateHidesIsntItsSidesImage(format: AnkiPackage.Format) async throws {
         let decorated = AnkiNoteType(
             name: "Decorada", fields: ["Front", "Back"],
             templates: [
@@ -149,7 +149,7 @@ final class AnkiImageImportingTests {
                 "taza.png": try picture(width: 100, height: 100, red: 0.1),
             ])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.cardsWithImagesDropped == 0)
@@ -165,7 +165,7 @@ final class AnkiImageImportingTests {
     @Test(
         "a side with only a missing image keeps the card out with its reason",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aSideWithOnlyAMissingImageKeepsTheCardOut(format: AnkiPackage.Format) throws {
+    func aSideWithOnlyAMissingImageKeepsTheCardOut(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -176,7 +176,7 @@ final class AnkiImageImportingTests {
             ],
             media: ["latex-area.svg": Data("<svg xmlns=\"http://www.w3.org/2000/svg\"".utf8)])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(
@@ -195,7 +195,7 @@ final class AnkiImageImportingTests {
     @Test(
         "a side that is only one of Anki's formulas comes in as the picture Anki drew of it, and one beside text, one of several, or one without its picture, as its LaTeX",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aFormulaAloneComesInAsAnkisPicture(format: AnkiPackage.Format) throws {
+    func aFormulaAloneComesInAsAnkisPicture(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -214,7 +214,7 @@ final class AnkiImageImportingTests {
                 "latex-ef30b3f4141c33a5bf7044b0d1961d3399c05d50.png": try picture(width: 100, height: 60, red: 0.3),
             ])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.cardsWithImagesDropped == 0)
@@ -240,13 +240,13 @@ final class AnkiImageImportingTests {
     @Test(
         "a side that is only one of Anki's formulas comes in as Anki's picture of it as an SVG too",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aFormulaAloneComesInAsAnkisSVG(format: AnkiPackage.Format) throws {
+    func aFormulaAloneComesInAsAnkisSVG(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [AnkiNote(type: .basic, fields: ["Saludo", "[$]<b>hello</b>&nbsp; world[/$]"])],
             media: ["latex-060219fbf3ddb74306abddaf4504276ad793b029.svg": sunSVG])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let card = try #require(try engine.cards().first)
         #expect([card.front, card.back] == ["Saludo", ""])
@@ -258,7 +258,7 @@ final class AnkiImageImportingTests {
     @Test(
         "an image the media list names but the package lacks leaves its side without it",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func anImageThePackageLacksLeavesItsSideWithoutIt(format: AnkiPackage.Format) throws {
+    func anImageThePackageLacksLeavesItsSideWithoutIt(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -268,7 +268,7 @@ final class AnkiImageImportingTests {
             media: ["nido.jpg": try picture(width: 400, height: 300, red: 0.8)],
             mediaMissingFromTheZip: ["nido.jpg"])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.leftOut == [LeftOutLine(line: 2, reason: .missingAnkiImage)])
@@ -279,7 +279,7 @@ final class AnkiImageImportingTests {
 
     // As an image Ficha can't read, rather than refusing the whole package.
     @Test("a damaged image keeps out a card with only it, and the rest of the package comes in")
-    func aDamagedImageKeepsItsCardOut() throws {
+    func aDamagedImageKeepsItsCardOut() async throws {
         let package = AnkiPackage(
             format: .current,
             notes: [
@@ -292,7 +292,7 @@ final class AnkiImageImportingTests {
             ],
             damagedMedia: ["nido.jpg"])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.leftOut == [LeftOutLine(line: 1, reason: .unreadableAnkiImage)])
@@ -302,13 +302,13 @@ final class AnkiImageImportingTests {
     }
 
     @Test("a big image comes in shrunk", arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aBigImageComesInShrunk(format: AnkiPackage.Format) throws {
+    func aBigImageComesInShrunk(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [AnkiNote(type: .basic, fields: ["el esqueleto", "<img src=\"esqueleto.png\">"])],
             media: ["esqueleto.png": try picture(width: 2400, height: 3200, red: 0.9)])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let image = try #require(try engine.cards().first?.backImage)
         #expect(try pixelSize(of: engine.image(image)) == (1200, 1600))
@@ -320,7 +320,7 @@ final class AnkiImageImportingTests {
     @Test(
         "an image is found by its name as Anki writes it, with HTML's references and percent signs",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func anImageIsFoundByItsNameAsAnkiWritesIt(format: AnkiPackage.Format) throws {
+    func anImageIsFoundByItsNameAsAnkiWritesIt(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -334,7 +334,7 @@ final class AnkiImageImportingTests {
                 "100%.jpg": try picture(width: 200, height: 200, red: 0.5),
             ])
 
-        let preview = try preview(package)
+        let preview = try await preview(package)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.leftOut == [])
@@ -347,7 +347,7 @@ final class AnkiImageImportingTests {
     @Test(
         "a card the deck repeats takes the image on Anki's back, or none, when it's updated, and keeps its front's",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func anUpdatedCardTakesTheImageOnAnkisBack(format: AnkiPackage.Format) throws {
+    func anUpdatedCardTakesTheImageOnAnkisBack(format: AnkiPackage.Format) async throws {
         let mine = try engine.addImage(picture(width: 200, height: 200, red: 0.1))
         try engine.create(card(nil, front: "hornero", back: "Un pájaro.", frontImage: mine, backImage: mine))
         try engine.create(card(nil, front: "tero", back: "Otro pájaro.", backImage: mine))
@@ -359,7 +359,7 @@ final class AnkiImageImportingTests {
             ],
             media: ["nido.jpg": try picture(width: 300, height: 400, red: 0.2)])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let cards = try engine.cards()
         #expect(cards.map(\.back) == ["Hace su nido de barro.", "Grita cuando alguien se acerca."])
@@ -372,7 +372,7 @@ final class AnkiImageImportingTests {
     @Test(
         "a newer version of a deck repeats its fronts with only an image, and its fronts with one caption, by their images",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
-    func aNewerDeckRepeatsFrontsByTheirImages(format: AnkiPackage.Format) throws {
+    func aNewerDeckRepeatsFrontsByTheirImages(format: AnkiPackage.Format) async throws {
         let maps = [
             "chile.png": try picture(width: 300, height: 200, red: 0.1),
             "peru.png": try picture(width: 300, height: 200, red: 0.2),
@@ -381,7 +381,7 @@ final class AnkiImageImportingTests {
         func note(_ front: String, _ map: String, _ back: String) -> AnkiNote {
             AnkiNote(type: .basic, fields: ["\(front)<img src=\"\(map)\">", back])
         }
-        try importPackage(
+        try await importPackage(
             AnkiPackage(
                 format: format,
                 notes: [
@@ -399,7 +399,7 @@ final class AnkiImageImportingTests {
             ],
             media: maps)
 
-        let preview = try preview(newer)
+        let preview = try await preview(newer)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.repeatedCount == 4)

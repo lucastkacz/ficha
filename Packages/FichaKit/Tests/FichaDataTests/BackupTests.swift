@@ -145,7 +145,7 @@ final class BackupTests {
     }
 
     @Test("a restore saves a copy before a restore, and the database then holds the copy's cards, review log and inbox")
-    func restoreBringsBackTheCopy() throws {
+    func restoreBringsBackTheCopy() async throws {
         let engine = try openEngine()
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
@@ -293,7 +293,7 @@ final class BackupTests {
     }
 
     @Test("a copy from before Ficha kept when a card was edited restores with every card never edited, until it is")
-    func copyFromBeforeEditedTimesRestoresWithEveryCardNeverEdited() throws {
+    func copyFromBeforeEditedTimesRestoresWithEveryCardNeverEdited() async throws {
         let engine = try openEngine()
         let backups = try #require(engine.backupsFolder)
         try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
@@ -472,14 +472,14 @@ final class BackupTests {
     }
 
     @Test("a copy before an import keeps the images too, so restoring it brings a card deleted since back whole")
-    func copyBeforeAnImportKeepsTheImages() throws {
+    func copyBeforeAnImportKeepsTheImages() async throws {
         let engine = try openEngine()
         let (bird, _) = try twoImages(in: engine)
         let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
         let image = try engine.image(bird)
         let file = folder.appending(path: "pájaros.txt")
         try Data("benteveo\tUn pájaro que dice su nombre.\n".utf8).write(to: file)
-        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
         let copy = try #require(outcome.copyBeforeImport)
         try engine.delete([hornero.id])
 
@@ -578,7 +578,7 @@ final class BackupTests {
         let sound = try engine.sound(la)
         let file = folder.appending(path: "notas.txt")
         try Data("do\tLa primera nota de la escala.\n".utf8).write(to: file)
-        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
         let copy = try #require(outcome.copyBeforeImport)
         try engine.delete([nota.id])
 

@@ -1192,14 +1192,14 @@
     "Ficha first saves everything as it is now in a copy before a restore, which the list then shows: restoring that copy undoes this one." : {
       "comment" : "Under the title of the Backups tab's question before it restores a copy."
     },
-    "Ficha reads a text file with one card per line: its front, back, tags, type and source, separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text save it. Cards with images come in a zip, with the text file and the images. Anki's decks come in from the .apkg files Anki exports." : {
+    "Ficha reads a text file with one card per line: its front, back, tags, type and source, separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text save it. Cards with images or sounds come in a zip, with the text file and those files. Anki's decks come in from the .apkg files Anki exports." : {
       "comment" : "Under the title of the Cards window's Import sheet, before a file is chosen."
     },
     "Ficha saves the cards to a text file that another Ficha imports, and Anki too. It holds what the cards say, never your progress." : {
       "comment" : "Under the title of the Cards window's Export sheet."
     },
-    "Ficha saves the cards to a zip, with a text file and their images, that another Ficha imports. It holds what the cards say, never your progress." : {
-      "comment" : "Under the title of the Cards window's Export sheet, when a card has an image."
+    "Ficha saves the cards to a zip, with a text file and their images and sounds, that another Ficha imports. It holds what the cards say, never your progress." : {
+      "comment" : "Under the title of the Cards window's Export sheet, when a card has an image or a sound."
     },
     "Find" : {
       "comment" : "A hidden button of the Cards window: ⌘F, which goes to the search field."
@@ -1452,6 +1452,28 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Line %1$lld has a side with only the image “%2$@”, which isn't in the zip."
+          }
+        }
+      }
+    },
+    "Line %lld has a side with only the sound “%@”, which Ficha can't read as a sound." : {
+      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Line %1$lld has a side with only the sound “%2$@”, which Ficha can't read as a sound."
+          }
+        }
+      }
+    },
+    "Line %lld has a side with only the sound “%@”, which isn't in the zip." : {
+      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Line %1$lld has a side with only the sound “%2$@”, which isn't in the zip."
           }
         }
       }

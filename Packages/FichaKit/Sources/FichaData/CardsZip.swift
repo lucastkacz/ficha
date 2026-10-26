@@ -1,3 +1,4 @@
+import AVFoundation
 import CryptoKit
 import FichaCore
 import Foundation
@@ -5,10 +6,10 @@ import ImageIO
 import UniformTypeIdentifiers
 internal import ZIPFoundation
 
-// A zip of cards, as Ficha exports cards with images and imports them: a
-// text file of cards, as `CardsTextFile` reads and writes it, with the image
-// files its lines name beside it. ZIPFoundation reads and writes the zip
-// (ADR 0014).
+// A zip of cards, as Ficha exports cards with images or sounds and imports
+// them: a text file of cards, as `CardsTextFile` reads and writes it, with
+// the image and sound files its lines name beside it. ZIPFoundation reads and
+// writes the zip (ADR 0014).
 
 /// The extensions of the text file of cards a zip of cards holds, as the
 /// Import sheet opens one: plain text, or a spreadsheet's CSV or TSV.
@@ -51,15 +52,18 @@ func fileContents(of file: URL, upTo count: Int? = nil) throws(CardsFileProblem)
 }
 
 /// A zip that holds `text`, a text file of cards named `textFileName`, and
-/// `images` beside it, each in a file named as Ficha keeps it, which the
-/// text's image columns name, every file dated `date`. The text is
-/// compressed, and the images aren't, as zip tools leave a JPEG or a PNG,
-/// which is compressed already.
-func zipOfCards(text: String, named textFileName: String, images: [CardImage], at date: Date) throws -> Data {
+/// `images` and `sounds` beside it, each in a file named as Ficha keeps it,
+/// which the text's image and sound columns name, every file dated `date`.
+/// The text is compressed, and the images and sounds aren't, as zip tools
+/// leave a JPEG, a PNG or an M4A, which is compressed already.
+func zipOfCards(text: String, named textFileName: String, images: [CardImage], sounds: [CardSound], at date: Date)
+    throws -> Data
+{
     let archive = try Archive(data: Data(), accessMode: .create, pathEncoding: nil)
     let files =
         [(textFileName, Data(text.utf8), CompressionMethod.deflate)]
         + images.map { ($0.name.rawValue, $0.data, CompressionMethod.none) }
+        + sounds.map { ($0.name.rawValue, $0.data, CompressionMethod.none) }
     for (path, data, compression) in files {
         try archive.addEntry(
             with: path, type: .file, uncompressedSize: Int64(data.count), modificationDate: date,
@@ -75,15 +79,15 @@ func zipOfCards(text: String, named textFileName: String, images: [CardImage], a
 }
 
 /// What a zip of cards holds: its text file, read as `CardsTextFile` reads
-/// one, and each image a line names, by its name, from the zip's file by
-/// that name beside the text file, as it comes in, by the name Ficha keeps
-/// it by. The text file is the zip's one file ending in .txt, .csv or .tsv,
-/// at its top or in a folder, as Finder zips one, leaving out the files
-/// Finder adds, in `__MACOSX` or named with a leading dot. An image's name
-/// is found in any case, as a Mac finds a file. Each image is read on its
-/// own, and one the zip holds damaged is one Ficha can't read.
-func readZipOfCards(_ archive: Archive) throws(CardsFileProblem) -> (
-    reading: ImportReading, images: [ImageName: CardImage]
+/// one, and each image and sound a line names, by its name, from the zip's
+/// file by that name beside the text file, as it comes in, by the name Ficha
+/// keeps it by. The text file is the zip's one file ending in .txt, .csv or
+/// .tsv, at its top or in a folder, as Finder zips one, leaving out the files
+/// Finder adds, in `__MACOSX` or named with a leading dot. A file's name is
+/// found in any case, as a Mac finds a file. Each file is read on its own,
+/// and one the zip holds damaged is one Ficha can't read.
+func readZipOfCards(_ archive: Archive) async throws(CardsFileProblem) -> (
+    reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound]
 ) {
     let files = archive.filter { $0.type == .file && !isAddedByFinder($0.path) }
     let textFiles = files.filter { textFileExtensions.contains(pathExtension(of: $0.path)) }
@@ -104,13 +108,24 @@ func readZipOfCards(_ archive: Archive) throws(CardsFileProblem) -> (
         logger.error("Couldn't read the text file of a zip to import: \(String(describing: error), privacy: .public)")
         throw .unreadableZip
     }
-    var images = ImagesComingIn { name in
+    let fileNamed: (String) throws -> Data? = { name in
         try filesByPath[(folder + name).lowercased()].map { try contents(of: $0, in: archive) }
-    } bring: { data, name throws(EngineError) in
-        try CardImage(fromZip: data, named: name)
     }
-    let reading = try CardsTextFile.read(text) { images.lookUp($0) }
-    return (reading, images.found)
+    var images = FilesInZip<CardImage>(contents: fileNamed)
+    var sounds = FilesInZip<CardSound>(contents: fileNamed)
+    let svgs = SVGDrawer()
+    let reading = try await CardsTextFile.read(text) { name in
+        // Drawn, when its name ends in `.svg`, as Anki tells an SVG.
+        images.lookUp(name) { data throws(EngineError) in
+            try pathExtension(of: name) == "svg"
+                ? CardImage(drawing: data, with: svgs) : CardImage(fromZip: data, named: name)
+        }
+    } sounds: { name in
+        await sounds.lookUp(name) { data async throws(EngineError) in
+            try await CardSound(fromZip: data, named: name)
+        }
+    }
+    return (reading, images.found, sounds.found)
 }
 
 /// Whether the file at `path` in a zip is one Finder adds when it zips
@@ -169,6 +184,62 @@ extension CardImage {
             (properties[kCGImagePropertyOrientation] as? Int ?? 1) == 1,
             properties[kCGImagePropertyGPSDictionary] == nil
         else {
+            return nil
+        }
+        self.init(name: name, data: data)
+    }
+}
+
+extension CardSound {
+    /// The sound `data`, which a zip of cards holds by `name`: as it is when
+    /// it's a sound Ficha converted and named, as a zip Ficha exported holds
+    /// them, so that cards passed on keep their sounds byte for byte and the
+    /// same names, since converting a sound again would change it; converted,
+    /// as every sound that comes in, otherwise.
+    init(fromZip data: Data, named name: String) async throws(EngineError) {
+        if let sound = await CardSound(asFichaKeepsIt: data, named: name) {
+            self = sound
+        } else {
+            try await self.init(converting: data, named: name)
+        }
+    }
+
+    /// `data`, named `fileName`, as Ficha keeps it, when it's a sound Ficha
+    /// already converted: its name is a sound's name, which the SHA-256 of
+    /// `data` makes, and it's an `m4a` file whose one track AVFoundation
+    /// reads as AAC at `soundSampleRate`, mono or stereo, about as heavy as
+    /// `soundBitRatePerChannel` for each channel makes it: up to a tenth
+    /// more, since the encoder goes over the rate it's asked for, by up to 6%
+    /// on a stereo noise. Nil otherwise.
+    private init?(asFichaKeepsIt data: Data, named fileName: String) async {
+        let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard let name = SoundName(rawValue: fileName), fileName == "\(hash).m4a",
+            // The type of file an `m4a` file says it is, at its start.
+            data.count >= 12, data[data.startIndex + 4..<data.startIndex + 12].elementsEqual(Data("ftypM4A ".utf8))
+        else {
+            return nil
+        }
+        let file = URL.temporaryDirectory.appending(path: "Ficha-sound-\(UUID().uuidString).m4a")
+        defer { try? FileManager.default.removeItem(at: file) }
+        do {
+            try data.write(to: file)
+            let tracks = try await AVURLAsset(url: file).load(.tracks)
+            guard let track = tracks.first, tracks.count == 1, track.mediaType == .audio else {
+                return nil
+            }
+            let (descriptions, dataRate) = try await track.load(.formatDescriptions, .estimatedDataRate)
+            guard let description = descriptions.first, descriptions.count == 1,
+                let format = CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee,
+                format.mFormatID == kAudioFormatMPEG4AAC, format.mSampleRate == Double(soundSampleRate),
+                (1...2).contains(format.mChannelsPerFrame),
+                dataRate <= 1.1 * Float(soundBitRatePerChannel) * Float(format.mChannelsPerFrame)
+            else {
+                return nil
+            }
+        } catch {
+            logger.error(
+                "Couldn't tell whether a sound in a zip is one Ficha converted: \(String(describing: error), privacy: .public)"
+            )
             return nil
         }
         self.init(name: name, data: data)

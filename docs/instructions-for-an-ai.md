@@ -1,6 +1,6 @@
 # Instructions for an AI: a file of cards for Ficha
 
-Ficha is a flashcard app for the Mac: every so often it shows its user a small card, and it spaces each card by how well they know it. It imports cards from a text file, the same file it exports, or from a zip with that file and the cards' images, and these instructions say how to write one. In Ficha, "Copy Instructions for an AI" in the Cards window's Import sheet copies them, to paste into an AI chat along with what you want cards about. You can also follow them to write a file yourself.
+Ficha is a flashcard app for the Mac: every so often it shows its user a small card, and it spaces each card by how well they know it. It imports cards from a text file, the same file it exports, or from a zip with that file and the cards' images and sounds, and these instructions say how to write one. In Ficha, "Copy Instructions for an AI" in the Cards window's Import sheet copies them, to paste into an AI chat along with what you want cards about. You can also follow them to write a file yourself.
 
 ## What to do
 
@@ -33,7 +33,7 @@ Then each card has a line of its own, with five columns separated by tab charact
    - `question`: a question on the front, with its answer on the back.
 5. **Source**: where the card's content comes from, such as a book or a course. It can be empty.
 
-Every line has all five columns: an empty column is nothing between two tabs, or after the last one. The front and the back always hold text, unless the card has an image, as the last section says.
+Every line has all five columns: an empty column is nothing between two tabs, or after the last one. The front and the back always hold text, unless the card has an image or a sound, as the last sections say.
 
 A column that holds a line break or a double quote, or starts with `#`, goes in double quotes, with each double quote inside it written twice: `"He said ""yes""."`. Ficha skips a line that starts with `#` outside quotes, as a comment, and blank lines.
 
@@ -84,3 +84,28 @@ This file holds two cards, each with the tag "birds", for a zip that also holds 
 
 - "What bird is this?", a question, with the photo `hornero.jpg` on its front too.
 - A card whose front is only the photo `lapwing.jpg`, with no text and no type.
+
+## Cards with sounds
+
+A card's front or back can play a sound too, such as a bird's song on the front and its name on the back. Ficha plays it only when the user asks. Write cards with sounds only for sounds the user has, or will add, as files: you can't put a sound in a text file.
+
+- The header names two more columns after Source, `Front sound` and `Back sound`, with a tab between each name, and every line has all seven columns. When the cards have images too, the sound columns go after `Back image`, and every line has all nine columns.
+- Each of them holds the name of the sound file for that side, such as `hornero.mp3`, or nothing when the side has no sound. A side holds text, an image, a sound, or any of them together: with an image or a sound, its text can be empty.
+- The text file and the sound files go in one zip, side by side, with the images when there are any, as "Cards with images" says. Ficha converts each sound to a light format, about 1 MB a minute. It reads the sound formats a Mac plays, such as MP3, M4A, WAV and AIFF, and from a video it takes the sound.
+- Answer with the text file as "What to do" says, and then one line telling the user to zip it with the sounds it names.
+
+### An example with sounds
+
+```text
+#separator:tab
+#html:false
+#columns:Front	Back	Tags	Type	Source	Front sound	Back sound
+#tags column:3
+What bird sings like this?	The rufous hornero, which builds its nest of mud.	birds	question		hornero.m4a	
+	The southern lapwing, which shouts when anyone nears its nest.	birds			lapwing.m4a	
+```
+
+This file holds two cards, each with the tag "birds", for a zip that also holds `hornero.m4a` and `lapwing.m4a`:
+
+- "What bird sings like this?", a question, with the song `hornero.m4a` on its front too.
+- A card whose front is only the call `lapwing.m4a`, with no text and no type.

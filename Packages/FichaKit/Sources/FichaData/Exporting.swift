@@ -27,19 +27,22 @@ extension Engine {
     /// Writes the cards `cards` takes to `file`, in the order they came in,
     /// as the text file the import reads: what each card says, its front,
     /// back, tags, type and source, and never where it stands, its review
-    /// log, its flag or its burial. When a card it takes has an image, the
-    /// file is a zip instead, with that text file, named after `file`, and
-    /// the cards' images beside it, which its lines name. Returns how many
-    /// cards it wrote.
+    /// log, its flag or its burial. When a card it takes has an image or a
+    /// sound, the file is a zip instead, with that text file, named after
+    /// `file`, and the cards' images and sounds beside it, each once, which
+    /// its lines name. Returns how many cards it wrote.
     @discardableResult
     public func export(_ cards: CardsToExport, to file: URL) throws(EngineError) -> Int {
         let contents = try read { db in
             try allCards(in: db).filter(cards.takes).map(exportedContent(of:))
         }
         var images: [CardImage] = []
-        let names = Set(contents.flatMap(\.images))
-        for name in names.sorted(by: { $0.rawValue < $1.rawValue }) {
+        for name in Set(contents.flatMap(\.images)).sorted(by: { $0.rawValue < $1.rawValue }) {
             images.append(CardImage(name: name, data: try image(name)))
+        }
+        var sounds: [CardSound] = []
+        for name in Set(contents.flatMap(\.sounds)).sorted(by: { $0.rawValue < $1.rawValue }) {
+            sounds.append(CardSound(name: name, data: try sound(name)))
         }
         let text = CardsTextFile.text(of: contents)
         do {
@@ -52,11 +55,11 @@ extension Engine {
                 }
             }
             let data =
-                images.isEmpty
+                images.isEmpty && sounds.isEmpty
                 ? Data(text.utf8)
                 : try zipOfCards(
                     text: text, named: file.deletingPathExtension().lastPathComponent + ".txt", images: images,
-                    at: time.now)
+                    sounds: sounds, at: time.now)
             try data.write(to: file, options: .atomic)
         } catch {
             logger.error("Couldn't write the exported cards: \(String(describing: error))")
@@ -67,13 +70,13 @@ extension Engine {
 
     /// How many cards each of `choices` takes, in its order, as the cards
     /// are now, read once for all of them, and whether one of them has an
-    /// image, which makes the export a zip.
-    func cardCounts(toExport choices: [CardsToExport]) throws(EngineError) -> [(count: Int, holdsImages: Bool)] {
+    /// image or a sound, which makes the export a zip.
+    func cardCounts(toExport choices: [CardsToExport]) throws(EngineError) -> [(count: Int, holdsFiles: Bool)] {
         try read { db in
             let cards = try allCards(in: db)
             return choices.map { choice in
                 let taken = cards.filter(choice.takes)
-                return (taken.count, taken.contains { !$0.images.isEmpty })
+                return (taken.count, taken.contains { !$0.images.isEmpty || !$0.sounds.isEmpty })
             }
         }
     }
@@ -85,7 +88,8 @@ private func exportedContent(of card: Card) throws -> CardContent {
     guard
         let content = CardContent(
             type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source,
-            frontImage: card.frontImage, backImage: card.backImage)
+            frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
+            backSound: card.backSound)
     else {
         throw unreadable("Card \(card.id) has a blank front or back")
     }

@@ -266,13 +266,17 @@ public struct ImportWork: Sendable {
     fileprivate let engine: Engine
     fileprivate let job: Job
 
-    /// Does the work, where it's called, and says what it did.
-    public func run() -> Done {
+    /// Does the work, away from the caller's actor, and says what it did.
+    public func run() async -> Done {
         switch job {
         case .preview(let file):
-            Done(id: id, result: .preview(Result { () throws(EngineError) in try engine.previewImport(of: file) }))
+            do {
+                return Done(id: id, result: .preview(.success(try await engine.previewImport(of: file))))
+            } catch {
+                return Done(id: id, result: .preview(.failure(error)))
+            }
         case .importCards(let preview, let choices):
-            Done(
+            return Done(
                 id: id,
                 result: .imported(
                     Result { () throws(EngineError) in try engine.importCards(preview, choosing: choices) }))
