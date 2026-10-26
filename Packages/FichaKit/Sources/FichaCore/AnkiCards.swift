@@ -5,12 +5,13 @@ extension AnkiCollection {
     /// for each Anki card, whose front is its question side as Anki renders
     /// it, and whose back is its answer side, from where the answer starts,
     /// both as Anki's reviewer shows them when nothing was typed in a box to
-    /// type the answer in, as plain text, each with the first image it
-    /// shows, as `images` finds it by its name in the package, and the first
-    /// sound it plays, as `sounds` finds it, the back's among the answer
-    /// side's own where the answer starts, or else above it: a side whose
-    /// image or sound isn't found comes in without it, and its other images
-    /// and sounds are dropped. A side that is one of Anki's formulas alone,
+    /// type the answer in, as plain text, with each run of empty lines folded
+    /// into one empty line, each with the first image it shows, as `images`
+    /// finds it by its name in the package, and the first sound it plays, as
+    /// `sounds` finds it, the back's among the answer side's own where the
+    /// answer starts, or else above it: a side whose image or sound isn't
+    /// found comes in without it, and its other images and sounds are
+    /// dropped. A side that is one of Anki's formulas alone,
     /// such as `[$]x^2[/$]`, comes in as the picture Anki drew of it, found
     /// by its name, after the SHA-1 digest `sha1` gives of a text as
     /// lowercase hex, and as its LaTeX when the package lacks it or Ficha

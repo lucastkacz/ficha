@@ -107,6 +107,24 @@ final class ImportingTests {
             ])
     }
 
+    // Unlike an Anki package's, whose runs come from what Anki shows
+    // between the lines (#229): a file's lines are its writer's.
+    @Test("a file's runs of empty lines stay as they are, also in its HTML")
+    func aFilesRunsOfEmptyLinesStay() async throws {
+        let file = try file(
+            "Arroz.txt",
+            """
+            #separator:tab
+            #html:true
+            sustantivo<br><br><br><br>Como arroz.\tarroz
+
+            """)
+
+        try await importFile(file)
+
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["sustantivo\n\n\n\nComo arroz.", "arroz"]])
+    }
+
     // The headers an export writes, for Ficha and Anki to read it back.
     @Test("a file with the headers Ficha writes reads every column by its name, and its tags by #tags column")
     func aFileWithFichasHeadersReadsEveryColumn() async throws {

@@ -2,8 +2,9 @@ import Foundation
 
 /// A side of an Anki card as Ficha brings it in, from the HTML Anki renders
 /// for it, without its sounds, and the sounds it plays: its plain text,
-/// without its images, which the HTML's tags are; its image, the first of
-/// the package's files the HTML shows, when the package has it and Ficha can
+/// without its images, which the HTML's tags are, and with each run of
+/// empty lines folded into one empty line; its image, the first of the
+/// package's files the HTML shows, when the package has it and Ficha can
 /// read it; and its sound, the first it plays, a video's sound included,
 /// when the package has it and Ficha can read it. The side's other images
 /// and sounds are dropped, since a side holds one of each at most, and so
@@ -59,7 +60,7 @@ struct AnkiSide {
             text = ""
             imageLookup = formula
         } else {
-            text = plainText(fromHTML: html)
+            text = runsOfEmptyLinesFolded(in: plainText(fromHTML: html))
             imageLookup = names.first.map { name in
                 // Some decks keep a name percent-encoded, as a browser's
                 // address has it, though Anki writes it as it is.
@@ -100,6 +101,23 @@ struct AnkiSide {
         case (.found?, _), (nil, .found?), (nil, nil): .emptyAnkiSide
         }
     }
+}
+
+/// `text`, a side's plain text, with each run of empty lines folded into one
+/// empty line, and a single one kept (#229). Where Anki shows a sound's
+/// button, the line is left empty once the sound is apart from the text, as
+/// the five lines between each Core 2000 front's part of speech and its
+/// sentence. A file's text keeps its runs, which its writer typed.
+private func runsOfEmptyLinesFolded(in text: String) -> String {
+    var folded = String.UnicodeScalarView()
+    var lineBreaksInARow = 0
+    for scalar in text.unicodeScalars {
+        lineBreaksInARow = scalar == "\n" ? lineBreaksInARow + 1 : 0
+        if lineBreaksInARow <= 2 {
+            folded.append(scalar)
+        }
+    }
+    return String(folded)
 }
 
 /// The names of the sounds `html` plays, each once, in its order, and `html`
