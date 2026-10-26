@@ -47,7 +47,7 @@ struct UndoTests {
 
         #expect(panel.current == .review(cards[0]))
         #expect(try engine.inbox().flaggedCards.isEmpty)
-        #expect(try engine.reviewNow(settings) == cards.map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
     }
 
     @Test("undoing a bury brings the card back to the reviews, and the panel shows it again")
@@ -60,7 +60,7 @@ struct UndoTests {
 
         #expect(panel.current == .review(cards[0]))
         #expect(try engine.cards().map(\.buriedAt) == [nil, nil])
-        #expect(try engine.reviewNow(settings) == cards.map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
     }
 
     @Test("⌘Z goes back one card at a time, and no further than the first one")
@@ -82,7 +82,7 @@ struct UndoTests {
 
         #expect(panel.current == .review(cards[0]))
         #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
-        #expect(try engine.reviewNow(settings) == cards.map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
     }
 
     @Test("⌘Z shows the last card again as Lucas left it, its back showing or not, with its time going on")
@@ -217,7 +217,7 @@ struct UndoTests {
         #expect(panel.content == .front(cards[0], isAhead: false))
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(!panel.canUndo)
-        #expect(try engine.reviewNow(settings) == cards.map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
     }
 
     // A refine session can approve or discard a follow-up while the panel is

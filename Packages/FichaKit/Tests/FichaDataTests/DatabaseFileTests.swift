@@ -175,6 +175,34 @@ final class DatabaseFileTests {
             ])
     }
 
+    @Test(
+        "a database from before Both ways migrates with every card going one way, and its step, due time and review log as they were"
+    )
+    func aDatabaseFromBeforeBothWaysMigratesWithEveryCardGoingOneWay() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeBothWays(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+        let ladder = ReviewSettings.defaults.ladder
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let cards = try engine.cards()
+        #expect(cards.map(\.front) == ["serendipia", "ubuntu"])
+        #expect(cards.map(\.bothWays) == [false, false])
+        // serendipia: its first view, then good an hour later: the second
+        // step, four hours from the good.
+        #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
+        #expect(try engine.standing(of: 2, on: ladder) == .new)
+        #expect(
+            try engine.reviewLog() == [
+                ReviewLogEntry(
+                    cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.good), answeredAt: time.now + hours(1), responseTime: .seconds(3),
+                    trigger: .appearance),
+            ])
+    }
+
     // Ficha opens its database every time it starts, and the CLI on every
     // command: copying it each time would fill the data folder.
     @Test("a new database, or one already up to date, isn't copied")
@@ -395,6 +423,32 @@ func saveDatabaseBeforeSounds(at file: URL, at time: Date, image: ImageName) thr
                     (2, 'concept', 'ubuntu', 'Soy porque somos.', NULL, '[]', ?)
                 """,
             arguments: [image.rawValue, time, time])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before a card could go both
+/// ways, through the schema's migrations up to the one before it, with two
+/// cards approved at `time`: serendipia, met then and good an hour later,
+/// and ubuntu, new.
+func saveDatabaseBeforeBothWays(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v17 sounds on cards")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?),
+                    (2, 'concept', 'ubuntu', 'Soy porque somos.', '[]', ?)
+                """,
+            arguments: [time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                VALUES (1, 'firstView', NULL, ?, 8.25, 'reviewNow', 0),
+                    (1, 'review', 'good', ?, 3, 'appearance', 0)
+                """,
+            arguments: [time, time + hours(1)])
     }
     try database.close()
 }

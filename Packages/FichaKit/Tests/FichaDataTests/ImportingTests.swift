@@ -307,7 +307,7 @@ final class ImportingTests {
 
         var firstViews: [String] = []
         for _ in 0..<3 {
-            for case .firstView(let card) in try engine.reviewNow(.defaults) {
+            for case .firstView(let card, _) in try engine.reviewNow(.defaults) {
                 firstViews.append(card.front)
                 try engine.meet(card)
             }

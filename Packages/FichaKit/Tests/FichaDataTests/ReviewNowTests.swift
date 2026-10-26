@@ -86,7 +86,7 @@ struct ReviewNowTests {
 
         time.move(to: try morning(of: 15, in: calendar))
 
-        #expect(try engine.reviewNow(settings) == met.map(PanelCard.review) + [.firstView(ockham)])
+        #expect(try engine.reviewNow(settings) == met.map { PanelCard.review($0) } + [.firstView(ockham)])
     }
 
     @Test("a new card waits while due cards fill review now")
@@ -102,7 +102,7 @@ struct ReviewNowTests {
 
         time.move(to: try morning(of: 15, in: calendar))
 
-        #expect(try engine.reviewNow(settings) == met.map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == met.map { PanelCard.review($0) })
     }
 
     @Test("new cards stop at 5 a day, and start again when the day does, by the Mac's calendar")

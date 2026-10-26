@@ -75,7 +75,7 @@ struct SeeMoreTests {
         // the lowest step first, so two are left over. "más tarde" is due in
         // half an hour and "mucho más tarde" in an hour, and "nueva" is new.
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        #expect(panel.cards == [due[5], due[6], due[0], due[1], due[2]].map(PanelCard.review))
+        #expect(panel.cards == [due[5], due[6], due[0], due[1], due[2]].map { PanelCard.review($0) })
         for _ in panel.cards {
             try panel.answer(.review(.hard), responseTime: .seconds(3))
         }

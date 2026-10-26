@@ -332,6 +332,27 @@ final class BackupTests {
         #expect(edited.backSound == la)
     }
 
+    @Test("a copy from before Both ways restores with every card going one way, and a backup since keeps the switch")
+    func copyFromBeforeBothWaysRestoresWithEveryCardGoingOneWay() throws {
+        let engine = try openEngine()
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeBothWays(at: backups.appending(path: name), at: time.now - days(1))
+
+        try engine.restore(name)
+        let restored = try engine.cards()
+        try engine.setBothWays(true, of: [2])
+        let backup = try engine.backUpNow(.defaults)
+        try engine.setBothWays(false, of: [2])
+        time.advance(by: minutes(1))
+        try engine.restore(backup.name)
+
+        #expect(restored.map(\.front) == ["serendipia", "ubuntu"])
+        #expect(restored.map(\.bothWays) == [false, false])
+        #expect(try engine.cards().map(\.bothWays) == [false, true])
+    }
+
     @Test("a copy that isn't in the Backups folder can't be restored")
     func missingCopyIsRefused() throws {
         let engine = try openEngine()

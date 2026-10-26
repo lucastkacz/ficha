@@ -327,6 +327,15 @@ enum Schema {
                 table.add(column: "backSound", .text)
             }
         }
+        migrator.registerMigration("v18 cards that go both ways") { db in
+            // Whether the user also reviews the card back first: its back,
+            // and its front once they flip it (ADR 0016). Off for every card
+            // until the user turns it on, so each one from before this
+            // migration goes one way, as it did.
+            try db.alter(table: "card") { table in
+                table.add(column: "bothWays", .boolean).notNull().defaults(to: false)
+            }
+        }
         return migrator
     }()
 }

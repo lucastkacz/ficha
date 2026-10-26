@@ -197,8 +197,8 @@ public struct ReviewPanelState: Sendable {
             return .asking(current.card, showsBack: showsBack)
         }
         return switch current {
-        case .firstView(let card): .firstView(card)
-        case .review(let card), .reviewAhead(let card):
+        case .firstView(let card, _): .firstView(card)
+        case .review(let card, _), .reviewAhead(let card, _):
             isFlipped ? .back(card, isAhead: current.isAhead) : .front(card, isAhead: current.isAhead)
         }
     }
@@ -580,7 +580,7 @@ public struct ReviewPanelState: Sendable {
     private mutating func lookForMore() {
         guard current == nil else { return }
         do {
-            moreCards = try engine.seeMoreCards(after: Set(cards.map(\.card.id)), from: trigger, settings: settings)
+            moreCards = try engine.seeMoreCards(after: Set(cards.map(\.cardWay)), from: trigger, settings: settings)
         } catch {
             moreCards = []
             failure = Failure(action: .lookForMore, error: error)

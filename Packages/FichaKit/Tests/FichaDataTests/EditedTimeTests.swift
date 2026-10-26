@@ -98,6 +98,26 @@ struct EditedTimeTests {
         #expect(rewritten.editedAt == serendipia.createdAt + hours(1))
     }
 
+    // So that forgotten often doesn't start over (#230).
+    @Test("turning Both ways on or off, alone or in an edit, leaves when the card's front or back last changed")
+    func bothWaysLeavesTheEditedTime() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        time.advance(by: hours(1))
+        let rewritten = try engine.edit(
+            serendipia.id, with: card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad."))
+        time.advance(by: hours(1))
+
+        let switched = try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
+        time.advance(by: hours(1))
+        let edited = try engine.edit(
+            ubuntu.id, with: card(.word, front: ubuntu.front, back: ubuntu.back), bothWays: false)
+
+        #expect(switched.map(\.editedAt) == [rewritten.editedAt, nil])
+        #expect(edited.bothWays == false)
+        #expect(edited.editedAt == nil)
+    }
+
     // `ficha fix`, in a refine session.
     @Test("fixing a flagged card with a new front or back keeps when; fixing it with only new tags doesn't")
     func fixingAFlaggedCard() throws {

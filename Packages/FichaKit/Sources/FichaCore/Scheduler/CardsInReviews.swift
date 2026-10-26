@@ -1,16 +1,17 @@
 import Foundation
 
 /// The cards in Lucas's reviews, the only ones that show up, as the planners
-/// pick from them: out of every card, those whose standing is in his reviews,
-/// by id in the order he approved them, with which of them are priority
-/// cards, and the whole review log. The planners take nothing else, so which
-/// cards can show up, and which come first, is decided here, from where each
-/// card stands and its tags, and the merge gate watches it.
+/// pick from them: out of every card, the ways of those whose standing is in
+/// his reviews, by card in the order he approved them, with which cards are
+/// priority cards, and the whole review log. The planners take nothing else,
+/// so which ways can show up, and which come first, is decided here, from
+/// where each card stands and its tags, and the merge gate watches it.
 public struct CardsInReviews: Sendable, Equatable {
-    /// The cards in Lucas's reviews, by id in the order he approved them.
-    let ids: [Int64]
-    /// The cards in Lucas's reviews with any of the priority tags, which come
-    /// first when cards show up (ADR 0011).
+    /// The ways in Lucas's reviews, by card in the order he approved them:
+    /// each card's front-first way, since no card shows up back first yet.
+    let ways: [CardWay]
+    /// The cards in Lucas's reviews with any of the priority tags, by id,
+    /// whose ways come first when cards show up (ADR 0011).
     let priorityIDs: Set<Int64>
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]
@@ -28,16 +29,16 @@ public struct CardsInReviews: Sendable, Equatable {
         log: [ReviewLogEntry]
     ) {
         let inReviews = cards.filter { $0.standing == .inReviews }
-        ids = inReviews.map(\.id)
+        ways = inReviews.map { CardWay(cardID: $0.id, way: .frontFirst) }
         priorityIDs = Set(inReviews.filter { !priorityTags.isDisjoint(with: $0.tags) }.map(\.id))
         self.log = log
         tags = Set(inReviews.flatMap(\.tags))
     }
 
-    /// These cards in Lucas's reviews, these of them as priority cards, this
-    /// review log, and the tags of these cards.
-    private init(ids: [Int64], priorityIDs: Set<Int64>, log: [ReviewLogEntry], tags: Set<String>) {
-        self.ids = ids
+    /// These ways in Lucas's reviews, these cards as priority cards, this
+    /// review log, and the tags of the cards in his reviews.
+    private init(ways: [CardWay], priorityIDs: Set<Int64>, log: [ReviewLogEntry], tags: Set<String>) {
+        self.ways = ways
         self.priorityIDs = priorityIDs
         self.log = log
         self.tags = tags
@@ -45,18 +46,18 @@ public struct CardsInReviews: Sendable, Equatable {
 
     /// The same cards as if no tag were a priority tag.
     var withoutPriority: CardsInReviews {
-        CardsInReviews(ids: ids, priorityIDs: [], log: log, tags: tags)
+        CardsInReviews(ways: ways, priorityIDs: [], log: log, tags: tags)
     }
 
-    /// Where each card stands on `ladder`, by id in the order Lucas approved
+    /// Where each way stands on `ladder`, by card in the order Lucas approved
     /// them, after the review log.
-    func standings(on ladder: Ladder) throws(UnexpectedReviewLog) -> [(cardID: Int64, standing: LadderStanding)] {
-        try ladder.standings(of: ids, after: log)
+    func standings(on ladder: Ladder) throws(UnexpectedReviewLog) -> [(way: CardWay, standing: LadderStanding)] {
+        try ladder.standings(of: ways, after: log)
     }
 
-    /// `cards`, by id, split into the priority cards and the others, each
-    /// group in the order it had.
-    func splitByPriority(_ cards: [Int64]) -> (priority: [Int64], others: [Int64]) {
-        (cards.filter(priorityIDs.contains), cards.filter { !priorityIDs.contains($0) })
+    /// `ways` split into those of priority cards and the others, each group
+    /// in the order it had.
+    func splitByPriority(_ ways: [CardWay]) -> (priority: [CardWay], others: [CardWay]) {
+        (ways.filter { priorityIDs.contains($0.cardID) }, ways.filter { !priorityIDs.contains($0.cardID) })
     }
 }

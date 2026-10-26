@@ -6,7 +6,8 @@ internal import GRDB
 /// engine saved it when he approved it or the user created it. Each side
 /// holds text, an image, a sound, or any of them together. The `ficha` CLI
 /// prints it as JSON, without the type, images, sounds, source, edited time,
-/// capture, flag, burial or set-aside tags it doesn't have.
+/// capture, flag, burial or set-aside tags it doesn't have, and without
+/// whether it goes both ways.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none.
@@ -46,11 +47,22 @@ public struct Card: Sendable, Equatable, Encodable {
     /// or not, or nil when none is. Where the card stands is read from
     /// `standing`, never from this.
     public let setAsideBy: [String]?
+    /// Whether the user also reviews it back first, its back and then its
+    /// front, as well as front first (ADR 0016). How it's reviewed, not what
+    /// it holds: changing its content keeps it.
+    public let bothWays: Bool
 
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, buried, or set aside with one of its tags.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
+    }
+
+    /// What the `ficha` CLI prints: everything but `bothWays`, which the CLI
+    /// doesn't show yet.
+    private enum CodingKeys: String, CodingKey {
+        case id, type, front, back, frontImage, backImage, frontSound, backSound, tags, source, createdAt, editedAt
+        case captureID, flag, buriedAt, setAsideBy
     }
 }
 
@@ -90,6 +102,7 @@ extension Card {
         buriedAt = try row.decode(forColumn: "buriedAt")
         let setAside = CardStanding.setAsideTags(of: tags, among: setAsideTags)
         setAsideBy = setAside.isEmpty ? nil : setAside
+        bothWays = try row.decode(forColumn: "bothWays")
     }
 
     /// The images on its sides, each once.

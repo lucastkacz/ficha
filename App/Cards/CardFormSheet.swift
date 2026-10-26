@@ -78,7 +78,7 @@ struct ConvertToCardButton: View {
 
 /// The card form, a sheet over the Cards window: an optional type, a front
 /// and a back, each with its text, an image and a sound, dragged or pasted
-/// under it, tags and a source, and, when it was opened from a capture, the capture
+/// under it, tags, a source and Both ways, and, when it was opened from a capture, the capture
 /// beside them, whole, with the card it follows up below it when it's a
 /// follow-up. Add saves the card and keeps the form open, with the
 /// front and the back cleared for the next one, as Anki's Add
@@ -208,6 +208,10 @@ private struct CardFormSheet: View {
                     axis: .vertical
                 )
                 .lineLimit(1...3)
+            }
+            GridRow {
+                gridLabel(BothWaysToggle.label)
+                BothWaysToggle(bothWays: draft(\.bothWays))
             }
         }
         .textFieldStyle(.roundedBorder)

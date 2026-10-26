@@ -126,9 +126,9 @@ private struct SetAsideIcon: View {
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
 /// buried it when it's buried, and its set-aside tags when it's set aside,
-/// its type and tags, its front and back, each side's image above its text
-/// and its sound below it, and its source, where it stands, and its review
-/// log, in a chart and in full.
+/// its type and tags and whether it goes both ways, its front and back, each
+/// side's image above its text and its sound below it, and its source, where
+/// it stands, and its review log, in a chart and in full.
 struct CardDetail: View {
     let row: CardRow
     /// The images the window shows, the card's among them.
@@ -255,7 +255,8 @@ private struct Chip: View {
     }
 }
 
-/// A card's type, when it has one, and its tags after it when it has any.
+/// A card's type, when it has one, its tags after it when it has any, and
+/// Both ways last when it goes both ways.
 private struct TypeAndTags: View {
     let card: Card
 
@@ -268,6 +269,20 @@ private struct TypeAndTags: View {
                 Label(card.tags.formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if card.bothWays {
+                Label {
+                    Text(
+                        "Both ways",
+                        comment: """
+                            In the Cards window's detail, after a card's type and tags: it's also reviewed back \
+                            first, its back, then its front.
+                            """)
+                } icon: {
+                    Image(systemName: "arrow.left.arrow.right")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
     }
@@ -362,8 +377,9 @@ struct CaptureDetail: View {
     }
 }
 
-/// The card an expansion or a follow-up is tied to, in its detail: its type
-/// and tags, its front, with the marks the table gives it, and its back.
+/// The card an expansion or a follow-up is tied to, in its detail: its type,
+/// tags and whether it goes both ways, its front, with the marks the table
+/// gives it, and its back.
 private struct TiedCard: View {
     let card: Card
 

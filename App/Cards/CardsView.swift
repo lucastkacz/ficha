@@ -315,6 +315,18 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't unbury \(count) cards", comment: "An alert's title in the Cards window."),
                 message: error.messageInCardsWindow(actingOn: count))
+        case .turnOnBothWays(let count):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't turn on Both ways for \(count) cards",
+                    comment: "An alert's title in the Cards window, after Turn On Both Ways on several cards."),
+                message: error.messageInCardsWindow(actingOn: count))
+        case .turnOffBothWays(let count):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't turn off Both ways for \(count) cards",
+                    comment: "An alert's title in the Cards window, after Turn Off Both Ways on several cards."),
+                message: error.messageInCardsWindow(actingOn: count))
         case .delete(let count):
             return Failure(
                 title: LocalizedStringResource(
@@ -728,7 +740,7 @@ struct CardsView: View {
         case .card(let card):
             CardEditor(
                 card: card, images: state.editedImages, shownImages: state.images, sounds: state.editedSounds,
-                canSave: state.canSaveCard, isSearching: isSearchFocused
+                bothWays: state.editedBothWays, canSave: state.canSaveCard, isSearching: isSearchFocused
             ) { dropped, side in
                 state.putImageInEditor(dropped, on: side)
             } removeImage: { side in
@@ -744,6 +756,8 @@ struct CardsView: View {
                 } remove: {
                     state.removeSoundFromEditor(on: side)
                 }
+            } setBothWays: { bothWays in
+                state.setBothWaysInEditor(bothWays)
             } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()
@@ -862,7 +876,8 @@ struct CardsView: View {
 
     /// A button for each thing Lucas can do with what the detail shows, as
     /// the state offers them: Edit, Convert to Card, Flag…, Bury or Unbury,
-    /// Delete… and Discard…, in that order. Each button calls the state, which reads the
+    /// Turn On or Turn Off Both Ways, Delete… and Discard…, in that order.
+    /// Each button calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
     /// so ⌘E would bury the cards selected back then.
@@ -885,6 +900,12 @@ struct CardsView: View {
         }
         if actions.contains(.unbury) {
             unburyButton
+        }
+        if actions.contains(.turnOnBothWays) {
+            turnOnBothWaysButton
+        }
+        if actions.contains(.turnOffBothWays) {
+            turnOffBothWaysButton
         }
         if actions.contains(.delete) {
             deleteButton
@@ -971,6 +992,44 @@ struct CardsView: View {
         }
         .keyboardShortcut("e", modifiers: .command)
         .help(Text("Unbury (⌘E)", comment: "The tooltip of the Cards window's button that unburies the cards."))
+    }
+
+    /// Turn On Both Ways, which has the selected cards also reviewed back
+    /// first: ⌘B, as Turn Off Both Ways, since the two never show together.
+    private var turnOnBothWaysButton: some View {
+        Button(
+            String(
+                localized: "Turn On Both Ways",
+                comment:
+                    "A button of the Cards window that has the selected cards also reviewed back first: their back, then their front."
+            )
+        ) {
+            state.turnOnBothWays()
+        }
+        .keyboardShortcut("b", modifiers: .command)
+        .help(
+            Text(
+                "Turn On Both Ways (⌘B)",
+                comment: "The tooltip of the Cards window's button that turns Both ways on for the cards."))
+    }
+
+    /// Turn Off Both Ways, which has the selected cards reviewed front first
+    /// alone again: ⌘B, as Turn On Both Ways.
+    private var turnOffBothWaysButton: some View {
+        Button(
+            String(
+                localized: "Turn Off Both Ways",
+                comment:
+                    "A button of the Cards window that has the selected cards reviewed front first only, no longer back first too."
+            )
+        ) {
+            state.turnOffBothWays()
+        }
+        .keyboardShortcut("b", modifiers: .command)
+        .help(
+            Text(
+                "Turn Off Both Ways (⌘B)",
+                comment: "The tooltip of the Cards window's button that turns Both ways off for the cards."))
     }
 
     /// The title of the question before Lucas deletes the cards in `rows`:

@@ -10,7 +10,8 @@ import Foundation
 /// Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
-/// buries and unburies at once, as it sets a tag aside or gives it a color
+/// buries and unburies at once, and turns Both ways on or off for several
+/// cards at once, as it sets a tag aside or gives it a color
 /// from the tag's context menu, it asks which emoji the tag gets, and it
 /// records what couldn't be saved, for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
@@ -67,6 +68,10 @@ public struct CardsWindowState: Sendable {
         case bury
         /// Unbury the cards.
         case unbury
+        /// Turn Both ways on for the cards.
+        case turnOnBothWays
+        /// Turn Both ways off for the cards.
+        case turnOffBothWays
         /// Delete the cards for good, asking first.
         case delete
         /// Discard the capture, asking first.
@@ -158,6 +163,10 @@ public struct CardsWindowState: Sendable {
         case bury(cardCount: Int)
         /// He unburied this many cards.
         case unbury(cardCount: Int)
+        /// He turned Both ways on for this many cards.
+        case turnOnBothWays(cardCount: Int)
+        /// He turned Both ways off for this many cards.
+        case turnOffBothWays(cardCount: Int)
         /// He deleted this many cards.
         case delete(cardCount: Int)
         /// He set this tag aside.
@@ -231,6 +240,9 @@ public struct CardsWindowState: Sendable {
     /// each read with its length, or held until it's saved:
     /// `CardsWindowSounds.swift`.
     public internal(set) var sounds = ShownSounds()
+    /// Whether the card the user edits goes both ways, as Save would set it,
+    /// while they edit one: the card's own until they switch it.
+    public private(set) var editedBothWays = false
     /// The sound that plays, while one does, which the app's player plays:
     /// `CardsWindowSounds.swift`.
     public internal(set) var playingSound: PlayingSound?
@@ -334,7 +346,8 @@ public struct CardsWindowState: Sendable {
     /// follow-up, edit it, convert it to cards and discard it; with an
     /// expansion, edit it and discard it; with one card, edit it, flag it
     /// while it's in the user's reviews, bury or unbury it, and delete it;
-    /// with several, bury or unbury them and delete them.
+    /// with several, bury or unbury them, turn Both ways on or off for them,
+    /// and delete them.
     public var actions: Set<Action> {
         switch detail {
         case .capture, .followUp:
@@ -344,7 +357,7 @@ public struct CardsWindowState: Sendable {
         case .card(let row, _):
             return Self.actions(for: row.cardStanding).union([.edit, .delete])
         case .cards(let rows):
-            return buryOrUnbury(rows).union([.delete])
+            return buryOrUnbury(rows).union([Self.bothWaysAction(for: rows), .delete])
         case .nothingSelectedInInbox, .noCardSelected:
             return []
         }
@@ -367,6 +380,13 @@ public struct CardsWindowState: Sendable {
     private func buryOrUnbury(_ rows: [CardRow]) -> Set<Action> {
         let actions = rows.map { Self.actions(for: $0.cardStanding) }
         return Set([Action.bury, .unbury].filter { action in actions.allSatisfy { $0.contains(action) } })
+    }
+
+    /// Turn On Both Ways while any card in `rows` goes one way, so that one
+    /// click sets them all alike, or Turn Off Both Ways once they all go both
+    /// ways.
+    private static func bothWaysAction(for rows: [CardRow]) -> Action {
+        rows.allSatisfy(\.card.bothWays) ? .turnOffBothWays : .turnOnBothWays
     }
 
     /// Lists what Lucas chose in the sidebar.
@@ -408,22 +428,32 @@ public struct CardsWindowState: Sendable {
             editing = .card(row.card)
             editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
             editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
+            editedBothWays = row.card.bothWays
             // The editor takes the detail's place, and its sound's.
             showFiles()
         }
     }
 
+    /// Turns Both ways on for the card the user edits, or off when `bothWays`
+    /// is false, as Save will set it.
+    public mutating func setBothWaysInEditor(_ bothWays: Bool) {
+        guard case .card = editing else { return }
+        editedBothWays = bothWays
+    }
+
     /// Saves the card the user edits with `content`, its images and sounds as
-    /// `editedImages` and `editedSounds` hold them, and ends the edit, while
-    /// Save is on, or records why it couldn't and goes on with it. The card
-    /// keeps its step and its review log, and a flagged one is fixed, back in
-    /// the reviews unless it's buried. The detail shows it as saved at once,
-    /// without waiting for the engine to say it changed.
+    /// `editedImages` and `editedSounds` hold them, going both ways as
+    /// `editedBothWays` says, and ends the edit, while Save is on, or records
+    /// why it couldn't and goes on with it. The card keeps its step and its
+    /// review log, and a flagged one is fixed, back in the reviews unless
+    /// it's buried. The detail shows it as saved at once, without waiting for
+    /// the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
         let files = heldFiles(of: content)
+        let bothWays = editedBothWays
         let saved = perform(.saveCard) { engine throws(EngineError) in
-            try engine.edit(card.id, keeping: files, with: content)
+            try engine.edit(card.id, keeping: files, with: content, bothWays: bothWays)
         }
         if saved {
             endEditing()
@@ -461,6 +491,7 @@ public struct CardsWindowState: Sendable {
         editedImages = SideImages()
         editedSounds = SideSounds()
         editedSoundsComingIn = [:]
+        editedBothWays = false
     }
 
     /// Asks what needs fixing in the card the detail shows, to flag it, while
@@ -495,6 +526,34 @@ public struct CardsWindowState: Sendable {
         guard actions.contains(.unbury) else { return }
         let cardIDs = Set(selectedRows.map(\.id))
         perform(.unbury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.unbury(cardIDs) }
+    }
+
+    /// Turns Both ways on for the selected cards the table lists, all at
+    /// once, while Turn On Both Ways is offered, and reads them again, so
+    /// that the window offers Turn Off at once; or records why it couldn't.
+    public mutating func turnOnBothWays() {
+        guard actions.contains(.turnOnBothWays) else { return }
+        setBothWays(true)
+    }
+
+    /// Turns Both ways off for the selected cards the table lists, all at
+    /// once, while Turn Off Both Ways is offered, and reads them again, so
+    /// that the window offers Turn On at once; or records why it couldn't.
+    public mutating func turnOffBothWays() {
+        guard actions.contains(.turnOffBothWays) else { return }
+        setBothWays(false)
+    }
+
+    /// Turns Both ways on or off for the selected cards the table lists, as
+    /// `bothWays` says, and reads them again, or records why it couldn't.
+    private mutating func setBothWays(_ bothWays: Bool) {
+        let cardIDs = Set(selectedRows.map(\.id))
+        let action: FailedAction =
+            bothWays ? .turnOnBothWays(cardCount: cardIDs.count) : .turnOffBothWays(cardCount: cardIDs.count)
+        let done = perform(action) { engine throws(EngineError) in try engine.setBothWays(bothWays, of: cardIDs) }
+        if done {
+            read(on: ladder)
+        }
     }
 
     /// Asks whether to delete the selected cards the table lists, while Delete
