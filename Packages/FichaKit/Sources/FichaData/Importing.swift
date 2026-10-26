@@ -138,9 +138,9 @@ public struct ImportChoices: Sendable, Equatable {
     /// The name each tag the preview proposes goes on the cards with, by the
     /// proposed name: another one, or a blank one, which leaves the tag out.
     /// A proposed tag that isn't here goes on the cards as it's proposed.
-    /// On a card that already has a tag it repeats as duplicates are
-    /// compared, its own or one the import proposed before, it folds into
-    /// that tag.
+    /// A tag of the file's that it repeats as duplicates are compared, such
+    /// as “banderas” for “Banderas”, takes its name, but a user's card that
+    /// the import updates keeps its own.
     public var tagNames: [String: String]
     public var repeatedCards: RepeatedCards
     public var progress: Progress
@@ -265,9 +265,9 @@ extension Engine {
     /// repeats a card of the user's updates it or is skipped. A card goes
     /// both ways as the file says, and an updated one keeps its own Both ways
     /// when the file says nothing of it. Every card that comes in or is
-    /// updated gets the tags it proposes, as the user named them; of its tags
-    /// that repeat each other as duplicates are compared, such as “banderas”
-    /// and “Banderas”, the first comes in.
+    /// updated gets the tags it proposes, as the user named them, and its
+    /// tags that repeat each other as duplicates are compared, such as
+    /// “banderas” and “Banderas”, come in as one.
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
@@ -383,13 +383,12 @@ extension ImportedCard {
     }
 
     /// The card as it comes in, as new, with its images, its sounds and
-    /// `tags` added to its own, a tag that repeats an earlier one folded into
-    /// it.
+    /// `tags` added to its own, as `importedTags` joins them.
     fileprivate func content(adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
                 type: content.type, front: content.front, back: content.back,
-                tags: (content.tags + tags).uniqued(on: duplicateKey),
+                tags: importedTags(content.tags, adding: tags),
                 source: content.source, frontImage: content.frontImage, backImage: content.backImage,
                 frontSound: content.frontSound, backSound: content.backSound))
     }
@@ -397,16 +396,16 @@ extension ImportedCard {
     /// What `card`, the user's card it repeats, holds once it's updated: its
     /// own front, with its image and its sound, the back and every field the
     /// file gives, the back's image and sound among them, its own fields that
-    /// the file doesn't, and `tags` added to its tags, a tag that repeats an
-    /// earlier one folded into it. Both ways isn't what a card holds: the
-    /// import sets it apart.
+    /// the file doesn't, and `tags` added to its tags, as `importedTags` joins
+    /// them, spelled as the card has them. Both ways isn't what a card holds:
+    /// the import sets it apart.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
                 type: fields.contains(.type) ? content.type : card.type,
                 front: card.front,
                 back: content.back,
-                tags: ((fields.contains(.tags) ? content.tags : card.tags) + tags).uniqued(on: duplicateKey),
+                tags: importedTags(fields.contains(.tags) ? content.tags : card.tags, adding: tags, keeping: card.tags),
                 source: fields.contains(.source) ? content.source : card.source,
                 frontImage: card.frontImage,
                 backImage: fields.contains(.backImage) ? content.backImage : card.backImage,
@@ -422,6 +421,20 @@ extension ImportedCard {
         }
         return content
     }
+}
+
+/// The tags an imported card gets: `own`, the file's for it or the user's
+/// card's, then `proposed`, the import's as the user named them, each once
+/// as duplicates are compared, so “banderas” and “Banderas” are one (#229).
+/// A tag spelled several ways takes the spelling of `kept`, the tags of the
+/// user's card it updates, or else of `proposed`, the name the user saw in
+/// the Import sheet, or else its first.
+private func importedTags(_ own: [String], adding proposed: [String], keeping kept: [String] = []) -> [String] {
+    var spellings: [String: String] = [:]
+    for tag in kept + proposed where spellings[duplicateKey(tag)] == nil {
+        spellings[duplicateKey(tag)] = tag
+    }
+    return (own + proposed).map { spellings[duplicateKey($0)] ?? $0 }.uniqued(on: duplicateKey)
 }
 
 extension ImportReading {

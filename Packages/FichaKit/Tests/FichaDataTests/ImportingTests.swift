@@ -101,7 +101,7 @@ final class ImportingTests {
                 ],
                 ["ósmosis", "El paso del agua por una membrana semipermeable; \"<de menos a más>\" & sin energía."],
             ])
-        #expect(cards.map(\.tags) == [["biología", "célula eucariota"], ["biología"], ["Biología"]])
+        #expect(cards.map(\.tags) == [["Biología", "célula eucariota"], ["Biología"], ["Biología"]])
     }
 
     // The headers an export writes, for Ficha and Anki to read it back.
@@ -275,21 +275,26 @@ final class ImportingTests {
     // As an AI's file named after its subject, whose cards carry a tag of
     // their own for it beside the one the file's name proposes (#229).
     @Test(
-        "a card's tags that differ only in case and accents come in as one, the first, on a new card and on one the import updates, but año and ano stay two"
+        "a card's tags that differ only in case and accents come in as one, named as the user named the proposed tag, or as the user's card the import updates has it, but año and ano stay two"
     )
     func tagsThatDifferOnlyInCaseAndAccentsComeInAsOne() async throws {
-        try approve(card(.concept, front: "petricor", back: "Un olor.", tags: ["filosofía griega"]), in: engine)
+        try approve(card(.concept, front: "petricor", back: "Un olor.", tags: ["Filosofía Griega"]), in: engine)
+        try approve(card(.word, front: "efímero", back: "Breve.", tags: ["FILOSOFÍA GRIEGA"]), in: engine)
         let file = try file(
             "Filosofía griega.txt",
             """
             Sócrates\tSolo sé que no sé nada.\tfilosofia_griega año ano FILOSOFÍA_GRIEGA
             petricor\tEl olor de la tierra mojada.
+            efímero\tQue dura poco.\tfilosofia_griega año
 
             """)
 
-        try await importFile(file)
+        try await importFile(file, choosing: ImportChoices(tagNames: ["Filosofía griega": "filosofía griega"]))
 
-        #expect(try engine.cards().map(\.tags) == [["filosofía griega"], ["filosofia griega", "año", "ano"]])
+        #expect(
+            try engine.cards().map(\.tags) == [
+                ["Filosofía Griega"], ["FILOSOFÍA GRIEGA", "año"], ["filosofía griega", "año", "ano"],
+            ])
     }
 
     @Test(
@@ -326,7 +331,8 @@ final class ImportingTests {
                 "Un hallazgo valioso, por casualidad.", "El olor de la tierra mojada.", "Que dura poco.",
             ])
         #expect(cards.map(\.type) == [.question, .concept, nil])
-        #expect(cards.map(\.tags) == [["vocabulario", "Palabras"], ["lenguaje", "Palabras"], ["Palabras"]])
+        // serendipia had the proposed tag as "palabras", which it keeps.
+        #expect(cards.map(\.tags) == [["vocabulario", "palabras"], ["lenguaje", "Palabras"], ["Palabras"]])
         #expect(cards.map(\.source) == [nil, "Wikipedia", nil])
         #expect(try [serendipia, petricor].map { try engine.standing(of: $0.id, on: ladder) } == standings)
         #expect(try engine.reviewLog() == reviewLog)
