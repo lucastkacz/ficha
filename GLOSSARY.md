@@ -90,7 +90,7 @@ Editing a flagged card, as its note asks, in the Cards window or a refine sessio
 _Avoid_: correct
 
 **Content guide**:
-The written rules Claude follows to draft Lucas's cards: what each type holds, how long it is and how it's worded.
+The written rules Claude follows to draft Lucas's cards: what each type holds, which cards go both ways, how long a card is and how it's worded.
 _Avoid_: style guide, template, prompt
 
 ### Reviewing
