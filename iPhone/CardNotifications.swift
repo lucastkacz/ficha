@@ -307,11 +307,11 @@ private func request(
 private func content(of card: PanelCard, in appearance: NotifiedAppearance) -> UNMutableNotificationContent? {
     let content = UNMutableNotificationContent()
     switch card {
-    case .firstView(let card):
+    case .firstView(let card, _):
         content.title = card.front
         content.body = card.back
         content.categoryIdentifier = Identifiers.firstView
-    case .review(let card):
+    case .review(let card, _):
         content.body = card.front
         content.categoryIdentifier = Identifiers.review
     case .reviewAhead:

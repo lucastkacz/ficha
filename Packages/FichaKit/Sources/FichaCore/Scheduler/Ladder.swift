@@ -28,8 +28,9 @@ public struct Ladder: Sendable, Equatable {
         self.waits = waits
     }
 
-    /// Where a card stands on the ladder after the entries of its review log,
-    /// in the order they happened. Without entries it's new. Its first view
+    /// Where a card's way stands on the ladder after that way's entries in
+    /// the review log, in the order they happened, as if it were a card of
+    /// its own (ADR 0016). Without entries it's new. Its first view
     /// puts it on the first step, to wait its wait from then, and a
     /// placement, which an import gave it in place of a first view, on the
     /// placement's step until its due time, or on the last step when the
@@ -103,13 +104,14 @@ public struct Ladder: Sendable, Equatable {
         return (standings.count { $0.isDue(at: now) }, standings.count(where: isLearned))
     }
 
-    /// Where each card stands, by id in the order given, after the review
-    /// log's entries, in the order they were written.
-    func standings(of cardIDs: [Int64], after log: [ReviewLogEntry]) throws(UnexpectedReviewLog)
-        -> [(cardID: Int64, standing: LadderStanding)]
+    /// Where each of these cards' ways stands, in the order given, after the
+    /// review log's entries, in the order they were written: each way after
+    /// its own.
+    func standings(of ways: [CardWay], after log: [ReviewLogEntry]) throws(UnexpectedReviewLog)
+        -> [(way: CardWay, standing: LadderStanding)]
     {
-        let entries = Dictionary(grouping: log, by: \.cardID)
-        return try cardIDs.map { id throws(UnexpectedReviewLog) in (id, try standing(after: entries[id] ?? [])) }
+        let entries = Dictionary(grouping: log, by: \.cardWay)
+        return try ways.map { way throws(UnexpectedReviewLog) in (way, try standing(after: entries[way] ?? [])) }
     }
 
     /// Whether a card that stands on this ladder is learned: on a step that

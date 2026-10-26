@@ -28,11 +28,13 @@ struct PriorityTagsTests {
         let petricor = try meetCard("petricor", tags: [])
         let ataraxia = try meetCard("ataraxia", tags: ["filosofía"])
         time.advance(by: hours(1))
-        #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia, petricor, ataraxia].map(PanelCard.review))
+        #expect(
+            try engine.reviewNow(settings) == [ubuntu, eudaimonia, petricor, ataraxia].map { PanelCard.review($0) })
 
         try engine.togglePriority(of: "filosofía")
 
-        #expect(try engine.reviewNow(settings) == [eudaimonia, ataraxia, ubuntu, petricor].map(PanelCard.review))
+        #expect(
+            try engine.reviewNow(settings) == [eudaimonia, ataraxia, ubuntu, petricor].map { PanelCard.review($0) })
     }
 
     @Test(
@@ -44,11 +46,11 @@ struct PriorityTagsTests {
         try approveCard("ataraxia", tags: [])
         let eudaimonia = try approveCard("eudaimonía", tags: ["filosofía"])
         time.move(to: try morning(of: 15, in: calendar))
-        #expect(try engine.reviewNow(settings) == due.map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == due.map { PanelCard.review($0) })
 
         try engine.togglePriority(of: "filosofía")
 
-        let expected = due.prefix(4).map(PanelCard.review) + [.firstView(eudaimonia)]
+        let expected = due.prefix(4).map { PanelCard.review($0) } + [.firstView(eudaimonia)]
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show(expected))
         #expect(try engine.reviewNow(settings) == expected)
     }
@@ -75,10 +77,10 @@ struct PriorityTagsTests {
         try engine.togglePriority(of: "filosofía")
         time.move(to: try morning(of: 15, in: calendar))
 
-        #expect(try engine.reviewNow(settings) == ([eudaimonia] + others).map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == ([eudaimonia] + others).map { PanelCard.review($0) })
         try engine.review(others[3], .good)
         #expect(
-            try engine.reviewNow(settings) == ([eudaimonia] + others.prefix(3)).map(PanelCard.review)
+            try engine.reviewNow(settings) == ([eudaimonia] + others.prefix(3)).map { PanelCard.review($0) }
                 + [.firstView(ataraxia)])
     }
 
@@ -100,7 +102,7 @@ struct PriorityTagsTests {
         let priorityAhead = try meetCard("ataraxia", tags: ["filosofía"])
         try engine.togglePriority(of: "filosofía")
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        #expect(panel.cards == priority.prefix(5).map(PanelCard.review))
+        #expect(panel.cards == priority.prefix(5).map { PanelCard.review($0) })
 
         for _ in panel.cards {
             try panel.answer(.review(.good), responseTime: .seconds(3))
@@ -123,7 +125,7 @@ struct PriorityTagsTests {
         try engine.togglePriority(of: "filosofía")
         try engine.togglePriority(of: "historia")
 
-        #expect(try engine.reviewNow(settings) == [mayo, eudaimonia, ubuntu, petricor].map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == [mayo, eudaimonia, ubuntu, petricor].map { PanelCard.review($0) })
     }
 
     @Test("each card's step and due time are the same with or without priority tags")
@@ -170,7 +172,7 @@ struct PriorityTagsTests {
         time.move(to: dueTime)
         #expect(
             try engine.checkAppearance(settings, mac: FakeMac())
-                == .show([.review(cinco)] + lenguaje.prefix(3).map(PanelCard.review) + [.firstView(eudaimonia)]))
+                == .show([.review(cinco)] + lenguaje.prefix(3).map { PanelCard.review($0) } + [.firstView(eudaimonia)]))
     }
 
     @Test(
@@ -224,11 +226,11 @@ struct PriorityTagsTests {
         time.advance(by: hours(1))
         try engine.togglePriority(of: "filosofía")
         try engine.togglePriority(of: "historia")
-        #expect(try engine.reviewNow(settings) == [eudaimonia, ubuntu].map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == [eudaimonia, ubuntu].map { PanelCard.review($0) })
 
         try engine.clearPriorityTags()
 
-        #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia].map(PanelCard.review))
+        #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia].map { PanelCard.review($0) })
         #expect(try engine.prioritizeMenu().tags == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
     }
 

@@ -3,10 +3,10 @@ import Foundation
 internal import GRDB
 
 extension Engine {
-    /// The cards review now brings, in the order the review panel shows them:
-    /// the due ones, lowest step first and then the longest overdue, and then
-    /// a new card, when there's room and Lucas hasn't met the day's new cards
-    /// yet.
+    /// The cards review now brings, each the way it shows, in the order the
+    /// review panel shows them: the due ways, lowest step first and then the
+    /// longest overdue, and then a new way, when there's room and Lucas
+    /// hasn't met the day's new cards yet.
     public func reviewNow(_ settings: ReviewSettings) throws(EngineError) -> [PanelCard] {
         let now = time.now
         return try read { db in
@@ -69,11 +69,11 @@ extension Engine {
     }
 
     /// The cards "See more" brings once Lucas went through the review panel's
-    /// cards, which `trigger` brought: the due cards that didn't fit, and then
-    /// the cards closest to being due, as reviews ahead, out of the cards in
-    /// his reviews but those in `shown`, the panel's. Never a new card. For an
-    /// appearance, a card due within the look-ahead counts as due.
-    func seeMoreCards(after shown: Set<Int64>, from trigger: Trigger, settings: ReviewSettings) throws(EngineError)
+    /// cards, which `trigger` brought: the due ways that didn't fit, and then
+    /// the ways closest to being due, as reviews ahead, out of the ways in
+    /// his reviews but those in `shown`, the panel's. Never a new way. For an
+    /// appearance, a way due within the look-ahead counts as due.
+    func seeMoreCards(after shown: Set<CardWay>, from trigger: Trigger, settings: ReviewSettings) throws(EngineError)
         -> [PanelCard]
     {
         let horizon = time.now.adding(trigger.lookAhead(in: settings))

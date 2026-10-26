@@ -17,6 +17,9 @@ public struct ReviewLogEntry: Sendable, Equatable {
     }
 
     public let cardID: Int64
+    /// Which of the card's ways it went: front first, since no card shows up
+    /// back first yet.
+    public let way: Way
     public let kind: Kind
     /// When he answered: when he ended the first view, or when he rated the
     /// card; for a placement, when the import placed it.
@@ -42,6 +45,7 @@ public struct ReviewLogEntry: Sendable, Equatable {
         isAhead: Bool = false
     ) {
         self.cardID = cardID
+        way = .frontFirst
         self.kind = kind
         self.answeredAt = answeredAt
         self.responseTime = responseTime
@@ -53,11 +57,17 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// `cardID` at `placedAt`.
     public init(placing cardID: Int64, on placement: Placement, at placedAt: Date) {
         self.cardID = cardID
+        way = .frontFirst
         kind = .placement(placement)
         answeredAt = placedAt
         responseTime = nil
         trigger = nil
         isAhead = false
+    }
+
+    /// The card's way it went.
+    var cardWay: CardWay {
+        CardWay(cardID: cardID, way: way)
     }
 }
 

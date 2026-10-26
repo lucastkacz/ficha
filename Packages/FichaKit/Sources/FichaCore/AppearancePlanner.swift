@@ -12,7 +12,8 @@ public enum Suppression: String, CaseIterable, Sendable {
 }
 
 /// What the appearance planner decides at a moment: whether the review panel
-/// shows up on its own, with which cards, by id, or why not (ADR 0003).
+/// shows up on its own, with which cards, each by id and the way it shows, or
+/// why not (ADR 0003).
 public enum AppearancePlan: Sendable, Equatable {
     /// The panel shows up now with these cards.
     case show(PanelCardIDs)
@@ -43,7 +44,7 @@ public enum NoAppearance: Sendable, Equatable {
 }
 
 /// An appearance planned ahead, as the iPhone schedules it (ADR 0010): when it
-/// comes, and the cards it brings, by id.
+/// comes, and the cards it brings, each by id and the way it shows.
 public struct PlannedAppearance: Sendable, Equatable {
     public let time: Date
     public let cardIDs: PanelCardIDs
@@ -167,27 +168,27 @@ extension ReviewSettings {
         return plan
     }
 
-    /// The card that comes after `cardID` in an appearance on the iPhone,
-    /// which brought the cards in `appearance`, by id in the order they show,
-    /// once Lucas answered it from its card notification (ADR 0010): the first
-    /// of the cards after it that he can still answer at `now`, out of
-    /// `cards`. As in any appearance, a new card comes for its first view, and
-    /// one due within `lookAhead` for a review, so one he rated meanwhile, or
-    /// that left his reviews, is skipped. None comes once none is left.
+    /// The way that comes after `way` in an appearance on the iPhone, which
+    /// brought the ways in `appearance`, in the order they show, once Lucas
+    /// answered it from its card notification (ADR 0010): the first of the
+    /// ways after it that he can still answer at `now`, out of `cards`. As in
+    /// any appearance, a new way comes for its first view, and one due within
+    /// `lookAhead` for a review, so one he rated meanwhile, or whose card left
+    /// his reviews, is skipped. None comes once none is left.
     public func nextCard(
-        after cardID: Int64,
-        in appearance: [Int64],
+        after way: CardWay,
+        in appearance: [CardWay],
         cards: CardsInReviews,
         now: Date
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
-        let inReviews = Set(cards.ids)
-        let later = appearance.drop { $0 != cardID }.dropFirst().filter(inReviews.contains)
-        for (id, standing) in try ladder.standings(of: later, after: cards.log) {
+        let inReviews = Set(cards.ways)
+        let later = appearance.drop { $0 != way }.dropFirst().filter(inReviews.contains)
+        for (laterWay, standing) in try ladder.standings(of: later, after: cards.log) {
             switch standing {
             case .new:
-                return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: id)
+                return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: laterWay)
             case .onLadder where standing.isDue(at: now.adding(lookAhead)):
-                return PanelCardIDs(reviews: [id], reviewsAhead: [], firstView: nil)
+                return PanelCardIDs(reviews: [laterWay], reviewsAhead: [], firstView: nil)
             case .onLadder:
                 continue
             }
