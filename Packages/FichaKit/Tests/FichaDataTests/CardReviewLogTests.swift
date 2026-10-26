@@ -101,9 +101,32 @@ struct CardReviewLogTests {
 
         for (settingsLadder, steps) in [(ladder, [1, 6, 0, nil]), (shortLadder, [1, 2, 0, nil])] {
             let rows = try engine.cardRows(in: .all, on: settingsLadder)
-            #expect(rows.map(\.step) == steps)
+            #expect(rows.map(\.frontFirst.step) == steps)
             #expect(try rows.map { try engine.reviewLogRows(of: $0.id, on: settingsLadder).last?.step } == steps)
         }
+    }
+
+    @Test(
+        "a card that goes both ways has both ways' entries in its review log, each saying its way, with the step that way stood on after it"
+    )
+    func eachEntrySaysItsWayAndHasItsWaysStep() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        try engine.reviewWhenDue(serendipia, .again, way: .backFirst, movingForward: time)
+        try engine.reviewWhenDue(serendipia, .good, way: .backFirst, movingForward: time)
+
+        let log = try engine.reviewLogRows(of: serendipia.id, on: ladder)
+
+        #expect(log.map(\.entry.way) == [.frontFirst, .backFirst, .frontFirst, .backFirst, .backFirst])
+        #expect(log.map(\.entry.kind) == [.firstView, .firstView, .review(.good), .review(.again), .review(.good)])
+        #expect(log.map(\.step) == [0, 0, 1, 0, 1])
+        let row = try #require(try engine.cardRows(in: .all, on: ladder).first)
+        #expect(row.frontFirst.step == 1)
+        #expect(row.backFirst?.step == 1)
     }
 
     @Test("a new card's review log is empty, and a card that doesn't exist isn't found")

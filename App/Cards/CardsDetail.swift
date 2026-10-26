@@ -202,24 +202,27 @@ struct CardDetail: View {
         }
     }
 
-    /// Where the card stands: its step and wait, when it's due, when Lucas
-    /// last saw it and when he approved it.
+    /// Where the card stands: its step and wait, and when it's due, front
+    /// first, and back first too when it goes both ways, as the table's
+    /// columns name them; when Lucas last saw it and when he approved it.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
-            GridRow {
-                gridLabel(
-                    Text("Step", comment: "In the Cards window's detail: the card's step on the ladder, and its wait."))
-                Text(stepText(row))
-            }
-            if let due = row.due {
-                GridRow {
-                    gridLabel(Text("Due", comment: "In the Cards window's detail: when the card is due."))
-                    HStack(spacing: 6) {
-                        Text(dueText(row, at: now))
-                        Text(due.formatted(date: .abbreviated, time: .shortened))
-                            .foregroundStyle(.secondary)
-                    }
-                }
+            wayRows(
+                row.frontFirst,
+                step: Text(
+                    "Step", comment: "In the Cards window's detail: the card's step on the ladder, and its wait."),
+                due: Text("Due", comment: "In the Cards window's detail: when the card is due."))
+            if let backFirst = row.backFirst {
+                wayRows(
+                    backFirst,
+                    step: Text(
+                        "Back-first step",
+                        comment:
+                            "In the Cards window's detail: the step on the ladder of a card that goes both ways, back first, and its wait."
+                    ),
+                    due: Text(
+                        "Back-first due",
+                        comment: "In the Cards window's detail: when a card that goes both ways is due back first."))
             }
             if let lastSeen = row.lastSeen {
                 GridRow {
@@ -235,6 +238,27 @@ struct CardDetail: View {
             GridRow {
                 gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
+            }
+        }
+    }
+
+    /// Where one of the card's ways stands, in two rows of the grid labeled
+    /// `stepLabel` and `dueLabel`: its step and wait, and when it's due,
+    /// while it has a due time.
+    @ViewBuilder
+    private func wayRows(_ way: WayProgress, step stepLabel: Text, due dueLabel: Text) -> some View {
+        GridRow {
+            gridLabel(stepLabel)
+            Text(stepText(way))
+        }
+        if let due = way.due {
+            GridRow {
+                gridLabel(dueLabel)
+                HStack(spacing: 6) {
+                    Text(dueText(way, at: now))
+                    Text(due.formatted(date: .abbreviated, time: .shortened))
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -493,10 +517,10 @@ func gridLabel(_ text: Text) -> some View {
         .gridColumnAlignment(.trailing)
 }
 
-/// The card's step counted from 1, as Settings counts them, with its wait,
-/// like "4 · 5d", or "New" before its first view.
-func stepText(_ row: CardRow) -> String {
-    guard let step = row.step, let wait = row.wait else {
+/// The step of one of a card's ways counted from 1, as Settings counts them,
+/// with its wait, like "4 · 5d", or "New" before its first view.
+func stepText(_ way: WayProgress) -> String {
+    guard let step = way.step, let wait = way.wait else {
         return String(localized: "New", comment: "In the Cards window: a card that hasn't had its first view yet.")
     }
     let waitText = wait.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
@@ -507,14 +531,14 @@ func stepText(_ row: CardRow) -> String {
     )
 }
 
-/// When the card is due, counted from `now`: "now" once it's due, however
-/// long ago, and before, as the Mac's locale words it, like "in 2h",
-/// "tomorrow" or "in 5d" in US English. "set aside" while it's set aside,
-/// and nothing while it's new, flagged or buried, since it won't show up
-/// then.
-func dueText(_ row: CardRow, at now: Date) -> String {
+/// When one of a card's ways is due, counted from `now`: "now" once it's
+/// due, however long ago, and before, as the Mac's locale words it, like
+/// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the card
+/// is set aside, and nothing while the way is new, or the card flagged or
+/// buried, since it won't show up then.
+func dueText(_ way: WayProgress, at now: Date) -> String {
     let due: Date
-    switch row.dueColumn {
+    switch way.dueColumn {
     case .due(let date):
         due = date
     case .setAside:
@@ -527,7 +551,7 @@ func dueText(_ row: CardRow, at now: Date) -> String {
     case .nothing:
         return ""
     }
-    guard !row.isDue(at: now) else {
+    guard !way.isDue(at: now) else {
         return String(localized: "now", comment: "In the Cards window's Due column: the card is due.")
     }
     // In the ladder's units, days, hours and minutes, as Settings shows its

@@ -57,6 +57,9 @@
         }
       }
     },
+    "%@, back first" : {
+      "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
+    },
     "%lld · %@" : {
       "comment" : "In the Cards window: the card's step on the ladder, counted from 1, and how long it waits, like 4 · 5d.",
       "localizations" : {
@@ -657,13 +660,19 @@
       "comment" : "In the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
     },
     "Back first" : {
-      "comment" : "A badge on a card the review panel shows back first: its back on top, and its front under it once flipped."
+      "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a first view or review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
     },
     "Back up" : {
       "comment" : "Settings, under Backups: how often Ficha backs up on its own."
     },
     "Back Up Now" : {
       "comment" : "Settings, under Backups: saves a backup now."
+    },
+    "Back-first due" : {
+      "comment" : "A column of the Cards window: when a card that goes both ways is due back first.\nIn the Cards window's detail: when a card that goes both ways is due back first."
+    },
+    "Back-first step" : {
+      "comment" : "A column of the Cards window: the step on the ladder of a card that goes both ways, back first, and its wait.\nIn the Cards window's detail: the step on the ladder of a card that goes both ways, back first, and its wait."
     },
     "Backup" : {
       "comment" : "Settings, under Backups: a copy's kind, a backup."
@@ -1265,6 +1274,9 @@
     },
     "Front" : {
       "comment" : "A column of the Cards window: the card's front.\nIn the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
+    },
+    "Front first" : {
+      "comment" : "In the key of the Cards window's review log chart: the line of the card's usual way, its front first."
     },
     "Full screen" : {
       "comment" : "A detector in Diagnostics: the app in front in full screen."
@@ -2033,6 +2045,9 @@
     },
     "Videos" : {
 
+    },
+    "Way" : {
+      "comment" : "For VoiceOver, the Cards window's chart: which way each entry went, front first or back first, which has a line of its own."
     },
     "What do you want to know?" : {
       "comment" : "The prompt of the field where the user writes a question about the card the review panel shows."

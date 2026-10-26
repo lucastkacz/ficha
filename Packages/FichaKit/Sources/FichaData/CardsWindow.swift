@@ -3,7 +3,7 @@ import Foundation
 internal import GRDB
 
 /// A card as the Cards window lists it: the card, where it stands, in Lucas's
-/// reviews and on his ladder, and when he last saw it.
+/// reviews and on his ladder each way, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
     /// The card's tags, in its order, each with what it has of its own, as
@@ -12,21 +12,57 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
-    /// Where it stands on the ladder: new, or on a step until it's due,
-    /// worked out from its review log. A flagged, buried or set-aside card
-    /// keeps it, and `cardStanding` says whether the card is in Lucas's
-    /// reviews.
-    public let standing: LadderStanding
-    /// How long its step waits, or nil while it's new.
-    public let wait: Duration?
-    /// When the user last saw it: its review log's latest first view or review,
-    /// or nil while it's new, or while it has only the placement an import
-    /// put it on its step with (ADR 0013).
+    /// Where its front-first way stands, which every card has, as the Step
+    /// and Due columns show it.
+    public let frontFirst: WayProgress
+    /// Where its back-first way stands, as the Back-first step and
+    /// Back-first due columns show it, or nil while the card goes one way,
+    /// also once Lucas switched Both ways off, which keeps that way's
+    /// progress.
+    public let backFirst: WayProgress?
+    /// When the user last saw it, either way: its review log's latest first
+    /// view or review, or nil while it's new, or while it has only the
+    /// placement an import put it on its step with (ADR 0013).
     public let lastSeen: Date?
 
     public var id: Int64 {
         card.id
     }
+
+    /// Whether the card is due at `time`: in Lucas's reviews, with either
+    /// way's wait over.
+    public func isDue(at time: Date) -> Bool {
+        frontFirst.isDue(at: time) || backFirst?.isDue(at: time) == true
+    }
+
+    /// Whether the card is new in Lucas's reviews: its front-first way
+    /// hasn't had its first view yet, whatever its back-first way did.
+    var isNew: Bool {
+        frontFirst.isNew
+    }
+
+    /// Whether the card is learned in Lucas's reviews, standing on `ladder`:
+    /// its front-first way on a step that waits 30 days or more, as the menu
+    /// counts it, so that switching Both ways on changes nothing there.
+    func isLearned(on ladder: Ladder) -> Bool {
+        frontFirst.isLearned(on: ladder)
+    }
+}
+
+/// Where one of a card's ways stands, as the Cards window shows it: on the
+/// ladder after that way's review log, as if it were a card of its own
+/// (ADR 0016), and in Lucas's reviews or out of them with the card, both ways
+/// together.
+public struct WayProgress: Sendable, Equatable {
+    /// Where the way stands on the ladder: new, or on a step until it's due,
+    /// worked out from its entries in the review log. A flagged, buried or
+    /// set-aside card keeps it, and `cardStanding` says whether the card is
+    /// in Lucas's reviews.
+    public let standing: LadderStanding
+    /// How long its step waits, or nil while it's new.
+    public let wait: Duration?
+    /// Where the card stands, both ways together.
+    let cardStanding: CardStanding
 
     /// The step it stands on, counted from 0, the first step, or nil while
     /// it's new.
@@ -37,27 +73,28 @@ public struct CardRow: Sendable, Equatable, Identifiable {
         return step
     }
 
-    /// When the card is due, as the Cards window says it: nil while it's new,
-    /// or out of Lucas's reviews, flagged, buried or set aside, since it
-    /// won't show up then.
+    /// When the way is due, as the Cards window says it: nil while it's new,
+    /// or while the card is out of Lucas's reviews, flagged, buried or set
+    /// aside, since it won't show up then.
     public var due: Date? {
         cardStanding.due(given: standing)
     }
 
-    /// What the Due column says of the card.
+    /// What the Due column, or the Back-first due column, says of the way.
     public enum DueColumn: Sendable, Equatable {
-        /// When it's due: it's in Lucas's reviews, on the ladder.
+        /// When it's due: the card is in Lucas's reviews, and the way on the
+        /// ladder.
         case due(Date)
-        /// That it's set aside, so it won't show up until none of its tags
-        /// is.
+        /// That the card is set aside, so it won't show up until none of its
+        /// tags is.
         case setAside
-        /// Nothing: it's new, flagged or buried, which the Step column and
-        /// the Front column's marks say.
+        /// Nothing: the way is new, or the card flagged or buried, which the
+        /// step's column and the Front column's marks say.
         case nothing
     }
 
-    /// What the Due column says of the card: when it's due, or that it's set
-    /// aside, or nothing.
+    /// What the way's due column says of it: when it's due, or that the card
+    /// is set aside, or nothing.
     public var dueColumn: DueColumn {
         if case .setAside = cardStanding {
             .setAside
@@ -68,19 +105,19 @@ public struct CardRow: Sendable, Equatable, Identifiable {
         }
     }
 
-    /// Whether the card is due at `time`: in Lucas's reviews, with its wait
-    /// over.
+    /// Whether the way is due at `time`: the card is in Lucas's reviews, and
+    /// the way's wait is over.
     public func isDue(at time: Date) -> Bool {
         cardStanding.isDue(at: time, given: standing)
     }
 
-    /// Whether the card is new in Lucas's reviews: it hasn't had its first
+    /// Whether the way is new in Lucas's reviews: it hasn't had its first
     /// view yet.
     var isNew: Bool {
         cardStanding.isNew(given: standing)
     }
 
-    /// Whether the card is learned in Lucas's reviews, standing on `ladder`:
+    /// Whether the way is learned in Lucas's reviews, standing on `ladder`:
     /// on a step that waits 30 days or more.
     func isLearned(on ladder: Ladder) -> Bool {
         cardStanding.isLearned(given: standing, on: ladder)
@@ -338,20 +375,32 @@ extension CardStanding {
 extension CardRow {
     /// The row of `card`, whose tags have what `ownTags` says of their own,
     /// after `entries`, its review log's, in the order they happened: last
-    /// seen either way, and standing on `ladder` as its front-first way
-    /// does.
+    /// seen either way, and each way standing on `ladder`, its back-first way
+    /// only while the card goes both ways.
     fileprivate init(
         card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], on ladder: Ladder
     ) throws(UnexpectedReviewLog) {
         self.card = card
         tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
-        standing = try ladder.standing(after: entries.filter { $0.way == .frontFirst })
+        frontFirst = try WayProgress(.frontFirst, of: card, after: entries, on: ladder)
+        backFirst = card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, on: ladder) : nil
         lastSeen =
             entries.last { entry in
                 if case .placement = entry.kind { false } else { true }
             }?
             .answeredAt
+    }
+}
+
+extension WayProgress {
+    /// Where `card`'s `way` stands on `ladder` after its entries out of
+    /// `entries`, the card's review log's, in the order they happened.
+    fileprivate init(
+        _ way: Way, of card: Card, after entries: [ReviewLogEntry], on ladder: Ladder
+    ) throws(UnexpectedReviewLog) {
+        standing = try ladder.standing(after: entries.filter { $0.way == way })
+        cardStanding = card.standing
         if case .onLadder(let step, _) = standing {
             wait = ladder.waits[step]
         } else {
