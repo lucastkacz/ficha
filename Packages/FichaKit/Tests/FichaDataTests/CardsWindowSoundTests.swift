@@ -6,8 +6,8 @@ import Testing
 /// Tests on sounds in the Cards window: the card form and the card editor
 /// put a sound file on a side, converted away from the window, replace it or
 /// remove it, the detail shows a card's sounds, the table which sides have
-/// an image or a sound, and one sound plays at a time, on the default
-/// ladder.
+/// an image or a sound and what a front without text holds, and one sound
+/// plays at a time, on the default ladder.
 final class CardsWindowSoundTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
@@ -224,6 +224,26 @@ final class CardsWindowSoundTests {
         let listed = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0.card) })
         #expect(cards.map { listed[$0.id]?.sidesWithImages } == [nil, nil, nil, .front, .both, .back])
         #expect(cards.map { listed[$0.id]?.sidesWithSounds } == [nil, .front, .back, .both, nil, nil])
+    }
+
+    @Test("the table names a front without text by its image, or else by its sound")
+    func theTableNamesAFrontWithoutText() async throws {
+        let la = try await addTone(440, to: engine)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let cards = try [
+            card(nil, front: "¿Qué ave es?", back: "El hornero.", frontImage: bird),
+            card(nil, front: "", back: "El hornero.", frontImage: bird),
+            card(nil, front: "", back: "La.", frontSound: la),
+            card(nil, front: "", back: "El hornero, que canta.", frontImage: bird, frontSound: la),
+        ].map { try engine.create($0) }
+        let window = openWindow()
+
+        guard case .success(.cards(let rows)) = window.listing else {
+            Issue.record("The table lists no cards")
+            return
+        }
+        let listed = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0.card) })
+        #expect(cards.map { listed[$0.id]?.frontWithoutText } == [nil, .image, .sound, .image])
     }
 
     @Test(

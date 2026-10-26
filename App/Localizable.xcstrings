@@ -1453,7 +1453,7 @@
       "comment" : "A button that drops a capture that repeats a card or a capture."
     },
     "Image" : {
-      "comment" : "The accessibility label of an image on a card's side."
+      "comment" : "The Cards window, in place of a card's front that has an image and no text.\nThe accessibility label of an image on a card's side."
     },
     "Images they share: %@" : {
       "comment" : "Settings, under Backups, below how many copies there are: what the images on their cards weigh, each kept once for all the copies."
@@ -2019,6 +2019,9 @@
     },
     "Sort of" : {
       "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
+    },
+    "Sound" : {
+      "comment" : "The Cards window, in place of a card's front that has only a sound."
     },
     "Sounds they share: %@" : {
       "comment" : "Settings, under Backups, below how many copies there are: what the sounds on their cards weigh, each kept once for all the copies."
