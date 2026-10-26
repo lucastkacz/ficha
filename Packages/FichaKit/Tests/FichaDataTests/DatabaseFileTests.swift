@@ -203,6 +203,22 @@ final class DatabaseFileTests {
             ])
     }
 
+    @Test(
+        "a database from before each answer's way migrates with every entry front first, and a card that goes both ways ready to start back first"
+    )
+    func aDatabaseFromBeforeWaysMigratesWithEveryEntryFrontFirst() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeWays(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+        let ladder = ReviewSettings.defaults.ladder
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .frontFirst])
+        #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
+        #expect(try engine.standing(of: 1, way: .backFirst, on: ladder) == .new)
+        #expect(try engine.reviewNow(.defaults).map(\.way) == [.backFirst])
+    }
+
     // Ficha opens its database every time it starts, and the CLI on every
     // command: copying it each time would fill the data folder.
     @Test("a new database, or one already up to date, isn't copied")
@@ -442,6 +458,31 @@ func saveDatabaseBeforeBothWays(at file: URL, at time: Date) throws {
                     (2, 'concept', 'ubuntu', 'Soy porque somos.', '[]', ?)
                 """,
             arguments: [time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)
+                VALUES (1, 'firstView', NULL, ?, 8.25, 'reviewNow', 0),
+                    (1, 'review', 'good', ?, 3, 'appearance', 0)
+                """,
+            arguments: [time, time + hours(1)])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before the review log said
+/// which way each answer went, through the schema's migrations up to the one
+/// before it, with a card approved at `time` that goes both ways:
+/// serendipia, met then and good an hour later.
+func saveDatabaseBeforeWays(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v18 cards that go both ways")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt, bothWays)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?, 1)
+                """,
+            arguments: [time])
         try db.execute(
             sql: """
                 INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead)

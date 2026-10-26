@@ -120,14 +120,15 @@ extension ReviewSettings {
 
     /// The appearances that come from `now` on, as if Lucas rated nothing in
     /// between, up to `count`, for the iPhone to schedule as notifications
-    /// (ADR 0010). Out of `cards`, given when the last appearance or review
-    /// now closed, if any did. Walking time forward from `now`, each
-    /// appearance comes at the first time `appearance` says it shows up, on a
-    /// device that never holds one back, with the cards it says. Left alone, a
-    /// planned appearance closes as it shows, and its cards stay as they were,
-    /// so the next one comes once `separation` passed. The plan ends after
-    /// `count`, or once no appearance would come without Lucas doing
-    /// something.
+    /// (ADR 0010). Out of the front-first ways of `cards`, since card
+    /// notifications don't go back first yet (#97), given when the last
+    /// appearance or review now closed, if any did. Walking time forward
+    /// from `now`, each appearance comes at the first time `appearance` says
+    /// it shows up, on a device that never holds one back, with the cards it
+    /// says. Left alone, a planned appearance closes as it shows, and its
+    /// cards stay as they were, so the next one comes once `separation`
+    /// passed. The plan ends after `count`, or once no appearance would come
+    /// without Lucas doing something.
     public func plannedAppearances(
         cards: CardsInReviews,
         lastClosing: Date?,
@@ -135,6 +136,7 @@ extension ReviewSettings {
         calendar: Calendar,
         upTo count: Int
     ) throws(UnexpectedReviewLog) -> [PlannedAppearance] {
+        let cards = cards.frontFirstOnly
         // With nothing rated, the cards keep their due times, and a new card
         // waits for a day whose new cards Lucas hasn't met, if one ever comes
         // in: when none may, a new day changes nothing, and the plan ends.

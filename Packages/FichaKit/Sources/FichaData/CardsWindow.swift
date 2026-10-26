@@ -89,11 +89,12 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 
 /// An entry of a card's review log as the Cards window shows it under the
 /// card, in its chart and its list: the first view, review or placement, and
-/// the step the card stood on after it.
+/// the step the entry's way stood on after it.
 public struct ReviewLogRow: Sendable, Equatable {
     /// The first view, review or placement, as the review log keeps it.
     public let entry: ReviewLogEntry
-    /// The step the card stood on after it, counted from 0, the first step.
+    /// The step the entry's way stood on after it, counted from 0, the first
+    /// step.
     public let step: Int
 }
 
@@ -241,17 +242,20 @@ extension Engine {
     }
 
     /// A card's review log as the Cards window shows it under the card,
-    /// oldest first: each first view, review and placement, with the step of
-    /// `ladder` the card stood on after it. Empty while the card is new.
+    /// oldest first: each first view, review and placement, either way, with
+    /// the step of `ladder` the entry's way stood on after it. Empty while
+    /// the card is new.
     public func reviewLogRows(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> [ReviewLogRow] {
         try read { db in
             let entries = try logEntries(ofExisting: cardID, in: db)
-            // Each step is where the ladder puts the card after the log up
-            // to its entry, as it works out the card's standing from the
-            // whole log, so the last one is the Step column's. That goes over
-            // the log again for each entry, but a card has few.
+            // Each step is where the ladder puts the entry's way after that
+            // way's log up to the entry, as it works out the way's standing
+            // from its whole log, so the front-first way's last one is the
+            // Step column's. That goes over the log again for each entry, but
+            // a card has few.
             return try entries.indices.map { end in
-                guard case .onLadder(let step, _) = try ladder.standing(after: Array(entries[...end])) else {
+                let wayUpToEntry = entries[...end].filter { $0.way == entries[end].way }
+                guard case .onLadder(let step, _) = try ladder.standing(after: wayUpToEntry) else {
                     // The ladder puts a card with an entry on a step, or
                     // throws.
                     logger.error("Card \(cardID)'s review log left it new after an entry")
@@ -333,15 +337,16 @@ extension CardStanding {
 
 extension CardRow {
     /// The row of `card`, whose tags have what `ownTags` says of their own,
-    /// standing on `ladder` after `entries`, its review log's, in the order
-    /// they happened.
+    /// after `entries`, its review log's, in the order they happened: last
+    /// seen either way, and standing on `ladder` as its front-first way
+    /// does.
     fileprivate init(
         card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], on ladder: Ladder
     ) throws(UnexpectedReviewLog) {
         self.card = card
         tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
-        standing = try ladder.standing(after: entries)
+        standing = try ladder.standing(after: entries.filter { $0.way == .frontFirst })
         lastSeen =
             entries.last { entry in
                 if case .placement = entry.kind { false } else { true }

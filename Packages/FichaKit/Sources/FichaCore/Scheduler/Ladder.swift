@@ -97,11 +97,13 @@ public struct Ladder: Sendable, Equatable {
         return distances.indices.min { distances[$0] < distances[$1] } ?? 0
     }
 
-    /// How many of `cards` are due at `now`, and how many are learned: on a
-    /// step that waits 30 days or more.
+    /// How many of the ways of `cards` are due at `now`, and how many of the
+    /// cards are learned: their front-first way on a step that waits 30 days
+    /// or more, so that switching Both ways on changes nothing there.
     public func counts(of cards: CardsInReviews, at now: Date) throws(UnexpectedReviewLog) -> (due: Int, learned: Int) {
-        let standings = try cards.standings(on: self).map(\.standing)
-        return (standings.count { $0.isDue(at: now) }, standings.count(where: isLearned))
+        let standings = try cards.standings(on: self)
+        let frontFirst = standings.filter { cardWay, _ in cardWay.way == .frontFirst }.map(\.standing)
+        return (standings.count { $0.standing.isDue(at: now) }, frontFirst.count(where: isLearned))
     }
 
     /// Where each of these cards' ways stands, in the order given, after the

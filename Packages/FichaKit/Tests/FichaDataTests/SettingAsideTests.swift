@@ -138,6 +138,23 @@ struct SettingAsideTests {
         #expect(try engine.reviewLog().map(\.cardID) == [eudaimonia.id, eudaimonia.id])
     }
 
+    @Test(
+        "setting a tag aside takes both ways of its cards out of reviews, and stopping brings both back on their steps")
+    func settingATagAsideTakesOutBothWays() throws {
+        let eudaimonia = try approveCard("eudaimonía", tags: ["filosofía"])
+        let bothWays = try engine.setBothWays(true, of: [eudaimonia.id])
+        try engine.meet(eudaimonia)
+        try engine.meet(eudaimonia, way: .backFirst)
+        time.advance(by: hours(1))
+
+        try engine.setAside("filosofía")
+        let whileSetAside = try engine.reviewNow(settings)
+        try engine.stopSettingAside("filosofía")
+
+        #expect(whileSetAside.isEmpty)
+        #expect(try engine.reviewNow(settings) == [.review(bothWays[0]), .review(bothWays[0], .backFirst)])
+    }
+
     // Buried, then the inbox, then set aside, then reviews (ADR 0011).
     @Test(
         "a flagged card stays in the inbox and a buried card stays buried whatever their tags, and fixing or unburying a card with a set-aside tag leaves it set aside"

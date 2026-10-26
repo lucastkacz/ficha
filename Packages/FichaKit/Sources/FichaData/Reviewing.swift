@@ -16,21 +16,23 @@ extension Engine {
         }
     }
 
-    /// Records Lucas's answer to a card in his reviews in the review log: the
-    /// end of its first view, which puts it on the ladder's first step, or a
-    /// review with his rating, which moves it on the ladder of `settings`. A
-    /// first view is only for a new card, and a review only for a due one, or,
-    /// in an appearance, for one due within the look-ahead, which it brings
-    /// along. When Lucas asked to review ahead, a review of a card that isn't
-    /// due yet goes into the log as a review ahead, of which only again
-    /// counts; one of a card that came due by then is on time. It returns
-    /// how many times he forgot the card when a rating of again makes it
-    /// forgotten often, as `settings` say, for the review panel to offer to
-    /// flag it, or nil.
+    /// Records Lucas's answer to one of the ways of a card in his reviews,
+    /// front first unless it's said to go back first, in the review log: the
+    /// end of its first view, which puts that way on the ladder's first step,
+    /// or a review with his rating, which moves that way on the ladder of
+    /// `settings`. Each way moves on its own (ADR 0016). A first view is only
+    /// for a new way, and a review only for a due one, or, in an appearance,
+    /// for one due within the look-ahead, which it brings along. When Lucas
+    /// asked to review ahead, a review of a way that isn't due yet goes into
+    /// the log as a review ahead, of which only again counts; one of a way
+    /// that came due by then is on time. It returns how many times he forgot
+    /// the card when a rating of again makes it forgotten often, as
+    /// `settings` say, for the review panel to offer to flag it, or nil.
     @discardableResult
     public func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
+        way: Way = .frontFirst,
         responseTime: Duration,
         trigger: Trigger,
         settings: ReviewSettings,
@@ -39,25 +41,26 @@ extension Engine {
         let answeredAt = time.now
         return try write { db in
             try recordAnswer(
-                kind, of: cardID, at: answeredAt, responseTime: responseTime, trigger: trigger, settings: settings,
-                reviewingAhead: reviewingAhead, in: db)
+                kind, of: CardWay(cardID: cardID, way: way), at: answeredAt, responseTime: responseTime,
+                trigger: trigger, settings: settings, reviewingAhead: reviewingAhead, in: db)
         }
     }
 
-    /// Takes back Lucas's last answer to a card, the last entry of its review
-    /// log, as the review panel's ⌘Z does: it leaves the log, as an answer
-    /// undone never happened, the way Anki's undo deletes it too, and the
-    /// card stands where it stood before it. When the card has no entry left,
-    /// nothing is taken back, and ⌘Z can't undo it.
-    public func takeBackAnswer(of cardID: Int64) throws(EngineError) {
+    /// Takes back Lucas's last answer to one of a card's ways, the last entry
+    /// of that way's review log, as the review panel's ⌘Z does: it leaves the
+    /// log, as an answer undone never happened, the way Anki's undo deletes
+    /// it too, and the way stands where it stood before it, while the card's
+    /// other way stays where it is. When the way has no entry left, nothing
+    /// is taken back, and ⌘Z can't undo it.
+    public func takeBackAnswer(of cardID: Int64, way: Way) throws(EngineError) {
         try write { db in
-            try deleteLastEntry(of: cardID, in: db)
+            try deleteLastEntry(of: CardWay(cardID: cardID, way: way), in: db)
         }
     }
 
-    /// What the menu shows of Lucas's progress: how many cards in his reviews
-    /// are due, how many he learned, and how many captures and flagged cards
-    /// wait in the inbox.
+    /// What the menu shows of Lucas's progress: how many ways of the cards in
+    /// his reviews are due, how many of the cards he learned, and how many
+    /// captures and flagged cards wait in the inbox.
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in
@@ -89,12 +92,15 @@ extension Engine {
         try read(logEntries(in:))
     }
 
-    /// Where a card stands on `ladder`: new, or on a step until it's due,
-    /// worked out from its review log, also while it's flagged, buried or set
-    /// aside.
-    public func standing(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> LadderStanding {
+    /// Where one of a card's ways stands on `ladder`, front first unless it's
+    /// said to go back first: new, or on a step until it's due, worked out
+    /// from that way's review log, also while the card is flagged, buried or
+    /// set aside, or doesn't go both ways.
+    public func standing(of cardID: Int64, way: Way = .frontFirst, on ladder: Ladder) throws(EngineError)
+        -> LadderStanding
+    {
         try read { db in
-            try ladder.standing(after: logEntries(ofExisting: cardID, in: db))
+            try ladder.standing(after: logEntries(ofExisting: cardID, in: db).filter { $0.way == way })
         }
     }
 }
@@ -114,14 +120,18 @@ func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogE
         .map(ReviewLogEntry.init(row:))
 }
 
-/// Adds Lucas's answer to a card in his reviews, given at `answeredAt`, at the
-/// end of the review log, as `Engine.record` says, with how long he took when
-/// something measured it, and returns whether the card is now forgotten
-/// often, or throws when the card can't take the answer.
+/// Adds Lucas's answer to `answered`, one of the ways of a card in his
+/// reviews, given at `answeredAt`, at the end of the review log, as
+/// `Engine.record` says, with how long he took when something measured it,
+/// and returns whether the card is now forgotten often, or throws when the
+/// way can't take the answer. A back-first way takes it also when the card
+/// no longer goes both ways, as when Lucas switched it off while the review
+/// panel showed that way: the way keeps its progress for when it's switched
+/// on again.
 @discardableResult
 func recordAnswer(
     _ kind: ReviewLogEntry.Kind,
-    of cardID: Int64,
+    of answered: CardWay,
     at answeredAt: Date,
     responseTime: Duration?,
     trigger: Trigger,
@@ -130,35 +140,37 @@ func recordAnswer(
     in db: Database
 ) throws -> ForgottenOften? {
     let lookAhead = trigger.lookAhead(in: settings)
-    let card = try cardInReviews(cardID, in: db)
-    let log = try logEntries(ofExisting: cardID, in: db)
-    let standing = try settings.ladder.standing(after: log)
+    let card = try cardInReviews(answered.cardID, in: db)
+    let log = try logEntries(ofExisting: answered.cardID, in: db)
+    let standing = try settings.ladder.standing(after: log.filter { $0.way == answered.way })
     let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
     if !isAhead {
         do throws(RefusedAnswer) {
             try standing.check(kind, at: answeredAt, lookingAhead: lookAhead)
         } catch {
-            throw EngineError(refused: error, cardID: cardID)
+            throw EngineError(refused: error, cardID: answered.cardID)
         }
     }
     let entry = ReviewLogEntry(
-        cardID: cardID, kind: kind, answeredAt: answeredAt, responseTime: responseTime, trigger: trigger,
-        isAhead: isAhead)
+        cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
+        responseTime: responseTime, trigger: trigger, isAhead: isAhead)
     try insert(entry, in: db)
+    // The card's agains count either way, until #260 counts each way apart.
     return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
 }
 
-/// Deletes the last entry of the review log of the card with this id, which
-/// takes back Lucas's last answer to it, as `Engine.takeBackAnswer` says, or
-/// throws when the card has none or doesn't exist.
-private func deleteLastEntry(of cardID: Int64, in db: Database) throws {
-    _ = try existingCard(cardID, in: db)
+/// Deletes the last entry of the review log of `cardWay`, one of a card's
+/// ways, which takes back Lucas's last answer to it, as
+/// `Engine.takeBackAnswer` says, or throws when the way has none or the card
+/// doesn't exist.
+private func deleteLastEntry(of cardWay: CardWay, in db: Database) throws {
+    _ = try existingCard(cardWay.cardID, in: db)
     try db.execute(
-        sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ?)",
-        arguments: [cardID]
+        sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ? AND way = ?)",
+        arguments: [cardWay.cardID, cardWay.way.rawValue]
     )
     guard db.changesCount == 1 else {
-        throw EngineError.cannotUndo(cardID)
+        throw EngineError.cannotUndo(cardWay.cardID)
     }
 }
 
@@ -175,12 +187,12 @@ private func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let columns = entry.kind.columns
     try db.execute(
         sql: """
-            INSERT INTO reviewLog (cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO reviewLog (cardId, way, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
-            entry.cardID, columns.kind, columns.rating, columns.step, columns.due, entry.answeredAt,
-            entry.responseTime.map { $0 / .seconds(1) }, entry.trigger?.rawValue, entry.isAhead,
+            entry.cardID, entry.way.rawValue, columns.kind, columns.rating, columns.step, columns.due,
+            entry.answeredAt, entry.responseTime.map { $0 / .seconds(1) }, entry.trigger?.rawValue, entry.isAhead,
         ]
     )
 }
@@ -189,6 +201,9 @@ extension ReviewLogEntry {
     /// An entry read from a row of the `reviewLog` table.
     init(row: Row) throws {
         let cardID: Int64 = try row.decode(forColumn: "cardId")
+        guard let way = Way(rawValue: try row.decode(forColumn: "way")) else {
+            throw unreadable("Card \(cardID) has a review log entry that went an unknown way")
+        }
         guard
             let kind = Kind(
                 kind: try row.decode(forColumn: "kind"), rating: try row.decode(forColumn: "rating"),
@@ -200,7 +215,7 @@ extension ReviewLogEntry {
         let triggerName: String? = try row.decode(forColumn: "trigger")
         switch (kind, triggerName) {
         case (.placement(let placement), nil):
-            self.init(placing: cardID, on: placement, at: answeredAt)
+            self.init(placing: cardID, way: way, on: placement, at: answeredAt)
         case (.firstView, let triggerName?), (.review, let triggerName?):
             guard let trigger = Trigger(rawValue: triggerName) else {
                 throw unreadable("Card \(cardID) has a review log entry with an unknown trigger")
@@ -208,6 +223,7 @@ extension ReviewLogEntry {
             let responseTime: Double? = try row.decode(forColumn: "responseTime")
             self.init(
                 cardID: cardID,
+                way: way,
                 kind: kind,
                 answeredAt: answeredAt,
                 responseTime: responseTime.map { .seconds($0) },

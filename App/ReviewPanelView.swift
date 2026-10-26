@@ -3,13 +3,17 @@ import FichaData
 import SwiftUI
 
 /// What the review panel shows, on Liquid Glass: the cards a review now or an
-/// appearance brought, one at a time. Every action has a key and a button:
-/// Enter ends a first view, Space flips a card, 1, 2 and 3 rate it, A asks a
-/// question about it, which waits in the inbox as a follow-up, M flags it with
-/// a note, E buries it, ⌘Z undoes the last thing Lucas did, and Esc closes the
-/// panel, which snoozes an appearance. A side with a sound has a ▶ under its
-/// text, which plays it and shows ■ while it plays, and R plays or stops the
-/// sound of the side that shows. When 1 makes a card forgotten often,
+/// appearance brought, one at a time, each with its upper side on top and,
+/// once flipped, its lower side under it. A card shows front first, or, when
+/// it goes both ways, back first too, with the back on top and a "Back first"
+/// mark. Every action has a key and a button: Space flips a card, 1, 2 and 3
+/// rate it, Enter ends a first view, which Space flips first when it shows
+/// back first, A asks a question about the card, which waits in the inbox as
+/// a follow-up, M flags it with a note, E buries it, ⌘Z undoes the last thing
+/// Lucas did, and Esc closes the panel, which snoozes an appearance. A side
+/// with a sound has a ▶ under its text, which plays it and shows ■ while it
+/// plays, and R plays or stops the lower side's sound once it shows, or else
+/// the upper side's. When 1 makes a card forgotten often,
 /// the panel offers to flag it, its note written: Enter flags it, and Esc
 /// leaves it in his reviews. Once Lucas went through every card, the
 /// panel stays open until he closes it, and offers more cards if there are
@@ -175,18 +179,16 @@ struct ReviewPanelView: View {
             } buttons: {
                 closeButton(closeByLucas)
             }
-        case .firstView(let card):
-            sides(of: card, showingBack: true, buttons: .forTheCard, in: panel) {
-                TagLine(tags: panel.state.tags) {
-                    newBadge
-                }
+        case .firstView(let card, let way):
+            sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
+                topLine(way, isNew: true, tags: panel.state.tags)
             }
             enterButton(Text("Got it")) {
                 panel.state.endFirstView()
             }
-        case .front(let card, let isAhead):
-            sides(of: card, showingBack: false, buttons: .forTheCard, in: panel) {
-                topLine(isAhead: isAhead, tags: panel.state.tags)
+        case .upperSide(let card, let way, let isNew, let isAhead):
+            sides(of: card, way, showingLowerSide: false, buttons: .forTheCard, in: panel) {
+                topLine(way, isNew: isNew, isAhead: isAhead, tags: panel.state.tags)
             }
             HStack {
                 Spacer()
@@ -201,20 +203,20 @@ struct ReviewPanelView: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])
             }
-        case .back(let card, let isAhead):
-            sides(of: card, showingBack: true, buttons: .forTheCard, in: panel) {
-                topLine(isAhead: isAhead, tags: panel.state.tags)
+        case .bothSides(let card, let way, let isAhead):
+            sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
+                topLine(way, isAhead: isAhead, tags: panel.state.tags)
             }
             HStack {
                 ratingButton("Don't know", key: "1", rating: .again, in: panel)
                 ratingButton("Sort of", key: "2", rating: .hard, in: panel)
                 ratingButton("Know it", key: "3", rating: .good, in: panel)
             }
-        case .flagging(let card, let showsBack):
-            sides(of: card, showingBack: showsBack, buttons: .closeWithoutEsc, in: panel) {}
+        case .flagging(let card, let way, let showsLowerSide):
+            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .closeWithoutEsc, in: panel) {}
             noteEditor(of: panel)
-        case .asking(let card, let showsBack):
-            sides(of: card, showingBack: showsBack, buttons: .closeWithoutEsc, in: panel) {}
+        case .asking(let card, let way, let showsLowerSide):
+            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .closeWithoutEsc, in: panel) {}
             questionEditor(of: panel)
         case .done where panel.state.canSeeMore:
             header {
@@ -286,25 +288,27 @@ struct ReviewPanelView: View {
     }
 
     /// A card's sides, under the line at its top and beside the buttons at
-    /// the panel's top right: its front, and its back when it shows. The
-    /// panel's window stops at its share of the screen (`ReviewPanelWindow`).
-    /// A card that doesn't fit has its front go under the line at its top,
-    /// the panel's width, and when it still doesn't fit, its front and its
-    /// back scroll, each card from its top, while the line at its top and the
-    /// buttons stay in view, as what's under the card does. The scroll never
-    /// takes the keyboard, so the panel's keys work as on a short card. The
-    /// buttons show once, over the room each layout keeps for them, so no key
-    /// belongs to two buttons.
+    /// the panel's top right: the upper side, which `way` says, and the lower
+    /// one when it shows. The panel's window stops at its share of the
+    /// screen (`ReviewPanelWindow`). A card that doesn't fit has its upper
+    /// side go under the line at its top, the panel's width, and when it
+    /// still doesn't fit, its sides scroll, each card and way from its top,
+    /// while the line at its top and the buttons stay in view, as what's
+    /// under the card does. The scroll never takes the keyboard, so the
+    /// panel's keys work as on a short card. The buttons show once, over the
+    /// room each layout keeps for them, so no key belongs to two buttons.
     private func sides<TopLine: View>(
-        of card: Card, showingBack: Bool, buttons: TopButtons, in panel: ReviewPanelModel,
+        of card: Card, _ way: Way, showingLowerSide: Bool, buttons: TopButtons, in panel: ReviewPanelModel,
         @ViewBuilder topLine: () -> TopLine
     ) -> some View {
         let line = topLine()
         let room = topButtons(buttons, of: panel, withKeys: false).hidden()
-        let frontAndBack = VStack(alignment: .leading, spacing: 16) {
-            front(of: card, in: panel)
-            if showingBack {
-                back(of: card, in: panel)
+        let upper = upperSide(of: card, way, in: panel)
+        let lower = lowerSide(of: card, way, in: panel)
+        let bothSides = VStack(alignment: .leading, spacing: 16) {
+            upper
+            if showingLowerSide {
+                lower
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -313,13 +317,13 @@ struct ReviewPanelView: View {
                 header {
                     VStack(alignment: .leading, spacing: 8) {
                         line
-                        front(of: card, in: panel)
+                        upper
                     }
                 } buttons: {
                     room
                 }
-                if showingBack {
-                    back(of: card, in: panel)
+                if showingLowerSide {
+                    lower
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -328,7 +332,7 @@ struct ReviewPanelView: View {
                 } buttons: {
                     room
                 }
-                frontAndBack
+                bothSides
             }
             VStack(alignment: .leading, spacing: 8) {
                 header {
@@ -337,13 +341,14 @@ struct ReviewPanelView: View {
                     room
                 }
                 ScrollView {
-                    frontAndBack
+                    bothSides
                         // The scroller sits in the panel's margin, beside the
                         // text rather than over it.
                         .padding(.horizontal, 20)
                 }
                 .padding(.horizontal, -20)
-                .id(card.id)
+                // A card's two ways can come one after the other.
+                .id(CardWay(cardID: card.id, way: way))
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -571,52 +576,78 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The line at the top of a card the user reviews: the badge of a review
-    /// ahead, when it's one, and the card's tags, when it has some.
+    /// The badge of a card that shows back first.
+    private var backFirstBadge: some View {
+        Text(
+            "Back first",
+            comment:
+                "A badge on a card the review panel shows back first: its back on top, and its front under it once flipped."
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(.secondary.opacity(0.15), in: .capsule)
+    }
+
+    /// The line at the top of a card: its badges, "New" on a first view,
+    /// "Ahead" on a review ahead and "Back first" when `way` is, each when it
+    /// applies, and the card's tags, when it has some.
     @ViewBuilder
-    private func topLine(isAhead: Bool, tags: [CardTag]) -> some View {
-        if isAhead || !tags.isEmpty {
+    private func topLine(_ way: Way, isNew: Bool = false, isAhead: Bool = false, tags: [CardTag]) -> some View {
+        let isBackFirst = way == .backFirst
+        if isNew || isAhead || isBackFirst || !tags.isEmpty {
             TagLine(tags: tags) {
+                if isNew {
+                    newBadge
+                }
                 if isAhead {
                     AheadBadge()
+                }
+                if isBackFirst {
+                    backFirstBadge
                 }
             }
         }
     }
 
-    /// The card's front: its image, fitted to the panel's width, above its
-    /// text, and its sound's ▶ under them, each when it has one.
-    private func front(of card: Card, in panel: ReviewPanelModel) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let image = card.frontImage {
+    /// The side on top, which `way` says, and Lucas sees first: its image,
+    /// fitted to the panel's width, above its text, large, and its sound's ▶
+    /// under them, each when it has one.
+    private func upperSide(of card: Card, _ way: Way, in panel: ReviewPanelModel) -> some View {
+        let side = way.upperSide
+        return VStack(alignment: .leading, spacing: 8) {
+            if let image = card.image(on: side) {
                 SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
             }
-            if !card.front.isEmpty {
-                Text(card.front)
+            if !card.text(on: side).isEmpty {
+                Text(card.text(on: side))
                     .font(.title2.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let sound = card.frontSound {
-                soundControls(sound, on: .front, in: panel)
+            if let sound = card.sound(on: side) {
+                soundControls(sound, on: side, in: panel)
             }
         }
     }
 
-    /// The card's back: its image, fitted to the panel's width, above its
-    /// text, and its sound's ▶ under them, each when it has one, and its
-    /// source, small, when it has one.
-    private func back(of card: Card, in panel: ReviewPanelModel) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    /// The other side, under a line, once Lucas flips the card: its image,
+    /// fitted to the panel's width, above its text, and its sound's ▶ under
+    /// them, each when it has one, and the card's source, small, when it has
+    /// one, at the card's foot whichever way it shows.
+    private func lowerSide(of card: Card, _ way: Way, in panel: ReviewPanelModel) -> some View {
+        let side = way.lowerSide
+        return VStack(alignment: .leading, spacing: 8) {
             Divider()
-            if let image = card.backImage {
+            if let image = card.image(on: side) {
                 SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
             }
-            if !card.back.isEmpty {
-                Text(card.back)
+            if !card.text(on: side).isEmpty {
+                Text(card.text(on: side))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let sound = card.backSound {
-                soundControls(sound, on: .back, in: panel)
+            if let sound = card.sound(on: side) {
+                soundControls(sound, on: side, in: panel)
             }
             if let source = card.source {
                 Text(source)
@@ -681,12 +712,12 @@ struct AheadBadge: View {
     }
 }
 
-/// The line at the top of a card in the review panel: its badge, "New" or
-/// "Ahead", when it has one, and then its tags, each as the Cards window's
-/// Tags column draws it, so that Lucas knows which subject the card is about
-/// before he answers it. It's one line, so the panel stays as small as it is:
-/// the tags that don't fit collapse into a "+n" capsule, whose tooltip names
-/// them.
+/// The line at the top of a card in the review panel: its badges, "New" or
+/// "Ahead", and "Back first", when it has some, and then its tags, each as
+/// the Cards window's Tags column draws it, so that Lucas knows which subject
+/// the card is about, and which way he's asked, before he answers it. It's
+/// one line, so the panel stays as small as it is: the tags that don't fit
+/// collapse into a "+n" capsule, whose tooltip names them.
 private struct TagLine<Badge: View>: View {
     let tags: [CardTag]
     @ViewBuilder let badge: Badge
@@ -737,8 +768,8 @@ private struct MoreTagsCapsule: View {
 /// it's offered: the panel's window takes the view's smallest and largest
 /// size as its own, which this makes the same, so the window fits the content
 /// as it changes. In `maximum`, a card taller than that scrolls, and one that
-/// fits in less, once its front moves under the line at its top, takes less.
-/// SwiftUI's `Layout` is standard; this one is ours.
+/// fits in less, once its upper side moves under the line at its top, takes
+/// less. SwiftUI's `Layout` is standard; this one is ours.
 private struct HeightUpTo: Layout {
     let maximum: CGFloat
 

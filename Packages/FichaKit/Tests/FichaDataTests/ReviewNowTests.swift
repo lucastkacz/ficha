@@ -124,4 +124,79 @@ struct ReviewNowTests {
 
         #expect(try engine.reviewNow(settings) == [.firstView(cards[5])])
     }
+
+    @Test("a card that goes both ways comes back first for its first view once Lucas met it, and not before")
+    func aCardThatGoesBothWaysComesBackFirstOnceMet() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try #require(try engine.setBothWays(true, of: [serendipia.id]).first)
+
+        let beforeMeetingIt = try engine.reviewNow(settings)
+        try engine.meet(bothWays)
+
+        #expect(beforeMeetingIt == [.firstView(bothWays)])
+        #expect(try engine.reviewNow(settings) == [.firstView(bothWays, .backFirst)])
+    }
+
+    @Test("new cards and new back-first ways take turns, a new card first each day, back first in the cards' order")
+    func newCardsAndBackFirstWaysTakeTurns() throws {
+        let met = try ["serendipia", "ubuntu"].map { try approveCard($0, in: engine) }
+        let new = try ["petricor", "Schadenfreude"].map { try approveCard($0, in: engine) }
+        for card in met {
+            try engine.meet(card)
+        }
+        let bothWays = try engine.setBothWays(true, of: Set(met.map(\.id)))
+        time.move(to: try morning(of: 15, in: calendar))
+
+        let first = try newWayNow()
+        try engine.meet(new[0])
+        let second = try newWayNow()
+        try engine.meet(bothWays[0], way: .backFirst)
+        let third = try newWayNow()
+        try engine.meet(new[1])
+        let fourth = try newWayNow()
+
+        #expect(first == .firstView(new[0]))
+        #expect(second == .firstView(bothWays[0], .backFirst))
+        #expect(third == .firstView(new[1]))
+        #expect(fourth == .firstView(bothWays[1], .backFirst))
+    }
+
+    @Test("a new back-first way comes after another when no new card waits")
+    func backFirstWaysComeOneAfterAnotherWhenNoNewCardWaits() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
+        try engine.meet(serendipia)
+        try engine.meet(ubuntu)
+
+        try engine.meet(bothWays[0], way: .backFirst)
+
+        #expect(try newWayNow() == .firstView(bothWays[1], .backFirst))
+    }
+
+    @Test("due ways on the same step and due at the same time come by card, each card's front-first way first")
+    func tiedDueWaysComeByCardFrontFirstFirst() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
+        try engine.meet(serendipia)
+        try engine.meet(ubuntu)
+        try engine.meet(bothWays[1], way: .backFirst)
+        try engine.meet(bothWays[0], way: .backFirst)
+
+        time.advance(by: hours(1))
+
+        #expect(
+            try engine.reviewNow(settings) == [
+                .review(bothWays[0]), .review(bothWays[0], .backFirst), .review(bothWays[1]),
+                .review(bothWays[1], .backFirst),
+            ])
+    }
+
+    /// The new way review now brings, after the due ones, if any.
+    private func newWayNow() throws -> PanelCard? {
+        try engine.reviewNow(settings).first { panelCard in
+            if case .firstView = panelCard { true } else { false }
+        }
+    }
 }

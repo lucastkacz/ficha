@@ -54,7 +54,7 @@ extension Engine {
         let answeredAt = time.now
         return try write { db in
             try recordAnswer(
-                kind, of: cardID, at: answeredAt, responseTime: nil, trigger: .appearance, settings: settings,
+                kind, of: answered, at: answeredAt, responseTime: nil, trigger: .appearance, settings: settings,
                 reviewingAhead: false, in: db)
             let cards = try cardsThatShowUp(in: db)
             let next = try settings.nextCard(

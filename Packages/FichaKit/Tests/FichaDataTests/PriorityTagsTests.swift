@@ -114,6 +114,29 @@ struct PriorityTagsTests {
             ])
     }
 
+    @Test("a priority card's back-first way comes with the priority cards, new or due, ahead of the others")
+    func aPriorityCardsBackFirstWayComesWithThePriorityCards() throws {
+        let ubuntu = try meetCard("ubuntu", tags: ["lenguaje"])
+        let eudaimonia = try meetCard("eudaimonía", tags: ["filosofía"])
+        let petricor = try approveCard("petricor", tags: [])
+        let bothWays = try engine.setBothWays(true, of: [ubuntu.id, eudaimonia.id])
+        try engine.togglePriority(of: "filosofía")
+        time.move(to: try morning(of: 15, in: calendar))
+
+        let newOne = try engine.reviewNow(settings)
+        try engine.meet(bothWays[1], way: .backFirst)
+        try engine.meet(bothWays[0], way: .backFirst)
+        time.advance(by: hours(1))
+        let dueOnes = try engine.reviewNow(settings)
+
+        #expect(newOne == [.review(bothWays[1]), .review(bothWays[0]), .firstView(bothWays[1], .backFirst)])
+        #expect(
+            dueOnes == [
+                .review(bothWays[1]), .review(bothWays[1], .backFirst), .review(bothWays[0]),
+                .review(bothWays[0], .backFirst), .firstView(petricor),
+            ])
+    }
+
     @Test("a card with any of the priority tags counts as a priority card")
     func aCardWithAnyPriorityTagCounts() throws {
         let ubuntu = try meetCard("ubuntu", tags: ["lenguaje"])

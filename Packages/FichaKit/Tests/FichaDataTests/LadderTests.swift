@@ -99,6 +99,25 @@ struct LadderTests {
         )
     }
 
+    @Test("each way of a card that goes both ways climbs on its own, and the review log says which way each went")
+    func eachWayClimbsOnItsOwn() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+
+        try engine.review(serendipia, .good)
+        try engine.review(serendipia, .again, way: .backFirst)
+
+        #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 1, due: time.now + hours(4)))
+        #expect(
+            try engine.standing(of: serendipia.id, way: .backFirst, on: ladder)
+                == .onLadder(step: 0, due: time.now + hours(1)))
+        #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .backFirst, .frontFirst, .backFirst])
+    }
+
     @Test("the progress counts say how many cards are due, how many are learned and how many captures wait")
     func progressCountsDueAndLearnedCardsAndTheInbox() throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -118,6 +137,24 @@ struct LadderTests {
         #expect(progress.due == 1)
         #expect(progress.learned == 1)
         #expect(progress.inInbox == 1)
+    }
+
+    @Test("the progress counts count each due way, and learned cards by their front-first way alone")
+    func progressCountsDueWaysAndLearnedCardsByTheirFrontFirstWay() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id, serendipia.id])
+        try engine.meet(ubuntu)
+        // ubuntu gets to the 30-day step back first only.
+        try engine.climb(ubuntu, to: 5, way: .backFirst, movingForward: time)
+        try engine.meet(serendipia)
+        try engine.meet(serendipia, way: .backFirst)
+
+        time.advance(by: hours(1))
+
+        let progress = try engine.progress(.defaults)
+        #expect(progress.due == 3)
+        #expect(progress.learned == 0)
     }
 
     // The review panel shows a first view only for a new card, and a review
@@ -149,6 +186,28 @@ struct LadderTests {
             try engine.standing(of: 99, on: ladder)
         }
         #expect(try engine.reviewLog().map(\.cardID) == [serendipia.id])
+    }
+
+    @Test("only a new way has a first view, and only a due way is reviewed, whatever the card's other way did")
+    func eachWayIsCheckedOnItsOwn() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+
+        #expect(throws: EngineError.cardStillNew(serendipia.id)) {
+            try engine.review(serendipia, .good, way: .backFirst)
+        }
+        try engine.meet(serendipia, way: .backFirst)
+        #expect(throws: EngineError.cardNotNew(serendipia.id)) {
+            try engine.meet(serendipia, way: .backFirst)
+        }
+        time.advance(by: hours(1))
+        try engine.review(serendipia, .good)
+        #expect(throws: EngineError.cardNotDue(serendipia.id)) {
+            try engine.review(serendipia, .good)
+        }
+        try engine.review(serendipia, .good, way: .backFirst)
+        #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .backFirst, .frontFirst, .backFirst])
     }
 
     // An import that brings a card's progress starts its review log with a

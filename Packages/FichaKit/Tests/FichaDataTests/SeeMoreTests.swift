@@ -52,6 +52,29 @@ struct SeeMoreTests {
         #expect(try engine.reviewLog().last?.kind == .review(rating))
     }
 
+    @Test("a card's back-first way comes to review ahead as its front-first way does, and \"Don't know\" moves only it")
+    func backFirstWaysComeToReviewAhead() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.climb(serendipia, to: 2, movingForward: time)
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+        try engine.review(serendipia, .good, way: .backFirst)
+        let frontFirst = try engine.standing(of: serendipia.id, on: settings.ladder)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        #expect(panel.cards.isEmpty)
+        #expect(panel.moreCards == [.reviewAhead(bothWays[0], .backFirst), .reviewAhead(bothWays[0])])
+
+        panel.seeMore()
+        try panel.answer(.review(.again), responseTime: .seconds(4))
+
+        #expect(
+            try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+                == .onLadder(step: 0, due: time.now + hours(1)))
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == frontFirst)
+        #expect(try engine.reviewLog().last?.isAhead == true)
+    }
+
     @Test("\"See more\" brings the due cards that didn't fit first, then the closest to being due, and no new card")
     func seeMoreBringsTheLeftoversFirst() throws {
         let due = try ["uno", "dos", "tres", "cuatro", "cinco", "seis", "siete"].map { try approveCard($0, in: engine) }

@@ -4,8 +4,10 @@ import Foundation
 /// An appearance or a review now while the review panel shows it: the cards
 /// it brought, which Lucas goes through one at a time, what the panel shows of
 /// the card he's on, its tags included, whether the panel may have the
-/// keyboard, and how it closes. He ends a new card's first view, and flips
-/// and rates a due card, or one he reviews ahead. He plays a side's sound
+/// keyboard, and how it closes. Each card comes one of its ways, front first
+/// or back first, and his answers move only that way. He ends a new way's
+/// first view, back first once he flipped it, and flips and rates a due way,
+/// or one he reviews ahead. He plays a side's sound
 /// only when he asks, one at a time, until he answers the card, writes about
 /// it or leaves it, or the panel closes. He can also flag any card
 /// with a note on what to fix, or bury it, and ask questions about it, each a
@@ -28,26 +30,32 @@ public struct ReviewPanelState: Sendable {
         case onItsOwn
     }
 
-    /// What the panel shows.
+    /// What the panel shows. A card shows the way the panel brought it, front
+    /// first unless it's said to show back first: its upper side on top, the
+    /// front front first and the back back first, and its lower side under
+    /// it, the other side, once it shows, with the mark "Back first" back
+    /// first.
     public enum Content: Sendable, Equatable {
         /// Review now brought no cards: none is due, and no new card is
         /// waiting today. "See more" can bring cards to review ahead.
         case nothingToReview
-        /// A new card, whole, for its first view.
-        case firstView(Card)
-        /// A due card's front, or one Lucas reviews ahead, for him to
-        /// remember its back.
-        case front(Card, isAhead: Bool)
-        /// A due card's front and back, or one Lucas reviews ahead, for him
-        /// to rate it.
-        case back(Card, isAhead: Bool)
-        /// The card Lucas is on, as it showed, its back included or not,
-        /// while he writes a note on what to fix in it, also when the panel
-        /// offers to flag it.
-        case flagging(Card, showsBack: Bool)
-        /// The card Lucas is on, as it showed, its back included or not,
-        /// while he writes a question about it, to follow it up.
-        case asking(Card, showsBack: Bool)
+        /// A new way of a card, whole, for its first view: front first from
+        /// the start, and back first once Lucas flipped it.
+        case firstView(Card, Way = .frontFirst)
+        /// A way of a card, its upper side alone, for Lucas to remember the
+        /// other: a due way, one he reviews ahead, or a new back-first way,
+        /// in its first view, marked as new.
+        case upperSide(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
+        /// A due way of a card, or one Lucas reviews ahead, its upper side
+        /// and its lower side, for him to rate it.
+        case bothSides(Card, Way = .frontFirst, isAhead: Bool = false)
+        /// The card Lucas is on, as it showed, its lower side included or
+        /// not, while he writes a note on what to fix in it, also when the
+        /// panel offers to flag it.
+        case flagging(Card, Way = .frontFirst, showsLowerSide: Bool)
+        /// The card Lucas is on, as it showed, its lower side included or
+        /// not, while he writes a question about it, to follow it up.
+        case asking(Card, Way = .frontFirst, showsLowerSide: Bool)
         /// Lucas went through every card. "See more" can bring more.
         case done
     }
@@ -125,7 +133,7 @@ public struct ReviewPanelState: Sendable {
     /// When the card Lucas is on showed, as `sinceOpening` measured it: his
     /// response time runs from then to his answer.
     private var cardShownAt = Duration.zero
-    /// Whether the card Lucas reviews shows its back: he flipped it.
+    /// Whether the card Lucas is on shows its lower side: he flipped it.
     private var isFlipped = false
     /// The note Lucas is writing to flag the card he's on, while he writes
     /// it.
@@ -174,10 +182,12 @@ public struct ReviewPanelState: Sendable {
         current?.card.tags.map(ownTags.tag) ?? []
     }
 
-    /// What the panel shows: the card Lucas is on, its front or its back, or
-    /// as it showed while he writes a note to flag it or a question about it,
-    /// or that there was nothing to review, or that he went through every
-    /// card.
+    /// What the panel shows: the card Lucas is on, the way it came, its
+    /// upper side alone or with its lower side, or as it showed while he
+    /// writes a note to flag it or a question about it, or that there was
+    /// nothing to review, or that he went through every card. A first view
+    /// front first shows the whole card from the start; back first, its back
+    /// until he flips it, as a review does.
     public var content: Content {
         guard !cards.isEmpty else {
             return .nothingToReview
@@ -185,21 +195,18 @@ public struct ReviewPanelState: Sendable {
         guard let current else {
             return .done
         }
-        let showsBack =
-            switch current {
-            case .firstView: true
-            case .review, .reviewAhead: isFlipped
-            }
+        let (card, way) = (current.card, current.way)
         if flagging != nil {
-            return .flagging(current.card, showsBack: showsBack)
+            return .flagging(card, way, showsLowerSide: showsLowerSide)
         }
         if asking != nil {
-            return .asking(current.card, showsBack: showsBack)
+            return .asking(card, way, showsLowerSide: showsLowerSide)
         }
-        return switch current {
-        case .firstView(let card, _): .firstView(card)
-        case .review(let card, _), .reviewAhead(let card, _):
-            isFlipped ? .back(card, isAhead: current.isAhead) : .front(card, isAhead: current.isAhead)
+        return switch (current, showsLowerSide) {
+        case (.firstView, true): .firstView(card, way)
+        case (.firstView, false): .upperSide(card, way, isNew: true)
+        case (.review, false), (.reviewAhead, false): .upperSide(card, way, isAhead: current.isAhead)
+        case (.review, true), (.reviewAhead, true): .bothSides(card, way, isAhead: current.isAhead)
         }
     }
 
@@ -245,11 +252,22 @@ public struct ReviewPanelState: Sendable {
         outcome == nil && (!followUpsOnCard.isEmpty || !wentThrough.isEmpty) && flagging == nil && asking == nil
     }
 
+    /// Whether the card Lucas is on shows its lower side under its upper one:
+    /// a first view front first from the start, and otherwise once he flipped
+    /// it, also while he writes about it.
+    var showsLowerSide: Bool {
+        switch current {
+        case .firstView(_, .frontFirst): true
+        case .firstView, .review, .reviewAhead: isFlipped
+        case nil: false
+        }
+    }
+
     /// Whether Lucas is on a card, as it shows, to answer, flag, bury or ask
     /// about it.
     var isOnACard: Bool {
         switch content {
-        case .firstView, .front, .back: true
+        case .firstView, .upperSide, .bothSides: true
         case .nothingToReview, .flagging, .asking, .done: false
         }
     }
@@ -260,16 +278,19 @@ public struct ReviewPanelState: Sendable {
         flagging?.timeOnCard ?? asking?.timeOnCard ?? sinceOpening() - cardShownAt
     }
 
-    /// Turns the card Lucas reviews to its back: Space, from its front.
+    /// Shows the lower side of the card Lucas is on under its upper side:
+    /// Space, from its upper side alone, in a review or in a back-first first
+    /// view.
     public mutating func flip() {
-        guard case .front = content else { return }
+        guard case .upperSide = content else { return }
         isFlipped = true
         touch()
     }
 
-    /// Ends the new card's first view, which puts it on the ladder's first
-    /// step, with how long Lucas took, and moves on to the next card: "Got
-    /// it". When it can't be saved, the card stays, and the panel says why.
+    /// Ends the first view of the new way of a card, once it shows whole,
+    /// which puts that way on the ladder's first step, with how long Lucas
+    /// took, and moves on to the next card: "Got it". When it can't be
+    /// saved, the card stays, and the panel says why.
     public mutating func endFirstView() {
         guard case .firstView = content else { return }
         perform(.answer) { panel throws(EngineError) in
@@ -277,14 +298,14 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
-    /// Rates the card Lucas reviews, once its back shows, which moves it on
-    /// the ladder, with how long he took, and moves on to the next card: in a
-    /// review ahead, only again moves it. When a rating of again makes the
-    /// card forgotten often, the panel stays on it and offers to flag it
-    /// instead. When it can't be saved, the card stays, and the panel says
-    /// why.
+    /// Rates the way of the card Lucas reviews, once its lower side shows,
+    /// which moves that way on the ladder, with how long he took, and moves
+    /// on to the next card: in a review ahead, only again moves it. When a
+    /// rating of again makes the card forgotten often, the panel stays on it
+    /// and offers to flag it instead. When it can't be saved, the card stays,
+    /// and the panel says why.
     public mutating func rate(_ rating: Rating) {
-        guard case .back = content else { return }
+        guard case .bothSides = content else { return }
         perform(.answer) { panel throws(EngineError) in
             try panel.answer(.review(rating), responseTime: panel.timeOnCard)
         }
@@ -331,8 +352,8 @@ public struct ReviewPanelState: Sendable {
         perform(.flag) { panel throws(EngineError) in try panel.flag(note: note) }
     }
 
-    /// Starts asking about the card Lucas is on, on its first view, its front
-    /// or its back: the panel asks for his question, the card's response
+    /// Starts asking about the card Lucas is on, its upper side alone or with
+    /// its lower side: the panel asks for his question, the card's response
     /// time waits while he writes it, and its sound stops.
     public mutating func startAsking() {
         guard isOnACard else { return }
@@ -449,8 +470,8 @@ public struct ReviewPanelState: Sendable {
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
         let forgottenOften = try engine.record(
-            kind, of: answering.card.id, responseTime: responseTime, trigger: trigger, settings: settings,
-            reviewingAhead: answering.isAhead)
+            kind, of: answering.card.id, way: answering.way, responseTime: responseTime, trigger: trigger,
+            settings: settings, reviewingAhead: answering.isAhead)
         // Also when the panel stays on the card, to offer to flag it.
         playingSound = nil
         guard let forgottenOften else {
@@ -462,7 +483,7 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Adds the cards "See more" offers, and goes on to the first of them,
-    /// from its front, with its time starting now.
+    /// from its upper side, with its time starting now.
     public mutating func seeMore() {
         guard outcome == nil, current == nil else { return }
         cards += moreCards
@@ -505,15 +526,16 @@ public struct ReviewPanelState: Sendable {
     /// on, the engine takes back the last follow-up he asked about it, and
     /// the panel stays on the card as it shows. With none left there, it
     /// undoes what he did with the last card he went through, which puts the
-    /// card back where it stood, and goes back to it, as he left it, its back
-    /// showing or not, with its time going on from where it was, and with the
-    /// follow-ups he asked about it, which the next ⌘Z takes back: also once
-    /// he went through every card. The engine takes back his answer, unflags
-    /// the card or unburies it, or, for a card he flagged when the panel
-    /// offered it, unflags it and then takes back his answer. When the card
-    /// or the follow-up changed outside the panel since, nothing more is
-    /// undone. Nothing is left to undo once the panel closed. The panel's ⌘Z
-    /// undoes through `undoLastCard()`, which says what failed.
+    /// card's way back where it stood, and goes back to it, as he left it,
+    /// its lower side showing or not, with its time going on from where it
+    /// was, and with the follow-ups he asked about it, which the next ⌘Z
+    /// takes back: also once he went through every card. The engine takes
+    /// back his answer to that way, unflags the card or unburies it, or, for
+    /// a card he flagged when the panel offered it, unflags it and then takes
+    /// back his answer. When the card or the follow-up changed outside the
+    /// panel since, nothing more is undone. Nothing is left to undo once the
+    /// panel closed. The panel's ⌘Z undoes through `undoLastCard()`, which
+    /// says what failed.
     public mutating func undo() throws(EngineError) {
         guard canUndo else { return }
         if let followUpID = followUpsOnCard.last, let current {
@@ -523,30 +545,31 @@ public struct ReviewPanelState: Sendable {
             return
         }
         guard let last = wentThrough.last else { return }
-        let cardID = cards[wentThrough.count - 1].card.id
+        let undone = cards[wentThrough.count - 1]
         // The last first. What's taken back leaves the visit at once, so
         // when the next can't be, the next ⌘Z tries only what's left.
         for action in last.actions.reversed() {
-            try takeBack(action, of: cardID)
+            try takeBack(action, of: undone)
             wentThrough[wentThrough.count - 1].actions.removeLast()
         }
         wentThrough.removeLast()
         showSounds()
         followUpsOnCard = last.followUps
         moreCards = []
-        isFlipped = last.showedBack
+        isFlipped = last.showedLowerSide
         startTiming(from: last.timeOnCard)
         touch()
     }
 
-    /// Takes back `action`, which Lucas did with the card with this id, in
-    /// the engine: his answer, the card's flag or its burial. When a refine
-    /// session or the Cards window fixed, buried or unburied the card since,
-    /// it can't be undone.
-    private func takeBack(_ action: PanelAction, of cardID: Int64) throws(EngineError) {
+    /// Takes back `action`, which Lucas did with `undone`, a card the panel
+    /// showed one of its ways, in the engine: his answer to that way, or the
+    /// card's flag or its burial. When a refine session or the Cards window
+    /// fixed, buried or unburied the card since, it can't be undone.
+    private func takeBack(_ action: PanelAction, of undone: PanelCard) throws(EngineError) {
+        let cardID = undone.card.id
         do throws(EngineError) {
             switch action {
-            case .answered: try engine.takeBackAnswer(of: cardID)
+            case .answered: try engine.takeBackAnswer(of: cardID, way: undone.way)
             case .flagged: try engine.unflag(cardID)
             case .buried: try engine.unbury(cardID)
             }
@@ -555,13 +578,14 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
-    /// Moves on to the next card, from its front, with its time starting now,
-    /// once Lucas did `actions`, in order, with the current one after
+    /// Moves on to the next card, from its upper side, with its time starting
+    /// now, once Lucas did `actions`, in order, with the current one after
     /// `timeOnCard` on it. After the last one, the panel looks for more cards
     /// to offer.
     private mutating func moveOn(after actions: [PanelAction], timeOnCard: Duration) {
         wentThrough.append(
-            Visit(actions: actions, followUps: followUpsOnCard, showedBack: isFlipped, timeOnCard: timeOnCard))
+            Visit(
+                actions: actions, followUps: followUpsOnCard, showedLowerSide: isFlipped, timeOnCard: timeOnCard))
         showSounds()
         followUpsOnCard = []
         isFlipped = false
@@ -637,7 +661,7 @@ private enum PanelAction: Sendable {
 /// A card Lucas went through in the review panel: what he did with it, which
 /// ⌘Z undoes, the follow-ups he asked about it, which ⌘Z takes back once it's
 /// back on the card, and how he left it, which ⌘Z shows again: whether its
-/// back showed, and how long he had been on it.
+/// lower side showed, and how long he had been on it.
 private struct Visit: Sendable {
     /// What he did with it, in order: one thing, or his answer and then a
     /// flag, when the panel offered it. One ⌘Z undoes them all, the last
@@ -645,7 +669,7 @@ private struct Visit: Sendable {
     var actions: [PanelAction]
     /// The ids of the follow-ups, in the order he asked them.
     let followUps: [Int64]
-    let showedBack: Bool
+    let showedLowerSide: Bool
     let timeOnCard: Duration
 }
 
