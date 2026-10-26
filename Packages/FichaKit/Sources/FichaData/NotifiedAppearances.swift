@@ -48,7 +48,7 @@ extension Engine {
         in appearance: NotifiedAppearance,
         settings: ReviewSettings
     ) throws(EngineError) -> PanelCard? {
-        guard appearance.cardIDs.contains(cardID) else {
+        guard let answered = appearance.ways.first(where: { $0.cardID == cardID }) else {
             throw .cardNotInAppearance(cardID)
         }
         let answeredAt = time.now
@@ -58,8 +58,7 @@ extension Engine {
                 reviewingAhead: false, in: db)
             let cards = try cardsThatShowUp(in: db)
             let next = try settings.nextCard(
-                after: CardWay(cardID: cardID, way: .frontFirst), in: appearance.ways, cards: cards.inReviews,
-                now: answeredAt)
+                after: answered, in: appearance.ways, cards: cards.inReviews, now: answeredAt)
             let nextCard = try cards.panelCards(next).first
             try noteClosing(of: appearance, at: answeredAt, finished: nextCard == nil, in: db)
             return nextCard

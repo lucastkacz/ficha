@@ -97,8 +97,8 @@ public struct Ladder: Sendable, Equatable {
         return distances.indices.min { distances[$0] < distances[$1] } ?? 0
     }
 
-    /// How many of the ways in `cards` are due at `now`, and how many are
-    /// learned: on a step that waits 30 days or more.
+    /// How many of `cards` are due at `now`, and how many are learned: on a
+    /// step that waits 30 days or more.
     public func counts(of cards: CardsInReviews, at now: Date) throws(UnexpectedReviewLog) -> (due: Int, learned: Int) {
         let standings = try cards.standings(on: self).map(\.standing)
         return (standings.count { $0.isDue(at: now) }, standings.count(where: isLearned))
