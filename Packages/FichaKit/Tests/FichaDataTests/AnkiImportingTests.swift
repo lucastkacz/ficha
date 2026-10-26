@@ -73,6 +73,30 @@ final class AnkiImportingTests {
         #expect(card.source == nil)
     }
 
+    // As Core 2000's fronts, where Anki shows the sentence's sound button
+    // between the part of speech and the sentence: the lines around it are
+    // left empty once the sound is apart from the text.
+    @Test("a run of empty lines on a side folds into one empty line, and one empty line stays", arguments: schemas)
+    func aRunOfEmptyLinesFoldsIntoOne(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic,
+                    fields: [
+                        "sustantivo<br><br><br><br><br><br>Como arroz.",
+                        "<div>arroz</div><div><br></div><div>El grano.</div><br><br><br><div>comida</div>",
+                    ])
+            ])
+
+        try await importPackage(package)
+
+        #expect(
+            try engine.cards().map { [$0.front, $0.back] } == [
+                ["sustantivo\n\nComo arroz.", "arroz\n\nEl grano.\n\ncomida"]
+            ])
+    }
+
     // The stock kind Anki records tells it, also once its user changed the
     // templates, as the third note's.
     @Test(
