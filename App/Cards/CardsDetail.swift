@@ -25,24 +25,24 @@ struct FrontCell: View {
                 }
                 BuriedIcon()
             }
-            switch card.frontWithoutText {
-            case .image:
-                Text(
-                    "Image",
-                    comment: "The Cards window, in place of a card's front that has an image and no text."
-                )
-                .foregroundStyle(.secondary)
-            case .sound:
-                Text(
-                    "Sound",
-                    comment: "The Cards window, in place of a card's front that has only a sound."
-                )
-                .foregroundStyle(.secondary)
-            case nil:
+            if let media = card.frontWithoutText {
+                mediaText(media)
+                    .foregroundStyle(.secondary)
+            } else {
                 Text(card.front)
                     .lineLimit(wraps ? nil : 1)
                     .fixedSize(horizontal: false, vertical: wraps)
             }
+        }
+    }
+
+    /// The word that stands for a front without text, as `media` says.
+    private func mediaText(_ media: SideMedia) -> Text {
+        switch media {
+        case .image:
+            Text("Image", comment: "The Cards window, in place of a card's front that has an image and no text.")
+        case .sound:
+            Text("Sound", comment: "The Cards window, in place of a card's front that has only a sound.")
         }
     }
 }

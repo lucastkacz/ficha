@@ -6,8 +6,8 @@ import Testing
 /// Tests on sounds in the Cards window: the card form and the card editor
 /// put a sound file on a side, converted away from the window, replace it or
 /// remove it, the detail shows a card's sounds, the table which sides have
-/// an image or a sound, and one sound plays at a time, on the default
-/// ladder.
+/// an image or a sound and what a front without text holds, and one sound
+/// plays at a time, on the default ladder.
 final class CardsWindowSoundTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
