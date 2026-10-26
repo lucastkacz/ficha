@@ -10,7 +10,8 @@ import Foundation
 let cardFields = """
     type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en_GB")))), \
     or null when there's none), front, back, tags (a list, which can be empty) and source (null when there's \
-    none), and can have frontImage, backImage, frontSound and backSound (a file's path or name, or null)
+    none), and can have frontImage, backImage, frontSound and backSound (a file's path or name, or null), and \
+    bothWays (true or false)
     """
 
 /// What a card's frontImage, backImage, frontSound and backSound hold, as the
@@ -101,6 +102,7 @@ func standardInput() throws -> Data {
 /// it. Every field must be there, `type` and `source` too, as null when
 /// there's none, so a misspelled field fails instead of passing for a missing
 /// one, but a side's image and sound, which a card leaves out to keep its
+/// own, and `bothWays`, which a card leaves out to go one way or keep its
 /// own. Other fields, such as those `ficha cards` prints, are ignored.
 private struct CardInput: Decodable {
     let type: CardType?
@@ -112,6 +114,8 @@ private struct CardInput: Decodable {
     let backImage: FileChange
     let frontSound: FileChange
     let backSound: FileChange
+    /// True or false, or nil when it's left out; never null.
+    let bothWays: Bool?
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -124,13 +128,14 @@ private struct CardInput: Decodable {
         backImage = try Self.fileChange(in: container, forKey: .backImage)
         frontSound = try Self.fileChange(in: container, forKey: .frontSound)
         backSound = try Self.fileChange(in: container, forKey: .backSound)
+        bothWays = container.contains(.bothWays) ? try container.decode(Bool.self, forKey: .bothWays) : nil
     }
 
     /// The card, as the engine takes it.
     var draft: CardDraft {
         CardDraft(
             type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
-            backImage: backImage, frontSound: frontSound, backSound: backSound)
+            backImage: backImage, frontSound: frontSound, backSound: backSound, bothWays: bothWays)
     }
 
     /// What the card does with a side's image or sound, under `key`: left
@@ -152,7 +157,7 @@ private struct CardInput: Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, front, back, tags, source, frontImage, backImage, frontSound, backSound
+        case type, front, back, tags, source, frontImage, backImage, frontSound, backSound, bothWays
     }
 }
 

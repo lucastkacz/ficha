@@ -126,11 +126,19 @@ public struct Engine: Sendable {
         }
     }
 
-    /// Approves a capture into one or more cards: saves them as new cards, in
-    /// the order given, takes the capture out of the inbox and returns the
-    /// cards.
+    /// Approves a capture into one or more cards: saves them as new cards,
+    /// each going one way, in the order given, takes the capture out of the
+    /// inbox and returns the cards.
     @discardableResult
     public func approve(_ captureID: Int64, into cards: [CardContent]) throws(EngineError) -> [Card] {
+        try approve(captureID, into: cards.map { ($0, false) })
+    }
+
+    /// Approves a capture into one or more cards, as `approve(_:into:)` does,
+    /// each going both ways when it says so.
+    func approve(_ captureID: Int64, into cards: [(content: CardContent, bothWays: Bool)]) throws(EngineError)
+        -> [Card]
+    {
         guard !cards.isEmpty else {
             throw .noCards
         }
@@ -138,7 +146,7 @@ public struct Engine: Sendable {
         return try write { db in
             try takeOutOfInbox(captureID, at: createdAt, in: db)
             for card in cards {
-                try insertCard(card, capturedAs: captureID, at: createdAt, in: db)
+                try insertCard(card.content, bothWays: card.bothWays, capturedAs: captureID, at: createdAt, in: db)
             }
             return try FichaData.cards(
                 in: Row.fetchAll(

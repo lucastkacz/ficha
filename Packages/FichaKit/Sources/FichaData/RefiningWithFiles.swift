@@ -3,8 +3,9 @@ import Foundation
 internal import GRDB
 
 /// A card a refine session drafted, as Lucas approved it and the `ficha` CLI
-/// reads it: what it holds, and what becomes of each side's image and sound.
-/// The engine checks it as `CardContent` does once its files are in.
+/// reads it: what it holds, what becomes of each side's image and sound, and
+/// whether it goes both ways. The engine checks it as `CardContent` does once
+/// its files are in.
 public struct CardDraft: Sendable, Equatable {
     /// Its type, or nil when it has none.
     public let type: CardType?
@@ -16,6 +17,10 @@ public struct CardDraft: Sendable, Equatable {
     public let backImage: FileChange
     public let frontSound: FileChange
     public let backSound: FileChange
+    /// Whether it goes both ways (ADR 0016), or nil when the refine session
+    /// left it out: a new card then goes one way, and a fixed card keeps its
+    /// own. An approved expansion's card keeps its own whatever this says.
+    public let bothWays: Bool?
 
     public init(
         type: CardType?,
@@ -26,7 +31,8 @@ public struct CardDraft: Sendable, Equatable {
         frontImage: FileChange,
         backImage: FileChange,
         frontSound: FileChange,
-        backSound: FileChange
+        backSound: FileChange,
+        bothWays: Bool?
     ) {
         self.type = type
         self.front = front
@@ -37,6 +43,7 @@ public struct CardDraft: Sendable, Equatable {
         self.backImage = backImage
         self.frontSound = frontSound
         self.backSound = backSound
+        self.bothWays = bothWays
     }
 }
 
@@ -88,17 +95,19 @@ extension Engine {
     /// Approves a capture into the cards `drafts`, as `approve(_:into:)`
     /// does, with the images and sounds they put on their sides: files come
     /// in shrunk or converted, as from the Cards window's form. A side whose
-    /// image or sound is left out or removed has none.
+    /// image or sound is left out or removed has none. Each card goes both
+    /// ways when its draft says so, and one way otherwise.
     @discardableResult
     public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
         var held = FilesComingIn()
-        var contents: [CardContent] = []
+        var cards: [(content: CardContent, bothWays: Bool)] = []
         for (position, draft) in drafts.enumerated() {
             let files = try await held.bringIn(draft, with: self)
-            contents.append(
-                try draft.content(with: files.applied(to: nil), orIfBlank: .blankSideOnNewCard(position: position)))
+            let content = try draft.content(
+                with: files.applied(to: nil), orIfBlank: .blankSideOnNewCard(position: position))
+            cards.append((content, draft.bothWays ?? false))
         }
-        return try keeping(held.files) { () throws(EngineError) in try approve(captureID, into: contents) }
+        return try keeping(held.files) { () throws(EngineError) in try approve(captureID, into: cards) }
     }
 
     /// Fixes a flagged card with `draft`, as `fix(_:with:)` does with a
@@ -106,12 +115,14 @@ extension Engine {
     /// takes off: files come in shrunk or converted, as from the Cards
     /// window's form, and a side whose image or sound is left out keeps its
     /// own. One the card no longer has goes, unless another card uses it.
+    /// The card goes both ways or one way as the draft says, and keeps its
+    /// own when the draft leaves it out.
     @discardableResult
     public func fix(_ cardID: Int64, with draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
         let (before, fixed) = try keeping(held.files) { () throws(EngineError) in
-            try fix(cardID) { card throws(EngineError) in
+            try fix(cardID, bothWays: draft.bothWays) { card throws(EngineError) in
                 try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
             }
         }
@@ -121,7 +132,8 @@ extension Engine {
 
     /// Approves an expansion with `draft`, as `approveExpansion(_:into:)`
     /// does with a card's content, with the images and sounds it puts on its
-    /// card's sides or takes off, as `fix(_:with:)` does with a draft.
+    /// card's sides or takes off, as `fix(_:with:)` does with a draft. The
+    /// card keeps its Both ways, whatever the draft says.
     @discardableResult
     public func approveExpansion(_ captureID: Int64, into draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()

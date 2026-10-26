@@ -18,8 +18,9 @@ struct ApproveExpansionCommand: EngineCommand {
                "tags": ["lenguaje"], "source": "Un podcast de etimología"}
               EOF
 
-            The expansion leaves the inbox, and the command prints the card. To make new cards out of an expansion \
-            instead, such as one for another meaning of the word, approve it with `ficha approve`.
+            The card keeps whether it goes both ways, whatever bothWays says. The expansion leaves the inbox, and \
+            the command prints the card. To make new cards out of an expansion instead, such as one for another \
+            meaning of the word, approve it with `ficha approve`.
             """
     )
 
