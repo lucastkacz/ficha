@@ -120,7 +120,7 @@ Every first view and review, with when the user answered, whether an appearance 
 _Avoid_: history, review history
 
 **Review now**:
-The user reviewing on their own, outside an appearance: from the menu bar or a shortcut on the Mac, or the Review tab on the iPhone.
+The user reviewing on their own, outside an appearance: from the menu bar, the Shortcuts app or a widget on the Mac, or the Review tab on the iPhone.
 _Avoid_: manual session, study mode
 
 **See more**:
