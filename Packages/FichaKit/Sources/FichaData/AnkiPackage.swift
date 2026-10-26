@@ -25,13 +25,14 @@ func isAnkiPackage(_ archive: Archive) -> Bool {
 }
 
 /// The cards of the Anki package `archive`, as `AnkiCollection.
-/// importReading(in:images:sha1:)` makes them of its collection, with their due
-/// days as dates in `calendar`, and the images they show, by the names
-/// Ficha keeps them by, as they come in, from the package's media, each
-/// read on its own; or why it can't be read. An image the package lacks, or
-/// holds damaged, keeps out only the cards that show nothing else on a side.
-func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFileProblem) -> (
-    reading: ImportReading, images: [ImageName: CardImage]
+/// importReading(in:images:sounds:sha1:)` makes them of its collection, with
+/// their due days as dates in `calendar`, and the images they show and the
+/// sounds they play, by the names Ficha keeps them by, as they come in, from
+/// the package's media, each read on its own; or why it can't be read. An
+/// image or a sound the package lacks, or holds damaged, keeps out only the
+/// cards that hold nothing else on a side.
+func readAnkiPackage(_ archive: Archive, in calendar: Calendar) async throws(CardsFileProblem) -> (
+    reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound]
 ) {
     let collection: AnkiCollection
     let media: AnkiMedia
@@ -52,14 +53,20 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFile
         throw .unreadableAnkiPackage
     }
     var images = FilesInZip<CardImage>(contents: media.contents(ofFileNamed:))
+    var sounds = FilesInZip<CardSound>(contents: media.contents(ofFileNamed:))
     let svgs = SVGDrawer()
     let reading: ImportReading
     do {
-        reading = try collection.importReading(in: calendar) { name in
+        reading = try await collection.importReading(in: calendar) { name in
             // Shrunk, as every image that comes in, or drawn, when its name
             // ends in `.svg`, which is how Anki tells an SVG.
             images.lookUp(name) { data throws(EngineError) in
                 try pathExtension(of: name) == "svg" ? CardImage(drawing: data, with: svgs) : CardImage(shrinking: data)
+            }
+        } sounds: { name in
+            // Converted, as every sound that comes in, a video's included.
+            await sounds.lookUp(name) { data async throws(EngineError) in
+                try await CardSound(converting: data, named: name)
             }
         } sha1: { text in
             // Anki names a formula's picture after it, not to keep it safe.
@@ -69,7 +76,7 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFile
         logger.error("An Anki package's collection is damaged: \(error.description, privacy: .public)")
         throw .unreadableAnkiPackage
     }
-    return (reading, images.found)
+    return (reading, images.found, sounds.found)
 }
 
 /// How a package holds its collection and its media, as Anki tells (`package/

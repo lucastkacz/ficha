@@ -141,13 +141,14 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// cards' images and sounds, or an Anki package. Then it shows what
 /// importing the file would do: how many cards come in, how many repeat the
 /// user's cards, with Update or Skip for them, which lines stay out and why,
-/// or for an Anki package, how many of its cards and why, and how many come
-/// in with the first of several images on a side, and the tags the cards
-/// get: for a text file, one named after the file, for every card; for an
-/// Anki package, one for each level of its decks and each of its tags. The
-/// user renames each, or clears it to leave it out. An Anki package's cards
-/// come in where Anki had them while Bring progress is ticked (ADR 0013), and
-/// how many of them land on a step goes in the line under the title. Import
+/// or for an Anki package, how many of its cards and why, how many come in
+/// with the first of several images or sounds on a side, and how many
+/// without a sound Ficha can't read, and the tags the cards get: for a text
+/// file, one named after the file, for every card; for an Anki package, one
+/// for each level of its decks and each of its tags. The user renames each,
+/// or clears it to leave it out. An Anki package's cards come in where Anki
+/// had them while Bring progress is ticked (ADR 0013), and how many of them
+/// land on a step goes in the line under the title. Import
 /// imports them. While it reads the file or imports, it says so beside a
 /// spinner. A preview taller than the window scrolls between the title and
 /// the buttons. Last, it says what the import did. `CardsWindowState` holds
@@ -323,6 +324,22 @@ struct ImportSheet: View {
                     "\(preview.cardsWithImagesDropped) cards have more than one image on a side, and come in with the first.",
                     comment:
                         "In the Import sheet's preview of an Anki package, with how many of its cards have more than one image on a side, of which a Ficha card holds one."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            if preview.cardsWithSoundsDropped > 0 {
+                Text(
+                    "\(preview.cardsWithSoundsDropped) cards have more than one sound on a side, and come in with the first.",
+                    comment:
+                        "In the Import sheet's preview of an Anki package, with how many of its cards have more than one sound on a side, of which a Ficha card holds one."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            if preview.cardsWithUnreadableSoundsLeftOut > 0 {
+                Text(
+                    "\(preview.cardsWithUnreadableSoundsLeftOut) cards have a sound Ficha can't read, such as a damaged file, and come in without it.",
+                    comment:
+                        "In the Import sheet's preview of an Anki package, with how many of its cards come in without a sound Ficha can't read, since their side holds something else."
                 )
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -624,7 +641,8 @@ struct ImportSheet: View {
                 localized:
                     "Line \(number) has a side with only the sound “\(sound)”, which Ficha can't read as a sound.",
                 comment: "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.")
-        case .emptyAnkiSide, .missingAnkiImage, .unreadableAnkiImage, .ankiImageOcclusion, .brokenAnkiTemplate:
+        case .emptyAnkiSide, .missingAnkiImage, .unreadableAnkiImage, .missingAnkiSound, .unreadableAnkiSound,
+            .ankiImageOcclusion, .brokenAnkiTemplate:
             nil
         }
     }
@@ -637,7 +655,7 @@ struct ImportSheet: View {
         case .emptyAnkiSide:
             String(
                 localized:
-                    "\(count) cards have a side with neither text nor an image once sounds and images on the web are left out.",
+                    "\(count) cards have a side with neither text, an image nor a sound once images on the web are left out.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
         case .missingAnkiImage:
             String(
@@ -647,6 +665,15 @@ struct ImportSheet: View {
         case .unreadableAnkiImage:
             String(
                 localized: "\(count) cards have a side with only an image Ficha can't read, such as a damaged file.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .missingAnkiSound:
+            String(
+                localized:
+                    "\(count) cards have a side with only a sound the package lacks, as when Anki exports a deck without its media.",
+                comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
+        case .unreadableAnkiSound:
+            String(
+                localized: "\(count) cards have a side with only a sound Ficha can't read, such as a damaged file.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
         case .ankiImageOcclusion:
             String(

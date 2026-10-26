@@ -85,6 +85,20 @@ public struct ImportPreview: Sendable, Equatable {
     public var cardsWithImagesDropped: Int {
         cards.count(where: \.hasImagesDropped)
     }
+
+    /// How many of the file's cards come in without some of the sounds the
+    /// file gives them: an Anki package's cards with more than one sound on
+    /// a side, which bring the first.
+    public var cardsWithSoundsDropped: Int {
+        cards.count(where: \.hasSoundsDropped)
+    }
+
+    /// How many of the file's cards come in without a sound the file gives
+    /// them that Ficha can't read: an Anki package's cards whose side holds
+    /// something else too.
+    public var cardsWithUnreadableSoundsLeftOut: Int {
+        cards.count(where: \.hasUnreadableSoundsLeftOut)
+    }
 }
 
 /// What the user chooses before an import.
@@ -177,7 +191,7 @@ extension Engine {
         do throws(CardsFileProblem) {
             if let archive = try zipArchive(at: file) {
                 if isAnkiPackage(archive) {
-                    (reading, images) = try readAnkiPackage(archive, in: calendar)
+                    (reading, images, sounds) = try await readAnkiPackage(archive, in: calendar)
                     kind = .ankiPackage
                 } else {
                     (reading, images, sounds) = try await readZipOfCards(archive)
@@ -365,7 +379,8 @@ extension ImportReading {
                 ImportedCard(
                     content: card.content, fields: card.fields, line: card.line,
                     proposedTags: (card.proposedTags + tags).uniqued(), progress: card.progress,
-                    hasImagesDropped: card.hasImagesDropped)
+                    hasImagesDropped: card.hasImagesDropped, hasSoundsDropped: card.hasSoundsDropped,
+                    hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut)
             },
             leftOut: leftOut)
     }

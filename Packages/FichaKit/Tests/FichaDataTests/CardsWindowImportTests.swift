@@ -173,7 +173,7 @@ final class CardsWindowImportTests {
         #expect(preview.newCount == 1)
         #expect(
             preview.leftOutCounts == [
-                ImportPreview.LeftOutCount(reason: .emptyAnkiSide, count: 2),
+                ImportPreview.LeftOutCount(reason: .missingAnkiSound, count: 2),
                 ImportPreview.LeftOutCount(reason: .ankiImageOcclusion, count: 1),
             ])
     }
