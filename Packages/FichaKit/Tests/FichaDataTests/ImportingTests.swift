@@ -101,10 +101,7 @@ final class ImportingTests {
                 ],
                 ["ósmosis", "El paso del agua por una membrana semipermeable; \"<de menos a más>\" & sin energía."],
             ])
-        #expect(
-            cards.map(\.tags) == [
-                ["biología", "célula eucariota", "Biología"], ["biología", "Biología"], ["Biología"],
-            ])
+        #expect(cards.map(\.tags) == [["biología", "célula eucariota"], ["biología"], ["Biología"]])
     }
 
     // The headers an export writes, for Ficha and Anki to read it back.
@@ -273,6 +270,26 @@ final class ImportingTests {
 
         #expect(preview.proposedTags == ["Capitales"])
         #expect(try engine.cards().map(\.tags) == [["tema 1", "Capitales"], ["Capitales"], ["geografía"], []])
+    }
+
+    // As an AI's file named after its subject, whose cards carry a tag of
+    // their own for it beside the one the file's name proposes (#229).
+    @Test(
+        "a card's tags that differ only in case and accents come in as one, the first, on a new card and on one the import updates, but año and ano stay two"
+    )
+    func tagsThatDifferOnlyInCaseAndAccentsComeInAsOne() async throws {
+        try approve(card(.concept, front: "petricor", back: "Un olor.", tags: ["filosofía griega"]), in: engine)
+        let file = try file(
+            "Filosofía griega.txt",
+            """
+            Sócrates\tSolo sé que no sé nada.\tfilosofia_griega año ano FILOSOFÍA_GRIEGA
+            petricor\tEl olor de la tierra mojada.
+
+            """)
+
+        try await importFile(file)
+
+        #expect(try engine.cards().map(\.tags) == [["filosofía griega"], ["filosofia griega", "año", "ano"]])
     }
 
     @Test(

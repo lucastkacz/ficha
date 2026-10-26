@@ -16,6 +16,14 @@ public func duplicateKey(_ text: String) -> String {
     comparable(text)
 }
 
+/// `tags`, a card's, each once, in their order: a tag that repeats an earlier
+/// one as duplicates are compared, such as “Banderas” after “banderas”, folds
+/// into that one, but “ano” after “año” stays (#229).
+public func repeatedTagsFolded(in tags: [String]) -> [String] {
+    var keys: Set<String> = []
+    return tags.filter { keys.insert(comparable($0)).inserted }
+}
+
 /// Whether `text`, a card's front, back or source, mentions `search`, what
 /// Lucas looks for in the Cards window: it contains it once both are compared
 /// as duplicates are, trimmed, ignoring case, accents, superscripts and

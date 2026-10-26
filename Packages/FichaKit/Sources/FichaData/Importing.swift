@@ -262,7 +262,8 @@ extension Engine {
     /// repeats a card of the user's updates it or is skipped. A card goes
     /// both ways as the file says, and an updated one keeps its own Both ways
     /// when the file says nothing of it. Every card that comes in or is
-    /// updated gets the tags it proposes, as the user named them.
+    /// updated gets the tags it proposes, as the user named them, and its
+    /// tags that differ only in case and accents come in as one, the first.
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
@@ -378,11 +379,13 @@ extension ImportedCard {
     }
 
     /// The card as it comes in, as new, with its images, its sounds and
-    /// `tags` added to its own.
+    /// `tags` added to its own, a tag that repeats an earlier one folded into
+    /// it.
     fileprivate func content(adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
-                type: content.type, front: content.front, back: content.back, tags: (content.tags + tags).uniqued(),
+                type: content.type, front: content.front, back: content.back,
+                tags: repeatedTagsFolded(in: content.tags + tags),
                 source: content.source, frontImage: content.frontImage, backImage: content.backImage,
                 frontSound: content.frontSound, backSound: content.backSound))
     }
@@ -390,15 +393,16 @@ extension ImportedCard {
     /// What `card`, the user's card it repeats, holds once it's updated: its
     /// own front, with its image and its sound, the back and every field the
     /// file gives, the back's image and sound among them, its own fields that
-    /// the file doesn't, and `tags` added to its tags. Both ways isn't what a
-    /// card holds: the import sets it apart.
+    /// the file doesn't, and `tags` added to its tags, a tag that repeats an
+    /// earlier one folded into it. Both ways isn't what a card holds: the
+    /// import sets it apart.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
                 type: fields.contains(.type) ? content.type : card.type,
                 front: card.front,
                 back: content.back,
-                tags: ((fields.contains(.tags) ? content.tags : card.tags) + tags).uniqued(),
+                tags: repeatedTagsFolded(in: (fields.contains(.tags) ? content.tags : card.tags) + tags),
                 source: fields.contains(.source) ? content.source : card.source,
                 frontImage: card.frontImage,
                 backImage: fields.contains(.backImage) ? content.backImage : card.backImage,
