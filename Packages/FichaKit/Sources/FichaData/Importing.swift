@@ -9,7 +9,8 @@ internal import ZIPFoundation
 public struct ImportPreview: Sendable, Equatable {
     /// What kind of file an import reads.
     public enum Kind: Sendable, Equatable {
-        /// A text file of cards, or a zip with one and its cards' images.
+        /// A text file of cards, or a zip with one and its cards' images and
+        /// sounds.
         case cardsFile
         /// An Anki package, with Anki's decks.
         case ankiPackage
@@ -23,6 +24,8 @@ public struct ImportPreview: Sendable, Equatable {
     /// The images the cards refer to, as they came in with the file, which
     /// Ficha keeps once they're imported.
     let images: [ImageName: CardImage]
+    /// The sounds the cards refer to, as the images.
+    let sounds: [SoundName: CardSound]
     /// The lines that make no card, with why, in the file's order: for an
     /// Anki package, its cards that make none.
     public let leftOut: [LeftOutLine]
@@ -151,12 +154,13 @@ public struct ImportOutcome: Sendable, Equatable {
 
 extension Engine {
     /// Reads the file of cards at `file`, a text file, a zip with a text
-    /// file and its cards' images, or an Anki package, and says what
-    /// importing it would do, without changing anything. A zip's files are
-    /// read one at a time, as they're needed, so that a big one takes no
-    /// more memory than its biggest file. It takes a while for a big file,
-    /// so the app calls it away from the main actor.
-    public func previewImport(of file: URL) throws(EngineError) -> ImportPreview {
+    /// file and its cards' images and sounds, or an Anki package, and says
+    /// what importing it would do, without changing anything. A zip's files
+    /// are read one at a time, as they're needed, so that a big one takes no
+    /// more memory than its biggest file, and its sounds are converted as
+    /// they come in. It takes a while for a big file, so the app calls it
+    /// away from the main actor.
+    public func previewImport(of file: URL) async throws(EngineError) -> ImportPreview {
         let name = file.lastPathComponent
         // A file the user chose in an open panel, in an app with a sandbox,
         // held until it's read; outside one, there's nothing to start.
@@ -168,6 +172,7 @@ extension Engine {
         }
         var reading: ImportReading
         var images: [ImageName: CardImage] = [:]
+        var sounds: [SoundName: CardSound] = [:]
         let kind: ImportPreview.Kind
         do throws(CardsFileProblem) {
             if let archive = try zipArchive(at: file) {
@@ -175,13 +180,13 @@ extension Engine {
                     (reading, images) = try readAnkiPackage(archive, in: calendar)
                     kind = .ankiPackage
                 } else {
-                    (reading, images) = try readZipOfCards(archive)
+                    (reading, images, sounds) = try await readZipOfCards(archive)
                     kind = .cardsFile
                 }
             } else if file.pathExtension.lowercased() == "apkg" {
                 throw .unreadableAnkiPackage
             } else {
-                reading = try CardsTextFile.read(try fileContents(of: file))
+                reading = try await CardsTextFile.read(try fileContents(of: file))
                 kind = .cardsFile
             }
         } catch {
@@ -192,18 +197,21 @@ extension Engine {
             let tag = file.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
             reading = reading.proposing(tag.isEmpty ? [] : [tag])
         }
-        return try preview(reading, of: name, kind: kind, images: images)
+        return try preview(reading, of: name, kind: kind, images: images, sounds: sounds)
     }
 
     /// What importing `reading`, read from the file named `fileName`, would
     /// do, whatever reader read it, with the tags each card proposes.
-    /// `images` are the images that came in with the file, of which the
-    /// preview holds those its cards refer to, until they're imported.
+    /// `images` and `sounds` are the files that came in with the file, of
+    /// which the preview holds those its cards refer to, until they're
+    /// imported.
     func preview(
-        _ reading: ImportReading, of fileName: String, kind: ImportPreview.Kind, images: [ImageName: CardImage] = [:]
+        _ reading: ImportReading, of fileName: String, kind: ImportPreview.Kind, images: [ImageName: CardImage] = [:],
+        sounds: [SoundName: CardSound] = [:]
     ) throws(EngineError) -> ImportPreview {
         let repeated = try read { db in try repeatedCards(of: reading.cards, in: db) }
-        let referred = Set(reading.cards.flatMap(\.content.images))
+        let referredImages = Set(reading.cards.flatMap(\.content.images))
+        let referredSounds = Set(reading.cards.flatMap(\.content.sounds))
         let proposedTags = reading.cards.flatMap(\.proposedTags).uniqued()
         let placedCount = zip(reading.cards, repeated).count { card, repeated in
             switch (card.progress?.stage, repeated) {
@@ -212,8 +220,10 @@ extension Engine {
             }
         }
         return ImportPreview(
-            fileName: fileName, kind: kind, cards: reading.cards, images: images.filter { referred.contains($0.key) },
-            leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
+            fileName: fileName, kind: kind, cards: reading.cards,
+            images: images.filter { referredImages.contains($0.key) },
+            sounds: sounds.filter { referredSounds.contains($0.key) }, leftOut: reading.leftOut,
+            proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
             placedCount: placedCount)
     }
 
@@ -226,9 +236,10 @@ extension Engine {
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
-    /// saves none. The images that came with the file are kept with the
-    /// cards that refer to them, and an image an updated card no longer
-    /// refers to goes once no card uses it. Returns what it did.
+    /// saves none. The images and sounds that came with the file are kept
+    /// with the cards that refer to them, and an image or a sound an updated
+    /// card no longer refers to goes once no card uses it. Returns what it
+    /// did.
     @discardableResult
     public func importCards(_ preview: ImportPreview, choosing choices: ImportChoices) throws(EngineError)
         -> ImportOutcome
@@ -244,18 +255,15 @@ extension Engine {
         }
         let copy = try copyBeforeImport()
         let importedAt = time.now
-        // The images that came in, kept before the cards that refer to them,
-        // and those of them no card uses removed again after, such as a
-        // skipped card's, or all of them when the cards can't be written.
-        let comingIn = Set(preview.images.keys)
-        var (added, updated, skipped) = (0, 0, 0)
-        var letGo = Set<ImageName>()
-        do throws(EngineError) {
-            for image in preview.images.values {
-                try keepImage(image)
-            }
-            (added, updated, skipped, letGo) = try write { db in
-                var (added, updated, skipped, letGo) = (0, 0, 0, Set<ImageName>())
+        // The images and sounds that came in, kept before the cards that
+        // refer to them, and those of them no card uses removed again after,
+        // such as a skipped card's, or all of them when the cards can't be
+        // written.
+        let held = HeldFiles(images: Array(preview.images.values), sounds: Array(preview.sounds.values))
+        let (added, updated, skipped, letGo) = try keeping(held) { () throws(EngineError) in
+            try write { db in
+                var (added, updated, skipped) = (0, 0, 0)
+                var letGo = (images: Set<ImageName>(), sounds: Set<SoundName>())
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
@@ -269,7 +277,8 @@ extension Engine {
                         let updatedCard = try replaceContent(
                             of: repeated.id, with: try card.update(of: repeated, adding: addedTags(card)),
                             at: importedAt, in: db)
-                        letGo.formUnion(repeated.images.subtracting(updatedCard.images))
+                        letGo.images.formUnion(repeated.images.subtracting(updatedCard.images))
+                        letGo.sounds.formUnion(repeated.sounds.subtracting(updatedCard.sounds))
                         updated += 1
                     case (_?, .skip):
                         skipped += 1
@@ -277,11 +286,9 @@ extension Engine {
                 }
                 return (added, updated, skipped, letGo)
             }
-        } catch {
-            removeFilesNoCardUses(images: comingIn)
-            throw error
         }
-        removeFilesNoCardUses(images: comingIn.union(letGo))
+        removeFilesNoCardUses(
+            images: Set(preview.images.keys).union(letGo.images), sounds: Set(preview.sounds.keys).union(letGo.sounds))
         return ImportOutcome(added: added, updated: updated, skipped: skipped, copyBeforeImport: copy)
     }
 
@@ -311,19 +318,20 @@ extension Engine {
 }
 
 extension ImportedCard {
-    /// The card as it comes in, as new, with its images and `tags` added to
-    /// its own.
+    /// The card as it comes in, as new, with its images, its sounds and
+    /// `tags` added to its own.
     fileprivate func content(adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
                 type: content.type, front: content.front, back: content.back, tags: (content.tags + tags).uniqued(),
-                source: content.source, frontImage: content.frontImage, backImage: content.backImage))
+                source: content.source, frontImage: content.frontImage, backImage: content.backImage,
+                frontSound: content.frontSound, backSound: content.backSound))
     }
 
     /// What `card`, the user's card it repeats, holds once it's updated: its
     /// own front, with its image and its sound, the back and every field the
-    /// file gives, the back's image among them, its own fields that the file
-    /// doesn't, its back's sound among them, and `tags` added to its tags.
+    /// file gives, the back's image and sound among them, its own fields that
+    /// the file doesn't, and `tags` added to its tags.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
@@ -335,7 +343,7 @@ extension ImportedCard {
                 frontImage: card.frontImage,
                 backImage: fields.contains(.backImage) ? content.backImage : card.backImage,
                 frontSound: card.frontSound,
-                backSound: card.backSound))
+                backSound: fields.contains(.backSound) ? content.backSound : card.backSound))
     }
 
     /// `content`, which a front and a back already checked make, or an error

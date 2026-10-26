@@ -57,7 +57,7 @@ struct AnkiSide {
         }
         return switch lookup {
         case .missing?: .missingAnkiImage
-        case .notAnImage?: .unreadableAnkiImage
+        case .unreadable?: .unreadableAnkiImage
         case .found?, nil: .emptyAnkiSide
         }
     }

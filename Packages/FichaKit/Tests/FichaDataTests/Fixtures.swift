@@ -163,19 +163,19 @@ extension CaptureResult {
 }
 
 extension CardsWindowState {
-    /// Reads `file` for the Import sheet's preview, as the app does, the
-    /// reading run at once rather than away from the main actor.
-    mutating func previewImportAndWait(of file: URL) {
+    /// Reads `file` for the Import sheet's preview, as the app does, and
+    /// waits for the reading.
+    mutating func previewImportAndWait(of file: URL) async {
         if let work = previewImport(of: file) {
-            finishImportWork(work.run())
+            finishImportWork(await work.run())
         }
     }
 
-    /// Imports the cards the Import sheet previews, as the app does, the
-    /// import run at once rather than away from the main actor.
-    mutating func importCardsAndWait() {
+    /// Imports the cards the Import sheet previews, as the app does, and
+    /// waits for the import.
+    mutating func importCardsAndWait() async {
         if let work = importCards() {
-            finishImportWork(work.run())
+            finishImportWork(await work.run())
         }
     }
 }

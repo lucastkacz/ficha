@@ -85,10 +85,11 @@ struct ExportSheet: View {
                     if exporting.writesZip {
                         Text(
                             """
-                            Ficha saves the cards to a zip, with a text file and their images, that another Ficha \
-                            imports. It holds what the cards say, never your progress.
+                            Ficha saves the cards to a zip, with a text file and their images and sounds, that \
+                            another Ficha imports. It holds what the cards say, never your progress.
                             """,
-                            comment: "Under the title of the Cards window's Export sheet, when a card has an image."
+                            comment:
+                                "Under the title of the Cards window's Export sheet, when a card has an image or a sound."
                         )
                     } else {
                         Text(
@@ -181,9 +182,9 @@ struct ExportSheet: View {
     }
 
     /// Opens a save panel over the sheet, as a plain text file, or a zip when
-    /// a card has an image, and exports there once the user saves. AppKit's
-    /// own panel, since SwiftUI's file exporter writes a document itself,
-    /// and the engine writes this file.
+    /// a card has an image or a sound, and exports there once the user
+    /// saves. AppKit's own panel, since SwiftUI's file exporter writes a
+    /// document itself, and the engine writes this file.
     private func chooseFile() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [exporting.writesZip ? .zip : .plainText]

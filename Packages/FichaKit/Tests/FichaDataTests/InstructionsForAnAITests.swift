@@ -27,7 +27,7 @@ final class InstructionsForAnAITests {
     }
 
     @Test("the instructions' example file imports as the cards it describes")
-    func theExampleFileImportsAsTheCardsItDescribes() throws {
+    func theExampleFileImportsAsTheCardsItDescribes() async throws {
         let example = try fencedBlock(after: "## An example", in: String(contentsOf: document, encoding: .utf8))
         let file = folder.appending(path: "Example.txt")
         try Data(example.utf8).write(to: file)
@@ -35,7 +35,7 @@ final class InstructionsForAnAITests {
         let engine = try Engine(
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 23, in: calendar)), calendar: calendar)
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Example": ""]))
 
         #expect(preview.leftOut == [])
@@ -61,7 +61,7 @@ final class InstructionsForAnAITests {
     }
 
     @Test("the instructions' example with images imports from a zip with the images it names")
-    func theExampleWithImagesImportsFromAZip() throws {
+    func theExampleWithImagesImportsFromAZip() async throws {
         let example = try fencedBlock(
             after: "### An example with images", in: String(contentsOf: document, encoding: .utf8))
         let file = folder.appending(path: "Birds.zip")
@@ -75,7 +75,7 @@ final class InstructionsForAnAITests {
         let engine = try Engine(
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 23, in: calendar)), calendar: calendar)
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Birds": ""]))
 
         #expect(preview.leftOut == [])
@@ -89,6 +89,37 @@ final class InstructionsForAnAITests {
         #expect(cards.map(\.type) == [.question, nil])
         #expect(cards.map(\.tags) == [["birds"], ["birds"]])
         #expect(cards.allSatisfy { $0.frontImage != nil && $0.backImage == nil })
+    }
+
+    @Test("the instructions' example with sounds imports from a zip with the sounds it names")
+    func theExampleWithSoundsImportsFromAZip() async throws {
+        let example = try fencedBlock(
+            after: "### An example with sounds", in: String(contentsOf: document, encoding: .utf8))
+        let calendar = try buenosAiresCalendar()
+        let time = ManualTimeSource(now: try morning(of: 23, in: calendar))
+        let engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        // Songs in M4A files, as another Ficha keeps them.
+        let another = try Engine(location: .inMemory, time: time, calendar: calendar)
+        let hornero = try another.sound(try await addTone(440, to: another))
+        let lapwing = try another.sound(try await addTone(330, to: another))
+        let file = folder.appending(path: "Birds.zip")
+        try writeZip(
+            [("Birds.txt", Data(example.utf8)), ("hornero.m4a", hornero), ("lapwing.m4a", lapwing)], to: file)
+
+        let preview = try await engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Birds": ""]))
+
+        #expect(preview.leftOut == [])
+        let cards = try engine.cards()
+        #expect(cards.map(\.front) == ["What bird sings like this?", ""])
+        #expect(
+            cards.map(\.back) == [
+                "The rufous hornero, which builds its nest of mud.",
+                "The southern lapwing, which shouts when anyone nears its nest.",
+            ])
+        #expect(cards.map(\.type) == [.question, nil])
+        #expect(cards.map(\.tags) == [["birds"], ["birds"]])
+        #expect(cards.allSatisfy { $0.frontSound != nil && $0.backSound == nil })
     }
 
     /// The lines of the first fenced code block after the line `heading` in

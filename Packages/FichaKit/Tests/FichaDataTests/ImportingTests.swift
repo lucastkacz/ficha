@@ -39,15 +39,17 @@ final class ImportingTests {
     /// Previews the file and imports it with `choices`, and returns what the
     /// import did.
     @discardableResult
-    private func importFile(_ file: URL, choosing choices: ImportChoices = ImportChoices()) throws -> ImportOutcome {
-        try engine.importCards(engine.previewImport(of: file), choosing: choices)
+    private func importFile(_ file: URL, choosing choices: ImportChoices = ImportChoices()) async throws
+        -> ImportOutcome
+    {
+        try await engine.importCards(engine.previewImport(of: file), choosing: choices)
     }
 
     @Test(
         "a tab-separated, a comma-separated and a semicolon-separated file each import their cards, with quoted fields holding separators and line breaks",
         arguments: ["\t", ",", ";"]
     )
-    func separatedFilesImportTheirCards(separator: String) throws {
+    func separatedFilesImportTheirCards(separator: String) async throws {
         let lines = [
             "serendipia\(separator)Un hallazgo por casualidad.",
             "petricor\(separator)\"El olor de la lluvia\(separator) sobre la tierra seca.\"",
@@ -56,7 +58,7 @@ final class ImportingTests {
         ]
         let file = try file("vocabulario.txt", lines.joined(separator: "\n") + "\n")
 
-        let outcome = try importFile(file)
+        let outcome = try await importFile(file)
 
         #expect(outcome == ImportOutcome(added: 3, updated: 0, skipped: 0, copyBeforeImport: nil))
         #expect(
@@ -72,7 +74,7 @@ final class ImportingTests {
     @Test(
         "a file exported by Anki as Notes in Plain Text, with its headers and HTML, imports its fronts, backs and tags as plain text"
     )
-    func anAnkiExportImportsAsPlainText() throws {
+    func anAnkiExportImportsAsPlainText() async throws {
         let file = try file(
             "Biología.txt",
             """
@@ -87,7 +89,7 @@ final class ImportingTests {
 
             """)
 
-        try importFile(file)
+        try await importFile(file)
 
         let cards = try engine.cards()
         #expect(
@@ -107,7 +109,7 @@ final class ImportingTests {
 
     // The headers an export writes, for Ficha and Anki to read it back.
     @Test("a file with the headers Ficha writes reads every column by its name, and its tags by #tags column")
-    func aFileWithFichasHeadersReadsEveryColumn() throws {
+    func aFileWithFichasHeadersReadsEveryColumn() async throws {
         let file = try file(
             "Exportadas.txt",
             """
@@ -121,7 +123,7 @@ final class ImportingTests {
 
             """)
 
-        try importFile(file, choosing: ImportChoices(tagNames: ["Exportadas": ""]))
+        try await importFile(file, choosing: ImportChoices(tagNames: ["Exportadas": ""]))
 
         #expect(
             try engine.cards().map { [$0.front, $0.back, $0.tags.joined(separator: "|"), $0.source ?? "-"] } == [
@@ -134,7 +136,7 @@ final class ImportingTests {
     @Test(
         "a file with no headers reads front, back, tags, type and source in that order, and type and source can be missing"
     )
-    func aFileWithNoHeadersReadsItsColumnsInOrder() throws {
+    func aFileWithNoHeadersReadsItsColumnsInOrder() async throws {
         let file = try file(
             "mezcla.csv",
             """
@@ -144,7 +146,7 @@ final class ImportingTests {
             serendipia,Un hallazgo por casualidad.
             """)
 
-        try importFile(file, choosing: ImportChoices(tagNames: ["mezcla": ""]))
+        try await importFile(file, choosing: ImportChoices(tagNames: ["mezcla": ""]))
 
         let cards = try engine.cards()
         #expect(cards.map(\.front) == ["ubuntu", "¿Cuál es la capital de Mongolia?", "petricor", "serendipia"])
@@ -158,7 +160,7 @@ final class ImportingTests {
     }
 
     @Test("unreadable lines are listed with their numbers and reasons, and the rest come in")
-    func unreadableLinesAreListedAndTheRestComeIn() throws {
+    func unreadableLinesAreListedAndTheRestComeIn() async throws {
         let file = try file(
             "vocabulario.txt",
             """
@@ -175,7 +177,7 @@ final class ImportingTests {
             inefable\tQue no se puede explicar con palabras.
             """)
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(
@@ -197,15 +199,15 @@ final class ImportingTests {
     }
 
     @Test("the proposed tag goes on every imported card, a renamed one too, and none when removed")
-    func theProposedTagGoesOnEveryImportedCard() throws {
+    func theProposedTagGoesOnEveryImportedCard() async throws {
         let capitals = try file("Capitales.txt", "Mongolia\tUlán Bator.\ttema_1\nKenia\tNairobi.\n")
         let rivers = try file("Ríos.tsv", "Nilo\tEl río más largo de África.\n")
         let lakes = try file("Lagos.csv", "Titicaca,El lago navegable más alto del mundo.\n")
 
-        let preview = try engine.previewImport(of: capitals)
+        let preview = try await engine.previewImport(of: capitals)
         try engine.importCards(preview, choosing: ImportChoices())
-        try importFile(rivers, choosing: ImportChoices(tagNames: ["Ríos": " geografía "]))
-        try importFile(lakes, choosing: ImportChoices(tagNames: ["Lagos": ""]))
+        try await importFile(rivers, choosing: ImportChoices(tagNames: ["Ríos": " geografía "]))
+        try await importFile(lakes, choosing: ImportChoices(tagNames: ["Lagos": ""]))
 
         #expect(preview.proposedTags == ["Capitales"])
         #expect(try engine.cards().map(\.tags) == [["tema 1", "Capitales"], ["Capitales"], ["geografía"], []])
@@ -214,7 +216,7 @@ final class ImportingTests {
     @Test(
         "repeated cards are updated with everything the file gives them but their front, keeping their step and review log"
     )
-    func repeatedCardsAreUpdatedKeepingTheirStepAndReviewLog() throws {
+    func repeatedCardsAreUpdatedKeepingTheirStepAndReviewLog() async throws {
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"], source: "Un libro"), in: engine)
         let petricor = try approve(
@@ -232,7 +234,7 @@ final class ImportingTests {
             efímero\tQue dura poco.
             """)
 
-        let preview = try engine.previewImport(of: file)
+        let preview = try await engine.previewImport(of: file)
         let outcome = try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(preview.repeatedCount == 2)
@@ -254,7 +256,7 @@ final class ImportingTests {
     // A card's edited time, which EditedTimeTests checks for every other way
     // a card changes.
     @Test("an import that updates a repeated card with a new back keeps when; one that brings the same back doesn't")
-    func anImportThatUpdatesABackKeepsWhen() throws {
+    func anImportThatUpdatesABackKeepsWhen() async throws {
         try approve(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
         try approve(card(.word, front: "petricor", back: "El olor de la tierra mojada."), in: engine)
         time.advance(by: hours(1))
@@ -262,7 +264,7 @@ final class ImportingTests {
             "Palabras.txt", "serendipia\tUn hallazgo valioso, por casualidad.\npetricor\tEl olor de la tierra mojada.\n"
         )
 
-        let outcome = try importFile(file)
+        let outcome = try await importFile(file)
 
         #expect(outcome.updated == 2)
         let cards = try engine.cards()
@@ -271,12 +273,12 @@ final class ImportingTests {
     }
 
     @Test("repeated cards are skipped when chosen, and stay as they were")
-    func repeatedCardsAreSkippedWhenChosen() throws {
+    func repeatedCardsAreSkippedWhenChosen() async throws {
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"]), in: engine)
         let file = try file("Palabras.txt", "serendipia\tUn hallazgo valioso.\nefímero\tQue dura poco.\n")
 
-        let outcome = try importFile(file, choosing: ImportChoices(repeatedCards: .skip))
+        let outcome = try await importFile(file, choosing: ImportChoices(repeatedCards: .skip))
 
         #expect(outcome == ImportOutcome(added: 1, updated: 0, skipped: 1, copyBeforeImport: nil))
         let cards = try engine.cards()
@@ -287,11 +289,11 @@ final class ImportingTests {
     // A deck imported before Ficha read HTML's superscripts and subscripts
     // has them flat, and the same deck imported after brings them in Unicode.
     @Test("an imported front repeats a card's front that differs only in superscripts and subscripts")
-    func superscriptsAndSubscriptsDontKeepImportedFrontsApart() throws {
+    func superscriptsAndSubscriptsDontKeepImportedFrontsApart() async throws {
         let calcium = try approve(card(.word, front: "Ca2+", back: "Un ion."), in: engine)
         let file = try file("Química.txt", "Ca²⁺\tEl ion del calcio.\nH₂O\tEl agua.\n")
 
-        let outcome = try importFile(file)
+        let outcome = try await importFile(file)
 
         #expect(outcome == ImportOutcome(added: 1, updated: 1, skipped: 0, copyBeforeImport: nil))
         let cards = try engine.cards()
@@ -301,9 +303,9 @@ final class ImportingTests {
 
     // Once with each card's first view as new cards come up, a day apart.
     @Test("imported new cards come up for their first view in the file's order")
-    func importedNewCardsComeUpInTheFilesOrder() throws {
+    func importedNewCardsComeUpInTheFilesOrder() async throws {
         let file = try file("Orden.txt", "zeta\tLa última letra.\nalfa\tLa primera letra.\nmu\tUna del medio.\n")
-        try importFile(file)
+        try await importFile(file)
 
         var firstViews: [String] = []
         for _ in 0..<3 {
@@ -318,7 +320,7 @@ final class ImportingTests {
     }
 
     @Test("a file that isn't UTF-8 text, or whose headers say what Ficha can't follow, isn't read at all")
-    func aFileFichaCantFollowIsntRead() throws {
+    func aFileFichaCantFollowIsntRead() async throws {
         let latin1 = folder.appending(path: "Latin-1.txt")
         try #require("año\tyear\n".data(using: .isoLatin1)).write(to: latin1)
         let dashes = try file("Guiones.txt", "#separator:dash\naño-year\n")
@@ -326,24 +328,28 @@ final class ImportingTests {
         let unnamed = try file("Columnas.txt", "#separator:comma\n#columns:Pregunta,Respuesta\naño,year\n")
         let missing = folder.appending(path: "Nada.txt")
 
-        #expect(throws: EngineError.unreadableFile("Latin-1.txt", .notUTF8)) { try engine.previewImport(of: latin1) }
-        #expect(throws: EngineError.unreadableFile("Guiones.txt", .unknownSeparator("dash"))) {
-            try engine.previewImport(of: dashes)
+        await #expect(throws: EngineError.unreadableFile("Latin-1.txt", .notUTF8)) {
+            try await engine.previewImport(of: latin1)
         }
-        #expect(
+        await #expect(throws: EngineError.unreadableFile("Guiones.txt", .unknownSeparator("dash"))) {
+            try await engine.previewImport(of: dashes)
+        }
+        await #expect(
             throws: EngineError.unreadableFile(
                 "Etiquetas.txt", .unknownColumnNumber(header: "tags column", value: "third"))
         ) {
-            try engine.previewImport(of: numberless)
+            try await engine.previewImport(of: numberless)
         }
-        #expect(throws: EngineError.unreadableFile("Columnas.txt", .missingColumn(.front))) {
-            try engine.previewImport(of: unnamed)
+        await #expect(throws: EngineError.unreadableFile("Columnas.txt", .missingColumn(.front))) {
+            try await engine.previewImport(of: unnamed)
         }
-        #expect(throws: EngineError.unreadableFile("Nada.txt", .cannotOpen)) { try engine.previewImport(of: missing) }
+        await #expect(throws: EngineError.unreadableFile("Nada.txt", .cannotOpen)) {
+            try await engine.previewImport(of: missing)
+        }
     }
 
     @Test("the import saves a copy before an import, and restoring it brings back the cards as they were")
-    func restoringTheCopyBeforeAnImportUndoesIt() throws {
+    func restoringTheCopyBeforeAnImportUndoesIt() async throws {
         let engine = try Engine(
             location: .folder(folder.appending(path: "Ficha", directoryHint: .isDirectory)), time: time,
             calendar: calendar)
@@ -351,7 +357,7 @@ final class ImportingTests {
         let before = try engine.cards()
         let file = try file("Palabras.txt", "serendipia\tUn hallazgo valioso.\nefímero\tQue dura poco.\n")
 
-        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
         let imported = try engine.cards()
         time.advance(by: minutes(1))
         let copy = try #require(outcome.copyBeforeImport)

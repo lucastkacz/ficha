@@ -31,7 +31,7 @@ let package = Package(
         .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
         // The `ficha` CLI's commands (ADR 0008).
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
-        // Zips, for cards exported and imported with their images (ADR 0014).
+        // Zips, for cards exported and imported with their images and sounds (ADR 0014).
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
         // zstd, which current Anki's packages are compressed with (ADR 0015).
         .package(url: "https://github.com/facebook/zstd.git", exact: "1.5.7"),

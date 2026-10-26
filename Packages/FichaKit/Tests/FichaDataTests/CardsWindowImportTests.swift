@@ -37,25 +37,25 @@ final class CardsWindowImportTests {
 
     /// Opens the Cards window, reads the cards, and opens the Import sheet
     /// on the file `name` with `text`, as choosing it in the open panel does.
-    private func importSheet(on name: String, _ text: String) throws -> CardsWindowState {
+    private func importSheet(on name: String, _ text: String) async throws -> CardsWindowState {
         var window = engine.openCardsWindow(on: ladder)
         window.read(on: ladder)
         window.startImport()
-        window.previewImportAndWait(of: try file(name, text))
+        await window.previewImportAndWait(of: try file(name, text))
         return window
     }
 
     @Test(
         "the Import sheet starts before a file is chosen, and choosing one shows its preview, which Import goes on from"
     )
-    func choosingAFileShowsItsPreview() throws {
+    func choosingAFileShowsItsPreview() async throws {
         try approveCard("serendipia", in: engine)
         var window = engine.openCardsWindow(on: ladder)
         window.read(on: ladder)
 
         window.startImport()
         let beforeChoosing = window.importing
-        window.previewImportAndWait(
+        await window.previewImportAndWait(
             of: try file("Palabras.txt", "serendipia\tUn hallazgo.\nefímero\tQue dura poco.\npetricor\n"))
 
         #expect(beforeChoosing?.step == .choosingFile)
@@ -72,14 +72,14 @@ final class CardsWindowImportTests {
     }
 
     @Test("the tag field renames the tag every imported card gets, and leaves it out when it's blank")
-    func theTagFieldRenamesOrRemovesTheTag() throws {
-        var renamed = try importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
-        var removed = try importSheet(on: "Lenguaje.txt", "petricor\tEl olor de la lluvia.\n")
+    func theTagFieldRenamesOrRemovesTheTag() async throws {
+        var renamed = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
+        var removed = try await importSheet(on: "Lenguaje.txt", "petricor\tEl olor de la lluvia.\n")
 
         renamed.nameImportTag("Palabras", as: "vocabulario")
-        renamed.importCardsAndWait()
+        await renamed.importCardsAndWait()
         removed.nameImportTag("Lenguaje", as: " ")
-        removed.importCardsAndWait()
+        await removed.importCardsAndWait()
 
         #expect(renamed.importing?.tagFields == [CardsWindowState.TagField(proposed: "Palabras", name: "vocabulario")])
         #expect(renamed.importing?.tagFields.map(\.isLeftOut) == [false])
@@ -88,13 +88,13 @@ final class CardsWindowImportTests {
     }
 
     @Test("with Skip, Import is off while every card repeats one of yours, and the repeated cards stay as they are")
-    func skipLeavesTheRepeatedCardsAsTheyAre() throws {
+    func skipLeavesTheRepeatedCardsAsTheyAre() async throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var window = try importSheet(on: "Palabras.txt", "serendipia\tUn hallazgo valioso.\n")
+        var window = try await importSheet(on: "Palabras.txt", "serendipia\tUn hallazgo valioso.\n")
 
         window.chooseForRepeatedCards(.skip)
         let isImportOnWithSkip = window.importing?.canImport
-        window.importCardsAndWait()
+        await window.importCardsAndWait()
         let afterImportWhileOff = window.importing?.step
         window.chooseForRepeatedCards(.update)
 
@@ -107,16 +107,16 @@ final class CardsWindowImportTests {
     @Test(
         "once the import is done, the sheet says how many cards came in, were updated and were skipped, and the table lists them"
     )
-    func theSheetSaysWhatTheImportDid() throws {
+    func theSheetSaysWhatTheImportDid() async throws {
         let serendipia = try approveCard("serendipia", in: engine)
         try approveCard("petricor", in: engine)
-        var window = try importSheet(
+        var window = try await importSheet(
             on: "Palabras.txt",
             "serendipia\tUn hallazgo valioso.\npetricor\tEl olor de la lluvia.\nefímero\tQue dura poco.\n")
         window.chooseForRepeatedCards(.skip)
         window.chooseForRepeatedCards(.update)
 
-        window.importCardsAndWait()
+        await window.importCardsAndWait()
 
         #expect(window.importing?.step == .done(ImportOutcome(added: 1, updated: 2, skipped: 0, copyBeforeImport: nil)))
         #expect(window.listedFronts == ["serendipia", "petricor", "efímero"])
@@ -129,7 +129,7 @@ final class CardsWindowImportTests {
     }
 
     @Test("the preview of an Anki package lists every tag it adds, each of which the user renames or removes")
-    func anAnkiPackagesTagsAreRenamedOrRemoved() throws {
+    func anAnkiPackagesTagsAreRenamedOrRemoved() async throws {
         let package = AnkiPackage(notes: [
             AnkiNote(
                 type: .basic, fields: ["fémur", "El hueso del muslo."], tags: ["repaso"], deck: "Medicina::Anatomía"),
@@ -139,12 +139,12 @@ final class CardsWindowImportTests {
         try package.write(to: file)
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
-        window.previewImportAndWait(of: file)
+        await window.previewImportAndWait(of: file)
         let tagFields = window.importing?.tagFields
 
         window.nameImportTag("Anatomía", as: "anatomía humana")
         window.removeImportTag("repaso")
-        window.importCardsAndWait()
+        await window.importCardsAndWait()
 
         #expect(
             tagFields == ["Medicina", "Anatomía", "repaso"].map { CardsWindowState.TagField(proposed: $0, name: $0) })
@@ -152,7 +152,7 @@ final class CardsWindowImportTests {
     }
 
     @Test("the preview of an Anki package counts the cards that stay out by why, in the order each reason first comes")
-    func anAnkiPackagesCardsLeftOutAreCounted() throws {
+    func anAnkiPackagesCardsLeftOutAreCounted() async throws {
         let package = AnkiPackage(notes: [
             AnkiNote(type: .basic, fields: ["perro", "[sound:dog.mp3]"]),
             AnkiNote(
@@ -166,7 +166,7 @@ final class CardsWindowImportTests {
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
 
-        window.previewImportAndWait(of: file)
+        await window.previewImportAndWait(of: file)
 
         let preview = try #require(window.importing?.preview)
         #expect(preview.kind == .ankiPackage)
@@ -183,7 +183,7 @@ final class CardsWindowImportTests {
     @Test(
         "while the file chosen is read, the sheet says so, and a reading that ends after the sheet closed shows nothing"
     )
-    func whileTheFileIsReadTheSheetSaysSo() throws {
+    func whileTheFileIsReadTheSheetSaysSo() async throws {
         var window = engine.openCardsWindow(on: ladder)
         window.read(on: ladder)
         window.startImport()
@@ -191,12 +191,12 @@ final class CardsWindowImportTests {
 
         let reading = window.previewImport(of: file)
         let whileReading = window.importing
-        window.finishImportWork(try #require(reading).run())
+        await window.finishImportWork(try #require(reading).run())
         let read = window.importing
         let readingAgain = window.previewImport(of: file)
         window.closeImport()
         window.startImport()
-        window.finishImportWork(try #require(readingAgain).run())
+        await window.finishImportWork(try #require(readingAgain).run())
 
         #expect(whileReading?.busy == .reading("Palabras.txt"))
         #expect(whileReading?.step == .choosingFile)
@@ -207,13 +207,13 @@ final class CardsWindowImportTests {
     }
 
     @Test("while the cards are imported, the sheet says so and Import is off, and once they are, the table lists them")
-    func whileTheCardsAreImportedTheSheetSaysSo() throws {
-        var window = try importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
+    func whileTheCardsAreImportedTheSheetSaysSo() async throws {
+        var window = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
 
         let importing = window.importCards()
         let whileImporting = window.importing
         let importingTwice = window.importCards()
-        window.finishImportWork(try #require(importing).run())
+        await window.finishImportWork(try #require(importing).run())
 
         #expect(whileImporting?.busy == .importing)
         #expect(whileImporting?.canImport == false)
@@ -224,11 +224,11 @@ final class CardsWindowImportTests {
     }
 
     @Test("a file that can't be read leaves the sheet where it was, saying why until it's dismissed")
-    func aFileThatCantBeReadSaysWhy() throws {
+    func aFileThatCantBeReadSaysWhy() async throws {
         var window = engine.openCardsWindow(on: ladder)
         window.startImport()
 
-        window.previewImportAndWait(of: folder.appending(path: "Nada.txt"))
+        await window.previewImportAndWait(of: folder.appending(path: "Nada.txt"))
 
         #expect(window.importing?.step == .choosingFile)
         #expect(

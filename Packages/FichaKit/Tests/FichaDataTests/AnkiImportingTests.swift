@@ -46,12 +46,12 @@ final class AnkiImportingTests {
     @discardableResult
     private func importPackage(
         _ package: AnkiPackage, named name: String = "Mazo.apkg", choosing choices: ImportChoices = ImportChoices()
-    ) throws -> ImportOutcome {
-        try engine.importCards(engine.previewImport(of: file(name, package)), choosing: choices)
+    ) async throws -> ImportOutcome {
+        try await engine.importCards(engine.previewImport(of: file(name, package)), choosing: choices)
     }
 
     @Test("a Basic note becomes one card, with its Front and Back as plain text", arguments: schemas)
-    func aBasicNoteBecomesOneCard(format: AnkiPackage.Format) throws {
+    func aBasicNoteBecomesOneCard(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -60,7 +60,7 @@ final class AnkiImportingTests {
                     fields: ["<b>corazón</b>", "El órgano que bombea<br>la sangre&nbsp;por el cuerpo."])
             ])
 
-        let outcome = try importPackage(package)
+        let outcome = try await importPackage(package)
 
         #expect(outcome == ImportOutcome(added: 1, updated: 0, skipped: 0, copyBeforeImport: nil))
         let card = try #require(try engine.cards().first)
@@ -70,20 +70,20 @@ final class AnkiImportingTests {
     }
 
     @Test("a reversed note becomes two cards", arguments: schemas)
-    func aReversedNoteBecomesTwoCards(format: AnkiPackage.Format) throws {
+    func aReversedNoteBecomesTwoCards(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
                 AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"])
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"], ["dog", "perro"]])
     }
 
     @Test("a field shown only on the answer side, like Extra, comes in on the back", arguments: schemas)
-    func aFieldShownOnTheAnswerComesInOnTheBack(format: AnkiPackage.Format) throws {
+    func aFieldShownOnTheAnswerComesInOnTheBack(format: AnkiPackage.Format) async throws {
         // A note type of someone's own, with a hint on the question, and an
         // example on the answer, or a line saying there's none.
         let vocabulary = AnkiNoteType(
@@ -114,7 +114,7 @@ final class AnkiImportingTests {
                     fields: ["La {{c1::mitocondria}} produce energía.", "La llaman <i>la central</i> de la célula."]),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
@@ -128,7 +128,7 @@ final class AnkiImportingTests {
     }
 
     @Test("a typed answer comes in on the back, also when the answer shows it through FrontSide", arguments: schemas)
-    func aTypedAnswerComesInOnTheBack(format: AnkiPackage.Format) throws {
+    func aTypedAnswerComesInOnTheBack(format: AnkiPackage.Format) async throws {
         // Anki's Basic (type in the answer), and the reversed card of a
         // shared deck, whose answer is its question and the line, so Anki
         // shows the right answer where the box was, and moves the line above
@@ -154,7 +154,7 @@ final class AnkiImportingTests {
                 AnkiNote(type: terms, fields: ["fémur", "El hueso del <b>muslo</b>."]),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
@@ -165,7 +165,7 @@ final class AnkiImportingTests {
     @Test(
         "a typed answer to a cloze comes once when its gaps say the same, and one compared without accents comes too",
         arguments: schemas)
-    func typedAnswersToAClozeAndWithoutAccentsComeInOnTheBack(format: AnkiPackage.Format) throws {
+    func typedAnswersToAClozeAndWithoutAccentsComeInOnTheBack(format: AnkiPackage.Format) async throws {
         // A cloze to type in, as Anki's manual has it, with no line, and a
         // card that compares what's typed without accents.
         let typedCloze = AnkiNoteType(
@@ -190,7 +190,7 @@ final class AnkiImportingTests {
                 AnkiNote(type: withoutAccents, fields: ["heart", "corazón"]),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
@@ -205,7 +205,7 @@ final class AnkiImportingTests {
     @Test(
         "a box to type the answer in shows nothing when only the answer has it, or it asks for a special field",
         arguments: schemas)
-    func typedAnswersAnkiCantFillShowNothing(format: AnkiPackage.Format) throws {
+    func typedAnswersAnkiCantFillShowNothing(format: AnkiPackage.Format) async throws {
         // Anki's reviewer takes the right answer from the question's box,
         // and from the note's fields alone.
         let onTheAnswerOnly = AnkiNoteType(
@@ -228,7 +228,7 @@ final class AnkiImportingTests {
                 AnkiNote(type: askingForTags, fields: ["cat", "gato"], tags: ["animales"]),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["dog", "perro"], ["cat", "gato"]])
     }
@@ -236,7 +236,7 @@ final class AnkiImportingTests {
     @Test(
         "furigana, from Anki's filter or in HTML, comes in as the reading in parentheses after its kanji, and kanji and kana as Anki shows them",
         arguments: schemas)
-    func furiganaComesInAsTheReadingInParentheses(format: AnkiPackage.Format) throws {
+    func furiganaComesInAsTheReadingInParentheses(format: AnkiPackage.Format) async throws {
         // Shared Japanese decks' notes: Anki draws the reading small over the
         // kanji, which Ficha's plain text can't.
         let japanese = AnkiNoteType(
@@ -269,7 +269,7 @@ final class AnkiImportingTests {
                     ]),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
@@ -292,7 +292,7 @@ final class AnkiImportingTests {
     @Test(
         "a superscript or a subscript comes in as Unicode's when Unicode has each of its characters as one, and as its text otherwise",
         arguments: schemas)
-    func superscriptsAndSubscriptsComeInAsUnicodes(format: AnkiPackage.Format) throws {
+    func superscriptsAndSubscriptsComeInAsUnicodes(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -316,7 +316,7 @@ final class AnkiImportingTests {
                     fields: ["Na<sup>+ ions</sup> y 10 <sup> 3 </sup>m", "a&nbsp;&nbsp;<sup><br>23</sup> y x<sup>2"]),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let sides = try engine.cards().map { [$0.front, $0.back] }
         #expect(
@@ -331,7 +331,7 @@ final class AnkiImportingTests {
     @Test(
         "a cloze note with two gaps becomes two cards, each hiding its own gap, a hint shown as \"[hint]\"",
         arguments: schemas)
-    func aClozeNoteBecomesACardForEachGap(format: AnkiPackage.Format) throws {
+    func aClozeNoteBecomesACardForEachGap(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -340,7 +340,7 @@ final class AnkiImportingTests {
                     fields: ["{{c1::Buenos Aires}} es la capital de {{c2::la Argentina::un país}}.", ""])
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
@@ -354,7 +354,7 @@ final class AnkiImportingTests {
     @Test(
         "subdecks become one tag per part, Anki tags come as they are, an underscore as a space, and renamed or removed tags apply",
         arguments: schemas)
-    func decksAndAnkiTagsBecomeTags(format: AnkiPackage.Format) throws {
+    func decksAndAnkiTagsBecomeTags(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -370,7 +370,7 @@ final class AnkiImportingTests {
                     type: .basic, fields: ["gripe", "Una infección por el virus de la influenza."],
                     deck: "Default::Viejas"),
             ])
-        let preview = try engine.previewImport(of: file("Medicina.apkg", package))
+        let preview = try await engine.previewImport(of: file("Medicina.apkg", package))
 
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Medicina": "medicina", "repaso": " "]))
 
@@ -387,7 +387,7 @@ final class AnkiImportingTests {
     @Test(
         "a card whose side holds only a sound, and an Image Occlusion card, stay out with their reasons",
         arguments: schemas)
-    func soundOnlySidesAndImageOcclusionStayOut(format: AnkiPackage.Format) throws {
+    func soundOnlySidesAndImageOcclusionStayOut(format: AnkiPackage.Format) async throws {
         // A note type whose template names a field it lacks, for which Anki
         // shows an error.
         let broken = AnkiNoteType(
@@ -410,7 +410,7 @@ final class AnkiImportingTests {
                 AnkiNote(type: broken, fields: ["casa", "house"]),
             ])
 
-        let preview = try engine.previewImport(of: file("Inglés.apkg", package))
+        let preview = try await engine.previewImport(of: file("Inglés.apkg", package))
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(
@@ -426,7 +426,7 @@ final class AnkiImportingTests {
     @Test(
         "a card of Image Occlusion Enhanced, the add-on before Anki's own, stays out as an Image Occlusion card",
         arguments: schemas)
-    func imageOcclusionEnhancedStaysOut(format: AnkiPackage.Format) throws {
+    func imageOcclusionEnhancedStaysOut(format: AnkiPackage.Format) async throws {
         var renamed = AnkiNoteType.imageOcclusionEnhanced
         renamed.name = "Oclusión"
         let fields = [
@@ -441,7 +441,7 @@ final class AnkiImportingTests {
                 AnkiNote(type: .basic, fields: ["gato", "cat"]),
             ])
 
-        let preview = try engine.previewImport(of: file("Huesos.apkg", package))
+        let preview = try await engine.previewImport(of: file("Huesos.apkg", package))
         try engine.importCards(preview, choosing: ImportChoices())
 
         #expect(
@@ -456,10 +456,10 @@ final class AnkiImportingTests {
     @Test(
         "an Anki 2.0 package with no meta imports, as does a 2.1 one from its newer collection",
         arguments: [AnkiPackage.Format.anki20, .anki21])
-    func packagesWithoutMetaImport(format: AnkiPackage.Format) throws {
+    func packagesWithoutMetaImport(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(format: format, notes: [AnkiNote(type: .basic, fields: ["perro", "dog"])])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"]])
     }
@@ -467,7 +467,7 @@ final class AnkiImportingTests {
     @Test(
         "every card comes in new, the new ones first in Anki's order of new cards, then the rest by note and template",
         arguments: schemas)
-    func everyCardComesInNewInAnkisOrder(format: AnkiPackage.Format) throws {
+    func everyCardComesInNewInAnkisOrder(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -477,7 +477,7 @@ final class AnkiImportingTests {
                 AnkiNote(type: .basicAndReversed, fields: ["cuatro", "four"], progress: .review(due: 5, interval: 3)),
             ])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         let cards = try engine.cards()
         #expect(cards.map(\.front) == ["tres", "three", "dos", "uno", "cuatro", "four"])
@@ -487,7 +487,8 @@ final class AnkiImportingTests {
     @Test(
         "repeated cards are updated with the deck's back and tags, keeping their type and source, or skipped, as chosen",
         arguments: schemas, [ImportChoices.RepeatedCards.update, .skip])
-    func repeatedCardsAreUpdatedOrSkipped(format: AnkiPackage.Format, choice: ImportChoices.RepeatedCards) throws {
+    func repeatedCardsAreUpdatedOrSkipped(format: AnkiPackage.Format, choice: ImportChoices.RepeatedCards) async throws
+    {
         let heart = try approve(
             card(.word, front: "Corazón", back: "Un órgano.", tags: ["biología"], source: "Un libro"), in: engine)
         let package = AnkiPackage(
@@ -498,7 +499,7 @@ final class AnkiImportingTests {
                     deck: "Medicina"),
                 AnkiNote(type: .basic, fields: ["pulmón", "El órgano de la respiración."], deck: "Medicina"),
             ])
-        let preview = try engine.previewImport(of: file("Medicina.apkg", package))
+        let preview = try await engine.previewImport(of: file("Medicina.apkg", package))
 
         let outcome = try engine.importCards(preview, choosing: ImportChoices(repeatedCards: choice))
 
@@ -521,7 +522,7 @@ final class AnkiImportingTests {
     }
 
     @Test("a deck whose package holds images and sounds comes in", arguments: schemas)
-    func aDeckWithMediaComesIn(format: AnkiPackage.Format) throws {
+    func aDeckWithMediaComesIn(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -530,7 +531,7 @@ final class AnkiImportingTests {
             ],
             media: ["perro.jpg": Data("una foto".utf8), "dog.mp3": Data("un ladrido".utf8)])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"], ["gato", "cat"]])
     }
@@ -538,13 +539,13 @@ final class AnkiImportingTests {
     // Its collection decompresses to several times the buffer zstd hands
     // out at a time, 128 KB.
     @Test("a long card comes in whole from a package current Anki exports by default")
-    func aLongCardComesInWhole() throws {
+    func aLongCardComesInWhole() async throws {
         let back = Array(repeating: "En un lugar de la Mancha, de cuyo nombre no quiero acordarme.", count: 8_000)
         let package = AnkiPackage(
             format: .current,
             notes: [AnkiNote(type: .basic, fields: ["El Quijote", back.joined(separator: "<br>")])])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(try engine.cards().map(\.back) == [back.joined(separator: "\n")])
     }
@@ -552,11 +553,11 @@ final class AnkiImportingTests {
     @Test(
         "a package with a number beyond what Ficha counts with can't be read, and Ficha goes on",
         arguments: schemas, DamagedNumber.allCases)
-    func aPackageWithANumberOutOfRangeCantBeRead(format: AnkiPackage.Format, number: DamagedNumber) throws {
+    func aPackageWithANumberOutOfRangeCantBeRead(format: AnkiPackage.Format, number: DamagedNumber) async throws {
         let damaged = try file("Dañado.apkg", number.package(format: format))
 
-        #expect(throws: EngineError.unreadableFile("Dañado.apkg", .unreadableAnkiPackage)) {
-            try engine.previewImport(of: damaged)
+        await #expect(throws: EngineError.unreadableFile("Dañado.apkg", .unreadableAnkiPackage)) {
+            try await engine.previewImport(of: damaged)
         }
     }
 
@@ -565,10 +566,10 @@ final class AnkiImportingTests {
     @Test(
         "a package current Anki exports by default imports from its collection.anki21b, never the placeholder beside it"
     )
-    func aCurrentPackageNeverReadsItsPlaceholder() throws {
+    func aCurrentPackageNeverReadsItsPlaceholder() async throws {
         let package = AnkiPackage(format: .current, notes: [AnkiNote(type: .basic, fields: ["perro", "dog"])])
 
-        try importPackage(package)
+        try await importPackage(package)
 
         #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"]])
     }
