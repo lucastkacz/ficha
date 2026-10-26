@@ -122,6 +122,25 @@ final class InstructionsForAnAITests {
         #expect(cards.allSatisfy { $0.frontSound != nil && $0.backSound == nil })
     }
 
+    @Test("the instructions' example of cards that go both ways imports with Both ways on for the cards it marks")
+    func theExampleOfCardsThatGoBothWaysImportsWithBothWaysOn() async throws {
+        let example = try fencedBlock(
+            after: "### An example of cards that go both ways", in: String(contentsOf: document, encoding: .utf8))
+        let file = folder.appending(path: "Vocabulary.txt")
+        try Data(example.utf8).write(to: file)
+        let calendar = try buenosAiresCalendar()
+        let engine = try Engine(
+            location: .inMemory, time: ManualTimeSource(now: try morning(of: 23, in: calendar)), calendar: calendar)
+
+        let preview = try await engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Vocabulary": ""]))
+
+        #expect(preview.leftOut == [])
+        let cards = try engine.cards()
+        #expect(cards.map(\.front) == ["serendipity", "mitochondria", "What is the capital of Mongolia?"])
+        #expect(cards.map(\.bothWays) == [true, true, false])
+    }
+
     /// The lines of the first fenced code block after the line `heading` in
     /// `text`, each ending in a line break.
     private func fencedBlock(after heading: String, in text: String) throws -> String {

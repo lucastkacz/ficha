@@ -159,6 +159,68 @@ final class ImportingTests {
         #expect(cards.map(\.source) == ["Desmond Tutu", nil, nil, nil])
     }
 
+    // As Anki's "Add Reverse" field, which makes a reversed card when it has
+    // anything in it but spaces and line breaks.
+    @Test(
+        "a line whose Both ways column holds any text comes in going both ways; one whose column is blank or missing, one way"
+    )
+    func aLineWhoseBothWaysColumnHoldsAnyTextComesInGoingBothWays() async throws {
+        let named = try file(
+            "Palabras.txt",
+            """
+            #separator:tab
+            #columns:Front\tBack\tBoth ways
+            serendipia\tUn hallazgo por casualidad.\ty
+            petricor\tEl olor de la lluvia.\tno
+            efímero\tQue dura poco.\t
+            ubicuo\tQue está en todas partes.\t\u{20}\u{20}
+            lacónico\tQue dice mucho en pocas palabras.
+
+            """)
+        // A file without headers reads its columns by their place, of which
+        // none is Both ways.
+        let unnamed = try file("Más palabras.txt", "inefable\tQue no se puede decir.\t\tword\t\tBoth ways\n")
+
+        try await importFile(named)
+        try await importFile(unnamed)
+
+        let cards = try engine.cards()
+        #expect(cards.map(\.front) == ["serendipia", "petricor", "efímero", "ubicuo", "lacónico", "inefable"])
+        #expect(cards.map(\.bothWays) == [true, true, false, false, false, false])
+    }
+
+    @Test(
+        "an import sets a repeated card's Both ways as its file's column says, and keeps it when the file has no such column"
+    )
+    func anImportSetsARepeatedCardsBothWaysAsItsColumnSays() async throws {
+        let serendipia = try engine.create(
+            card(.word, front: "serendipia", back: "Un hallazgo."), bothWays: true)
+        let petricor = try engine.create(card(.word, front: "petricor", back: "Un olor."))
+        try engine.meet(serendipia)
+        let ladder = ReviewSettings.defaults.ladder
+        let withColumn = try file(
+            "Con columna.txt",
+            """
+            #columns:Front\tBack\tBoth ways
+            serendipia\tUn hallazgo por casualidad.\t
+            petricor\tEl olor de la lluvia.\ty
+
+            """)
+        let withoutColumn = try file(
+            "Sin columna.txt", "serendipia\tUn hallazgo valioso.\npetricor\tEl olor de la tierra mojada.\n")
+
+        try await importFile(withoutColumn)
+        let keptWithoutColumn = try engine.cards().map(\.bothWays)
+        try await importFile(withColumn)
+
+        #expect(keptWithoutColumn == [true, false])
+        let cards = try engine.cards()
+        #expect(cards.map(\.id) == [serendipia.id, petricor.id])
+        #expect(cards.map(\.back) == ["Un hallazgo por casualidad.", "El olor de la lluvia."])
+        #expect(cards.map(\.bothWays) == [false, true])
+        #expect(try engine.standing(of: serendipia.id, on: ladder) != .new)
+    }
+
     @Test("unreadable lines are listed with their numbers and reasons, and the rest come in")
     func unreadableLinesAreListedAndTheRestComeIn() async throws {
         let file = try file(

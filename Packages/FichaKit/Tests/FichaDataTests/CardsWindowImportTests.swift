@@ -128,6 +128,29 @@ final class CardsWindowImportTests {
         #expect(window.importing == nil)
     }
 
+    @Test(
+        "once a file with a Both ways column is imported, the table lists its cards going both ways as the column says, an updated one too"
+    )
+    func importedCardsGoBothWaysAsTheColumnSays() async throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var window = try await importSheet(
+            on: "Palabras.txt",
+            """
+            #columns:Front\tBack\tBoth ways
+            serendipia\tUn hallazgo valioso.\tsí
+            petricor\tEl olor de la lluvia.\t
+            efímero\tQue dura poco.\tx
+
+            """)
+
+        await window.importCardsAndWait()
+
+        #expect(window.importing?.step == .done(ImportOutcome(added: 2, updated: 1, skipped: 0, copyBeforeImport: nil)))
+        #expect(window.listedFronts == ["serendipia", "petricor", "efímero"])
+        #expect(window.listedBothWays == [true, false, true])
+        #expect(try engine.cards().first?.id == serendipia.id)
+    }
+
     @Test("the preview of an Anki package lists every tag it adds, each of which the user renames or removes")
     func anAnkiPackagesTagsAreRenamedOrRemoved() async throws {
         let package = AnkiPackage(notes: [
@@ -251,5 +274,15 @@ extension CardsWindowState {
             return nil
         }
         return rows.map(\.card.front)
+    }
+
+    /// Whether each card the table lists goes both ways, in the order the
+    /// engine read them, or nil when it lists the inbox or couldn't read
+    /// them.
+    fileprivate var listedBothWays: [Bool]? {
+        guard case .success(.cards(let rows)) = listing else {
+            return nil
+        }
+        return rows.map(\.card.bothWays)
     }
 }

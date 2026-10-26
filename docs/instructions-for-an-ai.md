@@ -33,7 +33,7 @@ Then each card has a line of its own, with five columns separated by tab charact
    - `question`: a question on the front, with its answer on the back.
 5. **Source**: where the card's content comes from, such as a book or a course. It can be empty.
 
-Every line has all five columns: an empty column is nothing between two tabs, or after the last one. The front and the back always hold text, unless the card has an image or a sound, as the last sections say.
+Every line has all five columns: an empty column is nothing between two tabs, or after the last one. The front and the back always hold text, unless the card has an image or a sound, as the sections on them say.
 
 A column that holds a line break or a double quote, or starts with `#`, goes in double quotes, with each double quote inside it written twice: `"He said ""yes""."`. Ficha skips a line that starts with `#` outside quotes, as a comment, and blank lines.
 
@@ -109,3 +109,29 @@ This file holds two cards, each with the tag "birds", for a zip that also holds 
 
 - "What bird sings like this?", a question, with the song `hornero.m4a` on its front too.
 - A card whose front is only the call `lapwing.m4a`, with no text and no type.
+
+## Cards that go both ways
+
+Ficha can also show a card back first: its back, and its front once the user flips it, so that they also learn to recall the front, such as a word from its meaning. Such a card goes both ways, and Ficha spaces each way on its own.
+
+- Mark a card both ways when its back leads to one answer, its front: usually a word or a concept, never a question. Write the back of such a card so that it doesn't name the front: in an example of a word, write the word as `…`.
+- The header names one more column, `Both ways`, after all the others, with a tab before it, and every line has it as its last column: `y` for a card that goes both ways, and nothing for one that doesn't.
+- When no card goes both ways, leave the column out.
+
+### An example of cards that go both ways
+
+```text
+#separator:tab
+#html:false
+#columns:Front	Back	Tags	Type	Source	Both ways
+#tags column:3
+serendipity	Finding something good without looking for it, as in: we met by pure … in a bookshop.	vocabulary	word		y
+mitochondria	The part of a cell that turns food into the energy the cell uses.	biology	concept		y
+What is the capital of Mongolia?	Ulaanbaatar.	geography	question		
+```
+
+This file holds three cards:
+
+- "serendipity", a word that goes both ways, whose example writes the word as "…", so that its back doesn't give it away.
+- "mitochondria", a concept that goes both ways.
+- "What is the capital of Mongolia?", a question, which goes one way, as every question does.

@@ -21,6 +21,10 @@ public struct ImportReading: Sendable, Equatable {
 public struct ImportedCard: Sendable, Equatable {
     /// What the card holds, checked as every card is.
     public let content: CardContent
+    /// Whether it goes both ways: a card that comes in new comes in so, and
+    /// a card of the user's it updates takes it when `fields` has Both ways,
+    /// and keeps its own otherwise.
+    public let bothWays: Bool
     /// Which of a card's fields beyond its front and back the file gives it:
     /// an import that updates a card the user has keeps the card's own
     /// fields that the file doesn't give, and sets the others, even blank.
@@ -51,11 +55,12 @@ public struct ImportedCard: Sendable, Equatable {
     public let hasUnreadableSoundsLeftOut: Bool
 
     public init(
-        content: CardContent, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
+        content: CardContent, bothWays: Bool = false, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
         progress: ImportedProgress? = nil, hasImagesDropped: Bool = false, hasSoundsDropped: Bool = false,
         hasUnreadableSoundsLeftOut: Bool = false
     ) {
         self.content = content
+        self.bothWays = bothWays
         self.fields = fields
         self.line = line
         self.proposedTags = proposedTags
@@ -105,6 +110,9 @@ public enum CardField: Sendable, Hashable, CaseIterable {
     /// The back's sound, which a file gives with a column for it, as the
     /// back's image. The front's sound goes with the front, as its image.
     case backSound
+    /// Whether the card goes both ways, which a file gives with a column
+    /// for it, even blank, as the back's image.
+    case bothWays
 }
 
 /// What a reader finds for a file a file of cards names for a side, an image

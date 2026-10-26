@@ -94,6 +94,66 @@ final class ExportingTests {
         #expect(try other.reviewLog() == [])
     }
 
+    // Anki maps the column to its "Add Reverse" field.
+    @Test(
+        "an export writes a Both ways column, with y for each card that goes both ways, only when one of its cards does, and another Ficha reads it back"
+    )
+    func anExportWritesABothWaysColumnOnlyWhenACardGoesBothWays() async throws {
+        let serendipia = try engine.create(
+            card(.word, front: "serendipia", back: "Un hallazgo por casualidad.", tags: ["vocabulario"]),
+            bothWays: true)
+        try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia.", tags: ["vocabulario"]))
+        try engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
+        let vocabulary = folder.appending(path: "vocabulario.txt")
+        let philosophy = folder.appending(path: "filosofía.txt")
+
+        try engine.export(.tag("vocabulario"), to: vocabulary)
+        try engine.export(.tag("filosofía"), to: philosophy)
+
+        #expect(
+            try String(contentsOf: vocabulary, encoding: .utf8) == """
+                #separator:tab
+                #html:false
+                #columns:Front\tBack\tTags\tType\tSource\tBoth ways
+                #tags column:3
+                serendipia\tUn hallazgo por casualidad.\tvocabulario\tword\t\ty
+                petricor\tEl olor de la lluvia.\tvocabulario\tword\t\t
+
+                """)
+        #expect(
+            try String(contentsOf: philosophy, encoding: .utf8) == """
+                #separator:tab
+                #html:false
+                #columns:Front\tBack\tTags\tType\tSource
+                #tags column:3
+                ubuntu\tSoy porque somos.\tfilosofía\tconcept\t
+
+                """)
+        let other = try await anotherFicha(importing: vocabulary)
+        #expect(try other.cards().map(\.front) == [serendipia.front, "petricor"])
+        #expect(try other.cards().map(\.bothWays) == [true, false])
+    }
+
+    @Test(
+        "cards with an image that go both ways export as a zip whose text file says so, and another Ficha reads it back"
+    )
+    func cardsWithAnImageThatGoBothWaysExportAsAZip() async throws {
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let contents = [
+            try card(nil, front: "", back: "El hornero, que hace su nido de barro.", frontImage: bird),
+            try card(.word, front: "tero", back: "Un pájaro que grita cuando alguien se acerca a su nido."),
+        ]
+        try engine.create(contents[0], bothWays: true)
+        try engine.create(contents[1])
+        let file = folder.appending(path: "Aves.zip")
+
+        try engine.export(.all, to: file)
+
+        let other = try await anotherFicha(importing: file)
+        #expect(try other.cards().map(content(of:)) == contents)
+        #expect(try other.cards().map(\.bothWays) == [true, false])
+    }
+
     // Flagged, set-aside and buried ones too: an export holds what cards say,
     // and a burial is where a card stands, which it leaves out.
     @Test("exporting a tag's cards holds every card with that tag, and all cards every card, buried ones too")
