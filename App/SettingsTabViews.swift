@@ -235,7 +235,7 @@ struct ReviewPanelSettings: View {
                     Text(
                         "After forgetting it \(number.wrappedValue) times",
                         comment:
-                            "Settings, under Review panel: how many “Don't know” answers to a card, since its front or back last changed, bring the offer to flag it."
+                            "Settings, under Review panel: how many “Don't know” answers to one of a card's ways, since its front or back last changed, bring the offer to flag it."
                     )
                 }
             }

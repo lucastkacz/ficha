@@ -14,10 +14,10 @@ import Foundation
 /// follow-up in the inbox, without leaving it. When his rating of again makes
 /// a card forgotten often, the panel offers to flag it, with a note that says
 /// how many times he forgot it, and back first when it was that way. Each is
-/// saved as he does it,
-/// and ⌘Z undoes it, the last first, while the panel is open, and shows the
-/// card again as he left it. Once he went through every card, the panel stays
-/// open and offers more cards, if there are any, until he closes it. The
+/// saved as he does it, and ⌘Z undoes it, the last first, while the panel is
+/// open, and shows the card again as he left it. Once he went through every
+/// card, the panel stays open and offers more cards, if there are any, until
+/// he closes it. The
 /// panel goes into the appearance log as it closes. It runs on the engine's
 /// time, which Ficha Dev's debug menu moves forward, and times Lucas on a
 /// steady clock, which it doesn't.
@@ -466,8 +466,9 @@ public struct ReviewPanelState: Sendable {
     /// When the engine says a rating of again made the card forgotten often,
     /// the panel stays on it instead, flagging it, with the note written as
     /// how many times he forgot it the way it showed, and the card's time
-    /// stopped at his answer. The panel's buttons answer through `endFirstView()` and
-    /// `rate(_:)`, which time him on the steady clock, and say what failed.
+    /// stopped at his answer. The panel's buttons answer through
+    /// `endFirstView()` and `rate(_:)`, which time him on the steady clock,
+    /// and say what failed.
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
         let forgottenOften = try engine.record(

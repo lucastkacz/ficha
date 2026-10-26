@@ -334,13 +334,14 @@ struct ReviewPanelTests {
 
         panel.flip()
         panel.rate(.again)
-        let backFirstOffer = (panel.content, panel.note)
+        let backFirstOffer = panel.content
+        let backFirstNote = panel.note
         panel.cancelFlagging()
         panel.flip()
         panel.rate(.again)
 
-        #expect(backFirstOffer.0 == .flagging(bothWays[0], .backFirst, showsLowerSide: true))
-        #expect(backFirstOffer.1 == "Forgotten 8 times back first")
+        #expect(backFirstOffer == .flagging(bothWays[0], .backFirst, showsLowerSide: true))
+        #expect(backFirstNote == "Forgotten 8 times back first")
         #expect(panel.content == .flagging(bothWays[0], showsLowerSide: true))
         #expect(panel.note == "Forgotten 8 times")
     }

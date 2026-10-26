@@ -310,9 +310,11 @@ private enum StoredShortcut {
 }
 
 /// The offer to flag a card forgotten often, as the preferences store it:
-/// the number of reviews rated again that brings it, or 0 when it's off.
+/// the number of reviews of one of a card's ways rated again that brings it,
+/// or 0 when it's off.
 private struct StoredOffer {
-    /// How many reviews rated again bring the offer, or nil when it's off.
+    /// How many reviews of one of a card's ways rated again bring the offer,
+    /// or nil when it's off.
     let timesForgotten: Int?
 
     init(_ timesForgotten: Int?) {

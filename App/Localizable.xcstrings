@@ -669,7 +669,7 @@
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
     },
     "After forgetting it %lld times" : {
-      "comment" : "Settings, under Review panel: how many “Don't know” answers to a card, since its front or back last changed, bring the offer to flag it.",
+      "comment" : "Settings, under Review panel: how many “Don't know” answers to one of a card's ways, since its front or back last changed, bring the offer to flag it.",
       "localizations" : {
         "en" : {
           "variations" : {
