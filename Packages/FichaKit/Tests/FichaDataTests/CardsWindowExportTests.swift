@@ -122,7 +122,7 @@ final class CardsWindowExportTests {
     @Test(
         "Export writes what the user chose to the file they picked, the selected cards, a tag's or all, and closes the sheet"
     )
-    func exportWritesWhatTheUserChose() throws {
+    func exportWritesWhatTheUserChose() async throws {
         let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
         try approveCard("Sócrates", tags: ["historia", "filosofía"])
         let ubuntu = try approveCard("ubuntu")
@@ -136,7 +136,7 @@ final class CardsWindowExportTests {
             window.chooseCardsToExport(choice)
             window.export(to: file)
             #expect(window.exporting == nil)
-            exportedFronts.append(try CardsTextFile.read(Data(contentsOf: file)).cards.map(\.content.front))
+            exportedFronts.append(try await CardsTextFile.read(Data(contentsOf: file)).cards.map(\.content.front))
         }
 
         #expect(

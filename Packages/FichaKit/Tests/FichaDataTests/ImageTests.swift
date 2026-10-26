@@ -183,7 +183,7 @@ final class ImageTests {
     // A text file without image columns gives a card text alone. A zip's
     // back images are in ImagesInZipsTests.
     @Test("an import that updates a card keeps its images")
-    func anImportThatUpdatesACardKeepsItsImages() throws {
+    func anImportThatUpdatesACardKeepsItsImages() async throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -193,7 +193,7 @@ final class ImageTests {
         let file = folder.appending(path: "pájaros.txt")
         try Data("hornero\tUn pájaro que hace su nido de barro.\n".utf8).write(to: file)
 
-        let outcome = try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
 
         #expect(outcome.updated == 1)
         let updated = try #require(try engine.cards().first { $0.id == hornero.id })

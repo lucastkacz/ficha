@@ -179,7 +179,7 @@ final class SoundTests {
             flagged.id, with: card(.word, front: "coloratura", back: "Los ornamentos rápidos del canto de ópera."))
         let approved = try engine.approveExpansion(
             expansion.id, into: card(.word, front: "aria", back: "Una canción de una ópera."))
-        try engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
 
         #expect(fixed.backSound == la)
         #expect(approved.frontSound == mi && approved.backSound == la)

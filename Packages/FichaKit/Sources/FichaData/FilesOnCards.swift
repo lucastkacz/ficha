@@ -21,6 +21,9 @@ protocol NameOfFileOnCard: RawRepresentable, Sendable, Hashable where RawValue =
     /// The error when the folder of its kind fails: its files couldn't be
     /// read, saved or removed, or one isn't there.
     static var folderError: EngineError { get }
+    /// The error when data that comes in isn't a file of its kind Ficha can
+    /// read.
+    static var notOfItsKind: EngineError { get }
 }
 
 extension ImageName: NameOfFileOnCard {
@@ -28,6 +31,7 @@ extension ImageName: NameOfFileOnCard {
     static let folderName = "Images"
     static let columns = (front: "frontImage", back: "backImage")
     static let folderError = EngineError.imagesFolder
+    static let notOfItsKind = EngineError.notAnImage
 }
 
 extension SoundName: NameOfFileOnCard {
@@ -35,7 +39,19 @@ extension SoundName: NameOfFileOnCard {
     static let folderName = "Sounds"
     static let columns = (front: "frontSound", back: "backSound")
     static let folderError = EngineError.soundsFolder
+    static let notOfItsKind = EngineError.notASound
 }
+
+/// A file on its way to a side of a card, an image or a sound, as it came
+/// in, with the name it's kept by.
+protocol CardFile: Sendable {
+    associatedtype Name: NameOfFileOnCard
+    var name: Name { get }
+}
+
+extension CardImage: CardFile {}
+
+extension CardSound: CardFile {}
 
 /// The folder in the data folder `folder` where the engine keeps the files
 /// named by `Name`, beside the database and the Backups folder.

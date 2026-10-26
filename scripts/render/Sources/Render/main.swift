@@ -521,7 +521,7 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
     defer { try? FileManager.default.removeItem(at: file) }
     var state = model.openCardsWindow()
     state.startImport()
-    previewImportAtOnce(of: file, in: &state)
+    try previewImportAtOnce(of: file, in: &state)
     guard state.importing?.preview != nil else {
         throw RenderError(
             description: "The sample file to import has no preview: \(String(describing: state.importing))")
@@ -530,11 +530,11 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
 }
 
 /// Reads `file` for the Import sheet in `state`, as the app does once the
-/// user chose it, the reading run at once rather than away from the main
-/// actor, so that the picture shows its preview.
-func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) {
+/// user chose it, the reading waited for at once rather than run away from
+/// the main actor, so that the picture shows its preview.
+func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws {
     if let work = state.previewImport(of: file) {
-        state.finishImportWork(work.run())
+        state.finishImportWork(try waitFor { await work.run() })
     }
 }
 
@@ -553,7 +553,7 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
     defer { try? FileManager.default.removeItem(at: file) }
     var state = model.openCardsWindow()
     state.startImport()
-    previewImportAtOnce(of: file, in: &state)
+    try previewImportAtOnce(of: file, in: &state)
     guard state.importing?.preview != nil else {
         throw RenderError(
             description: "The sample Anki package has no preview: \(String(describing: state.importing))")
@@ -572,7 +572,8 @@ func ankiImportedModel() throws -> AppModel {
     defer { try? FileManager.default.removeItem(at: file) }
     let settings = ReviewSettings.defaults
     _ = try engine.importCards(
-        engine.previewImport(of: file), choosing: ImportChoices(progress: .brought(onto: settings.ladder)))
+        waitFor { try await engine.previewImport(of: file) },
+        choosing: ImportChoices(progress: .brought(onto: settings.ladder)))
     guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
         throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
     }

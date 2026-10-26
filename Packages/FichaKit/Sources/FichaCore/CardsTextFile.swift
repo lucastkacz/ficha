@@ -6,8 +6,9 @@ import Foundation
 /// separator, a quote or a line break, and a quote inside it doubled. Its
 /// columns are, in order, the card's front, back, tags, type and source, of
 /// which a line may leave out the last three. A line starting with `#` is a
-/// comment, and so is a blank one. In a zip with the images of its cards, a
-/// column for each side, which the `#columns` header names, names its image.
+/// comment, and so is a blank one. In a zip with the images and the sounds
+/// of its cards, a column for each side and each kind, which the `#columns`
+/// header names, names its image or its sound.
 public enum CardsTextFile {
     /// A column of the file.
     public enum Column: String, Sendable, CaseIterable {
@@ -21,24 +22,42 @@ public enum CardsTextFile {
         case frontImage = "Front image"
         /// The name of the back's image, as the front's.
         case backImage = "Back image"
+        /// The name of the front's sound, a file in the zip beside the text
+        /// file, or blank for none.
+        case frontSound = "Front sound"
+        /// The name of the back's sound, as the front's.
+        case backSound = "Back sound"
 
-        /// Whether it names a side's image: a column that a file has only
-        /// when its `#columns` header names it, and an export writes only
-        /// with images.
+        /// Whether it names a side's image.
         var isImage: Bool {
             self == .frontImage || self == .backImage
+        }
+
+        /// Whether it names a side's sound.
+        var isSound: Bool {
+            self == .frontSound || self == .backSound
+        }
+
+        /// Whether it names a side's file, an image or a sound: a column that
+        /// a file has only when its `#columns` header names it, and an export
+        /// writes only with a file of its kind.
+        var isFile: Bool {
+            isImage || isSound
         }
     }
 
     /// The cards in the file `data` holds, in its order, and the lines it
-    /// left out, with why, or why it can't be read at all. `images` looks up
-    /// each image a line names for a side, by the name it gives: a side with
-    /// no text whose image isn't found leaves the line out, and one with
-    /// text comes in without it. Without `images`, as for a text file alone,
-    /// no image is found.
-    public static func read(_ data: Data, images: (String) -> ImageLookup = { _ in .missing })
-        throws(CardsFileProblem) -> ImportReading
-    {
+    /// left out, with why, or why it can't be read at all. `images` and
+    /// `sounds` look up each image and each sound a line names for a side,
+    /// by the name it gives: a side left with neither text, an image nor a
+    /// sound by a file that isn't found leaves the line out, and one with
+    /// something else comes in without that file. Without them, as for a
+    /// text file alone, no file is found. A sound takes a while to come in,
+    /// so `sounds` may wait.
+    public static func read(
+        _ data: Data, images: (String) -> ImageLookup = { _ in .missing },
+        sounds: (String) async -> SoundLookup = { _ in .missing }
+    ) async throws(CardsFileProblem) -> ImportReading {
         guard let text = String(validating: data, as: UTF8.self) else {
             throw .notUTF8
         }
@@ -53,7 +72,9 @@ public enum CardsTextFile {
             case .fields(let fields, let line):
                 do throws(LeftOut) {
                     cards.append(
-                        try card(in: fields, on: line, columns: columns, isHTML: headers.isHTML, images: images))
+                        try await card(
+                            in: fields, on: line, columns: columns, isHTML: headers.isHTML, images: images,
+                            sounds: sounds))
                 } catch {
                     leftOut.append(error.line)
                 }
@@ -86,10 +107,12 @@ public enum CardsTextFile {
     /// its front, back, tags, type and source, and a blank field for what it
     /// lacks. When a card has an image, every line also names the image of
     /// its front and of its back, by the name Ficha keeps it by, which is
-    /// the name of its file in the zip the text goes in.
+    /// the name of its file in the zip the text goes in; and when a card has
+    /// a sound, the sound of each side, the same way.
     public static func text(of cards: [CardContent]) -> String {
-        let hasImages = cards.contains { $0.frontImage != nil || $0.backImage != nil }
-        let columns = Column.allCases.filter { hasImages || !$0.isImage }
+        let hasImages = cards.contains { !$0.images.isEmpty }
+        let hasSounds = cards.contains { !$0.sounds.isEmpty }
+        let columns = Column.allCases.filter { (hasImages || !$0.isImage) && (hasSounds || !$0.isSound) }
         var lines = [
             "#separator:tab",
             "#html:false",
@@ -114,6 +137,8 @@ public enum CardsTextFile {
         case .source: card.source ?? ""
         case .frontImage: card.frontImage?.rawValue ?? ""
         case .backImage: card.backImage?.rawValue ?? ""
+        case .frontSound: card.frontSound?.rawValue ?? ""
+        case .backSound: card.backSound?.rawValue ?? ""
         }
     }
 
@@ -139,18 +164,19 @@ public enum CardsTextFile {
 
     /// The card that `fields`, the columns of the record on `line`, make,
     /// each the column `columns` says, and as plain text when `isHTML`, but
-    /// its tags and its images' names, with the images `images` finds; or
-    /// the line left out, with why it makes none.
+    /// its tags and its files' names, with the images `images` finds and the
+    /// sounds `sounds` finds; or the line left out, with why it makes none.
     private static func card(
-        in fields: [String], on line: Int, columns: ColumnMap, isHTML: Bool, images: (String) -> ImageLookup
-    ) throws(LeftOut) -> ImportedCard {
+        in fields: [String], on line: Int, columns: ColumnMap, isHTML: Bool, images: (String) -> ImageLookup,
+        sounds: (String) async -> SoundLookup
+    ) async throws(LeftOut) -> ImportedCard {
         guard fields.count > 1 else {
             throw LeftOut(line: line, reason: .oneColumn)
         }
         var values: [Column: String] = [:]
         for (index, field) in fields.enumerated() {
             if let column = columns.column(at: index), values[column] == nil {
-                values[column] = isHTML && column != .tags && !column.isImage ? plainText(fromHTML: field) : field
+                values[column] = isHTML && column != .tags && !column.isFile ? plainText(fromHTML: field) : field
             }
         }
         var type: CardType?
@@ -162,43 +188,61 @@ public enum CardsTextFile {
         }
         let front = values[.front] ?? ""
         let back = values[.back] ?? ""
-        let frontImage = try image(named: values[.frontImage], beside: front, on: line, images: images)
-        let backImage = try image(named: values[.backImage], beside: back, on: line, images: images)
+        let (frontImage, frontSound) = try await files(
+            beside: front, image: values[.frontImage], sound: values[.frontSound], on: line, images: images,
+            sounds: sounds)
+        let (backImage, backSound) = try await files(
+            beside: back, image: values[.backImage], sound: values[.backSound], on: line, images: images,
+            sounds: sounds)
         guard
             let content = CardContent(
                 type: type, front: front, back: back, tags: tags(inColumn: values[.tags] ?? ""),
-                source: values[.source], frontImage: frontImage, backImage: backImage)
+                source: values[.source], frontImage: frontImage, backImage: backImage, frontSound: frontSound,
+                backSound: backSound)
         else {
             throw LeftOut(
-                line: line, reason: CardContent.isBlank(front, image: frontImage, sound: nil) ? .blankFront : .blankBack
-            )
+                line: line,
+                reason: CardContent.isBlank(front, image: frontImage, sound: frontSound) ? .blankFront : .blankBack)
         }
         let given: [(Column, CardField)] = [
-            (.tags, .tags), (.type, .type), (.source, .source), (.backImage, .backImage),
+            (.tags, .tags), (.type, .type), (.source, .source), (.backImage, .backImage), (.backSound, .backSound),
         ]
         return ImportedCard(
             content: content, fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line)
     }
 
-    /// The image a side with `text` gets from `name`, what its image column
-    /// holds, if anything, which `images` looks up: the image found, or none
-    /// when the column is blank, or when the image isn't found and the side
-    /// has text. A side with no text whose image isn't found leaves the line
-    /// on `line` out.
-    private static func image(
-        named name: String?, beside text: String, on line: Int, images: (String) -> ImageLookup
-    ) throws(LeftOut) -> ImageName? {
-        guard let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
-            return nil
+    /// The image and the sound a side with `text` gets from what its image
+    /// and sound columns hold, if anything, `imageName` and `soundName`,
+    /// which `images` and `sounds` look up: each file found, or none when its
+    /// column is blank or it isn't found. A side left with neither text, an
+    /// image nor a sound by a file that isn't found leaves the line on
+    /// `line` out, saying why for its image, or else for its sound.
+    private static func files(
+        beside text: String, image imageName: String?, sound soundName: String?, on line: Int,
+        images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup
+    ) async throws(LeftOut) -> (image: ImageName?, sound: SoundName?) {
+        let imageName = nonBlank(imageName)
+        let soundName = nonBlank(soundName)
+        let imageLookup = imageName.map(images)
+        var soundLookup: SoundLookup?
+        if let soundName {
+            soundLookup = await sounds(soundName)
         }
-        let lookup = images(name)
-        if case .found(let image) = lookup {
-            return image
+        let image: ImageName? = if case .found(let image)? = imageLookup { image } else { nil }
+        let sound: SoundName? = if case .found(let sound)? = soundLookup { sound } else { nil }
+        guard CardContent.isBlank(text, image: image, sound: sound) else {
+            return (image, sound)
         }
-        guard CardContent.isBlank(text) else {
-            return nil
+        // A side left blank found neither file its columns name.
+        if let imageName, let imageLookup {
+            throw LeftOut(
+                line: line, reason: imageLookup == .unreadable ? .notAnImage(imageName) : .missingImage(imageName))
         }
-        throw LeftOut(line: line, reason: lookup == .notAnImage ? .notAnImage(name) : .missingImage(name))
+        if let soundName, let soundLookup {
+            throw LeftOut(
+                line: line, reason: soundLookup == .unreadable ? .notASound(soundName) : .missingSound(soundName))
+        }
+        return (nil, nil)
     }
 }
 
@@ -323,8 +367,8 @@ private struct Headers {
 /// them, or else, in order, the front, the back, the tags, the type and the
 /// source, without the tags when a header puts them elsewhere. A column
 /// beyond those, or one `#columns` names otherwise, is left out: the image
-/// columns come only by name, so a file without headers reads as before
-/// images.
+/// and sound columns come only by name, so a file without headers reads as
+/// before images and sounds.
 private struct ColumnMap {
     private let tagsColumn: Int?
     private let skippedColumns: Set<Int>
@@ -337,7 +381,7 @@ private struct ColumnMap {
         tagsColumn = headers.tagsColumn
         skippedColumns = headers.skippedColumns
         unplaced = CardsTextFile.Column.allCases.filter {
-            !$0.isImage && ($0 != .tags || headers.tagsColumn == nil)
+            !$0.isFile && ($0 != .tags || headers.tagsColumn == nil)
         }
         guard let columnNames = headers.columnNames else {
             named = nil

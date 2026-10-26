@@ -51,14 +51,12 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFile
         logger.error("Couldn't read an Anki package: \(String(describing: error), privacy: .public)")
         throw .unreadableAnkiPackage
     }
-    // Shrunk, as every image that comes in.
-    var images = ImagesComingIn(contents: media.contents(ofFileNamed:)) { data, _ throws(EngineError) in
-        try CardImage(shrinking: data)
-    }
+    var images = FilesInZip<CardImage>(contents: media.contents(ofFileNamed:))
     let reading: ImportReading
     do {
         reading = try collection.importReading(in: calendar) {
-            images.lookUp($0)
+            // Shrunk, as every image that comes in.
+            images.lookUp($0) { data throws(EngineError) in try CardImage(shrinking: data) }
         } sha1: { text in
             // Anki names a formula's picture after it, not to keep it safe.
             Insecure.SHA1.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
