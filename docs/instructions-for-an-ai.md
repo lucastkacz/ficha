@@ -66,7 +66,7 @@ A card's front or back can show an image too, such as a bird's photo on the fron
 
 - The header names two more columns after Source, `Front image` and `Back image`, with a tab between each name, and every line has all seven columns.
 - Each of them holds the name of the image file for that side, such as `hornero.jpg`, or nothing when the side has no image. A side holds text, an image, or both: with an image, its text can be empty.
-- The text file and the image files go in one zip, side by side: on a Mac, select them in Finder, choose Compress, and name the zip after the cards' subject, like `Birds.zip`. Ficha imports the zip, shrinks each image to about 1,600 pixels on its long side, and proposes the zip's name as a tag for every card. It reads the image formats a Mac opens, such as JPEG, PNG and HEIC.
+- The text file and the image files go in one zip, side by side: on a Mac, select them in Finder, choose Compress, and name the zip after the cards' subject, like `Birds.zip`. Ficha imports the zip, shrinks each image to about 1,600 pixels on its long side, and proposes the zip's name as a tag for every card. It reads the image formats a Mac opens, such as JPEG, PNG, HEIC and SVG.
 - Answer with the text file as "What to do" says, and then one line telling the user to zip it with the images it names.
 
 ### An example with images

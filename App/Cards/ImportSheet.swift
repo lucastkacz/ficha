@@ -646,7 +646,7 @@ struct ImportSheet: View {
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
         case .unreadableAnkiImage:
             String(
-                localized: "\(count) cards have a side with only an image Ficha can't read, such as an SVG.",
+                localized: "\(count) cards have a side with only an image Ficha can't read, such as a damaged file.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
         case .ankiImageOcclusion:
             String(

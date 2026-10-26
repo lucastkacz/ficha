@@ -9,9 +9,11 @@ import Foundation
 // read, shows as its LaTeX.
 
 /// The name of Anki's picture of the formula `html`, a side as Anki renders
-/// it, shows alone, with nothing else that shows: a PNG named after the
-/// SHA-1 digest of the formula's LaTeX, as `sha1` gives it, as lowercase
-/// hex. Nil when the side shows no formula, more than one, or other text.
+/// it, shows alone, with nothing else that shows, without its extension:
+/// `latex-` and the SHA-1 digest of the formula's LaTeX, as `sha1` gives it,
+/// as lowercase hex. Anki adds `.png`, or `.svg` when the note type draws its
+/// formulas as SVGs. Nil when the side shows no formula, more than one, or
+/// other text.
 func pictureOfFormula(shownAloneIn html: String, sha1: (String) -> String) -> String? {
     guard mayHoldFormula(html) else {
         return nil
@@ -35,7 +37,7 @@ func pictureOfFormula(shownAloneIn html: String, sha1: (String) -> String) -> St
     } else {
         return nil
     }
-    return "latex-\(sha1(latexWithoutHTML(latex))).png"
+    return "latex-\(sha1(latexWithoutHTML(latex)))"
 }
 
 /// `latex`, a formula's LaTeX as a side shows it, without its comments,

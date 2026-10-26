@@ -52,11 +52,15 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) throws(CardsFile
         throw .unreadableAnkiPackage
     }
     var images = FilesInZip<CardImage>(contents: media.contents(ofFileNamed:))
+    let svgs = SVGDrawer()
     let reading: ImportReading
     do {
-        reading = try collection.importReading(in: calendar) {
-            // Shrunk, as every image that comes in.
-            images.lookUp($0) { data throws(EngineError) in try CardImage(shrinking: data) }
+        reading = try collection.importReading(in: calendar) { name in
+            // Shrunk, as every image that comes in, or drawn, when its name
+            // ends in `.svg`, which is how Anki tells an SVG.
+            images.lookUp(name) { data throws(EngineError) in
+                try pathExtension(of: name) == "svg" ? CardImage(drawing: data, with: svgs) : CardImage(shrinking: data)
+            }
         } sha1: { text in
             // Anki names a formula's picture after it, not to keep it safe.
             Insecure.SHA1.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()

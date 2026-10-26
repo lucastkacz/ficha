@@ -113,8 +113,13 @@ func readZipOfCards(_ archive: Archive) async throws(CardsFileProblem) -> (
     }
     var images = FilesInZip<CardImage>(contents: fileNamed)
     var sounds = FilesInZip<CardSound>(contents: fileNamed)
+    let svgs = SVGDrawer()
     let reading = try await CardsTextFile.read(text) { name in
-        images.lookUp(name) { data throws(EngineError) in try CardImage(fromZip: data, named: name) }
+        // Drawn, when its name ends in `.svg`, as Anki tells an SVG.
+        images.lookUp(name) { data throws(EngineError) in
+            try pathExtension(of: name) == "svg"
+                ? CardImage(drawing: data, with: svgs) : CardImage(fromZip: data, named: name)
+        }
     } sounds: { name in
         await sounds.lookUp(name) { data async throws(EngineError) in
             try await CardSound(fromZip: data, named: name)
@@ -132,7 +137,7 @@ private func isAddedByFinder(_ path: String) -> Bool {
 }
 
 /// The extension of the file at `path`, in lowercase, or empty without one.
-private func pathExtension(of path: String) -> String {
+func pathExtension(of path: String) -> String {
     URL(filePath: path).pathExtension.lowercased()
 }
 
