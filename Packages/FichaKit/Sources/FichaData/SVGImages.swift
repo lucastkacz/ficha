@@ -115,14 +115,18 @@ private final class PendingDrawing: Sendable {
 }
 
 #if os(macOS)
-    /// A web view that draws one SVG at a time, as an `<img>` of a page of
-    /// its own, and snapshots it.
+    /// A web view that draws one SVG at a time, as an `<img>` of its first,
+    /// empty page, and snapshots it. It never loads a page: before loading
+    /// one, WebKit asks macOS whether the app signs into it (AppSSO), and on
+    /// GitHub's Macs the answer took a minute.
     @MainActor
     private final class SVGPage: NSObject, WKNavigationDelegate {
         private let webView: WKWebView
-        /// The SVG being drawn: its page's navigation, and what to tell when
-        /// it's drawn, or can't be.
-        private var drawing: (navigation: WKNavigation, finish: @Sendable (CGImage?) -> Void)?
+        /// The SVG being drawn: its number, and what to tell when it's drawn,
+        /// or can't be.
+        private var drawing: (number: Int, finish: @Sendable (CGImage?) -> Void)?
+        /// How many SVGs it started drawing.
+        private var started = 0
         /// How many pixels a snapshot has for each of the points it asks for,
         /// as its first one tells: two on a Retina display.
         private var pixelsPerPoint = 1.0
@@ -136,26 +140,45 @@ private final class PendingDrawing: Sendable {
         }
 
         /// Draws `svg` `longestSide` pixels on its long side, and tells
-        /// `finish`. The page sizes the SVG from its own width and height,
-        /// or its view box.
+        /// `finish`.
         func draw(_ svg: Data, longestSide: Int, finish: @escaping @Sendable (CGImage?) -> Void) {
             end(with: nil)
+            started += 1
+            let number = started
+            drawing = (number, finish)
             webView.setFrameSize(CGSize(width: longestSide, height: longestSide))
-            let page = """
-                <!doctype html><html><head><style>
-                html, body { margin: 0; padding: 0; background: #fff; overflow: hidden; }
-                img { display: block; }
-                </style></head><body><img src="data:image/svg+xml;base64,\(svg.base64EncodedString())" \
-                onload="var s = \(longestSide) / Math.max(this.naturalWidth, this.naturalHeight); \
-                this.style.width = Math.round(this.naturalWidth * s) + 'px'; \
-                this.style.height = Math.round(this.naturalHeight * s) + 'px';"></body></html>
-                """
-            guard let navigation = webView.loadHTMLString(page, baseURL: nil) else {
-                finish(nil)
-                return
+            let arguments: [String: Any] = ["svg": svg.base64EncodedString(), "side": longestSide]
+            webView.callAsyncJavaScript(Self.showing, arguments: arguments, in: nil, in: .defaultClient) {
+                [self] result in
+                guard drawing?.number == number else { return }
+                guard case .success(let value) = result, let size = value as? [Int], size.count == 2, size[0] > 0,
+                    size[1] > 0
+                else {
+                    end(with: nil)
+                    return
+                }
+                snapshot(width: size[0], height: size[1], of: number)
             }
-            drawing = (navigation, finish)
         }
+
+        /// A script that shows the SVG `svg`, in base 64, alone on the page,
+        /// `side` points on its long side, sized from its own width and
+        /// height, or its view box, and returns its width and height, or
+        /// fails when it isn't an SVG WebKit can draw.
+        private static let showing = """
+            const image = new Image();
+            image.src = 'data:image/svg+xml;base64,' + svg;
+            await image.decode();
+            if (!(image.naturalWidth > 0 && image.naturalHeight > 0)) return null;
+            const scale = side / Math.max(image.naturalWidth, image.naturalHeight);
+            image.style.display = 'block';
+            image.style.width = Math.round(image.naturalWidth * scale) + 'px';
+            image.style.height = Math.round(image.naturalHeight * scale) + 'px';
+            document.documentElement.style.cssText = 'margin: 0; padding: 0; background: #fff; overflow: hidden;';
+            document.body.style.cssText = 'margin: 0; padding: 0; background: #fff; overflow: hidden;';
+            document.body.replaceChildren(image);
+            return [image.width, image.height];
+            """
 
         /// Ends the drawing, if one is under way, and lets the web view go.
         func close() {
@@ -163,31 +186,18 @@ private final class PendingDrawing: Sendable {
             webView.navigationDelegate = nil
         }
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            guard drawing?.navigation === navigation else { return }
-            let size = "var i = document.images[0]; i.complete && i.naturalWidth > 0 ? [i.width, i.height] : [0, 0]"
-            webView.evaluateJavaScript(size) { [self] value, _ in
-                guard drawing?.navigation === navigation else { return }
-                guard let size = value as? [Int], size.count == 2, size[0] > 0, size[1] > 0 else {
-                    end(with: nil)
-                    return
-                }
-                snapshot(width: size[0], height: size[1], of: navigation)
-            }
-        }
-
-        /// Snapshots the SVG drawn `width` by `height` points in the page
-        /// `navigation` loaded, at two pixels a point, and shrinks it to a
-        /// pixel a point. A snapshot comes at as many pixels a point as the
-        /// web view has, one or two, so its first is taken again once it
-        /// tells how many. Drawn at two, an SVG comes in the same whatever
-        /// the web view, so that it isn't kept twice.
-        private func snapshot(width: Int, height: Int, of navigation: WKNavigation, isRetaken: Bool = false) {
+        /// Snapshots the SVG drawing `number` shows `width` by `height`
+        /// points, at two pixels a point, and shrinks it to a pixel a point.
+        /// A snapshot comes at as many pixels a point as the web view has,
+        /// one or two, so its first is taken again once it tells how many.
+        /// Drawn at two, an SVG comes in the same whatever the web view, so
+        /// that it isn't kept twice.
+        private func snapshot(width: Int, height: Int, of number: Int, isRetaken: Bool = false) {
             let configuration = WKSnapshotConfiguration()
             configuration.rect = CGRect(x: 0, y: 0, width: width, height: height)
             configuration.snapshotWidth = NSNumber(value: Double(2 * width) / pixelsPerPoint)
             webView.takeSnapshot(with: configuration) { [self] taken, _ in
-                guard drawing?.navigation === navigation else { return }
+                guard drawing?.number == number else { return }
                 guard let image = taken?.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
                     end(with: nil)
                     return
@@ -196,7 +206,7 @@ private final class PendingDrawing: Sendable {
                     end(with: sized(image, width, height))
                 } else if !isRetaken {
                     pixelsPerPoint *= Double(image.width) / Double(2 * width)
-                    snapshot(width: width, height: height, of: navigation, isRetaken: true)
+                    snapshot(width: width, height: height, of: number, isRetaken: true)
                 } else {
                     logger.error(
                         "WebKit snapshot an SVG at \(image.width)×\(image.height) pixels, not \(2 * width)×\(2 * height)"
@@ -206,26 +216,8 @@ private final class PendingDrawing: Sendable {
             }
         }
 
-        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
-            failed(navigation, error)
-        }
-
-        func webView(
-            _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error
-        ) {
-            failed(navigation, error)
-        }
-
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
             logger.error("WebKit's process ended while it drew an SVG")
-            end(with: nil)
-        }
-
-        /// Ends the drawing of the page `navigation` loads, which `error`
-        /// stopped.
-        private func failed(_ navigation: WKNavigation, _ error: any Error) {
-            guard drawing?.navigation === navigation else { return }
-            logger.error("WebKit couldn't load the page of an SVG: \(String(describing: error), privacy: .public)")
             end(with: nil)
         }
 
