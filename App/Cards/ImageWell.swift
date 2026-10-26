@@ -96,13 +96,21 @@ struct ImageWell: View {
     /// data, as a browser or the pasteboard holds it.
     private static let imageTypes: [UTType] = [.fileURL, .image]
 
-    /// Puts the image in the first of `pasteboard`'s items that holds one on
-    /// the side. What holds no image goes to the window as no data, which it
-    /// refuses, saying so.
+    /// Puts the image `pasteboard` holds on the side.
     private func take(from pasteboard: NSPasteboard) {
-        let image = (pasteboard.pasteboardItems ?? []).lazy.compactMap { item in
-            DroppedImage(pasteboardTypes: item.types.map(\.rawValue)) { item.data(forType: .init($0)) }
-        }.first
-        put(image ?? .data(Data()))
+        put(DroppedImage(pasteboardItems: (pasteboard.pasteboardItems ?? []).map(AppKitPasteboardItem.init)))
+    }
+}
+
+/// An item of an AppKit pasteboard, as FichaData reads it.
+private struct AppKitPasteboardItem: PasteboardItem {
+    let item: NSPasteboardItem
+
+    var typeIdentifiers: [String] {
+        item.types.map(\.rawValue)
+    }
+
+    func data(ofType type: String) -> Data? {
+        item.data(forType: NSPasteboard.PasteboardType(type))
     }
 }
