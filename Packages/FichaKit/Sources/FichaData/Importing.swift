@@ -244,9 +244,10 @@ extension Engine {
     /// Imports the cards `preview` read, as the user chose: each card that
     /// repeats none of the user's comes in as new, in the file's order, so
     /// new cards come up for their first view in that order; each one that
-    /// repeats a card of the user's updates it or is skipped. Every card that
-    /// comes in or is updated gets the tags it proposes, as the user named
-    /// them.
+    /// repeats a card of the user's updates it or is skipped. A card goes
+    /// both ways as the file says, and an updated one keeps its own Both ways
+    /// when the file says nothing of it. Every card that comes in or is
+    /// updated gets the tags it proposes, as the user named them.
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
@@ -282,7 +283,8 @@ extension Engine {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
                         let cardID = try insertCard(
-                            try card.content(adding: addedTags(card)), capturedAs: nil, at: importedAt, in: db)
+                            try card.content(adding: addedTags(card)), bothWays: card.bothWays, capturedAs: nil,
+                            at: importedAt, in: db)
                         if case .brought(let ladder) = choices.progress, let progress = card.progress {
                             try bring(progress, to: cardID, onto: ladder, at: importedAt, in: db)
                         }
@@ -291,6 +293,9 @@ extension Engine {
                         let updatedCard = try replaceContent(
                             of: repeated.id, with: try card.update(of: repeated, adding: addedTags(card)),
                             at: importedAt, in: db)
+                        if card.fields.contains(.bothWays) {
+                            _ = try setBothWays(card.bothWays, of: repeated.id, in: db)
+                        }
                         letGo.images.formUnion(repeated.images.subtracting(updatedCard.images))
                         letGo.sounds.formUnion(repeated.sounds.subtracting(updatedCard.sounds))
                         updated += 1
@@ -345,7 +350,8 @@ extension ImportedCard {
     /// What `card`, the user's card it repeats, holds once it's updated: its
     /// own front, with its image and its sound, the back and every field the
     /// file gives, the back's image and sound among them, its own fields that
-    /// the file doesn't, and `tags` added to its tags.
+    /// the file doesn't, and `tags` added to its tags. Both ways isn't what a
+    /// card holds: the import sets it apart.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
@@ -377,7 +383,7 @@ extension ImportReading {
         ImportReading(
             cards: cards.map { card in
                 ImportedCard(
-                    content: card.content, fields: card.fields, line: card.line,
+                    content: card.content, bothWays: card.bothWays, fields: card.fields, line: card.line,
                     proposedTags: (card.proposedTags + tags).uniqued(), progress: card.progress,
                     hasImagesDropped: card.hasImagesDropped, hasSoundsDropped: card.hasSoundsDropped,
                     hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut)

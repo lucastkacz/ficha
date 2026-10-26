@@ -147,6 +147,25 @@ final class CardsWindowExportTests {
             ])
     }
 
+    @Test("Export writes which cards go both ways, as the selection's Both ways button left them")
+    func exportWritesWhichCardsGoBothWays() async throws {
+        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
+        let socrates = try approveCard("Sócrates", tags: ["historia"])
+        try approveCard("ubuntu")
+        var window = openWindow()
+        window.select([mayo.id, socrates.id])
+        window.turnOnBothWays()
+        let file = folder.appending(path: "Tarjetas.txt")
+
+        window.startExport()
+        window.chooseCardsToExport(.all)
+        window.export(to: file)
+
+        let exported = try await CardsTextFile.read(Data(contentsOf: file)).cards
+        #expect(exported.map(\.content.front) == ["Revolución de Mayo", "Sócrates", "ubuntu"])
+        #expect(exported.map(\.bothWays) == [true, true, false])
+    }
+
     // The save panel proposes a zip then, and the sheet says the images go.
     @Test("Export writes a zip when a card it takes has an image, and a text file when none does")
     func exportWritesAZipWhenACardHasAnImage() throws {

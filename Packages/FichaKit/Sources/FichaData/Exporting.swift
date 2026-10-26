@@ -26,25 +26,25 @@ public enum CardsToExport: Sendable, Hashable {
 extension Engine {
     /// Writes the cards `cards` takes to `file`, in the order they came in,
     /// as the text file the import reads: what each card says, its front,
-    /// back, tags, type and source, and never where it stands, its review
-    /// log, its flag or its burial. When a card it takes has an image or a
-    /// sound, the file is a zip instead, with that text file, named after
-    /// `file`, and the cards' images and sounds beside it, each once, which
-    /// its lines name. Returns how many cards it wrote.
+    /// back, tags, type and source, and whether it goes both ways, and never
+    /// where it stands, its review log, its flag or its burial. When a card
+    /// it takes has an image or a sound, the file is a zip instead, with that
+    /// text file, named after `file`, and the cards' images and sounds beside
+    /// it, each once, which its lines name. Returns how many cards it wrote.
     @discardableResult
     public func export(_ cards: CardsToExport, to file: URL) throws(EngineError) -> Int {
-        let contents = try read { db in
-            try allCards(in: db).filter(cards.takes).map(exportedContent(of:))
+        let exported = try read { db in
+            try allCards(in: db).filter(cards.takes).map(exportedCard(of:))
         }
         var images: [CardImage] = []
-        for name in Set(contents.flatMap(\.images)).sorted(by: { $0.rawValue < $1.rawValue }) {
+        for name in Set(exported.flatMap(\.content.images)).sorted(by: { $0.rawValue < $1.rawValue }) {
             images.append(CardImage(name: name, data: try image(name)))
         }
         var sounds: [CardSound] = []
-        for name in Set(contents.flatMap(\.sounds)).sorted(by: { $0.rawValue < $1.rawValue }) {
+        for name in Set(exported.flatMap(\.content.sounds)).sorted(by: { $0.rawValue < $1.rawValue }) {
             sounds.append(CardSound(name: name, data: try sound(name)))
         }
-        let text = CardsTextFile.text(of: contents)
+        let text = CardsTextFile.text(of: exported)
         do {
             // A file the user chose in a save panel, in an app with a
             // sandbox; outside one, there's nothing to start.
@@ -65,7 +65,7 @@ extension Engine {
             logger.error("Couldn't write the exported cards: \(String(describing: error))")
             throw .unwritableFile(file.lastPathComponent)
         }
-        return contents.count
+        return exported.count
     }
 
     /// How many cards each of `choices` takes, in its order, as the cards
@@ -83,8 +83,9 @@ extension Engine {
 }
 
 /// What `card` holds, as an export writes it, which every card it read
-/// makes, since every card came in through the same check.
-private func exportedContent(of card: Card) throws -> CardContent {
+/// makes, since every card came in through the same check, and whether it
+/// goes both ways.
+private func exportedCard(of card: Card) throws -> (content: CardContent, bothWays: Bool) {
     guard
         let content = CardContent(
             type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source,
@@ -93,5 +94,5 @@ private func exportedContent(of card: Card) throws -> CardContent {
     else {
         throw unreadable("Card \(card.id) has a blank front or back")
     }
-    return content
+    return (content, card.bothWays)
 }

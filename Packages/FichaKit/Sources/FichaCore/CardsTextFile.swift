@@ -8,7 +8,9 @@ import Foundation
 /// which a line may leave out the last three. A line starting with `#` is a
 /// comment, and so is a blank one. In a zip with the images and the sounds
 /// of its cards, a column for each side and each kind, which the `#columns`
-/// header names, names its image or its sound.
+/// header names, names its image or its sound. A `Both ways` column, which
+/// the header names too, holds any text for a card that goes both ways, as
+/// Anki's "Add Reverse" field does for a note that makes a reversed card.
 public enum CardsTextFile {
     /// A column of the file.
     public enum Column: String, Sendable, CaseIterable {
@@ -27,6 +29,9 @@ public enum CardsTextFile {
         case frontSound = "Front sound"
         /// The name of the back's sound, as the front's.
         case backSound = "Back sound"
+        /// Any text for a card that goes both ways, which an export writes
+        /// as `y`, or blank for one that goes one way.
+        case bothWays = "Both ways"
 
         /// Whether it names a side's image.
         var isImage: Bool {
@@ -38,11 +43,17 @@ public enum CardsTextFile {
             self == .frontSound || self == .backSound
         }
 
-        /// Whether it names a side's file, an image or a sound: a column that
-        /// a file has only when its `#columns` header names it, and an export
-        /// writes only with a file of its kind.
+        /// Whether it names a side's file, an image or a sound, which a line
+        /// holds as it is, never as HTML.
         var isFile: Bool {
             isImage || isSound
+        }
+
+        /// Whether a file has it only when its `#columns` header names it,
+        /// as an export writes it only when a card needs it: a side's file,
+        /// or Both ways.
+        var comesOnlyByName: Bool {
+            isFile || self == .bothWays
         }
     }
 
@@ -108,11 +119,16 @@ public enum CardsTextFile {
     /// lacks. When a card has an image, every line also names the image of
     /// its front and of its back, by the name Ficha keeps it by, which is
     /// the name of its file in the zip the text goes in; and when a card has
-    /// a sound, the sound of each side, the same way.
-    public static func text(of cards: [CardContent]) -> String {
-        let hasImages = cards.contains { !$0.images.isEmpty }
-        let hasSounds = cards.contains { !$0.sounds.isEmpty }
-        let columns = Column.allCases.filter { (hasImages || !$0.isImage) && (hasSounds || !$0.isSound) }
+    /// a sound, the sound of each side, the same way. When a card goes both
+    /// ways, every line also says whether its card does, with `y` or a blank
+    /// field.
+    public static func text(of cards: [(content: CardContent, bothWays: Bool)]) -> String {
+        let hasImages = cards.contains { !$0.content.images.isEmpty }
+        let hasSounds = cards.contains { !$0.content.sounds.isEmpty }
+        let hasBothWays = cards.contains(where: \.bothWays)
+        let columns = Column.allCases.filter {
+            (hasImages || !$0.isImage) && (hasSounds || !$0.isSound) && (hasBothWays || $0 != .bothWays)
+        }
         var lines = [
             "#separator:tab",
             "#html:false",
@@ -128,17 +144,19 @@ public enum CardsTextFile {
     }
 
     /// What `card` holds in `column`, before it's written.
-    private static func field(_ column: Column, of card: CardContent) -> String {
-        switch column {
-        case .front: card.front
-        case .back: card.back
-        case .tags: tagsColumn(holding: card.tags)
-        case .type: card.type?.rawValue ?? ""
-        case .source: card.source ?? ""
-        case .frontImage: card.frontImage?.rawValue ?? ""
-        case .backImage: card.backImage?.rawValue ?? ""
-        case .frontSound: card.frontSound?.rawValue ?? ""
-        case .backSound: card.backSound?.rawValue ?? ""
+    private static func field(_ column: Column, of card: (content: CardContent, bothWays: Bool)) -> String {
+        let content = card.content
+        return switch column {
+        case .front: content.front
+        case .back: content.back
+        case .tags: tagsColumn(holding: content.tags)
+        case .type: content.type?.rawValue ?? ""
+        case .source: content.source ?? ""
+        case .frontImage: content.frontImage?.rawValue ?? ""
+        case .backImage: content.backImage?.rawValue ?? ""
+        case .frontSound: content.frontSound?.rawValue ?? ""
+        case .backSound: content.backSound?.rawValue ?? ""
+        case .bothWays: card.bothWays ? "y" : ""
         }
     }
 
@@ -206,9 +224,12 @@ public enum CardsTextFile {
         }
         let given: [(Column, CardField)] = [
             (.tags, .tags), (.type, .type), (.source, .source), (.backImage, .backImage), (.backSound, .backSound),
+            (.bothWays, .bothWays),
         ]
         return ImportedCard(
-            content: content, fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line)
+            content: content,
+            bothWays: nonBlank(values[.bothWays]) != nil,
+            fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line)
     }
 
     /// The image and the sound a side with `text` gets from what its image
@@ -366,9 +387,9 @@ private struct Headers {
 /// headers put what Ficha leaves out, and the others as `#columns` names
 /// them, or else, in order, the front, the back, the tags, the type and the
 /// source, without the tags when a header puts them elsewhere. A column
-/// beyond those, or one `#columns` names otherwise, is left out: the image
-/// and sound columns come only by name, so a file without headers reads as
-/// before images and sounds.
+/// beyond those, or one `#columns` names otherwise, is left out: the image,
+/// sound and Both ways columns come only by name, so a file without headers
+/// reads as before them.
 private struct ColumnMap {
     private let tagsColumn: Int?
     private let skippedColumns: Set<Int>
@@ -381,7 +402,7 @@ private struct ColumnMap {
         tagsColumn = headers.tagsColumn
         skippedColumns = headers.skippedColumns
         unplaced = CardsTextFile.Column.allCases.filter {
-            !$0.isFile && ($0 != .tags || headers.tagsColumn == nil)
+            !$0.comesOnlyByName && ($0 != .tags || headers.tagsColumn == nil)
         }
         guard let columnNames = headers.columnNames else {
             named = nil
