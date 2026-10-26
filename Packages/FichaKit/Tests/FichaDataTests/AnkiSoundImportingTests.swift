@@ -216,7 +216,7 @@ final class AnkiSoundImportingTests {
     // shows again, which it plays with the question (`qt/aqt/reviewer.py`,
     // `replay_audio`).
     @Test(
-        "the back's sound is the first the answer side plays, above where the answer starts too, and not the front's that it shows again",
+        "the back's sound is the first the answer side plays where the answer starts, or else above it, and not the front's that it shows again",
         arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
     func theBacksSoundIsTheAnswersOwn(format: AnkiPackage.Format) async throws {
         let la = try tone(seconds: 1, hertz: 440)
@@ -228,12 +228,21 @@ final class AnkiSoundImportingTests {
                     name: "Card 1", question: "{{Front}}",
                     answer: "{{FrontSide}}<div>{{Audio}}</div>\n\n<hr id=answer>\n\n{{Back}}")
             ])
+        // A template that shows the front's field again, instead of
+        // `{{FrontSide}}`, plays its sound on the answer side too.
+        let word = AnkiNoteType(
+            name: "Palabra", fields: ["Front", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{Front}}", answer: "{{Front}}\n\n<hr id=answer>\n\n{{Back}}")
+            ])
         let package = AnkiPackage(
             format: format,
             notes: [
                 AnkiNote(type: listening, fields: ["coloratura", "[sound:la.wav]", "Un ornamento."]),
                 AnkiNote(type: listening, fields: ["[sound:mi.wav]", "", "La nota mi."]),
                 AnkiNote(type: .basic, fields: ["[sound:mi.wav]", "La nota mi, otra vez. [sound:mi.wav]"]),
+                AnkiNote(type: word, fields: ["vibrato [sound:la.wav]", "Una oscilación. [sound:mi.wav]"]),
             ],
             media: ["la.wav": la, "mi.wav": mi])
 
@@ -247,9 +256,10 @@ final class AnkiSoundImportingTests {
         #expect(
             cards.map { [$0.front, $0.back] } == [
                 ["coloratura", "Un ornamento."], ["", "La nota mi."], ["", "La nota mi, otra vez."],
+                ["vibrato", "Una oscilación."],
             ])
-        #expect(cards.map(\.frontSound) == [nil, miName, miName])
-        #expect(cards.map(\.backSound) == [laName, nil, miName])
+        #expect(cards.map(\.frontSound) == [nil, miName, miName, laName])
+        #expect(cards.map(\.backSound) == [laName, nil, miName, miName])
         #expect(preview.cardsWithSoundsDropped == 0)
     }
 }

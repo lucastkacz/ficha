@@ -135,7 +135,7 @@ func soundTags(in html: String) -> (names: [String], rest: String) {
         copied = bytes.index(after: close)
         searched = bytes[copied...]
     }
-    guard copied > bytes.startIndex else {
+    guard !names.isEmpty else {
         return ([], html)
     }
     return (names, rest + String(decoding: bytes[copied...], as: UTF8.self))

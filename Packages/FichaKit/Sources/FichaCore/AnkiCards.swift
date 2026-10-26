@@ -8,23 +8,23 @@ extension AnkiCollection {
     /// type the answer in, as plain text, each with the first image it
     /// shows, as `images` finds it by its name in the package, and the first
     /// sound it plays, as `sounds` finds it, the back's among the answer
-    /// side's own, wherever they are on it: a side whose image or sound
-    /// isn't found comes in without it, and its other images and sounds are
-    /// dropped. A side that is one of Anki's formulas alone, such as
-    /// `[$]x^2[/$]`, comes in as the picture Anki drew of it, found by its
-    /// name, after the SHA-1 digest `sha1` gives of a text as lowercase hex,
-    /// and as its LaTeX when the package lacks it or Ficha can't read it, as
-    /// a formula among text does. Each proposes a tag for each level of its
-    /// home deck's name, but Default's, and its note's tags, an underscore
-    /// in them standing for a space, and brings where it stands in Anki, its
-    /// due days as dates in `calendar`, the user's, for an import that
-    /// brings progress. The new cards come first, in Anki's order of new
-    /// cards, then the rest by note and template. A card of an Image
-    /// Occlusion note type stays out, and so do a card whose template Anki
-    /// can't render and one with a side left with neither text, an image
-    /// nor a sound, each with its place in that order and why. Throws when a
-    /// card's note, note type, template or deck isn't in the collection, or
-    /// its type isn't one Anki has, as in a damaged one.
+    /// side's own where the answer starts, or else above it: a side whose
+    /// image or sound isn't found comes in without it, and its other images
+    /// and sounds are dropped. A side that is one of Anki's formulas alone,
+    /// such as `[$]x^2[/$]`, comes in as the picture Anki drew of it, found
+    /// by its name, after the SHA-1 digest `sha1` gives of a text as
+    /// lowercase hex, and as its LaTeX when the package lacks it or Ficha
+    /// can't read it, as a formula among text does. Each proposes a tag for
+    /// each level of its home deck's name, but Default's, and its note's
+    /// tags, an underscore in them standing for a space, and brings where it
+    /// stands in Anki, its due days as dates in `calendar`, the user's, for
+    /// an import that brings progress. The new cards come first, in Anki's
+    /// order of new cards, then the rest by note and template. A card of an
+    /// Image Occlusion note type stays out, and so do a card whose template
+    /// Anki can't render and one with a side left with neither text, an
+    /// image nor a sound, each with its place in that order and why. Throws
+    /// when a card's note, note type, template or deck isn't in the
+    /// collection, or its type isn't one Anki has, as in a damaged one.
     public func importReading(
         in calendar: Calendar, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
         sha1: (String) -> String
@@ -98,22 +98,26 @@ extension AnkiCollection {
             let shownAnswer = answerShowingTypedAnswers(
                 answer, question: question, note: note, noteType: noteType, cardNumber: number)
             let (frontSounds, frontWithoutSounds) = soundTags(in: front)
-            // The answer side plays its own sounds, above where the answer
-            // starts too, but not the question's that `{{FrontSide}}` shows
-            // again, which Anki plays with the question
-            // (`qt/aqt/reviewer.py`, `replay_audio`): those of the answer
-            // rendered with a front side without its sounds.
-            let answerSounds =
+            let (soundsOnTheBack, backWithoutSounds) = soundTags(in: back(ofAnswer: shownAnswer, question: front))
+            // The answer side's own sounds, without the question's that
+            // `{{FrontSide}}` shows again, which Anki plays with the
+            // question (`qt/aqt/reviewer.py`, `replay_audio`): those of the
+            // answer rendered with a front side without its sounds.
+            let answersOwnSounds =
                 frontSounds.isEmpty
                 ? soundTags(in: answer).names
                 : soundTags(
                     in: try parsed.get().answer.render(
                         fields: fields, cardNumber: number, frontSide: soundTags(in: question).rest)
                 ).names
+            // The back plays those where the answer starts, as its text and
+            // image are there, or else those above it, as Japanese Core
+            // 2000 plays its word and sentence.
+            let backsOwnSounds = soundsOnTheBack.filter(answersOwnSounds.contains)
             return .rendered(
                 RenderedAnkiCard(
-                    card: card, front: frontWithoutSounds, frontSounds: frontSounds,
-                    back: soundTags(in: back(ofAnswer: shownAnswer, question: front)).rest, backSounds: answerSounds,
+                    card: card, front: frontWithoutSounds, frontSounds: frontSounds, back: backWithoutSounds,
+                    backSounds: backsOwnSounds.isEmpty ? answersOwnSounds : backsOwnSounds,
                     tags: tags(of: note, inDeck: card.homeDeckID)))
         } catch {
             return .leftOut(.brokenAnkiTemplate)
@@ -210,7 +214,7 @@ private struct RenderedAnkiCard {
     /// The answer side, from where the answer starts.
     let back: String
     /// The names of the sounds the answer side plays, each once, in order:
-    /// its own, wherever they are on it.
+    /// its own where the answer starts, or else above it.
     let backSounds: [String]
     let tags: [String]
 
