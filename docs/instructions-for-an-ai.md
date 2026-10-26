@@ -114,7 +114,7 @@ This file holds two cards, each with the tag "birds", for a zip that also holds 
 
 Ficha can also show a card back first: its back, and its front once the user flips it, so that they also learn to recall the front, such as a word from its meaning. Such a card goes both ways, and Ficha spaces each way on its own.
 
-- Mark a card both ways when its back leads to one answer, its front: usually a word or a concept, never a question. Write the back of such a card so that it doesn't name the front: in an example of a word, write the word as `…`.
+- Mark a card both ways when its back leads to one answer, its front: usually a word or a concept, never a question. The test: reading the back alone, someone who knows the card comes up with its front and nothing else. Write the back of such a card so that it doesn't name the front: in an example of a word, write the word as `…`.
 - The header names one more column, `Both ways`, after all the others, with a tab before it, and every line has it as its last column: `y` for a card that goes both ways, and nothing for one that doesn't.
 - When no card goes both ways, leave the column out.
 

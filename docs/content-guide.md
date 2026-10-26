@@ -1,8 +1,8 @@
 # Content guide
 
-How Claude drafts Lucas's cards in a refine session: what each card holds, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
+How Claude drafts Lucas's cards in a refine session: what each card holds, whether it goes both ways, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
 
-Everything Claude drafts is a proposal: a card, a fix, a file on a card, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
+Everything Claude drafts is a proposal: a card, a fix, a file on a card, Both ways on a card, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
 
 ## The five rules
 
@@ -23,6 +23,16 @@ A capture becomes one card, several or none. Several when it holds more than one
 - **Quote** (`quote`): the front is the quote, word for word, with its final punctuation. A quote from another language goes on the front in Spanish, word for word as people say it ("La suerte está echada."), and the back ends with the original when that's famous too (in Latin, «alea iacta est»). A quote too long for one line is cut to its most memorable part, still word for word, with "…" where it's cut. The back says who said it and what it means: in a review, Lucas rates whether he had understood it, so the meaning is the core of the back. Where it's from goes in the source.
 - **Question** (`question`): the front is a question with one answer. The back gives that answer first, and then why or how, in a sentence.
 
+## Both ways
+
+A card that goes both ways also comes back first: its back on top, and Lucas recalls its front. Claude proposes Both ways with each new card it drafts whose back leads to one answer, its front: usually a word or a concept, never a question. The test: reading the back alone, someone who knows the card comes up with its front and nothing else. A fix or an expansion's new content keeps the card's Both ways, unless the flag note asks to change it.
+
+The back of a card that goes both ways, in a fix or an expansion's new content too, doesn't name its front: a word's example writes the word as "…", and an etymology that names the word's parts, as "Schadenfreude"'s does, stays off the back. The word "serendipia" of the examples below, going both ways:
+
+> **serendipia**
+> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura …: entré a la librería por la lluvia y salí con mi libro favorito».
+> _lenguaje_ · Un podcast de etimología
+
 ## Tags
 
 A tag is a subject, in Spanish and in lowercase: "lenguaje", "filosofía", "historia". A card has one usually, and three at most. Claude reuses the tags Lucas's cards already have, and says so when it proposes a new one, so Lucas sees it. A card that fits no subject has no tags.
@@ -34,11 +44,12 @@ A card takes its capture's source as Lucas wrote it, and the review panel shows 
 ## Flagged cards, expansions and follow-ups
 
 - **A flagged card**: Claude changes what Lucas's note asks for and keeps the rest as it was, so he recognizes the card. When the note says the card is no longer worth it, Claude proposes burying it. When the card holds two ideas, Claude fixes it to one, and captures the other to propose it as a new card in the same session.
-- **A card forgotten often**: a flagged card whose note starts with "Forgotten N times", which the review panel writes when Lucas rated the card "Don't know" that many times since its front or back last changed. Whatever he added after it says what to fix, as in any note. A card forgotten again and again is usually badly written rather than hard, so Claude rewrites it even when the note says nothing more, in the one of these ways that fits it best, which Anki's manual advises for the cards it calls leeches (docs.ankiweb.net/leeches.html):
+- **A card forgotten often**: a flagged card whose note starts with "Forgotten N times", which the review panel writes when Lucas rated the card "Don't know" that many times one way since its front or back last changed. A note that goes on "back first" is the next item's. Whatever he added after it says what to fix, as in any note. A card forgotten again and again is usually badly written rather than hard, so Claude rewrites it even when the note says nothing more, in the one of these ways that fits it best, which Anki's manual advises for the cards it calls leeches (docs.ankiweb.net/leeches.html):
   - **Clearer wording**: a back that gives what the front asks for first, in fewer words, or a front that tells the card apart from another one Lucas mixes it up with.
   - **A trick to remember it**: a mnemonic, a vivid image, or a link to something Lucas already knows, on the back and within its 40 words.
   - **Two cards instead of one**: when the back asks for more than one thing, the fix keeps one, and the other becomes a capture, as for a card with two ideas.
   - **Burying it**: when the card isn't worth the reviews it costs.
+- **A card forgotten often back first**: its note starts with "Forgotten N times back first", so Lucas misses its front when its back shows first, usually because the back fits other answers too, such as a synonym. Claude rewrites the back so that it leads to the front alone, as **Both ways** says, with clearer wording or a trick to remember it, and keeps the front. When no back within the 40 words can do that, Claude proposes switching Both ways off: that takes the back-first way out of Lucas's reviews and keeps its progress, and the front-first way stays as it is, where burying would take both.
 - **An expansion**: when what it adds fits on its card, within the 40 words, Claude proposes the card's new content. When it's another idea, like a second meaning, it becomes a card of its own.
 - **A follow-up**: it becomes cards as a capture does, and they sit beside its card: they take its card's tags, and the card stays as it is. Its text often leans on the card ("¿Y cómo se eligen?" on a card about the branches of government), so each new front says on its own what it asks.
 

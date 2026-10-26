@@ -25,20 +25,20 @@ A batch is the next 10 items in the inbox: flagged cards first, then expansions,
 Draft one numbered proposal per item, as the content guide says:
 
 - **A capture**: its cards, or discarding it.
-- **A flagged card**: the fixed card, or burying it. When the fix splits off a second idea, the fix moves it to a new capture, and the proposal also has that idea's card. A note that starts with "Forgotten N times" marks a card forgotten often: draft one of the content guide's ways for it, and say in a line which one and why, since the note may say nothing else.
+- **A flagged card**: the fixed card, or burying it. When the fix splits off a second idea, the fix moves it to a new capture, and the proposal also has that idea's card. A note that starts with "Forgotten N times" marks a card forgotten often, and "Forgotten N times back first" a card forgotten often back first: draft one of the content guide's ways for it, and say in a line which one and why, since the note may say nothing else.
 - **An expansion**: its card's new content, or cards of its own, or discarding it.
 - **A follow-up**: new cards with its card's tags, or discarding it. Its card stays as it is.
 
-Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type ("Palabra", "Concepto", "Cita" or "Pregunta"), with "(tag nueva)" after each tag no card has yet:
+Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type ("Palabra", "Concepto", "Cita" or "Pregunta"), with "· Both ways", the Cards window's name for it, after the type of a draft that goes both ways, as the content guide's **Both ways** says, and "(tag nueva)" after each tag no card has yet:
 
 > **2.** Captura 12: «serendipia» · nota: «la del podcast» · fuente: Un podcast de etimología
 >
-> Palabra
+> Palabra · Both ways
 > **serendipia**
-> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».
+> Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura …: entré a la librería por la lluvia y salí con mi libro favorito».
 > _lenguaje_ (tag nueva) · Un podcast de etimología
 
-A card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound`, in `ficha cards` and `ficha inbox`: show "(con imagen)" or "(con sonido)" after that side, whose text is empty when the file is all it holds. A file Lucas points to goes on a card as **Images and sounds** below says.
+In `ficha cards` and `ficha inbox`, a card that goes both ways has `bothWays` true, and a card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound`. Show "· Both ways" after its type, and "(con imagen)" or "(con sonido)" after that side, whose text is empty when the file is all it holds. A file Lucas points to goes on a card as **Images and sounds** below says.
 
 End the batch by asking for his OK: he approves, changes or rejects each proposal, or all of them at once. What he rejects stays in the inbox, untouched, unless he says what he wants instead: then redraft it.
 
@@ -51,6 +51,7 @@ Write each draft exactly as Lucas saw and approved it:
 | A capture's or a follow-up's cards | `ficha approve <capture id>` |
 | Discarding a capture, an expansion or a follow-up | `ficha discard <capture id>` |
 | A flagged card's fix | `ficha fix <card id>` |
+| Switching Both ways off for a card forgotten often back first | `ficha fix <card id>`, with the card's content as it is |
 | Burying a card | `ficha bury <card id>` |
 | An expansion's new content | `ficha approve-expansion <capture id>` |
 | An expansion's cards of its own | `ficha approve <capture id>` |
@@ -60,6 +61,8 @@ Write each draft exactly as Lucas saw and approved it:
 | A file taken off any other card | `ficha detach <card id> --front image`, or `--back`, or `sound` |
 
 Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. A card whose file fields are left out keeps its images and sounds, and a side that holds only a file keeps its empty text; write a file field only as **Images and sounds** below says.
+
+Both ways goes in `bothWays`: `true` on each card Lucas approved with Both ways, `false` when he approved switching it off, and left out everywhere else. Only `ficha approve` and `ficha fix` write it: to switch it on any other card, an expansion's included, send Lucas to the Cards window, which switches it for a card or a selection.
 
 - **A change Lucas asks for**: when he gives the new text, write his text; when you redraft, show the redraft and wait for his OK on it.
 - **A command that fails**: a JSON mistake is yours, so fix the JSON and run it again with the same approved content. Any other error goes to Lucas, with what the CLI said, and that item waits for his answer.
