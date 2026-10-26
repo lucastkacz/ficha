@@ -101,6 +101,52 @@ struct CardsWindowImageTests {
         #expect(window.failure?.error == .unreadableFileForSide("hornero.jpg"))
     }
 
+    @Test(
+        "an image a browser drags comes in as its data, though the drag also holds its web address and a promised file")
+    func anImageABrowserDragsComesIn() throws {
+        let png = try picture(width: 800, height: 600)
+        // The types Safari's drag of a PNG on a web page held, in its order
+        // (#229), each with data of its kind.
+        let dragged: [(type: String, data: Data)] = [
+            ("dyn.ah62d4rv4gu8yc6durvwwa3xmrvw1gkdusm1044pxqyuha2pxsvw0e55bsmwca7d3sbwu", Data("bplist00".utf8)),
+            ("public.png", png),
+            ("com.apple.WebKit.custom-pasteboard-data", Data("https://aves.example".utf8)),
+            ("public.tiff", Data("MM".utf8)),
+            ("public.url", Data("https://aves.example/hornero.png".utf8)),
+            ("public.url-name", Data("hornero.png".utf8)),
+            ("public.utf8-plain-text", Data("https://aves.example/hornero.png".utf8)),
+            ("com.apple.webarchive", Data("bplist00".utf8)),
+            ("com.apple.pasteboard.promised-file-content-type", Data("public.png".utf8)),
+            ("com.apple.pasteboard.promised-file-url", Data()),
+        ]
+        var window = openWindow()
+        window.openNewCardForm()
+        window.typeInForm(back: "Un hornero.")
+
+        let image = try #require(
+            DroppedImage(pasteboardTypes: dragged.map(\.type)) { type in dragged.first { $0.type == type }?.data })
+        window.putImageInForm(image, on: .front)
+
+        #expect(image == .data(png))
+        #expect(window.cardForm?.draft.front.image != nil)
+    }
+
+    @Test("a file Finder drags comes in as the file, and a web address alone brings no image")
+    func aFileComesInAndAWebAddressDoesNot() throws {
+        let nest = URL(filePath: "/Users/lucas/Pictures/nido.jpg")
+        let fromFinder = [
+            "public.file-url": nest.dataRepresentation, "public.utf8-plain-text": Data("nido.jpg".utf8),
+        ]
+        let webAddress = Data("https://aves.example/hornero.png".utf8)
+        let fromABrowsersBar = ["public.url": webAddress, "public.utf8-plain-text": webAddress]
+
+        let file = DroppedImage(pasteboardTypes: ["public.file-url", "public.utf8-plain-text"]) { fromFinder[$0] }
+        let none = DroppedImage(pasteboardTypes: ["public.url", "public.utf8-plain-text"]) { fromABrowsersBar[$0] }
+
+        #expect(file == .file(nest))
+        #expect(none == nil)
+    }
+
     @Test("the detail shows the selected card's images")
     func theDetailShowsTheCardsImages() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))

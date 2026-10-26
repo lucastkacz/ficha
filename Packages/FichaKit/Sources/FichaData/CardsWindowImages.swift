@@ -1,5 +1,6 @@
 import FichaCore
 import Foundation
+import UniformTypeIdentifiers
 
 /// A side of a card: its front or its back.
 public enum CardSide: Sendable, Hashable, CaseIterable {
@@ -85,6 +86,29 @@ public enum DroppedImage: Sendable, Equatable {
     /// An image's data, as a browser or the pasteboard holds it: none when
     /// what came in holds neither a file nor an image, as a web address.
     case data(Data)
+
+    /// What one item of a drag's or a paste's pasteboard brings as a side's
+    /// image, from `types`, its types in the order its source wrote them,
+    /// and `data`, which reads a type's data: the local file a Finder drag
+    /// names, or else the data of its first image type that holds some, as
+    /// when a browser drags an image beside its web address and the file it
+    /// promises. Nil when it holds neither, as a web address alone: Ficha
+    /// never fetches one.
+    public init?(pasteboardTypes types: [String], data: (String) -> Data?) {
+        if types.contains(UTType.fileURL.identifier), let reference = data(UTType.fileURL.identifier),
+            let file = URL(dataRepresentation: reference, relativeTo: nil), file.isFileURL
+        {
+            self = .file(file)
+            return
+        }
+        for type in types where UTType(type)?.conforms(to: .image) == true {
+            if let image = data(type), !image.isEmpty {
+                self = .data(image)
+                return
+            }
+        }
+        return nil
+    }
 }
 
 extension CardsWindowState {
