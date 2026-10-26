@@ -4,8 +4,9 @@ import Foundation
 import Testing
 
 /// Tests on cards forgotten often: recording a rating of again says whether
-/// the card is now forgotten often, and how many times Lucas forgot it, with
-/// the default settings, which say so at 8 and again every 4 more.
+/// the card is now forgotten often, and how many times Lucas forgot it which
+/// way, each way counted apart, with the default settings, which say so at 8
+/// and again every 4 more.
 struct ForgottenOftenTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -38,6 +39,26 @@ struct ForgottenOftenTests {
         let saidSo = try (1...17).map { _ in try forget(ubuntu)?.times }
 
         #expect(saidSo == [nil, nil, nil, nil, nil, nil, nil, 8, nil, nil, nil, 12, nil, nil, nil, 16, nil])
+    }
+
+    @Test(
+        "each way of a card that goes both ways counts its own “Don't know”: seven each way say nothing, and the eighth of either says so, and which way"
+    )
+    func eachWayCountsItsOwnAgains() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id])
+        try engine.meet(ubuntu)
+        try engine.meet(ubuntu, way: .backFirst)
+
+        let firstSeven = try (1...7).flatMap { _ in [try forget(ubuntu, way: .backFirst), try forget(ubuntu)] }
+        let eighthBackFirst = try forget(ubuntu, way: .backFirst)
+        let eighthFrontFirst = try forget(ubuntu)
+
+        #expect(firstSeven.allSatisfy { $0 == nil })
+        #expect(eighthBackFirst?.times == 8)
+        #expect(eighthBackFirst?.way == .backFirst)
+        #expect(eighthFrontFirst?.times == 8)
+        #expect(eighthFrontFirst?.way == .frontFirst)
     }
 
     @Test("“Sort of” and “Know it” never say it, and neither they nor a first view count")
@@ -100,6 +121,35 @@ struct ForgottenOftenTests {
         #expect(retagged?.times == 8)
     }
 
+    @Test("a new front or back starts both ways' counts over, while switching Both ways off and on starts neither")
+    func anEditStartsBothWaysOverWhileSwitchingDoesNot() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id, petricor.id])
+        for card in [ubuntu, petricor] {
+            try engine.meet(card)
+            try engine.meet(card, way: .backFirst)
+        }
+        for _ in 1...7 {
+            for card in [ubuntu, petricor] {
+                try forget(card, way: .backFirst)
+                try forget(card)
+            }
+        }
+        time.advance(by: minutes(1))
+
+        try engine.edit(ubuntu.id, with: card(.word, front: "ubuntu", back: "Soy porque somos."))
+        try engine.setBothWays(false, of: [petricor.id])
+        try engine.setBothWays(true, of: [petricor.id])
+        let switched = [try forget(petricor, way: .backFirst)?.times, try forget(petricor)?.times]
+        let rewritten = try (1...8).flatMap { _ in
+            [try forget(ubuntu, way: .backFirst)?.times, try forget(ubuntu)?.times]
+        }
+
+        #expect(switched == [8, 8])
+        #expect(rewritten == Array(repeating: nil, count: 14) + [8, 8])
+    }
+
     // Only a test's time stands still; the app's time moves on between an
     // edit and an answer, unless both fall in the same millisecond.
     @Test("a “Don't know” in the very instant the card's front or back changed counts, as after the edit")
@@ -117,11 +167,12 @@ struct ForgottenOftenTests {
         #expect(forgotten?.times == 1)
     }
 
-    /// Moves the time forward until `card` is due, and rates it again, as the
-    /// review panel does, and returns whether it's now forgotten often.
+    /// Moves the time forward until one of `card`'s ways, front first unless
+    /// the test says otherwise, is due, and rates it again, as the review
+    /// panel does, and returns whether it's now forgotten often.
     @discardableResult
-    private func forget(_ card: Card) throws -> ForgottenOften? {
-        try rateWhenDue(card, .again)
+    private func forget(_ card: Card, way: Way = .frontFirst) throws -> ForgottenOften? {
+        try rateWhenDue(card, .again, way: way)
     }
 
     /// Moves the time forward until `card` is due, and rates it `rating`,
@@ -130,11 +181,13 @@ struct ForgottenOftenTests {
         try rateWhenDue(card, rating)
     }
 
-    /// Moves the time forward until `card` is due, and rates it `rating`, and
-    /// returns whether it's now forgotten often.
-    private func rateWhenDue(_ card: Card, _ rating: Rating) throws -> ForgottenOften? {
-        time.move(to: try #require(try engine.standing(of: card.id, on: ReviewSettings.defaults.ladder).due))
+    /// Moves the time forward until one of `card`'s ways, front first unless
+    /// the test says otherwise, is due, and rates it `rating`, and returns
+    /// whether it's now forgotten often.
+    private func rateWhenDue(_ card: Card, _ rating: Rating, way: Way = .frontFirst) throws -> ForgottenOften? {
+        time.move(to: try #require(try engine.standing(of: card.id, way: way, on: ReviewSettings.defaults.ladder).due))
         return try engine.record(
-            .review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults)
+            .review(rating), of: card.id, way: way, responseTime: .seconds(3), trigger: .reviewNow,
+            settings: .defaults)
     }
 }

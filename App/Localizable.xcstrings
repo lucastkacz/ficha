@@ -669,7 +669,7 @@
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
     },
     "After forgetting it %lld times" : {
-      "comment" : "Settings, under Review panel: how many “Don't know” answers to a card, since its front or back last changed, bring the offer to flag it.",
+      "comment" : "Settings, under Review panel: how many “Don't know” answers to one of a card's ways, since its front or back last changed, bring the offer to flag it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1339,7 +1339,7 @@
       "comment" : "Settings, under Backups: the folder the copies are in."
     },
     "Forgotten %lld times" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Don't know” to it this many times since its front or back last changed. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Don't know” to it this many times front first since its front or back last changed. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1354,6 +1354,29 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Forgotten %lld times"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Forgotten %lld times back first" : {
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Don't know” to it this many times back first, its back shown on top, since its front or back last changed. They can add to it.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Forgotten %lld time back first"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Forgotten %lld times back first"
                 }
               }
             }

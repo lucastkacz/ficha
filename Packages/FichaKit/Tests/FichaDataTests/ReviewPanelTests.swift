@@ -316,6 +316,36 @@ struct ReviewPanelTests {
         #expect(try engine.reviewLog().filter { $0.cardID == cards[0].id }.count == 9)
     }
 
+    @Test(
+        "with seven “Don't know” each way, the eighth back first offers to flag the card with the note “Forgotten 8 times back first”, and the eighth front first with “Forgotten 8 times”"
+    )
+    func theEighthAgainOfEachWayOffersToFlagTheCard() throws {
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [ubuntu.id])
+        try engine.meet(ubuntu)
+        try engine.meet(ubuntu, way: .backFirst)
+        for _ in 1...7 {
+            try engine.reviewWhenDue(ubuntu, .again, way: .backFirst, movingForward: time)
+            try engine.reviewWhenDue(ubuntu, .again, movingForward: time)
+        }
+        time.advance(by: hours(1))
+        var panel = try engine.openPanel(
+            .reviewNow, with: [.review(bothWays[0], .backFirst), .review(bothWays[0])], settings: settings)
+
+        panel.flip()
+        panel.rate(.again)
+        let backFirstOffer = panel.content
+        let backFirstNote = panel.note
+        panel.cancelFlagging()
+        panel.flip()
+        panel.rate(.again)
+
+        #expect(backFirstOffer == .flagging(bothWays[0], .backFirst, showsLowerSide: true))
+        #expect(backFirstNote == "Forgotten 8 times back first")
+        #expect(panel.content == .flagging(bothWays[0], showsLowerSide: true))
+        #expect(panel.note == "Forgotten 8 times")
+    }
+
     @Test("Esc on the offer to flag a card leaves it in the reviews, its “Don't know” recorded, and moves on")
     func cancellingTheOfferMovesOnWithoutFlagging() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")

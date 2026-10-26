@@ -37,9 +37,9 @@ public struct ReviewSettings: Sendable, Equatable {
     /// How long Lucas must be idle before the review panel takes the
     /// keyboard, in the once-idle focus mode.
     public var idleBeforeTakingKeyboard: Duration
-    /// How many reviews Lucas rates a card again in, since its front or back
-    /// last changed, before the review panel offers to flag it as forgotten
-    /// often, at least 1, or nil when it never offers.
+    /// How many reviews of one of a card's ways Lucas rates again in, since
+    /// its front or back last changed, before the review panel offers to
+    /// flag it as forgotten often, at least 1, or nil when it never offers.
     public var forgottenOftenAfter: Int?
 
     /// The settings Ficha starts with.
