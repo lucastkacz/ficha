@@ -91,7 +91,7 @@
         }
       }
     },
-    "%lld cards have a side with neither text nor an image once sounds and images on the web are left out." : {
+    "%lld cards have a side with neither text, an image nor a sound once images on the web are left out." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
       "localizations" : {
         "en" : {
@@ -100,13 +100,59 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld card has a side with neither text nor an image once sounds and images on the web are left out."
+                  "value" : "%lld card has a side with neither text, an image nor a sound once images on the web are left out."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld cards have a side with neither text nor an image once sounds and images on the web are left out."
+                  "value" : "%lld cards have a side with neither text, an image nor a sound once images on the web are left out."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards have a side with only a sound Ficha can't read, such as a damaged file." : {
+      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card has a side with only a sound Ficha can't read, such as a damaged file."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards have a side with only a sound Ficha can't read, such as a damaged file."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards have a side with only a sound the package lacks, as when Anki exports a deck without its media." : {
+      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card has a side with only a sound the package lacks, as when Anki exports a deck without its media."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards have a side with only a sound the package lacks, as when Anki exports a deck without its media."
                 }
               }
             }
@@ -160,6 +206,29 @@
         }
       }
     },
+    "%lld cards have a sound Ficha can't read, such as a damaged file, and come in without it." : {
+      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards come in without a sound Ficha can't read, since their side holds something else.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card has a sound Ficha can't read, such as a damaged file, and comes in without it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards have a sound Ficha can't read, such as a damaged file, and come in without it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld cards have a template with a mistake, so Anki shows an error for them too." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
       "localizations" : {
@@ -199,6 +268,29 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld cards have more than one image on a side, and come in with the first."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards have more than one sound on a side, and come in with the first." : {
+      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards have more than one sound on a side, of which a Ficha card holds one.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card has more than one sound on a side, and comes in with the first."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards have more than one sound on a side, and come in with the first."
                 }
               }
             }

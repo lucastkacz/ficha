@@ -2,28 +2,51 @@ import Foundation
 
 /// A side of an Anki card as Ficha brings it in, from the HTML Anki renders
 /// for it: its plain text, without its sounds, `[sound:…]`, and its images,
-/// which the HTML's tags are; and its image, the first of the package's
-/// files the HTML shows, when the package has it and Ficha can read it. The
-/// side's other images are dropped, since a side holds one image at most,
-/// and so are images on the web, which Ficha never fetches. A side that is
-/// one of Anki's formulas alone is the picture Anki drew of it, without
-/// text, when the package has it and Ficha can read it.
+/// which the HTML's tags are; its image, the first of the package's files
+/// the HTML shows, when the package has it and Ficha can read it; and its
+/// sound, the first the HTML plays, a video's sound included, when the
+/// package has it and Ficha can read it. The side's other images and sounds
+/// are dropped, since a side holds one of each at most, and so are images
+/// on the web, which Ficha never fetches. A side that is one of Anki's
+/// formulas alone is the picture Anki drew of it, without text, when the
+/// package has it and Ficha can read it.
 struct AnkiSide {
     let text: String
     let image: ImageName?
+    let sound: SoundName?
     /// Whether the HTML shows other files of the package as images, which
     /// the side drops.
     let dropsImages: Bool
+    /// Whether the HTML plays other sounds, which the side drops.
+    let dropsSounds: Bool
     /// What was found for the image the side shows, or nil when it shows
     /// none.
-    private let lookup: ImageLookup?
+    private let imageLookup: ImageLookup?
+    /// What was found for the sound the side plays, or nil when it plays
+    /// none.
+    private let soundLookup: SoundLookup?
 
     /// The side Anki renders as `html`, with its image as `images` finds it
     /// by the name the HTML gives it, or by the name of Anki's picture of
     /// its formula, after the SHA-1 digest `sha1` gives as lowercase hex: a
-    /// PNG's, or an SVG's when the package has no PNG by that name.
-    init(html: String, images: (String) -> ImageLookup, sha1: (String) -> String) {
-        let html = html.replacing(/\[sound:.+?\]/, with: "")
+    /// PNG's, or an SVG's when the package has no PNG by that name; and with
+    /// its sound as `sounds` finds it by the name the HTML gives it.
+    init(
+        html: String, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
+        sha1: (String) -> String
+    ) async {
+        let (soundNames, html) = soundTags(in: html)
+        dropsSounds = soundNames.count > 1
+        if let name = soundNames.first {
+            soundLookup = await sounds(name)
+        } else {
+            soundLookup = nil
+        }
+        if case .found(let sound) = soundLookup {
+            self.sound = sound
+        } else {
+            sound = nil
+        }
         let names = fileNames(shownIn: html)
         dropsImages = names.count > 1
         let formula =
@@ -34,10 +57,10 @@ struct AnkiSide {
             } : nil
         if case .found? = formula {
             text = ""
-            lookup = formula
+            imageLookup = formula
         } else {
             text = plainText(fromHTML: html)
-            lookup = names.first.map { name in
+            imageLookup = names.first.map { name in
                 // Some decks keep a name percent-encoded, as a browser's
                 // address has it, though Anki writes it as it is.
                 let lookup = images(name)
@@ -47,26 +70,75 @@ struct AnkiSide {
                 return images(decoded)
             }
         }
-        if case .found(let image) = lookup {
+        if case .found(let image) = imageLookup {
             self.image = image
         } else {
             image = nil
         }
     }
 
+    /// Whether the sound the side plays is one Ficha can't read, which the
+    /// side comes in without.
+    var leavesOutAnUnreadableSound: Bool {
+        soundLookup == .unreadable
+    }
+
     /// Why a card with this side stays out, when the side is left with
-    /// neither text nor an image: the image it shows isn't in the package,
-    /// or Ficha can't read it, or it shows none. Nil when it isn't blank.
+    /// neither text, an image nor a sound: the image it shows isn't in the
+    /// package, or Ficha can't read it; or else the sound it plays isn't, or
+    /// Ficha can't read it; or it shows and plays none. Nil when it isn't
+    /// blank.
     var reasonItsCardStaysOut: LeftOutLine.Reason? {
-        guard CardContent.isBlank(text, image: image, sound: nil) else {
+        guard CardContent.isBlank(text, image: image, sound: sound) else {
             return nil
         }
-        return switch lookup {
-        case .missing?: .missingAnkiImage
-        case .unreadable?: .unreadableAnkiImage
-        case .found?, nil: .emptyAnkiSide
+        return switch (imageLookup, soundLookup) {
+        case (.missing?, _): .missingAnkiImage
+        case (.unreadable?, _): .unreadableAnkiImage
+        case (_, .missing?): .missingAnkiSound
+        case (_, .unreadable?): .unreadableAnkiSound
+        case (.found?, _), (nil, .found?), (nil, nil): .emptyAnkiSide
         }
     }
+}
+
+/// The names of the sounds `html` plays, each once, in its order, and `html`
+/// without them: the name in each `[sound:…]` tag, as Anki finds a field's
+/// sounds (`rslib/src/text.rs`, `AV_TAGS`), from after its colon to the
+/// first `]` after at least one character, across lines too, with its
+/// character references decoded. A video plays this way too. Read from the
+/// HTML's UTF-8 bytes by hand, as `holdsBox(_:)` reads a side, since a regex
+/// on every side of a big deck slowed its preview.
+private func soundTags(in html: String) -> (names: [String], rest: String) {
+    let opening = "[sound:".utf8
+    let bytes = html.utf8
+    var names: [String] = []
+    var rest = ""
+    var copied = bytes.startIndex
+    var searched = bytes[...]
+    while let bracket = searched.firstIndex(of: UInt8(ascii: "[")) {
+        searched = bytes[bytes.index(after: bracket)...]
+        guard bytes[bracket...].starts(with: opening) else {
+            continue
+        }
+        let nameStart = bytes.index(bracket, offsetBy: opening.count)
+        guard nameStart < bytes.endIndex,
+            let close = bytes[bytes.index(after: nameStart)...].firstIndex(of: UInt8(ascii: "]"))
+        else {
+            break
+        }
+        let name = characterReferencesDecoded(in: String(decoding: bytes[nameStart..<close], as: UTF8.self))
+        if !names.contains(name) {
+            names.append(name)
+        }
+        rest += String(decoding: bytes[copied..<bracket], as: UTF8.self)
+        copied = bytes.index(after: close)
+        searched = bytes[copied...]
+    }
+    guard copied > bytes.startIndex else {
+        return ([], html)
+    }
+    return (names, rest + String(decoding: bytes[copied...], as: UTF8.self))
 }
 
 /// The names of the package's files `html` shows as images, each once, in

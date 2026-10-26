@@ -41,10 +41,19 @@ public struct ImportedCard: Sendable, Equatable {
     /// side holds one image at most: an Anki card with more than one image
     /// on a side, which brings the first.
     public let hasImagesDropped: Bool
+    /// Whether the file gives the card sounds it comes in without, since a
+    /// side holds one sound at most: an Anki card with more than one sound
+    /// on a side, which brings the first.
+    public let hasSoundsDropped: Bool
+    /// Whether the file gives the card a sound Ficha can't read, which it
+    /// comes in without, since its side holds something else: an Anki
+    /// card's.
+    public let hasUnreadableSoundsLeftOut: Bool
 
     public init(
         content: CardContent, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
-        progress: ImportedProgress? = nil, hasImagesDropped: Bool = false
+        progress: ImportedProgress? = nil, hasImagesDropped: Bool = false, hasSoundsDropped: Bool = false,
+        hasUnreadableSoundsLeftOut: Bool = false
     ) {
         self.content = content
         self.fields = fields
@@ -52,6 +61,8 @@ public struct ImportedCard: Sendable, Equatable {
         self.proposedTags = proposedTags
         self.progress = progress
         self.hasImagesDropped = hasImagesDropped
+        self.hasSoundsDropped = hasSoundsDropped
+        self.hasUnreadableSoundsLeftOut = hasUnreadableSoundsLeftOut
     }
 }
 
@@ -147,9 +158,9 @@ public struct LeftOutLine: Sendable, Equatable {
         /// A side of it has neither text nor an image, and what comes as the
         /// sound it names for that side, this, isn't a sound Ficha can read.
         case notASound(String)
-        /// An Anki card with a side left with neither text nor an image once
-        /// its sounds and its images on the web are dropped, such as one
-        /// that holds only a sound.
+        /// An Anki card with a side left with neither text, an image nor a
+        /// sound once its images on the web are dropped, such as one with
+        /// only an image on the web.
         case emptyAnkiSide
         /// An Anki card with a side that holds only an image its package
         /// lacks, as when Anki exports a deck without its media.
@@ -157,6 +168,12 @@ public struct LeftOutLine: Sendable, Equatable {
         /// An Anki card with a side that holds only an image Ficha can't
         /// read, such as a damaged file.
         case unreadableAnkiImage
+        /// An Anki card with a side that holds only a sound its package
+        /// lacks, as when Anki exports a deck without its media.
+        case missingAnkiSound
+        /// An Anki card with a side that holds only a sound Ficha can't
+        /// read, such as a damaged file.
+        case unreadableAnkiSound
         /// An Anki card of an Image Occlusion note type, which hides parts
         /// of an image.
         case ankiImageOcclusion

@@ -5,27 +5,29 @@ extension AnkiCollection {
     /// for each Anki card, whose front is its question side as Anki renders
     /// it, and whose back is its answer side, from where the answer starts,
     /// both as Anki's reviewer shows them when nothing was typed in a box to
-    /// type the answer in, as plain text, without sounds, each with the first
-    /// image it shows, as `images` finds it by its name in the package: a
-    /// side whose image isn't found comes in without it, and its other images
-    /// are dropped. A side that is one of Anki's formulas alone, such as
+    /// type the answer in, as plain text, each with the first image it
+    /// shows, as `images` finds it by its name in the package, and the first
+    /// sound it plays, as `sounds` finds it: a side whose image or sound
+    /// isn't found comes in without it, and its other images and sounds are
+    /// dropped. A side that is one of Anki's formulas alone, such as
     /// `[$]x^2[/$]`, comes in as the picture Anki drew of it, found by its
     /// name, after the SHA-1 digest `sha1` gives of a text as lowercase hex,
     /// and as its LaTeX when the package lacks it or Ficha can't read it, as
-    /// a formula among text does. Each proposes a tag for each level of its home deck's name,
-    /// but Default's, and its note's tags, an underscore in them standing
-    /// for a space, and brings where it stands in Anki, its due days as
-    /// dates in `calendar`, the user's, for an import that brings progress.
-    /// The new cards come first, in Anki's order of new cards, then the rest
-    /// by note and template. A card of an Image Occlusion note type stays
-    /// out, and so do a card whose template Anki can't render and one with a
-    /// side left with neither text nor an image, each with its place in that
-    /// order and why. Throws when a card's note, note type, template or deck
-    /// isn't in the collection, or its type isn't one Anki has, as in a
-    /// damaged one.
+    /// a formula among text does. Each proposes a tag for each level of its
+    /// home deck's name, but Default's, and its note's tags, an underscore
+    /// in them standing for a space, and brings where it stands in Anki, its
+    /// due days as dates in `calendar`, the user's, for an import that
+    /// brings progress. The new cards come first, in Anki's order of new
+    /// cards, then the rest by note and template. A card of an Image
+    /// Occlusion note type stays out, and so do a card whose template Anki
+    /// can't render and one with a side left with neither text, an image
+    /// nor a sound, each with its place in that order and why. Throws when a
+    /// card's note, note type, template or deck isn't in the collection, or
+    /// its type isn't one Anki has, as in a damaged one.
     public func importReading(
-        in calendar: Calendar, images: (String) -> ImageLookup, sha1: (String) -> String
-    ) throws(AnkiCollectionProblem) -> ImportReading {
+        in calendar: Calendar, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
+        sha1: (String) -> String
+    ) async throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
         var cards: [ImportedCard] = []
         var leftOut: [LeftOutLine] = []
@@ -33,8 +35,9 @@ extension AnkiCollection {
             let line = index + 1
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
-                switch rendered.importedCard(
-                    line: line, progress: try progress(of: card, in: calendar), images: images, sha1: sha1)
+                switch await rendered.importedCard(
+                    line: line, progress: try progress(of: card, in: calendar), images: images, sounds: sounds,
+                    sha1: sha1)
                 {
                 case .card(let imported):
                     cards.append(imported)
@@ -191,30 +194,32 @@ private struct RenderedAnkiCard {
     let back: String
     let tags: [String]
 
-    /// The card as Ficha imports it, each side as plain text without sounds,
-    /// with its first image as `images` finds it, or Anki's picture of its
-    /// formula, named after the digest `sha1` gives, and with `progress`,
-    /// where it stands in Anki; or why it stays out, when a side is left
-    /// with neither text nor an image.
+    /// The card as Ficha imports it, each side as plain text, with its first
+    /// image as `images` finds it, or Anki's picture of its formula, named
+    /// after the digest `sha1` gives, and its first sound as `sounds` finds
+    /// it, and with `progress`, where it stands in Anki; or why it stays out,
+    /// when a side is left with neither text, an image nor a sound.
     func importedCard(
-        line: Int, progress: ImportedProgress, images: (String) -> ImageLookup, sha1: (String) -> String
-    ) -> Imported {
-        let (front, back) = (
-            AnkiSide(html: front, images: images, sha1: sha1), AnkiSide(html: back, images: images, sha1: sha1)
-        )
+        line: Int, progress: ImportedProgress, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
+        sha1: (String) -> String
+    ) async -> Imported {
+        let front = await AnkiSide(html: front, images: images, sounds: sounds, sha1: sha1)
+        let back = await AnkiSide(html: back, images: images, sounds: sounds, sha1: sha1)
         guard
             let content = CardContent(
                 type: nil, front: front.text, back: back.text, tags: [], source: nil, frontImage: front.image,
-                backImage: back.image)
+                backImage: back.image, frontSound: front.sound, backSound: back.sound)
         else {
             return .leftOut(front.reasonItsCardStaysOut ?? back.reasonItsCardStaysOut ?? .emptyAnkiSide)
         }
-        // Its back is Anki's whole, with its image or none, for a card it
-        // updates.
+        // Its back is Anki's whole, with its image and its sound or none, for
+        // a card it updates.
         return .card(
             ImportedCard(
-                content: content, fields: [.backImage], line: line, proposedTags: tags, progress: progress,
-                hasImagesDropped: front.dropsImages || back.dropsImages))
+                content: content, fields: [.backImage, .backSound], line: line, proposedTags: tags,
+                progress: progress, hasImagesDropped: front.dropsImages || back.dropsImages,
+                hasSoundsDropped: front.dropsSounds || back.dropsSounds,
+                hasUnreadableSoundsLeftOut: front.leavesOutAnUnreadableSound || back.leavesOutAnUnreadableSound))
     }
 }
 

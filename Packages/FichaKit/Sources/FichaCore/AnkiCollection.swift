@@ -4,9 +4,9 @@ import Foundation
 /// its schema: when it was created and how it counts its days, and its note
 /// types, decks, notes and cards, with what Ficha reads of each. A package's
 /// reader, which knows the schema, makes it, from the JSON of schema 11 or
-/// the tables of schema 18, and `importReading(in:images:sha1:)` makes Ficha's
-/// cards of it, the same way for both. The values follow Anki's source,
-/// `rslib/src/storage/` and `rslib/src/notetype/`.
+/// the tables of schema 18, and `importReading(in:images:sounds:sha1:)`
+/// makes Ficha's cards of it, the same way for both. The values follow
+/// Anki's source, `rslib/src/storage/` and `rslib/src/notetype/`.
 public struct AnkiCollection: Sendable, Equatable {
     /// When the collection was created, `col.crt`, in seconds since 1970:
     /// the day a review card's due day counts from.

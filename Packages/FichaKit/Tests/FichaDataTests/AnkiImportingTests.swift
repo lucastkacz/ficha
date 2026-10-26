@@ -384,10 +384,12 @@ final class AnkiImportingTests {
             ])
     }
 
+    // A side with only a sound comes in with it, or stays out for want of
+    // it: AnkiSoundImportingTests.
     @Test(
-        "a card whose side holds only a sound, and an Image Occlusion card, stay out with their reasons",
+        "a card whose side holds only an image on the web, and an Image Occlusion card, stay out with their reasons",
         arguments: schemas)
-    func soundOnlySidesAndImageOcclusionStayOut(format: AnkiPackage.Format) async throws {
+    func webImageOnlySidesAndImageOcclusionStayOut(format: AnkiPackage.Format) async throws {
         // A note type whose template names a field it lacks, for which Anki
         // shows an error.
         let broken = AnkiNoteType(
@@ -396,7 +398,7 @@ final class AnkiImportingTests {
         let package = AnkiPackage(
             format: format,
             notes: [
-                AnkiNote(type: .basic, fields: ["[sound:perro.mp3]", "dog"]),
+                AnkiNote(type: .basic, fields: ["<img src=\"https://example.com/perro.jpg\">", "dog"]),
                 AnkiNote(type: .basic, fields: ["gato", "cat [sound:cat.mp3]"]),
                 AnkiNote(
                     type: .imageOcclusion,
