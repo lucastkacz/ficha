@@ -266,8 +266,19 @@ func tone(seconds: Double, hertz: Double, channels: AVAudioChannelCount = 1) thr
 
 /// A video of 64 by 64 pixels lasting `seconds`, as a QuickTime movie's
 /// data, with a mono tone of `hertz` as its sound track, or none when it's
-/// nil: a test's own video.
+/// nil: a test's own video. It's written where sounds convert, on
+/// `SoundConversion`'s queue, for the reason it gives: on the shared
+/// threads, more videos at once than the Mac has cores held every one of
+/// them, as on CI's runners, which have 3.
 func video(seconds: Double, withSoundOf hertz: Double?) async throws -> Data {
+    try await withTaskExecutorPreference(SoundConversion.executor) {
+        try await writeVideo(seconds: seconds, withSoundOf: hertz)
+    }
+}
+
+/// The video `video(seconds:withSoundOf:)` returns, written on the executor
+/// it's called on.
+private func writeVideo(seconds: Double, withSoundOf hertz: Double?) async throws -> Data {
     let file = URL.temporaryDirectory.appending(path: "FichaVideo-\(UUID().uuidString).mov")
     let toneFile = URL.temporaryDirectory.appending(path: "FichaVideoTone-\(UUID().uuidString).wav")
     defer {
