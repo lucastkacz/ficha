@@ -21,9 +21,11 @@ public struct ImportReading: Sendable, Equatable {
 public struct ImportedCard: Sendable, Equatable {
     /// What the card holds, checked as every card is.
     public let content: CardContent
-    /// Whether it goes both ways: a card that comes in new comes in so, and
-    /// a card of the user's it updates takes it when `fields` has Both ways,
-    /// and keeps its own otherwise.
+    /// Whether it goes both ways: a card that comes in new comes in so, but
+    /// one way when an import that brings progress finds its back-first way
+    /// alone suspended (`backFirstProgress`); and a card of the user's it
+    /// updates takes it when `fields` has Both ways, and keeps its own
+    /// otherwise.
     public let bothWays: Bool
     /// Which of a card's fields beyond its front and back the file gives it:
     /// an import that updates a card the user has keeps the card's own

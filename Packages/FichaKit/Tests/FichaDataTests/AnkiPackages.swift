@@ -174,8 +174,7 @@ struct AnkiPackage {
                     nextPosition += 1
                 }
                 for ordinal in note.cardOrdinals {
-                    let (progress, cardQueue) =
-                        ordinal == 1 ? note.reversedCard ?? (note.progress, note.queue) : (note.progress, note.queue)
+                    let (progress, cardQueue) = (ordinal == 1 ? note.reversedCard : nil) ?? (note.progress, note.queue)
                     let columns = progress.columns(position: position)
                     var (queue, due) = (columns.queue, columns.due)
                     switch cardQueue {

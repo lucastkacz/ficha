@@ -349,9 +349,10 @@ final class AnkiProgressTests {
     }
 
     @Test(
-        "the Import sheet counts the reversed notes that come in as one card that goes both ways, but one whose reversed card alone Anki suspended while Bring progress is ticked",
+        "the Import sheet counts the reversed notes that come in as one card that goes both ways, but one that repeats a card of the user's, and one whose reversed card alone Anki suspended while Bring progress is ticked",
         arguments: schemas)
     func theImportSheetCountsReversedNotes(format: AnkiPackage.Format) async throws {
+        try approveCard("gato", in: engine)
         let file = folder.appending(path: "Mazo.apkg")
         try AnkiPackage(
             format: format,
@@ -372,8 +373,8 @@ final class AnkiProgressTests {
         let ticked = window.importing?.notesComingInBothWays
         window.chooseToBringProgress(false)
 
-        #expect(ticked == 2)
-        #expect(window.importing?.notesComingInBothWays == 3)
+        #expect(ticked == 1)
+        #expect(window.importing?.notesComingInBothWays == 2)
     }
 
     @Test(

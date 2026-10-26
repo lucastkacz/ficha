@@ -34,34 +34,31 @@ extension AnkiCollection {
         sha1: (String) -> String
     ) async throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
-        var read: [(card: AnkiCard, line: Int, imported: Imported)] = []
+        // Each Anki card, in the order they come in, as Ficha imports it or
+        // why it stays out, with its place in that order.
+        var ankiCards: [(card: AnkiCard, line: Int, outcome: Imported)] = []
+        // The cards that come in of each note whose note type makes a
+        // reversed card, by note and template index.
+        var reversedNotes: [Int64: [Int: ImportedCard]] = [:]
         for (index, card) in self.cards.sorted(by: isImportedBefore).enumerated() {
             let line = index + 1
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
-                read.append(
-                    (
-                        card, line,
-                        await rendered.importedCard(
-                            line: line, progress: try progress(of: card, in: calendar), images: images,
-                            sounds: sounds, sha1: sha1)
-                    ))
+                let outcome = await rendered.importedCard(
+                    line: line, progress: try progress(of: card, in: calendar), images: images, sounds: sounds,
+                    sha1: sha1)
+                if rendered.makesReversedCards, case .card(let imported) = outcome {
+                    reversedNotes[card.noteID, default: [:]][card.templateIndex] = imported
+                }
+                ankiCards.append((card, line, outcome))
             case .leftOut(let reason):
-                read.append((card, line, .leftOut(reason)))
-            }
-        }
-        // The cards that come in of each note that makes a reversed card, by
-        // note and template index.
-        var reversedNotes: [Int64: [Int: ImportedCard]] = [:]
-        for (card, _, imported) in read where makesReversedCards(card) {
-            if case .card(let imported) = imported {
-                reversedNotes[card.noteID, default: [:]][card.templateIndex] = imported
+                ankiCards.append((card, line, .leftOut(reason)))
             }
         }
         var cards: [ImportedCard] = []
         var leftOut: [LeftOutLine] = []
-        for (card, line, imported) in read {
-            switch imported {
+        for (card, line, outcome) in ankiCards {
+            switch outcome {
             case .card(let imported):
                 // A note's two cards come in as one, where its first card
                 // comes, when both come in.
@@ -77,13 +74,6 @@ extension AnkiCollection {
             }
         }
         return ImportReading(cards: cards, leftOut: leftOut)
-    }
-
-    /// Whether `card` is of a note whose note type makes a reversed card.
-    /// Its note and note type are there, once it's rendered: rendering one
-    /// that lacks either throws.
-    private func makesReversedCards(_ card: AnkiCard) -> Bool {
-        notes[card.noteID].flatMap { noteTypes[$0.noteTypeID] }?.makesReversedCards ?? false
     }
 
     /// `card` rendered, or why it stays out, with its template parsed once
@@ -152,7 +142,7 @@ extension AnkiCollection {
                 RenderedAnkiCard(
                     card: card, front: frontWithoutSounds, frontSounds: frontSounds, back: backWithoutSounds,
                     backSounds: backsOwnSounds.isEmpty ? answersOwnSounds : backsOwnSounds,
-                    tags: tags(of: note, inDeck: card.homeDeckID)))
+                    tags: tags(of: note, inDeck: card.homeDeckID), makesReversedCards: noteType.makesReversedCards))
         } catch {
             return .leftOut(.brokenAnkiTemplate)
         }
@@ -238,7 +228,8 @@ private enum Rendering {
 
 /// An Anki card as Anki shows it, before it's a Ficha card: the card, with
 /// where it stands in Anki, its front and back as HTML, with their images,
-/// without their sounds, which it names apart, and the tags it proposes.
+/// without their sounds, which it names apart, the tags it proposes, and
+/// whether its note makes a reversed card.
 private struct RenderedAnkiCard {
     let card: AnkiCard
     /// The question side.
@@ -251,6 +242,9 @@ private struct RenderedAnkiCard {
     /// its own where the answer starts, or else above it.
     let backSounds: [String]
     let tags: [String]
+    /// Whether its note type makes a reversed card, so that it comes in as
+    /// one card with its note's other card.
+    let makesReversedCards: Bool
 
     /// The card as Ficha imports it, each side as plain text, with its first
     /// image as `images` finds it, or Anki's picture of its formula, named

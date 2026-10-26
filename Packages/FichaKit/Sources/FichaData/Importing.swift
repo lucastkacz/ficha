@@ -42,6 +42,15 @@ public struct ImportPreview: Sendable, Equatable {
     /// import that brings progress puts on a step: an Anki package's cards
     /// that Anki was reviewing or learning (ADR 0013).
     public let placedCount: Int
+    /// How many of the file's cards that repeat none of the user's are made
+    /// of two of its cards, one for each way, and come in going both ways
+    /// with an import that leaves progress out: an Anki package's notes that
+    /// make a reversed card (ADR 0016).
+    public let reversedNoteCount: Int
+    /// How many of those come in going both ways with an import that brings
+    /// progress: all but those whose reversed card alone Anki suspended,
+    /// which come in one way.
+    public let reversedNoteCountBringingProgress: Int
 
     /// How many of the file's lines, or an Anki package's cards, stay out
     /// for a reason.
@@ -233,12 +242,18 @@ extension Engine {
             case (.new?, _), (nil, _), (_, _?): false
             }
         }
+        // A card made of two, one for each way, has the second's progress.
+        let newReversedNotes = zip(reading.cards, repeated).filter { card, repeated in
+            repeated == nil && card.backFirstProgress != nil
+        }.map(\.0)
         return ImportPreview(
             fileName: fileName, kind: kind, cards: reading.cards,
             images: images.filter { referredImages.contains($0.key) },
             sounds: sounds.filter { referredSounds.contains($0.key) }, leftOut: reading.leftOut,
             proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
-            placedCount: placedCount)
+            placedCount: placedCount,
+            reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
+            reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) })
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that

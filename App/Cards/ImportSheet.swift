@@ -141,15 +141,17 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// cards' images and sounds, or an Anki package. Then it shows what
 /// importing the file would do: how many cards come in, how many repeat the
 /// user's cards, with Update or Skip for them, which lines stay out and why,
-/// or for an Anki package, how many of its cards and why, how many come in
-/// with the first of several images or sounds on a side, and how many
-/// without a sound Ficha can't read, and the tags the cards get: for a text
-/// file, one named after the file, for every card; for an Anki package, one
-/// for each level of its decks and each of its tags. The user renames each,
-/// or clears it to leave it out. An Anki package's cards come in where Anki
-/// had them while Bring progress is ticked (ADR 0013), and how many of them
-/// land on a step goes in the line under the title. Import
-/// imports them. While it reads the file or imports, it says so beside a
+/// or for an Anki package, how many of its cards and why, how many of its
+/// notes with a reversed card come in as one card that goes both ways (ADR
+/// 0016), how many come in with the first of several images or sounds on a
+/// side, and how many without a sound Ficha can't read, and the tags the
+/// cards get: for a text file, one named after the file, for every card;
+/// for an Anki package, one for each level of its decks and each of its
+/// tags. The user renames each, or clears it to leave it out. An Anki
+/// package's cards come in where Anki had them while Bring progress is
+/// ticked (ADR 0013), and how many of them land on a step goes in the line
+/// under the title. Import imports them. While it reads the file or
+/// imports, it says so beside a
 /// spinner. A preview taller than the window scrolls between the title and
 /// the buttons. Last, it says what the import did. `CardsWindowState` holds
 /// the preview, the choices and the outcome, and the sheet draws them.

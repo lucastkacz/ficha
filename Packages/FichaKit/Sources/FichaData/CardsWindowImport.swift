@@ -69,6 +69,12 @@ extension CardsWindowState {
             preview?.kind == .ankiPackage
         }
 
+        /// Whether the import brings the cards' progress: while the sheet
+        /// offers Bring progress and it's ticked.
+        private var importBringsProgress: Bool {
+            offersProgress && bringsProgress
+        }
+
         /// How many of the file's cards come in, as the line under the
         /// preview's title says it.
         public enum CardsComingIn: Sendable, Equatable {
@@ -85,7 +91,7 @@ extension CardsWindowState {
             guard let preview else {
                 return nil
             }
-            guard offersProgress, bringsProgress, preview.placedCount > 0 else {
+            guard importBringsProgress, preview.placedCount > 0 else {
                 return .new(preview.newCount)
             }
             return .newAndPlaced(new: preview.newCount - preview.placedCount, placed: preview.placedCount)
@@ -101,10 +107,7 @@ extension CardsWindowState {
             guard let preview else {
                 return 0
             }
-            let bringsProgress = offersProgress && bringsProgress
-            return preview.cards.count {
-                $0.backFirstProgress != nil && $0.goesBothWays(bringingProgress: bringsProgress)
-            }
+            return importBringsProgress ? preview.reversedNoteCountBringingProgress : preview.reversedNoteCount
         }
 
         /// What the user chose, for the import, with the cards' progress
@@ -114,7 +117,7 @@ extension CardsWindowState {
             ImportChoices(
                 tagNames: Dictionary(tagFields.map { ($0.proposed, $0.name) }) { first, _ in first },
                 repeatedCards: repeatedCards,
-                progress: offersProgress && bringsProgress ? .brought(onto: ladder) : .leftOut)
+                progress: importBringsProgress ? .brought(onto: ladder) : .leftOut)
         }
     }
 

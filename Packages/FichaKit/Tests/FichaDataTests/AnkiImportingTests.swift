@@ -73,12 +73,26 @@ final class AnkiImportingTests {
         #expect(card.source == nil)
     }
 
+    // The stock kind Anki records tells it, also once its user changed the
+    // templates, as the third note's.
     @Test(
         "a note of Basic (and reversed card), or of Basic (optional reversed card) with text in Add Reverse, becomes one card that goes both ways",
         arguments: schemas,
         [
             AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"]),
             AnkiNote(type: .basicOptionalReversed, fields: ["perro", "dog", "y"]),
+            AnkiNote(
+                type: AnkiNoteType(
+                    name: "Basic (and reversed card)", originalStockKind: 2, fields: ["Front", "Back"],
+                    templates: [
+                        AnkiCardTemplate(
+                            name: "Card 1", question: "<div class=word>{{Front}}</div>",
+                            answer: "{{FrontSide}}\n\n<hr id=answer>\n\n<div class=meaning>{{Back}}</div>"),
+                        AnkiCardTemplate(
+                            name: "Card 2", question: "<div class=meaning>{{Back}}</div>",
+                            answer: "{{FrontSide}}\n\n<hr id=answer>\n\n<div class=word>{{Front}}</div>"),
+                    ]),
+                fields: ["perro", "dog"]),
         ])
     func aReversedNoteBecomesOneCardThatGoesBothWays(format: AnkiPackage.Format, note: AnkiNote) async throws {
         let outcome = try await importPackage(AnkiPackage(format: format, notes: [note]))
