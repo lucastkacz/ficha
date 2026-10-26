@@ -174,9 +174,10 @@ struct AnkiPackage {
                     nextPosition += 1
                 }
                 for ordinal in note.cardOrdinals {
-                    let columns = note.progress.columns(position: position)
+                    let (progress, cardQueue) = (ordinal == 1 ? note.reversedCard : nil) ?? (note.progress, note.queue)
+                    let columns = progress.columns(position: position)
                     var (queue, due) = (columns.queue, columns.due)
-                    switch note.queue {
+                    switch cardQueue {
                     case .asItsTypeSays: break
                     case .suspended: queue = -1
                     case .buriedForTheDay: queue = -2
@@ -478,6 +479,10 @@ struct AnkiNote {
     var deck = "Default"
     var progress = Progress.new
     var queue = Queue.asItsTypeSays
+    /// How its reversed card, its second template's, stands in Anki, in
+    /// place of `progress` and `queue`, or nil when it stands as its first
+    /// card does.
+    var reversedCard: (progress: Progress, queue: Queue)? = nil
     /// The filtered deck its cards were moved to, or nil.
     var filteredDeck: String? = nil
     /// The template index of the note's one card, in place of those Anki
@@ -485,14 +490,24 @@ struct AnkiNote {
     var damagedTemplateIndex: Int? = nil
 
     /// The template index, from 0, of each card the note has, as Anki makes
-    /// them: one for each template of a standard note type, and one for each
-    /// cloze number its fields hold for a cloze one, its number less one.
+    /// them: one for each template of a standard note type, but one whose
+    /// question opens with a section on a field the note leaves empty, as
+    /// the reversed card of Basic (optional reversed card) without text in
+    /// Add Reverse, which would show nothing; and one for each cloze number
+    /// its fields hold for a cloze one, its number less one.
     var cardOrdinals: [Int] {
         if let damagedTemplateIndex {
             return [damagedTemplateIndex]
         }
         guard type.isCloze else {
-            return Array(type.templates.indices)
+            return type.templates.indices.filter { index in
+                guard let section = type.templates[index].question.firstMatch(of: /^\{\{#([^}]+)\}\}/),
+                    let field = type.fields.firstIndex(of: String(section.output.1))
+                else {
+                    return true
+                }
+                return fields.indices.contains(field) && !fields[field].isEmpty
+            }
         }
         let numbers = fields.flatMap { field in
             field.matches(of: /\{\{c(\d+)::/).compactMap { Int($0.output.1) }
@@ -532,6 +547,27 @@ struct AnkiNoteType: Hashable {
         templates: [
             AnkiCardTemplate(name: "Card 1", question: "{{Front}}", answer: basicAnswer("{{Back}}")),
             AnkiCardTemplate(name: "Card 2", question: "{{Back}}", answer: basicAnswer("{{Front}}")),
+        ])
+
+    /// Anki's Basic (optional reversed card), whose reversed card Anki makes
+    /// only for a note with text in Add Reverse.
+    static let basicOptionalReversed = AnkiNoteType(
+        name: "Basic (optional reversed card)", originalStockKind: 3, fields: ["Front", "Back", "Add Reverse"],
+        templates: [
+            AnkiCardTemplate(name: "Card 1", question: "{{Front}}", answer: basicAnswer("{{Back}}")),
+            AnkiCardTemplate(
+                name: "Card 2", question: "{{#Add Reverse}}{{Back}}{{/Add Reverse}}", answer: basicAnswer("{{Front}}")),
+        ])
+
+    /// A note type of someone's own whose notes make two cards, the word's
+    /// and the meaning's, the second with the example on its back: without
+    /// it, its templates would be Anki's for Basic (and reversed card).
+    static let wordAndMeaning = AnkiNoteType(
+        name: "Palabra y significado", fields: ["Palabra", "Significado", "Ejemplo"],
+        templates: [
+            AnkiCardTemplate(name: "Significado", question: "{{Palabra}}", answer: basicAnswer("{{Significado}}")),
+            AnkiCardTemplate(
+                name: "Palabra", question: "{{Significado}}", answer: basicAnswer("{{Palabra}}<br>{{Ejemplo}}")),
         ])
 
     /// Anki's Cloze.
@@ -598,6 +634,14 @@ struct AnkiNoteType: Hashable {
                     {{/Image}}
                     """)
         ])
+
+    /// The note type as one made before Anki 2.1.62 has it, which doesn't
+    /// record the stock note type Anki made it from.
+    var madeBeforeStockKinds: AnkiNoteType {
+        var type = self
+        type.originalStockKind = 0
+        return type
+    }
 
     /// A stock answer of Anki's: the question, the line that marks where
     /// the answer starts, and `back`.

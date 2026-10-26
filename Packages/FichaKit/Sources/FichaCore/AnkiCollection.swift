@@ -76,6 +76,94 @@ public struct AnkiNoteType: Sendable, Equatable {
     var isImageOcclusion: Bool {
         originalStockKind == 6 || Set(fields).isSuperset(of: ["Question Mask", "Answer Mask", "Original Mask"])
     }
+
+    /// Whether each of its notes makes a card and that card turned over, its
+    /// reversed card, as Anki's stock Basic (and reversed card) does, and
+    /// its Basic (optional reversed card) for a note with text in Add
+    /// Reverse: a standard note type with two templates that Anki made from
+    /// either, as it records from 2.1.62 on, 2 and 3; or one made before,
+    /// whose stock kind is unknown, whose templates are those Anki makes for
+    /// either, whatever its fields are called, as Anki names them in the
+    /// language it had (ADR 0016).
+    var makesReversedCards: Bool {
+        guard kind == .standard, templates.count == 2 else {
+            return false
+        }
+        switch originalStockKind {
+        case 2, 3: return true
+        case 0: return hasReversedStockTemplates
+        default: return false
+        }
+    }
+
+    /// Whether its two templates are Anki's for Basic (and reversed card),
+    /// or for Basic (optional reversed card), with its own fields' names, as
+    /// Anki 2.0 and later make them (`rslib/src/notetype/stock.rs`): the
+    /// first asks `{{Front}}` and answers `{{FrontSide}}`, the line that
+    /// marks where the answer starts, and `{{Back}}`; the second asks
+    /// `{{Back}}`, or `{{#Add Reverse}}{{Back}}{{/Add Reverse}}`, and answers
+    /// the same way with `{{Front}}`. Blank text between their parts doesn't
+    /// count.
+    private var hasReversedStockTemplates: Bool {
+        guard
+            let parsed = try? templates.map({ template throws(AnkiTemplateError) in
+                (
+                    question: try AnkiTemplate(parsing: template.question).trimmedNodes,
+                    answer: try AnkiTemplate(parsing: template.answer).trimmedNodes
+                )
+            }),
+            let front = parsed[0].question.onlyField, let back = parsed[0].answer.stockAnswersField, back != front,
+            parsed[1].answer.stockAnswersField == front
+        else {
+            return false
+        }
+        if parsed[1].question.onlyField == back {
+            return true
+        }
+        guard parsed[1].question.count == 1, case .section(_, isNegated: false, let nodes) = parsed[1].question[0]
+        else {
+            return false
+        }
+        return nodes.onlyField == back
+    }
+}
+
+extension AnkiTemplate {
+    /// Its nodes, without the text between them that's blank, and with the
+    /// rest of their text trimmed: the lines Anki leaves around a stock
+    /// template's parts don't count.
+    fileprivate var trimmedNodes: [Node] {
+        nodes.compactMap { node in
+            guard case .text(let text) = node else {
+                return node
+            }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : .text(trimmed[...])
+        }
+    }
+}
+
+extension [AnkiTemplate.Node] {
+    /// The field these nodes show when they're that field alone, with no
+    /// filter, as `{{Front}}`.
+    fileprivate var onlyField: String? {
+        guard count == 1, case .replacement(let field, filters: []) = self[0] else {
+            return nil
+        }
+        return field
+    }
+
+    /// The field these nodes show when they're a stock answer of Anki's:
+    /// `{{FrontSide}}`, the line that marks where the answer starts,
+    /// `<hr id=answer>`, and that field alone.
+    fileprivate var stockAnswersField: String? {
+        guard count == 3, case .replacement("FrontSide", filters: []) = self[0], case .text(let line) = self[1],
+            line == "<hr id=answer>"
+        else {
+            return nil
+        }
+        return Array(self[2...]).onlyField
+    }
 }
 
 /// A card template of an Anki note type: what its cards show on the

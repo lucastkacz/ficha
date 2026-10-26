@@ -620,6 +620,29 @@
         }
       }
     },
+    "%lld notes with a reversed card come in as one card each, with Both ways on." : {
+      "comment" : "In the Import sheet's preview of an Anki package, with how many of its notes that make a card and that card turned over come in as one Ficha card, which is also reviewed back first: its back, then its front.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld note with a reversed card comes in as one card, with Both ways on."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld notes with a reversed card come in as one card each, with Both ways on."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "+%lld" : {
       "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
     },

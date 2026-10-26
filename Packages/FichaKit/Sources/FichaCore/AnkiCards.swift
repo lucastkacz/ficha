@@ -18,32 +18,56 @@ extension AnkiCollection {
     /// each level of its home deck's name, but Default's, and its note's
     /// tags, an underscore in them standing for a space, and brings where it
     /// stands in Anki, its due days as dates in `calendar`, the user's, for
-    /// an import that brings progress. The new cards come first, in Anki's
-    /// order of new cards, then the rest by note and template. A card of an
-    /// Image Occlusion note type stays out, and so do a card whose template
-    /// Anki can't render and one with a side left with neither text, an
-    /// image nor a sound, each with its place in that order and why. Throws
-    /// when a card's note, note type, template or deck isn't in the
-    /// collection, or its type isn't one Anki has, as in a damaged one.
+    /// an import that brings progress. But the two cards of a note whose note
+    /// type makes a reversed card, when both come in, make one card that
+    /// goes both ways: the first card, where it comes, with the tags both
+    /// propose, and where the reversed card stands for its back-first way
+    /// (ADR 0016). The new cards come first, in Anki's order of new cards,
+    /// then the rest by note and template. A card of an Image Occlusion note
+    /// type stays out, and so do a card whose template Anki can't render and
+    /// one with a side left with neither text, an image nor a sound, each
+    /// with its place in that order and why. Throws when a card's note, note
+    /// type, template or deck isn't in the collection, or its type isn't one
+    /// Anki has, as in a damaged one.
     public func importReading(
         in calendar: Calendar, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
         sha1: (String) -> String
     ) async throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
-        var cards: [ImportedCard] = []
-        var leftOut: [LeftOutLine] = []
+        // Each Anki card, in the order they come in, as Ficha imports it or
+        // why it stays out, with its place in that order.
+        var ankiCards: [(card: AnkiCard, line: Int, outcome: Imported)] = []
+        // The cards that come in of each note whose note type makes a
+        // reversed card, by note and template index.
+        var reversedNotes: [Int64: [Int: ImportedCard]] = [:]
         for (index, card) in self.cards.sorted(by: isImportedBefore).enumerated() {
             let line = index + 1
             switch try rendering(card, templates: &templates) {
             case .rendered(let rendered):
-                switch await rendered.importedCard(
+                let outcome = await rendered.importedCard(
                     line: line, progress: try progress(of: card, in: calendar), images: images, sounds: sounds,
                     sha1: sha1)
-                {
-                case .card(let imported):
+                if rendered.makesReversedCards, case .card(let imported) = outcome {
+                    reversedNotes[card.noteID, default: [:]][card.templateIndex] = imported
+                }
+                ankiCards.append((card, line, outcome))
+            case .leftOut(let reason):
+                ankiCards.append((card, line, .leftOut(reason)))
+            }
+        }
+        var cards: [ImportedCard] = []
+        var leftOut: [LeftOutLine] = []
+        for (card, line, outcome) in ankiCards {
+            switch outcome {
+            case .card(let imported):
+                // A note's two cards come in as one, where its first card
+                // comes, when both come in.
+                if let note = reversedNotes[card.noteID], let first = note[0], let reversed = note[1] {
+                    if card.templateIndex == 0 {
+                        cards.append(first.goingBothWays(with: reversed))
+                    }
+                } else {
                     cards.append(imported)
-                case .leftOut(let reason):
-                    leftOut.append(LeftOutLine(line: line, reason: reason))
                 }
             case .leftOut(let reason):
                 leftOut.append(LeftOutLine(line: line, reason: reason))
@@ -118,7 +142,7 @@ extension AnkiCollection {
                 RenderedAnkiCard(
                     card: card, front: frontWithoutSounds, frontSounds: frontSounds, back: backWithoutSounds,
                     backSounds: backsOwnSounds.isEmpty ? answersOwnSounds : backsOwnSounds,
-                    tags: tags(of: note, inDeck: card.homeDeckID)))
+                    tags: tags(of: note, inDeck: card.homeDeckID), makesReversedCards: noteType.makesReversedCards))
         } catch {
             return .leftOut(.brokenAnkiTemplate)
         }
@@ -204,7 +228,8 @@ private enum Rendering {
 
 /// An Anki card as Anki shows it, before it's a Ficha card: the card, with
 /// where it stands in Anki, its front and back as HTML, with their images,
-/// without their sounds, which it names apart, and the tags it proposes.
+/// without their sounds, which it names apart, the tags it proposes, and
+/// whether its note makes a reversed card.
 private struct RenderedAnkiCard {
     let card: AnkiCard
     /// The question side.
@@ -217,6 +242,9 @@ private struct RenderedAnkiCard {
     /// its own where the answer starts, or else above it.
     let backSounds: [String]
     let tags: [String]
+    /// Whether its note type makes a reversed card, so that it comes in as
+    /// one card with its note's other card.
+    let makesReversedCards: Bool
 
     /// The card as Ficha imports it, each side as plain text, with its first
     /// image as `images` finds it, or Anki's picture of its formula, named
@@ -251,6 +279,22 @@ private struct RenderedAnkiCard {
 private enum Imported {
     case card(ImportedCard)
     case leftOut(LeftOutLine.Reason)
+}
+
+extension ImportedCard {
+    /// The card of an Anki note that makes a reversed card, as it comes in
+    /// with `reversed`, its reversed card, as one card that goes both ways
+    /// (ADR 0016): with its front and back, the tags both propose, and where
+    /// each stood, its own for the front-first way and the reversed card's
+    /// for the back-first way.
+    fileprivate func goingBothWays(with reversed: ImportedCard) -> ImportedCard {
+        ImportedCard(
+            content: content, bothWays: true, fields: fields, line: line,
+            proposedTags: (proposedTags + reversed.proposedTags).uniqued(), progress: progress,
+            backFirstProgress: reversed.progress, hasImagesDropped: hasImagesDropped,
+            hasSoundsDropped: hasSoundsDropped,
+            hasUnreadableSoundsLeftOut: hasUnreadableSoundsLeftOut)
+    }
 }
 
 /// The back of a card whose answer side Anki renders as `answer`, after

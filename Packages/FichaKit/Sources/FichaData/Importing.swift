@@ -42,6 +42,15 @@ public struct ImportPreview: Sendable, Equatable {
     /// import that brings progress puts on a step: an Anki package's cards
     /// that Anki was reviewing or learning (ADR 0013).
     public let placedCount: Int
+    /// How many of the file's cards that repeat none of the user's are made
+    /// of two of its cards, one for each way, and come in going both ways
+    /// with an import that leaves progress out: an Anki package's notes that
+    /// make a reversed card (ADR 0016).
+    public let reversedNoteCount: Int
+    /// How many of those come in going both ways with an import that brings
+    /// progress: all but those whose reversed card alone Anki suspended,
+    /// which come in one way.
+    public let reversedNoteCountBringingProgress: Int
 
     /// How many of the file's lines, or an Anki package's cards, stay out
     /// for a reason.
@@ -233,12 +242,18 @@ extension Engine {
             case (.new?, _), (nil, _), (_, _?): false
             }
         }
+        // A card made of two, one for each way, has the second's progress.
+        let newReversedNotes = zip(reading.cards, repeated).filter { card, repeated in
+            repeated == nil && card.backFirstProgress != nil
+        }.map(\.0)
         return ImportPreview(
             fileName: fileName, kind: kind, cards: reading.cards,
             images: images.filter { referredImages.contains($0.key) },
             sounds: sounds.filter { referredSounds.contains($0.key) }, leftOut: reading.leftOut,
             proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
-            placedCount: placedCount)
+            placedCount: placedCount,
+            reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
+            reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) })
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that
@@ -283,10 +298,11 @@ extension Engine {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
                         let cardID = try insertCard(
-                            try card.content(adding: addedTags(card)), bothWays: card.bothWays, capturedAs: nil,
+                            try card.content(adding: addedTags(card)),
+                            bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
                             at: importedAt, in: db)
-                        if case .brought(let ladder) = choices.progress, let progress = card.progress {
-                            try bring(progress, to: cardID, onto: ladder, at: importedAt, in: db)
+                        if case .brought(let ladder) = choices.progress {
+                            try bring(card, to: cardID, onto: ladder, at: importedAt, in: db)
                         }
                         added += 1
                     case (let repeated?, .update):
@@ -312,16 +328,19 @@ extension Engine {
     }
 
     /// Gives the card with the id `cardID`, which is coming in new to Ficha
-    /// at `importedAt`, the progress it brings from the app it comes from:
-    /// a placement on `ladder`, the first entry of its review log, unless
-    /// it's new there, and a burial when it was suspended there.
+    /// at `importedAt` as `card`, the progress it brings from the app it
+    /// comes from: for each of its ways, a placement on `ladder`, the first
+    /// entry of that way's review log, unless it's new there; and a burial
+    /// when it was suspended there, as its front-first way says.
     private func bring(
-        _ progress: ImportedProgress, to cardID: Int64, onto ladder: Ladder, at importedAt: Date, in db: Database
+        _ card: ImportedCard, to cardID: Int64, onto ladder: Ladder, at importedAt: Date, in db: Database
     ) throws {
-        if let placement = ladder.placement(of: progress.stage) {
-            try place(cardID, on: placement, at: importedAt, in: db)
+        for (way, progress) in [(Way.frontFirst, card.progress), (.backFirst, card.backFirstProgress)] {
+            if let placement = progress.flatMap({ ladder.placement(of: $0.stage) }) {
+                try place(cardID, way: way, on: placement, at: importedAt, in: db)
+            }
         }
-        if progress.isSuspended {
+        if card.progress?.isSuspended == true {
             _ = try bury(cardID, at: importedAt, in: db)
         }
     }
@@ -336,7 +355,28 @@ extension Engine {
     }
 }
 
+extension ImportChoices {
+    /// Whether the cards bring where they stood in the app the file comes
+    /// from.
+    var bringsProgress: Bool {
+        if case .brought = progress { true } else { false }
+    }
+}
+
 extension ImportedCard {
+    /// Whether the card goes both ways as it comes in new, by an import that
+    /// brings progress or not: as the file says, but one way when the
+    /// import brings progress and the app the file comes from suspended its
+    /// back-first way alone, as Anki suspends a note's reversed card, whose
+    /// step it keeps (ADR 0016). Its front-first way suspended, it comes in
+    /// buried, both ways.
+    func goesBothWays(bringingProgress: Bool) -> Bool {
+        guard bringingProgress, backFirstProgress?.isSuspended == true else {
+            return bothWays
+        }
+        return bothWays && progress?.isSuspended == true
+    }
+
     /// The card as it comes in, as new, with its images, its sounds and
     /// `tags` added to its own.
     fileprivate func content(adding tags: [String]) throws -> CardContent {
@@ -385,8 +425,9 @@ extension ImportReading {
                 ImportedCard(
                     content: card.content, bothWays: card.bothWays, fields: card.fields, line: card.line,
                     proposedTags: (card.proposedTags + tags).uniqued(), progress: card.progress,
-                    hasImagesDropped: card.hasImagesDropped, hasSoundsDropped: card.hasSoundsDropped,
-                    hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut)
+                    backFirstProgress: card.backFirstProgress, hasImagesDropped: card.hasImagesDropped,
+                    hasSoundsDropped: card.hasSoundsDropped, hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut
+                )
             },
             leftOut: leftOut)
     }

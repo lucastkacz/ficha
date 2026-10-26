@@ -69,6 +69,12 @@ extension CardsWindowState {
             preview?.kind == .ankiPackage
         }
 
+        /// Whether the import brings the cards' progress: while the sheet
+        /// offers Bring progress and it's ticked.
+        private var importBringsProgress: Bool {
+            offersProgress && bringsProgress
+        }
+
         /// How many of the file's cards come in, as the line under the
         /// preview's title says it.
         public enum CardsComingIn: Sendable, Equatable {
@@ -85,10 +91,23 @@ extension CardsWindowState {
             guard let preview else {
                 return nil
             }
-            guard offersProgress, bringsProgress, preview.placedCount > 0 else {
+            guard importBringsProgress, preview.placedCount > 0 else {
                 return .new(preview.newCount)
             }
             return .newAndPlaced(new: preview.newCount - preview.placedCount, placed: preview.placedCount)
+        }
+
+        /// How many of the file's cards come in going both ways made of two
+        /// of its cards, one for each way, as the preview says, so that the
+        /// user sees why fewer cards come in than Anki had: an Anki package's
+        /// notes that make a reversed card, but, while Bring progress is
+        /// ticked, those whose reversed card alone Anki suspended, which come
+        /// in one way (ADR 0016).
+        public var notesComingInBothWays: Int {
+            guard let preview else {
+                return 0
+            }
+            return importBringsProgress ? preview.reversedNoteCountBringingProgress : preview.reversedNoteCount
         }
 
         /// What the user chose, for the import, with the cards' progress
@@ -98,7 +117,7 @@ extension CardsWindowState {
             ImportChoices(
                 tagNames: Dictionary(tagFields.map { ($0.proposed, $0.name) }) { first, _ in first },
                 repeatedCards: repeatedCards,
-                progress: offersProgress && bringsProgress ? .brought(onto: ladder) : .leftOut)
+                progress: importBringsProgress ? .brought(onto: ladder) : .leftOut)
         }
     }
 

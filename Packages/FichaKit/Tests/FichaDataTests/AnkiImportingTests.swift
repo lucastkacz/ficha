@@ -9,6 +9,10 @@ import Testing
 /// default.
 private let schemas: [AnkiPackage.Format] = [.supportOlderAnkiVersions, .current]
 
+/// A package of each version Anki writes, as Ficha reads them all: Anki
+/// 2.0's, Anki 2.1's before 2.1.50, and current Anki's two.
+private let everyVersion: [AnkiPackage.Format] = [.anki20, .anki21, .supportOlderAnkiVersions, .current]
+
 /// Tests on importing a deck from an Anki package, from any Anki: which
 /// cards there are once the import is done, with which sides and tags, and
 /// what the preview reports, from packages the tests write in a folder of
@@ -69,17 +73,114 @@ final class AnkiImportingTests {
         #expect(card.source == nil)
     }
 
-    @Test("a reversed note becomes two cards", arguments: schemas)
-    func aReversedNoteBecomesTwoCards(format: AnkiPackage.Format) async throws {
+    // The stock kind Anki records tells it, also once its user changed the
+    // templates, as the third note's.
+    @Test(
+        "a note of Basic (and reversed card), or of Basic (optional reversed card) with text in Add Reverse, becomes one card that goes both ways",
+        arguments: schemas,
+        [
+            AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"]),
+            AnkiNote(type: .basicOptionalReversed, fields: ["perro", "dog", "y"]),
+            AnkiNote(
+                type: AnkiNoteType(
+                    name: "Basic (and reversed card)", originalStockKind: 2, fields: ["Front", "Back"],
+                    templates: [
+                        AnkiCardTemplate(
+                            name: "Card 1", question: "<div class=word>{{Front}}</div>",
+                            answer: "{{FrontSide}}\n\n<hr id=answer>\n\n<div class=meaning>{{Back}}</div>"),
+                        AnkiCardTemplate(
+                            name: "Card 2", question: "<div class=meaning>{{Back}}</div>",
+                            answer: "{{FrontSide}}\n\n<hr id=answer>\n\n<div class=word>{{Front}}</div>"),
+                    ]),
+                fields: ["perro", "dog"]),
+        ])
+    func aReversedNoteBecomesOneCardThatGoesBothWays(format: AnkiPackage.Format, note: AnkiNote) async throws {
+        let outcome = try await importPackage(AnkiPackage(format: format, notes: [note]))
+
+        #expect(outcome.added == 1)
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"]])
+        #expect(try engine.cards().map(\.bothWays) == [true])
+    }
+
+    // Anki records the stock note type it made a note type from since
+    // 2.1.62, so an older note type is told by its templates, whatever the
+    // language its fields were named in, in any package.
+    @Test(
+        "a reversed note of a note type made before Anki recorded its stock kind becomes one card that goes both ways",
+        arguments: everyVersion,
+        [
+            AnkiNote(type: AnkiNoteType.basicAndReversed.madeBeforeStockKinds, fields: ["perro", "dog"]),
+            AnkiNote(
+                type: AnkiNoteType(
+                    name: "Básico (tarjeta invertida opcional)", fields: ["Anverso", "Reverso", "Añadir reverso"],
+                    templates: [
+                        AnkiCardTemplate(
+                            name: "Tarjeta 1", question: "{{Anverso}}",
+                            answer: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Reverso}}"),
+                        AnkiCardTemplate(
+                            name: "Tarjeta 2", question: "{{#Añadir reverso}}{{Reverso}}{{/Añadir reverso}}",
+                            answer: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Anverso}}"),
+                    ]),
+                fields: ["perro", "dog", "sí"]),
+        ])
+    func aReversedNoteOfAnOlderNoteTypeBecomesOneCard(format: AnkiPackage.Format, note: AnkiNote) async throws {
+        try await importPackage(AnkiPackage(format: format, notes: [note]))
+
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"]])
+        #expect(try engine.cards().map(\.bothWays) == [true])
+    }
+
+    @Test("a note of another note type with two cards becomes two cards, each going one way", arguments: everyVersion)
+    func aNoteOfAnotherTypeWithTwoCardsBecomesTwoCards(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
-            notes: [
-                AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"])
-            ])
+            notes: [AnkiNote(type: .wordAndMeaning, fields: ["perro", "dog", "Mi perro ladra."])])
 
         try await importPackage(package)
 
-        #expect(try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"], ["dog", "perro"]])
+        #expect(
+            try engine.cards().map { [$0.front, $0.back] } == [["perro", "dog"], ["dog", "perro\nMi perro ladra."]])
+        #expect(try engine.cards().map(\.bothWays) == [false, false])
+    }
+
+    // Both ways is how a card is reviewed, as its progress, which an update
+    // keeps too.
+    @Test(
+        "a reversed note repeats a card of the user's by its first card's front, and updates it keeping its own Both ways",
+        arguments: schemas)
+    func aReversedNoteRepeatsByItsFront(format: AnkiPackage.Format) async throws {
+        try approveCard("gato", in: engine)
+        try approveCard("dog", in: engine)
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basicAndReversed, fields: ["gato", "cat"]),
+                AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"]),
+            ])
+        let preview = try await engine.previewImport(of: file("Animales.apkg", package))
+
+        let outcome = try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.repeatedCount == 1)
+        #expect(outcome == ImportOutcome(added: 1, updated: 1, skipped: 0, copyBeforeImport: nil))
+        let cards = try engine.cards()
+        #expect(
+            cards.map { [$0.front, $0.back] } == [
+                ["gato", "cat"], ["dog", "Lo que quiere decir «dog»."], ["perro", "dog"],
+            ])
+        #expect(cards.map(\.bothWays) == [false, false, true])
+    }
+
+    @Test("a note of Basic (optional reversed card) without text in Add Reverse comes in one way", arguments: schemas)
+    func anOptionalReversedNoteWithoutAddReverseComesInOneWay(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [AnkiNote(type: .basicOptionalReversed, fields: ["gato", "cat", ""])])
+
+        try await importPackage(package)
+
+        #expect(try engine.cards().map { [$0.front, $0.back] } == [["gato", "cat"]])
+        #expect(try engine.cards().map(\.bothWays) == [false])
     }
 
     @Test("a field shown only on the answer side, like Extra, comes in on the back", arguments: schemas)
@@ -475,8 +576,9 @@ final class AnkiImportingTests {
             notes: [
                 AnkiNote(type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 10)),
                 AnkiNote(type: .basic, fields: ["dos", "two"], progress: .newAt(position: 5)),
-                AnkiNote(type: .basicAndReversed, fields: ["tres", "three"], progress: .newAt(position: 2)),
-                AnkiNote(type: .basicAndReversed, fields: ["cuatro", "four"], progress: .review(due: 5, interval: 3)),
+                AnkiNote(type: .wordAndMeaning, fields: ["tres", "three", ""], progress: .newAt(position: 2)),
+                AnkiNote(
+                    type: .wordAndMeaning, fields: ["cuatro", "four", ""], progress: .review(due: 5, interval: 3)),
             ])
 
         try await importPackage(package)
