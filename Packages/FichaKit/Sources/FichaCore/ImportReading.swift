@@ -39,8 +39,15 @@ public struct ImportedCard: Sendable, Equatable {
     public let proposedTags: [String]
     /// Where it stood in the app the file comes from, which an import that
     /// brings progress gives it when it comes in new to Ficha: an Anki
-    /// card's; nil for a text file's, which says nothing of it.
+    /// card's; nil for a text file's, which says nothing of it. For a card
+    /// that goes both ways, where its front-first way stood.
     public let progress: ImportedProgress?
+    /// Where its back-first way stood in the app the file comes from, for a
+    /// card made of two of the file's, one for each way, which an import
+    /// that brings progress gives that way as it gives `progress`: the
+    /// reversed card's of a note of Anki's that makes one (ADR 0016); nil
+    /// for any other card.
+    public let backFirstProgress: ImportedProgress?
     /// Whether the file gives the card images it comes in without, since a
     /// side holds one image at most: an Anki card with more than one image
     /// on a side, which brings the first.
@@ -56,8 +63,8 @@ public struct ImportedCard: Sendable, Equatable {
 
     public init(
         content: CardContent, bothWays: Bool = false, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
-        progress: ImportedProgress? = nil, hasImagesDropped: Bool = false, hasSoundsDropped: Bool = false,
-        hasUnreadableSoundsLeftOut: Bool = false
+        progress: ImportedProgress? = nil, backFirstProgress: ImportedProgress? = nil, hasImagesDropped: Bool = false,
+        hasSoundsDropped: Bool = false, hasUnreadableSoundsLeftOut: Bool = false
     ) {
         self.content = content
         self.bothWays = bothWays
@@ -65,6 +72,7 @@ public struct ImportedCard: Sendable, Equatable {
         self.line = line
         self.proposedTags = proposedTags
         self.progress = progress
+        self.backFirstProgress = backFirstProgress
         self.hasImagesDropped = hasImagesDropped
         self.hasSoundsDropped = hasSoundsDropped
         self.hasUnreadableSoundsLeftOut = hasUnreadableSoundsLeftOut

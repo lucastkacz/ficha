@@ -319,6 +319,14 @@ struct ImportSheet: View {
     /// choices for its import.
     private func previewDetails(_ preview: ImportPreview) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
+            if importing.notesComingInBothWays > 0 {
+                Text(
+                    "\(importing.notesComingInBothWays) notes with a reversed card come in as one card each, with Both ways on.",
+                    comment:
+                        "In the Import sheet's preview of an Anki package, with how many of its notes that make a card and that card turned over come in as one Ficha card, which is also reviewed back first: its back, then its front."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
             if preview.cardsWithImagesDropped > 0 {
                 Text(
                     "\(preview.cardsWithImagesDropped) cards have more than one image on a side, and come in with the first.",

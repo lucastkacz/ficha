@@ -51,10 +51,11 @@ final class AnkiProgressTests {
         return try await engine.importCards(engine.previewImport(of: file), choosing: choices)
     }
 
-    /// Where the card with `front` stands on the standard ladder.
-    private func standing(of front: String) throws -> LadderStanding {
+    /// Where the card with `front` stands on the standard ladder, the way
+    /// it's said to go, front first unless it's said to go back first.
+    private func standing(of front: String, way: Way = .frontFirst) throws -> LadderStanding {
         let card = try #require(try engine.cards().first { $0.front == front })
-        return try engine.standing(of: card.id, on: ladder)
+        return try engine.standing(of: card.id, way: way, on: ladder)
     }
 
     /// `hour` o'clock on `day` October 2026, in Buenos Aires.
@@ -87,6 +88,30 @@ final class AnkiProgressTests {
         let bothWays = try engine.setBothWays(true, of: [corazon.id])
 
         #expect(try engine.reviewNow(.defaults) == [.firstView(bothWays[0], .backFirst)])
+    }
+
+    @Test(
+        "each way of a reversed note lands on the step nearest its own Anki card's interval, and a new Anki card leaves its way new",
+        arguments: schemas)
+    func eachWayOfAReversedNoteLandsOnItsOwnStep(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10),
+                    reversedCard: (.review(due: 26, interval: 3), .asItsTypeSays)),
+                AnkiNote(
+                    type: .basicOptionalReversed, fields: ["pulmón", "lung", "y"],
+                    progress: .review(due: 25, interval: 400), reversedCard: (.new, .asItsTypeSays)),
+            ])
+
+        try await importPackage(package)
+
+        #expect(try standing(of: "corazón") == .onLadder(step: 4, due: try october(31, at: 4)))
+        #expect(try standing(of: "corazón", way: .backFirst) == .onLadder(step: 2, due: try october(27, at: 4)))
+        #expect(try standing(of: "pulmón") == .onLadder(step: 6, due: try october(26, at: 4)))
+        #expect(try standing(of: "pulmón", way: .backFirst) == .new)
+        #expect(try engine.cards().map(\.bothWays) == [true, true])
     }
 
     @Test("a card with a 400-day interval lands on the last step, due on Anki's date", arguments: schemas)
@@ -181,6 +206,36 @@ final class AnkiProgressTests {
         #expect(try standing(of: "riñón") == .onLadder(step: 4, due: try october(31, at: 4)))
     }
 
+    @Test(
+        "a reversed note whose reversed card alone Anki suspended comes in one way, that way's step kept, and one whose first card it suspended comes in buried",
+        arguments: schemas)
+    func aReversedNoteWithASuspendedCard(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["riñón", "kidney"], progress: .review(due: 30, interval: 10),
+                    reversedCard: (.review(due: 26, interval: 3), .suspended)),
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["bazo", "spleen"], progress: .review(due: 30, interval: 10),
+                    queue: .suspended, reversedCard: (.review(due: 26, interval: 3), .asItsTypeSays)),
+            ])
+
+        try await importPackage(package)
+        let cards = try engine.cards()
+        let spleen = try #require(cards.last)
+
+        #expect(cards.map(\.front) == ["riñón", "bazo"])
+        #expect(cards.map(\.bothWays) == [false, true])
+        #expect(cards.map(\.standing) == [.inReviews, .buried(at: time.now, flag: nil)])
+        #expect(try standing(of: "riñón", way: .backFirst) == .onLadder(step: 2, due: try october(27, at: 4)))
+
+        try engine.unbury(spleen.id)
+
+        #expect(try standing(of: "bazo") == .onLadder(step: 4, due: try october(31, at: 4)))
+        #expect(try standing(of: "bazo", way: .backFirst) == .onLadder(step: 2, due: try october(27, at: 4)))
+    }
+
     @Test("with Bring progress unticked, every card comes in new, and none buried", arguments: schemas)
     func withProgressLeftOutEveryCardComesInNew(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -190,14 +245,18 @@ final class AnkiProgressTests {
                 AnkiNote(type: .basic, fields: ["dos", "two"], progress: .learning(dueAt: 1_792_000_000)),
                 AnkiNote(
                     type: .basic, fields: ["tres", "three"], progress: .review(due: 25, interval: 3), queue: .suspended),
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["cuatro", "four"], progress: .review(due: 25, interval: 3),
+                    reversedCard: (.review(due: 25, interval: 3), .suspended)),
             ])
 
         try await importPackage(package, choosing: ImportChoices(progress: .leftOut))
 
         let cards = try engine.cards()
-        #expect(cards.count == 3)
+        #expect(cards.count == 4)
         #expect(try cards.allSatisfy { try engine.standing(of: $0.id, on: ladder) == .new })
         #expect(cards.allSatisfy { $0.standing == .inReviews })
+        #expect(cards.map(\.bothWays) == [false, false, false, true])
         #expect(try engine.reviewLog().isEmpty)
     }
 
@@ -287,6 +346,34 @@ final class AnkiProgressTests {
         #expect(untickedCardsComingIn == .new(3))
         #expect(try engine.cards().dropFirst().map(\.front) == ["tres", "uno", "dos"])
         #expect(try engine.cards().allSatisfy { try engine.standing(of: $0.id, on: ladder) == .new })
+    }
+
+    @Test(
+        "the Import sheet counts the reversed notes that come in as one card that goes both ways, but one whose reversed card alone Anki suspended while Bring progress is ticked",
+        arguments: schemas)
+    func theImportSheetCountsReversedNotes(format: AnkiPackage.Format) async throws {
+        let file = folder.appending(path: "Mazo.apkg")
+        try AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basicAndReversed, fields: ["perro", "dog"]),
+                AnkiNote(type: .basicOptionalReversed, fields: ["gato", "cat", "y"]),
+                AnkiNote(type: .basicOptionalReversed, fields: ["casa", "house", ""]),
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["riñón", "kidney"], progress: .review(due: 30, interval: 10),
+                    reversedCard: (.review(due: 26, interval: 3), .suspended)),
+                AnkiNote(type: .basic, fields: ["uno", "one"]),
+            ]
+        ).write(to: file)
+        var window = engine.openCardsWindow(on: ladder)
+        window.startImport()
+        await window.previewImportAndWait(of: file)
+
+        let ticked = window.importing?.notesComingInBothWays
+        window.chooseToBringProgress(false)
+
+        #expect(ticked == 2)
+        #expect(window.importing?.notesComingInBothWays == 3)
     }
 
     @Test(

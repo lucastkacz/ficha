@@ -91,6 +91,22 @@ extension CardsWindowState {
             return .newAndPlaced(new: preview.newCount - preview.placedCount, placed: preview.placedCount)
         }
 
+        /// How many of the file's cards come in going both ways made of two
+        /// of its cards, one for each way, as the preview says, so that the
+        /// user sees why fewer cards come in than Anki had: an Anki package's
+        /// notes that make a reversed card, but, while Bring progress is
+        /// ticked, those whose reversed card alone Anki suspended, which come
+        /// in one way (ADR 0016).
+        public var notesComingInBothWays: Int {
+            guard let preview else {
+                return 0
+            }
+            let bringsProgress = offersProgress && bringsProgress
+            return preview.cards.count {
+                $0.backFirstProgress != nil && $0.goesBothWays(bringingProgress: bringsProgress)
+            }
+        }
+
         /// What the user chose, for the import, with the cards' progress
         /// brought onto `ladder`, the user's, when the sheet offers it and
         /// it's ticked.
