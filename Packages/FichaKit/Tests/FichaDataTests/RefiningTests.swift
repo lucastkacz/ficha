@@ -120,4 +120,91 @@ struct RefiningTests {
         #expect(saved.tags == ["filosofía"])
         #expect(saved.source == nil)
     }
+
+    // As `ficha cards` prints the cards, so a refine session sees which go
+    // both ways.
+    @Test("a card's encoding says whether it goes both ways, true or false")
+    func aCardsEncodingSaysWhetherItGoesBothWays() throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let serendipia = try approveCard("serendipia", in: engine)
+        try approveCard("ubuntu", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+
+        let encoded = try JSONSerialization.jsonObject(with: JSONEncoder().encode(try engine.cards()))
+        let cards = try #require(encoded as? [[String: Any]])
+
+        #expect(cards.map { $0["bothWays"] as? Bool } == [true, false])
+    }
+
+    @Test("approving a capture sets each card's Both ways, off when it's left out")
+    func approvingSetsBothWays() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let capture = try engine.newCapture("serendipia")
+
+        let approved = try await engine.approve(
+            capture.id,
+            into: [
+                draft(.word, front: "serendipia", back: "Un hallazgo por casualidad.", bothWays: true),
+                draft(.question, front: "¿De dónde viene «serendipia»?", back: "De un cuento persa.", bothWays: false),
+                draft(.concept, front: "Serendip", back: "El antiguo nombre de Sri Lanka."),
+            ])
+
+        #expect(approved.map(\.bothWays) == [true, false, false])
+        #expect(try engine.cards().map(\.bothWays) == [true, false, false])
+    }
+
+    // Fixing a card's text must never turn its Both ways off.
+    @Test("fixing a card keeps its Both ways when it's left out, and changes it when it's given")
+    func fixingKeepsOrChangesBothWays() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
+        for card in [serendipia, ubuntu, petricor] {
+            try engine.flag(card.id, note: note("Falta un ejemplo"))
+        }
+
+        let kept = try await engine.fix(
+            serendipia.id, with: draft(.word, front: "serendipia", back: "Un hallazgo por casualidad."))
+        let turnedOff = try await engine.fix(
+            ubuntu.id, with: draft(.concept, front: "ubuntu", back: "Soy porque somos.", bothWays: false))
+        let turnedOn = try await engine.fix(
+            petricor.id, with: draft(.word, front: "petricor", back: "El olor de la lluvia.", bothWays: true))
+
+        #expect([kept, turnedOff, turnedOn].map(\.bothWays) == [true, false, true])
+        #expect(try engine.cards().map(\.bothWays) == [true, false, true])
+        #expect(
+            try engine.cards().map(\.back) == [
+                "Un hallazgo por casualidad.", "Soy porque somos.", "El olor de la lluvia.",
+            ])
+        #expect(try engine.inbox().flaggedCards.isEmpty)
+    }
+
+    // Expanding a card loses nothing: `ficha approve-expansion` reads a card
+    // copied from `ficha cards`, `bothWays` and all, and only `ficha fix`
+    // changes it.
+    @Test("approving an expansion keeps its card's Both ways, whatever the card it's given says")
+    func approvingAnExpansionKeepsBothWays() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
+        let expansions = try ["Serendipia", "Ubuntu", "Petricor"].map { text in
+            try engine.expand(text: text, note: "Falta el origen", source: nil)
+        }
+
+        let kept = try await engine.approveExpansion(
+            expansions[0].id, into: draft(.word, front: "serendipia", back: "Un hallazgo por casualidad."))
+        let keptOn = try await engine.approveExpansion(
+            expansions[1].id, into: draft(.concept, front: "ubuntu", back: "Soy porque somos.", bothWays: false))
+        let keptOff = try await engine.approveExpansion(
+            expansions[2].id, into: draft(.word, front: "petricor", back: "El olor de la lluvia.", bothWays: true))
+
+        #expect([kept, keptOn, keptOff].map(\.id) == [serendipia.id, ubuntu.id, petricor.id])
+        #expect([kept, keptOn, keptOff].map(\.bothWays) == [true, true, false])
+        #expect(try engine.cards().map(\.bothWays) == [true, true, false])
+        #expect(try engine.inbox().expansions.isEmpty)
+    }
 }

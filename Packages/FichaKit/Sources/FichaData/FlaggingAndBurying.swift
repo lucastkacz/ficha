@@ -36,14 +36,20 @@ extension Engine {
 
     /// Fixes a flagged card in the inbox, as `fix(_:with:)` does, with the
     /// content `newContent` makes of the card as it is, or nothing when it
-    /// throws. Returns the card before and after.
-    func fix(_ cardID: Int64, changingContentWith newContent: (Card) throws(EngineError) -> CardContent)
-        throws(EngineError) -> (before: Card, fixed: Card)
-    {
+    /// throws. `bothWays` turns Both ways on or off, as `setBothWays(_:of:)`
+    /// does, and nil leaves it as it was. Returns the card before and after.
+    func fix(
+        _ cardID: Int64, changingContentWith newContent: (Card) throws(EngineError) -> CardContent,
+        bothWays: Bool? = nil
+    ) throws(EngineError) -> (before: Card, fixed: Card) {
         let fixedAt = time.now
         return try write { db in
             let card = try unflag(cardID, in: db)
-            return (card, try replaceContent(of: cardID, with: newContent(card), at: fixedAt, in: db))
+            let fixed = try replaceContent(of: cardID, with: newContent(card), at: fixedAt, in: db)
+            guard let bothWays else {
+                return (card, fixed)
+            }
+            return (card, try setBothWays(bothWays, of: cardID, in: db))
         }
     }
 

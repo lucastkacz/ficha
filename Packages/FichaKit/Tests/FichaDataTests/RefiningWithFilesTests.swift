@@ -370,7 +370,8 @@ final class RefiningWithFilesTests {
 
 /// A card for a test to approve, fix or expand from a refine session: it
 /// always has a front and a back, and no tags or source unless the test gives
-/// them, and changes no side's image or sound unless the test says so.
+/// them, and changes no side's image or sound, nor Both ways, unless the test
+/// says so.
 func draft(
     _ type: CardType?,
     front: String,
@@ -380,9 +381,10 @@ func draft(
     frontImage: FileChange = .keep,
     backImage: FileChange = .keep,
     frontSound: FileChange = .keep,
-    backSound: FileChange = .keep
+    backSound: FileChange = .keep,
+    bothWays: Bool? = nil
 ) -> CardDraft {
     CardDraft(
         type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
-        backImage: backImage, frontSound: frontSound, backSound: backSound)
+        backImage: backImage, frontSound: frontSound, backSound: backSound, bothWays: bothWays)
 }

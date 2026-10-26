@@ -45,8 +45,9 @@ struct BothWaysTests {
         #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
     }
 
-    // A refine session's `ficha fix` and `ficha approve-expansion` don't know
-    // the switch yet, nor does a side's image or sound put on or taken off.
+    // Changing what a card holds, in the Cards window or in a refine session,
+    // leaves the switch alone unless it's given, as RefiningTests checks for
+    // `ficha fix`.
     @Test("editing, fixing, approving an expansion and putting a sound on a side keep a card's Both ways")
     func changingTheContentKeepsBothWays() async throws {
         let la = try await addTone(440, to: engine)

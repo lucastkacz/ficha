@@ -65,7 +65,7 @@ extension Engine {
 
     /// Turns Both ways on for the card with this id when `bothWays` is true,
     /// or off when it's false, and returns the card as it is then.
-    private func setBothWays(_ bothWays: Bool, of cardID: Int64, in db: Database) throws -> Card {
+    func setBothWays(_ bothWays: Bool, of cardID: Int64, in db: Database) throws -> Card {
         try updateCard(cardID, setting: "bothWays = ?", to: [bothWays], in: db)
     }
 }

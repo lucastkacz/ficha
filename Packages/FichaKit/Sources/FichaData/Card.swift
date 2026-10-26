@@ -6,8 +6,7 @@ internal import GRDB
 /// engine saved it when he approved it or the user created it. Each side
 /// holds text, an image, a sound, or any of them together. The `ficha` CLI
 /// prints it as JSON, without the type, images, sounds, source, edited time,
-/// capture, flag, burial or set-aside tags it doesn't have, and without
-/// whether it goes both ways.
+/// capture, flag, burial or set-aside tags it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none.
@@ -56,13 +55,6 @@ public struct Card: Sendable, Equatable, Encodable {
     /// fixed, buried, or set aside with one of its tags.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
-    }
-
-    /// What the `ficha` CLI prints: everything but `bothWays`, which the CLI
-    /// doesn't show yet.
-    private enum CodingKeys: String, CodingKey {
-        case id, type, front, back, frontImage, backImage, frontSound, backSound, tags, source, createdAt, editedAt
-        case captureID, flag, buriedAt, setAsideBy
     }
 }
 

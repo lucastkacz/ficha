@@ -17,6 +17,9 @@ struct FixCommand: EngineCommand {
                "tags": ["lenguaje"], "source": "Un ensayo de Borges"}
               EOF
 
+            bothWays true or false switches Both ways on or off, so the card comes back first too, its back on \
+            top, or doesn't; left out, the card keeps its own.
+
             Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, \
             unless one of its tags is set aside, and the command prints it.
             """

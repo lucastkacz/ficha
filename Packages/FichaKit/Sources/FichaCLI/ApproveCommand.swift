@@ -19,6 +19,9 @@ struct ApproveCommand: EngineCommand {
 
             \(fileFields) Left out or null, a side has none.
 
+            bothWays true makes a card go both ways: once you've met it, it comes back first too, its back on \
+            top. Left out or false, it goes one way.
+
             It saves the cards as new, in that order, takes the capture out of the inbox and prints the cards. A \
             follow-up is approved the same way, and the card it follows up stays as it is.
             """
