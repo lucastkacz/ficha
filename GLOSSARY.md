@@ -99,6 +99,10 @@ _Avoid_: style guide, template, prompt
 The small floating window on the Mac where cards show up and the user goes through them.
 _Avoid_: popup, window, notification
 
+**Widget**:
+A small view of Ficha on the Mac's desktop or in Notification Center, with the front of the next card to review, or when the next one comes, which opens the review panel on that card.
+_Avoid_: tile, complication
+
 **Review**:
 One pass over one card: the user sees its front, or back first its back, flips it to check the other side, and rates it.
 _Avoid_: answer, attempt, study
@@ -116,7 +120,7 @@ Every first view and review, with when the user answered, whether an appearance 
 _Avoid_: history, review history
 
 **Review now**:
-The user reviewing on their own, outside an appearance: from the menu bar on the Mac, or the Review tab on the iPhone.
+The user reviewing on their own, outside an appearance: from the menu bar, the Shortcuts app or a widget on the Mac, or the Review tab on the iPhone.
 _Avoid_: manual session, study mode
 
 **See more**:
@@ -232,7 +236,7 @@ _Avoid_: history, session log
 ### Backups
 
 **Backup**:
-A copy of everything Ficha keeps, images and sounds included, as it was at one moment, which Ficha saves on its own every day, or as often as the user sets, or when they ask. Ficha keeps the last 7, or as many as they set.
+A copy of everything Ficha keeps, images and sounds included, as it was at one moment, which Ficha saves on its own every day, or as often as the user sets, or when they ask. Ficha keeps the last 7, or as many as they set, and each device keeps its own.
 _Avoid_: snapshot, export
 
 **Copy before an update**:
@@ -245,5 +249,11 @@ A copy of everything as it was just before a restore, so restoring it undoes the
 A copy of everything as it was just before an import, so restoring it undoes the import. Ficha never deletes it on its own.
 
 **Restore**:
-Bringing back a backup, or another copy Ficha saved, in place of everything as it is now.
+Bringing back a backup, or another copy Ficha saved, in place of everything as it is now. On a device that syncs, it turns sync off, and once the user turns it on again, the restored copy replaces what their other devices hold.
 _Avoid_: revert, roll back
+
+### Sync
+
+**Sync**:
+Keeping the user's cards, their progress and the inbox the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since a deletion reaches every device.
+_Avoid_: cloud, mirror, upload
