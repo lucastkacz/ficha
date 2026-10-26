@@ -58,9 +58,9 @@ extension Engine {
         }
     }
 
-    /// What the menu shows of Lucas's progress: how many cards in his reviews
-    /// are due, how many he learned, and how many captures and flagged cards
-    /// wait in the inbox.
+    /// What the menu shows of Lucas's progress: how many ways of the cards in
+    /// his reviews are due, how many of the cards he learned, and how many
+    /// captures and flagged cards wait in the inbox.
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in

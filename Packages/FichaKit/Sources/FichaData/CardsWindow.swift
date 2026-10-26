@@ -89,11 +89,12 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 
 /// An entry of a card's review log as the Cards window shows it under the
 /// card, in its chart and its list: the first view, review or placement, and
-/// the step the card stood on after it.
+/// the step the entry's way stood on after it.
 public struct ReviewLogRow: Sendable, Equatable {
     /// The first view, review or placement, as the review log keeps it.
     public let entry: ReviewLogEntry
-    /// The step the card stood on after it, counted from 0, the first step.
+    /// The step the entry's way stood on after it, counted from 0, the first
+    /// step.
     public let step: Int
 }
 

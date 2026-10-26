@@ -102,7 +102,7 @@ public struct Ladder: Sendable, Equatable {
     /// or more, so that switching Both ways on changes nothing there.
     public func counts(of cards: CardsInReviews, at now: Date) throws(UnexpectedReviewLog) -> (due: Int, learned: Int) {
         let standings = try cards.standings(on: self)
-        let frontFirst = standings.filter { $0.way.way == .frontFirst }.map(\.standing)
+        let frontFirst = standings.filter { cardWay, _ in cardWay.way == .frontFirst }.map(\.standing)
         return (standings.count { $0.standing.isDue(at: now) }, frontFirst.count(where: isLearned))
     }
 

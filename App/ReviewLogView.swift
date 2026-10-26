@@ -6,10 +6,10 @@ import SwiftUI
 /// A card's review log in the Cards window's detail, under where the card
 /// stands: a chart of the step it stood on after each first view and review,
 /// and after the placement an import put it on its step with (ADR 0013),
-/// with a key, and every entry under it, the latest first. A new card says it
-/// has no reviews yet instead.
+/// each the step of the entry's way, with a key, and every entry under it,
+/// the latest first. A new card says it has no reviews yet instead.
 struct ReviewLogView: View {
-    /// The card's review log, oldest first, each entry with the step the card
+    /// The card's review log, oldest first, each entry with the step its way
     /// stood on after it.
     let rows: [ReviewLogRow]
     /// The ladder Lucas set, whose steps the chart's vertical axis spans, all
@@ -206,8 +206,8 @@ private struct ResponseTime: View {
 }
 
 extension ReviewLogRow {
-    /// The step the card stood on after the entry, counted from 1 as Settings
-    /// counts them.
+    /// The step the entry's way stood on after it, counted from 1 as
+    /// Settings counts them.
     fileprivate var stepNumber: Int {
         step + 1
     }

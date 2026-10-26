@@ -53,11 +53,11 @@ extension ReviewSettings {
         // priority cards.
         var reviews = Array(due.priority.prefix(cardsPerAppearance))
         var firstView =
-            bringsNewCard(after: reviews.count, metToday: metToday) ? new.priority.taking(turn: turn) : nil
+            bringsNewCard(after: reviews.count, metToday: metToday) ? new.priority.first(preferring: turn) : nil
         let slotsLeft = cardsPerAppearance - reviews.count - (firstView == nil ? 0 : 1)
         reviews += due.others.prefix(slotsLeft)
         if firstView == nil, bringsNewCard(after: reviews.count, metToday: metToday) {
-            firstView = new.others.taking(turn: turn)
+            firstView = new.others.first(preferring: turn)
         }
         return PanelCardIDs(reviews: reviews, reviewsAhead: [], firstView: firstView)
     }
@@ -92,9 +92,9 @@ extension ReviewSettings {
 }
 
 extension [CardWay] {
-    /// The first of these new ways that goes `turn`'s way, whose turn it is,
-    /// or else the first of them, or nil when there are none.
-    fileprivate func taking(turn: Way) -> CardWay? {
+    /// The first of these new ways that goes `turn`, the way whose turn it
+    /// is, or else the first of them, or nil when there are none.
+    fileprivate func first(preferring turn: Way) -> CardWay? {
         first { $0.way == turn } ?? first
     }
 }

@@ -196,11 +196,6 @@ public struct ReviewPanelState: Sendable {
             return .done
         }
         let (card, way) = (current.card, current.way)
-        let showsLowerSide =
-            switch current {
-            case .firstView(_, .frontFirst): true
-            case .firstView, .review, .reviewAhead: isFlipped
-            }
         if flagging != nil {
             return .flagging(card, way, showsLowerSide: showsLowerSide)
         }
@@ -255,6 +250,17 @@ public struct ReviewPanelState: Sendable {
     /// panel is open and he isn't writing a note or a question.
     public var canUndo: Bool {
         outcome == nil && (!followUpsOnCard.isEmpty || !wentThrough.isEmpty) && flagging == nil && asking == nil
+    }
+
+    /// Whether the card Lucas is on shows its lower side under its upper one:
+    /// a first view front first from the start, and otherwise once he flipped
+    /// it, also while he writes about it.
+    var showsLowerSide: Bool {
+        switch current {
+        case .firstView(_, .frontFirst): true
+        case .firstView, .review, .reviewAhead: isFlipped
+        case nil: false
+        }
     }
 
     /// Whether Lucas is on a card, as it shows, to answer, flag, bury or ask
@@ -526,10 +532,10 @@ public struct ReviewPanelState: Sendable {
     /// takes back: also once he went through every card. The engine takes
     /// back his answer to that way, unflags the card or unburies it, or, for
     /// a card he flagged when the panel offered it, unflags it and then takes
-    /// back his answer. When the card
-    /// or the follow-up changed outside the panel since, nothing more is
-    /// undone. Nothing is left to undo once the panel closed. The panel's ⌘Z
-    /// undoes through `undoLastCard()`, which says what failed.
+    /// back his answer. When the card or the follow-up changed outside the
+    /// panel since, nothing more is undone. Nothing is left to undo once the
+    /// panel closed. The panel's ⌘Z undoes through `undoLastCard()`, which
+    /// says what failed.
     public mutating func undo() throws(EngineError) {
         guard canUndo else { return }
         if let followUpID = followUpsOnCard.last, let current {

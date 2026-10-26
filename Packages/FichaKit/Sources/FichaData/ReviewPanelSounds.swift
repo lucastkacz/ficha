@@ -50,11 +50,6 @@ extension ReviewPanelState {
         if let playingSound {
             return playingSound.side
         }
-        let showsLowerSide =
-            switch content {
-            case .firstView, .bothSides: true
-            case .nothingToReview, .upperSide, .flagging, .asking, .done: false
-            }
         if showsLowerSide, readSound(on: way.lowerSide) != nil {
             return way.lowerSide
         }

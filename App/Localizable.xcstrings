@@ -1957,9 +1957,6 @@
     "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session. The cards you added from it are saved." : {
       "comment" : "An alert's message in the Cards window, after closing the card form, when its capture already left the inbox."
     },
-    "This card comes back first: recall its front from its back." : {
-
-    },
     "This card was deleted meanwhile, in the Cards window. Close the review panel and open “Review now” again." : {
       "comment" : "An alert's message in the review panel, when the card it shows was deleted meanwhile."
     },

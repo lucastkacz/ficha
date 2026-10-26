@@ -576,8 +576,7 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The badge of a card that shows back first, with a tooltip on what the
-    /// user recalls.
+    /// The badge of a card that shows back first.
     private var backFirstBadge: some View {
         Text(
             "Back first",
@@ -589,7 +588,6 @@ struct ReviewPanelView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
-        .help(Text("This card comes back first: recall its front from its back."))
     }
 
     /// The line at the top of a card: its badges, "New" on a first view,
@@ -770,8 +768,8 @@ private struct MoreTagsCapsule: View {
 /// it's offered: the panel's window takes the view's smallest and largest
 /// size as its own, which this makes the same, so the window fits the content
 /// as it changes. In `maximum`, a card taller than that scrolls, and one that
-/// fits in less, once its front moves under the line at its top, takes less.
-/// SwiftUI's `Layout` is standard; this one is ours.
+/// fits in less, once its upper side moves under the line at its top, takes
+/// less. SwiftUI's `Layout` is standard; this one is ours.
 private struct HeightUpTo: Layout {
     let maximum: CGFloat
 

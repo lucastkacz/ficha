@@ -127,6 +127,22 @@ struct UndoTests {
         #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .backFirst, .frontFirst])
     }
 
+    @Test("undoing a back-first first view leaves that way new, and shows the card back first, whole")
+    func undoingABackFirstFirstViewLeavesThatWayNew() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        var panel = try engine.openPanel(.reviewNow, with: [.firstView(bothWays[0], .backFirst)], settings: settings)
+        panel.flip()
+        panel.endFirstView()
+
+        panel.undoLastCard()
+
+        #expect(panel.content == .firstView(bothWays[0], .backFirst))
+        #expect(try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder) == .new)
+        #expect(try engine.reviewLog().map(\.way) == [.frontFirst])
+    }
+
     // Closing the panel writes it into the appearance log, as finished or
     // snoozed, by the cards Lucas went through.
     @Test("once the panel closed, nothing is left to undo")
