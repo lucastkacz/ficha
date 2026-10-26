@@ -138,6 +138,9 @@ public struct ImportChoices: Sendable, Equatable {
     /// The name each tag the preview proposes goes on the cards with, by the
     /// proposed name: another one, or a blank one, which leaves the tag out.
     /// A proposed tag that isn't here goes on the cards as it's proposed.
+    /// On a card that already has a tag it repeats as duplicates are
+    /// compared, its own or one the import proposed before, it folds into
+    /// that tag.
     public var tagNames: [String: String]
     public var repeatedCards: RepeatedCards
     public var progress: Progress
@@ -262,8 +265,9 @@ extension Engine {
     /// repeats a card of the user's updates it or is skipped. A card goes
     /// both ways as the file says, and an updated one keeps its own Both ways
     /// when the file says nothing of it. Every card that comes in or is
-    /// updated gets the tags it proposes, as the user named them, and its
-    /// tags that differ only in case and accents come in as one, the first.
+    /// updated gets the tags it proposes, as the user named them; of its tags
+    /// that repeat each other as duplicates are compared, such as “banderas”
+    /// and “Banderas”, the first comes in.
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
@@ -385,7 +389,7 @@ extension ImportedCard {
         try checked(
             CardContent(
                 type: content.type, front: content.front, back: content.back,
-                tags: repeatedTagsFolded(in: content.tags + tags),
+                tags: (content.tags + tags).uniqued(on: duplicateKey),
                 source: content.source, frontImage: content.frontImage, backImage: content.backImage,
                 frontSound: content.frontSound, backSound: content.backSound))
     }
@@ -402,7 +406,7 @@ extension ImportedCard {
                 type: fields.contains(.type) ? content.type : card.type,
                 front: card.front,
                 back: content.back,
-                tags: repeatedTagsFolded(in: (fields.contains(.tags) ? content.tags : card.tags) + tags),
+                tags: ((fields.contains(.tags) ? content.tags : card.tags) + tags).uniqued(on: duplicateKey),
                 source: fields.contains(.source) ? content.source : card.source,
                 frontImage: card.frontImage,
                 backImage: fields.contains(.backImage) ? content.backImage : card.backImage,

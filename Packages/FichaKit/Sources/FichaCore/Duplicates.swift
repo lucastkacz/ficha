@@ -9,19 +9,12 @@ public func repeats(_ captureText: String, _ text: String) -> Bool {
     comparable(captureText) == comparable(text)
 }
 
-/// `text`, another capture's text or a card's front, as `repeats` compares
-/// it, for finding the duplicates among many at once: two texts repeat each
-/// other when their keys are the same.
+/// `text`, another capture's text, a card's front or one of an imported
+/// card's tags, as `repeats` compares it, for finding the duplicates among
+/// many at once: two texts repeat each other when their keys are the same,
+/// as “banderas” and “Banderas” do (#229).
 public func duplicateKey(_ text: String) -> String {
     comparable(text)
-}
-
-/// `tags`, a card's, each once, in their order: a tag that repeats an earlier
-/// one as duplicates are compared, such as “Banderas” after “banderas”, folds
-/// into that one, but “ano” after “año” stays (#229).
-public func repeatedTagsFolded(in tags: [String]) -> [String] {
-    var keys: Set<String> = []
-    return tags.filter { keys.insert(comparable($0)).inserted }
 }
 
 /// Whether `text`, a card's front, back or source, mentions `search`, what
