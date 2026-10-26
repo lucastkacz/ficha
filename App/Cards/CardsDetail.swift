@@ -3,7 +3,9 @@ import FichaData
 import SwiftUI
 
 /// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says, since a buried card keeps its flag.
+/// buried, as where it stands says, since a buried card keeps its flag. A
+/// front without text says "Image" or "Sound" in gray, as Mail says "No
+/// Subject", rather than leave the cell empty.
 struct FrontCell: View {
     let card: Card
     /// Whether a long front goes on over more lines, as below a capture in
@@ -23,9 +25,24 @@ struct FrontCell: View {
                 }
                 BuriedIcon()
             }
-            Text(card.front)
-                .lineLimit(wraps ? nil : 1)
-                .fixedSize(horizontal: false, vertical: wraps)
+            switch card.frontWithoutText {
+            case .image:
+                Text(
+                    "Image",
+                    comment: "The Cards window, in place of a card's front that has an image and no text."
+                )
+                .foregroundStyle(.secondary)
+            case .sound:
+                Text(
+                    "Sound",
+                    comment: "The Cards window, in place of a card's front that has only a sound."
+                )
+                .foregroundStyle(.secondary)
+            case nil:
+                Text(card.front)
+                    .lineLimit(wraps ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: wraps)
+            }
         }
     }
 }

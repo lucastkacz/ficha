@@ -226,6 +226,26 @@ final class CardsWindowSoundTests {
         #expect(cards.map { listed[$0.id]?.sidesWithSounds } == [nil, .front, .back, .both, nil, nil])
     }
 
+    @Test("the table names a front without text by its image, or else by its sound")
+    func theTableNamesAFrontWithoutText() async throws {
+        let la = try await addTone(440, to: engine)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let cards = try [
+            card(nil, front: "¿Qué ave es?", back: "El hornero.", frontImage: bird),
+            card(nil, front: "", back: "El hornero.", frontImage: bird),
+            card(nil, front: "", back: "La.", frontSound: la),
+            card(nil, front: "", back: "El hornero, que canta.", frontImage: bird, frontSound: la),
+        ].map { try engine.create($0) }
+        let window = openWindow()
+
+        guard case .success(.cards(let rows)) = window.listing else {
+            Issue.record("The table lists no cards")
+            return
+        }
+        let listed = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0.card) })
+        #expect(cards.map { listed[$0.id]?.frontWithoutText } == [nil, .image, .sound, .image])
+    }
+
     @Test(
         "one sound plays at a time, ■ stops it, and selecting another card, ending an edit or closing the form does too"
     )

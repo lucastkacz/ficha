@@ -116,6 +116,19 @@ extension Card {
         }
     }
 
+    /// What the front holds when it has no text: its image, or else its
+    /// sound, which the Cards window names with a word where it lists the
+    /// front (#229). Nil when the front has text.
+    public var frontWithoutText: SideMedia? {
+        guard front.isEmpty else {
+            return nil
+        }
+        if frontImage != nil {
+            return .image
+        }
+        return frontSound != nil ? .sound : nil
+    }
+
     /// The image on `side`, or nil for none.
     public func image(on side: CardSide) -> ImageName? {
         switch side {
@@ -143,6 +156,12 @@ extension Card {
     public var sidesWithSounds: WhichSides? {
         WhichSides(front: frontSound != nil, back: backSound != nil)
     }
+}
+
+/// What a side without text holds instead: an image or a sound.
+public enum SideMedia: Sendable, Equatable {
+    case image
+    case sound
 }
 
 /// Which sides of a card have something: its front, its back or both.
