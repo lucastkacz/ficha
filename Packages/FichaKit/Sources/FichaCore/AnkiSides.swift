@@ -1,15 +1,15 @@
 import Foundation
 
 /// A side of an Anki card as Ficha brings it in, from the HTML Anki renders
-/// for it: its plain text, without its sounds, `[sound:…]`, and its images,
-/// which the HTML's tags are; its image, the first of the package's files
-/// the HTML shows, when the package has it and Ficha can read it; and its
-/// sound, the first the HTML plays, a video's sound included, when the
-/// package has it and Ficha can read it. The side's other images and sounds
-/// are dropped, since a side holds one of each at most, and so are images
-/// on the web, which Ficha never fetches. A side that is one of Anki's
-/// formulas alone is the picture Anki drew of it, without text, when the
-/// package has it and Ficha can read it.
+/// for it, without its sounds, and the sounds it plays: its plain text,
+/// without its images, which the HTML's tags are; its image, the first of
+/// the package's files the HTML shows, when the package has it and Ficha can
+/// read it; and its sound, the first it plays, a video's sound included,
+/// when the package has it and Ficha can read it. The side's other images
+/// and sounds are dropped, since a side holds one of each at most, and so
+/// are images on the web, which Ficha never fetches. A side that is one of
+/// Anki's formulas alone is the picture Anki drew of it, without text, when
+/// the package has it and Ficha can read it.
 struct AnkiSide {
     let text: String
     let image: ImageName?
@@ -26,16 +26,16 @@ struct AnkiSide {
     /// none.
     private let soundLookup: SoundLookup?
 
-    /// The side Anki renders as `html`, with its image as `images` finds it
-    /// by the name the HTML gives it, or by the name of Anki's picture of
+    /// The side Anki renders as `html`, without its sounds, which plays the
+    /// sounds named `soundNames`, in order: with its image as `images` finds
+    /// it by the name the HTML gives it, or by the name of Anki's picture of
     /// its formula, after the SHA-1 digest `sha1` gives as lowercase hex: a
     /// PNG's, or an SVG's when the package has no PNG by that name; and with
-    /// its sound as `sounds` finds it by the name the HTML gives it.
+    /// its first sound as `sounds` finds it.
     init(
-        html: String, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
-        sha1: (String) -> String
+        html: String, playing soundNames: [String], images: (String) -> ImageLookup,
+        sounds: (String) async -> SoundLookup, sha1: (String) -> String
     ) async {
-        let (soundNames, html) = soundTags(in: html)
         dropsSounds = soundNames.count > 1
         if let name = soundNames.first {
             soundLookup = await sounds(name)
@@ -109,7 +109,7 @@ struct AnkiSide {
 /// character references decoded. A video plays this way too. Read from the
 /// HTML's UTF-8 bytes by hand, as `holdsBox(_:)` reads a side, since a regex
 /// on every side of a big deck slowed its preview.
-private func soundTags(in html: String) -> (names: [String], rest: String) {
+func soundTags(in html: String) -> (names: [String], rest: String) {
     let opening = "[sound:".utf8
     let bytes = html.utf8
     var names: [String] = []

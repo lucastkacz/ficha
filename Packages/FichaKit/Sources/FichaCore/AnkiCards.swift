@@ -7,7 +7,8 @@ extension AnkiCollection {
     /// both as Anki's reviewer shows them when nothing was typed in a box to
     /// type the answer in, as plain text, each with the first image it
     /// shows, as `images` finds it by its name in the package, and the first
-    /// sound it plays, as `sounds` finds it: a side whose image or sound
+    /// sound it plays, as `sounds` finds it, the back's among the answer
+    /// side's own, wherever they are on it: a side whose image or sound
     /// isn't found comes in without it, and its other images and sounds are
     /// dropped. A side that is one of Anki's formulas alone, such as
     /// `[$]x^2[/$]`, comes in as the picture Anki drew of it, found by its
@@ -96,9 +97,23 @@ extension AnkiCollection {
             let front = questionWithoutTypedAnswers(question)
             let shownAnswer = answerShowingTypedAnswers(
                 answer, question: question, note: note, noteType: noteType, cardNumber: number)
+            let (frontSounds, frontWithoutSounds) = soundTags(in: front)
+            // The answer side plays its own sounds, above where the answer
+            // starts too, but not the question's that `{{FrontSide}}` shows
+            // again, which Anki plays with the question
+            // (`qt/aqt/reviewer.py`, `replay_audio`): those of the answer
+            // rendered with a front side without its sounds.
+            let answerSounds =
+                frontSounds.isEmpty
+                ? soundTags(in: answer).names
+                : soundTags(
+                    in: try parsed.get().answer.render(
+                        fields: fields, cardNumber: number, frontSide: soundTags(in: question).rest)
+                ).names
             return .rendered(
                 RenderedAnkiCard(
-                    card: card, front: front, back: back(ofAnswer: shownAnswer, question: front),
+                    card: card, front: frontWithoutSounds, frontSounds: frontSounds,
+                    back: soundTags(in: back(ofAnswer: shownAnswer, question: front)).rest, backSounds: answerSounds,
                     tags: tags(of: note, inDeck: card.homeDeckID)))
         } catch {
             return .leftOut(.brokenAnkiTemplate)
@@ -184,14 +199,19 @@ private enum Rendering {
 }
 
 /// An Anki card as Anki shows it, before it's a Ficha card: the card, with
-/// where it stands in Anki, its front and back as HTML, with their sounds
-/// and images, and the tags it proposes.
+/// where it stands in Anki, its front and back as HTML, with their images,
+/// without their sounds, which it names apart, and the tags it proposes.
 private struct RenderedAnkiCard {
     let card: AnkiCard
     /// The question side.
     let front: String
+    /// The names of the sounds the question side plays, each once, in order.
+    let frontSounds: [String]
     /// The answer side, from where the answer starts.
     let back: String
+    /// The names of the sounds the answer side plays, each once, in order:
+    /// its own, wherever they are on it.
+    let backSounds: [String]
     let tags: [String]
 
     /// The card as Ficha imports it, each side as plain text, with its first
@@ -203,8 +223,8 @@ private struct RenderedAnkiCard {
         line: Int, progress: ImportedProgress, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
         sha1: (String) -> String
     ) async -> Imported {
-        let front = await AnkiSide(html: front, images: images, sounds: sounds, sha1: sha1)
-        let back = await AnkiSide(html: back, images: images, sounds: sounds, sha1: sha1)
+        let front = await AnkiSide(html: front, playing: frontSounds, images: images, sounds: sounds, sha1: sha1)
+        let back = await AnkiSide(html: back, playing: backSounds, images: images, sounds: sounds, sha1: sha1)
         guard
             let content = CardContent(
                 type: nil, front: front.text, back: back.text, tags: [], source: nil, frontImage: front.image,

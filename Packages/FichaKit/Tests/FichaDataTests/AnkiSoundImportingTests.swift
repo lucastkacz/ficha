@@ -210,4 +210,46 @@ final class AnkiSoundImportingTests {
         #expect(cards.map(\.frontSound) == [mine, nil])
         #expect(cards.map(\.backSound) == [try await nameInTheForm(of: la, named: "la.wav"), nil])
     }
+
+    // As Japanese Core 2000 plays a word above the line, and as Anki plays
+    // the answer's sounds: without the question's that `{{FrontSide}}`
+    // shows again, which it plays with the question (`qt/aqt/reviewer.py`,
+    // `replay_audio`).
+    @Test(
+        "the back's sound is the first the answer side plays, above where the answer starts too, and not the front's that it shows again",
+        arguments: [AnkiPackage.Format.supportOlderAnkiVersions, .current])
+    func theBacksSoundIsTheAnswersOwn(format: AnkiPackage.Format) async throws {
+        let la = try tone(seconds: 1, hertz: 440)
+        let mi = try tone(seconds: 1, hertz: 330)
+        let listening = AnkiNoteType(
+            name: "Escucha", fields: ["Front", "Audio", "Back"],
+            templates: [
+                AnkiCardTemplate(
+                    name: "Card 1", question: "{{Front}}",
+                    answer: "{{FrontSide}}<div>{{Audio}}</div>\n\n<hr id=answer>\n\n{{Back}}")
+            ])
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: listening, fields: ["coloratura", "[sound:la.wav]", "Un ornamento."]),
+                AnkiNote(type: listening, fields: ["[sound:mi.wav]", "", "La nota mi."]),
+                AnkiNote(type: .basic, fields: ["[sound:mi.wav]", "La nota mi, otra vez. [sound:mi.wav]"]),
+            ],
+            media: ["la.wav": la, "mi.wav": mi])
+
+        let preview = try await preview(package)
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        let (laName, miName) = (
+            try await nameInTheForm(of: la, named: "la.wav"), try await nameInTheForm(of: mi, named: "mi.wav")
+        )
+        let cards = try engine.cards()
+        #expect(
+            cards.map { [$0.front, $0.back] } == [
+                ["coloratura", "Un ornamento."], ["", "La nota mi."], ["", "La nota mi, otra vez."],
+            ])
+        #expect(cards.map(\.frontSound) == [nil, miName, miName])
+        #expect(cards.map(\.backSound) == [laName, nil, miName])
+        #expect(preview.cardsWithSoundsDropped == 0)
+    }
 }
