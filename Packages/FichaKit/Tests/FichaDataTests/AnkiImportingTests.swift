@@ -84,7 +84,7 @@ final class AnkiImportingTests {
                 AnkiNote(
                     type: .basic,
                     fields: [
-                        "sustantivo<br><br><br><br><br><br>Como arroz.",
+                        "sustantivo<br><br><br>[sound:arroz.mp3]<br><br><br>Como arroz.",
                         "<div>arroz</div><div><br></div><div>El grano.</div><br><br><br><div>comida</div>",
                     ])
             ])
