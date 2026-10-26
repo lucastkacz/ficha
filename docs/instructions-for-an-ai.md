@@ -134,4 +134,4 @@ This file holds three cards:
 
 - "serendipity", a word that goes both ways, whose example writes the word as "…", so that its back doesn't give it away.
 - "mitochondria", a concept that goes both ways.
-- "What is the capital of Mongolia?", a question, which goes one way, as every question does.
+- "What is the capital of Mongolia?", a question, which goes one way.

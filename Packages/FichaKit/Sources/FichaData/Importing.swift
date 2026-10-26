@@ -350,7 +350,8 @@ extension ImportedCard {
     /// What `card`, the user's card it repeats, holds once it's updated: its
     /// own front, with its image and its sound, the back and every field the
     /// file gives, the back's image and sound among them, its own fields that
-    /// the file doesn't, and `tags` added to its tags.
+    /// the file doesn't, and `tags` added to its tags. Both ways isn't what a
+    /// card holds: the import sets it apart.
     fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(

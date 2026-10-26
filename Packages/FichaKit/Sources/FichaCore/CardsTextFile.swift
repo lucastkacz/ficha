@@ -52,7 +52,7 @@ public enum CardsTextFile {
         /// Whether a file has it only when its `#columns` header names it,
         /// as an export writes it only when a card needs it: a side's file,
         /// or Both ways.
-        var isNamedOnly: Bool {
+        var comesOnlyByName: Bool {
             isFile || self == .bothWays
         }
     }
@@ -228,7 +228,7 @@ public enum CardsTextFile {
         ]
         return ImportedCard(
             content: content,
-            bothWays: !(values[.bothWays] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            bothWays: nonBlank(values[.bothWays]) != nil,
             fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line)
     }
 
@@ -402,7 +402,7 @@ private struct ColumnMap {
         tagsColumn = headers.tagsColumn
         skippedColumns = headers.skippedColumns
         unplaced = CardsTextFile.Column.allCases.filter {
-            !$0.isNamedOnly && ($0 != .tags || headers.tagsColumn == nil)
+            !$0.comesOnlyByName && ($0 != .tags || headers.tagsColumn == nil)
         }
         guard let columnNames = headers.columnNames else {
             named = nil
