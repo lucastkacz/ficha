@@ -266,7 +266,7 @@ public struct ImportWork: Sendable {
     fileprivate let engine: Engine
     fileprivate let job: Job
 
-    /// Does the work, where it's called, and says what it did.
+    /// Does the work, away from the caller's actor, and says what it did.
     public func run() async -> Done {
         switch job {
         case .preview(let file):

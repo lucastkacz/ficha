@@ -530,8 +530,8 @@ func importingState(of model: AppModel) throws -> CardsWindowState {
 }
 
 /// Reads `file` for the Import sheet in `state`, as the app does once the
-/// user chose it, the reading waited for at once rather than run away from
-/// the main actor, so that the picture shows its preview.
+/// user chose it, and waits for the reading, so that the picture shows its
+/// preview.
 func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws {
     if let work = state.previewImport(of: file) {
         state.finishImportWork(try waitFor { await work.run() })

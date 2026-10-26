@@ -259,18 +259,9 @@ extension Engine {
         // refer to them, and those of them no card uses removed again after,
         // such as a skipped card's, or all of them when the cards can't be
         // written.
-        let imagesComingIn = Set(preview.images.keys)
-        let soundsComingIn = Set(preview.sounds.keys)
-        var (added, updated, skipped) = (0, 0, 0)
-        var letGo = (images: Set<ImageName>(), sounds: Set<SoundName>())
-        do throws(EngineError) {
-            for image in preview.images.values {
-                try keepImage(image)
-            }
-            for sound in preview.sounds.values {
-                try keepSound(sound)
-            }
-            (added, updated, skipped, letGo) = try write { db in
+        let held = HeldFiles(images: Array(preview.images.values), sounds: Array(preview.sounds.values))
+        let (added, updated, skipped, letGo) = try keeping(held) { () throws(EngineError) in
+            try write { db in
                 var (added, updated, skipped) = (0, 0, 0)
                 var letGo = (images: Set<ImageName>(), sounds: Set<SoundName>())
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
@@ -295,12 +286,9 @@ extension Engine {
                 }
                 return (added, updated, skipped, letGo)
             }
-        } catch {
-            removeFilesNoCardUses(images: imagesComingIn, sounds: soundsComingIn)
-            throw error
         }
         removeFilesNoCardUses(
-            images: imagesComingIn.union(letGo.images), sounds: soundsComingIn.union(letGo.sounds))
+            images: Set(preview.images.keys).union(letGo.images), sounds: Set(preview.sounds.keys).union(letGo.sounds))
         return ImportOutcome(added: added, updated: updated, skipped: skipped, copyBeforeImport: copy)
     }
 

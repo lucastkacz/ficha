@@ -52,8 +52,9 @@ final class SoundsInZipsTests {
         let count = try engine.export(.all, to: file)
 
         #expect(count == 4)
+        // Two cards play the la, which the zip holds once.
         let archive = try Archive(url: file, accessMode: .read)
-        #expect(Set(archive.map(\.path)) == ["Ópera.txt", la.rawValue, mi.rawValue, bird.rawValue])
+        #expect(archive.map(\.path).sorted() == ["Ópera.txt", la.rawValue, mi.rawValue, bird.rawValue].sorted())
         let other = try Engine(location: .inMemory, time: time, calendar: calendar)
         let preview = try await other.previewImport(of: file)
         #expect(preview.leftOut == [])
