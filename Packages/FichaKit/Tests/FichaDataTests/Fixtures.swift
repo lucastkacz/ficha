@@ -111,7 +111,13 @@ extension Engine {
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>
     ) throws -> ReviewPanelState {
         try openPanel(
-            trigger, with: cards, settings: settings, clock: clock, forgottenOftenNote: { "Forgotten \($0) times" })
+            trigger, with: cards, settings: settings, clock: clock,
+            forgottenOftenNote: { forgotten in
+                switch forgotten.way {
+                case .frontFirst: "Forgotten \(forgotten.times) times"
+                case .backFirst: "Forgotten \(forgotten.times) times back first"
+                }
+            })
     }
 }
 

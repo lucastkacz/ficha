@@ -26,8 +26,9 @@ extension Engine {
     /// asked to review ahead, a review of a way that isn't due yet goes into
     /// the log as a review ahead, of which only again counts; one of a way
     /// that came due by then is on time. It returns how many times he forgot
-    /// the card when a rating of again makes it forgotten often, as
-    /// `settings` say, for the review panel to offer to flag it, or nil.
+    /// the card that way when a rating of again makes it forgotten often, as
+    /// `settings` say, each way counted apart, for the review panel to offer
+    /// to flag it, or nil.
     @discardableResult
     public func record(
         _ kind: ReviewLogEntry.Kind,
@@ -123,8 +124,8 @@ func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogE
 /// Adds Lucas's answer to `answered`, one of the ways of a card in his
 /// reviews, given at `answeredAt`, at the end of the review log, as
 /// `Engine.record` says, with how long he took when something measured it,
-/// and returns whether the card is now forgotten often, or throws when the
-/// way can't take the answer. A back-first way takes it also when the card
+/// and returns whether the card is now forgotten often that way, or throws
+/// when the way can't take the answer. A back-first way takes it also when the card
 /// no longer goes both ways, as when Lucas switched it off while the review
 /// panel showed that way: the way keeps its progress for when it's switched
 /// on again.
@@ -155,7 +156,6 @@ func recordAnswer(
         cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
         responseTime: responseTime, trigger: trigger, isAhead: isAhead)
     try insert(entry, in: db)
-    // The card's agains count either way, until #260 counts each way apart.
     return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
 }
 

@@ -29,14 +29,26 @@ struct ReviewPanelView: View {
     static let cornerRadius: CGFloat = 24
 
     /// The note the panel offers to flag a card forgotten often with, which
-    /// says how many times Lucas forgot it, and which he can add to.
-    nonisolated static func forgottenOftenNote(times: Int) -> String {
-        String(
-            localized: "Forgotten \(times) times",
-            comment: """
-                The note the review panel offers to flag a card with, once the user answered “Don't know” to it \
-                this many times since its front or back last changed. They can add to it.
-                """)
+    /// says how many times Lucas forgot it, and back first when it was that
+    /// way, and which he can add to.
+    nonisolated static func forgottenOftenNote(for forgotten: ForgottenOften) -> String {
+        switch forgotten.way {
+        case .frontFirst:
+            String(
+                localized: "Forgotten \(forgotten.times) times",
+                comment: """
+                    The note the review panel offers to flag a card with, once the user answered “Don't know” to it \
+                    this many times front first since its front or back last changed. They can add to it.
+                    """)
+        case .backFirst:
+            String(
+                localized: "Forgotten \(forgotten.times) times back first",
+                comment: """
+                    The note the review panel offers to flag a card with, once the user answered “Don't know” to it \
+                    this many times back first, its back shown on top, since its front or back last changed. They \
+                    can add to it.
+                    """)
+        }
     }
 
     /// The cards a review now or an appearance brought, or why review now

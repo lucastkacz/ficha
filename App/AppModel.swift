@@ -136,7 +136,7 @@ final class AppModel {
         ReviewPanelModel(
             try engine.openPanel(
                 trigger, with: cards, settings: settings, clock: ContinuousClock(),
-                forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(times: $0) }))
+                forgottenOftenNote: { ReviewPanelView.forgottenOftenNote(for: $0) }))
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder
