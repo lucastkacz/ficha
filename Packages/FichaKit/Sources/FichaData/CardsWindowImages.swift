@@ -1,5 +1,6 @@
 import FichaCore
 import Foundation
+import UniformTypeIdentifiers
 
 /// A side of a card: its front or its back.
 public enum CardSide: Sendable, Hashable, CaseIterable {
@@ -85,6 +86,50 @@ public enum DroppedImage: Sendable, Equatable {
     /// An image's data, as a browser or the pasteboard holds it: none when
     /// what came in holds neither a file nor an image, as a web address.
     case data(Data)
+
+    /// What the items of a drag's or a paste's pasteboard bring as a side's
+    /// image: the first that holds one, or no data when none does, which the
+    /// window refuses, and the log names the types they held.
+    public init(pasteboardItems items: [some PasteboardItem]) {
+        for item in items {
+            if let image = Self.image(in: item) {
+                self = image
+                return
+            }
+        }
+        let types = items.map(\.typeIdentifiers)
+        logger.notice("No image on the pasteboard, whose items held \(types, privacy: .public)")
+        self = .data(Data())
+    }
+
+    /// The image `item` brings: the local file a Finder drag names, or else
+    /// the data of its first image type that holds some, as when a browser
+    /// drags an image beside its web address and the file it promises. Nil
+    /// when it holds neither, as a web address alone: Ficha never fetches
+    /// one.
+    private static func image(in item: some PasteboardItem) -> DroppedImage? {
+        let types = item.typeIdentifiers
+        if types.contains(UTType.fileURL.identifier), let reference = item.data(ofType: UTType.fileURL.identifier),
+            let file = URL(dataRepresentation: reference, relativeTo: nil), file.isFileURL
+        {
+            return .file(file)
+        }
+        for type in types where UTType(type)?.conforms(to: .image) == true {
+            if let image = item.data(ofType: type), !image.isEmpty {
+                return .data(image)
+            }
+        }
+        return nil
+    }
+}
+
+/// One item of a drag's or a paste's pasteboard, which the app reads from
+/// AppKit's, so what a side takes from it is tested without the OS.
+public protocol PasteboardItem {
+    /// Its types, in the order its source wrote them.
+    var typeIdentifiers: [String] { get }
+    /// Its data of `type`, or nil when it has none.
+    func data(ofType type: String) -> Data?
 }
 
 extension CardsWindowState {

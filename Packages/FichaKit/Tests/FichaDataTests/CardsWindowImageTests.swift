@@ -101,6 +101,49 @@ struct CardsWindowImageTests {
         #expect(window.failure?.error == .unreadableFileForSide("hornero.jpg"))
     }
 
+    @Test(
+        "an image a browser drags comes in as its data, though the drag also holds its web address and a promised file")
+    func anImageABrowserDragsComesIn() throws {
+        let png = try picture(width: 800, height: 600)
+        // The types Safari's drag of a PNG on a web page held, in its order
+        // (#229), each with data of its kind.
+        let fromSafari = Dragged([
+            ("dyn.ah62d4rv4gu8yc6durvwwa3xmrvw1gkdusm1044pxqyuha2pxsvw0e55bsmwca7d3sbwu", Data("bplist00".utf8)),
+            ("public.png", png),
+            ("com.apple.WebKit.custom-pasteboard-data", Data("https://aves.example".utf8)),
+            ("public.tiff", Data("MM".utf8)),
+            ("public.url", Data("https://aves.example/hornero.png".utf8)),
+            ("public.url-name", Data("hornero.png".utf8)),
+            ("public.utf8-plain-text", Data("https://aves.example/hornero.png".utf8)),
+            ("com.apple.webarchive", Data("bplist00".utf8)),
+            ("com.apple.pasteboard.promised-file-content-type", Data("public.png".utf8)),
+            ("com.apple.pasteboard.promised-file-url", Data()),
+        ])
+
+        #expect(DroppedImage(pasteboardItems: [fromSafari]) == .data(png))
+    }
+
+    @Test(
+        "a file Finder drags comes in as the file, and a web address alone brings no image, which the window refuses")
+    func aFileComesInAndAWebAddressDoesNot() throws {
+        let nest = URL(filePath: "/Users/lucas/Pictures/nido.jpg")
+        let fromFinder = Dragged([
+            ("public.file-url", nest.dataRepresentation), ("public.utf8-plain-text", Data("nido.jpg".utf8)),
+        ])
+        let webAddress = Data("https://aves.example/hornero.png".utf8)
+        let fromABrowsersBar = Dragged([("public.url", webAddress), ("public.utf8-plain-text", webAddress)])
+        var window = openWindow()
+        window.openNewCardForm()
+
+        let file = DroppedImage(pasteboardItems: [fromABrowsersBar, fromFinder])
+        let none = DroppedImage(pasteboardItems: [fromABrowsersBar])
+        window.putImageInForm(none, on: .front)
+
+        #expect(file == .file(nest))
+        #expect(window.cardForm?.draft.front.image == nil)
+        #expect(window.failure?.error == .notAnImage)
+    }
+
     @Test("the detail shows the selected card's images")
     func theDetailShowsTheCardsImages() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -151,5 +194,23 @@ extension CardsWindowState {
         draft.front.text = front ?? draft.front.text
         draft.back.text = back ?? draft.back.text
         changeDraft(draft)
+    }
+}
+
+/// An item of a drag's pasteboard, made by hand: its types, in the order its
+/// source wrote them, each with its data.
+private struct Dragged: PasteboardItem {
+    let contents: [(type: String, data: Data)]
+
+    init(_ contents: [(type: String, data: Data)]) {
+        self.contents = contents
+    }
+
+    var typeIdentifiers: [String] {
+        contents.map(\.type)
+    }
+
+    func data(ofType type: String) -> Data? {
+        contents.first { $0.type == type }?.data
     }
 }

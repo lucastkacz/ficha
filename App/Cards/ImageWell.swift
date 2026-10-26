@@ -3,11 +3,6 @@ import FichaCore
 import FichaData
 import SwiftUI
 import UniformTypeIdentifiers
-import os
-
-// Nonisolated, for the item provider's handler, which comes on a queue of
-// its own.
-private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "images")
 
 /// Where a side of the card the user makes or edits takes its image, under the
 /// side's text: an image dragged from Finder or a browser onto it, or pasted
@@ -80,16 +75,19 @@ struct ImageWell: View {
         .focusable(interactions: .edit)
         .focused($isFocused)
         .focusEffectDisabled()
-        .onPasteCommand(of: Self.imageTypes) { providers in
-            take(providers)
+        .onPasteCommand(of: Self.imageTypes) { _ in
+            take(from: .general)
         }
         .onDeleteCommand {
             if image != nil {
                 remove()
             }
         }
-        .onDrop(of: Self.imageTypes, isTargeted: $isTargeted) { providers in
-            take(providers)
+        .onDrop(of: Self.imageTypes, isTargeted: $isTargeted) { _ in
+            // The drag's own pasteboard, not the item providers SwiftUI hands
+            // over: for an image a browser drags, those offer only the file
+            // it promises, which can't be loaded (#229).
+            take(from: NSPasteboard(name: .drag))
             return true
         }
     }
@@ -98,55 +96,21 @@ struct ImageWell: View {
     /// data, as a browser or the pasteboard holds it.
     private static let imageTypes: [UTType] = [.fileURL, .image]
 
-    /// Puts the image in the first of `providers` on the side, once it's
-    /// loaded. What holds no image goes to the window as no data, which it
-    /// refuses, saying so.
-    private func take(_ providers: [NSItemProvider]) {
-        Task {
-            put(await droppedImage(in: providers) ?? .data(Data()))
-        }
+    /// Puts the image `pasteboard` holds on the side.
+    private func take(from pasteboard: NSPasteboard) {
+        put(DroppedImage(pasteboardItems: (pasteboard.pasteboardItems ?? []).map(AppKitPasteboardItem.init)))
     }
 }
 
-/// The image in the first of `providers` that holds a local file or an
-/// image's data: the file, as Finder drags or copies it, which the window
-/// reads, or the data, as a browser or the pasteboard holds it, or nil when
-/// none does. A web address is never fetched: Ficha makes no network calls.
-private func droppedImage(in providers: [NSItemProvider]) async -> DroppedImage? {
-    for provider in providers {
-        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier),
-            let file = await localFile(in: provider)
-        {
-            return .file(file)
-        }
-        if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
-            let data = await imageRepresentation(in: provider)
-        {
-            return .data(data)
-        }
-    }
-    return nil
-}
+/// An item of an AppKit pasteboard, as FichaData reads it.
+private struct AppKitPasteboardItem: PasteboardItem {
+    let item: NSPasteboardItem
 
-/// The local file `provider` holds, or nil when it holds none, or a web
-/// address, for the places for a side's image and sound.
-func localFile(in provider: NSItemProvider) async -> URL? {
-    await withCheckedContinuation { continuation in
-        _ = provider.loadObject(ofClass: URL.self) { url, _ in
-            continuation.resume(returning: url.flatMap { $0.isFileURL ? $0 : nil })
-        }
+    var typeIdentifiers: [String] {
+        item.types.map(\.rawValue)
     }
-}
 
-/// The image's data `provider` holds, in its first image format, or nil when
-/// it can't be loaded, which the app logs.
-private func imageRepresentation(in provider: NSItemProvider) async -> Data? {
-    await withCheckedContinuation { continuation in
-        _ = provider.loadDataRepresentation(for: .image) { data, error in
-            if let error {
-                logger.error("Couldn't load a dropped image: \(String(describing: error), privacy: .public)")
-            }
-            continuation.resume(returning: data)
-        }
+    func data(ofType type: String) -> Data? {
+        item.data(forType: NSPasteboard.PasteboardType(type))
     }
 }

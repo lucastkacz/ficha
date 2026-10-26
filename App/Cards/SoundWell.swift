@@ -130,6 +130,16 @@ struct SoundWell: View {
     }
 }
 
+/// The local file `provider` holds, or nil when it holds none, or a web
+/// address, for the place for a side's sound.
+private func localFile(in provider: NSItemProvider) async -> URL? {
+    await withCheckedContinuation { continuation in
+        _ = provider.loadObject(ofClass: URL.self) { url, _ in
+            continuation.resume(returning: url.flatMap { $0.isFileURL ? $0 : nil })
+        }
+    }
+}
+
 /// A sound's ▶, which plays it and becomes ■ while it plays, and its length,
 /// such as "3:42", or why it couldn't be read, in the card form, the card
 /// editor, a card's detail and the review panel.
