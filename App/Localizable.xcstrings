@@ -61,7 +61,7 @@
       "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
     },
     "%lld · %@" : {
-      "comment" : "In the Cards window: the card's step on the ladder, counted from 1, and how long it waits, like 4 · 5d.",
+      "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1578,7 +1578,7 @@
       "comment" : "Settings: the review panel never takes the keyboard on its own."
     },
     "New" : {
-      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first view yet."
+      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first view yet, or its back-first way, when it goes both ways."
     },
     "New Card" : {
       "comment" : "A hidden button of the Cards window: ⌘N, which opens the card form.\nThe Cards window's toolbar button that opens the card form.\nThe title of the Cards window's card form."
@@ -1674,7 +1674,7 @@
       "comment" : "In the Cards window's detail, when nothing in the inbox is selected."
     },
     "now" : {
-      "comment" : "In the Cards window's Due column: the card is due."
+      "comment" : "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
     },
     "Offer to flag a card you forget often" : {
       "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Don't know” to, so it gets fixed."
@@ -1838,7 +1838,7 @@
       "comment" : "In the Cards window's card form, under the tags.\nIn the Cards window, under a card's tags, while Lucas edits it."
     },
     "set aside" : {
-      "comment" : "In the Cards window's Due column: the card won't show up, since one of its tags is set aside. Lowercase, like “now”."
+      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags is set aside. Lowercase, like “now”."
     },
     "Set aside" : {
       "comment" : "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."

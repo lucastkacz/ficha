@@ -521,13 +521,17 @@ func gridLabel(_ text: Text) -> some View {
 /// with its wait, like "4 · 5d", or "New" before its first view.
 func stepText(_ way: WayProgress) -> String {
     guard let step = way.step, let wait = way.wait else {
-        return String(localized: "New", comment: "In the Cards window: a card that hasn't had its first view yet.")
+        return String(
+            localized: "New",
+            comment:
+                "In the Cards window: a card that hasn't had its first view yet, or its back-first way, when it goes both ways."
+        )
     }
     let waitText = wait.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
     return String(
         localized: "\(step + 1) · \(waitText)",
         comment:
-            "In the Cards window: the card's step on the ladder, counted from 1, and how long it waits, like 4 · 5d."
+            "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d."
     )
 }
 
@@ -545,14 +549,17 @@ func dueText(_ way: WayProgress, at now: Date) -> String {
         return String(
             localized: "set aside",
             comment: """
-                In the Cards window's Due column: the card won't show up, since one of its tags is set aside. \
-                Lowercase, like “now”.
+                In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags \
+                is set aside. Lowercase, like “now”.
                 """)
     case .nothing:
         return ""
     }
     guard !way.isDue(at: now) else {
-        return String(localized: "now", comment: "In the Cards window's Due column: the card is due.")
+        return String(
+            localized: "now",
+            comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
+        )
     }
     // In the ladder's units, days, hours and minutes, as Settings shows its
     // waits: "in 8d", never "next week".

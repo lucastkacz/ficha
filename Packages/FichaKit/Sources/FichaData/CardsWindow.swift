@@ -31,7 +31,7 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 
     /// Whether the card is due at `time`: in Lucas's reviews, with either
     /// way's wait over.
-    public func isDue(at time: Date) -> Bool {
+    func isDue(at time: Date) -> Bool {
         frontFirst.isDue(at: time) || backFirst?.isDue(at: time) == true
     }
 
@@ -140,10 +140,11 @@ public struct ReviewLogRow: Sendable, Equatable {
 public enum CardGroup: Sendable, Hashable {
     /// Every card that isn't buried, flagged and set-aside ones too.
     case all
-    /// The cards in Lucas's reviews that haven't had their first view yet.
+    /// The cards in Lucas's reviews that haven't had their first view yet,
+    /// front first.
     case new
-    /// The cards in Lucas's reviews that are due now, as the menu counts
-    /// them.
+    /// The cards in Lucas's reviews with either of their ways due now: each
+    /// card once, where the menu counts each way that's due.
     case due
     /// The cards in Lucas's reviews that he learned, as the menu counts them.
     case learned
