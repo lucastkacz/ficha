@@ -6,8 +6,9 @@ import SwiftUI
 /// A card's review log in the Cards window's detail, under where the card
 /// stands: a chart of the step it stood on after each first view and review,
 /// and after the placement an import put it on its step with (ADR 0013),
-/// each the step of the entry's way, with a key, and every entry under it,
-/// the latest first. A new card says it has no reviews yet instead.
+/// each the step of the entry's way, a line for each way, with a key, and
+/// every entry under it, the latest first, each back-first one marked. A new
+/// card says it has no reviews yet instead.
 struct ReviewLogView: View {
     /// The card's review log, oldest first, each entry with the step its way
     /// stood on after it.
@@ -33,25 +34,39 @@ struct ReviewLogView: View {
 
     /// One point per entry, evenly spaced, at the step after it, counted from
     /// 1 as Settings counts them, in the color of what Lucas answered, which
-    /// the key under the chart names. A line holds each step until the next
-    /// entry, and the first and last entries' dates go under it.
+    /// the key under the chart names. A line for each way holds its step
+    /// until its next entry: solid front first and dashed back first, which
+    /// the key names too once the card has a back-first entry. The first and
+    /// last entries' dates go under it.
     private var chart: some View {
         Chart(Array(rows.enumerated()), id: \.offset) { index, row in
-            LineMark(x: .value(entryLabel, index), y: .value(stepLabel, row.stepNumber))
-                .interpolationMethod(.stepEnd)
-                .foregroundStyle(.gray.opacity(0.6))
-                .accessibilityHidden(true)
+            let line = LineMark(
+                x: .value(entryLabel, index), y: .value(stepLabel, row.stepNumber),
+                series: .value(wayLabel, row.entry.way.name)
+            )
+            .interpolationMethod(.stepEnd)
+            .foregroundStyle(.gray.opacity(0.6))
+            .accessibilityHidden(true)
+            if hasBackFirstEntries {
+                line.lineStyle(by: .value(wayLabel, row.entry.way.name))
+            } else {
+                line
+            }
             PointMark(x: .value(entryLabel, index), y: .value(stepLabel, row.stepNumber))
                 .foregroundStyle(by: .value(answerLabel, row.entry.kind.name))
                 .symbolSize(40)
-                .accessibilityLabel(Text(row.entry.kind.name))
+                .accessibilityLabel(Text(row.pointName))
                 .accessibilityValue(
                     Text(
                         "Step \(row.stepNumber)",
                         comment: "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer."))
         }
         .chartForegroundStyleScale(domain: keyKinds.map { $0.name }, range: keyKinds.map { $0.color })
+        .chartLineStyleScale(domain: keyWays.map(\.name), range: keyWays.map(\.lineStyle))
         .chartLegend(position: .bottom, alignment: .leading)
+        // The key draws the ways' lines in the chart's default style: gray,
+        // as the lines are.
+        .foregroundStyle(.gray)
         .chartXScale(domain: entryDomain, range: .plotDimension(padding: 10))
         // A ladder of one step gets the room of two, for its chart to have a
         // height.
@@ -76,6 +91,18 @@ struct ReviewLogView: View {
 
     /// What Lucas can answer, in the order the chart's key names them.
     private static let answers: [ReviewLogEntry.Kind] = [.firstView, .review(.again), .review(.hard), .review(.good)]
+
+    /// Whether the card has an entry that went back first, so that the chart
+    /// draws each way's line apart and names them in its key.
+    private var hasBackFirstEntries: Bool {
+        rows.contains { $0.entry.way == .backFirst }
+    }
+
+    /// The ways whose lines the chart's key names, in its order: both, once
+    /// the card has an entry that went back first, and none before.
+    private var keyWays: [Way] {
+        hasBackFirstEntries ? [.frontFirst, .backFirst] : []
+    }
 
     /// What the chart's key names, in its order: every answer, also those
     /// the card hasn't had yet, after the import that put the card on its
@@ -135,9 +162,18 @@ struct ReviewLogView: View {
             "Answer", comment: "For VoiceOver, the Cards window's chart: what Lucas answered, which colors each point.")
     }
 
+    /// The name of what draws each of the chart's lines, for VoiceOver.
+    private var wayLabel: Text {
+        Text(
+            "Way",
+            comment:
+                "For VoiceOver, the Cards window's chart: which way each entry went, front first or back first, which has a line of its own."
+        )
+    }
+
     /// Every entry, the latest first: when Lucas answered, what he answered,
-    /// marked when it was a review ahead, and how long he took; or when the
-    /// import put the card on its step, and which.
+    /// marked when it was a review ahead and when it went back first, and how
+    /// long he took; or when the import put the card on its step, and which.
     private var entries: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             ForEach(Array(rows.enumerated().reversed()), id: \.offset) { _, row in
@@ -150,6 +186,9 @@ struct ReviewLogView: View {
                         Text(row.entryName)
                         if row.entry.isAhead {
                             AheadBadge()
+                        }
+                        if row.entry.way == .backFirst {
+                            BackFirstBadge()
                         }
                     }
                     ResponseTime(entry: row.entry)
@@ -223,6 +262,50 @@ extension ReviewLogRow {
             comment:
                 "In the Cards window's review log: an import from Anki put the card on this step of the user's ladder, counted from 1."
         )
+    }
+
+    /// The entry's point in the chart, as VoiceOver names it: what the user
+    /// answered, and that it went back first when it did.
+    fileprivate var pointName: String {
+        switch entry.way {
+        case .frontFirst:
+            entry.kind.name
+        case .backFirst:
+            String(
+                localized: "\(entry.kind.name), back first",
+                comment:
+                    "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
+            )
+        }
+    }
+}
+
+extension Way {
+    /// The way, as the key of the Cards window's chart names its line.
+    fileprivate var name: String {
+        switch self {
+        case .frontFirst:
+            String(
+                localized: "Front first",
+                comment:
+                    "In the key of the Cards window's review log chart: the line of the card's usual way, its front first."
+            )
+        case .backFirst:
+            String(
+                localized: "Back first",
+                comment:
+                    "In the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
+            )
+        }
+    }
+
+    /// How the chart draws the way's line: solid front first, and dashed back
+    /// first.
+    fileprivate var lineStyle: StrokeStyle {
+        switch self {
+        case .frontFirst: StrokeStyle(lineWidth: 2)
+        case .backFirst: StrokeStyle(lineWidth: 2, dash: [4, 3])
+        }
     }
 }
 

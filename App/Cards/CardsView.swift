@@ -567,22 +567,51 @@ struct CardsView: View {
             }
             .width(min: 48, ideal: 56, max: 80)
             .customizationID(CardRowOrder.Column.media.rawValue)
-            TableColumn(
-                Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
-                sortUsing: CardRowOrder(.step)
-            ) { row in
-                Text(stepText(row))
+            // In a group, since a table's builder takes ten columns at most.
+            Group {
+                TableColumn(
+                    Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
+                    sortUsing: CardRowOrder(.step)
+                ) { row in
+                    Text(stepText(row.frontFirst))
+                }
+                .width(min: 56, ideal: 64, max: 100)
+                .customizationID(CardRowOrder.Column.step.rawValue)
+                TableColumn(
+                    Text("Due", comment: "A column of the Cards window: when the card is due."),
+                    sortUsing: CardRowOrder(.due)
+                ) { row in
+                    Text(dueText(row.frontFirst, at: state.now))
+                }
+                .width(min: 60, ideal: 72, max: 110)
+                .customizationID(CardRowOrder.Column.due.rawValue)
+                TableColumn(
+                    Text(
+                        "Back-first step",
+                        comment:
+                            "A column of the Cards window: the step on the ladder of a card that goes both ways, back first, and its wait."
+                    ),
+                    sortUsing: CardRowOrder(.backFirstStep)
+                ) { row in
+                    // Blank for a card that goes one way.
+                    Text(row.backFirst.map(stepText) ?? "")
+                }
+                .width(min: 56, ideal: 120, max: 150)
+                .customizationID(CardRowOrder.Column.backFirstStep.rawValue)
+                .defaultVisibility(.hidden)
+                TableColumn(
+                    Text(
+                        "Back-first due",
+                        comment: "A column of the Cards window: when a card that goes both ways is due back first."),
+                    sortUsing: CardRowOrder(.backFirstDue)
+                ) { row in
+                    // Blank for a card that goes one way.
+                    Text(row.backFirst.map { dueText($0, at: state.now) } ?? "")
+                }
+                .width(min: 60, ideal: 120, max: 150)
+                .customizationID(CardRowOrder.Column.backFirstDue.rawValue)
+                .defaultVisibility(.hidden)
             }
-            .width(min: 56, ideal: 64, max: 100)
-            .customizationID(CardRowOrder.Column.step.rawValue)
-            TableColumn(
-                Text("Due", comment: "A column of the Cards window: when the card is due."),
-                sortUsing: CardRowOrder(.due)
-            ) { row in
-                Text(dueText(row, at: state.now))
-            }
-            .width(min: 60, ideal: 72, max: 110)
-            .customizationID(CardRowOrder.Column.due.rawValue)
             TableColumn(
                 Text("Type", comment: "A column of the Cards window: the card's type."),
                 sortUsing: CardRowOrder(.type)

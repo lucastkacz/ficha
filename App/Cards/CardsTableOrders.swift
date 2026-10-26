@@ -35,7 +35,8 @@ nonisolated extension ColumnOrder {
 }
 
 /// How the table orders its cards: by one column, either way. Cards with
-/// nothing in the column, like a new card in Due and Last seen, go after the
+/// nothing in the column, like a new card in Due and Last seen, or a card
+/// that goes one way in Back-first step and Back-first due, go after the
 /// others, whichever way the table is ordered. The app's preferences keep it
 /// by its column's name, so the window opens in the order Lucas left it in.
 nonisolated struct CardRowOrder: ColumnOrder, Codable {
@@ -50,8 +51,14 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         /// Cards with images first, then those with sounds, then those with
         /// both, and cards of text alone after the others.
         case media
+        /// By the front-first way's step, new cards first.
         case step
+        /// When the front-first way is due.
         case due
+        /// By the back-first way's step, new ones first, as Step does.
+        case backFirstStep
+        /// When the back-first way is due, as Due does.
+        case backFirstDue
         /// By what the Type column says, alphabetically, and cards with no
         /// type after the others.
         case type
@@ -88,9 +95,13 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .media:
             ordered(lhs.media, rhs.media, by: compared)
         case .step:
-            ordered(lhs.stepNumber, rhs.stepNumber)
+            ordered(lhs.frontFirst.stepNumber, rhs.frontFirst.stepNumber)
         case .due:
-            ordered(lhs.due, rhs.due) { $0.compare($1) }
+            ordered(lhs.frontFirst.due, rhs.frontFirst.due) { $0.compare($1) }
+        case .backFirstStep:
+            ordered(lhs.backFirst?.stepNumber, rhs.backFirst?.stepNumber, by: compared)
+        case .backFirstDue:
+            ordered(lhs.backFirst?.due, rhs.backFirst?.due) { $0.compare($1) }
         case .type:
             ordered(lhs.card.type?.name, rhs.card.type?.name) { $0.localizedStandardCompare($1) }
         case .tags:
@@ -105,13 +116,15 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
     }
 }
 
-extension CardRow {
-    /// The card's step counted from 1, as Settings counts them, or 0 while
+extension WayProgress {
+    /// The way's step counted from 1, as Settings counts them, or 0 while
     /// it's new, before the first step.
     nonisolated fileprivate var stepNumber: Int {
         step.map { $0 + 1 } ?? 0
     }
+}
 
+extension CardRow {
     /// The card's tags, or nil when it has none.
     nonisolated fileprivate var tagsIfAny: [String]? {
         card.tags.isEmpty ? nil : card.tags

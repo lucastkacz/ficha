@@ -57,12 +57,49 @@ struct CardsWindowTests {
         let rows = try engine.cardRows(in: .all, on: settings.ladder)
 
         #expect(
-            rows.map(\.standing) == [
+            rows.map(\.frontFirst.standing) == [
                 .onLadder(step: 1, due: climbedAt + days(1)), .new, .onLadder(step: 0, due: metAt + minutes(10)),
             ])
-        #expect(rows.map(\.step) == [1, nil, 0])
-        #expect(rows.map(\.wait) == [.seconds(days(1)), nil, .seconds(minutes(10))])
+        #expect(rows.map(\.frontFirst.step) == [1, nil, 0])
+        #expect(rows.map(\.frontFirst.wait) == [.seconds(days(1)), nil, .seconds(minutes(10))])
         #expect(rows.map(\.lastSeen) == [time.now, nil, metAt])
+    }
+
+    @Test(
+        "a card that goes both ways stands on a step each way, and one that goes one way, or no longer goes both, has no back-first way"
+    )
+    func aCardThatGoesBothWaysStandsOnAStepEachWay() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ojala = try approveCard("ojalá", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id, ojala.id, petricor.id])
+        let metAt = time.now
+        try engine.meet(serendipia)
+        try engine.meet(ubuntu)
+        try engine.meet(petricor)
+        try engine.meet(petricor, way: .backFirst)
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+        let metBackFirstAt = time.now
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        // Switching Both ways off keeps petricor's back-first step, which the
+        // Cards window no longer shows.
+        try engine.setBothWays(false, of: [petricor.id])
+
+        let rows = try engine.cardRows(in: .all, on: ReviewSettings.defaults.ladder)
+
+        #expect(
+            rows.map(\.frontFirst.standing) == [
+                .onLadder(step: 1, due: time.now + hours(4)), .onLadder(step: 0, due: metAt + hours(1)), .new,
+                .onLadder(step: 0, due: metAt + hours(1)),
+            ])
+        #expect(
+            rows.map(\.backFirst?.standing) == [.onLadder(step: 0, due: metBackFirstAt + hours(1)), nil, .new, nil])
+        #expect(rows.map(\.backFirst?.step) == [0, nil, nil, nil])
+        #expect(rows.map(\.backFirst?.wait) == [.seconds(hours(1)), nil, nil, nil])
+        #expect(rows.map(\.backFirst?.due) == [metBackFirstAt + hours(1), nil, nil, nil])
+        #expect(rows.map(\.lastSeen) == [time.now, metAt, nil, metAt])
     }
 
     @Test("New, Due and Learned list the cards in Lucas's reviews only, as the menu counts them")
@@ -103,6 +140,33 @@ struct CardsWindowTests {
         #expect(try engine.cardRows(in: .all, on: settings.ladder).map(\.card.id).contains(efimero.id))
     }
 
+    @Test("Due lists a card when either of its ways is due, and New and Learned go by its front-first way alone")
+    func dueGoesByEitherWayAndNewAndLearnedByTheFrontFirstWay() throws {
+        let settings = ReviewSettings.defaults
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ojala = try approveCard("ojalá", in: engine)
+        let efimero = try approveCard("efímero", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id, serendipia.id, efimero.id])
+        // serendipia is learned back first only, and due front first.
+        try engine.meet(serendipia)
+        try engine.climb(serendipia, to: 5, way: .backFirst, movingForward: time)
+        // ubuntu is learned front first, and due back first only.
+        try engine.climb(ubuntu, to: 5, movingForward: time)
+        try engine.meet(ubuntu, way: .backFirst)
+        // efímero is new back first only.
+        try engine.meet(efimero)
+        time.advance(by: hours(1))
+
+        let new = try engine.cardRows(in: .new, on: settings.ladder)
+        let due = try engine.cardRows(in: .due, on: settings.ladder)
+        let learned = try engine.cardRows(in: .learned, on: settings.ladder)
+
+        #expect(new.map(\.card.id) == [ojala.id])
+        #expect(due.map(\.card.id) == [ubuntu.id, serendipia.id, efimero.id])
+        #expect(learned.map(\.card.id) == [ubuntu.id])
+    }
+
     @Test("Flagged lists the flagged cards that aren't buried, and Buried every buried card, flagged ones too")
     func flaggedAndBuriedListTheirCards() throws {
         let ladder = ReviewSettings.defaults.ladder
@@ -120,7 +184,7 @@ struct CardsWindowTests {
 
         #expect(flagged.map(\.card.id) == [ubuntu.id])
         #expect(buried.map(\.card.id) == [ojala.id, acaso.id])
-        #expect(buried.map(\.due) == [nil, nil])
+        #expect(buried.map(\.frontFirst.due) == [nil, nil])
     }
 
     @Test("a tag lists the cards that have it, and a type the cards of it, flagged ones too but not the buried ones")
@@ -231,8 +295,8 @@ struct CardsWindowTests {
 
         let rows = try engine.cardRows(in: .all, on: ladder)
 
-        #expect(rows.map(\.standing) == [serendipiaStanding, ubuntuStanding, .new])
-        #expect(rows.map(\.due) == [serendipiaStanding.due, nil, nil])
+        #expect(rows.map(\.frontFirst.standing) == [serendipiaStanding, ubuntuStanding, .new])
+        #expect(rows.map(\.frontFirst.due) == [serendipiaStanding.due, nil, nil])
     }
 
     @Test(

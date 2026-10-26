@@ -576,20 +576,6 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The badge of a card that shows back first.
-    private var backFirstBadge: some View {
-        Text(
-            "Back first",
-            comment:
-                "A badge on a card the review panel shows back first: its back on top, and its front under it once flipped."
-        )
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 2)
-        .background(.secondary.opacity(0.15), in: .capsule)
-    }
-
     /// The line at the top of a card: its badges, "New" on a first view,
     /// "Ahead" on a review ahead and "Back first" when `way` is, each when it
     /// applies, and the card's tags, when it has some.
@@ -605,7 +591,7 @@ struct ReviewPanelView: View {
                     AheadBadge()
                 }
                 if isBackFirst {
-                    backFirstBadge
+                    BackFirstBadge()
                 }
             }
         }
@@ -709,6 +695,26 @@ struct AheadBadge: View {
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
         .help(Text("A review ahead: only “Don't know” moves the card."))
+    }
+}
+
+/// The badge of a card that shows back first, on the card the review panel
+/// shows that way and beside a first view or review that went that way in
+/// the Cards window's review log.
+struct BackFirstBadge: View {
+    var body: some View {
+        Text(
+            "Back first",
+            comment: """
+                A badge on a card the review panel shows back first, its back on top and its front under it once \
+                flipped, and beside a first view or review that went that way in the Cards window's review log.
+                """
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(.secondary.opacity(0.15), in: .capsule)
     }
 }
 

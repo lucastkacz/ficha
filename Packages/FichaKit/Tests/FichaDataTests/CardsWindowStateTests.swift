@@ -157,7 +157,7 @@ struct CardsWindowStateTests {
         window.chooseSetAside(on: "filosofía")
 
         let rows = try #require(window.listedCardRows)
-        #expect(rows.map(\.dueColumn) == [.setAside, .due(time.now + hours(1))])
+        #expect(rows.map(\.frontFirst.dueColumn) == [.setAside, .due(time.now + hours(1))])
     }
 
     @Test("selected cards the table no longer lists are left out of the selected rows")
@@ -358,6 +358,66 @@ struct CardsWindowStateTests {
         #expect(offeredForBothWays == [.bury, .turnOffBothWays, .delete])
         #expect(try engine.cards().map(\.bothWays) == [false, false, false])
         #expect(window.actions == [.bury, .turnOnBothWays, .delete])
+    }
+
+    // The Back-first step and Back-first due columns show `backFirst`, and
+    // sort by it, empty ones last, in the app's `CardRowOrder`, since a
+    // table's order stays in the app.
+    @Test(
+        "turning Both ways on gives the selected cards a back-first way, new, and turning it off takes it from the table, keeping its step"
+    )
+    func turningBothWaysOnAndOffFillsAndEmptiesTheBackFirstColumns() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try approveCard("petricor", in: engine)
+        try engine.meet(serendipia)
+        var window = openWindow()
+        let before = try #require(window.listedCardRows).map(\.backFirst)
+
+        window.select([serendipia.id, ubuntu.id])
+        window.turnOnBothWays()
+        let turnedOn = try #require(window.listedCardRows).map(\.backFirst?.standing)
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+        let metBackFirstAt = time.now
+        window.read(on: ladder)
+        let metBackFirst = try #require(window.listedCardRows).map(\.backFirst?.standing)
+        window.turnOffBothWays()
+        let turnedOff = try #require(window.listedCardRows).map(\.backFirst)
+        window.turnOnBothWays()
+
+        #expect(before == [nil, nil, nil])
+        #expect(turnedOn == [.new, .new, nil])
+        #expect(metBackFirst == [.onLadder(step: 0, due: metBackFirstAt + hours(1)), .new, nil])
+        #expect(turnedOff == [nil, nil, nil])
+        #expect(
+            try #require(window.listedCardRows).map(\.backFirst?.due) == [metBackFirstAt + hours(1), nil, nil])
+    }
+
+    @Test(
+        "the detail shows a card's front-first and back-first ways, and its review log says which way each entry went")
+    func theDetailShowsEachWayAndItsReviewLogsWays() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        try engine.meet(ubuntu)
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        var window = openWindow()
+
+        window.select([serendipia.id])
+        let shownBothWays = try #require(window.shownCard)
+        window.select([ubuntu.id])
+        let shownOneWay = try #require(window.shownCard)
+
+        #expect(shownBothWays.row.frontFirst.standing == .onLadder(step: 1, due: time.now + hours(4)))
+        #expect(shownBothWays.row.backFirst?.dueColumn == .due(time.now + minutes(10)))
+        #expect(shownBothWays.row.backFirst?.step == 0)
+        #expect(try shownBothWays.reviewLog?.get().map(\.entry.way) == [.frontFirst, .backFirst, .frontFirst])
+        #expect(shownOneWay.row.backFirst == nil)
+        #expect(try shownOneWay.reviewLog?.get().map(\.entry.way) == [.frontFirst])
     }
 
     @Test("Flag is offered only for a single card in Lucas's reviews")

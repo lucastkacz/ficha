@@ -207,8 +207,8 @@ public struct CardsWindowState: Sendable {
     /// The type groups the sidebar offers: one for each card type, and No
     /// Type after them while a card that isn't buried has no type.
     public private(set) var typeGroups = CardType.allCases.map(CardGroup.type)
-    /// The engine's time when the cards were read, which the Due column
-    /// counts from.
+    /// The engine's time when the cards were read, which the Due and
+    /// Back-first due columns count from.
     public private(set) var now: Date
     /// The ladder Lucas set in Settings, which the cards stand on, and whose
     /// steps a card's review log spans.
