@@ -21,7 +21,8 @@ struct CardsThatShowUp {
     /// approved them, those with any of `priorityTags` as priority cards, and
     /// `log`, the whole review log, in the order it was written.
     fileprivate init(_ cards: [Card], priorityTags: Set<String>, log: [ReviewLogEntry]) {
-        inReviews = CardsInReviews(cards.map { ($0.id, $0.standing, $0.tags) }, priorityTags: priorityTags, log: log)
+        inReviews = CardsInReviews(
+            cards.map { ($0.id, $0.standing, $0.tags, $0.bothWays) }, priorityTags: priorityTags, log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 

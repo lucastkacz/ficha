@@ -336,6 +336,16 @@ enum Schema {
                 table.add(column: "bothWays", .boolean).notNull().defaults(to: false)
             }
         }
+        migrator.registerMigration("v19 the way each answer went") { db in
+            // Which of the card's ways an entry went, as `Way` names it:
+            // "frontFirst" or "backFirst". Each way has its own progress,
+            // worked out from its own entries (ADR 0016). Every entry from
+            // before this migration went front first, as every card did.
+            try db.alter(table: "reviewLog") { table in
+                table.add(column: "way", .text).notNull().defaults(to: "frontFirst")
+                    .check(sql: "way IN ('frontFirst', 'backFirst')")
+            }
+        }
         return migrator
     }()
 }

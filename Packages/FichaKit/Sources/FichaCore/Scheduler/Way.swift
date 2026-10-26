@@ -2,8 +2,9 @@
 /// or back first, its back on top and its front once Lucas flips it, as a
 /// card that goes both ways also does. Each way has its own progress
 /// (ADR 0016). The glossary's words are Both ways and Back first: the code
-/// avoids "reverse", since the Spanish "reverso" is a card's back.
-public enum Way: Sendable, Hashable {
+/// avoids "reverse", since the Spanish "reverso" is a card's back. Each raw
+/// value is how the review log names it.
+public enum Way: String, Sendable, Hashable {
     /// The front on top, and the back once flipped.
     case frontFirst
     /// The back on top, and the front once flipped.

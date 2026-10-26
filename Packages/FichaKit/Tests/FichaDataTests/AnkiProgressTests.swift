@@ -77,6 +77,18 @@ final class AnkiProgressTests {
         #expect(try standing(of: "corazón") == .onLadder(step: 4, due: try october(31, at: 4)))
     }
 
+    @Test("a card that came in on a step comes back first for its first view once it goes both ways")
+    func aPlacedCardComesBackFirstOnceItGoesBothWays() async throws {
+        let package = AnkiPackage(
+            notes: [AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))])
+        try await importPackage(package)
+        let corazon = try #require(try engine.cards().first)
+
+        let bothWays = try engine.setBothWays(true, of: [corazon.id])
+
+        #expect(try engine.reviewNow(.defaults) == [.firstView(bothWays[0], .backFirst)])
+    }
+
     @Test("a card with a 400-day interval lands on the last step, due on Anki's date", arguments: schemas)
     func aLongIntervalLandsOnTheLastStep(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(

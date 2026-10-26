@@ -41,6 +41,23 @@ struct BuryingTests {
         #expect(try engine.reviewLog() == log)
     }
 
+    @Test("burying a card from its back-first way buries it both ways, and unburying brings both back where they were")
+    func buryingFromTheBackFirstWayBuriesBothWays() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+        var panel = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
+
+        try panel.bury()
+        let whileBuried = try engine.reviewNow(settings)
+        let unburied = try engine.unbury(serendipia.id)
+
+        #expect(whileBuried.isEmpty)
+        #expect(try engine.reviewNow(settings) == [.review(unburied), .review(unburied, .backFirst)])
+    }
+
     @Test("an unburied card goes back to its step in Lucas's reviews, and counts again")
     func anUnburiedCardGoesBackToItsStep() throws {
         // serendipia gets to the 30-day step, from which a card is learned.

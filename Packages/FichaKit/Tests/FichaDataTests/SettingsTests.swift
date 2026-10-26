@@ -103,6 +103,21 @@ struct SettingsTests {
         #expect(try engine.reviewNow(settings) == [])
     }
 
+    @Test("a back-first first view counts toward the settings' new cards a day, as a new card's does")
+    func backFirstFirstViewsCountTowardNewCardsPerDay() throws {
+        var settings = ReviewSettings.defaults
+        settings.newCardsPerDay = 2
+        let serendipia = try approveCard("serendipia", in: engine)
+        try approveCard("ubuntu", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+
+        try engine.meet(bothWays[0], way: .backFirst)
+
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.nothingDue))
+        #expect(try engine.reviewNow(settings) == [])
+    }
+
     @Test("appearances happen within the settings' active hours, as far apart as their separation says")
     func activeHoursAndTheSeparationComeFromTheSettings() throws {
         var settings = ReviewSettings.defaults

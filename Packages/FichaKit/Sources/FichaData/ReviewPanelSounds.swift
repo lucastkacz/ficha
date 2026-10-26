@@ -40,23 +40,25 @@ extension ReviewPanelState {
 
     /// The side whose sound R plays or stops, while a sound plays when Lucas
     /// asks, or nil when the card has none: the side whose sound plays,
-    /// which R stops, or else the back's once the back shows, on a flipped
-    /// card or in a first view, or the front's when the back has none or
-    /// doesn't show. A sound that couldn't be read counts as none.
+    /// which R stops, or else the lower side's once it shows, on a flipped
+    /// card or in a first view that shows it whole, or the upper side's when
+    /// the lower one has none or doesn't show. Front first, the lower side is
+    /// the back, and back first, the front. A sound that couldn't be read
+    /// counts as none.
     public var sideForR: CardSide? {
-        guard canPlaySounds else { return nil }
+        guard canPlaySounds, let way = current?.way else { return nil }
         if let playingSound {
             return playingSound.side
         }
-        let showsBack =
+        let showsLowerSide =
             switch content {
-            case .firstView, .back: true
-            case .nothingToReview, .front, .flagging, .asking, .done: false
+            case .firstView, .bothSides: true
+            case .nothingToReview, .upperSide, .flagging, .asking, .done: false
             }
-        if showsBack, readSound(on: .back) != nil {
-            return .back
+        if showsLowerSide, readSound(on: way.lowerSide) != nil {
+            return way.lowerSide
         }
-        return readSound(on: .front) != nil ? .front : nil
+        return readSound(on: way.upperSide) != nil ? way.upperSide : nil
     }
 
     /// Whether the sound on `side` of the card Lucas is on plays, so its ▶

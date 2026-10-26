@@ -8,7 +8,8 @@ import Foundation
 /// where each card stands and its tags, and the merge gate watches it.
 public struct CardsInReviews: Sendable, Equatable {
     /// The ways in Lucas's reviews, by card in the order he approved them:
-    /// each card's front-first way, since no card shows up back first yet.
+    /// each card's front-first way, and then its back-first way, when it has
+    /// one.
     let ways: [CardWay]
     /// The cards in Lucas's reviews with any of the priority tags, by id,
     /// whose ways come first when cards show up (ADR 0011).
@@ -20,16 +21,26 @@ public struct CardsInReviews: Sendable, Equatable {
     public let tags: Set<String>
 
     /// The cards in Lucas's reviews out of `cards`, every card by id with
-    /// where it stands and its tags, in the order he approved them, those
-    /// with any of `priorityTags` as priority cards, along with `log`, the
-    /// whole review log, in the order it was written.
+    /// where it stands, its tags and whether it goes both ways, in the order
+    /// he approved them, those with any of `priorityTags` as priority cards,
+    /// along with `log`, the whole review log, in the order it was written.
+    /// Each card in his reviews brings its front-first way, and, when it goes
+    /// both ways, its back-first way, once its front-first way had its first
+    /// view or a placement (ADR 0016): the card's standing is both ways'.
     public init(
-        _ cards: [(id: Int64, standing: CardStanding, tags: [String])],
+        _ cards: [(id: Int64, standing: CardStanding, tags: [String], bothWays: Bool)],
         priorityTags: Set<String>,
         log: [ReviewLogEntry]
     ) {
         let inReviews = cards.filter { $0.standing == .inReviews }
-        ways = inReviews.map { CardWay(cardID: $0.id, way: .frontFirst) }
+        let metFrontFirst = Set(log.filter { $0.way == .frontFirst }.map(\.cardID))
+        ways = inReviews.flatMap { card in
+            let frontFirst = CardWay(cardID: card.id, way: .frontFirst)
+            guard card.bothWays, metFrontFirst.contains(card.id) else {
+                return [frontFirst]
+            }
+            return [frontFirst, CardWay(cardID: card.id, way: .backFirst)]
+        }
         priorityIDs = Set(inReviews.filter { !priorityTags.isDisjoint(with: $0.tags) }.map(\.id))
         self.log = log
         tags = Set(inReviews.flatMap(\.tags))
@@ -47,6 +58,12 @@ public struct CardsInReviews: Sendable, Equatable {
     /// The same cards as if no tag were a priority tag.
     var withoutPriority: CardsInReviews {
         CardsInReviews(ways: ways, priorityIDs: [], log: log, tags: tags)
+    }
+
+    /// The same cards as if none went both ways: their front-first ways
+    /// alone.
+    var frontFirstOnly: CardsInReviews {
+        CardsInReviews(ways: ways.filter { $0.way == .frontFirst }, priorityIDs: priorityIDs, log: log, tags: tags)
     }
 
     /// Where each way stands on `ladder`, by card in the order Lucas approved

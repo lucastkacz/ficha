@@ -60,32 +60,41 @@ extension Engine {
         try #require(try capture(text: text, note: note, source: source).saved)
     }
 
-    /// Records a new card's first view, as the review panel does when Lucas
-    /// ends it, from review now.
-    func meet(_ card: Card) throws {
-        try record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
+    /// Records the first view of a card's new way, front first unless the
+    /// test says otherwise, as the review panel does when Lucas ends it, from
+    /// review now.
+    func meet(_ card: Card, way: Way = .frontFirst) throws {
+        try record(
+            .firstView, of: card.id, way: way, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
     }
 
-    /// Records a review of a due card with `rating`, as the review panel does
-    /// when Lucas rates it, from review now, with the default settings.
-    func review(_ card: Card, _ rating: Rating) throws {
-        try record(.review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults)
+    /// Records a review of a card's due way, front first unless the test
+    /// says otherwise, with `rating`, as the review panel does when Lucas
+    /// rates it, from review now, with the default settings.
+    func review(_ card: Card, _ rating: Rating, way: Way = .frontFirst) throws {
+        try record(
+            .review(rating), of: card.id, way: way, responseTime: .seconds(3), trigger: .reviewNow,
+            settings: .defaults)
     }
 
-    /// Puts a new card on `step` of the default ladder: its first view now,
-    /// and then good each time it's due, moving `time` forward to it.
-    func climb(_ card: Card, to step: Int, movingForward time: ManualTimeSource) throws {
-        try meet(card)
+    /// Puts a card's new way, front first unless the test says otherwise, on
+    /// `step` of the default ladder: its first view now, and then good each
+    /// time it's due, moving `time` forward to it.
+    func climb(_ card: Card, to step: Int, way: Way = .frontFirst, movingForward time: ManualTimeSource) throws {
+        try meet(card, way: way)
         for _ in 0..<step {
-            try reviewWhenDue(card, .good, movingForward: time)
+            try reviewWhenDue(card, .good, way: way, movingForward: time)
         }
     }
 
-    /// Moves `time` forward until a card on the default ladder is due, and
-    /// reviews it with `rating`.
-    func reviewWhenDue(_ card: Card, _ rating: Rating, movingForward time: ManualTimeSource) throws {
-        time.move(to: try #require(try standing(of: card.id, on: ReviewSettings.defaults.ladder).due))
-        try review(card, rating)
+    /// Moves `time` forward until a card's way on the default ladder, front
+    /// first unless the test says otherwise, is due, and reviews it with
+    /// `rating`.
+    func reviewWhenDue(
+        _ card: Card, _ rating: Rating, way: Way = .frontFirst, movingForward time: ManualTimeSource
+    ) throws {
+        time.move(to: try #require(try standing(of: card.id, way: way, on: ReviewSettings.defaults.ladder).due))
+        try review(card, rating, way: way)
     }
 
     /// Opens the review panel with `cards` on a clock that never moves, for a

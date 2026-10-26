@@ -656,6 +656,9 @@
     "Back" : {
       "comment" : "In the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
     },
+    "Back first" : {
+      "comment" : "A badge on a card the review panel shows back first: its back on top, and its front under it once flipped."
+    },
     "Back up" : {
       "comment" : "Settings, under Backups: how often Ficha backs up on its own."
     },
@@ -1953,6 +1956,9 @@
     },
     "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session. The cards you added from it are saved." : {
       "comment" : "An alert's message in the Cards window, after closing the card form, when its capture already left the inbox."
+    },
+    "This card comes back first: recall its front from its back." : {
+
     },
     "This card was deleted meanwhile, in the Cards window. Close the review panel and open “Review now” again." : {
       "comment" : "An alert's message in the review panel, when the card it shows was deleted meanwhile."

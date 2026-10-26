@@ -31,7 +31,9 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
 
 A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did: 1 for "Don't know", 2 for "Sort of" or 3 for "Know it". It takes a few seconds, and every button has its key, so you never need the mouse. The first time you meet a card, it shows whole, marked "New": read it and press Enter.
 
-A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the back's once the back shows, or the front's when the back has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
+A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way climbs the ladder on its own. The first time it comes back first, turn it over with Space, read it and press Enter.
+
+A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the lower side's once you've turned it over, or the upper side's when the lower one has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
 
 When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Don't know" to it, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. ⌘Z undoes the last thing you did, and then the one before.
 
@@ -54,7 +56,7 @@ Many flashcard apps work out a different wait for each card with a formula. Fich
 
 Ficha's Cards window lists all your cards, and it's where they come in and go out.
 
-**New Card.** Write a card yourself: its front and back, and if you like its tags, a type and where it comes from. The form stays open for the next card, and tells you when a front repeats one of your cards.
+**New Card.** Write a card yourself: its front and back, and if you like its tags, a type, where it comes from, and Both ways, so that it comes back first too. The form stays open for the next card, and tells you when a front repeats one of your cards.
 
 **Import.** Bring in cards you made elsewhere: a text file with one card per line, which a spreadsheet saves, Anki exports as "Notes in Plain Text", or an AI writes, zipped with its images and sounds when its cards have any. The Import sheet copies [instructions for an AI](docs/instructions-for-an-ai.md) to paste into yours, so that it writes the file for you. It also takes a deck Anki exports as a package (`.apkg`), with its images and, if you like, its progress: each card you had studied comes in on the step of your ladder nearest where Anki had it, due when Anki had it due, and the ones you had suspended come in buried. Before anything comes in, Ficha shows how many cards the file holds, which repeat yours, and which lines it couldn't read, and it saves a copy of your cards, so restoring it undoes the import.
 

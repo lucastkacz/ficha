@@ -41,3 +41,23 @@ public enum PanelCard: Sendable, Equatable {
         }
     }
 }
+
+extension Way {
+    /// The side the review panel shows on top, which Lucas sees first: the
+    /// front front first, and the back back first.
+    public var upperSide: CardSide {
+        switch self {
+        case .frontFirst: .front
+        case .backFirst: .back
+        }
+    }
+
+    /// The side the review panel shows under the upper one once Lucas flips
+    /// the card: the other side.
+    public var lowerSide: CardSide {
+        switch self {
+        case .frontFirst: .back
+        case .backFirst: .front
+        }
+    }
+}

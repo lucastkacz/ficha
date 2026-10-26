@@ -179,13 +179,13 @@ struct FollowUpTests {
         panel.startAsking()
         panel.write(question: "¿De qué idioma viene?")
         panel.finishAsking()
-        #expect(panel.content == .front(ubuntu, isAhead: false))
+        #expect(panel.content == .upperSide(ubuntu))
         panel.flip()
         panel.startAsking()
         panel.write(question: "¿Qué otras palabras zulúes usamos?")
         panel.finishAsking()
 
-        #expect(panel.content == .back(ubuntu, isAhead: false))
+        #expect(panel.content == .bothSides(ubuntu))
         #expect(panel.question == nil)
         #expect(try engine.reviewLog().count == log.count + 1)
         let followUps = try engine.inbox().followUps
@@ -205,11 +205,11 @@ struct FollowUpTests {
 
         panel.startAsking()
         panel.write(question: "¿De qué idioma viene?")
-        #expect(panel.content == .asking(ubuntu, showsBack: false))
+        #expect(panel.content == .asking(ubuntu, showsLowerSide: false))
         #expect(panel.question == "¿De qué idioma viene?")
         panel.cancelAsking()
 
-        #expect(panel.content == .front(ubuntu, isAhead: false))
+        #expect(panel.content == .upperSide(ubuntu))
         #expect(panel.question == nil)
         #expect(try engine.inbox().followUps.isEmpty)
     }
@@ -224,7 +224,7 @@ struct FollowUpTests {
         #expect(!panel.questionAsksSomething)
         panel.finishAsking()
 
-        #expect(panel.content == .asking(ubuntu, showsBack: true))
+        #expect(panel.content == .asking(ubuntu, showsLowerSide: true))
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(try engine.inbox().captures.isEmpty)
     }
@@ -269,7 +269,7 @@ struct FollowUpTests {
         panel.flip()
         panel.rate(.good)
         panel.undoLastCard()
-        #expect(panel.content == .back(petricor, isAhead: false))
+        #expect(panel.content == .bothSides(petricor))
         let log = try engine.reviewLog()
 
         panel.startAsking()
@@ -279,7 +279,7 @@ struct FollowUpTests {
         panel.startAsking()
         panel.undoLastCard()
         #expect(!panel.canUndo)
-        #expect(panel.content == .asking(petricor, showsBack: true))
+        #expect(panel.content == .asking(petricor, showsLowerSide: true))
         #expect(panel.question == "¿Quién inventó la palabra?")
         panel.cancelAsking()
         panel.startFlagging()
@@ -287,7 +287,7 @@ struct FollowUpTests {
         panel.undoLastCard()
 
         #expect(!panel.canUndo)
-        #expect(panel.content == .flagging(petricor, showsBack: true))
+        #expect(panel.content == .flagging(petricor, showsLowerSide: true))
         #expect(panel.question == nil)
         #expect(try engine.reviewLog() == log)
         #expect(try engine.cards() == [ubuntu, petricor])
@@ -307,7 +307,7 @@ struct FollowUpTests {
 
         #expect(panel.failure?.action == .ask)
         #expect(panel.failure?.error == .cardNotFound(ubuntu.id))
-        #expect(panel.content == .asking(ubuntu, showsBack: true))
+        #expect(panel.content == .asking(ubuntu, showsLowerSide: true))
         #expect(panel.question == "¿De qué idioma viene?")
         #expect(try engine.inbox().captures.isEmpty)
     }

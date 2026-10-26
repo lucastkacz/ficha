@@ -115,6 +115,23 @@ extension Card {
         Set([frontSound, backSound].compactMap(\.self))
     }
 
+    /// The text on `side`, which may be empty when the side has an image or a
+    /// sound.
+    public func text(on side: CardSide) -> String {
+        switch side {
+        case .front: front
+        case .back: back
+        }
+    }
+
+    /// The image on `side`, or nil for none.
+    public func image(on side: CardSide) -> ImageName? {
+        switch side {
+        case .front: frontImage
+        case .back: backImage
+        }
+    }
+
     /// The sound on `side`, or nil for none.
     public func sound(on side: CardSide) -> SoundName? {
         switch side {

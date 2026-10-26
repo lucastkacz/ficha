@@ -353,6 +353,29 @@ final class BackupTests {
         #expect(try engine.cards().map(\.bothWays) == [false, true])
     }
 
+    @Test(
+        "a copy from before each answer's way restores with every entry front first, and a backup since keeps each answer's way"
+    )
+    func copyFromBeforeWaysRestoresWithEveryEntryFrontFirst() throws {
+        let engine = try openEngine()
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeWays(at: backups.appending(path: name), at: time.now - days(1))
+
+        try engine.restore(name)
+        let restored = try engine.reviewLog()
+        let serendipia = try #require(try engine.cards().first)
+        try engine.meet(serendipia, way: .backFirst)
+        let backup = try engine.backUpNow(.defaults)
+        try engine.takeBackAnswer(of: serendipia.id, way: .backFirst)
+        time.advance(by: minutes(1))
+        try engine.restore(backup.name)
+
+        #expect(restored.map(\.way) == [.frontFirst, .frontFirst])
+        #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .frontFirst, .backFirst])
+    }
+
     @Test("a copy that isn't in the Backups folder can't be restored")
     func missingCopyIsRefused() throws {
         let engine = try openEngine()

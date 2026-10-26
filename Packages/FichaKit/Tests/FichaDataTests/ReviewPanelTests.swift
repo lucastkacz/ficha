@@ -245,13 +245,13 @@ struct ReviewPanelTests {
         // Now "Poder" is due, and "Poder constituyente", on the third step, is
         // the closest to being due, for a review ahead.
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        #expect(panel.content == .front(poder, isAhead: false))
+        #expect(panel.content == .upperSide(poder))
         #expect(panel.tags == [CardTag(name: "física", color: .orange), CardTag(name: "ciencia")])
 
         try panel.answer(.review(.good), responseTime: .seconds(3))
         panel.seeMore()
 
-        #expect(panel.content == .front(constituyente, isAhead: true))
+        #expect(panel.content == .upperSide(constituyente, isAhead: true))
         #expect(panel.tags == [CardTag(name: "derecho", emoji: "⚖️")])
     }
 
@@ -303,13 +303,13 @@ struct ReviewPanelTests {
         panel.flip()
 
         panel.rate(.again)
-        #expect(panel.content == .flagging(cards[0], showsBack: true))
+        #expect(panel.content == .flagging(cards[0], showsLowerSide: true))
         #expect(panel.offersToFlag)
         #expect(panel.note == "Forgotten 8 times")
         panel.write(note: "Forgotten 8 times. Falta un ejemplo.")
         panel.finishFlagging()
 
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         #expect(!panel.offersToFlag)
         #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Forgotten 8 times. Falta un ejemplo."])
         #expect(try engine.reviewLog().last?.kind == .review(.again))
@@ -325,7 +325,7 @@ struct ReviewPanelTests {
 
         panel.cancelFlagging()
 
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         #expect(!panel.offersToFlag)
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(
@@ -348,7 +348,7 @@ struct ReviewPanelTests {
         panel.finishFlagging()
 
         panel.undoLastCard()
-        #expect(panel.content == .back(cards[0], isAhead: false))
+        #expect(panel.content == .bothSides(cards[0]))
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
         #expect(try engine.reviewLog() == log)
@@ -356,7 +356,7 @@ struct ReviewPanelTests {
         clock.advance(by: .seconds(1))
         panel.rate(.again)
 
-        #expect(panel.content == .flagging(cards[0], showsBack: true))
+        #expect(panel.content == .flagging(cards[0], showsLowerSide: true))
         #expect(panel.note == "Forgotten 8 times")
         #expect(try engine.reviewLog().last?.responseTime == .seconds(5))
         #expect(panel.failure == nil)
@@ -502,6 +502,76 @@ struct ReviewPanelTests {
 
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(panel.playingSound?.name == la)
+    }
+
+    @Test(
+        "a back-first first view shows the back alone, marked new, then the front under it once flipped, and Got it puts only that way on the ladder"
+    )
+    func aBackFirstFirstViewFlipsBeforeGotIt() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        let frontFirst = try engine.standing(of: serendipia.id, on: settings.ladder)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        let beforeTheFlip = panel.content
+        panel.endFirstView()
+        let logBeforeTheFlip = try engine.reviewLog()
+        panel.flip()
+        let afterTheFlip = panel.content
+        panel.endFirstView()
+
+        #expect(beforeTheFlip == .upperSide(bothWays[0], .backFirst, isNew: true))
+        #expect(logBeforeTheFlip.count == 1)
+        #expect(afterTheFlip == .firstView(bothWays[0], .backFirst))
+        #expect(panel.current == nil)
+        #expect(
+            try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+                == .onLadder(step: 0, due: time.now + hours(1)))
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == frontFirst)
+    }
+
+    @Test(
+        "a back-first review shows the back alone, then the front under it to rate, and the rating moves only that way")
+    func aBackFirstReviewShowsTheBackOnTop() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+        var panel = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
+
+        let beforeTheFlip = panel.content
+        panel.flip()
+        let afterTheFlip = panel.content
+        panel.rate(.good)
+
+        #expect(beforeTheFlip == .upperSide(bothWays[0], .backFirst))
+        #expect(afterTheFlip == .bothSides(bothWays[0], .backFirst))
+        #expect(
+            try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+                == .onLadder(step: 1, due: time.now + hours(4)))
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 0, due: time.now))
+    }
+
+    @Test(
+        "back first, R plays the back's sound before the flip, and once flipped the front's, or the back's without one")
+    func rPlaysTheSoundOfTheSideThatShowsBackFirst() async throws {
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let coloratura = try wordCard("coloratura", frontSound: la, backSound: mi)
+        let aria = try wordCard("aria", backSound: mi)
+        let bothWays = try engine.setBothWays(true, of: [coloratura.id, aria.id])
+        var withBoth = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
+        var withBack = try engine.openPanel(.reviewNow, with: [.review(bothWays[1], .backFirst)], settings: settings)
+
+        let rBeforeTheFlip = withBoth.sideForR
+        withBoth.flip()
+        withBack.flip()
+
+        #expect(rBeforeTheFlip == .back)
+        #expect(withBoth.sideForR == .front)
+        #expect(withBack.sideForR == .back)
     }
 
     @Test("R plays the front's sound while only the front shows, and the back's once the back shows")

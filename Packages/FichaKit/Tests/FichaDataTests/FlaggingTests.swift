@@ -146,6 +146,26 @@ struct FlaggingTests {
         #expect(try engine.reviewNow(settings) == [.review(fixed)])
     }
 
+    @Test("flagging a card from its back-first way flags it both ways, and fixing it brings both back on their steps")
+    func flaggingFromTheBackFirstWayFlagsBothWays() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+        var panel = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
+
+        try panel.flag(note: note("La definición da la palabra"))
+        let whileFlagged = try engine.reviewNow(settings)
+        let inbox = try engine.inbox().flaggedCards.map(\.id)
+        let fixed = try engine.fix(
+            serendipia.id, with: card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad."))
+
+        #expect(whileFlagged.isEmpty)
+        #expect(inbox == [serendipia.id])
+        #expect(try engine.reviewNow(settings) == [.review(fixed), .review(fixed, .backFirst)])
+    }
+
     // A refine session can repeat a command, and every change to a card's
     // content goes through a flag (#4). A buried card isn't in the inbox.
     @Test("only a flagged card in the inbox can be fixed: not one in the reviews, nor a buried one")

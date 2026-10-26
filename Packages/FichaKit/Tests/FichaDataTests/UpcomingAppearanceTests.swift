@@ -166,6 +166,20 @@ struct UpcomingAppearanceTests {
         #expect(plan.map(\.cards) == Array(repeating: [.review(ubuntu)], count: Engine.mostUpcomingAppearances))
     }
 
+    // Card notifications don't go back first until #97 adds it.
+    @Test("planned appearances bring only front-first ways, leaving back-first ones, new or due, to the Mac")
+    func plannedAppearancesBringOnlyFrontFirstWays() throws {
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
+        try engine.meet(serendipia, way: .backFirst)
+        time.move(to: try at(10, 0))
+
+        let next = try engine.upcomingAppearances(settings).first
+
+        #expect(next == UpcomingAppearance(time: try at(10, 0), cards: [.review(bothWays[0]), .review(bothWays[1])]))
+    }
+
     /// Approves a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.

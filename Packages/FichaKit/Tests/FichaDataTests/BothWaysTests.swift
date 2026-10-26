@@ -69,6 +69,26 @@ struct BothWaysTests {
         #expect(try engine.cards().map(\.bothWays) == [true, true, true, true])
     }
 
+    @Test(
+        "switching Both ways off takes the back-first way out of reviews, and switching it on picks it up where it was")
+    func switchingBothWaysOffAndOnKeepsTheBackFirstWay() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+        let backFirst = try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+
+        let oneWay = try engine.setBothWays(false, of: [serendipia.id])
+        let whileOff = try engine.reviewNow(settings)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+
+        #expect(whileOff == [.review(oneWay[0])])
+        #expect(try engine.reviewNow(settings) == [.review(bothWays[0]), .review(bothWays[0], .backFirst)])
+        #expect(try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder) == backFirst)
+    }
+
     @Test("Both ways turns on for none of the cards when one of them doesn't exist")
     func bothWaysTurnsOnForNoneWhenACardIsMissing() throws {
         let serendipia = try approveCard("serendipia", in: engine)

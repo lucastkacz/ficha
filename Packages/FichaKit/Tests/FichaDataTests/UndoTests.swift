@@ -96,13 +96,35 @@ struct UndoTests {
         panel.buryCard()
 
         panel.undoLastCard()
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         panel.undoLastCard()
-        #expect(panel.content == .back(cards[0], isAhead: false))
+        #expect(panel.content == .bothSides(cards[0]))
         clock.advance(by: .seconds(1))
         panel.rate(.good)
 
         #expect(try engine.reviewLog().last?.responseTime == .seconds(5))
+    }
+
+    // Another review now can answer the card's other way while the panel is
+    // open.
+    @Test("undoing a back-first rating takes back only that way's answer, and shows the card back first, flipped")
+    func undoingABackFirstRatingTakesBackOnlyThatWay() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        try engine.meet(serendipia, way: .backFirst)
+        time.advance(by: hours(1))
+        let backFirst = try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+        var panel = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
+        panel.flip()
+        panel.rate(.again)
+        try engine.review(serendipia, .good)
+
+        panel.undoLastCard()
+
+        #expect(panel.content == .bothSides(bothWays[0], .backFirst))
+        #expect(try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder) == backFirst)
+        #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .backFirst, .frontFirst])
     }
 
     // Closing the panel writes it into the appearance log, as finished or
@@ -173,15 +195,15 @@ struct UndoTests {
 
         panel.undoLastCard()
         #expect(try engine.inbox().followUps.map(\.capture.text) == ["¿Quién inventó la palabra?"])
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         panel.undoLastCard()
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(try engine.inbox().captures.isEmpty)
         #expect(try engine.progress(settings).inInbox == 0)
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         panel.undoLastCard()
 
-        #expect(panel.content == .back(cards[0], isAhead: false))
+        #expect(panel.content == .bothSides(cards[0]))
         #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
         #expect(!panel.canUndo)
         #expect(panel.failure == nil)
@@ -202,19 +224,19 @@ struct UndoTests {
         panel.buryCard()
 
         panel.undoLastCard()
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         #expect(try engine.cards().map(\.buriedAt) == [nil, nil, nil])
         #expect(try engine.inbox().followUps.map(\.card.id) == [cards[0].id, cards[1].id])
         panel.undoLastCard()
-        #expect(panel.content == .front(cards[1], isAhead: false))
+        #expect(panel.content == .upperSide(cards[1]))
         #expect(try engine.inbox().followUps.map(\.card.id) == [cards[0].id])
         panel.undoLastCard()
-        #expect(panel.content == .front(cards[0], isAhead: false))
+        #expect(panel.content == .upperSide(cards[0]))
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(try engine.inbox().followUps.map(\.card.id) == [cards[0].id])
         panel.undoLastCard()
 
-        #expect(panel.content == .front(cards[0], isAhead: false))
+        #expect(panel.content == .upperSide(cards[0]))
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(!panel.canUndo)
         #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
@@ -241,8 +263,8 @@ struct UndoTests {
             try discarding.undo()
         }
         #expect(try engine.cards() == cards + approved)
-        #expect(approving.content == .front(cards[0], isAhead: false))
-        #expect(discarding.content == .front(cards[1], isAhead: false))
+        #expect(approving.content == .upperSide(cards[0]))
+        #expect(discarding.content == .upperSide(cards[1]))
     }
 
     /// Asks `question` about the card the panel is on, as Lucas does with A,
