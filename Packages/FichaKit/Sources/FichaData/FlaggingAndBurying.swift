@@ -39,8 +39,8 @@ extension Engine {
     /// throws. `bothWays` turns Both ways on or off, as `setBothWays(_:of:)`
     /// does, and nil leaves it as it was. Returns the card before and after.
     func fix(
-        _ cardID: Int64, changingContentWith newContent: (Card) throws(EngineError) -> CardContent,
-        bothWays: Bool? = nil
+        _ cardID: Int64, bothWays: Bool? = nil,
+        changingContentWith newContent: (Card) throws(EngineError) -> CardContent
     ) throws(EngineError) -> (before: Card, fixed: Card) {
         let fixedAt = time.now
         return try write { db in

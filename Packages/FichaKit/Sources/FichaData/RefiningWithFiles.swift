@@ -122,11 +122,9 @@ extension Engine {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
         let (before, fixed) = try keeping(held.files) { () throws(EngineError) in
-            try fix(
-                cardID,
-                changingContentWith: { card throws(EngineError) in
-                    try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
-                }, bothWays: draft.bothWays)
+            try fix(cardID, bothWays: draft.bothWays) { card throws(EngineError) in
+                try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
+            }
         }
         removeFilesNoCardUses(before: before, after: fixed)
         return fixed
