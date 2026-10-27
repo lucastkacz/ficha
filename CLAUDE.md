@@ -63,7 +63,8 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
 - `iPhone/`: the iPhone app, for now only Ficha Dev (#97). It signs with Lucas's Personal Team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
-- `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, Dependabot and issue forms.
+- `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
+- `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
 - `scripts/`: the hook tests and the render tools.
 
 ## Commands

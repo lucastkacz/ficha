@@ -46,6 +46,9 @@
     "%@ never does, so it doesn't get in the real Ficha's way." : {
 
     },
+    "%@ shows you cards only while it's open. You can change this later in Settings." : {
+      "comment" : "An alert at the app's first launch, under whether it opens at login. The name is the app's."
+    },
     "%@, %lld due" : {
       "comment" : "The menu-bar icon, with the due count.",
       "localizations" : {
@@ -1799,6 +1802,9 @@
     "Not measured: you answered from a card notification." : {
       "comment" : "The tooltip of the dash in place of the seconds in the Cards window's review log."
     },
+    "Not Now" : {
+      "comment" : "A button of the alert at the app's first launch."
+    },
     "Note" : {
       "comment" : "In the Cards window's detail: what Lucas noted with a capture.\nIn the Cards window, the label of a capture's note, while Lucas edits it."
     },
@@ -1852,6 +1858,12 @@
         }
       }
     },
+    "Open %@ when you log in?" : {
+      "comment" : "An alert at the app's first launch. The name is the app's."
+    },
+    "Open at Login" : {
+      "comment" : "A button of the alert at the app's first launch."
+    },
     "Open Login Items" : {
 
     },
@@ -1875,6 +1887,9 @@
     },
     "Prioritize: %@" : {
       "comment" : "The Prioritize submenu's title while some tags are priority tags, which it lists by name."
+    },
+    "Privacy Policy" : {
+
     },
     "Process %d" : {
       "comment" : "A process with no name, by its id, in Diagnostics: a noun."
