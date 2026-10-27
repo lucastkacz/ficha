@@ -14,21 +14,9 @@ extension View {
 /// Import… and ⇧⌘I, and the sheet they open while the state imports.
 private struct ImportButtonAndSheet: ViewModifier {
     @Binding var state: CardsWindowState
-    /// The height of the window under its toolbar, which the sheet stays
-    /// within, once it's known.
-    @State private var windowHeight: CGFloat?
-    /// What the sheet takes of that height beyond its content: the frame
-    /// macOS draws around a sheet, about 28 points tall on macOS 26, and a
-    /// margin over the window's bottom edge.
-    private let sheetMargins: CGFloat = 44
 
     func body(content: Content) -> some View {
         content
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.height
-            } action: { height in
-                windowHeight = height
-            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     importButton
@@ -46,10 +34,10 @@ private struct ImportButtonAndSheet: ViewModifier {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
                 .hidden()
             }
-            .sheet(isPresented: isImporting) {
+            .sheetWithinWindow(isPresented: isImporting) { maximumHeight in
                 if let importing = state.importing {
                     ImportSheet(
-                        importing: importing, maximumHeight: maximumSheetHeight, failure: failure,
+                        importing: importing, maximumHeight: maximumHeight, failure: failure,
                         preview: { run(state.previewImport(of: $0)) },
                         nameTag: { state.nameImportTag($0, as: $1) }, removeTag: { state.removeImportTag($0) },
                         chooseForRepeatedCards: { state.chooseForRepeatedCards($0) },
@@ -57,14 +45,6 @@ private struct ImportButtonAndSheet: ViewModifier {
                         importCards: { run(state.importCards()) })
                 }
             }
-    }
-
-    /// The tallest the sheet's content gets: what the window has under its
-    /// toolbar, or until that's known, as when the window opens with the
-    /// sheet, the least it can have, less the sheet's margins, so that the
-    /// sheet fits from the moment it opens.
-    private var maximumSheetHeight: CGFloat {
-        (windowHeight ?? CardsWindow.minimumSize.height) - sheetMargins
     }
 
     /// Runs `work`, which the state started, away from the main actor, and
@@ -157,12 +137,8 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// the preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
-    /// The tallest the sheet gets, as the window is.
+    /// The tallest the sheet gets, as `sheetWithinWindow` hands it.
     let maximumHeight: CGFloat
-    /// `maximumHeight` as it was when the sheet opened, which the sheet
-    /// keeps: macOS keeps a sheet's window as tall as it opened, so the
-    /// content keeps to that, even once the window's height is known.
-    @State private var openingMaximumHeight: CGFloat?
     /// What couldn't be done, as the alert over the sheet says it.
     let failure: Binding<Failure?>
     /// Reads the file chosen in the open panel and shows its preview.
@@ -200,9 +176,6 @@ struct ImportSheet: View {
         }
         .padding(padding)
         .frame(width: 460)
-        .onAppear {
-            openingMaximumHeight = maximumHeight
-        }
         // An import that started goes on until it's done.
         .interactiveDismissDisabled(importing.busy == .importing)
         .fileImporter(
@@ -289,7 +262,7 @@ struct ImportSheet: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxHeight: (openingMaximumHeight ?? maximumHeight) - 2 * padding - spacing - buttonsHeight)
+            .frame(maxHeight: maximumHeight - 2 * padding - spacing - buttonsHeight)
             .fixedSize(horizontal: false, vertical: true)
             .scrollBounceBehavior(.basedOnSize)
             .disabled(importing.busy != nil)
