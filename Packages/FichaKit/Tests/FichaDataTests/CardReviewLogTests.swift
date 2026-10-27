@@ -43,7 +43,7 @@ struct CardReviewLogTests {
             ])
         #expect(log.map(\.step) == [0, 1, 2, 2, 0, 1])
         #expect(
-            log.first?.entry
+            log.first?.entry.withoutIDs
                 == ReviewLogEntry(
                     cardID: serendipia.id, kind: .firstView, answeredAt: metAt, responseTime: .seconds(8),
                     trigger: .reviewNow))

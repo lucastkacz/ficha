@@ -94,7 +94,7 @@ final class DatabaseFileTests {
         let engine = try Engine(location: .folder(folder), time: time)
 
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
                     trigger: .reviewNow),
@@ -157,7 +157,7 @@ final class DatabaseFileTests {
         #expect(try engine.standing(of: 2, on: ladder) == .onLadder(step: 0, due: time.now + hours(3)))
         #expect(try engine.standing(of: 3, on: ladder) == .new)
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
                     trigger: .reviewNow),
@@ -193,7 +193,7 @@ final class DatabaseFileTests {
         #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
         #expect(try engine.standing(of: 2, on: ladder) == .new)
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
                     trigger: .reviewNow),
@@ -217,6 +217,33 @@ final class DatabaseFileTests {
         #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
         #expect(try engine.standing(of: 1, way: .backFirst, on: ladder) == .new)
         #expect(try engine.reviewNow(.defaults).map(\.way) == [.backFirst])
+    }
+
+    // The card, capture and review log tables are made again for the IDs'
+    // defaults.
+    @Test(
+        "a database from before IDs unique across devices migrates with every row as it was, each with an ID of its own waiting to be sent"
+    )
+    func aDatabaseFromBeforeIDsMigratesWithAnIDForEveryRow() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeIDs(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let waiting = try engine.changesToSend()
+        try expectEveryRowWithAnIDAsBeforeIDs(in: engine, at: time.now)
+        #expect(
+            waiting.map(\.row.recordType) == [
+                .card, .card, .capture, .capture, .capture, .reviewLogEntry, .reviewLogEntry, .reviewLogEntry,
+                .reviewLogEntry, .tag,
+            ])
+        #expect(waiting.allSatisfy { $0.kind == .saved && $0.fieldTimes.isEmpty })
+        #expect(Set(waiting.map(\.row)).count == waiting.count)
+        #expect(
+            waiting.filter { $0.row.recordType == .reviewLogEntry }.map(\.row)
+                == (try engine.reviewLog().compactMap(\.uuid).map(SyncedRow.reviewLogEntry)))
+        #expect(waiting.last?.row == .tag("lenguaje"))
+        #expect(try engine.recorded { try engine.unbury(2) }.map(\.row) == [waiting[1].row])
     }
 
     // Ficha opens its database every time it starts, and the CLI on every
@@ -494,6 +521,140 @@ func saveDatabaseBeforeWays(at file: URL, at time: Date) throws {
     try database.close()
 }
 
+/// The names of the images and sounds on ubuntu, in `saveDatabaseBeforeIDs`,
+/// which only its row holds.
+private let ubuntuFiles = (
+    frontImage: String(repeating: "a", count: 64) + ".png", backImage: String(repeating: "b", count: 64) + ".jpg",
+    frontSound: String(repeating: "c", count: 64) + ".m4a", backSound: String(repeating: "d", count: 64) + ".m4a"
+)
+
+/// Saves a database at `file` as Ficha left it before rows had IDs unique
+/// across devices, through the schema's migrations up to the one before them,
+/// with everything made at `time`, and every column the migration copies
+/// filled on some row: serendipia, approved from its capture, tagged
+/// "lenguaje", which is blue, met then, good an hour later and hard ahead an
+/// hour after that; ubuntu, tagged "filosofía", with a source, images and
+/// sounds, edited, flagged and buried, going both ways and placed back first
+/// by an import;
+/// ojalá, a capture in the inbox that follows serendipia up, and another,
+/// with a note and a source, that expands ubuntu; and petricor, with its
+/// capture, the last one, and its first view, deleted.
+func saveDatabaseBeforeIDs(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v19 the way each answer went")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO capture (id, text, createdAt, refinedAt)
+                VALUES (1, 'serendipia', ?, ?), (4, 'petricor', ?, ?)
+                """,
+            arguments: [time, time, time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt, captureId)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '["lenguaje"]', ?, 1),
+                    (3, 'word', 'petricor', 'El olor de la lluvia.', '[]', ?, 4)
+                """,
+            arguments: [time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO card (
+                    id, type, front, back, tags, source, createdAt, flagNote, flaggedAt, buriedAt, frontImage,
+                    backImage, editedAt, frontSound, backSound, bothWays)
+                VALUES (
+                    2, 'concept', 'ubuntu', 'Soy porque somos.', '["filosofía"]', 'Desmond Tutu', ?,
+                    'Falta un ejemplo', ?, ?, ?, ?, ?, ?, ?, 1)
+                """,
+            arguments: [
+                time, time + hours(4), time + hours(5), ubuntuFiles.frontImage, ubuntuFiles.backImage,
+                time + hours(3), ubuntuFiles.frontSound, ubuntuFiles.backSound,
+            ])
+        try db.execute(
+            sql: """
+                INSERT INTO capture (id, text, note, source, createdAt, expandsCardId, followsUpCardId)
+                VALUES (2, 'ojalá', NULL, NULL, ?, NULL, 1),
+                    (3, 'ubuntu, en zulú', 'Del proverbio', 'Una charla', ?, 2, NULL)
+                """,
+            arguments: [time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO reviewLog
+                    (cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead, way)
+                VALUES (1, 'firstView', NULL, NULL, NULL, ?, 8.25, 'reviewNow', 0, 'frontFirst'),
+                    (1, 'review', 'good', NULL, NULL, ?, 3, 'appearance', 0, 'frontFirst'),
+                    (1, 'review', 'hard', NULL, NULL, ?, NULL, 'appearance', 1, 'frontFirst'),
+                    (2, 'placement', NULL, 2, ?, ?, NULL, NULL, 0, 'backFirst'),
+                    (3, 'firstView', NULL, NULL, NULL, ?, 6, 'reviewNow', 0, 'frontFirst')
+                """,
+            arguments: [time, time + hours(1), time + hours(2), time + days(4), time, time])
+        try db.execute(sql: "INSERT INTO tag (name, color) VALUES ('lenguaje', 'blue')")
+        try db.execute(sql: "DELETE FROM reviewLog WHERE cardId = 3")
+        try db.execute(sql: "DELETE FROM card WHERE id = 3")
+        try db.execute(sql: "DELETE FROM capture WHERE id = 4")
+    }
+    try database.close()
+}
+
+/// Checks that `engine` has every row of `saveDatabaseBeforeIDs`, saved at
+/// `time`, as it was, each entry of the review log with an ID of its own and
+/// answering none, and gives a new card or capture an id after the deleted
+/// one's. A review log entry's id is never seen, so a deleted one's doesn't
+/// matter.
+func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws {
+    #expect(
+        try engine.cards() == [
+            Card(
+                id: 1, type: .word, front: "serendipia", back: "Un hallazgo por casualidad.", frontImage: nil,
+                backImage: nil, frontSound: nil, backSound: nil, tags: ["lenguaje"], source: nil, createdAt: time,
+                editedAt: nil, captureID: 1, flag: nil, buriedAt: nil, setAsideBy: nil, bothWays: false),
+            Card(
+                id: 2, type: .concept, front: "ubuntu", back: "Soy porque somos.",
+                frontImage: ImageName(rawValue: ubuntuFiles.frontImage),
+                backImage: ImageName(rawValue: ubuntuFiles.backImage),
+                frontSound: SoundName(rawValue: ubuntuFiles.frontSound),
+                backSound: SoundName(rawValue: ubuntuFiles.backSound), tags: ["filosofía"], source: "Desmond Tutu",
+                createdAt: time, editedAt: time + hours(3), captureID: nil,
+                flag: Flag(note: "Falta un ejemplo", flaggedAt: time + hours(4)), buriedAt: time + hours(5),
+                setAsideBy: nil, bothWays: true),
+        ])
+    #expect(try engine.sidebarTags() == [CardTag(name: "lenguaje", color: .blue)])
+    let inbox = try engine.inbox()
+    #expect(inbox.captures.isEmpty)
+    #expect(
+        inbox.followUps.map(\.capture) == [
+            Capture(
+                id: 2, text: "ojalá", note: nil, source: nil, createdAt: time, expandsCardID: nil,
+                followsUpCardID: 1)
+        ])
+    #expect(
+        inbox.expansions.map(\.capture) == [
+            Capture(
+                id: 3, text: "ubuntu, en zulú", note: "Del proverbio", source: "Una charla", createdAt: time,
+                expandsCardID: 2, followsUpCardID: nil)
+        ])
+    #expect(
+        try engine.reviewLog().map(\.withoutIDs) == [
+            ReviewLogEntry(
+                cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
+                trigger: .reviewNow),
+            ReviewLogEntry(
+                cardID: 1, kind: .review(.good), answeredAt: time + hours(1), responseTime: .seconds(3),
+                trigger: .appearance),
+            ReviewLogEntry(
+                cardID: 1, kind: .review(.hard), answeredAt: time + hours(2), responseTime: nil,
+                trigger: .appearance, isAhead: true),
+            ReviewLogEntry(placing: 2, way: .backFirst, on: Placement(step: 2, due: time + days(4)), at: time),
+        ])
+    // Each entry has an ID of its own, and no review says which entry it
+    // answered, so it answered the one before it.
+    let log = try engine.reviewLog()
+    #expect(Set(log.compactMap(\.uuid)).count == 4)
+    #expect(log.allSatisfy { $0.answeredEntry == nil })
+    // The ids of the card and the capture deleted before aren't given again.
+    #expect(try engine.create(card(nil, front: "ataraxia", back: "Serenidad.")).id == 4)
+    #expect(try engine.newCapture("eudaimonía").id == 5)
+}
+
 /// Checks that `engine` has every card of `saveDatabaseBeforeOptionalTypes`
 /// as it was saved at `time`: its type, capture, standing, step and review
 /// log, and the expansion still attached to its card, which follows none up.
@@ -518,7 +679,7 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
     #expect(try engine.standing(of: 2, on: ladder) == .new)
     #expect(try engine.standing(of: 3, on: ladder) == .onLadder(step: 0, due: time + hours(1)))
     #expect(
-        try engine.reviewLog() == [
+        try engine.reviewLog().map(\.withoutIDs) == [
             ReviewLogEntry(
                 cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
                 trigger: .reviewNow),
