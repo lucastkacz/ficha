@@ -48,22 +48,23 @@ enum SyncedRow: Sendable, Hashable {
     /// error when this version of Ficha doesn't know it.
     init(recordType: String, recordName: String) throws {
         guard let type = RecordType(rawValue: recordType) else {
-            throw unreadable("A row that syncs is of a type this version of Ficha doesn't know")
+            throw unreadable(
+                "A row that syncs, \(recordName), is a \(recordType), which this version of Ficha doesn't know")
         }
         switch type {
-        case .card: self = .card(try uuid(named: recordName))
-        case .capture: self = .capture(try uuid(named: recordName))
-        case .reviewLogEntry: self = .reviewLogEntry(try uuid(named: recordName))
+        case .card: self = .card(try uuid(named: recordName, of: type))
+        case .capture: self = .capture(try uuid(named: recordName, of: type))
+        case .reviewLogEntry: self = .reviewLogEntry(try uuid(named: recordName, of: type))
         case .tag: self = .tag(recordName)
         }
     }
 }
 
-/// The ID unique across devices that `name` writes, or an error when it
-/// isn't one.
-private func uuid(named name: String) throws -> UUID {
+/// The ID unique across devices that `name`, the name of a row of `type`,
+/// writes, or an error when it isn't one.
+private func uuid(named name: String, of type: SyncedRow.RecordType) throws -> UUID {
     guard let id = UUID(uuidString: name) else {
-        throw unreadable("A row that syncs is named with an ID that isn't a UUID")
+        throw unreadable("The \(type.rawValue) that syncs as \(name) isn't named by a UUID")
     }
     return id
 }
@@ -196,25 +197,18 @@ extension Engine {
     /// The state CKSyncEngine saved last on this device, or nil before it
     /// saved one.
     func savedSyncEngineState() throws(EngineError) -> Data? {
-        try read { db in try Data.fetchOne(db, sql: "SELECT engineState FROM syncDevice") }
+        try read { db in
+            guard let device = try Row.fetchOne(db, sql: "SELECT engineState FROM syncDevice") else {
+                throw unreadable("The database doesn't keep what this device keeps to sync")
+            }
+            return try device.decode(forColumn: "engineState")
+        }
     }
 
     /// Keeps `state` as the state CKSyncEngine saved last on this device, or
     /// forgets it when it's nil.
     func saveSyncEngineState(_ state: Data?) throws(EngineError) {
         try writeWithoutTelling { db in try FichaData.saveSyncEngineState(state, in: db) }
-    }
-
-    /// The row the card with this id syncs as, or `cardNotFound` when there's
-    /// none.
-    func syncedRow(ofCard cardID: Int64) throws(EngineError) -> SyncedRow {
-        try read { db in
-            guard let uuid = try String.fetchOne(db, sql: "SELECT uuid FROM card WHERE id = ?", arguments: [cardID])
-            else {
-                throw EngineError.cardNotFound(cardID)
-            }
-            return try SyncedRow(recordType: SyncedRow.RecordType.card.rawValue, recordName: uuid)
-        }
     }
 }
 
@@ -241,8 +235,13 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
         arguments: [row.recordType.rawValue, row.recordName])
     return Dictionary(
         uniqueKeysWithValues: try times.map { time in
-            guard let field = SyncedField(rawValue: try time.decode(forColumn: "field")) else {
-                throw unreadable("A field to sync has a name this version of Ficha doesn't know")
+            let name: String = try time.decode(forColumn: "field")
+            guard let field = SyncedField(rawValue: name) else {
+                throw unreadable(
+                    """
+                    The \(row.recordType.rawValue) that syncs as \(row.recordName) changed a field, \(name), \
+                    that this version of Ficha doesn't know
+                    """)
             }
             return (field, try time.decode(forColumn: "changedAt") as Date)
         })
@@ -254,18 +253,22 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
 /// that the other devices take that it has nothing. The deletions that wait
 /// still do.
 func recordEverythingToSend(in db: Database) throws {
+    let (card, capture, entry, tag) = (
+        SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue,
+        SyncedRow.RecordType.reviewLogEntry.rawValue, SyncedRow.RecordType.tag.rawValue
+    )
     try db.execute(
         sql: """
             DELETE FROM syncPending WHERE NOT isDeletion;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
-            SELECT 'card', uuid, 0 FROM card ORDER BY id;
+            SELECT '\(card)', uuid, 0 FROM card ORDER BY id;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
-            SELECT 'capture', uuid, 0 FROM capture ORDER BY id;
+            SELECT '\(capture)', uuid, 0 FROM capture ORDER BY id;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
-            SELECT 'reviewLogEntry', uuid, 0 FROM reviewLog ORDER BY id;
+            SELECT '\(entry)', uuid, 0 FROM reviewLog ORDER BY id;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
-            SELECT 'tag', name, 0 FROM (
-                SELECT name FROM tag UNION SELECT recordName FROM syncFieldTime WHERE recordType = 'tag')
+            SELECT '\(tag)', name, 0 FROM (
+                SELECT name FROM tag UNION SELECT recordName FROM syncFieldTime WHERE recordType = '\(tag)')
             ORDER BY name;
             """)
 }

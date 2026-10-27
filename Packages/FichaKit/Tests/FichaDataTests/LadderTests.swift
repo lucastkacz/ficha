@@ -87,7 +87,7 @@ struct LadderTests {
             settings: .defaults)
 
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: serendipia.id, kind: .firstView, answeredAt: firstViewTime,
                     responseTime: .milliseconds(8_250),
@@ -216,14 +216,19 @@ struct LadderTests {
     /// A placement an import gave the card with the id 1 at the test's
     /// time: on `step`, due at `due`.
     private func placement(on step: Int, dueAt due: Date) -> ReviewLogEntry {
-        ReviewLogEntry(placing: 1, on: Placement(step: step, due: due), at: time.now)
+        ReviewLogEntry(placing: 1, on: Placement(step: step, due: due), at: time.now, uuid: UUID())
     }
 
     /// A review of the card with the id 1 with `rating`, at `time`, from
-    /// review now.
-    private func review(_ rating: Rating, at time: Date) -> ReviewLogEntry {
+    /// review now, a review ahead when `ahead` says so. It answered
+    /// `answered`, or, when the test doesn't say, the entry before it, as a
+    /// review from before Ficha kept which entry each answered.
+    private func review(
+        _ rating: Rating, at time: Date, answering answered: ReviewLogEntry? = nil, ahead: Bool = false
+    ) -> ReviewLogEntry {
         ReviewLogEntry(
-            cardID: 1, kind: .review(rating), answeredAt: time, responseTime: .seconds(3), trigger: .reviewNow)
+            cardID: 1, kind: .review(rating), answeredAt: time, responseTime: .seconds(3), trigger: .reviewNow,
+            isAhead: ahead, uuid: UUID(), answeredEntry: answered?.uuid)
     }
 
     @Test("a log that starts with a placement stands on its step until the due time it was given")
@@ -277,52 +282,97 @@ struct LadderTests {
 
     // Once Ficha syncs, a card reviewed on the Mac and on the iPhone, each
     // without a connection, keeps both reviews: each device rated it for the
-    // wait it knew of, and the card's step is worked out again from the log
-    // that joins them (ADR 0017).
+    // wait it knew of, the one its last entry started, which each review
+    // names, and the card's step is worked out again from the log that joins
+    // them (ADR 0017).
 
     /// The first view of the card with the id 1 at `time`, from review now.
     private func firstView(at time: Date) -> ReviewLogEntry {
-        ReviewLogEntry(cardID: 1, kind: .firstView, answeredAt: time, responseTime: .seconds(8), trigger: .reviewNow)
+        ReviewLogEntry(
+            cardID: 1, kind: .firstView, answeredAt: time, responseTime: .seconds(8), trigger: .reviewNow, uuid: UUID())
     }
 
     @Test("two “Know it” ratings for one wait, one on each device, climb one step")
     func twoKnowItsForOneWaitClimbOneStep() throws {
-        let firstViewed = time.now
-        let onTheMac = review(.good, at: firstViewed + hours(1))
-        let onTheIPhone = review(.good, at: firstViewed + hours(1) + minutes(30))
+        let firstViewed = firstView(at: time.now)
+        let onTheMac = review(.good, at: time.now + hours(1), answering: firstViewed)
+        let onTheIPhone = review(.good, at: time.now + hours(1) + minutes(30), answering: firstViewed)
 
-        let standing = try ladder.standing(after: [firstView(at: firstViewed), onTheMac, onTheIPhone])
+        let standing = try ladder.standing(after: [firstViewed, onTheMac, onTheIPhone])
 
-        #expect(standing == .onLadder(step: 1, due: firstViewed + hours(1) + hours(4)))
+        #expect(standing == .onLadder(step: 1, due: time.now + hours(1) + hours(4)))
     }
 
+    // However many hours apart the two devices rated it.
+    @Test("the iPhone's “Know it” at 14:00 for the 4-hour wait the Mac's “Know it” answered at 9:00 climbs no further")
+    func aKnowItHoursLaterForTheSameWaitDoesntClimb() throws {
+        let nine = time.now
+        let firstViewed = firstView(at: nine - hours(5))
+        let climbed = review(.good, at: nine - hours(4), answering: firstViewed)
+        let onTheMac = review(.good, at: nine, answering: climbed)
+        let onTheIPhone = review(.good, at: nine + hours(5), answering: climbed)
+
+        let standing = try ladder.standing(after: [firstViewed, climbed, onTheMac, onTheIPhone])
+
+        #expect(standing == .onLadder(step: 2, due: nine + days(2)))
+    }
+
+    // Here each device met the card on its own, without a connection.
     @Test("“Know it” on one device and then “Don't know” on the other, for one wait, end where “Don't know” leaves it")
     func knowItThenDontKnowForOneWaitEndsOnTheFirstStep() throws {
-        let firstViewed = time.now
-        let onTheMac = review(.good, at: firstViewed + hours(1))
-        let onTheIPhone = review(.again, at: firstViewed + hours(1) + minutes(10))
+        let metOnTheMac = firstView(at: time.now)
+        let metOnTheIPhone = firstView(at: time.now + minutes(5))
+        let onTheMac = review(.good, at: time.now + hours(1), answering: metOnTheMac)
+        let onTheIPhone = review(.again, at: time.now + hours(1) + minutes(10), answering: metOnTheIPhone)
 
-        let standing = try ladder.standing(after: [firstView(at: firstViewed), onTheMac, onTheIPhone])
+        let standing = try ladder.standing(after: [metOnTheMac, metOnTheIPhone, onTheMac, onTheIPhone])
 
-        #expect(standing == .onLadder(step: 0, due: firstViewed + hours(1) + minutes(10) + hours(1)))
+        #expect(standing == .onLadder(step: 0, due: time.now + hours(1) + minutes(10) + hours(1)))
     }
 
     @Test("“Don't know” on one device and then “Know it” on the other, for one wait, both count")
     func dontKnowThenKnowItForOneWaitBothCount() throws {
-        let firstViewed = time.now
-        let onTheMac = review(.again, at: firstViewed + hours(1))
-        let onTheIPhone = review(.good, at: firstViewed + hours(1) + minutes(10))
+        let metOnTheMac = firstView(at: time.now)
+        let metOnTheIPhone = firstView(at: time.now + minutes(5))
+        let onTheMac = review(.again, at: time.now + hours(1), answering: metOnTheMac)
+        let onTheIPhone = review(.good, at: time.now + hours(1) + minutes(10), answering: metOnTheIPhone)
 
-        let standing = try ladder.standing(after: [firstView(at: firstViewed), onTheMac, onTheIPhone])
+        let standing = try ladder.standing(after: [metOnTheMac, metOnTheIPhone, onTheMac, onTheIPhone])
 
-        #expect(standing == .onLadder(step: 1, due: firstViewed + hours(1) + minutes(10) + hours(4)))
+        #expect(standing == .onLadder(step: 1, due: time.now + hours(1) + minutes(10) + hours(4)))
+    }
+
+    @Test("a “Know it” for a wait the card already climbed doesn't climb again after a “Don't know” since")
+    func aKnowItForAClimbedWaitDoesntClimbAfterADontKnow() throws {
+        let firstViewed = firstView(at: time.now)
+        let knownOnTheMac = review(.good, at: time.now + hours(1), answering: firstViewed)
+        let forgottenOnTheMac = review(.again, at: time.now + hours(2), answering: knownOnTheMac, ahead: true)
+        let knownOnTheIPhone = review(.good, at: time.now + hours(3), answering: firstViewed)
+
+        let standing = try ladder.standing(after: [firstViewed, knownOnTheMac, forgottenOnTheMac, knownOnTheIPhone])
+
+        #expect(standing == .onLadder(step: 0, due: time.now + hours(2) + hours(1)))
+    }
+
+    // The iPhone rated it ahead, since it didn't know of the Mac's “Don't
+    // know”, which had made the card due by then.
+    @Test("a review ahead on one device counts once another device's “Don't know” had made the card due")
+    func aReviewAheadCountsOnceAnotherDevicesDontKnowMadeTheCardDue() throws {
+        let firstViewed = firstView(at: time.now)
+        let known = review(.good, at: time.now + hours(1), answering: firstViewed)
+        let forgottenOnTheMac = review(.again, at: time.now + hours(2), answering: known, ahead: true)
+        let knownAheadOnTheIPhone = review(.good, at: time.now + hours(4), answering: known, ahead: true)
+
+        let standing = try ladder.standing(after: [firstViewed, known, forgottenOnTheMac, knownAheadOnTheIPhone])
+
+        #expect(standing == .onLadder(step: 1, due: time.now + hours(4) + hours(4)))
     }
 
     @Test("a first view on each device counts once: the second neither moves the card nor restarts its wait")
     func twoFirstViewsCountOnce() throws {
         let onTheMac = firstView(at: time.now)
         let onTheIPhone = firstView(at: time.now + minutes(5))
-        let reviewedOnTheMac = review(.good, at: time.now + hours(1))
+        let reviewedOnTheMac = review(.good, at: time.now + hours(1), answering: onTheMac)
 
         let afterFirstViews = try ladder.standing(after: [onTheMac, onTheIPhone])
         let afterReview = try ladder.standing(after: [onTheMac, onTheIPhone, reviewedOnTheMac])
@@ -345,8 +395,8 @@ struct LadderTests {
     @Test("“Know it” and “Don't know” rated at the same moment on two devices end where “Don't know” leaves the card")
     func dontKnowHasTheLastWordAtTheSameMoment() throws {
         let firstViewed = firstView(at: time.now)
-        let onTheMac = review(.good, at: time.now + hours(1))
-        let onTheIPhone = review(.again, at: time.now + hours(1))
+        let onTheMac = review(.good, at: time.now + hours(1), answering: firstViewed)
+        let onTheIPhone = review(.again, at: time.now + hours(1), answering: firstViewed)
 
         let macFirst = try ladder.standing(after: [firstViewed, onTheMac, onTheIPhone])
         let iPhoneFirst = try ladder.standing(after: [firstViewed, onTheIPhone, onTheMac])
@@ -357,12 +407,15 @@ struct LadderTests {
 
     @Test("the order two devices' entries arrive in, ties included, doesn't change where the card stands")
     func theOrderEntriesArriveInDoesntMatter() throws {
+        let metOnTheMac = firstView(at: time.now)
+        let metOnTheIPhone = firstView(at: time.now + minutes(5))
+        let forgottenOnTheIPhone = review(.again, at: time.now + hours(1), answering: metOnTheIPhone)
         let entries = [
-            firstView(at: time.now),
-            firstView(at: time.now + minutes(5)),
-            review(.good, at: time.now + hours(1)),
-            review(.again, at: time.now + hours(1)),
-            review(.good, at: time.now + hours(1) + minutes(10)),
+            metOnTheMac,
+            metOnTheIPhone,
+            review(.good, at: time.now + hours(1), answering: metOnTheMac),
+            forgottenOnTheIPhone,
+            review(.good, at: time.now + hours(1) + minutes(10), answering: forgottenOnTheIPhone),
         ]
 
         let standings = try everyOrder(of: entries).map { order in try ladder.standing(after: order) }
@@ -371,15 +424,15 @@ struct LadderTests {
         #expect(standings.allSatisfy { $0 == .onLadder(step: 1, due: time.now + hours(1) + minutes(10) + hours(4)) })
     }
 
-    // On one device, a card's next “Know it” comes once it's due again, or
-    // as early as the look-ahead lets an appearance bring it along, so the
-    // ladder never takes it for another device's.
+    // On one device, each review answers the entry before it, so however
+    // early the look-ahead lets an appearance bring a card along, the ladder
+    // never takes its next “Know it” for another device's.
     @Test("on one device, a “Know it” an appearance brought along early climbs, however close the ladder's steps")
     func aKnowItTheLookAheadBroughtClimbs() throws {
         var settings = ReviewSettings.defaults
         settings.ladder = try #require(
             Ladder(waits: [.seconds(minutes(20)), .seconds(minutes(30)), .seconds(hours(1))]))
-        settings.lookAhead = ReviewSettings.longestLookAhead
+        settings.lookAhead = .seconds(minutes(60))
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.record(
             .firstView, of: serendipia.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
@@ -407,6 +460,22 @@ struct LadderTests {
         let lengthened = try #require(Ladder(waits: waits))
 
         #expect(try engine.standing(of: serendipia.id, on: lengthened) == .onLadder(step: 3, due: time.now + days(5)))
+    }
+
+    // A review answers the way's last entry as the ladder replays them, by
+    // when they were answered, not the last one written.
+    @Test("on one device, a “Know it” climbs after a review ahead the Mac's clock, set back, timed before the last")
+    func aReviewAnswersTheLatestEntryAfterTheClockWentBack() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.climb(serendipia, to: 1, movingForward: time)
+        time.advance(by: -minutes(30))
+        try engine.record(
+            .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults,
+            reviewingAhead: true)
+
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+
+        #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 2, due: time.now + days(2)))
     }
 
     /// Every order of `entries`.
