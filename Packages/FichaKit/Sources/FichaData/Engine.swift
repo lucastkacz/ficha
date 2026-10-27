@@ -186,8 +186,11 @@ public struct Engine: Sendable {
     /// Runs `updates` in one transaction, as `write` does, but tells no
     /// engine that the database changed: for a write that changes no card,
     /// which an engine listening for changes would answer with another one.
-    /// Every write goes through here, which first tells the triggers that
-    /// record each change to sync when the write happens.
+    /// Every write to the cards, captures, review log and tags goes through
+    /// here, which first tells the triggers that record each change to sync
+    /// when the write happens. Two writes don't, and record nothing: a
+    /// restore, which replaces the whole database, as it was when it was
+    /// copied, and a migration, which changes the schema.
     func writeWithoutTelling<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
         let now = time.now
         return try reportingStorageErrors {
@@ -281,7 +284,11 @@ func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineErro
     } catch let error as EngineError {
         throw error
     } catch let error as UnexpectedReviewLog {
-        logger.error("Card \(error.cardID)'s review log has no first view, or a placement that doesn't start it")
+        logger.error(
+            """
+            Card \(error.cardID)'s review log has reviews but no first view or placement to start them, \
+            or a placement that doesn't start it or is on a step below the first
+            """)
         throw .unreadableReviewLog(error.cardID)
     } catch {
         logger.error("The database failed: \(String(describing: error))")

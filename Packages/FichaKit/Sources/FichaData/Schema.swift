@@ -359,7 +359,8 @@ enum Schema {
             // column with such a default to a table, so the three tables are
             // made again, with every row as it was, the way GRDB's guide to
             // migrations recreates a table, as "v12 cards without a type or a
-            // capture" did.
+            // capture" did. The review log, made again, also keeps from now
+            // on the entry each review answered.
             let uuid = """
                 (hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' \
                 || substr('89AB', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' \
@@ -454,6 +455,16 @@ enum Schema {
                 // Which of the card's ways the entry went, as `Way` names it.
                 table.column("way", .text).notNull().defaults(to: "frontFirst")
                     .check(sql: "way IN ('frontFirst', 'backFirst')")
+                // For a review, the entry it answered, by its ID: the last
+                // entry of its way that the device knew when the user rated
+                // the card, so that a log that joins two devices' reviews
+                // tells two answers to one wait from answers to two (#302).
+                // NULL for a first view or a placement, which answer none,
+                // and for a review from before this migration, which answered
+                // the entry before it. Not a reference: the entry can come
+                // from another device, after this one.
+                table.column("answeredEntryUuid", .text)
+                    .check(sql: "answeredEntryUuid IS NULL OR kind = 'review'")
                 table.check(
                     sql: """
                         (kind = 'firstView' AND rating IS NULL)
@@ -514,18 +525,14 @@ enum Schema {
             // A change from iCloud isn't, so it's never sent back: that write
             // turns recording off as it starts, and on again before it ends,
             // so it's always on between writes. Until the engine's first
-            // write, the time is SQLite's, when the database was migrated.
-            // One row.
+            // write, there's no time, so a change before it, which nothing
+            // makes, fails rather than guess one. One row.
             try db.create(table: "syncWrite") { table in
                 table.column("id", .integer).primaryKey().check(sql: "id = 1")
-                table.column("at", .datetime).notNull()
+                table.column("at", .datetime)
                 table.column("recordsChanges", .boolean).notNull()
             }
-            try db.execute(
-                sql: """
-                    INSERT INTO syncWrite (id, at, recordsChanges)
-                    VALUES (1, strftime('%Y-%m-%d %H:%M:%f', 'now'), 1)
-                    """)
+            try db.execute(sql: "INSERT INTO syncWrite (id, at, recordsChanges) VALUES (1, NULL, 1)")
             // What waits to be sent to iCloud, one change per row that
             // syncs: it was saved, as when it came in or changed, or deleted.
             // Each change replaces the one before it, and gets the next id,
@@ -591,19 +598,19 @@ enum Schema {
             let isOn = "(SELECT isOn FROM syncDevice)"
             /// The fields among `fields` for which `changed` holds of one of
             /// their columns, as a query of one column, `field`.
-            func fieldsWhere(_ fields: [(String, [String])], _ changed: (String) -> String) -> String {
+            func fields(among fields: [(String, [String])], where changed: (String) -> String) -> String {
                 fields.map { field, columns in
                     "SELECT '\(field)' AS field WHERE \(columns.map(changed).joined(separator: " OR "))"
                 }
                 .joined(separator: " UNION ALL ")
             }
             /// Whether `changed` holds of any column of `fields`.
-            func anyColumn(of fields: [(String, [String])], _ changed: (String) -> String) -> String {
+            func anyColumn(of fields: [(String, [String])], where changed: (String) -> String) -> String {
                 fields.flatMap(\.1).map(changed).joined(separator: " OR ")
             }
-            /// Records that the fields `fields` names, a query of one column,
-            /// `field`, of the row of `type` named `name` changed now.
-            func stamp(_ type: String, _ name: String, _ fields: String) -> String {
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// row of `type` named `name`, changed as the write happens.
+            func stamp(_ fields: String, of type: String, named name: String) -> String {
                 """
                 INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
                 SELECT '\(type)', \(name), field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
@@ -614,7 +621,7 @@ enum Schema {
             /// or deleted, in place of its change before, while sync is on and,
             /// when `onlyWhileRecording` says so, while the write records its
             /// changes.
-            func wait(_ type: String, _ name: String, deleted: Bool, onlyWhileRecording: Bool = false) -> String {
+            func wait(_ type: String, named name: String, deleted: Bool, onlyWhileRecording: Bool = false) -> String {
                 """
                 DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = \(name);
                 INSERT INTO syncPending (recordType, recordName, isDeletion)
@@ -623,43 +630,43 @@ enum Schema {
             }
             let changed = { (column: String) in "OLD.\(column) IS NOT NEW.\(column)" }
             // A card's type is its table's name, and so is a capture's.
-            for (table, fields) in [("card", cardFields), ("capture", captureFields)] {
+            for (table, tableFields) in [("card", cardFields), ("capture", captureFields)] {
                 try db.execute(
                     sql: """
                         CREATE TRIGGER sync_\(table)_inserted AFTER INSERT ON \(table) WHEN \(recording) BEGIN
-                        \(wait(table, "NEW.uuid", deleted: false))
+                        \(wait(table, named: "NEW.uuid", deleted: false))
                         END;
                         CREATE TRIGGER sync_\(table)_updated AFTER UPDATE ON \(table)
-                        WHEN \(recording) AND (\(anyColumn(of: fields, changed))) BEGIN
-                        \(stamp(table, "NEW.uuid", fieldsWhere(fields, changed)))
-                        \(wait(table, "NEW.uuid", deleted: false))
+                        WHEN \(recording) AND (\(anyColumn(of: tableFields, where: changed))) BEGIN
+                        \(stamp(fields(among: tableFields, where: changed), of: table, named: "NEW.uuid"))
+                        \(wait(table, named: "NEW.uuid", deleted: false))
                         END;
                         CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
                         DELETE FROM syncFieldTime WHERE recordType = '\(table)' AND recordName = OLD.uuid;
-                        \(wait(table, "OLD.uuid", deleted: true, onlyWhileRecording: true))
+                        \(wait(table, named: "OLD.uuid", deleted: true, onlyWhileRecording: true))
                         END;
                         """)
             }
             try db.execute(
                 sql: """
                     CREATE TRIGGER sync_reviewLog_inserted AFTER INSERT ON reviewLog WHEN \(recording) BEGIN
-                    \(wait("reviewLogEntry", "NEW.uuid", deleted: false))
+                    \(wait("reviewLogEntry", named: "NEW.uuid", deleted: false))
                     END;
                     CREATE TRIGGER sync_reviewLog_deleted AFTER DELETE ON reviewLog BEGIN
-                    \(wait("reviewLogEntry", "OLD.uuid", deleted: true, onlyWhileRecording: true))
+                    \(wait("reviewLogEntry", named: "OLD.uuid", deleted: true, onlyWhileRecording: true))
                     END;
                     CREATE TRIGGER sync_tag_inserted AFTER INSERT ON tag WHEN \(recording) BEGIN
-                    \(stamp("tag", "NEW.name", fieldsWhere(tagFields) { "NEW.\($0) IS NOT NULL" }))
-                    \(wait("tag", "NEW.name", deleted: false))
+                    \(stamp(fields(among: tagFields) { "NEW.\($0) IS NOT NULL" }, of: "tag", named: "NEW.name"))
+                    \(wait("tag", named: "NEW.name", deleted: false))
                     END;
                     CREATE TRIGGER sync_tag_updated AFTER UPDATE ON tag
-                    WHEN \(recording) AND (\(anyColumn(of: tagFields, changed))) BEGIN
-                    \(stamp("tag", "NEW.name", fieldsWhere(tagFields, changed)))
-                    \(wait("tag", "NEW.name", deleted: false))
+                    WHEN \(recording) AND (\(anyColumn(of: tagFields, where: changed))) BEGIN
+                    \(stamp(fields(among: tagFields, where: changed), of: "tag", named: "NEW.name"))
+                    \(wait("tag", named: "NEW.name", deleted: false))
                     END;
                     CREATE TRIGGER sync_tag_deleted AFTER DELETE ON tag WHEN \(recording) BEGIN
-                    \(stamp("tag", "OLD.name", fieldsWhere(tagFields) { "OLD.\($0) IS NOT NULL" }))
-                    \(wait("tag", "OLD.name", deleted: false))
+                    \(stamp(fields(among: tagFields) { "OLD.\($0) IS NOT NULL" }, of: "tag", named: "OLD.name"))
+                    \(wait("tag", named: "OLD.name", deleted: false))
                     END;
                     """)
         }

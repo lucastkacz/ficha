@@ -47,14 +47,21 @@ public struct Sync: Sendable {
         iCloud.add(pendingRecordZoneChanges: try engine.changesToSend().map(\.pendingRecordZoneChange))
     }
 
-    /// The record iCloud's engine saves for `id`, as its row is now, with
-    /// what iCloud said of it last, or nil when the device no longer holds
-    /// it, which stops it from waiting: the record provider of
+    /// The record `iCloud` saves for `id`, as its row is now, with what
+    /// iCloud said of it last, or nil when the device no longer holds it,
+    /// whose save then stops waiting in `iCloud`, as Apple's sample does: the
+    /// record provider of
     /// `CKSyncEngine.RecordZoneChangeBatch(pendingChanges:recordProvider:)`.
-    public func recordToSave(_ id: ICloudRecordID) throws(EngineError) -> ICloudRecord? {
-        try engine.read { db in
-            try syncedRow(named: id, in: db).flatMap { try record(of: $0, in: db) }
+    public func recordToSave(_ id: ICloudRecordID, from iCloud: some ICloudSyncEngine) throws(EngineError)
+        -> ICloudRecord?
+    {
+        let record = try engine.read { db in
+            try syncedRow(named: id, in: db).flatMap { try FichaData.record(of: $0, in: db) }
         }
+        if record == nil {
+            iCloud.remove(pendingRecordZoneChanges: [.saveRecord(id)])
+        }
+        return record
     }
 
     /// Handles an event of iCloud's engine, as `CKSyncEngine`'s delegate's
@@ -139,11 +146,11 @@ public struct Sync: Sendable {
         guard !toRetry.isEmpty else {
             return
         }
-        let again = try engine.writeWithoutRecording { db in
+        let retries = try engine.writeWithoutRecording { db in
             try toRetry.map { failure in try retry(failure, in: db) }
         }
-        iCloud.add(pendingDatabaseChanges: again.compactMap(\.zone))
-        iCloud.add(pendingRecordZoneChanges: again.compactMap(\.record))
+        iCloud.add(pendingDatabaseChanges: retries.compactMap(\.zone))
+        iCloud.add(pendingRecordZoneChanges: retries.compactMap(\.record))
     }
 
     /// What to send again of a record iCloud didn't save, as `failure` says

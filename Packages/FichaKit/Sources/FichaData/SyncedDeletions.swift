@@ -148,9 +148,9 @@ private func deleteCard(deletedOnAnotherDevice uuid: UUID, at time: Date, in db:
     else {
         return nil
     }
-    let entries = try rows(of: SyncedTable.reviewLog, where: "cardId = ?", cardID, in: db)
-    let expansions = try rows(of: SyncedTable.captures, where: "expandsCardId = ?", cardID, in: db)
-    let followUps = try rows(of: SyncedTable.captures, where: "followsUpCardId = ?", cardID, in: db)
+    let entries = try rows(of: .reviewLog, as: .reviewLogEntry, where: "cardId = ?", cardID, in: db)
+    let expansions = try rows(of: .captures, as: .capture, where: "expandsCardId = ?", cardID, in: db)
+    let followUps = try rows(of: .captures, as: .capture, where: "followsUpCardId = ?", cardID, in: db)
     let card = try deleteCard(cardID, in: db)
     for entry in entries where try systemFields(of: entry.recordID, in: db) != nil {
         try waitToBeSent(entry, as: .deleted, in: db)
@@ -176,7 +176,7 @@ private func deleteCapture(deletedOnAnotherDevice uuid: UUID, in db: Database) t
     else {
         return
     }
-    let approved = try rows(of: SyncedTable.cards, where: "captureId = ?", captureID, in: db)
+    let approved = try rows(of: .cards, as: .card, where: "captureId = ?", captureID, in: db)
     try db.execute(sql: "UPDATE card SET captureId = NULL WHERE captureId = ?", arguments: [captureID])
     try db.execute(sql: "DELETE FROM capture WHERE id = ?", arguments: [captureID])
     for card in approved {
@@ -184,13 +184,14 @@ private func deleteCapture(deletedOnAnotherDevice uuid: UUID, in db: Database) t
     }
 }
 
-/// The rows of `table` for which `condition` holds with `argument`, as they
-/// sync.
-private func rows(of table: SyncedTable, where condition: String, _ argument: Int64, in db: Database) throws
-    -> [SyncedRow]
-{
+/// The rows of `table`, each of `type`, for which `condition` holds with
+/// `argument`, as they sync.
+private func rows(
+    of table: SyncedTable, as type: SyncedRow.RecordType, where condition: String, _ argument: Int64,
+    in db: Database
+) throws -> [SyncedRow] {
     try String.fetchAll(db, sql: "SELECT uuid FROM \(table.name) WHERE \(condition)", arguments: [argument]).map {
-        table.syncedRow(try uuid(named: $0))
+        try SyncedRow(recordType: type.rawValue, recordName: $0)
     }
 }
 

@@ -42,12 +42,6 @@ public struct ReviewSettings: Sendable, Equatable {
     /// flag it as forgotten often, at least 1, or nil when it never offers.
     public var forgottenOftenAfter: Int?
 
-    /// The longest look-ahead Settings offers, an hour: no appearance brings a
-    /// card along earlier than that before it's due, which the ladder counts
-    /// on to tell two devices' reviews of one wait from one device's
-    /// (ADR 0017).
-    public static let longestLookAhead: Duration = .seconds(60 * 60)
-
     /// The settings Ficha starts with.
     public static let defaults = ReviewSettings(
         ladder: .standard,

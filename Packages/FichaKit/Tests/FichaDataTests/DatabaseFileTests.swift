@@ -94,7 +94,7 @@ final class DatabaseFileTests {
         let engine = try Engine(location: .folder(folder), time: time)
 
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
                     trigger: .reviewNow),
@@ -157,7 +157,7 @@ final class DatabaseFileTests {
         #expect(try engine.standing(of: 2, on: ladder) == .onLadder(step: 0, due: time.now + hours(3)))
         #expect(try engine.standing(of: 3, on: ladder) == .new)
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
                     trigger: .reviewNow),
@@ -193,7 +193,7 @@ final class DatabaseFileTests {
         #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
         #expect(try engine.standing(of: 2, on: ladder) == .new)
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
                     trigger: .reviewNow),
@@ -230,7 +230,20 @@ final class DatabaseFileTests {
 
         let engine = try Engine(location: .folder(folder), time: time)
 
+        let waiting = try engine.changesToSend()
         try expectEveryRowWithAnIDAsBeforeIDs(in: engine, at: time.now)
+        #expect(
+            waiting.map(\.row.recordType) == [
+                .card, .card, .capture, .capture, .capture, .reviewLogEntry, .reviewLogEntry, .reviewLogEntry,
+                .reviewLogEntry, .tag,
+            ])
+        #expect(waiting.allSatisfy { $0.kind == .saved && $0.fieldTimes.isEmpty })
+        #expect(Set(waiting.map(\.row)).count == waiting.count)
+        #expect(
+            waiting.filter { $0.row.recordType == .reviewLogEntry }.map(\.row)
+                == (try engine.reviewLog().compactMap(\.uuid).map(SyncedRow.reviewLogEntry)))
+        #expect(waiting.last?.row == .tag("lenguaje"))
+        #expect(try engine.recorded { try engine.unbury(2) }.map(\.row) == [waiting[1].row])
     }
 
     // Ficha opens its database every time it starts, and the CLI on every
@@ -583,8 +596,10 @@ func saveDatabaseBeforeIDs(at file: URL, at time: Date) throws {
 }
 
 /// Checks that `engine` has every row of `saveDatabaseBeforeIDs`, saved at
-/// `time`, as it was, each with an ID of its own waiting to be sent, and
-/// gives a new row an id after the deleted one's.
+/// `time`, as it was, each entry of the review log with an ID of its own and
+/// answering none, and gives a new card or capture an id after the deleted
+/// one's. A review log entry's id is never seen, so a deleted one's doesn't
+/// matter.
 func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws {
     #expect(
         try engine.cards() == [
@@ -618,7 +633,7 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 expandsCardID: 2, followsUpCardID: nil)
         ])
     #expect(
-        try engine.reviewLog() == [
+        try engine.reviewLog().map(\.withoutIDs) == [
             ReviewLogEntry(
                 cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
                 trigger: .reviewNow),
@@ -630,16 +645,11 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 trigger: .appearance, isAhead: true),
             ReviewLogEntry(placing: 2, way: .backFirst, on: Placement(step: 2, due: time + days(4)), at: time),
         ])
-    let waiting = try engine.changesToSend()
-    #expect(
-        waiting.map(\.row.recordType) == [
-            .card, .card, .capture, .capture, .capture, .reviewLogEntry, .reviewLogEntry, .reviewLogEntry,
-            .reviewLogEntry, .tag,
-        ])
-    #expect(waiting.allSatisfy { $0.kind == .saved && $0.fieldTimes.isEmpty })
-    #expect(Set(waiting.map(\.row)).count == waiting.count)
-    #expect(Array(waiting.prefix(2).map(\.row)) == [try engine.syncedRow(ofCard: 1), try engine.syncedRow(ofCard: 2)])
-    #expect(waiting.last?.row == .tag("lenguaje"))
+    // Each entry has an ID of its own, and no review says which entry it
+    // answered, so it answered the one before it.
+    let log = try engine.reviewLog()
+    #expect(Set(log.compactMap(\.uuid)).count == 4)
+    #expect(log.allSatisfy { $0.answeredEntry == nil })
     // The ids of the card and the capture deleted before aren't given again.
     #expect(try engine.create(card(nil, front: "ataraxia", back: "Serenidad.")).id == 4)
     #expect(try engine.newCapture("eudaimonía").id == 5)
@@ -669,7 +679,7 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
     #expect(try engine.standing(of: 2, on: ladder) == .new)
     #expect(try engine.standing(of: 3, on: ladder) == .onLadder(step: 0, due: time + hours(1)))
     #expect(
-        try engine.reviewLog() == [
+        try engine.reviewLog().map(\.withoutIDs) == [
             ReviewLogEntry(
                 cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
                 trigger: .reviewNow),

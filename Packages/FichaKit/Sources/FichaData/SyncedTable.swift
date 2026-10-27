@@ -26,7 +26,7 @@ struct SyncedTable: Sendable {
 
     /// A field that keeps when it last changed, with the columns it's made of.
     struct Field: Sendable {
-        let field: SyncedField
+        let syncedField: SyncedField
         let columns: [SyncedColumn]
         /// How the row with an id takes the field from a record, when one
         /// place must set it, as a card's flag and burial (`CODING_STANDARDS.md`),
@@ -34,10 +34,10 @@ struct SyncedTable: Sendable {
         let take: (@Sendable (_ record: ICloudRecord, _ id: Int64, _ db: Database) throws -> Void)?
 
         init(
-            _ field: SyncedField, _ columns: SyncedColumn...,
+            _ syncedField: SyncedField, _ columns: SyncedColumn...,
             takenWith take: (@Sendable (_ record: ICloudRecord, _ id: Int64, _ db: Database) throws -> Void)? = nil
         ) {
-            self.field = field
+            self.syncedField = syncedField
             self.columns = columns
             self.take = take
         }
@@ -61,11 +61,12 @@ struct SyncedTable: Sendable {
             Field(.type, SyncedColumn("type", key: "cardType", .text)),
             Field(.source, SyncedColumn("source", .text)),
             Field(.bothWays, SyncedColumn("bothWays", .boolean)),
-            Field(.flag, SyncedColumn("flagNote", .text), SyncedColumn("flaggedAt", .time)) { record, id, db in
+            Field(.flag, SyncedColumn(CardKey.flagNote, .text), SyncedColumn(CardKey.flaggedAt, .time)) {
+                record, id, db in
                 _ = try takeFlag(record.flag(), of: id, in: db)
             },
-            Field(.burial, SyncedColumn("buriedAt", .time)) { record, id, db in
-                _ = try takeBurial(record.time("buriedAt"), of: id, in: db)
+            Field(.burial, SyncedColumn(CardKey.buriedAt, .time)) { record, id, db in
+                _ = try takeBurial(record.time(CardKey.buriedAt), of: id, in: db)
             },
         ],
         fixedColumns: [
@@ -114,6 +115,10 @@ struct SyncedTable: Sendable {
             SyncedColumn("trigger", .text),
             // As the device that answered decided it, never worked out again.
             SyncedColumn("isAhead", .boolean),
+            // The UUID of the entry a review answered, which can come later,
+            // so it's no link: the ladder reads it to tell two devices'
+            // answers to one wait apart.
+            SyncedColumn("answeredEntryUuid", key: "answeredEntry", .text),
         ],
         marksRowsFromAnotherDevice: true,
         check: { id, db in _ = try ReviewLogEntry(row: try tableRow(id, of: "reviewLog", in: db)) })
@@ -136,7 +141,7 @@ struct SyncedTable: Sendable {
             values[column.key] = try column.value(in: stored, in: db)
         }
         let times = try fieldTimes(of: synced, in: db)
-        for field in fields.map(\.field) {
+        for field in fields.map(\.syncedField) {
             values[field.timeKey] = times[field].map { .int($0.wholeMilliseconds) }
         }
         return ICloudRecord(id: synced.recordID, type: synced.recordType.rawValue, fields: values, systemFields: nil)
@@ -149,14 +154,23 @@ struct SyncedTable: Sendable {
     /// nothing, when the record refers to a row the device doesn't hold yet.
     func apply(_ record: ICloudRecord, toRowWith uuid: UUID, in db: Database) throws -> Bool {
         let synced = syncedRow(uuid)
-        let incomingTimes = try record.fieldTimes(of: fields.map(\.field))
+        let incomingTimes = try record.fieldTimes(of: fields.map(\.syncedField))
         guard let stored = try storedRow(with: uuid, in: db) else {
             return try insert(record, as: uuid, changedAt: incomingTimes, in: db)
         }
         let localTimes = try fieldTimes(of: synced, in: db)
         var assignments: [(column: String, value: DatabaseValue)] = []
         var won: [Field] = []
-        for field in fields where isLatest(incomingTimes[field.field], comparedWith: localTimes[field.field]) {
+        for field in fields {
+            let incoming = FieldChange(
+                changedAt: incomingTimes[field.syncedField],
+                holdsSomething: field.columns.contains { record.value(of: $0.key) != nil })
+            let local = FieldChange(
+                changedAt: localTimes[field.syncedField],
+                holdsSomething: field.columns.contains { !(stored[$0.name] as DatabaseValue).isNull })
+            guard incoming.wins(over: local) else {
+                continue
+            }
             won.append(field)
             guard field.take == nil else {
                 continue
@@ -184,7 +198,7 @@ struct SyncedTable: Sendable {
         for field in won {
             try field.take?(record, id, db)
         }
-        try stamp(incomingTimes.filter { time in won.contains { $0.field == time.key } }, of: synced, in: db)
+        try stamp(incomingTimes.filter { time in won.contains { $0.syncedField == time.key } }, of: synced, in: db)
         try check(id, db)
         return true
     }
@@ -324,11 +338,19 @@ struct SyncedColumn: Sendable {
     }
 }
 
+/// The keys of a card's flag and burial in its record, named after their
+/// columns, which sync reads again as it takes them.
+private enum CardKey {
+    static let flagNote = "flagNote"
+    static let flaggedAt = "flaggedAt"
+    static let buriedAt = "buriedAt"
+}
+
 extension ICloudRecord {
     /// The flag a card's record holds, its note and when it was flagged, or
     /// nil for none. It throws for half a flag.
     fileprivate func flag() throws -> Flag? {
-        switch (try optionalText("flagNote"), try time("flaggedAt")) {
+        switch (try optionalText(CardKey.flagNote), try time(CardKey.flaggedAt)) {
         case (nil, nil): return nil
         case (let note?, let flaggedAt?): return Flag(note: note, flaggedAt: flaggedAt)
         default: throw unreadable("A card from iCloud has a flag without its note or its time")

@@ -293,7 +293,7 @@ final class BackupTests {
     }
 
     @Test(
-        "a copy from before IDs unique across devices restores with every row as it was, each with an ID of its own waiting to be sent"
+        "a copy from before IDs unique across devices restores with every row as it was, each review with an ID of its own"
     )
     func copyFromBeforeIDsRestoresWithAnIDForEveryRow() throws {
         let engine = try openEngine()
