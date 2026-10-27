@@ -1083,6 +1083,9 @@
     "Couldn't save the card" : {
       "comment" : "An alert's title in the Cards window."
     },
+    "Couldn't save the change" : {
+      "comment" : "An alert's title in Settings, when a change to the ladder, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
+    },
     "Couldn't save your answer" : {
 
     },

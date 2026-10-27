@@ -602,7 +602,9 @@ func progressSettingsModel() throws -> AppModel {
         throw RenderError(
             description: "The sample's ladder has waits that don't grow step by step: fix progressSettingsModel().")
     }
-    try engine.saveProgressSettings(ProgressSettings(ladder: ladder, newCardsPerDay: 8, forgottenOftenAfter: 6))
+    try engine.saveProgressSettings(
+        ProgressSettings(ladder: ladder, newCardsPerDay: 8, forgottenOftenAfter: 6),
+        changedFrom: ReviewSettings.defaults.progress)
     return try AppModel(engine: engine)
 }
 

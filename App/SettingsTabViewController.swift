@@ -61,9 +61,14 @@ final class SettingsTabViewController: NSTabViewController {
         let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
         add(.general, settings: GeneralSettings(model: model, captureShortcut: captureShortcut))
-        add(.appearances, settings: AppearancesSettings(model: model))
-        add(.reviewPanel, settings: ReviewPanelSettings(model: model))
-        add(.ladder, settings: LadderSettings(ladder: Bindable(model).settings.ladder))
+        // Each of these changes one of the settings that decide a card's
+        // progress, which the engine keeps.
+        add(.appearances, content: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model)))
+        add(.reviewPanel, content: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model)))
+        add(
+            .ladder,
+            content: ProgressSettingsForm(
+                model: model, settings: LadderSettings(ladder: Bindable(model).settings.ladder)))
         add(.backups, content: BackupsTab(model: model, closeReviewPanel: closeReviewPanel))
         add(.about, content: AboutTab())
         select(firstTab)

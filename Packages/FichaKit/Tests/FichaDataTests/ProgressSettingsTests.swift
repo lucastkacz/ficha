@@ -25,11 +25,11 @@ final class ProgressSettingsTests {
         let app = try Engine(location: .folder(folder), time: time)
         #expect(try app.progressSettings() == ReviewSettings.defaults.progress)
 
-        try app.saveProgressSettings(try lucasSettings())
+        try app.saveProgressSettings(try customProgressSettings(), changedFrom: ReviewSettings.defaults.progress)
 
         let cli = try Engine(location: .folder(folder), time: time)
-        #expect(try cli.progressSettings() == lucasSettings())
-        #expect(try Engine(location: .folder(folder), time: time).progressSettings() == lucasSettings())
+        #expect(try cli.progressSettings() == customProgressSettings())
+        #expect(try Engine(location: .folder(folder), time: time).progressSettings() == customProgressSettings())
     }
 
     // Only the app can read its preferences: the CLI, which may run the
@@ -46,17 +46,32 @@ final class ProgressSettingsTests {
             try cli.newCapture("serendipia")
         }
 
-        let lucas = try lucasSettings()
+        let kept = try customProgressSettings()
         let app = try Engine(location: .folder(folder), time: time)
-        try app.moveInProgressSettings { lucas }
+        try app.moveInProgressSettings { kept }
 
         let cli = try Engine(location: .folder(folder), time: time)
-        #expect(try cli.progressSettings() == lucas)
-        var changed = lucas
+        #expect(try cli.progressSettings() == kept)
+        var changed = kept
         changed.newCardsPerDay = 3
-        try app.saveProgressSettings(changed)
-        try Engine(location: .folder(folder), time: time).moveInProgressSettings { lucas }
+        try app.saveProgressSettings(changed, changedFrom: kept)
+        try Engine(location: .folder(folder), time: time).moveInProgressSettings { kept }
         #expect(try cli.progressSettings() == changed)
+    }
+
+    // #309 brings the app's preferences into the sandboxed app's, which may
+    // first open the database before they're in, holding Ficha's.
+    @Test(
+        "preferences that kept Ficha's settings move in nothing, so those kept by preferences that come later still move in"
+    )
+    func fichasSettingsMoveInNothing() throws {
+        let app = try Engine(location: .folder(folder), time: time)
+        try app.moveInProgressSettings { ReviewSettings.defaults.progress }
+
+        let kept = try customProgressSettings()
+        try app.moveInProgressSettings { kept }
+
+        #expect(try app.progressSettings() == kept)
     }
 
     // A copy from before the update holds no settings that decide progress:
@@ -66,18 +81,18 @@ final class ProgressSettingsTests {
     func aCopyFromBeforeTheUpdateTakesTheKeptSettings() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforeProgressSettings(at: folder.appending(path: "Ficha.sqlite"))
-        let lucas = try lucasSettings()
+        let kept = try customProgressSettings()
         let app = try Engine(location: .folder(folder), time: time)
         let beforeUpdate = try #require(try app.copies().first { $0.kind == .beforeUpdate })
-        try app.moveInProgressSettings { lucas }
-        var changed = lucas
+        try app.moveInProgressSettings { kept }
+        var changed = kept
         changed.forgottenOftenAfter = nil
-        try app.saveProgressSettings(changed)
+        try app.saveProgressSettings(changed, changedFrom: kept)
 
         try app.restore(beforeUpdate.name)
-        try app.moveInProgressSettings { lucas }
+        try app.moveInProgressSettings { kept }
 
-        #expect(try app.progressSettings() == lucas)
+        #expect(try app.progressSettings() == kept)
     }
 
     /// The process that opens the database first after the update.
@@ -94,10 +109,10 @@ func saveDatabaseBeforeProgressSettings(at file: URL) throws {
         DatabaseQueue(path: file.path(percentEncoded: false)), upTo: "v22 what this device knows of iCloud")
 }
 
-/// Settings that decide progress, none of them Ficha's: a ladder of three
-/// steps, 10 minutes, 6 hours and 3 days, 12 new cards a day, and the offer to
-/// flag a card forgotten often after 4 reviews rated again.
-func lucasSettings() throws -> ProgressSettings {
+/// Settings that decide progress, made up, none of them Ficha's: a ladder of
+/// three steps, 10 minutes, 6 hours and 3 days, 12 new cards a day, and the
+/// offer to flag a card forgotten often after 4 reviews rated again.
+func customProgressSettings() throws -> ProgressSettings {
     ProgressSettings(
         ladder: try #require(Ladder(waits: [.seconds(minutes(10)), .seconds(hours(6)), .seconds(days(3))])),
         newCardsPerDay: 12, forgottenOftenAfter: 4)
