@@ -46,6 +46,14 @@ final class FakeICloud: Sendable {
         database.withLock(\.saves)
     }
 
+    /// Saves `record` as a device with a newer Ficha would, in a zone it
+    /// has, for a test.
+    func saveFromANewerFicha(_ record: ICloudRecord) {
+        database.withLock { database in
+            _ = database.save(record)
+        }
+    }
+
     /// Saves `zones`, those it doesn't have yet, and returns them all.
     fileprivate func save(_ zones: [ICloudZone]) -> [ICloudZone] {
         database.withLock { database in

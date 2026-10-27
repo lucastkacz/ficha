@@ -100,30 +100,34 @@ enum Received: Equatable {
 /// that refers to a row the device doesn't hold yet waits, and so does one
 /// this version of Ficha can't read, which the log says: each is tried again
 /// whenever records come, until it's applied or a later version of it
-/// replaces it.
+/// replaces it. A failure of the database itself throws.
 func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
+    let row: SyncedRow
     var applied = false
     do {
-        let row = try SyncedRow(of: record)
+        row = try SyncedRow(of: record)
         try db.inSavepoint {
             applied = try apply(record, to: row, in: db)
             return applied ? .commit : .rollback
         }
-        if applied {
-            try keep(record.systemFields, of: record.id, in: db)
-            try forgetPendingSave(of: row, whenICloudHolds: record, in: db)
-        }
-    } catch {
+    } catch let error where isUnreadable(error) {
         syncLogger.error(
             "A record of type \(record.type, privacy: .public) from iCloud can't be read, and waits: \(String(describing: error))"
         )
+        return try keepWaiting(record, in: db)
     }
-    if applied {
-        try db.execute(
-            sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?",
-            arguments: [record.id.zone.name, record.id.name])
-        return .applied
+    guard applied else {
+        return try keepWaiting(record, in: db)
     }
+    try keep(record.systemFields, of: record.id, in: db)
+    try forgetPendingSave(of: row, whenICloudHolds: record, in: db)
+    try db.execute(
+        sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?", arguments: [record.id.zone.name, record.id.name])
+    return .applied
+}
+
+/// Keeps `record` waiting to be applied, in place of an older version of it.
+private func keepWaiting(_ record: ICloudRecord, in db: Database) throws -> Received {
     try db.execute(
         sql: """
             INSERT INTO syncIncoming (zone, name, record) VALUES (?, ?, ?)
@@ -131,6 +135,17 @@ func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
             """,
         arguments: [record.id.zone.name, record.id.name, try JSONEncoder().encode(record)])
     return .waits
+}
+
+/// Whether `error`, from applying a record, says the record holds what this
+/// version of Ficha can't read or keep, rather than that the database
+/// failed: a type or a value it doesn't know, or one its tables refuse.
+private func isUnreadable(_ error: any Error) -> Bool {
+    switch error {
+    case is DecodingError, is RowDecodingError: true
+    case let error as DatabaseError: error.resultCode == .SQLITE_CONSTRAINT
+    default: false
+    }
 }
 
 /// Applies the records that wait, as long as one more of them can be.

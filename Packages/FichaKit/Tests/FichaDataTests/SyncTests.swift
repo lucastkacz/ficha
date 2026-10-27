@@ -309,6 +309,21 @@ final class SyncTests {
         #expect(try iPhone.logAsSeen().isEmpty)
     }
 
+    @Test("a record of a kind a newer Ficha saved waits, and what came with it is applied")
+    func aRecordFromANewerFichaWaits() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        iCloud.saveFromANewerFicha(
+            ICloudRecord(
+                id: ICloudRecordID(name: "a-kind-to-come", zone: .cards), type: "AKindToCome", fields: [:],
+                systemFields: nil))
+
+        try await iPhone.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
+    }
+
     @Test("what a device takes from another is never sent back")
     func whatComesFromAnotherDeviceIsNeverSentBack() async throws {
         let ubuntu = try approve(
