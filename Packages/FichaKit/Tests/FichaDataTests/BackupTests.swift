@@ -292,6 +292,22 @@ final class BackupTests {
         try expectEveryCardAsItWasBeforeOptionalTypes(in: engine, at: time.now)
     }
 
+    @Test(
+        "a copy from before IDs unique across devices restores with every row as it was, each with an ID of its own waiting to be sent"
+    )
+    func copyFromBeforeIDsRestoresWithAnIDForEveryRow() throws {
+        let engine = try openEngine()
+        try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let name = "Backup 2026-01-02T120000Z.sqlite"
+        try saveDatabaseBeforeIDs(at: backups.appending(path: name), at: time.now)
+
+        try engine.restore(name)
+
+        try expectEveryRowWithAnIDAsBeforeIDs(in: engine, at: time.now)
+    }
+
     @Test("a copy from before Ficha kept when a card was edited restores with every card never edited, until it is")
     func copyFromBeforeEditedTimesRestoresWithEveryCardNeverEdited() async throws {
         let engine = try openEngine()

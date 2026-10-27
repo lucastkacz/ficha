@@ -219,6 +219,20 @@ final class DatabaseFileTests {
         #expect(try engine.reviewNow(.defaults).map(\.way) == [.backFirst])
     }
 
+    // The card, capture and review log tables are made again for the IDs'
+    // defaults.
+    @Test(
+        "a database from before IDs unique across devices migrates with every row as it was, each with an ID of its own waiting to be sent"
+    )
+    func aDatabaseFromBeforeIDsMigratesWithAnIDForEveryRow() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeIDs(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        try expectEveryRowWithAnIDAsBeforeIDs(in: engine, at: time.now)
+    }
+
     // Ficha opens its database every time it starts, and the CLI on every
     // command: copying it each time would fill the data folder.
     @Test("a new database, or one already up to date, isn't copied")
@@ -492,6 +506,81 @@ func saveDatabaseBeforeWays(at file: URL, at time: Date) throws {
             arguments: [time, time + hours(1)])
     }
     try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before rows had IDs unique
+/// across devices, through the schema's migrations up to the one before them,
+/// with everything made at `time`: serendipia, approved from its capture, met
+/// then and good an hour later; ubuntu, tagged "filosofía", which is blue;
+/// ojalá, a capture in the inbox that follows serendipia up; and a third
+/// card, with its capture and its first view, deleted.
+func saveDatabaseBeforeIDs(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v19 the way each answer went")
+    try database.write { db in
+        try db.execute(
+            sql: """
+                INSERT INTO capture (id, text, createdAt, refinedAt, followsUpCardId)
+                VALUES (1, 'serendipia', ?, ?, NULL), (3, 'petricor', ?, ?, NULL)
+                """,
+            arguments: [time, time, time, time])
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt, captureId)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?, 1),
+                    (2, 'concept', 'ubuntu', 'Soy porque somos.', '["filosofía"]', ?, NULL),
+                    (3, 'word', 'petricor', 'El olor de la lluvia.', '[]', ?, 3)
+                """,
+            arguments: [time, time, time])
+        try db.execute(
+            sql: "INSERT INTO capture (id, text, createdAt, followsUpCardId) VALUES (2, 'ojalá', ?, 1)",
+            arguments: [time])
+        try db.execute(
+            sql: """
+                INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isAhead, way)
+                VALUES (1, 'firstView', NULL, ?, 8.25, 'reviewNow', 0, 'frontFirst'),
+                    (1, 'review', 'good', ?, 3, 'appearance', 0, 'frontFirst'),
+                    (3, 'firstView', NULL, ?, 6, 'reviewNow', 0, 'frontFirst')
+                """,
+            arguments: [time, time + hours(1), time])
+        try db.execute(sql: "INSERT INTO tag (name, color) VALUES ('filosofía', 'blue')")
+        try db.execute(sql: "DELETE FROM reviewLog WHERE cardId = 3")
+        try db.execute(sql: "DELETE FROM card WHERE id = 3")
+        try db.execute(sql: "DELETE FROM capture WHERE id = 3")
+    }
+    try database.close()
+}
+
+/// Checks that `engine` has every row of `saveDatabaseBeforeIDs`, saved at
+/// `time`, as it was, each with an ID of its own waiting to be sent, and
+/// gives a new row an id after the deleted one's.
+func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws {
+    let cards = try engine.cards()
+    #expect(cards.map(\.front) == ["serendipia", "ubuntu"])
+    #expect(cards.map(\.captureID) == [1, nil])
+    #expect(cards.map(\.tags) == [[], ["filosofía"]])
+    #expect(try engine.sidebarTags() == [CardTag(name: "filosofía", color: .blue)])
+    #expect(try engine.inbox().followUps.map(\.capture.text) == ["ojalá"])
+    #expect(try engine.inbox().followUps.map(\.card.id) == [1])
+    #expect(
+        try engine.reviewLog() == [
+            ReviewLogEntry(
+                cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
+                trigger: .reviewNow),
+            ReviewLogEntry(
+                cardID: 1, kind: .review(.good), answeredAt: time + hours(1), responseTime: .seconds(3),
+                trigger: .appearance),
+        ])
+    let waiting = try engine.changesToSend()
+    #expect(
+        waiting.map(\.row.recordType) == [.card, .card, .capture, .capture, .reviewLogEntry, .reviewLogEntry, .tag])
+    #expect(waiting.allSatisfy { $0.kind == .saved && $0.fieldTimes.isEmpty })
+    #expect(Set(waiting.map(\.row)).count == waiting.count)
+    #expect(Array(waiting.prefix(2).map(\.row)) == [try engine.syncedRow(ofCard: 1), try engine.syncedRow(ofCard: 2)])
+    #expect(waiting.last?.row == .tag("filosofía"))
+    // The ids of the card and the capture deleted before aren't given again.
+    #expect(try engine.create(card(nil, front: "ataraxia", back: "Serenidad.")).id == 4)
+    #expect(try engine.newCapture("eudaimonía").id == 4)
 }
 
 /// Checks that `engine` has every card of `saveDatabaseBeforeOptionalTypes`
