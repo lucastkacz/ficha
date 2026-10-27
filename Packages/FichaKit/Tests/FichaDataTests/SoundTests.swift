@@ -227,6 +227,108 @@ final class SoundTests {
         try engine.edit(2, with: card(.concept, front: "ubuntu", back: "Soy porque somos.", backSound: la))
         #expect(try engine.read(soundsReferred(in:)) == [la])
     }
+
+    // One at a time, a deck of long sounds took minutes to preview.
+    @Test("sounds convert side by side, though each holds its thread while it waits for its samples")
+    func soundsConvertSideBySide() async {
+        let first = DispatchSemaphore(value: 0)
+        let second = DispatchSemaphore(value: 0)
+
+        async let firstSawSecond = holdingAThread(signalling: first, waitingFor: second)
+        async let secondSawFirst = holdingAThread(signalling: second, waitingFor: first)
+
+        #expect(await [firstSawSecond, secondSawFirst] == [true, true])
+    }
+
+    // On one concurrent queue, 64 sounds at once held every thread Dispatch
+    // would bring up for it, and none got its samples.
+    @Test("seventy sounds converting at once all come in", .timeLimit(.minutes(1)))
+    func seventySoundsConvertingAtOnceAllComeIn() async throws {
+        let la = try tone(seconds: 0.1, hertz: 440)
+
+        let names = try await withThrowingTaskGroup(of: SoundName.self) { group in
+            for index in 0..<70 {
+                group.addTask { try await CardSound(converting: la, named: "\(index).wav").name }
+            }
+            return try await group.reduce(into: Set()) { names, name in names.insert(name) }
+        }
+
+        #expect(names.count == 1)
+    }
+
+    @Test("the sounds a zip names come in side by side, each once, and one it holds nothing by is missing")
+    func theSoundsAZipNamesComeInSideBySide() async throws {
+        var sounds = FilesInZip<CardSound>(contents: { name in name == "falta.mp3" ? nil : Data(name.utf8) })
+        let bringing = Bringing()
+
+        let answers = await sounds.lookUp(["la.mp3", "mi.mp3", "la.mp3", "falta.mp3"]) {
+            name, data async throws(EngineError) in
+            try await bringing.bring(name, data)
+        }
+
+        let la = try #require(soundName(of: Data("la.mp3".utf8)))
+        let mi = try #require(soundName(of: Data("mi.mp3".utf8)))
+        #expect(answers == ["la.mp3": .found(la), "mi.mp3": .found(mi), "falta.mp3": .missing])
+        #expect(await bringing.brought.sorted() == ["la.mp3", "mi.mp3"])
+        #expect(await bringing.mostAtOnce == 2)
+    }
+}
+
+/// Whether, where a sound converts, on a `SoundConversion` queue, holding
+/// its thread as the asset reader holds one while it waits for samples, once
+/// it signals `own`, `other` is signalled within 5 seconds: whether another
+/// conversion started beside it.
+private func holdingAThread(signalling own: DispatchSemaphore, waitingFor other: DispatchSemaphore) async -> Bool {
+    await withTaskExecutorPreference(SoundConversion()) {
+        await onTheExecutor { waits(for: other, signalling: own) }
+    }
+}
+
+/// What `body` returns, run on the task's preferred executor, as
+/// `convertSound(in:to:)` runs: a nonisolated async function, which runs on
+/// that executor (SE-0417).
+private func onTheExecutor<Value>(_ body: () -> Value) async -> Value {
+    body()
+}
+
+/// Whether `other` is signalled within 5 seconds once `own` is, holding the
+/// thread meanwhile.
+private func waits(for other: DispatchSemaphore, signalling own: DispatchSemaphore) -> Bool {
+    own.signal()
+    return other.wait(timeout: .now() + 5) == .success
+}
+
+/// What a test's zip brings in its sounds with, as a sound's conversion
+/// would but without converting: each sound named by its data's SHA-256, as
+/// Ficha names a kept sound, after a while waiting for another to start
+/// beside it, as a long sound's conversion lasts. It keeps the names it
+/// brought, and the most it brought at once.
+private actor Bringing {
+    private(set) var brought: [String] = []
+    private(set) var mostAtOnce = 0
+    private var atOnce = 0
+
+    func bring(_ name: String, _ data: Data) async throws(EngineError) -> CardSound {
+        brought.append(name)
+        atOnce += 1
+        mostAtOnce = max(mostAtOnce, atOnce)
+        defer { atOnce -= 1 }
+        // One at a time, none ever starts beside it.
+        let deadline = ContinuousClock.now + .seconds(5)
+        while mostAtOnce < 2, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        guard let keptName = soundName(of: data) else {
+            throw .soundConversion
+        }
+        return CardSound(name: keptName, data: data)
+    }
+}
+
+/// The name Ficha would keep a sound by if `data` were the sound as it
+/// keeps it: its SHA-256, in lowercase hex, and `m4a`.
+private func soundName(of data: Data) -> SoundName? {
+    SoundName(rawValue: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() + ".m4a")
 }
 
 /// Adds a mono tone of `hertz` lasting a second to `engine`'s sounds, and
@@ -266,12 +368,12 @@ func tone(seconds: Double, hertz: Double, channels: AVAudioChannelCount = 1) thr
 
 /// A video of 64 by 64 pixels lasting `seconds`, as a QuickTime movie's
 /// data, with a mono tone of `hertz` as its sound track, or none when it's
-/// nil: a test's own video. It's written where sounds convert, on
-/// `SoundConversion`'s queue, for the reason it gives: on the shared
-/// threads, more videos at once than the Mac has cores held every one of
-/// them, as on CI's runners, which have 3.
+/// nil: a test's own video. It's written where a sound converts, on a
+/// `SoundConversion` queue of its own, for the reason it gives: on the
+/// shared threads, more videos at once than the Mac has cores held every one
+/// of them, as on CI's runners, which have 3.
 func video(seconds: Double, withSoundOf hertz: Double?) async throws -> Data {
-    try await withTaskExecutorPreference(SoundConversion.executor) {
+    try await withTaskExecutorPreference(SoundConversion()) {
         try await writeVideo(seconds: seconds, withSoundOf: hertz)
     }
 }
