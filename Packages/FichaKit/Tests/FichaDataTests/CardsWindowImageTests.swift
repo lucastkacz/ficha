@@ -144,6 +144,23 @@ struct CardsWindowImageTests {
         #expect(window.failure?.error == .notAnImage)
     }
 
+    @Test("⌘V in a side's text brings a copied image only while the clipboard holds no text, which the text takes")
+    func pastingIntoASidesTextBringsAnImageWithoutText() throws {
+        let png = try picture(width: 800, height: 600)
+        let screenshot = Dragged([("public.png", png)])
+        let fromFinder = Dragged([
+            ("public.file-url", URL(filePath: "/Users/lucas/Pictures/nido.jpg").dataRepresentation),
+            ("public.utf8-plain-text", Data("nido.jpg".utf8)),
+        ])
+        let words = Dragged([("public.utf8-plain-text", Data("petricor".utf8))])
+        let webAddress = Dragged([("public.url", Data("https://aves.example/hornero.png".utf8))])
+
+        #expect(DroppedImage(pastedIntoText: [screenshot]) == .data(png))
+        #expect(DroppedImage(pastedIntoText: [fromFinder]) == nil)
+        #expect(DroppedImage(pastedIntoText: [words, screenshot]) == nil)
+        #expect(DroppedImage(pastedIntoText: [webAddress]) == nil)
+    }
+
     @Test("the detail shows the selected card's images")
     func theDetailShowsTheCardsImages() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -197,8 +214,8 @@ extension CardsWindowState {
     }
 }
 
-/// An item of a drag's pasteboard, made by hand: its types, in the order its
-/// source wrote them, each with its data.
+/// An item of a drag's or a paste's pasteboard, made by hand: its types, in
+/// the order its source wrote them, each with its data.
 private struct Dragged: PasteboardItem {
     let contents: [(type: String, data: Data)]
 

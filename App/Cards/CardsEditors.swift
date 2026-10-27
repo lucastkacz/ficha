@@ -52,7 +52,8 @@ struct CardEditor: View {
     /// Whether Lucas tried to save with the front or the back blank, so that
     /// the blank one says it's missing.
     @State private var showsMissingSides = false
-    @FocusState private var isFrontFocused: Bool
+    /// The side whose text has the focus.
+    @FocusState private var focusedText: CardSide?
 
     init(
         card: Card,
@@ -102,7 +103,7 @@ struct CardEditor: View {
             EditorActions(isSearching: isSearching, canSave: canSave, cancel: cancel, save: submit)
         }
         .onAppear {
-            isFrontFocused = true
+            focusedText = .front
         }
     }
 
@@ -120,7 +121,10 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Front", text: $front, axis: .vertical)
                         .lineLimit(1...4)
-                        .focused($isFrontFocused)
+                        .focused($focusedText, equals: .front)
+                        .pastesImages(while: focusedText == .front) { image in
+                            putImage(image, .front)
+                        }
                     if showsMissingSides && CardContent.isBlank(front, image: images.front, sound: sounds.front) {
                         missing(
                             Text(
@@ -137,6 +141,10 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Back", text: $back, axis: .vertical)
                         .lineLimit(4...12)
+                        .focused($focusedText, equals: .back)
+                        .pastesImages(while: focusedText == .back) { image in
+                            putImage(image, .back)
+                        }
                     if showsMissingSides && CardContent.isBlank(back, image: images.back, sound: sounds.back) {
                         missing(
                             Text(

@@ -206,6 +206,9 @@ private struct CardFormSheet: View {
                         .lineLimit(1...4)
                         .focused($isFrontFocused)
                         .cardFormPart(.text(.front))
+                        .pastesImages(while: focusedPart == .text(.front)) { image in
+                            state.putImageInForm(image, on: .front)
+                        }
                     if let warning = form.frontWarning {
                         FrontWarningView(warning: warning) {
                             state.showRepeatedCard()
@@ -221,6 +224,9 @@ private struct CardFormSheet: View {
                     TextField("Back", text: draft(\.back.text), axis: .vertical)
                         .lineLimit(4...10)
                         .cardFormPart(.text(.back))
+                        .pastesImages(while: focusedPart == .text(.back)) { image in
+                            state.putImageInForm(image, on: .back)
+                        }
                     imageWell(on: .back, of: form)
                     soundWell(on: .back, of: form)
                 }

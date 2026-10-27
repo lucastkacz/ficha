@@ -102,6 +102,25 @@ public enum DroppedImage: Sendable, Equatable {
         self = .data(Data())
     }
 
+    /// The image ⌘V puts on a side while the user types its text: the one the
+    /// items bring, as on the side's image box, when none of them holds text,
+    /// as a screenshot copied to the clipboard. Nil when one does, for the
+    /// text to take it, as Finder's copy of a file holds its name, or when
+    /// none brings an image. It reads no item's data while one holds text.
+    public init?(pastedIntoText items: [some PasteboardItem]) {
+        let holdsText = items.contains { item in
+            item.typeIdentifiers.contains { UTType($0)?.conforms(to: .plainText) == true }
+        }
+        guard !holdsText else { return nil }
+        for item in items {
+            if let image = Self.image(in: item) {
+                self = image
+                return
+            }
+        }
+        return nil
+    }
+
     /// The image `item` brings: the local file a Finder drag names, or else
     /// the data of its first image type that holds some, as when a browser
     /// drags an image beside its web address and the file it promises. Nil

@@ -1858,6 +1858,9 @@
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Paste" : {
+      "comment" : "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."
+    },
     "Play or Stop Sound" : {
       "comment" : "A hidden button of the review panel: R, which plays the sound of the side that shows, or stops the one that plays."
     },

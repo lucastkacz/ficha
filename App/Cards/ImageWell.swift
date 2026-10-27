@@ -6,7 +6,8 @@ import UniformTypeIdentifiers
 
 /// Where a side of the card the user makes or edits takes its image, under the
 /// side's text: an image dragged from Finder or a browser onto it, or pasted
-/// with ⌘V once it has the focus, which a click or Tab gives it. With an
+/// with ⌘V once it has the focus, which a click or Tab gives it, or while the
+/// side's text has it, as `pastesImages(while:put:)` says. With an
 /// image, it shows it, with a button that removes it, as Delete does while it
 /// has the focus, and a new image replaces it. The window decides whether
 /// what came in is an image, and says so when it isn't.
@@ -99,6 +100,38 @@ struct ImageWell: View {
     /// Puts the image `pasteboard` holds on the side.
     private func take(from pasteboard: NSPasteboard) {
         put(DroppedImage(pasteboardItems: (pasteboard.pasteboardItems ?? []).map(AppKitPasteboardItem.init)))
+    }
+}
+
+extension View {
+    /// Makes ⌘V, while `hasFocus`, put the image the clipboard holds on the
+    /// side whose text field this is, through `put`, when it holds an image
+    /// and no text. Otherwise the field pastes as it always does.
+    func pastesImages(while hasFocus: Bool, put: @escaping (DroppedImage) -> Void) -> some View {
+        background {
+            // A hidden button, as ⌘N's, whose shortcut comes before the Edit
+            // menu's Paste: that goes to the field's editor, which can't
+            // paste an image.
+            if hasFocus {
+                Button {
+                    let items = (NSPasteboard.general.pasteboardItems ?? []).map(AppKitPasteboardItem.init)
+                    if let image = DroppedImage(pastedIntoText: items) {
+                        put(image)
+                    } else {
+                        // To the field's editor, as the Edit menu's Paste.
+                        NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+                    }
+                } label: {
+                    Text(
+                        "Paste",
+                        comment:
+                            "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."
+                    )
+                }
+                .keyboardShortcut("v")
+                .hidden()
+            }
+        }
     }
 }
 
