@@ -346,6 +346,330 @@ enum Schema {
                     .check(sql: "way IN ('frontFirst', 'backFirst')")
             }
         }
+        migrator.registerMigration("v20 IDs unique across devices") { db in
+            // Every row that syncs gets an ID unique across devices beside
+            // its integer one (ADR 0017): each card, capture and entry of the
+            // review log. The integer stays the local key, the id the CLI
+            // prints, and iCloud names the row's record by this ID. Tags are
+            // already named by their name, and images and sounds by their
+            // content. A row gets its ID as it comes in, whoever writes it,
+            // from the column's default: a random UUID, of version 4 and in
+            // capitals, as Foundation writes one. Each row from before this
+            // migration gets one too, as it's copied: SQLite can't add a
+            // column with such a default to a table, so the three tables are
+            // made again, with every row as it was, the way GRDB's guide to
+            // migrations recreates a table, as "v12 cards without a type or a
+            // capture" did. The review log, made again, also keeps from now
+            // on the entry each review answered.
+            let uuid = """
+                (hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' \
+                || substr('89AB', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' \
+                || hex(randomblob(6)))
+                """
+            // A deleted row's id is never given again, so a refine session
+            // that names an old card never reaches another one. Dropping a
+            // table drops its last id too, so the new one starts from it.
+            let lastIDs = try Row.fetchAll(
+                db, sql: "SELECT name, seq FROM sqlite_sequence WHERE name IN ('card', 'capture', 'reviewLog')")
+            try db.create(table: "new_card") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique().defaults(sql: uuid)
+                // As `CardType` names it, or NULL for none.
+                table.column("type", .text)
+                table.column("front", .text).notNull()
+                table.column("back", .text).notNull()
+                // A JSON array of strings.
+                table.column("tags", .jsonText).notNull()
+                table.column("source", .text)
+                table.column("createdAt", .datetime).notNull()
+                // The capture it was approved from, or NULL when it came in
+                // another way. Its index comes once the table has its name.
+                table.belongsTo("capture", indexed: false)
+                table.column("flagNote", .text)
+                table.column("flaggedAt", .datetime)
+                    .check(sql: "(flagNote IS NULL) = (flaggedAt IS NULL)")
+                table.column("buriedAt", .datetime)
+                table.column("frontImage", .text)
+                table.column("backImage", .text)
+                table.column("editedAt", .datetime)
+                table.column("frontSound", .text)
+                table.column("backSound", .text)
+                table.column("bothWays", .boolean).notNull().defaults(to: false)
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_card (
+                        id, type, front, back, tags, source, createdAt, captureId, flagNote, flaggedAt, buriedAt,
+                        frontImage, backImage, editedAt, frontSound, backSound, bothWays)
+                    SELECT id, type, front, back, tags, source, createdAt, captureId, flagNote, flaggedAt, buriedAt,
+                        frontImage, backImage, editedAt, frontSound, backSound, bothWays
+                    FROM card
+                    """
+            )
+            try db.drop(table: "card")
+            try db.rename(table: "new_card", to: "card")
+            try db.create(index: "card_on_captureId", on: "card", columns: ["captureId"])
+            try db.create(table: "new_capture") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique().defaults(sql: uuid)
+                table.column("text", .text).notNull()
+                table.column("note", .text)
+                table.column("source", .text)
+                table.column("createdAt", .datetime).notNull()
+                table.column("refinedAt", .datetime)
+                table.column("expandsCardId", .integer).references("card")
+                table.column("followsUpCardId", .integer).references("card")
+                    .check(sql: "followsUpCardId IS NULL OR expandsCardId IS NULL")
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_capture (id, text, note, source, createdAt, refinedAt, expandsCardId, followsUpCardId)
+                    SELECT id, text, note, source, createdAt, refinedAt, expandsCardId, followsUpCardId FROM capture
+                    """
+            )
+            try db.drop(table: "capture")
+            try db.rename(table: "new_capture", to: "capture")
+            try db.create(table: "new_reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique().defaults(sql: uuid)
+                // Its index comes once the table has its name.
+                table.belongsTo("card", indexed: false).notNull()
+                // "firstView", "review" or "placement".
+                table.column("kind", .text).notNull()
+                // A review's rating: "again", "hard" or "good".
+                table.column("rating", .text)
+                // A placement's step, counted from 0, the first step, and
+                // when the card is due on it.
+                table.column("step", .integer)
+                table.column("due", .datetime)
+                // When the user answered, or when the import placed the card.
+                table.column("answeredAt", .datetime).notNull()
+                // From showing the card to the answer, in seconds, when
+                // something measured it.
+                table.column("responseTime", .double)
+                // What brought the card, as `Trigger` names it, or NULL for a
+                // placement.
+                table.column("trigger", .text)
+                table.column("isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+                // Which of the card's ways the entry went, as `Way` names it.
+                table.column("way", .text).notNull().defaults(to: "frontFirst")
+                    .check(sql: "way IN ('frontFirst', 'backFirst')")
+                // For a review, the entry it answered, by its ID: the last
+                // entry of its way that the device knew when the user rated
+                // the card, so that a log that joins two devices' reviews
+                // tells two answers to one wait from answers to two (#302).
+                // NULL for a first view or a placement, which answer none,
+                // and for a review from before this migration, which answered
+                // the entry before it. Not a reference: the entry can come
+                // from another device, after this one.
+                table.column("answeredEntryUuid", .text)
+                    .check(sql: "answeredEntryUuid IS NULL OR kind = 'review'")
+                table.check(
+                    sql: """
+                        (kind = 'firstView' AND rating IS NULL)
+                        OR (kind = 'review' AND rating IN ('again', 'hard', 'good'))
+                        OR (kind = 'placement' AND rating IS NULL)
+                        """
+                )
+                table.check(sql: "(kind = 'placement') = (step IS NOT NULL)")
+                table.check(sql: "step IS NULL OR step >= 0")
+                table.check(sql: "(kind = 'placement') = (due IS NOT NULL)")
+                table.check(sql: "(kind = 'placement') = (trigger IS NULL)")
+                table.check(sql: "kind <> 'placement' OR responseTime IS NULL")
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO new_reviewLog
+                        (id, cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead, way)
+                    SELECT id, cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead, way
+                    FROM reviewLog
+                    """
+            )
+            try db.drop(table: "reviewLog")
+            try db.rename(table: "new_reviewLog", to: "reviewLog")
+            try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
+            for lastID in lastIDs {
+                let table: String = try lastID.decode(forColumn: "name")
+                try db.execute(sql: "DELETE FROM sqlite_sequence WHERE name = ?", arguments: [table])
+                try db.execute(
+                    sql: "INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)",
+                    arguments: [table, try lastID.decode(forColumn: "seq") as Int64])
+            }
+        }
+        migrator.registerMigration("v21 changes recorded to sync") { db in
+            // What Ficha keeps track of to sync (ADR 0017), filled by the
+            // triggers below on every write, the CLI's too, since only the
+            // app syncs, and it doesn't see on its own what another process
+            // wrote. A row that syncs is named as iCloud names its record: a
+            // card, a capture or an entry of the review log by its ID unique
+            // across devices, and a tag by its name. Its type is "card",
+            // "capture", "reviewLogEntry" or "tag", as `SyncedRow` names it,
+            // which refuses a type it doesn't know. A migration that makes
+            // one of these four tables again makes its triggers again too,
+            // since dropping a table drops them.
+            //
+            // What this device keeps for itself, which never syncs: whether
+            // sync is on, as Settings' switch says, which it is until the
+            // user turns it off, and the state CKSyncEngine saved last, or
+            // NULL before it saves one. One row.
+            try db.create(table: "syncDevice") { table in
+                table.column("id", .integer).primaryKey().check(sql: "id = 1")
+                table.column("isOn", .boolean).notNull()
+                table.column("engineState", .blob)
+            }
+            try db.execute(sql: "INSERT INTO syncDevice (id, isOn) VALUES (1, 1)")
+            // The write in progress, as the triggers read it: when it
+            // happens, by the engine's time, which each of the engine's
+            // writes sets as it starts, and whether its changes are recorded.
+            // A change from iCloud isn't, so it's never sent back: that write
+            // turns recording off as it starts, and on again before it ends,
+            // so it's always on between writes. Until the engine's first
+            // write, there's no time, so a change before it, which nothing
+            // makes, fails rather than guess one. One row.
+            try db.create(table: "syncWrite") { table in
+                table.column("id", .integer).primaryKey().check(sql: "id = 1")
+                table.column("at", .datetime)
+                table.column("recordsChanges", .boolean).notNull()
+            }
+            try db.execute(sql: "INSERT INTO syncWrite (id, at, recordsChanges) VALUES (1, NULL, 1)")
+            // What waits to be sent to iCloud, one change per row that
+            // syncs: it was saved, as when it came in or changed, or deleted.
+            // Each change replaces the one before it, and gets the next id,
+            // so a change sent is forgotten by its id, and one made while it
+            // was being sent stays. It survives an iCloud account change,
+            // which empties CKSyncEngine's own queue. While sync is off,
+            // nothing waits: turning it on sends everything.
+            try db.create(table: "syncPending") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("recordType", .text).notNull()
+                table.column("recordName", .text).notNull()
+                table.column("isDeletion", .boolean).notNull()
+                table.uniqueKey(["recordType", "recordName"])
+            }
+            // When each field of a card, a capture or a tag last changed,
+            // as `SyncedField` names it, which "the latest change wins"
+            // compares, also while sync is off. A field without a time
+            // hasn't changed since its row came in. An entry of the review
+            // log never changes. A tag's times stay once it has nothing of
+            // its own and its row goes, since that's a change too.
+            try db.create(table: "syncFieldTime") { table in
+                table.column("recordType", .text).notNull()
+                table.column("recordName", .text).notNull()
+                table.column("field", .text).notNull()
+                table.column("changedAt", .datetime).notNull()
+                table.primaryKey(["recordType", "recordName", "field"])
+            }
+            // Sync starts on, so everything waits to be sent, as when the
+            // user turns it on.
+            try db.execute(
+                sql: """
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'card', uuid, 0 FROM card ORDER BY id;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'capture', uuid, 0 FROM capture ORDER BY id;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'reviewLogEntry', uuid, 0 FROM reviewLog ORDER BY id;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'tag', name, 0 FROM tag ORDER BY name;
+                    """)
+
+            // The triggers that record each change: a row that comes in,
+            // changes or is deleted waits to be sent, and a field that
+            // changes keeps when. A deleted row forgets when its fields
+            // changed, and no longer waits as it was, even while the write
+            // doesn't record its changes, as a deletion from iCloud. An
+            // entry of the review log never changes: it only comes in or
+            // goes. A tag is never deleted: one whose row goes, with nothing
+            // of its own left, changed the fields it had. A row's fields
+            // that sync, as `SyncedField` names them, each with its columns.
+            let cardFields = [
+                ("front", ["front"]), ("back", ["back"]), ("frontImage", ["frontImage"]),
+                ("backImage", ["backImage"]), ("frontSound", ["frontSound"]), ("backSound", ["backSound"]),
+                ("tags", ["tags"]), ("type", ["type"]), ("source", ["source"]), ("bothWays", ["bothWays"]),
+                ("flag", ["flagNote", "flaggedAt"]), ("burial", ["buriedAt"]),
+            ]
+            let captureFields = [
+                ("text", ["text"]), ("note", ["note"]), ("source", ["source"]), ("refined", ["refinedAt"]),
+                ("expandedCard", ["expandsCardId"]), ("followedUpCard", ["followsUpCardId"]),
+            ]
+            let tagFields = [("switchedOn", ["switchedOn"]), ("color", ["color"]), ("emoji", ["emoji"])]
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            let isOn = "(SELECT isOn FROM syncDevice)"
+            /// The fields among `fields` for which `changed` holds of one of
+            /// their columns, as a query of one column, `field`.
+            func fields(among fields: [(String, [String])], where changed: (String) -> String) -> String {
+                fields.map { field, columns in
+                    "SELECT '\(field)' AS field WHERE \(columns.map(changed).joined(separator: " OR "))"
+                }
+                .joined(separator: " UNION ALL ")
+            }
+            /// Whether `changed` holds of any column of `fields`.
+            func anyColumn(of fields: [(String, [String])], where changed: (String) -> String) -> String {
+                fields.flatMap(\.1).map(changed).joined(separator: " OR ")
+            }
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// row of `type` named `name`, changed as the write happens.
+            func stamp(_ fields: String, of type: String, named name: String) -> String {
+                """
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                SELECT '\(type)', \(name), field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
+                ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                """
+            }
+            /// Leaves the row of `type` named `name` waiting to be sent, saved
+            /// or deleted, in place of its change before, while sync is on and,
+            /// when `onlyWhileRecording` says so, while the write records its
+            /// changes.
+            func wait(_ type: String, named name: String, deleted: Bool, onlyWhileRecording: Bool = false) -> String {
+                """
+                DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = \(name);
+                INSERT INTO syncPending (recordType, recordName, isDeletion)
+                SELECT '\(type)', \(name), \(deleted ? 1 : 0) WHERE \(isOn)\(onlyWhileRecording ? " AND \(recording)" : "");
+                """
+            }
+            let changed = { (column: String) in "OLD.\(column) IS NOT NEW.\(column)" }
+            // A card's type is its table's name, and so is a capture's.
+            for (table, tableFields) in [("card", cardFields), ("capture", captureFields)] {
+                try db.execute(
+                    sql: """
+                        CREATE TRIGGER sync_\(table)_inserted AFTER INSERT ON \(table) WHEN \(recording) BEGIN
+                        \(wait(table, named: "NEW.uuid", deleted: false))
+                        END;
+                        CREATE TRIGGER sync_\(table)_updated AFTER UPDATE ON \(table)
+                        WHEN \(recording) AND (\(anyColumn(of: tableFields, where: changed))) BEGIN
+                        \(stamp(fields(among: tableFields, where: changed), of: table, named: "NEW.uuid"))
+                        \(wait(table, named: "NEW.uuid", deleted: false))
+                        END;
+                        CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
+                        DELETE FROM syncFieldTime WHERE recordType = '\(table)' AND recordName = OLD.uuid;
+                        \(wait(table, named: "OLD.uuid", deleted: true, onlyWhileRecording: true))
+                        END;
+                        """)
+            }
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_reviewLog_inserted AFTER INSERT ON reviewLog WHEN \(recording) BEGIN
+                    \(wait("reviewLogEntry", named: "NEW.uuid", deleted: false))
+                    END;
+                    CREATE TRIGGER sync_reviewLog_deleted AFTER DELETE ON reviewLog BEGIN
+                    \(wait("reviewLogEntry", named: "OLD.uuid", deleted: true, onlyWhileRecording: true))
+                    END;
+                    CREATE TRIGGER sync_tag_inserted AFTER INSERT ON tag WHEN \(recording) BEGIN
+                    \(stamp(fields(among: tagFields) { "NEW.\($0) IS NOT NULL" }, of: "tag", named: "NEW.name"))
+                    \(wait("tag", named: "NEW.name", deleted: false))
+                    END;
+                    CREATE TRIGGER sync_tag_updated AFTER UPDATE ON tag
+                    WHEN \(recording) AND (\(anyColumn(of: tagFields, where: changed))) BEGIN
+                    \(stamp(fields(among: tagFields, where: changed), of: "tag", named: "NEW.name"))
+                    \(wait("tag", named: "NEW.name", deleted: false))
+                    END;
+                    CREATE TRIGGER sync_tag_deleted AFTER DELETE ON tag WHEN \(recording) BEGIN
+                    \(stamp(fields(among: tagFields) { "OLD.\($0) IS NOT NULL" }, of: "tag", named: "OLD.name"))
+                    \(wait("tag", named: "OLD.name", deleted: false))
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

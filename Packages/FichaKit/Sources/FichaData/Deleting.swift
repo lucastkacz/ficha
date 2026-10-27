@@ -14,24 +14,25 @@ extension Engine {
     @discardableResult
     public func delete(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         let deleted = try write { db in
-            try cardIDs.sorted().map { try delete($0, in: db) }
+            try cardIDs.sorted().map { try deleteCard($0, in: db) }
         }
         removeFilesNoCardUses(images: Set(deleted.flatMap(\.images)), sounds: Set(deleted.flatMap(\.sounds)))
         return deleted
     }
 
-    /// Deletes the card with this id, with its review log, and returns it as
-    /// it was, or throws when it doesn't exist. The captures that expand it or
-    /// follow it up let go of it first, as the schema's references to cards
-    /// need: one in the inbox becomes a plain capture there, and one already
-    /// refined stays out of it.
-    private func delete(_ cardID: Int64, in db: Database) throws -> Card {
-        let card = try existingCard(cardID, in: db)
-        try db.execute(sql: "DELETE FROM reviewLog WHERE cardId = ?", arguments: [cardID])
-        try db.execute(sql: "UPDATE capture SET expandsCardId = NULL WHERE expandsCardId = ?", arguments: [cardID])
-        try db.execute(
-            sql: "UPDATE capture SET followsUpCardId = NULL WHERE followsUpCardId = ?", arguments: [cardID])
-        try db.execute(sql: "DELETE FROM card WHERE id = ?", arguments: [cardID])
-        return card
-    }
+}
+
+/// Deletes the card with this id, with its review log, and returns it as it
+/// was, or throws when it doesn't exist. The captures that expand it or follow
+/// it up let go of it first, as the schema's references to cards need: one in
+/// the inbox becomes a plain capture there, and one already refined stays out
+/// of it. Its images and sounds stay, for the engine to remove those no card
+/// uses once the write is done.
+func deleteCard(_ cardID: Int64, in db: Database) throws -> Card {
+    let card = try existingCard(cardID, in: db)
+    try db.execute(sql: "DELETE FROM reviewLog WHERE cardId = ?", arguments: [cardID])
+    try db.execute(sql: "UPDATE capture SET expandsCardId = NULL WHERE expandsCardId = ?", arguments: [cardID])
+    try db.execute(sql: "UPDATE capture SET followsUpCardId = NULL WHERE followsUpCardId = ?", arguments: [cardID])
+    try db.execute(sql: "DELETE FROM card WHERE id = ?", arguments: [cardID])
+    return card
 }
