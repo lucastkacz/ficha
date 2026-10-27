@@ -93,6 +93,9 @@ enum Received: Equatable {
     /// It waits, until the row it refers to comes, or a version of Ficha
     /// that can read it.
     case waits
+    /// It's dropped: the device deleted its row, and the deletion, which
+    /// waits to be sent, wins.
+    case dropped
 }
 
 /// Applies `record`, from iCloud, as `apply(_:to:in:)` says, in a write that
@@ -100,8 +103,13 @@ enum Received: Equatable {
 /// that refers to a row the device doesn't hold yet waits, and so does one
 /// this version of Ficha can't read, which the log says: each is tried again
 /// whenever records come, until it's applied or a later version of it
-/// replaces it.
+/// replaces it. A record of a row the device deleted, whose deletion waits to
+/// be sent, is dropped.
 func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
+    if try pendingDeletion(of: record.id, in: db) != nil {
+        try dropWaitingRecord(of: record.id, in: db)
+        return .dropped
+    }
     var applied = false
     do {
         let row = try SyncedRow(of: record)

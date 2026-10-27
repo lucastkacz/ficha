@@ -74,6 +74,12 @@ final class FakeICloud: Sendable {
         database.withLock { $0.zones[id.zone]?.records[id.name] != nil }
     }
 
+    /// The records it holds now, in every zone, for a test that checks what
+    /// iCloud keeps.
+    var records: [ICloudRecord] {
+        database.withLock { $0.zones.values.flatMap { $0.records.values.map(\.record) } }
+    }
+
     /// Saves `zones`, those it doesn't have yet, and returns them all.
     fileprivate func save(_ zones: [ICloudZone]) -> [ICloudZone] {
         database.withLock { database in
