@@ -267,6 +267,23 @@ final class SyncTests {
         #expect(try iPhone.engine.sidebarTags().filter { $0.name == "lenguaje" } == [lenguaje])
     }
 
+    // The app hands iCloud's engine each change as the database changes, so
+    // the first view waits there when ⌘Z takes it back.
+    @Test("an answer taken back before it was sent stops waiting to be sent, and never reaches the other device")
+    func anAnswerTakenBackBeforeItWasSentStopsWaiting() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        try mac.sync.sendWhatChanged(to: mac.iCloud)
+        try mac.engine.takeBackAnswer(of: ubuntu.id, way: .frontFirst)
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(mac.iCloud.pendingRecordZoneChanges.isEmpty)
+        #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
+        #expect(try iPhone.logAsSeen().isEmpty)
+    }
+
     @Test("what a device takes from another is never sent back")
     func whatComesFromAnotherDeviceIsNeverSentBack() async throws {
         let ubuntu = try approve(

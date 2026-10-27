@@ -19,6 +19,11 @@ public protocol ICloudSyncEngine: Sendable {
     /// replaces the one before it for its record.
     func add(pendingRecordZoneChanges: [ICloudPendingRecordZoneChange])
 
+    /// Stops sending changes to records, as
+    /// `CKSyncEngine.State.remove(pendingRecordZoneChanges:)` does: one the
+    /// engine can't get a record for keeps waiting until it's removed.
+    func remove(pendingRecordZoneChanges: [ICloudPendingRecordZoneChange])
+
     /// Adds zones to save or delete, as
     /// `CKSyncEngine.State.add(pendingDatabaseChanges:)` does.
     func add(pendingDatabaseChanges: [ICloudPendingDatabaseChange])
