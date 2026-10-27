@@ -65,7 +65,7 @@ public struct Sync: Sendable {
             try engine.saveSyncEngineState(state)
         case .fetchedRecordZoneChanges(let changes):
             try receiveFetched(changes.modifications)
-            try receiveDeletions(changes.deletions)
+            try takeDeletions(changes.deletions)
         case .sentRecordZoneChanges(let sent):
             try settle(sent, with: iCloud)
         case .sentDatabaseChanges(let sent):
@@ -83,7 +83,18 @@ public struct Sync: Sendable {
             }
         case .accountChange(let change):
             syncLogger.notice("The iCloud account changed: \(String(describing: change), privacy: .public)")
+            try forgetWhatICloudSaid()
         }
+    }
+
+    /// Forgets what iCloud said of every record, as the account changes:
+    /// what one account said means nothing to another, and a record sent
+    /// with it to an account that lacks it would be refused as one another
+    /// device deleted, whose row goes (`takeDeletionsBehind`). Sent without
+    /// it, a record the account holds merges with it, and one it lacks is
+    /// saved: an account change never deletes a card.
+    private func forgetWhatICloudSaid() throws(EngineError) {
+        try engine.writeWithoutTelling { db in try db.execute(sql: "DELETE FROM syncRecord") }
     }
 
     /// Applies `records`, which other devices saved, or this one, as iCloud
@@ -107,13 +118,13 @@ public struct Sync: Sendable {
     /// iCloud saved keeps what iCloud says of it, and its change stops
     /// waiting, unless its row changed since. A record that changed in
     /// iCloud since this device heard of it takes iCloud's latest changes,
-    /// field by field, and goes again with its own, if it still has some. A
+    /// field by field, and goes again with its own, if it still has some. The
+    /// deletions sent stop waiting, as `settleSentDeletions` says, and a
     /// record iCloud no longer has because another device deleted it takes
-    /// that deletion, and the deletions sent stop waiting, as
-    /// `settleDeletions` says. Any other record whose zone or whose version
-    /// iCloud no longer has goes again from scratch, its zone first. One that
-    /// didn't fit in a full iCloud keeps waiting here, for when there's room
-    /// (#317).
+    /// that deletion (`takeDeletionsBehind`). Any other record whose zone or
+    /// whose version iCloud no longer has goes again from scratch, its zone
+    /// first. One that didn't fit in a full iCloud keeps waiting here, for
+    /// when there's room (#317).
     private func settle(_ sent: ICloudEvent.SentRecordZoneChanges, with iCloud: some ICloudSyncEngine)
         throws(EngineError)
     {
@@ -123,12 +134,13 @@ public struct Sync: Sendable {
                 try forgetPendingSave(of: try SyncedRow(of: record), whenICloudHolds: record, in: db)
             }
         }
-        let failedSaves = try settleDeletions(sent)
-        guard !failedSaves.isEmpty else {
+        try settleSentDeletions(sent)
+        let toRetry = try takeDeletionsBehind(sent.failedRecordSaves)
+        guard !toRetry.isEmpty else {
             return
         }
         let again = try engine.writeWithoutRecording { db in
-            try failedSaves.map { failure in try retry(failure, in: db) }
+            try toRetry.map { failure in try retry(failure, in: db) }
         }
         iCloud.add(pendingDatabaseChanges: again.compactMap(\.zone))
         iCloud.add(pendingRecordZoneChanges: again.compactMap(\.record))
@@ -153,7 +165,7 @@ public struct Sync: Sendable {
             return (.saveZone(id.zone), .saveRecord(id))
         case .unknownItem:
             // A record of a row that's deleted for good never comes here:
-            // its row went with it, as `settleDeletions` says. Any other,
+            // its row went with it, as `takeDeletionsBehind` says. Any other,
             // such as a tag's, goes again from scratch.
             try keep(nil, of: id, in: db)
             return (nil, .saveRecord(id))

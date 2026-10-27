@@ -7,6 +7,8 @@ internal import GRDB
 // for itself. Triggers in the database record every change, whoever writes
 // it, the CLI too (`Schema`'s "v21 changes recorded to sync"); this file
 // reads what they recorded, and is the one way to write without recording.
+// The one change recorded by hand is what a device changes as it takes
+// another device's deletion, in such a write (`SyncedDeletions.swift`).
 
 /// A row that syncs, as iCloud names its record: a card, a capture or an
 /// entry of the review log by its ID unique across devices, or a tag by its
@@ -61,7 +63,7 @@ enum SyncedRow: Sendable, Hashable {
 
 /// The ID unique across devices that `name` writes, or an error when it
 /// isn't one.
-private func uuid(named name: String) throws -> UUID {
+func uuid(named name: String) throws -> UUID {
     guard let id = UUID(uuidString: name) else {
         throw unreadable("A row that syncs is named with an ID that isn't a UUID")
     }

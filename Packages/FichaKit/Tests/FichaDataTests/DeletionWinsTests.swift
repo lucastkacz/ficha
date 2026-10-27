@@ -1,5 +1,6 @@
 import FichaCore
 import Foundation
+import GRDB
 import Testing
 
 // For the interface to iCloud's engine, which the fake implements.
@@ -233,6 +234,30 @@ final class DeletionWinsTests {
         #expect(try iPhone.logAsSeen().map(\.kind) == [.firstView])
         #expect(
             try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, on: ladder) == afterTheFirstView)
+    }
+
+    // iCloud's engine starts over in the new account, and every row goes
+    // again, as #317's account change will have it.
+    @Test("a device signed into another account that already holds Ficha's zone keeps its cards")
+    func anAccountChangeKeepsTheCards() async throws {
+        _ = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        let otherAccount = FakeICloud()
+        let iPhoneThere = try Device(
+            Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: otherAccount)
+        _ = try iPhoneThere.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+        try await iPhoneThere.syncNow()
+
+        try mac.sync.handle(.accountChange(.switchAccounts), from: mac.iCloud)
+        try mac.engine.saveSyncEngineState(nil)
+        try mac.engine.write { db in try recordEverythingToSend(in: db) }
+        let macThere = try Device(mac.engine, syncingThrough: otherAccount)
+        try await macThere.syncNow()
+        try await iPhoneThere.syncNow()
+
+        for device in [macThere, iPhoneThere] {
+            #expect(try device.engine.cards().map(\.front).sorted() == ["saudade", "ubuntu"])
+        }
     }
 
     // The Mac keeps its cards in a data folder, with its backups.

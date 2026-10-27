@@ -127,9 +127,7 @@ func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
         )
     }
     if applied {
-        try db.execute(
-            sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?",
-            arguments: [record.id.zone.name, record.id.name])
+        try dropWaitingRecord(of: record.id, in: db)
         return .applied
     }
     try db.execute(
@@ -153,6 +151,12 @@ func applyWaitingRecords(in db: Database) throws {
             }
         }
     }
+}
+
+/// Drops the version of the record with this ID that waited to be applied,
+/// if one did.
+func dropWaitingRecord(of id: ICloudRecordID, in db: Database) throws {
+    try db.execute(sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?", arguments: [id.zone.name, id.name])
 }
 
 /// Forgets the change of `row` that waits to be sent, when `record`, as
