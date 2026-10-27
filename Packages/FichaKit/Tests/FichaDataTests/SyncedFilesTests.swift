@@ -177,6 +177,28 @@ final class SyncedFilesTests {
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
     }
 
+    // The Mac's card lets go of the image before the Mac hears of the
+    // iPhone's card, and iCloud's record of the image doesn't change, so no
+    // fetch would bring it to the Mac again.
+    @Test("an image one device's card lets go of, while another device's card takes it, stays on both devices")
+    func aFileOneCardLetsGoOfWhileAnotherTakesItStays() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let hornero = try mac.engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try mac.engine.edit(hornero.id, with: card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
+        try iPhone.engine.create(card(nil, front: "Furnarius rufus", back: "El hornero.", backImage: bird))
+
+        for device in [iPhone, mac, iPhone, mac] {
+            try await device.syncNow()
+        }
+
+        #expect(try mac.engine.image(bird) == iPhone.engine.image(bird))
+        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
+    }
+
     // The Mac's fetch ends in sync, and its deletion of the sound waits to be
     // sent while the iPhone sends a card with it, which the Mac fetches only
     // after its deletion went: iCloud then lacks a sound a card uses.

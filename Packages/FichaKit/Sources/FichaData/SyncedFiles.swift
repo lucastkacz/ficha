@@ -8,7 +8,8 @@ internal import GRDB
 // one again is harmless. A device sends a file a card of its own uses while
 // iCloud lacks it, as far as the device knows, which also sends again one
 // that left iCloud. It keeps every file that comes, as a file the user added
-// is kept, and removes one that left iCloud once no card uses it. It deletes
+// is kept, and keeps a file iCloud holds even once no card uses it, removing
+// it only once it left iCloud, so a card that comes later finds it. It deletes
 // from iCloud the files no card uses only once a fetch ends with the device
 // in sync, as Anki does with media. What the device knows iCloud holds is
 // what iCloud said last of each file's record (`syncRecord`).
@@ -97,9 +98,19 @@ enum SyncedFile: Sendable, Hashable {
 /// The key of the field of a file's record that holds the file.
 private let fileKey = "file"
 
+/// The names of the files of `Name`'s kind that iCloud holds, as far as the
+/// device knows: those whose records it heard of from iCloud, and not
+/// deleted since. The device keeps each of them, whether a card uses it or
+/// not, until it leaves iCloud, since no fetch would bring again a file
+/// whose record didn't change, and a card another device sends may use it.
+func namesInICloud<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws -> Set<Name> {
+    Set(
+        try String.fetchAll(db, sql: "SELECT name FROM syncRecord WHERE zone = ?", arguments: [ICloudZone.files.name])
+            .compactMap(Name.init(rawValue:)))
+}
+
 /// What a device knows of the images and sounds that sync: those its cards
-/// use, and those iCloud holds, as far as it knows, which are those whose
-/// records it heard of from iCloud, and not deleted since.
+/// use, and those iCloud holds, as far as it knows.
 private struct FilesKnown {
     let used: Set<SyncedFile>
     let inICloud: Set<SyncedFile>
@@ -107,11 +118,8 @@ private struct FilesKnown {
     init(in db: Database) throws {
         used = Set(try namesReferred(ImageName.self, in: db).map(SyncedFile.image))
             .union(try namesReferred(SoundName.self, in: db).map(SyncedFile.sound))
-        inICloud = Set(
-            try String.fetchAll(
-                db, sql: "SELECT name FROM syncRecord WHERE zone = ?", arguments: [ICloudZone.files.name]
-            )
-            .compactMap { SyncedFile(ICloudRecordID(name: $0, zone: .files)) })
+        inICloud = Set(try namesInICloud(ImageName.self, in: db).map(SyncedFile.image))
+            .union(try namesInICloud(SoundName.self, in: db).map(SyncedFile.sound))
     }
 }
 
