@@ -12,8 +12,10 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// sends it, and applies what other devices changed without recording it to
 /// send back: of each field of a card, a capture or a tag, the latest change
 /// wins and the rest merges, and the review log's entries join, each card's
-/// ways worked out again from them all. Each device keeps working without a
-/// connection: what waits is sent once iCloud's engine reaches iCloud.
+/// ways worked out again from them all. The images and sounds on cards travel
+/// apart, in a zone of their own, as `SyncedFiles.swift` says. Each device
+/// keeps working without a connection: what waits is sent once iCloud's
+/// engine reaches iCloud.
 ///
 /// The app makes one when sync starts, calls `start(with:)`, then
 /// `sendWhatChanged(to:)` whenever the database changes, and passes it each
@@ -27,21 +29,22 @@ public struct Sync: Sendable {
     }
 
     /// Starts syncing through `iCloud`: on a device whose engine never saved
-    /// a state, it asks iCloud for the cards' zone, and it hands `iCloud`
-    /// every change that waits, those made while the app didn't run, by the
-    /// CLI or offline, included.
+    /// a state, it asks iCloud for the cards' zone and the files', and it
+    /// hands `iCloud` every change that waits, those made while the app
+    /// didn't run, by the CLI or offline, included.
     public func start(with iCloud: some ICloudSyncEngine) throws(EngineError) {
         if try engine.savedSyncEngineState() == nil {
-            iCloud.add(pendingDatabaseChanges: [.saveZone(.cards)])
+            iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
         }
         try sendWhatChanged(to: iCloud)
     }
 
     /// Hands `iCloud` every change that waits to be sent, as the database
-    /// changes, whichever process changed it. One it already holds stays as
-    /// one.
+    /// changes, whichever process changed it, and then the images and sounds
+    /// its cards use that iCloud lacks. One it already holds stays as one.
     public func sendWhatChanged(to iCloud: some ICloudSyncEngine) throws(EngineError) {
         iCloud.add(pendingRecordZoneChanges: try engine.changesToSend().compactMap(\.pendingRecordZoneChange))
+        try sendFiles(to: iCloud)
     }
 
     /// The record iCloud's engine saves for `id`, as its row is now, with
@@ -49,7 +52,10 @@ public struct Sync: Sendable {
     /// it, which stops it from waiting: the record provider of
     /// `CKSyncEngine.RecordZoneChangeBatch(pendingChanges:recordProvider:)`.
     public func recordToSave(_ id: ICloudRecordID) throws(EngineError) -> ICloudRecord? {
-        try engine.read { db in
+        if id.zone == .files {
+            return try fileRecordToSave(id)
+        }
+        return try engine.read { db in
             try syncedRow(named: id, in: db).flatMap { try record(of: $0, in: db) }
         }
     }
@@ -57,6 +63,9 @@ public struct Sync: Sendable {
     /// Handles an event of iCloud's engine, as `CKSyncEngine`'s delegate's
     /// `handleEvent(_:syncEngine:)` does.
     public func handle(_ event: ICloudEvent, from iCloud: some ICloudSyncEngine) throws(EngineError) {
+        // Images and sounds first, in `SyncedFiles.swift`; the rest is the
+        // cards' zone's.
+        let event = try handleFiles(in: event, from: iCloud)
         switch event {
         case .stateUpdate(let state):
             try engine.saveSyncEngineState(state)
@@ -80,6 +89,8 @@ public struct Sync: Sendable {
             }
         case .accountChange(let change):
             syncLogger.notice("The iCloud account changed: \(String(describing: change), privacy: .public)")
+        case .didFetchChanges:
+            try deleteFilesNoCardUses(from: iCloud)
         }
     }
 

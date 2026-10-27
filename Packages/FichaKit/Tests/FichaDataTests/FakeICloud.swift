@@ -15,9 +15,22 @@ import Testing
 /// as it is (`serverRecordChanged`), refuses a record in a zone it doesn't
 /// have (`zoneNotFound`) and one a device heard of that it no longer has
 /// (`unknownItem`). It hands each device what changed since that device last
-/// fetched, newest first, since iCloud promises no order.
+/// fetched, newest first, since iCloud promises no order. It keeps each
+/// record's files apart, as `CKAsset`s, in a folder of its own: a copy of
+/// each file a device sends, which a device that fetches the record reads.
 final class FakeICloud: Sendable {
-    private let database = Mutex(Database())
+    private let database: Mutex<Database>
+    /// Where it keeps the records' files.
+    private let assets = URL.temporaryDirectory.appending(
+        path: "FakeICloud-\(UUID().uuidString)", directoryHint: .isDirectory)
+
+    init() {
+        database = Mutex(Database(assets: assets))
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: assets)
+    }
 
     /// What the database holds.
     fileprivate struct Database {
@@ -26,6 +39,10 @@ final class FakeICloud: Sendable {
         var lastChange = 0
         /// How many times it saved a record.
         var saves = 0
+        /// How many times a device sent each record to save, saved or not.
+        var sends: [ICloudRecordID: Int] = [:]
+        /// Where it keeps the records' files.
+        let assets: URL
     }
 
     /// A zone's records, and those deleted, by name.
@@ -44,6 +61,17 @@ final class FakeICloud: Sendable {
     /// nothing.
     var saves: Int {
         database.withLock(\.saves)
+    }
+
+    /// How many times the devices sent the record with this ID to save,
+    /// whether it saved it or not.
+    func timesSent(_ id: ICloudRecordID) -> Int {
+        database.withLock { $0.sends[id] ?? 0 }
+    }
+
+    /// Whether it holds the record with this ID.
+    func holds(_ id: ICloudRecordID) -> Bool {
+        database.withLock { $0.zones[id.zone]?.records[id.name] != nil }
     }
 
     /// Saves `zones`, those it doesn't have yet, and returns them all.
@@ -66,6 +94,7 @@ final class FakeICloud: Sendable {
             var saved: [ICloudRecord] = []
             var failed: [ICloudEvent.FailedRecordSave] = []
             for record in records {
+                database.sends[record.id, default: 0] += 1
                 switch database.save(record) {
                 case .success(let record): saved.append(record)
                 case .failure(let error): failed.append(ICloudEvent.FailedRecordSave(record: record, error: error))
@@ -90,14 +119,15 @@ final class FakeICloud: Sendable {
         }
     }
 
-    /// What changed in each zone since the change `fetchedUpTo` says a
-    /// device fetched up to there, newest first, with the change it's up to
-    /// then.
-    fileprivate func changes(since fetchedUpTo: [String: Int]) -> [(
+    /// What changed in each zone, or in each of `zones` when it says which,
+    /// since the change `fetchedUpTo` says a device fetched up to there,
+    /// newest first, with the change it's up to then.
+    fileprivate func changes(since fetchedUpTo: [String: Int], in zones: Set<ICloudZone>?) -> [(
         zone: ICloudZone, changes: ICloudEvent.FetchedRecordZoneChanges, upTo: Int
     )] {
         database.withLock { database in
-            database.zones.sorted { $0.key.name < $1.key.name }.compactMap { zone, records in
+            database.zones.filter { zones?.contains($0.key) ?? true }.sorted { $0.key.name < $1.key.name }.compactMap {
+                zone, records in
                 let since = fetchedUpTo[zone.name] ?? 0
                 let saved = records.records.values.filter { $0.change > since }.sorted { $0.change > $1.change }
                 let deleted = records.deletions.filter { $0.value.change > since }
@@ -131,12 +161,31 @@ extension FakeICloud.Database {
         case (nil, _?):
             return .failure(.unknownItem)
         default:
+            let fields: [String: ICloudValue?]
+            do {
+                fields = try record.fields.mapValues(keepingAssets)
+            } catch {
+                return .failure(.other("assetFileNotFound"))
+            }
             lastChange += 1
             saves += 1
-            let saved = record.with(systemFields: Data("change \(lastChange)".utf8))
+            let saved = ICloudRecord(
+                id: record.id, type: record.type, fields: fields, systemFields: Data("change \(lastChange)".utf8))
             zones[record.id.zone]?.records[record.id.name] = FakeICloud.Stored(record: saved, change: lastChange)
             return .success(saved)
         }
+    }
+
+    /// `value` as it keeps it: a file a device sent, copied into its folder,
+    /// as iCloud uploads it, and any other value as it is.
+    private func keepingAssets(_ value: ICloudValue?) throws -> ICloudValue? {
+        guard case .asset(let file)? = value else {
+            return value
+        }
+        let copy = assets.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: assets, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: file, to: copy)
+        return .asset(copy)
     }
 }
 
@@ -246,12 +295,20 @@ final class FakeSyncEngine: ICloudSyncEngine {
     /// Fetches what changed in each zone since it last did, and saves how far
     /// it fetched.
     func fetchChanges() async throws {
+        try await fetchChanges(in: nil)
+    }
+
+    /// Fetches what changed in each of `zones` since it last did, or in every
+    /// zone when it's nil, as `CKSyncEngine.fetchChanges(_:)` does with a
+    /// scope of zones, says it fetched it all, and saves how far it fetched.
+    func fetchChanges(in zones: Set<ICloudZone>?) async throws {
         try checkOnline()
         let fetchedUpTo = state.withLock(\.fetchedUpTo)
-        for (zone, changes, upTo) in iCloud.changes(since: fetchedUpTo) {
+        for (zone, changes, upTo) in iCloud.changes(since: fetchedUpTo, in: zones) {
             try delegate.handle(.fetchedRecordZoneChanges(changes), from: self)
             state.withLock { $0.fetchedUpTo[zone.name] = upTo }
         }
+        try delegate.handle(.didFetchChanges, from: self)
         try delegate.handle(.stateUpdate(serialization()), from: self)
     }
 

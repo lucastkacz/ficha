@@ -246,7 +246,8 @@ extension ICloudRecord {
         switch value(of: key) {
         case nil: return nil
         case .string(let text)?: return text
-        case .int?, .double?: throw unreadable("A record from iCloud holds a number where text should be")
+        case .int?, .double?, .asset?:
+            throw unreadable("A record from iCloud holds something else where text should be")
         }
     }
 
@@ -255,7 +256,8 @@ extension ICloudRecord {
         switch value(of: key) {
         case nil: return nil
         case .int(let milliseconds)?: return Date(wholeMilliseconds: milliseconds)
-        case .string?, .double?: throw unreadable("A record from iCloud holds something else where a time should be")
+        case .string?, .double?, .asset?:
+            throw unreadable("A record from iCloud holds something else where a time should be")
         }
     }
 }
