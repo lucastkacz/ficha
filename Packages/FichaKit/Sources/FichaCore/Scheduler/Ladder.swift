@@ -155,10 +155,10 @@ private struct Replay {
     let ladder: Ladder
     var step: Int
     var due: Date
-    /// When good last moved the way up a step, and until when another good
-    /// answers the same wait, or nil when nothing moved it up since it
-    /// started or again last sent it back.
-    var lastClimb: (at: Date, sameWaitUntil: Date)?
+    /// Until when a good answers the same wait as the good that last moved
+    /// the way up a step, or nil when nothing moved it up since it started or
+    /// again last sent it back.
+    var sameWaitUntil: Date?
 
     /// The way as `start`, its first view or its placement, puts it on
     /// `ladder`, or an error when it's a review, which can't start a way, or
@@ -186,16 +186,16 @@ private struct Replay {
         switch (rating, ahead) {
         case (.again, _):
             step = 0
-            lastClimb = nil
+            sameWaitUntil = nil
         case (.hard, false):
             break
         case (.good, false):
-            if let lastClimb, time < lastClimb.sameWaitUntil {
+            if let sameWaitUntil, time < sameWaitUntil {
                 return
             }
             let climbed = min(step + 1, ladder.waits.count - 1)
             if climbed > step {
-                lastClimb = (time, time.adding(sameWait(afterClimbingFrom: step)))
+                sameWaitUntil = time.adding(sameWait(afterClimbingFrom: step))
             }
             step = climbed
         case (.hard, true), (.good, true):
