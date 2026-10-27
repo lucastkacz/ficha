@@ -128,11 +128,11 @@ public struct Sync: Sendable {
         guard !sent.failedRecordSaves.isEmpty else {
             return
         }
-        let again = try engine.writeWithoutRecording { db in
+        let retries = try engine.writeWithoutRecording { db in
             try sent.failedRecordSaves.map { failure in try retry(failure, in: db) }
         }
-        iCloud.add(pendingDatabaseChanges: again.compactMap(\.zone))
-        iCloud.add(pendingRecordZoneChanges: again.compactMap(\.record))
+        iCloud.add(pendingDatabaseChanges: retries.compactMap(\.zone))
+        iCloud.add(pendingRecordZoneChanges: retries.compactMap(\.record))
     }
 
     /// What to send again of a record iCloud didn't save, as `failure` says

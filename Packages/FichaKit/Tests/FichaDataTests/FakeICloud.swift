@@ -54,13 +54,12 @@ final class FakeICloud: Sendable {
         }
     }
 
-    /// Saves `zones`, those it doesn't have yet, and returns them all.
-    fileprivate func save(_ zones: [ICloudZone]) -> [ICloudZone] {
+    /// Saves `zones`, those it doesn't have yet.
+    fileprivate func save(_ zones: [ICloudZone]) {
         database.withLock { database in
             for zone in zones where database.zones[zone] == nil {
                 database.zones[zone] = Zone()
             }
-            return zones
         }
     }
 
@@ -224,12 +223,9 @@ final class FakeSyncEngine: ICloudSyncEngine {
                 return state.pendingDatabaseChanges
             }
             if !zones.isEmpty {
-                let saved = iCloud.save(zones.compactMap(\.zoneToSave))
+                iCloud.save(zones.compactMap(\.zoneToSave))
                 try delegate.handle(
-                    .sentDatabaseChanges(
-                        ICloudEvent.SentDatabaseChanges(
-                            savedZones: saved, failedZoneSaves: [], deletedZones: [], failedZoneDeletes: [:])),
-                    from: self)
+                    .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [])), from: self)
             }
             var toSave: [ICloudRecord] = []
             var toDelete: [ICloudRecordID] = []

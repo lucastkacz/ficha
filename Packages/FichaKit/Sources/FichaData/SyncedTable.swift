@@ -61,11 +61,12 @@ struct SyncedTable: Sendable {
             Field(.type, SyncedColumn("type", key: "cardType", .text)),
             Field(.source, SyncedColumn("source", .text)),
             Field(.bothWays, SyncedColumn("bothWays", .boolean)),
-            Field(.flag, SyncedColumn("flagNote", .text), SyncedColumn("flaggedAt", .time)) { record, id, db in
+            Field(.flag, SyncedColumn(CardKey.flagNote, .text), SyncedColumn(CardKey.flaggedAt, .time)) {
+                record, id, db in
                 _ = try takeFlag(record.flag(), of: id, in: db)
             },
-            Field(.burial, SyncedColumn("buriedAt", .time)) { record, id, db in
-                _ = try takeBurial(record.time("buriedAt"), of: id, in: db)
+            Field(.burial, SyncedColumn(CardKey.buriedAt, .time)) { record, id, db in
+                _ = try takeBurial(record.time(CardKey.buriedAt), of: id, in: db)
             },
         ],
         fixedColumns: [
@@ -337,11 +338,19 @@ struct SyncedColumn: Sendable {
     }
 }
 
+/// The keys of a card's flag and burial in its record, named after their
+/// columns, which sync reads again as it takes them.
+private enum CardKey {
+    static let flagNote = "flagNote"
+    static let flaggedAt = "flaggedAt"
+    static let buriedAt = "buriedAt"
+}
+
 extension ICloudRecord {
     /// The flag a card's record holds, its note and when it was flagged, or
     /// nil for none. It throws for half a flag.
     fileprivate func flag() throws -> Flag? {
-        switch (try optionalText("flagNote"), try time("flaggedAt")) {
+        switch (try optionalText(CardKey.flagNote), try time(CardKey.flaggedAt)) {
         case (nil, nil): return nil
         case (let note?, let flaggedAt?): return Flag(note: note, flaggedAt: flaggedAt)
         default: throw unreadable("A card from iCloud has a flag without its note or its time")
