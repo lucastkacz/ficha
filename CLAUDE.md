@@ -55,7 +55,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
   - A `risk:high` PR: Lucas reviews and merges it. A PR is `risk:high` when it changes a path listed in `.claude/hooks/merge-gate.sh` (process files, CI, the build, and the project and package manifests) or touches the database schema or migrations, the scheduler or the content guide. Claude adds the label and never removes it. The PR that creates the schema, the scheduler or the content guide adds their paths to that list. The hook blocks Claude from merging either kind.
 - A PR that changes what Lucas sees shows it in pictures from `make render`, or `make render-iphone` for the iPhone, as "The PR's pictures" in `docs/development.md` describes.
 - What only Lucas can check on his Mac (real meetings, full-screen apps, Spaces, how the panel feels) becomes a `ready-for-human` issue, linked from the PR.
-- After a merge, leave the worktree with `ExitWorktree` and `remove` first, since from inside it the harness blocks git in the main folder. Then, back in the main folder, run `git pull --ff-only` on `main` and delete the branch's local copy with `git branch -D`: `ExitWorktree` deletes only `worktree-<name>`. Both deletions drop commits the squash merge left off `main`, so Lucas confirms both: `ExitWorktree` takes `discard_changes`, and `git branch -D` asks for permission.
+- After a merge, the PR's worktree is removed, and its build folders, several GB, go with it. The session that made the PR removes its own; the session that launched implementer subagents removes theirs, `.claude/worktrees/agent-*`. Before removing a worktree, check that nothing is lost: it has no uncommitted changes (`git status --porcelain` prints nothing), and its branch's head is the PR's (`git rev-parse <branch>` matches `gh pr view <n> --json headRefOid`), so every commit the squash merge left off `main` is in the PR. When both hold, remove it on your own: the check stands in for the confirmation `ExitWorktree` asks before `discard_changes`. When either fails, ask Lucas. Leave your own worktree first, with `ExitWorktree`, `remove` and `discard_changes`, since from inside it the harness blocks git in the main folder. Then, from the main folder, check and remove each subagent's worktree with `git worktree remove <path>`, run `git pull --ff-only` on `main`, and delete each removed worktree's branch with `git branch -D`, which still asks for permission: `ExitWorktree` deletes only `worktree-<name>`.
 
 ## Map
 
@@ -63,7 +63,8 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
 - `iPhone/`: the iPhone app, for now only Ficha Dev (#97). It signs with Lucas's Personal Team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
-- `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, Dependabot and issue forms.
+- `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
+- `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
 - `scripts/`: the hook tests and the render tools.
 
 ## Commands
