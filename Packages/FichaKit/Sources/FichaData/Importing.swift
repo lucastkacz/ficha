@@ -182,10 +182,11 @@ extension Engine {
     /// Reads the file of cards at `file`, a text file, a zip with a text
     /// file and its cards' images and sounds, or an Anki package, and says
     /// what importing it would do, without changing anything. A zip's files
-    /// are read one at a time, as they're needed, so that a big one takes no
-    /// more memory than its biggest file, and its sounds are converted as
-    /// they come in. It takes a while for a big file, so the app calls it
-    /// away from the main actor.
+    /// are read as they're needed, so that a big one takes no more memory
+    /// than a few of its files: one at a time, and an Anki package's sounds
+    /// as many at once as the Mac has cores, since they're converted as they
+    /// come in. It takes a while for a big file, so the app calls it away
+    /// from the main actor.
     public func previewImport(of file: URL) async throws(EngineError) -> ImportPreview {
         let name = file.lastPathComponent
         // A file the user chose in an open panel, in an app with a sandbox,

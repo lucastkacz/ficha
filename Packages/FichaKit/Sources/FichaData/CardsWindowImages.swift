@@ -91,15 +91,40 @@ public enum DroppedImage: Sendable, Equatable {
     /// image: the first that holds one, or no data when none does, which the
     /// window refuses, and the log names the types they held.
     public init(pasteboardItems items: [some PasteboardItem]) {
+        guard let image = Self.firstImage(in: items) else {
+            let types = items.map(\.typeIdentifiers)
+            logger.notice("No image on the pasteboard, whose items held \(types, privacy: .public)")
+            self = .data(Data())
+            return
+        }
+        self = image
+    }
+
+    /// The image ⌘V puts on a side while the user types its text: the one the
+    /// items bring, as on the side's image well, when none of them holds text,
+    /// as a screenshot copied to the clipboard, and a file only when it's an
+    /// image's. Nil when one holds text, for the text to take it, as Finder's
+    /// copy of a file holds its name, or when they bring no image. It reads no
+    /// item's data while one holds text.
+    public init?(pastedIntoText items: [some PasteboardItem]) {
+        let holdsText = items.contains { item in
+            item.typeIdentifiers.contains { UTType($0)?.conforms(to: .plainText) == true }
+        }
+        guard !holdsText, let image = Self.firstImage(in: items) else { return nil }
+        if case .file(let file) = image, UTType(filenameExtension: file.pathExtension)?.conforms(to: .image) != true {
+            return nil
+        }
+        self = image
+    }
+
+    /// The image the first of `items` that brings one brings.
+    private static func firstImage(in items: [some PasteboardItem]) -> DroppedImage? {
         for item in items {
-            if let image = Self.image(in: item) {
-                self = image
-                return
+            if let image = image(in: item) {
+                return image
             }
         }
-        let types = items.map(\.typeIdentifiers)
-        logger.notice("No image on the pasteboard, whose items held \(types, privacy: .public)")
-        self = .data(Data())
+        return nil
     }
 
     /// The image `item` brings: the local file a Finder drag names, or else

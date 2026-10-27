@@ -140,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.startBackups()
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
-            StartAtLogin.turnOnAtFirstLaunch()
+            StartAtLogin.askAtFirstLaunch()
             sayIfSettingsAreUnreadable()
         case .failure(let error):
             showAlert(

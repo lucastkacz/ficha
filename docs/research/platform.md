@@ -10,11 +10,11 @@ Each claim says where it comes from: a link to Apple's documentation, the guidel
 
 1. **The CLI, and with it `/refine`.** Apple's documented way to ship a command-line tool in a sandboxed app crashes when a terminal runs it. The way that runs, a tool with a sandbox of its own sharing the cards through an App Group, has no word from Apple on whether App Review takes it, and macOS 27 denies by default access to another team's containers, which may catch Claude's terminal. Nor can a sandboxed CLI open the sound and image files #232 points it to by their path. Probes P3 and P4 settle it; App Intents through `shortcuts run` are the fallback (section 2).
 2. **The meeting suppression.** Whether the camera and microphone readings work in the sandbox is unknown. If they need the camera and microphone entitlements, an app for learning that claims them without capturing anything risks App Review, and maybe a prompt (section 1, P1 and P2). Full screen works, by Apple staff's word; videos are unknown.
-3. **Start at login turns itself on at first launch.** Guideline 2.4.5(iii) forbids it without consent: the real Ficha has to ask (section 1).
+3. **Start at login turned itself on at first launch.** Guideline 2.4.5(iii) forbids it without consent: the real Ficha has to ask, and since #303 it does (section 1).
 4. **Lucas's data.** Apple's container migration only moves, once, and can't reach the App Group's container. The path that loses nothing copies instead, from a last unsandboxed build signed by the team, and, our inference, the sandboxed app refuses to start empty (section 3).
 5. **Sync needs its own answers where Apple's are wrong for Ficha.** An iCloud account change empties `CKSyncEngine`'s queue of unsent changes, and Apple says to delete local data on sign-out, but Ficha's cards exist before any sync. Our inference: Ficha tracks unsent changes in SQLite itself, which also catches the CLI's writes (section 5).
 6. **No more ad hoc builds.** iCloud and push are restricted entitlements, so `make run` and `make install` need the team's signing, and a development-signed real Ficha would put Lucas's cards in CloudKit's Development environment, which the App Store build never reads (section 6).
-7. **A privacy policy at a public URL**, linked from the app too (Guideline 5.1.1(i)).
+7. **A privacy policy at a public URL**, linked from the app too (Guideline 5.1.1(i)). Since #303, `site/privacy.md` is the policy, and Settings' About tab links to it.
 
 **What the grilling must decide** is listed in "Questions for the grilling", below the sections.
 
@@ -38,12 +38,12 @@ Each claim says where it comes from: a link to Apple's documentation, the guidel
 
 | Code | In the sandbox |
 |---|---|
-| Start at login, `SMAppService.mainApp` (`App/StartAtLogin.swift`) | Works, and it's the way the store's sandbox allows (Apple staff, [thread 758985](https://developer.apple.com/forums/thread/758985)). But `StartAtLogin.turnOnAtFirstLaunch()` turns it on without asking, and Mac App Store apps "may not auto-launch or have other code run automatically at startup or login without consent" (Guideline 2.4.5(iii)). |
+| Start at login, `SMAppService.mainApp` (`App/StartAtLogin.swift`) | Works, and it's the way the store's sandbox allows (Apple staff, [thread 758985](https://developer.apple.com/forums/thread/758985)). But `StartAtLogin.turnOnAtFirstLaunch()` turned it on without asking, and Mac App Store apps "may not auto-launch or have other code run automatically at startup or login without consent" (Guideline 2.4.5(iii)). Since #303, `StartAtLogin.askAtFirstLaunch()` asks first. |
 | The capture shortcut, Carbon's `RegisterEventHotKey` (`App/CaptureShortcut.swift`) | Our inference: works with no entitlement. Quinn lists it among the ways to get a global hot key (Apple staff, [thread 735223](https://developer.apple.com/forums/thread/735223)). |
 | Import's `.fileImporter`, Export's `NSSavePanel` | Work with `com.apple.security.files.user-selected.read-write` ([Accessing files from the macOS App Sandbox](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox)). Whether Export's atomic write, which writes a temporary file beside the chosen one first, is allowed is P8. |
 | Backups' Show in Finder | Our inference: works; the folder shown becomes a path inside a container. |
 | Backups' Delete…, `FileManager.trashItem` | A sandboxed app's trash "is within its sandbox directory" ([trashDirectory](https://developer.apple.com/documentation/foundation/url/trashdirectory)). If the copies go to a trash in the container, the dialog's promise that Lucas can put them back from the Trash breaks (P9). |
-| Copy Instructions for an AI, and ⌘V and drags on a side's image or sound, `NSPasteboard` | Writing is unaffected. Since macOS 15.4, reading the general pasteboard asks the user, except for access "both user originated and paste related", and other pasteboards, such as a drag's, are always allowed ([NSPasteboard.AccessBehavior](https://developer.apple.com/documentation/appkit/nspasteboard/accessbehavior-swift.enum)). Ficha reads the general one only when the user presses ⌘V on a side; our inference is that this counts as such a paste. |
+| Copy Instructions for an AI, ⌘V in a side's text, and ⌘V and drags on a side's image or sound, `NSPasteboard` | Writing is unaffected. Since macOS 15.4, reading the general pasteboard asks the user, except for access "both user originated and paste related", and other pasteboards, such as a drag's, are always allowed ([NSPasteboard.AccessBehavior](https://developer.apple.com/documentation/appkit/nspasteboard/accessbehavior-swift.enum)). Ficha reads the general one only when the user presses ⌘V on a side; our inference is that this counts as such a paste. |
 | Darwin notifications between the app and the CLI (`DatabaseChanges.swift`) | Our inference: probably work, since `notify.h` gives every process one namespace (the SDK). Apple's App Groups page doesn't list them among the ways sandboxed processes talk ([application-groups](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.application-groups)). If they fail, the app stops hearing the CLI's writes (P3). |
 | `NSFileCoordinator` around opening the database (`Engine.swift`) | Our inference: works between two processes on a file both reach (P3). It fails closed: an error means the database doesn't open. |
 | Preferences, `UserDefaults.standard` | Move to a file inside the app's container, so Lucas's settings don't follow on their own; that file belongs to the system's preferences process, so never copy it by hand (Apple staff, [thread 721805](https://developer.apple.com/forums/thread/721805)). |
@@ -247,7 +247,7 @@ Our inference from the facts above, unless a source is named.
 1. The CLI: a sandbox of its own with a `<TeamID>.` App Group (recommended), with App Intents through `shortcuts run` as the fallback if App Review or macOS 27 refuses it? And how it takes the sound and image files #232 gives it: on standard input, through the Downloads folder, or another way?
 2. Ficha Dev: sandboxed too, with its own group, or left unsandboxed?
 3. The meeting suppression, if the camera and microphone readings need their entitlements (P1, P2): claim them and explain them to App Review, keep only what works without them, or drop it?
-4. Start at login: how the real Ficha asks at first launch.
+4. Start at login: how the real Ficha asks at first launch. Since #303, with an alert, "Open Ficha when you log in?".
 5. Lucas's data: copied by a last unsandboxed build signed by the team (recommended), or picked by hand in the sandboxed app? Do the settings travel, or does Lucas set them again?
 
 **Sync**
@@ -266,7 +266,7 @@ Our inference from the facts above, unless a source is named.
 
 15. Lucas's daily Ficha: TestFlight, or a development-signed build forced to Production? What `make install` becomes.
 16. Who uploads, and from where: from `main` alone, so the build number always grows.
-17. Where the privacy policy lives, at a public URL.
+17. Where the privacy policy lives, at a public URL. Since #303, on GitHub Pages, from `site/privacy.md`.
 18. The hardened runtime: on, as Apple staff recommend?
 
 **#166, #170, #171**
