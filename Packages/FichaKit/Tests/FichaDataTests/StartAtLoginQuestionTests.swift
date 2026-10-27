@@ -5,49 +5,44 @@ import Testing
 /// opens when the user logs in, which App Review asks of every app that starts
 /// at login (Guideline 2.4.5(iii)).
 struct StartAtLoginQuestionTests {
-    @Test("at the real Ficha's first launch, it asks whether to open at login")
-    func asksAtFirstLaunch() {
-        let question = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: false)
-
-        #expect(question.asks)
-    }
-
     // Lucas's own Ficha turned start at login on at its first launch, before
     // it asked, which set it up as an answer does; his preferences go along
     // when his data moves to the sandboxed Ficha.
-    @Test("once start at login is set up, the real Ficha doesn't ask")
-    func doesNotAskOnceSetUp() {
-        let question = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: true)
+    @Test("it asks at the real Ficha's first launch, not once start at login is set up, and never in Ficha Dev")
+    func asksOnlyAtTheRealFichasFirstLaunch() {
+        let firstLaunch = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: false, startsAtLogin: false)
+        let setUp = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: true, startsAtLogin: false)
+        let fichaDev = StartAtLoginQuestion(appMayStartAtLogin: false, isSetUp: false, startsAtLogin: false)
 
-        #expect(!question.asks)
+        #expect(firstLaunch.asks)
+        #expect(!setUp.asks)
+        #expect(!fichaDev.asks)
     }
 
-    @Test("Ficha Dev never asks, since it never starts at login")
-    func fichaDevNeverAsks() {
-        let question = StartAtLoginQuestion(appMayStartAtLogin: false, isSetUp: false)
+    // As when the preferences were lost, but not the login item: asking then
+    // could only leave it on, whatever the answer.
+    @Test("when macOS already starts the real Ficha at login, it doesn't ask, and start at login is set up")
+    func doesNotAskWhenItAlreadyStartsAtLogin() {
+        let question = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: false, startsAtLogin: true)
 
         #expect(!question.asks)
-    }
-
-    @Test("Open at Login turns start at login on, and sets it up, so the app never asks again")
-    func openAtLoginTurnsItOn() {
-        var question = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: false)
-
-        let turnsOn = question.answer(.openAtLogin)
-
-        #expect(turnsOn)
         #expect(question.isSetUp)
-        #expect(!question.asks)
+        #expect(!question.turnsOnStartAtLogin)
     }
 
-    @Test("Not Now leaves start at login off, and sets it up, so the app never asks again")
-    func notNowLeavesItOff() {
-        var question = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: false)
+    @Test(
+        "Open at Login turns start at login on, Not Now leaves it off, and either sets it up, so the app never asks again"
+    )
+    func eitherAnswerSetsItUp() {
+        var openAtLogin = StartAtLoginQuestion(appMayStartAtLogin: true, isSetUp: false, startsAtLogin: false)
+        var notNow = openAtLogin
 
-        let turnsOn = question.answer(.notNow)
+        openAtLogin.answer(.openAtLogin)
+        notNow.answer(.notNow)
 
-        #expect(!turnsOn)
-        #expect(question.isSetUp)
-        #expect(!question.asks)
+        #expect(openAtLogin.turnsOnStartAtLogin)
+        #expect(!notNow.turnsOnStartAtLogin)
+        #expect(openAtLogin.isSetUp && notNow.isSetUp)
+        #expect(!openAtLogin.asks && !notNow.asks)
     }
 }

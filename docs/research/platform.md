@@ -247,7 +247,7 @@ Our inference from the facts above, unless a source is named.
 1. The CLI: a sandbox of its own with a `<TeamID>.` App Group (recommended), with App Intents through `shortcuts run` as the fallback if App Review or macOS 27 refuses it? And how it takes the sound and image files #232 gives it: on standard input, through the Downloads folder, or another way?
 2. Ficha Dev: sandboxed too, with its own group, or left unsandboxed?
 3. The meeting suppression, if the camera and microphone readings need their entitlements (P1, P2): claim them and explain them to App Review, keep only what works without them, or drop it?
-4. Start at login: how the real Ficha asks at first launch.
+4. Start at login: how the real Ficha asks at first launch. Since #303, with an alert, "Open Ficha when you log in?".
 5. Lucas's data: copied by a last unsandboxed build signed by the team (recommended), or picked by hand in the sandboxed app? Do the settings travel, or does Lucas set them again?
 
 **Sync**
@@ -266,7 +266,7 @@ Our inference from the facts above, unless a source is named.
 
 15. Lucas's daily Ficha: TestFlight, or a development-signed build forced to Production? What `make install` becomes.
 16. Who uploads, and from where: from `main` alone, so the build number always grows.
-17. Where the privacy policy lives, at a public URL.
+17. Where the privacy policy lives, at a public URL. Since #303, on GitHub Pages, from `site/privacy.md`.
 18. The hardened runtime: on, as Apple staff recommend?
 
 **#166, #170, #171**

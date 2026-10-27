@@ -19,7 +19,7 @@ When you turn on sync, your cards also go to your private iCloud, in your own Ap
 
 ## The network
 
-Ficha makes no connections of its own. Its one part allowed on the network is the one that draws SVG images, such as those in some Anki decks: Apple's web engine needs that permission to draw. It draws only images already on your Mac, and blocks anything an image asks to load from the internet.
+Ficha makes no network connections of its own. To draw SVG images, such as those in some Anki decks, it uses WebKit, Apple's web engine, which may use the network. Ficha has it draw only images already on your Mac, and loads nothing an image points to on the internet.
 
 ## Crash reports
 

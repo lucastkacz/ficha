@@ -25,23 +25,20 @@ enum StartAtLogin {
 
     /// Asks whether the app opens at login, with an alert, as the question
     /// says: at the real Ficha's first launch, until either answer sets it
-    /// up. Open at Login turns it on, and when macOS refuses, an alert says
-    /// why; Settings changes it later.
+    /// up, unless macOS already starts it at login. Open at Login turns it
+    /// on; Settings changes it later.
     static func askAtFirstLaunch() {
-        var question = StartAtLoginQuestion(appMayStartAtLogin: isAvailable, isSetUp: Preferences.startsAtLoginIsSetUp)
-        guard question.asks else { return }
-        let alert = questionAlert(for: .current)
-        NSApplication.shared.activate()
-        let answer: StartAtLoginQuestion.Answer = alert.runModal() == .alertFirstButtonReturn ? .openAtLogin : .notNow
-        let turnsOn = question.answer(answer)
+        var question = StartAtLoginQuestion(
+            appMayStartAtLogin: isAvailable, isSetUp: Preferences.startsAtLoginIsSetUp,
+            startsAtLogin: status.startsAtLogin)
+        if question.asks {
+            let alert = questionAlert(for: .current)
+            NSApplication.shared.activate()
+            question.answer(alert.runModal() == .alertFirstButtonReturn ? .openAtLogin : .notNow)
+        }
         Preferences.startsAtLoginIsSetUp = question.isSetUp
-        guard turnsOn else { return }
-        do {
-            try turn(on: true)
-        } catch {
-            showAlert(
-                String(localized: "Couldn't change whether \(AppVariant.current.name) starts at login"),
-                explaining: error, style: .warning, button: String(localized: "OK"))
+        if question.turnsOnStartAtLogin {
+            turn(on: true)
         }
     }
 
@@ -64,8 +61,9 @@ enum StartAtLogin {
         return alert
     }
 
-    /// Turns starting at login on or off, in the real Ficha.
-    static func turn(on: Bool) throws(StartAtLoginError) {
+    /// Turns starting at login on or off, in the real Ficha. When macOS
+    /// refuses, the log says why, and an alert says what to do about it.
+    static func turn(on: Bool) {
         guard isAvailable else { return }
         do {
             if on {
@@ -77,7 +75,11 @@ enum StartAtLogin {
             logger.error(
                 "Couldn't turn \(on ? "on" : "off", privacy: .public) starting at login: \(String(describing: error), privacy: .public)"
             )
-            throw StartAtLoginError(appName: AppVariant.current.name, turningOn: on, reason: error)
+            showAlert(
+                String(localized: "Couldn't change whether \(AppVariant.current.name) starts at login"),
+                explaining: StartAtLoginError(appName: AppVariant.current.name, turningOn: on, reason: error),
+                style: .warning, button: String(localized: "OK"))
+            return
         }
         logger.info("Turned \(on ? "on" : "off", privacy: .public) starting at login")
     }
@@ -114,6 +116,14 @@ struct StartAtLoginError: LocalizedError {
                     Items.
                     """)
         }
+    }
+}
+
+extension SMAppService.Status {
+    /// Whether macOS starts the app at login: when it's on, or on once the
+    /// user allows it in System Settings, as Settings' switch shows it.
+    var startsAtLogin: Bool {
+        self == .enabled || self == .requiresApproval
     }
 }
 

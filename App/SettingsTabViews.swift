@@ -37,10 +37,7 @@ struct GeneralSettings: View {
     /// Whether the app starts at login, which only the real Ficha does.
     @ViewBuilder private var startAtLoginToggle: some View {
         if StartAtLogin.isAvailable {
-            Toggle(
-                isOn: Binding(
-                    get: { [.enabled, .requiresApproval].contains(startAtLogin) }, set: { turnStartAtLogin(on: $0) })
-            ) {
+            Toggle(isOn: Binding(get: { startAtLogin.startsAtLogin }, set: { turnStartAtLogin(on: $0) })) {
                 Text("Start at login")
                 if startAtLogin == .requiresApproval {
                     Text("Allow it in System Settings, in Login Items.")
@@ -58,15 +55,10 @@ struct GeneralSettings: View {
         }
     }
 
-    /// Turns starting at login on or off, and says why when macOS refuses.
+    /// Turns starting at login on or off, which says why when macOS refuses,
+    /// and shows what the system says then.
     private func turnStartAtLogin(on: Bool) {
-        do {
-            try StartAtLogin.turn(on: on)
-        } catch {
-            showAlert(
-                String(localized: "Couldn't change whether \(AppVariant.current.name) starts at login"),
-                explaining: error, style: .warning, button: String(localized: "OK"))
-        }
+        StartAtLogin.turn(on: on)
         startAtLogin = StartAtLogin.status
     }
 }
@@ -367,10 +359,16 @@ struct AboutTab: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            if let privacyPolicy {
-                Link("Privacy Policy", destination: privacyPolicy)
-                    .padding(.top, 12)
+            Group {
+                if let privacyPolicyURL = URL(string: Self.privacyPolicyAddress) {
+                    Link("Privacy Policy", destination: privacyPolicyURL)
+                } else {
+                    // A written-out address always makes a URL. Were it not
+                    // to, the address shows instead, for the user to copy.
+                    Text(verbatim: Self.privacyPolicyAddress)
+                }
             }
+            .padding(.top, 12)
         }
         .textSelection(.enabled)
         .frame(maxWidth: .infinity)
@@ -394,11 +392,8 @@ struct AboutTab: View {
     }
 
     /// Where Ficha's privacy policy is published: `site/privacy.md`, which
-    /// GitHub Pages publishes through `.github/workflows/pages.yml`. A
-    /// written-out address always makes a URL.
-    private var privacyPolicy: URL? {
-        URL(string: "https://lucastkacz.github.io/ficha/privacy/")
-    }
+    /// GitHub Pages publishes through `.github/workflows/pages.yml`.
+    private static let privacyPolicyAddress = "https://lucastkacz.github.io/ficha/privacy/"
 }
 
 /// The hour of the day `hour` starts at, as the Mac writes it, like "9:00":
