@@ -1,6 +1,6 @@
 # The iPhone app does what the Mac app does
 
-Ficha sells for the Mac and the iPhone together (#160), and the Mac is built first. The iPhone's spec (#97) left some of the Mac's features out of the iPhone, such as making, editing and importing cards, which it left to the Mac. Lucas decided that the iPhone app does what the Mac app does, the same or as close as the platform allows, with no compromise between the two: someone with only an iPhone gets all of Ficha, as AnkiMobile lets its users import a deck without a computer. The two apps share their code as far as it goes: what a feature decides lives in `FichaKit`, which both apps build (ADR 0005), and each app holds only what its platform needs, its screens and its hooks into the system.
+Ficha sells for the Mac and the iPhone together (#160), and the Mac is built first. Until now some features stayed off the iPhone: #97, the iPhone's spec, left making, editing and importing cards to #86, which built them for the Mac alone, and #160 keeps some things on one platform by design. Lucas decided that the iPhone app does what the Mac app does, the same or as close as the platform allows, with no compromise between the two, so that someone with only an iPhone can make, import and review cards as on a Mac. The two apps share their code as far as it goes: what a feature decides lives in `FichaKit`, which both apps build (ADR 0005), and so do the views both platforms can draw alike; an app keeps apart only what its platform alone needs.
 
 ## Considered options
 
@@ -9,8 +9,8 @@ Ficha sells for the Mac and the iPhone together (#160), and the Mac is built fir
 
 ## Consequences
 
-- When #97 resumes, its lists of what stays off the iPhone are checked against this ADR: an item stays off only where the platform rules it out, and the spec says why. Making, editing and importing cards come to the iPhone, which #97's comment of 2026-10-27 notes for importing.
-- A difference the platform forces is written down with its reason, in an ADR or in the spec, as ADR 0010 does for appearances, which come as notifications on the iPhone. The suppressions, idle time, the capture shortcut and starting at login stay on the Mac for that reason: iOS's Focus silences notifications, and iOS has neither a menu bar nor a global shortcut.
-- A feature is never planned or described as being for the Mac alone. Each Mac feature becomes an iPhone ticket when #97 resumes, as #160 orders.
-- Code that is Mac-only today, such as drawing an Anki deck's SVG images (`SVGImages.swift`, and #306's XPC service), gets an iPhone counterpart when the iPhone's turn comes.
-- Work that weighs on the device adapts to it rather than staying off the phone: sounds convert as many at once as the device has cores (#329).
+- A difference between the apps stays only where the platform rules a feature out, and it's written down with its reason, in an ADR or in the spec. Where the other platform has its own way to the same end, the feature takes it, as an appearance comes as card notifications on the iPhone (ADR 0010).
+- When #97 resumes, its lists of what stays off the iPhone, and #160's list of what stays on one platform by design, are checked item by item against that rule. Making, editing and importing cards come to the iPhone: #97's comment of 2026-10-27 notes importing, with what it leaves to that grilling.
+- Each Mac feature becomes an iPhone ticket when #97 resumes, as #160 orders.
+- The same holds in the code: code that builds for the Mac alone, such as drawing SVG images (`SVGImages.swift`), is a difference like any other, and stays only for the platform's reason.
+- Standard practice: one Swift package that builds for macOS and iOS, which both apps link. Our own: the rule that the two apps differ only where the platform forces it.
