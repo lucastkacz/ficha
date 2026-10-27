@@ -88,7 +88,9 @@ extension Engine {
         }
     }
 
-    /// Every first view, review and placement, in the order they happened.
+    /// Every first view, review and placement, in the order this device
+    /// recorded them: those another device synced come when they came,
+    /// which needn't be when they happened.
     public func reviewLog() throws(EngineError) -> [ReviewLogEntry] {
         try read(logEntries(in:))
     }
@@ -106,13 +108,14 @@ extension Engine {
     }
 }
 
-/// The review log's entries, in the order they happened.
+/// The review log's entries, in the order this device recorded them, as
+/// `Engine.reviewLog()` says.
 func logEntries(in db: Database) throws -> [ReviewLogEntry] {
     try Row.fetchAll(db, sql: "SELECT * FROM reviewLog ORDER BY id").map(ReviewLogEntry.init(row:))
 }
 
-/// A card's entries in the review log, in the order they happened, or an
-/// error when there's no such card.
+/// A card's entries in the review log, in the order this device recorded
+/// them, or an error when there's no such card.
 func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogEntry] {
     guard try Row.fetchOne(db, sql: "SELECT id FROM card WHERE id = ?", arguments: [cardID]) != nil else {
         throw EngineError.cardNotFound(cardID)
@@ -153,10 +156,12 @@ func recordAnswer(
             throw EngineError(refused: error, cardID: answered.cardID)
         }
     }
-    // A review answers the way's last entry, which its wait came from.
+    // A review answers the way's last entry, which its wait came from: the
+    // last the ladder replays, by when it was answered, not the last written,
+    // which another device's or a clock set back can make an earlier one.
     let answeredEntry: UUID? =
         switch kind {
-        case .review: wayLog.last?.uuid
+        case .review: wayLog.max { $0.isReplayed(before: $1) }?.uuid
         case .firstView, .placement: nil
         }
     let entry = ReviewLogEntry(
@@ -191,7 +196,7 @@ func place(_ cardID: Int64, way: Way, on placement: Placement, at placedAt: Date
 
 /// Adds an entry at the end of the review log, with its ID unique across
 /// devices, or a new one when it has none yet, and the entry it answered.
-private func insert(_ entry: ReviewLogEntry, in db: Database) throws {
+func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let columns = entry.kind.columns
     try db.execute(
         sql: """

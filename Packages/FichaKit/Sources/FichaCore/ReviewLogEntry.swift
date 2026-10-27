@@ -32,9 +32,10 @@ public struct ReviewLogEntry: Sendable, Equatable {
     public let trigger: Trigger?
     /// Whether it was a review ahead: of a card that wasn't due yet, which
     /// Lucas asked for. Only its again counts (ADR 0002). It's what the
-    /// device that recorded it knew then: the ladder also counts a good as
-    /// ahead when another device's good had answered the same wait
-    /// (ADR 0017).
+    /// device that recorded it knew then (ADR 0017): the ladder also counts a
+    /// good as ahead when another device's good had climbed the wait it
+    /// answered, and a review ahead as on time when an entry this device
+    /// didn't know of had made the card due by then.
     public let isAhead: Bool
     /// Its ID unique across devices, which the review log gives it as it
     /// keeps it, or nil for an entry it doesn't keep yet.
