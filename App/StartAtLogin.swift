@@ -1,14 +1,16 @@
-import Foundation
+import AppKit
+import FichaData
 import ServiceManagement
 import os
 
 /// The login item's log, which says when starting at login changes.
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "login item")
 
-/// Whether the app starts when Lucas logs in, through the system's login
+/// Whether the app starts when the user logs in, through the system's login
 /// items (`SMAppService`), which System Settings also shows and changes. The
-/// real Ficha does from its first launch on, until Lucas turns it off; Ficha
-/// Dev never does, so it can't get in the real Ficha's way.
+/// real Ficha asks at its first launch, and does when the user says so, until
+/// they turn it off; Ficha Dev never does, so it can't get in the real Ficha's
+/// way.
 enum StartAtLogin {
     /// Whether the app may start at login: only the real Ficha.
     static var isAvailable: Bool {
@@ -21,19 +23,45 @@ enum StartAtLogin {
         SMAppService.mainApp.status
     }
 
-    /// Turns starting at login on the first time the real Ficha launches,
-    /// since that's its default. Later launches leave it as Lucas left it,
-    /// here or in System Settings. When macOS refuses, the log says why, and
-    /// the next launch tries again.
-    static func turnOnAtFirstLaunch() {
-        guard isAvailable, !Preferences.startsAtLoginIsSetUp else { return }
+    /// Asks whether the app opens at login, with an alert, as the question
+    /// says: at the real Ficha's first launch, until either answer sets it
+    /// up. Open at Login turns it on, and when macOS refuses, an alert says
+    /// why; Settings changes it later.
+    static func askAtFirstLaunch() {
+        var question = StartAtLoginQuestion(appMayStartAtLogin: isAvailable, isSetUp: Preferences.startsAtLoginIsSetUp)
+        guard question.asks else { return }
+        let alert = questionAlert(for: .current)
+        NSApplication.shared.activate()
+        let answer: StartAtLoginQuestion.Answer = alert.runModal() == .alertFirstButtonReturn ? .openAtLogin : .notNow
+        let turnsOn = question.answer(answer)
+        Preferences.startsAtLoginIsSetUp = question.isSetUp
+        guard turnsOn else { return }
         do {
             try turn(on: true)
         } catch {
-            // `turn(on:)` logged why.
-            return
+            showAlert(
+                String(localized: "Couldn't change whether \(AppVariant.current.name) starts at login"),
+                explaining: error, style: .warning, button: String(localized: "OK"))
         }
-        Preferences.startsAtLoginIsSetUp = true
+    }
+
+    /// The alert that asks whether `app` opens at login, with Open at Login,
+    /// the default button, and Not Now, which Esc presses too. `make render`
+    /// draws it for the real Ficha.
+    static func questionAlert(for app: AppVariant) -> NSAlert {
+        let alert = NSAlert()
+        alert.messageText = String(
+            localized: "Open \(app.name) when you log in?",
+            comment: "An alert at the app's first launch. The name is the app's.")
+        alert.informativeText = String(
+            localized: "\(app.name) shows you cards only while it's open. You can change this later in Settings.",
+            comment: "An alert at the app's first launch, under whether it opens at login. The name is the app's.")
+        alert.addButton(
+            withTitle: String(localized: "Open at Login", comment: "A button of the alert at the app's first launch."))
+        let notNow = alert.addButton(
+            withTitle: String(localized: "Not Now", comment: "A button of the alert at the app's first launch."))
+        notNow.keyEquivalent = "\u{1b}"
+        return alert
     }
 
     /// Turns starting at login on or off, in the real Ficha.

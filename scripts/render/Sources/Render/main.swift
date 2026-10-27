@@ -34,6 +34,11 @@ enum Window: String {
     case backups
     /// Settings, on its Backups tab, once a backup failed.
     case backupsFailed = "backups-failed"
+    /// Settings, on its About tab.
+    case about
+    /// The alert the real Ficha shows at its first launch, which asks whether
+    /// it opens at login.
+    case startAtLogin = "start-at-login"
 }
 
 /// What the tool was asked to draw.
@@ -273,7 +278,8 @@ let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
                  package), cards-anki-imported (once it came in, a card it put on a step selected), backups
-                 (Settings, on its Backups tab) or backups-failed (once a backup failed)
+                 (Settings, on its Backups tab), backups-failed (once a backup failed), about (Settings, on its
+                 About tab) or start-at-login (the alert the real Ficha shows at its first launch)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -754,7 +760,8 @@ func hours(_ count: Int) -> TimeInterval {
 /// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsImport, .cardsImportAnki: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+        return AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsAnkiImported: return try ankiImportedModel()
     case .backups: return AppModel(engine: try backupsEngine())
     case .backupsFailed:
@@ -788,16 +795,26 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try ankiImportedState(of: model))
         return window
-    case .backups, .backupsFailed:
-        let window = AppWindow(
-            tabs: SettingsTabViewController(
-                model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {},
-                openingOn: .backups))
-        if let content = window.contentView {
-            window.setContentSize(content.fittingSize)
-        }
-        return window
+    case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
+    case .about: return settingsTabWindow(model: model, openingOn: .about)
+    case .startAtLogin:
+        // The alert's own window, laid out as `runModal()` would show it,
+        // for the real Ficha, the only one that asks.
+        let alert = StartAtLogin.questionAlert(for: .real)
+        alert.layout()
+        return alert.window
     }
+}
+
+/// Settings, at the size it opens at, on `tab`.
+func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab) -> NSWindow {
+    let window = AppWindow(
+        tabs: SettingsTabViewController(
+            model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openingOn: tab))
+    if let content = window.contentView {
+        window.setContentSize(content.fittingSize)
+    }
+    return window
 }
 
 /// The window the keyboard goes to while `window` is open, as AppKit makes it

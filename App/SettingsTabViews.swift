@@ -350,7 +350,8 @@ struct LadderSettings: View {
 /// The About tab of Settings: which version of the app this is, as macOS's
 /// About panel shows it. Under the app's icon and name come its version and
 /// its copyright line, from its Info.plist: "Version", the release version,
-/// then the build in parentheses. Lucas can select the text, to copy it.
+/// then the build in parentheses. The user can select the text, to copy it.
+/// Under them, a link opens Ficha's privacy policy in the browser.
 struct AboutTab: View {
     var body: some View {
         VStack(spacing: 6) {
@@ -365,6 +366,10 @@ struct AboutTab: View {
                 Text(verbatim: copyright)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+            if let privacyPolicy {
+                Link("Privacy Policy", destination: privacyPolicy)
+                    .padding(.top, 12)
             }
         }
         .textSelection(.enabled)
@@ -386,6 +391,13 @@ struct AboutTab: View {
     /// The app's Info.plist value for `key`, which the build sets.
     private func infoPlistValue(_ key: String) -> String? {
         Bundle.main.object(forInfoDictionaryKey: key) as? String
+    }
+
+    /// Where Ficha's privacy policy is published: `site/privacy.md`, which
+    /// GitHub Pages publishes through `.github/workflows/pages.yml`. A
+    /// written-out address always makes a URL.
+    private var privacyPolicy: URL? {
+        URL(string: "https://lucastkacz.github.io/ficha/privacy/")
     }
 }
 
