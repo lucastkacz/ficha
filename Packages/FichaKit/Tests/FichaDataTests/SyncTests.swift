@@ -105,6 +105,31 @@ final class SyncTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }
 
+    @Test("a side edited on another device restarts a card's count of “Don't know” answers, as an edit here does")
+    func aSideEditedOnAnotherDeviceRestartsTheForgottenOftenCount() async throws {
+        var settings = ReviewSettings.defaults
+        settings.forgottenOftenAfter = 2
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        time.advance(by: hours(1))
+        try mac.engine.record(
+            .review(.again), of: ubuntu.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        time.advance(by: minutes(1))
+        try iPhone.engine.edit(
+            iPhone.engine.card(fronted: "ubuntu").id,
+            with: card(.concept, front: "ubuntu", back: "Yo soy porque somos."))
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+        time.advance(by: hours(1))
+        let forgotten = try mac.engine.record(
+            .review(.again), of: ubuntu.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+
+        #expect(forgotten == nil)
+    }
+
     @Test("captures, expansions and follow-ups travel, and what's refined on one device leaves the inbox on both")
     func theInboxTravels() async throws {
         let ubuntu = try approve(card(.concept, front: "ubuntu", back: "Soy porque somos."), in: mac.engine)
