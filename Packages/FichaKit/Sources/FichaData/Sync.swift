@@ -50,17 +50,27 @@ public struct Sync: Sendable {
         try sendFiles(to: iCloud)
     }
 
-    /// The record iCloud's engine saves for `id`, as its row is now, with
-    /// what iCloud said of it last, or nil when the device no longer holds
-    /// it, which stops it from waiting: the record provider of
+    /// The record `iCloud` saves for `id`, as its row is now, with what
+    /// iCloud said of it last, or nil when the device no longer holds it,
+    /// whose save then stops waiting in `iCloud`, as Apple's sample does: the
+    /// record provider of
     /// `CKSyncEngine.RecordZoneChangeBatch(pendingChanges:recordProvider:)`.
-    public func recordToSave(_ id: ICloudRecordID) throws(EngineError) -> ICloudRecord? {
+    /// A file's record is as `fileRecordToSave(_:)` says.
+    public func recordToSave(_ id: ICloudRecordID, from iCloud: some ICloudSyncEngine) throws(EngineError)
+        -> ICloudRecord?
+    {
+        let record: ICloudRecord?
         if id.zone == .files {
-            return try fileRecordToSave(id)
+            record = try fileRecordToSave(id)
+        } else {
+            record = try engine.read { db in
+                try syncedRow(named: id, in: db).flatMap { try FichaData.record(of: $0, in: db) }
+            }
         }
-        return try engine.read { db in
-            try syncedRow(named: id, in: db).flatMap { try record(of: $0, in: db) }
+        if record == nil {
+            iCloud.remove(pendingRecordZoneChanges: [.saveRecord(id)])
         }
+        return record
     }
 
     /// Handles an event of iCloud's engine, as `CKSyncEngine`'s delegate's
@@ -74,7 +84,7 @@ public struct Sync: Sendable {
             try engine.saveSyncEngineState(state)
         case .fetchedRecordZoneChanges(let changes):
             try receiveFetched(changes.modifications)
-            try receiveDeletions(changes.deletions)
+            try takeDeletions(changes.deletions)
         case .sentRecordZoneChanges(let sent):
             try settle(sent, with: iCloud)
         case .sentDatabaseChanges(let sent):
@@ -92,9 +102,22 @@ public struct Sync: Sendable {
             }
         case .accountChange(let change):
             syncLogger.notice("The iCloud account changed: \(String(describing: change), privacy: .public)")
+            try forgetWhatICloudSaid()
         case .didFetchChanges:
             try finishFetchingFiles(with: iCloud)
         }
+    }
+
+    /// Forgets what iCloud said of every record, as the account changes:
+    /// what one account said means nothing to another, and a record sent
+    /// with it to an account that lacks it would be refused as one another
+    /// device deleted, whose row goes (`takeDeletionsBehind`). Sent without
+    /// it, a record the account holds merges with it, and one it lacks is
+    /// saved: an account change never deletes a card. The images and sounds
+    /// iCloud held are forgotten too, so the device sends each one its cards
+    /// use, which the account turns down when it holds it.
+    private func forgetWhatICloudSaid() throws(EngineError) {
+        try engine.writeWithoutTelling { db in try db.execute(sql: "DELETE FROM syncRecord") }
     }
 
     /// Applies `records`, which other devices saved, or this one, as iCloud
@@ -118,13 +141,13 @@ public struct Sync: Sendable {
     /// iCloud saved keeps what iCloud says of it, and its change stops
     /// waiting, unless its row changed since. A record that changed in
     /// iCloud since this device heard of it takes iCloud's latest changes,
-    /// field by field, and goes again with its own, if it still has some. A
+    /// field by field, and goes again with its own, if it still has some. The
+    /// deletions sent stop waiting, as `settleSentDeletions` says, and a
     /// record iCloud no longer has because another device deleted it takes
-    /// that deletion, and the deletions sent stop waiting, as
-    /// `settleDeletions` says. Any other record whose zone or whose version
-    /// iCloud no longer has goes again from scratch, its zone first. One that
-    /// didn't fit in a full iCloud keeps waiting here, for when there's room
-    /// (#317).
+    /// that deletion (`takeDeletionsBehind`). Any other record whose zone or
+    /// whose version iCloud no longer has goes again from scratch, its zone
+    /// first. One that didn't fit in a full iCloud keeps waiting here, for
+    /// when there's room (#317).
     private func settle(_ sent: ICloudEvent.SentRecordZoneChanges, with iCloud: some ICloudSyncEngine)
         throws(EngineError)
     {
@@ -134,15 +157,16 @@ public struct Sync: Sendable {
                 try forgetPendingSave(of: try SyncedRow(of: record), whenICloudHolds: record, in: db)
             }
         }
-        let failedSaves = try settleDeletions(sent)
-        guard !failedSaves.isEmpty else {
+        try settleSentDeletions(sent)
+        let toRetry = try takeDeletionsBehind(sent.failedRecordSaves)
+        guard !toRetry.isEmpty else {
             return
         }
-        let again = try engine.writeWithoutRecording { db in
-            try failedSaves.map { failure in try retry(failure, in: db) }
+        let retries = try engine.writeWithoutRecording { db in
+            try toRetry.map { failure in try retry(failure, in: db) }
         }
-        iCloud.add(pendingDatabaseChanges: again.compactMap(\.zone))
-        iCloud.add(pendingRecordZoneChanges: again.compactMap(\.record))
+        iCloud.add(pendingDatabaseChanges: retries.compactMap(\.zone))
+        iCloud.add(pendingRecordZoneChanges: retries.compactMap(\.record))
     }
 
     /// What to send again of a record iCloud didn't save, as `failure` says
@@ -164,7 +188,7 @@ public struct Sync: Sendable {
             return (.saveZone(id.zone), .saveRecord(id))
         case .unknownItem:
             // A record of a row that's deleted for good never comes here:
-            // its row went with it, as `settleDeletions` says. Any other,
+            // its row went with it, as `takeDeletionsBehind` says. Any other,
             // such as a tag's, goes again from scratch.
             try keep(nil, of: id, in: db)
             return (nil, .saveRecord(id))

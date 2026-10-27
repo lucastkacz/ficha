@@ -36,7 +36,7 @@ struct CardNotificationTests {
         _ = try engine.answerFromNotification(.firstView, of: ubuntu.id, in: appearance, settings: settings)
 
         #expect(
-            try engine.reviewLog().suffix(2) == [
+            try engine.reviewLog().suffix(2).map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: serendipia.id, kind: .review(.good), answeredAt: try at(10, 1), responseTime: nil,
                     trigger: .appearance),

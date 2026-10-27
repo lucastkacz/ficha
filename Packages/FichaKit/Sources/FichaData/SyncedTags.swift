@@ -11,9 +11,10 @@ internal import GRDB
 enum TagKey {
     /// Its name, exactly as cards carry it.
     static let name = "name"
-    static let switchedOn = "switchedOn"
-    static let color = "color"
-    static let emoji = "emoji"
+    // What it has of its own, each under its field's name.
+    static let switchedOn = SyncedField.switchedOn.rawValue
+    static let color = SyncedField.color.rawValue
+    static let emoji = SyncedField.emoji.rawValue
 }
 
 /// The fields of a tag that keep when they last changed.
@@ -45,7 +46,11 @@ func applyTag(_ record: ICloudRecord, named name: String, in db: Database) throw
     var tag = try ownTag(name, in: db)
     let local = try fieldTimes(of: .tag(name), in: db)
     let incoming = try record.fieldTimes(of: tagFields)
-    let won = tagFields.filter { isLatest(incoming[$0], comparedWith: local[$0]) }
+    let own = try tagRecord(name, in: db)
+    let won = tagFields.filter { field in
+        FieldChange(changedAt: incoming[field], holdsSomething: record.value(of: field.rawValue) != nil)
+            .wins(over: FieldChange(changedAt: local[field], holdsSomething: own.value(of: field.rawValue) != nil))
+    }
     if won.contains(.switchedOn) {
         tag.switchedOn = try record.optionalText(TagKey.switchedOn).map { name in
             guard let tagSwitch = TagSwitch(rawValue: name) else {

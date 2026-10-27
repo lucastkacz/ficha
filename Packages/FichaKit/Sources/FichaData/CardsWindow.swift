@@ -290,13 +290,14 @@ extension Engine {
                 entry.answeredAt == other.answeredAt
                     ? entry.isReplayed(before: other) : entry.answeredAt < other.answeredAt
             }
-            // Each step is where the ladder puts the entry's way after the
-            // entries of that way it replays up to this one, as it works out
-            // the way's standing from its whole log, so the front-first way's
-            // last one is the Step column's. That goes over the log again for
-            // each entry, but a card has few.
+            // Each step is where the ladder puts the entry's way after that
+            // way's entries answered up to this one, as it works out the
+            // way's standing from its whole log, so the way's last one is the
+            // Step column's, also after another device's first view that came
+            // later. That goes over the log again for each entry, but a card
+            // has few.
             return try entries.indices.map { end in
-                let wayUpToEntry = entries.filter { $0.way == entries[end].way && !entries[end].isReplayed(before: $0) }
+                let wayUpToEntry = entries[...end].filter { $0.way == entries[end].way }
                 guard case .onLadder(let step, _) = try ladder.standing(after: wayUpToEntry) else {
                     // The ladder puts a card with an entry on a step, or
                     // throws.
@@ -379,9 +380,9 @@ extension CardStanding {
 
 extension CardRow {
     /// The row of `card`, whose tags have what `ownTags` says of their own,
-    /// after `entries`, its review log's, in the order they happened: last
-    /// seen either way, and each way standing on `ladder`, its back-first way
-    /// only while the card goes both ways.
+    /// after `entries`, its review log's, in any order: last seen either way,
+    /// when Lucas last answered it, and each way standing on `ladder`, its
+    /// back-first way only while the card goes both ways.
     fileprivate init(
         card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], on ladder: Ladder
     ) throws(UnexpectedReviewLog) {
@@ -391,16 +392,16 @@ extension CardRow {
         frontFirst = try WayProgress(.frontFirst, of: card, after: entries, on: ladder)
         backFirst = card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, on: ladder) : nil
         lastSeen =
-            entries.last { entry in
+            entries.filter { entry in
                 if case .placement = entry.kind { false } else { true }
-            }?
-            .answeredAt
+            }
+            .map(\.answeredAt).max()
     }
 }
 
 extension WayProgress {
     /// Where `card`'s `way` stands on `ladder` after its entries out of
-    /// `entries`, the card's review log's, in the order they happened.
+    /// `entries`, the card's review log's, in any order.
     fileprivate init(
         _ way: Way, of card: Card, after entries: [ReviewLogEntry], on ladder: Ladder
     ) throws(UnexpectedReviewLog) {

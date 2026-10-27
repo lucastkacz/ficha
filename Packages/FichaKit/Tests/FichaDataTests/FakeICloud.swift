@@ -89,13 +89,20 @@ final class FakeICloud: Sendable {
         }
     }
 
-    /// Saves `zones`, those it doesn't have yet, and returns them all.
-    fileprivate func save(_ zones: [ICloudZone]) -> [ICloudZone] {
+    /// Saves `record` as a device with a newer Ficha would, in a zone it
+    /// has, for a test.
+    func saveFromANewerFicha(_ record: ICloudRecord) {
+        database.withLock { database in
+            _ = database.save(record)
+        }
+    }
+
+    /// Saves `zones`, those it doesn't have yet.
+    fileprivate func save(_ zones: [ICloudZone]) {
         database.withLock { database in
             for zone in zones where database.zones[zone] == nil {
                 database.zones[zone] = Zone()
             }
-            return zones
         }
     }
 
@@ -165,7 +172,9 @@ final class FakeICloud: Sendable {
 extension FakeICloud.Database {
     /// Saves `record`, when the device that sends it heard of its latest
     /// version or of none, and returns it as saved, with the system fields of
-    /// a new version, or why it isn't.
+    /// a new version, or why it isn't. A record saved with none after it was
+    /// deleted is a new one, as in CloudKit: a device that fetches from
+    /// before the deletion gets it, and not the deletion.
     fileprivate mutating func save(_ record: ICloudRecord) -> Result<ICloudRecord, ICloudError> {
         guard let zone = zones[record.id.zone] else {
             return .failure(.zoneNotFound)
@@ -187,6 +196,7 @@ extension FakeICloud.Database {
             let saved = ICloudRecord(
                 id: record.id, type: record.type, fields: fields, systemFields: Data("change \(lastChange)".utf8))
             zones[record.id.zone]?.records[record.id.name] = FakeICloud.Stored(record: saved, change: lastChange)
+            zones[record.id.zone]?.deletions[record.id.name] = nil
             return .success(saved)
         }
     }
@@ -279,6 +289,12 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
     }
 
+    func remove(pendingRecordZoneChanges changes: [ICloudPendingRecordZoneChange]) {
+        state.withLock { state in
+            state.pendingRecordZoneChanges.removeAll(where: changes.contains)
+        }
+    }
+
     func add(pendingDatabaseChanges changes: [ICloudPendingDatabaseChange]) {
         state.withLock { state in
             for change in changes {
@@ -294,41 +310,37 @@ final class FakeSyncEngine: ICloudSyncEngine {
     }
 
     /// Sends the zones and then the records waiting, a batch at a time, as
-    /// long as the delegate's answers leave some waiting.
+    /// long as the delegate's answers leave some to send. A save whose record
+    /// the delegate doesn't give keeps waiting, as `CKSyncEngine` keeps it,
+    /// until the delegate removes it.
     func sendChanges() async throws {
         try checkOnline()
         for _ in 0..<10 {
-            let (zones, records) = state.withLock { state in
-                defer {
-                    state.pendingDatabaseChanges = []
-                    state.pendingRecordZoneChanges = []
-                }
-                return (state.pendingDatabaseChanges, state.pendingRecordZoneChanges)
-            }
-            guard !zones.isEmpty || !records.isEmpty else {
-                return try delegate.handle(.stateUpdate(serialization()), from: self)
+            let zones = state.withLock { state in
+                defer { state.pendingDatabaseChanges = [] }
+                return state.pendingDatabaseChanges
             }
             if !zones.isEmpty {
-                let saved = iCloud.save(zones.compactMap(\.zoneToSave))
+                iCloud.save(zones.compactMap(\.zoneToSave))
                 try delegate.handle(
-                    .sentDatabaseChanges(
-                        ICloudEvent.SentDatabaseChanges(
-                            savedZones: saved, failedZoneSaves: [], deletedZones: [], failedZoneDeletes: [:])),
-                    from: self)
+                    .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [])), from: self)
             }
             var toSave: [ICloudRecord] = []
             var toDelete: [ICloudRecordID] = []
-            for change in records {
+            for change in pendingRecordZoneChanges {
                 switch change {
                 case .saveRecord(let id):
-                    // A record the delegate no longer has stops waiting, as
-                    // Apple's sample does.
-                    if let record = try delegate.recordToSave(id) {
-                        toSave.append(record)
+                    guard let record = try delegate.recordToSave(id, from: self) else {
+                        continue
                     }
+                    toSave.append(record)
                 case .deleteRecord(let id):
                     toDelete.append(id)
                 }
+                state.withLock { $0.pendingRecordZoneChanges.removeAll { $0 == change } }
+            }
+            guard !zones.isEmpty || !toSave.isEmpty || !toDelete.isEmpty else {
+                return try delegate.handle(.stateUpdate(serialization()), from: self)
             }
             if !toSave.isEmpty || !toDelete.isEmpty {
                 let sent = iCloud.modify(saving: toSave, deleting: toDelete)

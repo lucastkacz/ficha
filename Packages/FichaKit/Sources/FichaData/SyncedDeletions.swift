@@ -15,53 +15,51 @@ internal import GRDB
 // too. A tag is never deleted: one with nothing of its own is just a name.
 
 extension Sync {
-    /// Deletes what other devices deleted, as iCloud says in `deletions`, in
-    /// one write that records no change to send back but those the deletions
-    /// make on this device, and then the images and sounds of the cards it
-    /// deleted that no card uses.
-    func receiveDeletions(_ deletions: [ICloudEvent.RecordDeletion]) throws(EngineError) {
+    /// Takes `deletions`, which other devices made, in one write that records
+    /// no change to send back but those the deletions make on this device,
+    /// what refers to a row before the row (`deletionRank`); and then removes
+    /// the images and sounds of the cards it deleted that no card uses.
+    func takeDeletions(_ deletions: [ICloudEvent.RecordDeletion]) throws(EngineError) {
         guard !deletions.isEmpty else {
             return
         }
         let now = engine.now
         let deleted = try engine.writeWithoutRecording { db in
-            try deletions.sorted { $0.deletingRank < $1.deletingRank }.flatMap { deletion in
+            try deletions.sorted { deletionRank(ofType: $0.type) < deletionRank(ofType: $1.type) }.flatMap {
+                deletion in
                 try receiveDeletion(of: deletion.id, type: deletion.type, at: now, in: db)
             }
         }
         engine.removeFilesNoCardUses(images: Set(deleted.flatMap(\.images)), sounds: Set(deleted.flatMap(\.sounds)))
     }
 
-    /// Settles the deletions iCloud's engine sent, and the records it sent
-    /// that iCloud no longer holds because another device deleted them, whose
-    /// rows go here too: a deletion wins. A deletion iCloud took, or whose
+    /// Settles the deletions iCloud's engine sent: one iCloud took, or whose
     /// record it no longer holds, stops waiting; one it refused for another
-    /// reason keeps waiting, for the next time the database changes. Returns
-    /// the records iCloud didn't save for any other reason, for `settle` to
-    /// send again.
-    func settleDeletions(_ sent: ICloudEvent.SentRecordZoneChanges) throws(EngineError)
+    /// reason keeps waiting, for the next time the database changes, as
+    /// `deletionsThatWent()` says.
+    func settleSentDeletions(_ sent: ICloudEvent.SentRecordZoneChanges) throws(EngineError) {
+        let gone = sent.deletionsThatWent()
+        guard !gone.isEmpty else {
+            return
+        }
+        try engine.writeWithoutTelling { db in
+            for id in gone {
+                try forgetDeletion(of: id, in: db)
+            }
+        }
+    }
+
+    /// Takes the deletion behind each of `failures`, records iCloud didn't
+    /// save, that iCloud no longer holds because another device deleted it:
+    /// a deletion wins. Returns the others, for `retry`.
+    func takeDeletionsBehind(_ failures: [ICloudEvent.FailedRecordSave]) throws(EngineError)
         -> [ICloudEvent.FailedRecordSave]
     {
-        let gone = sent.deletionsThatWent()
-        if !gone.isEmpty {
-            try engine.writeWithoutTelling { db in
-                for id in gone {
-                    try forgetDeletion(of: id, in: db)
-                }
-            }
-        }
-        let deletedElsewhere = sent.failedRecordSaves.filter(\.lostToADeletion)
-        if !deletedElsewhere.isEmpty {
-            let now = engine.now
-            let deleted = try engine.writeWithoutRecording { db in
-                try deletedElsewhere.flatMap { failure in
-                    try receiveDeletion(of: failure.record.id, type: failure.record.type, at: now, in: db)
-                }
-            }
-            engine.removeFilesNoCardUses(
-                images: Set(deleted.flatMap(\.images)), sounds: Set(deleted.flatMap(\.sounds)))
-        }
-        return sent.failedRecordSaves.filter { !$0.lostToADeletion }
+        try takeDeletions(
+            failures.filter(\.lostToADeletion).map {
+                ICloudEvent.RecordDeletion(id: $0.record.id, type: $0.record.type)
+            })
+        return failures.filter { !$0.lostToADeletion }
     }
 }
 
@@ -90,15 +88,33 @@ extension ICloudEvent.SentRecordZoneChanges {
 extension ICloudEvent.FailedRecordSave {
     /// Whether iCloud didn't save it because another device deleted it, and
     /// that deletion wins: iCloud no longer holds the record, and its row is
-    /// one that's deleted for good, a card, a capture or an entry of the
-    /// review log. Any other row is never deleted, or goes again when
-    /// iCloud lacks it: a tag is just a name once it has nothing of its own.
+    /// one that's deleted for good (`deletionRank`).
     fileprivate var lostToADeletion: Bool {
-        switch SyncedRow.RecordType(rawValue: record.type) {
-        case .card?, .capture?, .reviewLogEntry?: error == .unknownItem
-        default: false
+        error == .unknownItem && SyncedRow.RecordType(rawValue: record.type)?.deletionRank != nil
+    }
+}
+
+extension SyncedRow.RecordType {
+    /// Where a deletion of a row of this type comes among those a device
+    /// takes at once: what refers to a row before the row, so that the device
+    /// sends again only what the deleting device didn't delete. Nil for a row
+    /// that's never deleted for good, which goes again when iCloud lacks its
+    /// record: a tag is just a name once it has nothing of its own.
+    fileprivate var deletionRank: Int? {
+        switch self {
+        case .reviewLogEntry: 0
+        case .card: 1
+        case .capture: 2
+        default: nil
         }
     }
+}
+
+/// The `deletionRank` of a record of `type`, or the last place, `Int.max`,
+/// for a row that's never deleted for good or a type this version of Ficha
+/// doesn't know.
+private func deletionRank(ofType type: String) -> Int {
+    SyncedRow.RecordType(rawValue: type)?.deletionRank ?? .max
 }
 
 /// Takes the deletion of the record with this ID, of `type`, which another
@@ -126,7 +142,7 @@ private func receiveDeletion(of id: ICloudRecordID, type: String, at time: Date,
     case .reviewLogEntry(let uuid):
         try db.execute(sql: "DELETE FROM reviewLog WHERE uuid = ?", arguments: [uuid.uuidString])
     default:
-        // Any other row is never deleted for good: a tag is just a name.
+        // A row that's never deleted for good (`deletionRank`).
         break
     }
     return []
@@ -144,17 +160,17 @@ private func deleteCard(deletedOnAnotherDevice uuid: UUID, at time: Date, in db:
     else {
         return nil
     }
-    let entries = try rows(of: SyncedTable.reviewLog, where: "cardId = ?", cardID, in: db)
-    let expansions = try rows(of: SyncedTable.captures, where: "expandsCardId = ?", cardID, in: db)
-    let followUps = try rows(of: SyncedTable.captures, where: "followsUpCardId = ?", cardID, in: db)
+    let entries = try rows(of: .reviewLog, as: .reviewLogEntry, where: "cardId = ?", cardID, in: db)
+    let expansions = try rows(of: .captures, as: .capture, where: "expandsCardId = ?", cardID, in: db)
+    let followUps = try rows(of: .captures, as: .capture, where: "followsUpCardId = ?", cardID, in: db)
     let card = try deleteCard(cardID, in: db)
     for entry in entries where try systemFields(of: entry.recordID, in: db) != nil {
-        try waitToBeSent(entry, deleted: true, in: db)
+        try waitToBeSent(entry, as: .deleted, in: db)
     }
     for (captures, field) in [(expansions, SyncedField.expandedCard), (followUps, .followedUpCard)] {
         for capture in captures {
             try stamp([field: time], of: capture, in: db)
-            try waitToBeSent(capture, deleted: false, in: db)
+            try waitToBeSent(capture, as: .saved, in: db)
         }
     }
     return card
@@ -172,33 +188,31 @@ private func deleteCapture(deletedOnAnotherDevice uuid: UUID, in db: Database) t
     else {
         return
     }
-    let approved = try rows(of: SyncedTable.cards, where: "captureId = ?", captureID, in: db)
+    let approved = try rows(of: .cards, as: .card, where: "captureId = ?", captureID, in: db)
     try db.execute(sql: "UPDATE card SET captureId = NULL WHERE captureId = ?", arguments: [captureID])
     try db.execute(sql: "DELETE FROM capture WHERE id = ?", arguments: [captureID])
     for card in approved {
-        try waitToBeSent(card, deleted: false, in: db)
+        try waitToBeSent(card, as: .saved, in: db)
     }
 }
 
-/// The rows of `table` for which `condition` holds with `argument`, as they
-/// sync.
-private func rows(of table: SyncedTable, where condition: String, _ argument: Int64, in db: Database) throws
-    -> [SyncedRow]
-{
+/// The rows of `table`, each of `type`, for which `condition` holds with
+/// `argument`, as they sync.
+private func rows(
+    of table: SyncedTable, as type: SyncedRow.RecordType, where condition: String, _ argument: Int64,
+    in db: Database
+) throws -> [SyncedRow] {
     try String.fetchAll(db, sql: "SELECT uuid FROM \(table.name) WHERE \(condition)", arguments: [argument]).map {
-        name in
-        guard let uuid = UUID(uuidString: name) else {
-            throw unreadable("A row that syncs has an ID that isn't a UUID")
-        }
-        return table.syncedRow(uuid)
+        try SyncedRow(recordType: type.rawValue, recordName: $0)
     }
 }
 
-/// Leaves `row` waiting to be sent, saved or deleted, in place of its change
-/// before, while sync is on, as the database's triggers do in a write that
-/// records its changes: for a change this device makes as it takes another
-/// device's deletion.
-private func waitToBeSent(_ row: SyncedRow, deleted: Bool, in db: Database) throws {
+/// Leaves `row` waiting to be sent, as `kind` says, in place of its change
+/// before, while sync is on: for a change this device makes as it takes
+/// another device's deletion, in a write that doesn't record its changes. The
+/// database's triggers do the same in a write that does (`wait` in `Schema`'s
+/// v21), whose SQL a migration keeps as it was, so it can't be shared.
+private func waitToBeSent(_ row: SyncedRow, as kind: ChangeToSend.Kind, in db: Database) throws {
     try db.execute(
         sql: "DELETE FROM syncPending WHERE recordType = ? AND recordName = ?",
         arguments: [row.recordType.rawValue, row.recordName])
@@ -207,7 +221,7 @@ private func waitToBeSent(_ row: SyncedRow, deleted: Bool, in db: Database) thro
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT ?, ?, ? WHERE (SELECT isOn FROM syncDevice)
             """,
-        arguments: [row.recordType.rawValue, row.recordName, deleted])
+        arguments: [row.recordType.rawValue, row.recordName, kind == .deleted])
 }
 
 /// Forgets the deletion of the row the record with this ID held, which
@@ -219,12 +233,6 @@ private func forgetDeletion(of id: ICloudRecordID, in db: Database) throws {
     }
     try keep(nil, of: id, in: db)
     try dropWaitingRecord(of: id, in: db)
-}
-
-/// Drops the version of the record with this ID that waited to be applied,
-/// if one did.
-func dropWaitingRecord(of id: ICloudRecordID, in db: Database) throws {
-    try db.execute(sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?", arguments: [id.zone.name, id.name])
 }
 
 /// The place among the changes recorded of the deletion of the row the
@@ -243,19 +251,4 @@ func pendingDeletion(of id: ICloudRecordID, in db: Database) throws -> Int64? {
         }
     }
     return nil
-}
-
-extension ICloudEvent.RecordDeletion {
-    /// Its place among the deletions of a fetch as they're applied: what
-    /// refers to a row before the row, so that a device sends again only what
-    /// the deleting device didn't delete: the review log first, then cards,
-    /// then captures, then any other.
-    fileprivate var deletingRank: Int {
-        switch SyncedRow.RecordType(rawValue: type) {
-        case .reviewLogEntry?: 0
-        case .card?: 1
-        case .capture?: 2
-        default: 3
-        }
-    }
 }

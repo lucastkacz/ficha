@@ -41,17 +41,20 @@ final class ChangesToSyncTests {
 
         #expect(waiting.map(\.row.recordType) == [.capture, .card, .card, .reviewLogEntry])
         #expect(waiting.map(\.kind) == [.saved, .saved, .saved, .saved])
-        #expect(waiting[1].row == (try engine.syncedRow(ofCard: serendipia.id)))
-        #expect(waiting[2].row == (try engine.syncedRow(ofCard: ubuntu.id)))
         #expect(Set(waiting.map(\.row)).count == 4)
+        #expect(waiting[3].row == .reviewLogEntry(try #require(try engine.reviewLog().only?.uuid)))
+        // Each card's later change waits under the same row.
+        #expect(try engine.recorded { try engine.bury(serendipia.id) }.map(\.row) == [waiting[1].row])
+        #expect(try engine.recorded { try engine.bury(ubuntu.id) }.map(\.row) == [waiting[2].row])
     }
 
     @Test(
         "editing a card records which of its parts changed and when, and an edit that changes nothing records nothing")
     func editingRecordsThePartsThatChanged() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
-        let row = try engine.syncedRow(ofCard: hornero.id)
+        let (hornero, row) = try engine.synced(.card) {
+            try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        }
         let edited = time.now + hours(1)
         let editedAgain = edited + hours(1)
 
@@ -94,8 +97,7 @@ final class ChangesToSyncTests {
 
     @Test("flagging, fixing, burying and unburying a card record when its flag and its burial changed")
     func flagsAndBurialsRecordTheirChanges() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let row = try engine.syncedRow(ofCard: ubuntu.id)
+        let (ubuntu, row) = try engine.synced(.card) { try approveCard("ubuntu", in: engine) }
         let flagged = time.now + minutes(1)
         let fixed = flagged + minutes(1)
         let buried = fixed + minutes(1)
@@ -136,6 +138,28 @@ final class ChangesToSyncTests {
         #expect(firstView.row != review.row)
         #expect([firstView.kind, review.kind] == [.saved, .saved])
         #expect(takenBack == [Waiting(row: review.row, kind: .deleted)])
+    }
+
+    // So that a joined log can tell two devices' answers to one wait (#302).
+    @Test(
+        "each review names the entry of its way it answered, the way's last, each way apart, and a first view names none"
+    )
+    func eachReviewNamesTheEntryItAnswered() throws {
+        let ubuntu = try engine.create(card(.word, front: "ubuntu", back: "Soy porque somos."), bothWays: true)
+        try engine.meet(ubuntu)
+        try engine.meet(ubuntu, way: .backFirst)
+        try engine.reviewWhenDue(ubuntu, .good, movingForward: time)
+        try engine.reviewWhenDue(ubuntu, .again, way: .backFirst, movingForward: time)
+        try engine.reviewWhenDue(ubuntu, .hard, movingForward: time)
+
+        let log = try engine.reviewLog()
+
+        #expect(log.map(\.way) == [.frontFirst, .backFirst, .frontFirst, .backFirst, .frontFirst])
+        #expect(log.map(\.answeredEntry) == [nil, nil, log[0].uuid, log[1].uuid, log[2].uuid])
+        #expect(Set(log.compactMap(\.uuid)).count == 5)
+        #expect(
+            try engine.waiting().filter { $0.row.recordType == .reviewLogEntry }.map(\.row)
+                == log.compactMap(\.uuid).map(SyncedRow.reviewLogEntry))
     }
 
     @Test("a tag's color, emoji, priority and set aside each record when they changed, also once it has nothing left")
@@ -189,8 +213,7 @@ final class ChangesToSyncTests {
 
     @Test("capturing, editing, discarding, expanding and approving record the captures' changes and the cards'")
     func capturesRecordTheirChanges() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let cardRow = try engine.syncedRow(ofCard: serendipia.id)
+        let (_, cardRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
         let edited = time.now + minutes(1)
         let discarded = edited + minutes(1)
         let approved = discarded + minutes(1)
@@ -252,8 +275,7 @@ final class ChangesToSyncTests {
 
     @Test("deleting a card waits as its deletion and its review log's, and its expansion lets go of it")
     func deletingWaitsAsDeletions() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let cardRow = try engine.syncedRow(ofCard: serendipia.id)
+        let (serendipia, cardRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
         let firstView = try #require(try engine.recorded { try engine.meet(serendipia) }.only)
         let expansion = try #require(
             try engine.recorded { try engine.expand(text: "Serendipia", note: nil, source: nil) }.only)
@@ -271,21 +293,60 @@ final class ChangesToSyncTests {
             ])
     }
 
-    @Test("an import's cards wait to be sent")
+    // The file's name proposes the tag "Vocabulario", which serendipia has.
+    @Test("an import's new cards wait to be sent, and a card it updates records only what the file changed")
     func importedCardsWaitToBeSent() async throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "vocabulario.txt")
-        try Data("serendipia\tUn hallazgo por casualidad.\npetricor\tEl olor de la lluvia.\n".utf8).write(to: file)
+        let file = folder.appending(path: "Vocabulario.txt")
+        try Data(
+            """
+            #columns:Front\tBack\tBoth ways
+            serendipia\tUn hallazgo valioso por casualidad.\ty
+            petricor\tEl olor de la lluvia.\t
 
-        try engine.forget(engine.changesToSend())
-        try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+            """.utf8
+        ).write(to: file)
+        let (_, serendipiaRow) = try engine.synced(.card) {
+            try engine.create(card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["Vocabulario"]))
+        }
+        let imported = time.now + minutes(1)
 
-        let cards = try engine.cards()
+        time.move(to: imported)
+        let afterImport = try await engine.recordedAsync {
+            try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        }
+
+        #expect(afterImport.map(\.row.recordType) == [.card, .card])
         #expect(
-            try engine.waiting() == [
-                Waiting(row: try engine.syncedRow(ofCard: cards[0].id), kind: .saved),
-                Waiting(row: try engine.syncedRow(ofCard: cards[1].id), kind: .saved),
-            ])
+            afterImport.first
+                == Waiting(row: serendipiaRow, kind: .saved, fieldTimes: [.back: imported, .bothWays: imported]))
+        #expect(afterImport.last?.row != serendipiaRow)
+        #expect(afterImport.last?.kind == .saved)
+        #expect(afterImport.last?.fieldTimes == [:])
+    }
+
+    @Test("an import that brings a card's progress from Anki leaves each way's placement waiting to be sent")
+    func importedProgressWaitsToBeSent() async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "Mazo.apkg")
+        try AnkiPackage(
+            notes: [
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10),
+                    reversedCard: (.review(due: 26, interval: 3), .asItsTypeSays))
+            ]
+        ).write(to: file)
+
+        let afterImport = try await engine.recordedAsync {
+            try await engine.importCards(
+                engine.previewImport(of: file), choosing: ImportChoices(progress: .brought(onto: .standard)))
+        }
+
+        let log = try engine.reviewLog()
+        #expect(log.map(\.way) == [.frontFirst, .backFirst])
+        #expect(afterImport.map(\.row.recordType) == [.card, .reviewLogEntry, .reviewLogEntry])
+        #expect(afterImport.allSatisfy { $0.kind == .saved && $0.fieldTimes.isEmpty })
+        #expect(afterImport.dropFirst().map(\.row) == log.compactMap(\.uuid).map(SyncedRow.reviewLogEntry))
     }
 
     @Test("what the CLI writes waits to be sent for the app, which shares its database and syncs alone")
@@ -310,8 +371,8 @@ final class ChangesToSyncTests {
         #expect(waiting.map(\.row.recordType) == [.capture, .card])
         #expect(waiting.map(\.kind) == [.saved, .saved])
         #expect(waiting.first?.fieldTimes == [.refined: approved])
-        #expect(waiting.last?.row == (try app.syncedRow(ofCard: ojala.id)))
         #expect(waiting.last?.fieldTimes == [.frontSound: detached])
+        #expect(try app.recorded { try app.bury(ojala.id) }.map(\.row) == [waiting[1].row])
     }
 
     // What comes from iCloud is applied this way (#312), and must never be
@@ -343,7 +404,7 @@ final class ChangesToSyncTests {
         "with sync off, nothing waits to be sent, and turning it on leaves everything waiting, with when each field changed"
     )
     func turningSyncOnSendsEverything() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let (serendipia, serendipiaRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
         try engine.setColor(.green, of: "lenguaje")
         try engine.setColor(nil, of: "lenguaje")
 
@@ -363,9 +424,7 @@ final class ChangesToSyncTests {
         #expect(waiting.map(\.row.recordType) == [.card, .card, .capture, .reviewLogEntry, .tag])
         #expect(waiting.allSatisfy { $0.kind == .saved })
         #expect(
-            waiting.first
-                == Waiting(row: try engine.syncedRow(ofCard: serendipia.id), kind: .saved, fieldTimes: [.flag: flagged])
-        )
+            waiting.first == Waiting(row: serendipiaRow, kind: .saved, fieldTimes: [.flag: flagged]))
         #expect(waiting.last?.row == .tag("lenguaje"))
     }
 
@@ -380,7 +439,9 @@ final class ChangesToSyncTests {
 
     @Test("a change that was sent no longer waits, but the row's change made while it was sent does")
     func aChangeSentIsForgottenButALaterOneWaits() throws {
-        let ubuntu = try engine.create(card(.word, front: "ubuntu", back: "Soy porque somos."))
+        let (ubuntu, row) = try engine.synced(.card) {
+            try engine.create(card(.word, front: "ubuntu", back: "Soy porque somos."))
+        }
         let sent = try engine.changesToSend()
         let buried = time.now + minutes(1)
 
@@ -388,10 +449,7 @@ final class ChangesToSyncTests {
         try engine.bury(ubuntu.id)
         try engine.forget(sent)
 
-        #expect(
-            try engine.waiting() == [
-                Waiting(row: try engine.syncedRow(ofCard: ubuntu.id), kind: .saved, fieldTimes: [.burial: buried])
-            ])
+        #expect(try engine.waiting() == [Waiting(row: row, kind: .saved, fieldTimes: [.burial: buried])])
         try engine.forget(engine.changesToSend())
         #expect(try engine.changesToSend().isEmpty)
     }
@@ -432,6 +490,24 @@ extension Engine {
         try forget(changesToSend())
         try work()
         return try waiting()
+    }
+
+    /// What `work`, which waits, leaves waiting to be sent, once what waited
+    /// before is forgotten, as sent.
+    func recordedAsync(by work: () async throws -> Void) async throws -> [Waiting] {
+        try forget(changesToSend())
+        try await work()
+        return try waiting()
+    }
+
+    /// What `work` returns, with the one row of `type` it leaves waiting to
+    /// be sent, once what waited before is forgotten, as sent: the row a card
+    /// it brings in syncs as, say.
+    func synced<Value>(_ type: SyncedRow.RecordType, by work: () throws -> Value) throws -> (Value, SyncedRow) {
+        try forget(changesToSend())
+        let value = try work()
+        let row = try #require(try waiting().filter { $0.row.recordType == type }.only?.row)
+        return (value, row)
     }
 }
 

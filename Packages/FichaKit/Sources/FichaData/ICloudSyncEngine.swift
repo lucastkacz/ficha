@@ -19,6 +19,11 @@ public protocol ICloudSyncEngine: Sendable {
     /// replaces the one before it for its record.
     func add(pendingRecordZoneChanges: [ICloudPendingRecordZoneChange])
 
+    /// Stops sending changes to records, as
+    /// `CKSyncEngine.State.remove(pendingRecordZoneChanges:)` does: one the
+    /// engine can't get a record for keeps waiting until it's removed.
+    func remove(pendingRecordZoneChanges: [ICloudPendingRecordZoneChange])
+
     /// Adds zones to save or delete, as
     /// `CKSyncEngine.State.add(pendingDatabaseChanges:)` does.
     func add(pendingDatabaseChanges: [ICloudPendingDatabaseChange])
@@ -192,13 +197,12 @@ public enum ICloudEvent: Sendable {
         case switchAccounts
     }
 
-    /// As `CKSyncEngine.Event.FetchedDatabaseChanges`.
+    /// As `CKSyncEngine.Event.FetchedDatabaseChanges`, but the zones that
+    /// came, which sync doesn't read: it makes its own zone when it sends.
     public struct FetchedDatabaseChanges: Sendable {
-        public let modifications: [ICloudZone]
         public let deletions: [ZoneDeletion]
 
-        public init(modifications: [ICloudZone], deletions: [ZoneDeletion]) {
-            self.modifications = modifications
+        public init(deletions: [ZoneDeletion]) {
             self.deletions = deletions
         }
     }
@@ -248,21 +252,14 @@ public enum ICloudEvent: Sendable {
         }
     }
 
-    /// As `CKSyncEngine.Event.SentDatabaseChanges`.
+    /// As `CKSyncEngine.Event.SentDatabaseChanges`, but the zones saved or
+    /// deleted, which sync doesn't read: only a zone that failed to save
+    /// needs it to act.
     public struct SentDatabaseChanges: Sendable {
-        public let savedZones: [ICloudZone]
         public let failedZoneSaves: [FailedZoneSave]
-        public let deletedZones: [ICloudZone]
-        public let failedZoneDeletes: [ICloudZone: ICloudError]
 
-        public init(
-            savedZones: [ICloudZone], failedZoneSaves: [FailedZoneSave], deletedZones: [ICloudZone],
-            failedZoneDeletes: [ICloudZone: ICloudError]
-        ) {
-            self.savedZones = savedZones
+        public init(failedZoneSaves: [FailedZoneSave]) {
             self.failedZoneSaves = failedZoneSaves
-            self.deletedZones = deletedZones
-            self.failedZoneDeletes = failedZoneDeletes
         }
     }
 
