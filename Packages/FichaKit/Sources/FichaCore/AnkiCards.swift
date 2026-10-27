@@ -27,27 +27,41 @@ extension AnkiCollection {
     /// then the rest by note and template. A card of an Image Occlusion note
     /// type stays out, and so do a card whose template Anki can't render and
     /// one with a side left with neither text, an image nor a sound, each
-    /// with its place in that order and why. Throws when a card's note, note
-    /// type, template or deck isn't in the collection, or its type isn't one
-    /// Anki has, as in a damaged one.
+    /// with its place in that order and why. `sounds` finds, all at once,
+    /// the first sound each side of every card plays, each name once, and
+    /// answers for each, so that the sounds can come in together. Throws
+    /// when a card's note, note type, template or deck isn't in the
+    /// collection, or its type isn't one Anki has, as in a damaged one,
+    /// before any sound comes in.
     public func importReading(
-        in calendar: Calendar, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
+        in calendar: Calendar, images: (String) -> ImageLookup, sounds: ([String]) async -> [String: SoundLookup],
         sha1: (String) -> String
     ) async throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
+        let renderings = try self.cards.sorted(by: isImportedBefore).map { card throws(AnkiCollectionProblem) in
+            (
+                card: card,
+                rendering: try rendering(card, in: calendar, images: images, sha1: sha1, templates: &templates)
+            )
+        }
+        let soundsKept = renderings.flatMap { _, rendering in
+            guard case .rendered(let rendered) = rendering else { return [String]() }
+            return [rendered.front.soundKept, rendered.back.soundKept].compactMap(\.self)
+        }
+        let soundLookups = await sounds(soundsKept.uniqued())
         // Each Anki card, in the order they come in, as Ficha imports it or
         // why it stays out, with its place in that order.
         var ankiCards: [(card: AnkiCard, line: Int, outcome: Imported)] = []
         // The cards that come in of each note whose note type makes a
         // reversed card, by note and template index.
         var reversedNotes: [Int64: [Int: ImportedCard]] = [:]
-        for (index, card) in self.cards.sorted(by: isImportedBefore).enumerated() {
+        for (index, (card, rendering)) in renderings.enumerated() {
             let line = index + 1
-            switch try rendering(card, templates: &templates) {
+            switch rendering {
             case .rendered(let rendered):
-                let outcome = await rendered.importedCard(
-                    line: line, progress: try progress(of: card, in: calendar), images: images, sounds: sounds,
-                    sha1: sha1)
+                // `sounds` answers for every name it's asked, and each side
+                // looks up the sound it keeps, which it was asked for.
+                let outcome = rendered.importedCard(line: line) { soundLookups[$0] ?? .missing }
                 if rendered.makesReversedCards, case .card(let imported) = outcome {
                     reversedNotes[card.noteID, default: [:]][card.templateIndex] = imported
                 }
@@ -77,11 +91,15 @@ extension AnkiCollection {
         return ImportReading(cards: cards, leftOut: leftOut)
     }
 
-    /// `card` rendered, or why it stays out, with its template parsed once
-    /// for every card in `templates`.
-    private func rendering(_ card: AnkiCard, templates: inout [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>])
-        throws(AnkiCollectionProblem) -> Rendering
-    {
+    /// `card` rendered, with where it stands in Anki, its due days as dates
+    /// in `calendar`, and its sides read without their sounds, with their
+    /// images as `images` finds them, or Anki's pictures of their formulas,
+    /// named after the digest `sha1` gives; or why it stays out. Its template
+    /// is parsed once for every card in `templates`.
+    private func rendering(
+        _ card: AnkiCard, in calendar: Calendar, images: (String) -> ImageLookup, sha1: (String) -> String,
+        templates: inout [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>]
+    ) throws(AnkiCollectionProblem) -> Rendering {
         guard let note = notes[card.noteID] else {
             throw AnkiCollectionProblem("Card \(card.id) is of note \(card.noteID), which isn't there")
         }
@@ -114,6 +132,7 @@ extension AnkiCollection {
                     answer: try AnkiTemplate(parsing: template.answer))
             }
         templates[key] = parsed
+        let sides: (front: String, frontSounds: [String], back: String, backSounds: [String])
         do throws(AnkiTemplateError) {
             let fields = self.fields(
                 of: card, numbered: number, note: note, noteType: noteType, template: template, deck: deck)
@@ -139,14 +158,19 @@ extension AnkiCollection {
             // image are there, or else those above it, as Japanese Core
             // 2000 plays its word and sentence.
             let backsOwnSounds = soundsOnTheBack.filter(answersOwnSounds.contains)
-            return .rendered(
-                RenderedAnkiCard(
-                    card: card, front: frontWithoutSounds, frontSounds: frontSounds, back: backWithoutSounds,
-                    backSounds: backsOwnSounds.isEmpty ? answersOwnSounds : backsOwnSounds,
-                    tags: tags(of: note, inDeck: card.homeDeckID), makesReversedCards: noteType.makesReversedCards))
+            sides = (
+                frontWithoutSounds, frontSounds, backWithoutSounds,
+                backsOwnSounds.isEmpty ? answersOwnSounds : backsOwnSounds
+            )
         } catch {
             return .leftOut(.brokenAnkiTemplate)
         }
+        return .rendered(
+            RenderedAnkiCard(
+                progress: try progress(of: card, in: calendar),
+                front: AnkiSide(html: sides.front, playing: sides.frontSounds, images: images, sha1: sha1),
+                back: AnkiSide(html: sides.back, playing: sides.backSounds, images: images, sha1: sha1),
+                tags: tags(of: note, inDeck: card.homeDeckID), makesReversedCards: noteType.makesReversedCards))
     }
 
     /// The fields a template of `card`, whose number is `number`, can show,
@@ -227,37 +251,28 @@ private enum Rendering {
     case leftOut(LeftOutLine.Reason)
 }
 
-/// An Anki card as Anki shows it, before it's a Ficha card: the card, with
-/// where it stands in Anki, its front and back as HTML, with their images,
-/// without their sounds, which it names apart, the tags it proposes, and
-/// whether its note makes a reversed card.
+/// An Anki card as Anki shows it, before it's a Ficha card: where it stands
+/// in Anki, its front and back as Ficha brings them in, still without their
+/// sounds, the tags it proposes, and whether its note makes a reversed card.
 private struct RenderedAnkiCard {
-    let card: AnkiCard
+    /// Where it stands in Anki.
+    let progress: ImportedProgress
     /// The question side.
-    let front: String
-    /// The names of the sounds the question side plays, each once, in order.
-    let frontSounds: [String]
-    /// The answer side, from where the answer starts.
-    let back: String
-    /// The names of the sounds the answer side plays, each once, in order:
-    /// its own where the answer starts, or else above it.
-    let backSounds: [String]
+    let front: AnkiSide
+    /// The answer side, from where the answer starts, whose sounds are its
+    /// own where the answer starts, or else those above it.
+    let back: AnkiSide
     let tags: [String]
     /// Whether its note type makes a reversed card, so that it comes in as
     /// one card with its note's other card.
     let makesReversedCards: Bool
 
-    /// The card as Ficha imports it, each side as plain text, with its first
-    /// image as `images` finds it, or Anki's picture of its formula, named
-    /// after the digest `sha1` gives, and its first sound as `sounds` finds
-    /// it, and with `progress`, where it stands in Anki; or why it stays out,
-    /// when a side is left with neither text, an image nor a sound.
-    func importedCard(
-        line: Int, progress: ImportedProgress, images: (String) -> ImageLookup, sounds: (String) async -> SoundLookup,
-        sha1: (String) -> String
-    ) async -> Imported {
-        let front = await AnkiSide(html: front, playing: frontSounds, images: images, sounds: sounds, sha1: sha1)
-        let back = await AnkiSide(html: back, playing: backSounds, images: images, sounds: sounds, sha1: sha1)
+    /// The card as Ficha imports it, each side with the sound it keeps as
+    /// `sounds` finds it; or why it stays out, when a side is left with
+    /// neither text, an image nor a sound.
+    func importedCard(line: Int, sounds: (String) -> SoundLookup) -> Imported {
+        let front = front.playing(sounds)
+        let back = back.playing(sounds)
         guard
             let content = CardContent(
                 type: nil, front: front.text, back: back.text, tags: [], source: nil, frontImage: front.image,
