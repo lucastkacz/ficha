@@ -32,14 +32,25 @@ public struct ReviewLogEntry: Sendable, Equatable {
     public let trigger: Trigger?
     /// Whether it was a review ahead: of a card that wasn't due yet, which
     /// Lucas asked for. Only its again counts (ADR 0002). It's what the
-    /// device that recorded it knew then: the ladder also counts a good as
-    /// ahead when another device's good had answered the same wait
-    /// (ADR 0017).
+    /// device that recorded it knew then (ADR 0017): the ladder also counts a
+    /// good as ahead when another device's good had climbed the wait it
+    /// answered, and a review ahead as on time when an entry this device
+    /// didn't know of had made the card due by then.
     public let isAhead: Bool
+    /// Its ID unique across devices, which the review log gives it as it
+    /// keeps it, or nil for an entry it doesn't keep yet.
+    public let uuid: UUID?
+    /// For a review, the entry it answered, by its ID unique across devices:
+    /// the last entry of its way that the device knew when Lucas rated the
+    /// card, which two devices' reviews of one wait share. Nil for a first
+    /// view or a placement, which answer none, and for a review from before
+    /// Ficha kept it, which answered the entry before it.
+    public let answeredEntry: UUID?
 
     /// An answer: a first view or a review of the card with the id `cardID`,
     /// the way it went, front first unless it's said to go back first, which
-    /// `trigger` brought.
+    /// `trigger` brought, kept as `uuid` once the review log keeps it, and,
+    /// for a review, answering `answeredEntry`.
     public init(
         cardID: Int64,
         way: Way = .frontFirst,
@@ -47,7 +58,9 @@ public struct ReviewLogEntry: Sendable, Equatable {
         answeredAt: Date,
         responseTime: Duration?,
         trigger: Trigger,
-        isAhead: Bool = false
+        isAhead: Bool = false,
+        uuid: UUID? = nil,
+        answeredEntry: UUID? = nil
     ) {
         self.cardID = cardID
         self.way = way
@@ -56,12 +69,17 @@ public struct ReviewLogEntry: Sendable, Equatable {
         self.responseTime = responseTime
         self.trigger = trigger
         self.isAhead = isAhead
+        self.uuid = uuid
+        self.answeredEntry = answeredEntry
     }
 
     /// The entry of `placement`, which an import gives the card with the id
     /// `cardID`, the way it's said to go, front first unless it's said to go
-    /// back first, at `placedAt`.
-    public init(placing cardID: Int64, way: Way = .frontFirst, on placement: Placement, at placedAt: Date) {
+    /// back first, at `placedAt`, kept as `uuid` once the review log keeps
+    /// it.
+    public init(
+        placing cardID: Int64, way: Way = .frontFirst, on placement: Placement, at placedAt: Date, uuid: UUID? = nil
+    ) {
         self.cardID = cardID
         self.way = way
         kind = .placement(placement)
@@ -69,6 +87,8 @@ public struct ReviewLogEntry: Sendable, Equatable {
         responseTime = nil
         trigger = nil
         isAhead = false
+        self.uuid = uuid
+        answeredEntry = nil
     }
 
     /// The card's way it went.

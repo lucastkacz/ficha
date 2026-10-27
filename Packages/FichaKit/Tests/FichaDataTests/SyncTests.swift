@@ -105,6 +105,31 @@ final class SyncTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }
 
+    @Test("a side edited on another device restarts a card's count of “Don't know” answers, as an edit here does")
+    func aSideEditedOnAnotherDeviceRestartsTheForgottenOftenCount() async throws {
+        var settings = ReviewSettings.defaults
+        settings.forgottenOftenAfter = 2
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        time.advance(by: hours(1))
+        try mac.engine.record(
+            .review(.again), of: ubuntu.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        time.advance(by: minutes(1))
+        try iPhone.engine.edit(
+            iPhone.engine.card(fronted: "ubuntu").id,
+            with: card(.concept, front: "ubuntu", back: "Yo soy porque somos."))
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+        time.advance(by: hours(1))
+        let forgotten = try mac.engine.record(
+            .review(.again), of: ubuntu.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+
+        #expect(forgotten == nil)
+    }
+
     @Test("captures, expansions and follow-ups travel, and what's refined on one device leaves the inbox on both")
     func theInboxTravels() async throws {
         let ubuntu = try approve(card(.concept, front: "ubuntu", back: "Soy porque somos."), in: mac.engine)
@@ -245,6 +270,60 @@ final class SyncTests {
         #expect(try iPhone.engine.sidebarTags() == [filosofia])
     }
 
+    // Ficha kept no time for a tag's color before it recorded changes to
+    // sync, so neither device has one for this color: the iPhone's tag never
+    // had one, and the Mac's had it from before.
+    @Test("a first sync keeps a tag's color from before Ficha recorded its changes, against a tag that never had one")
+    func aFirstSyncKeepsATagsColorFromBefore() async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeIDs(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+        let macFromBefore = try Device(
+            Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
+        time.advance(by: minutes(1))
+        try iPhone.engine.create(card(.word, front: "palabra", back: "Lo que se dice.", tags: ["lenguaje"]))
+        try iPhone.engine.setEmoji(TagEmoji("🗣️"), of: "lenguaje")
+
+        try await iPhone.syncNow()
+        try await macFromBefore.syncNow()
+        try await iPhone.syncNow()
+
+        let lenguaje = CardTag(name: "lenguaje", switchedOn: nil, color: .blue, emoji: "🗣️")
+        #expect(try macFromBefore.engine.sidebarTags().filter { $0.name == "lenguaje" } == [lenguaje])
+        #expect(try iPhone.engine.sidebarTags().filter { $0.name == "lenguaje" } == [lenguaje])
+    }
+
+    // The app hands iCloud's engine each change as the database changes, so
+    // the first view waits there when ⌘Z takes it back.
+    @Test("an answer taken back before it was sent stops waiting to be sent, and never reaches the other device")
+    func anAnswerTakenBackBeforeItWasSentStopsWaiting() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        try mac.sync.sendWhatChanged(to: mac.iCloud)
+        try mac.engine.takeBackAnswer(of: ubuntu.id, way: .frontFirst)
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(mac.iCloud.pendingRecordZoneChanges.isEmpty)
+        #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
+        #expect(try iPhone.logAsSeen().isEmpty)
+    }
+
+    @Test("a record of a kind a newer Ficha saved waits, and what came with it is applied")
+    func aRecordFromANewerFichaWaits() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        iCloud.saveFromANewerFicha(
+            ICloudRecord(
+                id: ICloudRecordID(name: "a-kind-to-come", zone: .cards), type: "AKindToCome", fields: [:],
+                systemFields: nil))
+
+        try await iPhone.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
+    }
+
     @Test("what a device takes from another is never sent back")
     func whatComesFromAnotherDeviceIsNeverSentBack() async throws {
         let ubuntu = try approve(
@@ -378,6 +457,8 @@ extension Inbox {
 /// An entry of a device's review log, without the id its device gives its
 /// card.
 struct LogEntryAsSeen: Equatable {
+    let uuid: UUID?
+    let answeredEntry: UUID?
     let way: Way
     let kind: ReviewLogEntry.Kind
     let answeredAt: Date
@@ -397,7 +478,8 @@ extension Device {
     func logAsSeen() throws -> [LogEntryAsSeen] {
         try engine.reviewLog().sorted { $0.isReplayed(before: $1) }.map {
             LogEntryAsSeen(
-                way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt, responseTime: $0.responseTime,
+                uuid: $0.uuid, answeredEntry: $0.answeredEntry, way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt,
+                responseTime: $0.responseTime,
                 trigger: $0.trigger, isAhead: $0.isAhead)
         }
     }

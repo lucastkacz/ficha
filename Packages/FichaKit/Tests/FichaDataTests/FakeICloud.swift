@@ -46,13 +46,20 @@ final class FakeICloud: Sendable {
         database.withLock(\.saves)
     }
 
-    /// Saves `zones`, those it doesn't have yet, and returns them all.
-    fileprivate func save(_ zones: [ICloudZone]) -> [ICloudZone] {
+    /// Saves `record` as a device with a newer Ficha would, in a zone it
+    /// has, for a test.
+    func saveFromANewerFicha(_ record: ICloudRecord) {
+        database.withLock { database in
+            _ = database.save(record)
+        }
+    }
+
+    /// Saves `zones`, those it doesn't have yet.
+    fileprivate func save(_ zones: [ICloudZone]) {
         database.withLock { database in
             for zone in zones where database.zones[zone] == nil {
                 database.zones[zone] = Zone()
             }
-            return zones
         }
     }
 
@@ -184,6 +191,12 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
     }
 
+    func remove(pendingRecordZoneChanges changes: [ICloudPendingRecordZoneChange]) {
+        state.withLock { state in
+            state.pendingRecordZoneChanges.removeAll(where: changes.contains)
+        }
+    }
+
     func add(pendingDatabaseChanges changes: [ICloudPendingDatabaseChange]) {
         state.withLock { state in
             for change in changes {
@@ -199,41 +212,37 @@ final class FakeSyncEngine: ICloudSyncEngine {
     }
 
     /// Sends the zones and then the records waiting, a batch at a time, as
-    /// long as the delegate's answers leave some waiting.
+    /// long as the delegate's answers leave some to send. A save whose record
+    /// the delegate doesn't give keeps waiting, as `CKSyncEngine` keeps it,
+    /// until the delegate removes it.
     func sendChanges() async throws {
         try checkOnline()
         for _ in 0..<10 {
-            let (zones, records) = state.withLock { state in
-                defer {
-                    state.pendingDatabaseChanges = []
-                    state.pendingRecordZoneChanges = []
-                }
-                return (state.pendingDatabaseChanges, state.pendingRecordZoneChanges)
-            }
-            guard !zones.isEmpty || !records.isEmpty else {
-                return try delegate.handle(.stateUpdate(serialization()), from: self)
+            let zones = state.withLock { state in
+                defer { state.pendingDatabaseChanges = [] }
+                return state.pendingDatabaseChanges
             }
             if !zones.isEmpty {
-                let saved = iCloud.save(zones.compactMap(\.zoneToSave))
+                iCloud.save(zones.compactMap(\.zoneToSave))
                 try delegate.handle(
-                    .sentDatabaseChanges(
-                        ICloudEvent.SentDatabaseChanges(
-                            savedZones: saved, failedZoneSaves: [], deletedZones: [], failedZoneDeletes: [:])),
-                    from: self)
+                    .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [])), from: self)
             }
             var toSave: [ICloudRecord] = []
             var toDelete: [ICloudRecordID] = []
-            for change in records {
+            for change in pendingRecordZoneChanges {
                 switch change {
                 case .saveRecord(let id):
-                    // A record the delegate no longer has stops waiting, as
-                    // Apple's sample does.
-                    if let record = try delegate.recordToSave(id) {
-                        toSave.append(record)
+                    guard let record = try delegate.recordToSave(id, from: self) else {
+                        continue
                     }
+                    toSave.append(record)
                 case .deleteRecord(let id):
                     toDelete.append(id)
                 }
+                state.withLock { $0.pendingRecordZoneChanges.removeAll { $0 == change } }
+            }
+            guard !zones.isEmpty || !toSave.isEmpty || !toDelete.isEmpty else {
+                return try delegate.handle(.stateUpdate(serialization()), from: self)
             }
             if !toSave.isEmpty || !toDelete.isEmpty {
                 try delegate.handle(

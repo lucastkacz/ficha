@@ -109,30 +109,34 @@ enum Received: Equatable {
 /// that refers to a row the device doesn't hold yet waits, and so does one
 /// this version of Ficha can't read, which the log says: each is tried again
 /// whenever records come, until it's applied or a later version of it
-/// replaces it.
+/// replaces it. A failure of the database itself throws.
 func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
+    let row: SyncedRow
     var applied = false
     do {
-        let row = try SyncedRow(of: record)
+        row = try SyncedRow(of: record)
         try db.inSavepoint {
             applied = try apply(record, to: row, in: db)
             return applied ? .commit : .rollback
         }
-        if applied {
-            try keep(record.systemFields, of: record.id, in: db)
-            try forgetPendingSave(of: row, whenICloudHolds: record, in: db)
-        }
-    } catch {
+    } catch let error where isUnreadable(error) {
         syncLogger.error(
             "A record of type \(record.type, privacy: .public) from iCloud can't be read, and waits: \(String(describing: error))"
         )
+        return try keepWaiting(record, in: db)
     }
-    if applied {
-        try db.execute(
-            sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?",
-            arguments: [record.id.zone.name, record.id.name])
-        return .applied
+    guard applied else {
+        return try keepWaiting(record, in: db)
     }
+    try keep(record.systemFields, of: record.id, in: db)
+    try forgetPendingSave(of: row, whenICloudHolds: record, in: db)
+    try db.execute(
+        sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?", arguments: [record.id.zone.name, record.id.name])
+    return .applied
+}
+
+/// Keeps `record` waiting to be applied, in place of an older version of it.
+private func keepWaiting(_ record: ICloudRecord, in db: Database) throws -> Received {
     try db.execute(
         sql: """
             INSERT INTO syncIncoming (zone, name, record) VALUES (?, ?, ?)
@@ -140,6 +144,17 @@ func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
             """,
         arguments: [record.id.zone.name, record.id.name, try JSONEncoder().encode(record)])
     return .waits
+}
+
+/// Whether `error`, from applying a record, says the record holds what this
+/// version of Ficha can't read or keep, rather than that the database
+/// failed: a type or a value it doesn't know, or one its tables refuse.
+private func isUnreadable(_ error: any Error) -> Bool {
+    switch error {
+    case is DecodingError, is RowDecodingError: true
+    case let error as DatabaseError: error.resultCode == .SQLITE_CONSTRAINT
+    default: false
+    }
 }
 
 /// Applies the records that wait, as long as one more of them can be.
@@ -199,18 +214,6 @@ func keep(_ systemFields: Data?, of id: ICloudRecordID, in db: Database) throws 
         arguments: [id.zone.name, id.name, systemFields])
 }
 
-/// Whether a field's change, made at `incoming` on another device, wins over
-/// this device's, made at `local`: when it's as late or later. A time that's
-/// nil is a field that hasn't changed since its row came in, older than any
-/// change. iCloud's wins a tie, so every device ends with what iCloud holds.
-func isLatest(_ incoming: Date?, comparedWith local: Date?) -> Bool {
-    switch (incoming, local) {
-    case (_, nil): true
-    case (nil, _?): false
-    case (let incoming?, let local?): incoming >= local
-    }
-}
-
 /// The record `row` syncs as, without what iCloud said of it: `values`, and
 /// when each of `fields` last changed, of those that changed since the row
 /// came in.
@@ -226,15 +229,20 @@ func syncedRecord(
 }
 
 /// Has `take` apply to `row` those of `fields` whose change in `record`, from
-/// iCloud, is the latest, then keeps when each of them changed, as the
-/// record says.
+/// iCloud, wins over the one in `own`, the record the row syncs as on this
+/// device, as `FieldChange` decides, then keeps when each of them changed, as
+/// `record` says. Each field's value is under its name in both records.
 func takeLatestChanges(
-    of fields: [SyncedField], in record: ICloudRecord, to row: SyncedRow, in db: Database,
+    of fields: [SyncedField], in record: ICloudRecord, over own: ICloudRecord, to row: SyncedRow, in db: Database,
     with take: (_ won: Set<SyncedField>) throws -> Void
 ) throws {
-    let local = try fieldTimes(of: row, in: db)
     let incoming = try record.fieldTimes(of: fields)
-    let won = Set(fields.filter { isLatest(incoming[$0], comparedWith: local[$0]) })
+    let local = try own.fieldTimes(of: fields)
+    let won = Set(
+        fields.filter { field in
+            FieldChange(changedAt: incoming[field], holdsSomething: record.value(of: field.rawValue) != nil)
+                .wins(over: FieldChange(changedAt: local[field], holdsSomething: own.value(of: field.rawValue) != nil))
+        })
     try take(won)
     try stamp(incoming.filter { won.contains($0.key) }, of: row, in: db)
 }

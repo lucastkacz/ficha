@@ -77,17 +77,7 @@ private let progressFields: [SyncedField] = [.ladder, .newCardsPerDay, .forgotte
 /// what iCloud said of it, or nil while the device holds Ficha's, which it
 /// has nothing to send of.
 func progressSettingsRecord(in db: Database) throws -> ICloudRecord? {
-    guard let settings = try storedProgressSettings(in: db) else {
-        return nil
-    }
-    return try syncedRecord(
-        of: .progressSettings,
-        holding: [
-            SyncedField.ladder.rawValue: .string(try ladderText(settings.ladder)),
-            SyncedField.newCardsPerDay.rawValue: .int(Int64(settings.newCardsPerDay)),
-            SyncedField.forgottenOftenAfter.rawValue: settings.forgottenOftenAfter.map { .int(Int64($0)) },
-        ],
-        andTimesOf: progressFields, in: db)
+    try storedProgressSettings(in: db).map { settings in try recordHolding(settings, in: db) }
 }
 
 /// Applies `record`, from iCloud, to the settings that decide progress: they
@@ -99,8 +89,11 @@ func applyProgressSettings(_ record: ICloudRecord, in db: Database) throws -> Bo
         ladder: try record.text(SyncedField.ladder.rawValue),
         newCardsPerDay: try record.integer(SyncedField.newCardsPerDay.rawValue),
         forgottenOftenAfter: try record.optionalInteger(SyncedField.forgottenOftenAfter.rawValue))
-    try takeLatestChanges(of: progressFields, in: record, to: .progressSettings, in: db) { won in
-        var settings = try storedProgressSettings(in: db) ?? ReviewSettings.defaults.progress
+    let ours = try storedProgressSettings(in: db) ?? ReviewSettings.defaults.progress
+    try takeLatestChanges(
+        of: progressFields, in: record, over: try recordHolding(ours, in: db), to: .progressSettings, in: db
+    ) { won in
+        var settings = ours
         if won.contains(.ladder) {
             settings.ladder = theirs.ladder
         }
@@ -113,6 +106,19 @@ func applyProgressSettings(_ record: ICloudRecord, in db: Database) throws -> Bo
         try storeProgressSettings(settings, in: db)
     }
     return true
+}
+
+/// The record of the settings that decide progress when the device holds
+/// `settings`, with when each of them last changed, of those that did.
+private func recordHolding(_ settings: ProgressSettings, in db: Database) throws -> ICloudRecord {
+    try syncedRecord(
+        of: .progressSettings,
+        holding: [
+            SyncedField.ladder.rawValue: .string(try ladderText(settings.ladder)),
+            SyncedField.newCardsPerDay.rawValue: .int(Int64(settings.newCardsPerDay)),
+            SyncedField.forgottenOftenAfter.rawValue: settings.forgottenOftenAfter.map { .int(Int64($0)) },
+        ],
+        andTimesOf: progressFields, in: db)
 }
 
 /// The settings that decide a card's progress, as the database holds them,
