@@ -80,8 +80,31 @@ struct CardStandingTests {
             #expect(!outOfReviews.isLearned(given: learned, on: ladder))
         }
     }
+
+    // Once Ficha syncs, a card's review log joins what the Mac and the iPhone
+    // each recorded without a connection (ADR 0017): here each rated the wait
+    // the placement started.
+    @Test("a card two devices rated “Know it” for one wait is due one step up, counted from the first rating")
+    func twoKnowItsForOneWaitMakeTheCardDueOneStepUp() throws {
+        // An import placed the card on the standard ladder's fifth step, which
+        // waits 12 days; the sixth waits 30 days, from which a card is learned.
+        let placed = ReviewLogEntry(placing: 1, on: Placement(step: 4, due: start), at: start - 12 * day, uuid: UUID())
+        let onTheMac = ReviewLogEntry(
+            cardID: 1, kind: .review(.good), answeredAt: start, responseTime: .seconds(3), trigger: .reviewNow,
+            uuid: UUID(), answeredEntry: placed.uuid)
+        let onTheIPhone = ReviewLogEntry(
+            cardID: 1, kind: .review(.good), answeredAt: start.addingTimeInterval(2 * hour), responseTime: .seconds(3),
+            trigger: .reviewNow, uuid: UUID(), answeredEntry: placed.uuid)
+
+        let standing = try Ladder.standard.standing(after: [placed, onTheMac, onTheIPhone])
+
+        #expect(CardStanding.inReviews.due(given: standing) == start.addingTimeInterval(30 * day))
+        #expect(CardStanding.inReviews.isLearned(given: standing, on: .standard))
+    }
 }
 
+private let hour: TimeInterval = 60 * 60
+private let day: TimeInterval = 24 * hour
 private let start = Date(timeIntervalSince1970: 1_760_000_000)
 private let flag = Flag(note: "Falta un ejemplo", flaggedAt: start.addingTimeInterval(-3_600))
 private let buriedAt = start.addingTimeInterval(-60)

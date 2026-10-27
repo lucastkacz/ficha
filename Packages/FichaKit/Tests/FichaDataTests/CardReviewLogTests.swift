@@ -1,7 +1,8 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+@testable import FichaData
 
 /// Tests on a card's review log as the Cards window shows it under the card,
 /// in its chart and its list: each first view and review, oldest first, with
@@ -129,6 +130,54 @@ struct CardReviewLogTests {
         #expect(row.backFirst?.step == 1)
     }
 
+    // Once Ficha syncs, another device's entries arrive after this device's,
+    // whenever they were answered (ADR 0017). Here the iPhone met serendipia
+    // 5 minutes after the Mac, and ubuntu after the Mac's “Know it”.
+    @Test(
+        "a card's review log lists another device's entries by when they were answered, each with the step after it"
+    )
+    func anotherDevicesEntriesAreListedByWhenTheyWereAnswered() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        let metAt = time.now
+        try engine.meet(serendipia)
+        try engine.meet(ubuntu)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        try engine.reviewWhenDue(ubuntu, .good, movingForward: time)
+        try engine.receive(firstView(of: serendipia, at: metAt + minutes(5)))
+        try engine.receive(firstView(of: ubuntu, at: time.now + hours(1)))
+
+        let serendipiaLog = try engine.reviewLogRows(of: serendipia.id, on: ladder)
+        let ubuntuLog = try engine.reviewLogRows(of: ubuntu.id, on: ladder)
+
+        #expect(serendipiaLog.map(\.entry.kind) == [.firstView, .firstView, .review(.good)])
+        #expect(serendipiaLog.map(\.step) == [0, 0, 1])
+        #expect(ubuntuLog.map(\.entry.kind) == [.firstView, .review(.good), .firstView])
+        #expect(ubuntuLog.map(\.step) == [0, 1, 1])
+        let rows = try engine.cardRows(in: .all, on: ladder)
+        #expect(rows.map(\.frontFirst.step) == [serendipiaLog.last?.step, ubuntuLog.last?.step])
+    }
+
+    @Test("a card's Last seen is its latest first view or review, also when another device's earlier one came last")
+    func lastSeenIsTheLatestAnswer() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let metAt = time.now
+        try engine.meet(serendipia)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        try engine.receive(firstView(of: serendipia, at: metAt + minutes(5)))
+
+        let row = try #require(try engine.cardRows(in: .all, on: ladder).first)
+
+        #expect(row.lastSeen == time.now)
+    }
+
+    /// The first view of `card` that another device recorded at `time`, from
+    /// review now.
+    private func firstView(of card: Card, at time: Date) -> ReviewLogEntry {
+        ReviewLogEntry(
+            cardID: card.id, kind: .firstView, answeredAt: time, responseTime: .seconds(8), trigger: .reviewNow)
+    }
+
     @Test("a new card's review log is empty, and a card that doesn't exist isn't found")
     func aNewCardsReviewLogIsEmpty() throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -137,5 +186,13 @@ struct CardReviewLogTests {
         #expect(throws: EngineError.cardNotFound(99)) {
             try engine.reviewLogRows(of: 99, on: ladder)
         }
+    }
+}
+
+extension Engine {
+    /// Adds `entry` to the review log as it comes from another device: at
+    /// the end, and without recording it to send.
+    fileprivate func receive(_ entry: ReviewLogEntry) throws {
+        try writeWithoutRecording { db in try insert(entry, in: db) }
     }
 }

@@ -29,49 +29,56 @@ public struct Ladder: Sendable, Equatable {
     }
 
     /// Where a card's way stands on the ladder after that way's entries in
-    /// the review log, in the order they happened, as if it were a card of
-    /// its own (ADR 0016). Without entries it's new. Its first view
+    /// the review log, as if it were a card of its own (ADR 0016). The
+    /// entries can come in any order, and from two devices, each of which
+    /// rated the card for the wait it knew of (ADR 0017): they're replayed in
+    /// the order `ReviewLogEntry.isReplayed(before:)` gives, so every device
+    /// works out the same step. Without entries it's new. Its first view
     /// puts it on the first step, to wait its wait from then, and a
     /// placement, which an import gave it in place of a first view, on the
     /// placement's step until its due time, or on the last step when the
-    /// ladder no longer has that one (ADR 0013). Then good moves it up one
-    /// step, hard keeps it on its step and again sends it back to the first.
-    /// The last step repeats for good. After each review, the card waits its
-    /// step's wait from when Lucas answered. A review ahead only counts when
-    /// it's an again: hard and good leave the card's step and due time as
-    /// they were (ADR 0002).
+    /// ladder no longer has that one (ADR 0013). Another device's first view
+    /// after that changes nothing. Then good moves it up one step, hard keeps
+    /// it on its step and again sends it back to the first. The last step
+    /// repeats for good. After each review, the card waits its step's wait
+    /// from when Lucas answered. A review ahead only counts when it's an
+    /// again: hard and good leave the card's step and due time as they were
+    /// (ADR 0002). Each review answered the entry it names, or the entry
+    /// replayed before it, as on one device, when it names none or one the
+    /// log doesn't have. A good that answered an entry replayed before the
+    /// good that last moved the card up counts as ahead too: another device
+    /// rated the same wait before it knew of that one, so one wait never
+    /// climbs two steps. And a review its device took for one ahead counts
+    /// as on time when an entry that device didn't know of had made the card
+    /// due by then.
     public func standing(after entries: [ReviewLogEntry]) throws(UnexpectedReviewLog) -> LadderStanding {
-        guard let first = entries.first else {
-            return .new
-        }
-        var step: Int
-        var due: Date
-        switch first.kind {
-        case .firstView:
-            step = 0
-            due = first.answeredAt.adding(waits[0])
-        case .placement(let placement):
-            guard placement.step >= 0 else {
-                throw UnexpectedReviewLog(cardID: first.cardID)
-            }
-            step = min(placement.step, waits.count - 1)
-            due = placement.due
-        case .review:
-            throw UnexpectedReviewLog(cardID: first.cardID)
-        }
-        for entry in entries.dropFirst() {
-            guard case .review(let rating) = entry.kind else {
+        let entries = entries.sorted { $0.isReplayed(before: $1) }
+        let positions = Dictionary(
+            entries.indices.compactMap { position in entries[position].uuid.map { ($0, position) } },
+            uniquingKeysWith: { first, _ in first })
+        var replay: Replay?
+        for (position, entry) in entries.enumerated() {
+            switch (entry.kind, replay) {
+            case (.firstView, .none):
+                replay = Replay(
+                    ladder: self, step: 0, due: entry.answeredAt.adding(waits[0]), lastMove: position)
+            case (.placement(let placement), .none) where placement.step >= 0:
+                replay = Replay(
+                    ladder: self, step: min(placement.step, waits.count - 1), due: placement.due,
+                    lastMove: position)
+            case (.firstView, .some):
+                continue
+            case (.review(let rating), .some):
+                let answered = entry.answeredEntry.flatMap { positions[$0] } ?? position - 1
+                replay?.review(rating, of: entry, at: position, answering: answered)
+            case (.placement, _), (.review, .none):
                 throw UnexpectedReviewLog(cardID: entry.cardID)
             }
-            switch (rating, entry.isAhead) {
-            case (.again, _): step = 0
-            case (.hard, false): break
-            case (.good, false): step = min(step + 1, waits.count - 1)
-            case (.hard, true), (.good, true): continue
-            }
-            due = entry.answeredAt.adding(waits[step])
         }
-        return .onLadder(step: step, due: due)
+        guard let replay else {
+            return .new
+        }
+        return .onLadder(step: replay.step, due: replay.due)
     }
 
     /// Where an import that brings a card's progress from another app places
@@ -107,8 +114,7 @@ public struct Ladder: Sendable, Equatable {
     }
 
     /// Where each of these cards' ways stands, in the order given, after the
-    /// review log's entries, in the order they were written: each way after
-    /// its own.
+    /// review log's entries, in any order: each way after its own.
     func standings(of ways: [CardWay], after log: [ReviewLogEntry]) throws(UnexpectedReviewLog)
         -> [(way: CardWay, standing: LadderStanding)]
     {
@@ -127,9 +133,97 @@ public struct Ladder: Sendable, Equatable {
     }
 }
 
-/// A card's review log that doesn't start with its first view or a placement,
-/// or that has a second one later, or a placement on a step below the first:
-/// the ladder can't tell where the card stands.
+// The order the ladder replays a way's log in lives here, beside the replay,
+// where the merge gate watches the scheduler.
+extension ReviewLogEntry {
+    /// Whether this entry comes before `other` as the ladder replays a way's
+    /// log, in an order worked out from the entries alone, so that every
+    /// device replays a log that joins two devices' entries alike, whatever
+    /// order they arrived in (ADR 0017). First views and placements come
+    /// first, since only they start a way, and reviews after them, each in
+    /// the order Lucas answered them. At the same moment, a first view comes
+    /// before a placement, a lower step's placement first, and of two
+    /// reviews, good before hard and hard before again, so that a "Don't
+    /// know" rated at the same moment as a "Know it" on another device has
+    /// the last word. Entries that tie on all of this move the way alike.
+    public func isReplayed(before other: ReviewLogEntry) -> Bool {
+        if kind.startsAWay != other.kind.startsAWay {
+            return kind.startsAWay
+        }
+        if answeredAt != other.answeredAt {
+            return answeredAt < other.answeredAt
+        }
+        switch (kind, other.kind) {
+        case (.firstView, .placement):
+            return true
+        case (.placement(let placement), .placement(let otherPlacement)):
+            return (placement.step, placement.due) < (otherPlacement.step, otherPlacement.due)
+        case (.review(let rating), .review(let otherRating)):
+            // Good comes before hard and again, and hard before again.
+            return rating != otherRating && (rating == .good || otherRating == .again)
+        default:
+            return false
+        }
+    }
+}
+
+extension ReviewLogEntry.Kind {
+    /// Whether an entry of this kind can start a way: a first view or a
+    /// placement, and not a review.
+    fileprivate var startsAWay: Bool {
+        switch self {
+        case .firstView, .placement: true
+        case .review: false
+        }
+    }
+}
+
+/// Where a card's way stands on a ladder as its log is replayed, entry by
+/// entry, from the entry that started it, and which entries of the replay,
+/// by their positions in it, last moved it and last moved it up.
+private struct Replay {
+    let ladder: Ladder
+    var step: Int
+    var due: Date
+    /// The position of the entry that last set the way's step and due time.
+    var lastMove: Int
+    /// The position of the good that last moved the way up a step, or nil
+    /// when none has.
+    var lastClimb: Int?
+
+    /// Moves the way as `review`, at `position` in the replay, with `rating`,
+    /// does, as `Ladder.standing(after:)` says, given that it answered the
+    /// entry at `answered`.
+    mutating func review(_ rating: Rating, of review: ReviewLogEntry, at position: Int, answering answered: Int) {
+        let time = review.answeredAt
+        let knewLastMove = answered >= lastMove
+        let ahead = review.isAhead && (knewLastMove || due > time)
+        let answeredAClimbedWait = lastClimb.map { answered < $0 } ?? false
+        switch rating {
+        case .again:
+            step = 0
+        case .hard:
+            guard !ahead else {
+                return
+            }
+        case .good:
+            guard !ahead, !answeredAClimbedWait else {
+                return
+            }
+            let climbed = min(step + 1, ladder.waits.count - 1)
+            if climbed > step {
+                lastClimb = position
+            }
+            step = climbed
+        }
+        due = time.adding(ladder.waits[step])
+        lastMove = position
+    }
+}
+
+/// A card's way's review log with reviews but no first view or placement to
+/// start it, or with a placement that doesn't start it or is on a step below
+/// the first: the ladder can't tell where the card stands.
 public struct UnexpectedReviewLog: Error, Equatable {
     public let cardID: Int64
 }
