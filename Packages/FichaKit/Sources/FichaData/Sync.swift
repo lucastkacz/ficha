@@ -10,14 +10,15 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// on one device's engine. It hands iCloud's engine the changes recorded to
 /// send, the CLI's too, builds each record as its row is when the engine
 /// sends it, and applies what other devices changed without recording it to
-/// send back: of each field of a card, a capture or a tag, the latest change
-/// wins and the rest merges, and the review log's entries join, each card's
-/// ways worked out again from them all. A deletion wins over what other
-/// devices changed of its row, and what it changes on a device goes back as
-/// that device's own change (`SyncedDeletions.swift`). The images and sounds
-/// on cards travel apart, in a zone of their own, as `SyncedFiles.swift`
-/// says. Each device keeps working without a connection: what waits is sent
-/// once iCloud's engine reaches iCloud.
+/// send back: of each field of a card, a capture, a tag or the settings that
+/// decide progress, the latest change wins and the rest merges, and the
+/// review log's entries join, each card's ways worked out again from them
+/// all. A deletion wins over what other devices changed of its row, and what
+/// it changes on a device goes back as that device's own change
+/// (`SyncedDeletions.swift`). The images and sounds on cards travel apart, in
+/// a zone of their own, as `SyncedFiles.swift` says. Each device keeps
+/// working without a connection: what waits is sent once iCloud's engine
+/// reaches iCloud.
 ///
 /// The app makes one when sync starts, calls `start(with:)`, then
 /// `sendWhatChanged(to:)` whenever the database changes, and passes it each
@@ -193,13 +194,13 @@ extension ChangeToSend {
 }
 
 extension ICloudRecord {
-    /// Its place among the records of a fetch as they're applied: tags and
-    /// captures first, then cards, then the review log, so that what a record
-    /// refers to comes before it. A type this version doesn't know comes
-    /// last, to wait.
+    /// Its place among the records of a fetch as they're applied: tags, the
+    /// settings that decide progress and captures first, then cards, then
+    /// the review log, so that what a record refers to comes before it. A
+    /// type this version doesn't know comes last, to wait.
     fileprivate var applyingRank: Int {
         switch SyncedRow.RecordType(rawValue: type) {
-        case .tag: 0
+        case .tag, .progressSettings: 0
         case .capture: 1
         case .card: 2
         case .reviewLogEntry: 3

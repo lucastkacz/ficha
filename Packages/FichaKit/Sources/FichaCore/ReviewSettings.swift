@@ -1,7 +1,9 @@
 /// The settings that decide which cards Lucas reviews, and when, and how the
 /// review panel behaves. Each one starts as a default from the MVP spec (#4)
 /// and Lucas can change it in Settings; the app passes them to the engine as
-/// a value.
+/// a value. Three of them decide a card's progress, the ladder, the new cards
+/// a day and the forgotten-often count, and sync, so the engine keeps them
+/// (`progress`); the rest stay each device's own.
 public struct ReviewSettings: Sendable, Equatable {
     /// The waits a card climbs as Lucas remembers it.
     public var ladder: Ladder

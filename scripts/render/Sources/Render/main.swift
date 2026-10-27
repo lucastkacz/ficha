@@ -34,6 +34,14 @@ enum Window: String {
     case backups
     /// Settings, on its Backups tab, once a backup failed.
     case backupsFailed = "backups-failed"
+    /// Settings, on its Appearances tab, which holds the new cards a day,
+    /// with the settings that decide progress in the database not Ficha's.
+    case appearances
+    /// Settings, on its Review panel tab, which holds the forgotten-often
+    /// count, with those settings not Ficha's.
+    case reviewPanel = "review-panel"
+    /// Settings, on its Ladder tab, with those settings not Ficha's.
+    case ladder
 }
 
 /// What the tool was asked to draw.
@@ -273,7 +281,8 @@ let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
                  package), cards-anki-imported (once it came in, a card it put on a step selected), backups
-                 (Settings, on its Backups tab) or backups-failed (once a backup failed)
+                 (Settings, on its Backups tab), backups-failed (once a backup failed), or Settings on another
+                 tab, with the settings that decide progress not Ficha's: appearances, review-panel or ladder
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -579,7 +588,22 @@ func ankiImportedModel() throws -> AppModel {
     }
     time.advance(by: hours(4 * 24))
     try engine.record(.review(.good), of: femur.id, responseTime: .seconds(4), trigger: .reviewNow, settings: settings)
-    return AppModel(engine: engine)
+    return try AppModel(engine: engine)
+}
+
+/// The app's model on the sample cards, whose settings that decide progress,
+/// in the database, aren't Ficha's, as another device may have left them: a
+/// ladder of five steps, from 20 minutes to 60 days, 8 new cards a day, and
+/// the offer to flag a card forgotten often after 6 reviews rated again.
+func progressSettingsModel() throws -> AppModel {
+    let engine = try sampleEngine(at: .inMemory).engine
+    let day = 24 * 60
+    guard let ladder = Ladder(waits: [20, day, 4 * day, 14 * day, 60 * day].map { Duration.minutes($0) }) else {
+        throw RenderError(
+            description: "The sample's ladder has waits that don't grow step by step: fix progressSettingsModel().")
+    }
+    try engine.saveProgressSettings(ProgressSettings(ladder: ladder, newCardsPerDay: 8, forgottenOftenAfter: 6))
+    return try AppModel(engine: engine)
 }
 
 /// The Cards window's state once the sample Anki package came in, with the
@@ -754,11 +778,12 @@ func hours(_ count: Int) -> TimeInterval {
 /// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsImport, .cardsImportAnki: return AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cards, .cardsImport, .cardsImportAnki: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsAnkiImported: return try ankiImportedModel()
-    case .backups: return AppModel(engine: try backupsEngine())
+    case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
+    case .backups: return try AppModel(engine: try backupsEngine())
     case .backupsFailed:
-        let model = AppModel(engine: try backupsEngine())
+        let model = try AppModel(engine: try backupsEngine())
         // A file where the Backups folder goes, so no backup can be saved.
         let backups = renderDataFolder.appending(path: "Backups")
         try FileManager.default.removeItem(at: backups)
@@ -788,16 +813,22 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try ankiImportedState(of: model))
         return window
-    case .backups, .backupsFailed:
-        let window = AppWindow(
-            tabs: SettingsTabViewController(
-                model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {},
-                openingOn: .backups))
-        if let content = window.contentView {
-            window.setContentSize(content.fittingSize)
-        }
-        return window
+    case .backups, .backupsFailed: return settingsWindow(on: .backups, model: model)
+    case .appearances: return settingsWindow(on: .appearances, model: model)
+    case .reviewPanel: return settingsWindow(on: .reviewPanel, model: model)
+    case .ladder: return settingsWindow(on: .ladder, model: model)
     }
+}
+
+/// The Settings window on `tab`, closed, as tall as the tab.
+func settingsWindow(on tab: SettingsTab, model: AppModel) -> NSWindow {
+    let window = AppWindow(
+        tabs: SettingsTabViewController(
+            model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openingOn: tab))
+    if let content = window.contentView {
+        window.setContentSize(content.fittingSize)
+    }
+    return window
 }
 
 /// The window the keyboard goes to while `window` is open, as AppKit makes it
