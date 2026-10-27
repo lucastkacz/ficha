@@ -48,8 +48,10 @@ private struct CreatingCards: ViewModifier {
                 .keyboardShortcut("n")
                 .hidden()
             }
-            .sheet(isPresented: Binding(get: { state.cardForm != nil }, set: { if !$0 { state.closeCardForm() } })) {
-                CardFormSheet(state: $state, failure: failure)
+            .sheetWithinWindow(
+                isPresented: Binding(get: { state.cardForm != nil }, set: { if !$0 { state.closeCardForm() } })
+            ) { maximumHeight in
+                CardFormSheet(state: $state, maximumHeight: maximumHeight, failure: failure)
             }
     }
 }
@@ -86,16 +88,26 @@ struct ConvertToCardButton: View {
 /// closes, as Close does. While the front repeats another card's, the form
 /// says so under it, with Show Card (⌘R), which sets the form aside, as it
 /// is, until it's opened the same way again, and selects that card in the
-/// window. `CardsWindowState` decides what the form holds
+/// window. A form taller than the window scrolls above Close and Add, and so
+/// does the capture beside it. `CardsWindowState` decides what the form holds
 /// after each change, whether Add is on, what it warns about, and what
 /// closing does to the capture; the sheet draws it, and keeps which field has
 /// the focus. When a card can't be added, an alert says why, and the fields
 /// stay as the user left them.
 private struct CardFormSheet: View {
     @Binding var state: CardsWindowState
+    /// The tallest the sheet gets, as `sheetWithinWindow` hands it.
+    let maximumHeight: CGFloat
     /// What couldn't be saved, as the alert over the sheet says it.
     let failure: Binding<Failure?>
     @FocusState private var isFrontFocused: Bool
+    /// The part of the form that has the focus, which it scrolls to.
+    @FocusedValue(\.cardFormPart) private var focusedPart
+    /// The space between the form's parts, and around them.
+    private let spacing: CGFloat = 16
+    private let padding: CGFloat = 20
+    /// The height of Close and Add, which stay in view under what scrolls.
+    private let buttonsHeight: CGFloat = 28
 
     var body: some View {
         if let form = state.cardForm {
@@ -103,15 +115,35 @@ private struct CardFormSheet: View {
                 if let capture = form.capture {
                     captureColumn(capture, followUp: form.followUp, approvedOnClose: form.approvesCaptureOnClose)
                         .frame(width: 260)
+                        .frame(maxHeight: maximumHeight)
                     Divider()
                 }
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("New Card", comment: "The title of the Cards window's card form.")
-                        .font(.headline)
-                    fields(form)
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: spacing) {
+                                Text("New Card", comment: "The title of the Cards window's card form.")
+                                    .font(.headline)
+                                fields(form)
+                            }
+                            .padding([.horizontal, .top], padding)
+                            .padding(.bottom, spacing)
+                        }
+                        .frame(maxHeight: maximumHeight - padding - buttonsHeight)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .scrollBounceBehavior(.basedOnSize)
+                        .scrollBarOnlyWhenItOverflows()
+                        // Tab, and Add going back to the front, can reach a
+                        // part out of view.
+                        .onChange(of: focusedPart) {
+                            if let focusedPart {
+                                proxy.scrollTo(focusedPart)
+                            }
+                        }
+                    }
                     footer(form)
+                        .padding([.horizontal, .bottom], padding)
                 }
-                .padding(20)
                 .frame(width: 460)
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -165,6 +197,7 @@ private struct CardFormSheet: View {
                 let label = Text("Type", comment: "In the Cards window's card form, the label of the card's type.")
                 gridLabel(label)
                 CardTypePicker(type: draft(\.type), label: label)
+                    .cardFormPart(.type)
             }
             GridRow {
                 gridLabel(Text("Front", comment: "In the Cards window's card form, the label of the card's front."))
@@ -172,6 +205,7 @@ private struct CardFormSheet: View {
                     TextField("Front", text: draft(\.front.text), axis: .vertical)
                         .lineLimit(1...4)
                         .focused($isFrontFocused)
+                        .cardFormPart(.text(.front))
                     if let warning = form.frontWarning {
                         FrontWarningView(warning: warning) {
                             state.showRepeatedCard()
@@ -186,6 +220,7 @@ private struct CardFormSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Back", text: draft(\.back.text), axis: .vertical)
                         .lineLimit(4...10)
+                        .cardFormPart(.text(.back))
                     imageWell(on: .back, of: form)
                     soundWell(on: .back, of: form)
                 }
@@ -194,6 +229,7 @@ private struct CardFormSheet: View {
                 gridLabel(Text("Tags", comment: "In the Cards window's card form, the label of the card's tags."))
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Tags", text: draft(\.tags))
+                        .cardFormPart(.tags)
                     Text("Separate tags with commas.", comment: "In the Cards window's card form, under the tags.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -208,10 +244,12 @@ private struct CardFormSheet: View {
                     axis: .vertical
                 )
                 .lineLimit(1...3)
+                .cardFormPart(.source)
             }
             GridRow {
                 gridLabel(BothWaysToggle.label)
                 BothWaysToggle(bothWays: draft(\.bothWays))
+                    .cardFormPart(.bothWays)
             }
         }
         .textFieldStyle(.roundedBorder)
@@ -263,6 +301,7 @@ private struct CardFormSheet: View {
         } remove: {
             state.removeImageFromForm(on: side)
         }
+        .cardFormPart(.image(side))
     }
 
     /// The place for the sound on `side` of the card the form makes.
@@ -277,6 +316,7 @@ private struct CardFormSheet: View {
         } remove: {
             state.removeSoundFromForm(on: side)
         }
+        .cardFormPart(.sound(side))
     }
 
     /// A field of the form's draft, which the state changes as the user types.
@@ -289,6 +329,32 @@ private struct CardFormSheet: View {
             draft[keyPath: field] = value
             state.changeDraft(draft)
         }
+    }
+}
+
+/// A part of the card form that takes the focus, which the form scrolls to
+/// when it does.
+private enum CardFormPart: Hashable {
+    case type
+    case text(CardSide)
+    case image(CardSide)
+    case sound(CardSide)
+    case tags
+    case source
+    case bothWays
+}
+
+extension FocusedValues {
+    /// The part of the card form that has the focus, or a view in it.
+    @Entry fileprivate var cardFormPart: CardFormPart?
+}
+
+extension View {
+    /// Marks the view as `part` of the card form, for the form to scroll to
+    /// it once it, or a view in it, has the focus.
+    fileprivate func cardFormPart(_ part: CardFormPart) -> some View {
+        id(part)
+            .focusedValue(\.cardFormPart, part)
     }
 }
 
