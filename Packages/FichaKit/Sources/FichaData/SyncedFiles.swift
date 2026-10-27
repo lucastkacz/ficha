@@ -149,21 +149,12 @@ extension Sync {
     func handleFiles(in event: ICloudEvent, from iCloud: some ICloudSyncEngine) throws(EngineError) -> ICloudEvent {
         switch event {
         case .fetchedRecordZoneChanges(let changes):
-            try receiveFiles(
-                changes.modifications.filter { $0.id.zone == .files },
-                leaving: changes.deletions.map(\.id).filter { $0.zone == .files }, with: iCloud)
-            return .fetchedRecordZoneChanges(
-                ICloudEvent.FetchedRecordZoneChanges(
-                    modifications: changes.modifications.filter { $0.id.zone != .files },
-                    deletions: changes.deletions.filter { $0.id.zone != .files }))
+            let files = changes.only { $0 == .files }
+            try receiveFiles(files.modifications, leaving: files.deletions.map(\.id), with: iCloud)
+            return .fetchedRecordZoneChanges(changes.only { $0 != .files })
         case .sentRecordZoneChanges(let sent):
-            try settleFiles(sent, with: iCloud)
-            return .sentRecordZoneChanges(
-                ICloudEvent.SentRecordZoneChanges(
-                    savedRecords: sent.savedRecords.filter { $0.id.zone != .files },
-                    failedRecordSaves: sent.failedRecordSaves.filter { $0.record.id.zone != .files },
-                    deletedRecordIDs: sent.deletedRecordIDs.filter { $0.zone != .files },
-                    failedRecordDeletes: sent.failedRecordDeletes.filter { $0.key.zone != .files }))
+            try settleFiles(sent.only { $0 == .files }, with: iCloud)
+            return .sentRecordZoneChanges(sent.only { $0 != .files })
         case .stateUpdate, .accountChange, .fetchedDatabaseChanges, .sentDatabaseChanges, .didFetchChanges:
             return event
         }
@@ -228,25 +219,24 @@ extension Sync {
         try letGo(of: left.filter { id in !came.contains { $0.id == id } }, with: iCloud)
     }
 
-    /// Settles what became of the images and sounds iCloud's engine sent, and
-    /// of their deletions. A file iCloud saved, or held already, being named
-    /// by its content, is one iCloud holds. One whose zone or whose record
-    /// iCloud lacks goes again, its zone first. One that didn't fit in a full
-    /// iCloud is sent again with the next changes (#317). A file deleted from
-    /// iCloud is let go of, as one another device deleted.
+    /// Settles what became of the images and sounds iCloud's engine sent,
+    /// `sent`, and of their deletions. A file iCloud saved, or held already,
+    /// being named by its content, is one iCloud holds. One whose zone or
+    /// whose record iCloud lacks goes again, its zone first. One that didn't
+    /// fit in a full iCloud is sent again with the next changes (#317). A
+    /// file deleted from iCloud is let go of, as one another device deleted.
     private func settleFiles(_ sent: ICloudEvent.SentRecordZoneChanges, with iCloud: some ICloudSyncEngine)
         throws(EngineError)
     {
-        let saved = sent.savedRecords.filter { $0.id.zone == .files }
-        let failed = sent.failedRecordSaves.filter { $0.record.id.zone == .files }
-        let deleted = sent.deletedRecordIDs.filter { $0.zone == .files }
-        let failedDeletes = sent.failedRecordDeletes.filter { $0.key.zone == .files }
-        guard !saved.isEmpty || !failed.isEmpty || !deleted.isEmpty || !failedDeletes.isEmpty else {
+        let saved = sent.savedRecords
+        let failed = sent.failedRecordSaves
+        guard !saved.isEmpty || !failed.isEmpty || !sent.deletedRecordIDs.isEmpty || !sent.failedRecordDeletes.isEmpty
+        else {
             return
         }
         // A deletion whose zone or record iCloud lacks left all the same.
-        var gone = deleted
-        for (id, error) in failedDeletes {
+        var gone = sent.deletedRecordIDs
+        for (id, error) in sent.failedRecordDeletes {
             switch error {
             case .zoneNotFound, .unknownItem:
                 gone.append(id)
@@ -305,6 +295,26 @@ extension Sync {
         }
         engine.removeFilesNoCardUses(images: images, sounds: sounds)
         try sendFiles(to: iCloud)
+    }
+}
+
+extension ICloudEvent.FetchedRecordZoneChanges {
+    /// Its changes to the records of the zones `isIncluded` picks.
+    fileprivate func only(_ isIncluded: (ICloudZone) -> Bool) -> Self {
+        Self(
+            modifications: modifications.filter { isIncluded($0.id.zone) },
+            deletions: deletions.filter { isIncluded($0.id.zone) })
+    }
+}
+
+extension ICloudEvent.SentRecordZoneChanges {
+    /// What became of its records in the zones `isIncluded` picks.
+    fileprivate func only(_ isIncluded: (ICloudZone) -> Bool) -> Self {
+        Self(
+            savedRecords: savedRecords.filter { isIncluded($0.id.zone) },
+            failedRecordSaves: failedRecordSaves.filter { isIncluded($0.record.id.zone) },
+            deletedRecordIDs: deletedRecordIDs.filter { isIncluded($0.zone) },
+            failedRecordDeletes: failedRecordDeletes.filter { isIncluded($0.key.zone) })
     }
 }
 
