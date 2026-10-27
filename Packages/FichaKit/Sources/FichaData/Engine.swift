@@ -186,8 +186,11 @@ public struct Engine: Sendable {
     /// Runs `updates` in one transaction, as `write` does, but tells no
     /// engine that the database changed: for a write that changes no card,
     /// which an engine listening for changes would answer with another one.
-    /// Every write goes through here, which first tells the triggers that
-    /// record each change to sync when the write happens.
+    /// Every write to the cards, captures, review log and tags goes through
+    /// here, which first tells the triggers that record each change to sync
+    /// when the write happens. Two writes don't, and record nothing: a
+    /// restore, which replaces the whole database, as it was when it was
+    /// copied, and a migration, which changes the schema.
     func writeWithoutTelling<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
         let now = time.now
         return try reportingStorageErrors {

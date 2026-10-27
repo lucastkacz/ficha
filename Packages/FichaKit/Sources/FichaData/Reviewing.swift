@@ -143,7 +143,8 @@ func recordAnswer(
     let lookAhead = trigger.lookAhead(in: settings)
     let card = try cardInReviews(answered.cardID, in: db)
     let log = try logEntries(ofExisting: answered.cardID, in: db)
-    let standing = try settings.ladder.standing(after: log.filter { $0.way == answered.way })
+    let wayLog = log.filter { $0.way == answered.way }
+    let standing = try settings.ladder.standing(after: wayLog)
     let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
     if !isAhead {
         do throws(RefusedAnswer) {
@@ -152,9 +153,15 @@ func recordAnswer(
             throw EngineError(refused: error, cardID: answered.cardID)
         }
     }
+    // A review answers the way's last entry, which its wait came from.
+    let answeredEntry: UUID? =
+        switch kind {
+        case .review: wayLog.last?.uuid
+        case .firstView, .placement: nil
+        }
     let entry = ReviewLogEntry(
         cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
-        responseTime: responseTime, trigger: trigger, isAhead: isAhead)
+        responseTime: responseTime, trigger: trigger, isAhead: isAhead, answeredEntry: answeredEntry)
     try insert(entry, in: db)
     return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
 }
@@ -182,17 +189,21 @@ func place(_ cardID: Int64, way: Way, on placement: Placement, at placedAt: Date
     try insert(ReviewLogEntry(placing: cardID, way: way, on: placement, at: placedAt), in: db)
 }
 
-/// Adds an entry at the end of the review log.
+/// Adds an entry at the end of the review log, with its ID unique across
+/// devices, or a new one when it has none yet, and the entry it answered.
 private func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let columns = entry.kind.columns
     try db.execute(
         sql: """
-            INSERT INTO reviewLog (cardId, way, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO reviewLog (
+                uuid, cardId, way, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead,
+                answeredEntryUuid)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
-            entry.cardID, entry.way.rawValue, columns.kind, columns.rating, columns.step, columns.due,
-            entry.answeredAt, entry.responseTime.map { $0 / .seconds(1) }, entry.trigger?.rawValue, entry.isAhead,
+            (entry.uuid ?? UUID()).uuidString, entry.cardID, entry.way.rawValue, columns.kind, columns.rating,
+            columns.step, columns.due, entry.answeredAt, entry.responseTime.map { $0 / .seconds(1) },
+            entry.trigger?.rawValue, entry.isAhead, entry.answeredEntry?.uuidString,
         ]
     )
 }
@@ -212,10 +223,22 @@ extension ReviewLogEntry {
             throw unreadable("Card \(cardID) has a review log entry of an unknown kind, rating or step")
         }
         let answeredAt: Date = try row.decode(forColumn: "answeredAt")
+        let uuidName: String = try row.decode(forColumn: "uuid")
+        guard let uuid = UUID(uuidString: uuidName) else {
+            throw unreadable("Card \(cardID) has a review log entry whose ID, \(uuidName), isn't a UUID")
+        }
+        let answeredEntryName: String? = try row.decode(forColumn: "answeredEntryUuid")
+        let answeredEntry = try answeredEntryName.map { name in
+            guard let answeredEntry = UUID(uuidString: name) else {
+                throw unreadable(
+                    "Card \(cardID)'s review log entry \(uuid) answered an entry, \(name), not named by a UUID")
+            }
+            return answeredEntry
+        }
         let triggerName: String? = try row.decode(forColumn: "trigger")
         switch (kind, triggerName) {
         case (.placement(let placement), nil):
-            self.init(placing: cardID, way: way, on: placement, at: answeredAt)
+            self.init(placing: cardID, way: way, on: placement, at: answeredAt, uuid: uuid)
         case (.firstView, let triggerName?), (.review, let triggerName?):
             guard let trigger = Trigger(rawValue: triggerName) else {
                 throw unreadable("Card \(cardID) has a review log entry with an unknown trigger")
@@ -228,7 +251,9 @@ extension ReviewLogEntry {
                 answeredAt: answeredAt,
                 responseTime: responseTime.map { .seconds($0) },
                 trigger: trigger,
-                isAhead: try row.decode(forColumn: "isAhead")
+                isAhead: try row.decode(forColumn: "isAhead"),
+                uuid: uuid,
+                answeredEntry: answeredEntry
             )
         case (.placement, _?), (.firstView, nil), (.review, nil):
             throw unreadable("Card \(cardID) has a review log entry whose trigger doesn't go with its kind")

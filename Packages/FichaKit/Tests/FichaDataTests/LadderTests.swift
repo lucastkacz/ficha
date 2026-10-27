@@ -87,7 +87,7 @@ struct LadderTests {
             settings: .defaults)
 
         #expect(
-            try engine.reviewLog() == [
+            try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: serendipia.id, kind: .firstView, answeredAt: firstViewTime,
                     responseTime: .milliseconds(8_250),
