@@ -240,6 +240,22 @@ final class SoundTests {
         #expect(await [firstSawSecond, secondSawFirst] == [true, true])
     }
 
+    // On one concurrent queue, 64 sounds at once held every thread Dispatch
+    // would bring up for it, and none got its samples.
+    @Test("seventy sounds converting at once all come in", .timeLimit(.minutes(1)))
+    func seventySoundsConvertingAtOnceAllComeIn() async throws {
+        let la = try tone(seconds: 0.1, hertz: 440)
+
+        let names = try await withThrowingTaskGroup(of: SoundName.self) { group in
+            for index in 0..<70 {
+                group.addTask { try await CardSound(converting: la, named: "\(index).wav").name }
+            }
+            return try await group.reduce(into: Set()) { names, name in names.insert(name) }
+        }
+
+        #expect(names.count == 1)
+    }
+
     @Test("the sounds a zip names come in side by side, each once, and one it holds nothing by is missing")
     func theSoundsAZipNamesComeInSideBySide() async throws {
         var sounds = FilesInZip<CardSound>(contents: { name in name == "falta.mp3" ? nil : Data(name.utf8) })
@@ -258,18 +274,19 @@ final class SoundTests {
     }
 }
 
-/// Whether, on `SoundConversion`'s queue, holding its thread as the asset
-/// reader holds one while it waits for samples, once it signals `own`,
-/// `other` is signalled within 5 seconds: whether another conversion
-/// started beside it.
+/// Whether, where a sound converts, on a `SoundConversion` queue, holding
+/// its thread as the asset reader holds one while it waits for samples, once
+/// it signals `own`, `other` is signalled within 5 seconds: whether another
+/// conversion started beside it.
 private func holdingAThread(signalling own: DispatchSemaphore, waitingFor other: DispatchSemaphore) async -> Bool {
-    await withTaskExecutorPreference(SoundConversion.executor) {
+    await withTaskExecutorPreference(SoundConversion()) {
         await onTheExecutor { waits(for: other, signalling: own) }
     }
 }
 
 /// What `body` returns, run on the task's preferred executor, as
-/// `convertSound(in:to:)` runs.
+/// `convertSound(in:to:)` runs: a nonisolated async function, which runs on
+/// that executor (SE-0417).
 private func onTheExecutor<Value>(_ body: () -> Value) async -> Value {
     body()
 }
@@ -351,12 +368,12 @@ func tone(seconds: Double, hertz: Double, channels: AVAudioChannelCount = 1) thr
 
 /// A video of 64 by 64 pixels lasting `seconds`, as a QuickTime movie's
 /// data, with a mono tone of `hertz` as its sound track, or none when it's
-/// nil: a test's own video. It's written where sounds convert, on
-/// `SoundConversion`'s queue, for the reason it gives: on the shared
-/// threads, more videos at once than the Mac has cores held every one of
-/// them, as on CI's runners, which have 3.
+/// nil: a test's own video. It's written where a sound converts, on a
+/// `SoundConversion` queue of its own, for the reason it gives: on the
+/// shared threads, more videos at once than the Mac has cores held every one
+/// of them, as on CI's runners, which have 3.
 func video(seconds: Double, withSoundOf hertz: Double?) async throws -> Data {
-    try await withTaskExecutorPreference(SoundConversion.executor) {
+    try await withTaskExecutorPreference(SoundConversion()) {
         try await writeVideo(seconds: seconds, withSoundOf: hertz)
     }
 }

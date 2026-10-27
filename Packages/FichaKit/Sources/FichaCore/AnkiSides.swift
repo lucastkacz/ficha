@@ -10,44 +10,37 @@ import Foundation
 /// and sounds are dropped, since a side holds one of each at most, and so
 /// are images on the web, which Ficha never fetches. A side that is one of
 /// Anki's formulas alone is the picture Anki drew of it, without text, when
-/// the package has it and Ficha can read it.
+/// the package has it and Ficha can read it. A side is read without its
+/// sound first, so that every card's sounds can come in together, and then
+/// `playing(_:)` gives it its sound.
 struct AnkiSide {
     let text: String
     let image: ImageName?
-    let sound: SoundName?
+    private(set) var sound: SoundName?
     /// Whether the HTML shows other files of the package as images, which
     /// the side drops.
     let dropsImages: Bool
+    /// The sound the side keeps, the first it plays, or nil when it plays
+    /// none.
+    let soundKept: String?
     /// Whether the HTML plays other sounds, which the side drops.
     let dropsSounds: Bool
     /// What was found for the image the side shows, or nil when it shows
     /// none.
     private let imageLookup: ImageLookup?
-    /// What was found for the sound the side plays, or nil when it plays
-    /// none.
-    private let soundLookup: SoundLookup?
+    /// What was found for the sound the side keeps, or nil when it plays
+    /// none, or before `playing(_:)` looked it up.
+    private var soundLookup: SoundLookup?
 
     /// The side Anki renders as `html`, without its sounds, which plays the
-    /// sounds named `soundNames`, in order: with its image as `images` finds
-    /// it by the name the HTML gives it, or by the name of Anki's picture of
-    /// its formula, after the SHA-1 digest `sha1` gives as lowercase hex: a
-    /// PNG's, or an SVG's when the package has no PNG by that name; and with
-    /// its first sound as `sounds` finds it.
-    init(
-        html: String, playing soundNames: [String], images: (String) -> ImageLookup, sounds: (String) -> SoundLookup,
-        sha1: (String) -> String
-    ) {
+    /// sounds named `soundNames`, in order, still without its sound: with
+    /// its image as `images` finds it by the name the HTML gives it, or by
+    /// the name of Anki's picture of its formula, after the SHA-1 digest
+    /// `sha1` gives as lowercase hex: a PNG's, or an SVG's when the package
+    /// has no PNG by that name.
+    init(html: String, playing soundNames: [String], images: (String) -> ImageLookup, sha1: (String) -> String) {
+        soundKept = soundNames.first
         dropsSounds = soundNames.count > 1
-        if let name = soundNames.first {
-            soundLookup = sounds(name)
-        } else {
-            soundLookup = nil
-        }
-        if case .found(let sound) = soundLookup {
-            self.sound = sound
-        } else {
-            sound = nil
-        }
         let names = fileNames(shownIn: html)
         dropsImages = names.count > 1
         let formula =
@@ -76,6 +69,20 @@ struct AnkiSide {
         } else {
             image = nil
         }
+    }
+
+    /// The side with the sound it keeps, as `sounds` finds it, when it plays
+    /// one.
+    func playing(_ sounds: (String) -> SoundLookup) -> AnkiSide {
+        guard let soundKept else {
+            return self
+        }
+        var side = self
+        side.soundLookup = sounds(soundKept)
+        if case .found(let sound) = side.soundLookup {
+            side.sound = sound
+        }
+        return side
     }
 
     /// Whether the sound the side plays is one Ficha can't read, which the

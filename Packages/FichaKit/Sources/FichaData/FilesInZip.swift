@@ -72,9 +72,9 @@ struct FilesInZip<File: CardFile> {
         }
         let atOnce = ProcessInfo.processInfo.activeProcessorCount
         await withTaskGroup(of: (String, Result<File?, any Error>).self) { group in
-            var bringing = 0
-            while bringing > 0 || !waiting.isEmpty {
-                while bringing < atOnce, let name = waiting.popFirst() {
+            var inFlight = 0
+            while inFlight > 0 || !waiting.isEmpty {
+                while inFlight < atOnce, let name = waiting.popFirst() {
                     let data: Data?
                     do {
                         data = try contents(name)
@@ -93,11 +93,11 @@ struct FilesInZip<File: CardFile> {
                             return (name, .failure(error))
                         }
                     }
-                    bringing += 1
+                    inFlight += 1
                 }
                 if let (name, outcome) = await group.next() {
                     answers[name] = record(outcome, for: name)
-                    bringing -= 1
+                    inFlight -= 1
                 }
             }
         }

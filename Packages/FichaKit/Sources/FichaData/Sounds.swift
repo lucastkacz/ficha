@@ -3,6 +3,7 @@ import CryptoKit
 import FichaCore
 import Foundation
 internal import GRDB
+import Synchronization
 
 /// The bit rate a sound keeps once it comes in, for each of its channels: AAC
 /// at 64 kbps a channel, 128 kbps in stereo, good enough for music and light,
@@ -89,7 +90,7 @@ struct CardSound: Sendable, Equatable {
         let written = URL.temporaryDirectory.appending(path: "Ficha-sound-\(UUID().uuidString).m4a")
         defer { try? FileManager.default.removeItem(at: written) }
         do {
-            try await withTaskExecutorPreference(SoundConversion.executor) {
+            try await withTaskExecutorPreference(SoundConversion()) {
                 try await convertSound(in: file, to: written)
             }
         } catch let error as EngineError {
@@ -129,17 +130,17 @@ func soundLength(of data: Data) throws(EngineError) -> Duration {
     }
 }
 
-/// Where sounds convert: a concurrent dispatch queue of their own, as a task
+/// Where a sound converts: a serial dispatch queue of its own, as a task
 /// executor (SE-0417), away from the threads Swift's tasks share. The asset
 /// reader holds the thread that asks it for the next samples until it has
 /// them: run on the shared threads, as many sounds converting at once as the
-/// Mac has cores held every one of them, and none ever got its samples.
-/// Dispatch brings up another thread when one is held, so sounds convert
-/// side by side here; on a serial queue, each held the queue until it ended.
+/// Mac has cores held every one of them, and none ever got its samples; on
+/// one concurrent queue, 64 at once held every thread Dispatch would bring
+/// up for it, and none got them either; and on one serial queue, each held
+/// the queue until it ended, so they converted one at a time. Each on a
+/// queue of its own, sounds convert side by side, more than 64 at once too.
 final class SoundConversion: TaskExecutor {
-    static let executor = SoundConversion()
-
-    private let queue = DispatchQueue(label: "Ficha.SoundConversion", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "Ficha.SoundConversion")
 
     func enqueue(_ job: consuming ExecutorJob) {
         let job = UnownedJob(job)
@@ -147,9 +148,16 @@ final class SoundConversion: TaskExecutor {
     }
 }
 
+/// Held while an asset reader starts, so that readers start one at a time.
+/// Each sets up an audio queue on AudioToolbox's own serial queue as it
+/// starts, so they waited for each other there anyway; but ten starting at
+/// once hung there for good once, in a preview of Japanese Core 50K, each
+/// waiting for that queue while nothing ran on it.
+private let readerStarting = Mutex(())
+
 /// Converts the first sound track in `file` to AAC in the `m4a` file
 /// `output`, as `CardSound(converting:)` says, reading and writing it with
-/// AVFoundation's asset reader and writer, on `SoundConversion`'s queue. A
+/// AVFoundation's asset reader and writer, on a `SoundConversion` queue. A
 /// file with no sound track, or with one that ends before it starts, is
 /// refused.
 private func convertSound(in file: URL, to output: URL) async throws {
@@ -188,7 +196,7 @@ private func convertSound(in file: URL, to output: URL) async throws {
     // Each adds the output or the input it's for.
     let samples = reader.outputProvider(for: decoded)
     let receiver = writer.inputReceiver(for: encoded)
-    try reader.start()
+    try readerStarting.withLock { _ in try reader.start() }
     try writer.start()
     guard let first = try await samples.next() else {
         writer.cancelWriting()
