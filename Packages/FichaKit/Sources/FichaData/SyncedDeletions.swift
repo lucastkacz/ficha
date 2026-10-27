@@ -50,7 +50,8 @@ extension Sync {
             case .retriedByTheEngine:
                 break
             case .serverRecordChanged, .quotaExceeded, .other:
-                syncLogger.error("iCloud didn't delete a record: \(String(describing: error), privacy: .public)")
+                syncLogger.error(
+                    "iCloud didn't delete the record \(id.name, privacy: .public): \(String(describing: error))")
             }
         }
         if !gone.isEmpty {
@@ -95,18 +96,26 @@ extension ICloudEvent.FailedRecordSave {
 /// Returns the card it deleted, if it was one, for its images and sounds.
 private func receiveDeletion(of id: ICloudRecordID, type: String, at time: Date, in db: Database) throws -> [Card] {
     try forgetDeletion(of: id, in: db)
-    guard id.zone == .cards, let uuid = UUID(uuidString: id.name) else {
+    guard id.zone == .cards else {
         return []
     }
-    switch SyncedRow.RecordType(rawValue: type) {
-    case .card?:
+    let row: SyncedRow
+    do {
+        row = try SyncedRow(recordType: type, recordName: id.name)
+    } catch {
+        syncLogger.error(
+            "A deletion of type \(type, privacy: .public) from iCloud can't be read: \(String(describing: error))")
+        return []
+    }
+    switch row {
+    case .card(let uuid):
         return try deleteCard(deletedOnAnotherDevice: uuid, at: time, in: db).map { [$0] } ?? []
-    case .capture?:
+    case .capture(let uuid):
         try deleteCapture(deletedOnAnotherDevice: uuid, in: db)
-    case .reviewLogEntry?:
+    case .reviewLogEntry(let uuid):
         try db.execute(sql: "DELETE FROM reviewLog WHERE uuid = ?", arguments: [uuid.uuidString])
     default:
-        // A row that's never deleted for good.
+        // Any other row is never deleted for good: a tag is just a name.
         break
     }
     return []
@@ -198,6 +207,12 @@ private func forgetDeletion(of id: ICloudRecordID, in db: Database) throws {
         try db.execute(sql: "DELETE FROM syncPending WHERE id = ?", arguments: [sequence])
     }
     try keep(nil, of: id, in: db)
+    try dropWaitingRecord(of: id, in: db)
+}
+
+/// Drops the version of the record with this ID that waited to be applied,
+/// if one did.
+func dropWaitingRecord(of id: ICloudRecordID, in db: Database) throws {
     try db.execute(sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?", arguments: [id.zone.name, id.name])
 }
 

@@ -14,6 +14,9 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// wins and the rest merges, and the review log's entries join, each card's
 /// ways worked out again from them all. Each device keeps working without a
 /// connection: what waits is sent once iCloud's engine reaches iCloud.
+/// A deletion wins over what other devices changed of its row, and what it
+/// changes on a device goes back as that device's own change
+/// (`SyncedDeletions.swift`).
 ///
 /// The app makes one when sync starts, calls `start(with:)`, then
 /// `sendWhatChanged(to:)` whenever the database changes, and passes it each

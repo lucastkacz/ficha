@@ -107,9 +107,7 @@ enum Received: Equatable {
 /// be sent, is dropped.
 func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
     if try pendingDeletion(of: record.id, in: db) != nil {
-        try db.execute(
-            sql: "DELETE FROM syncIncoming WHERE zone = ? AND name = ?",
-            arguments: [record.id.zone.name, record.id.name])
+        try dropWaitingRecord(of: record.id, in: db)
         return .dropped
     }
     var applied = false
