@@ -378,6 +378,8 @@ extension Inbox {
 /// An entry of a device's review log, without the id its device gives its
 /// card.
 struct LogEntryAsSeen: Equatable {
+    let uuid: UUID?
+    let answeredEntry: UUID?
     let way: Way
     let kind: ReviewLogEntry.Kind
     let answeredAt: Date
@@ -397,7 +399,8 @@ extension Device {
     func logAsSeen() throws -> [LogEntryAsSeen] {
         try engine.reviewLog().sorted { $0.isReplayed(before: $1) }.map {
             LogEntryAsSeen(
-                way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt, responseTime: $0.responseTime,
+                uuid: $0.uuid, answeredEntry: $0.answeredEntry, way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt,
+                responseTime: $0.responseTime,
                 trigger: $0.trigger, isAhead: $0.isAhead)
         }
     }

@@ -114,6 +114,10 @@ struct SyncedTable: Sendable {
             SyncedColumn("trigger", .text),
             // As the device that answered decided it, never worked out again.
             SyncedColumn("isAhead", .boolean),
+            // The UUID of the entry a review answered, which can come later,
+            // so it's no link: the ladder reads it to tell two devices'
+            // answers to one wait apart.
+            SyncedColumn("answeredEntryUuid", key: "answeredEntry", .text),
         ],
         marksRowsFromAnotherDevice: true,
         check: { id, db in _ = try ReviewLogEntry(row: try tableRow(id, of: "reviewLog", in: db)) })
