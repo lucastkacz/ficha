@@ -47,12 +47,13 @@ extension Engine {
         }
     }
 
-    /// Takes back Lucas's last answer to one of a card's ways, the last entry
-    /// of that way's review log, as the review panel's ⌘Z does: it leaves the
-    /// log, as an answer undone never happened, the way Anki's undo deletes
-    /// it too, and the way stands where it stood before it, while the card's
-    /// other way stays where it is. When the way has no entry left, nothing
-    /// is taken back, and ⌘Z can't undo it.
+    /// Takes back Lucas's last answer to one of a card's ways on this device,
+    /// the last entry this device recorded in that way's review log, as the
+    /// review panel's ⌘Z does: it leaves the log, as an answer undone never
+    /// happened, the way Anki's undo deletes it too, and the way stands where
+    /// it would without it, while the card's other way stays where it is. An
+    /// answer another device synced since stays. When the way has no entry
+    /// of this device left, nothing is taken back, and ⌘Z can't undo it.
     public func takeBackAnswer(of cardID: Int64, way: Way) throws(EngineError) {
         try write { db in
             try deleteLastEntry(of: CardWay(cardID: cardID, way: way), in: db)
@@ -171,14 +172,18 @@ func recordAnswer(
     return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
 }
 
-/// Deletes the last entry of the review log of `cardWay`, one of a card's
-/// ways, which takes back Lucas's last answer to it, as
-/// `Engine.takeBackAnswer` says, or throws when the way has none or the card
-/// doesn't exist.
+/// Deletes the last entry this device recorded in the review log of
+/// `cardWay`, one of a card's ways, which takes back Lucas's last answer to
+/// it, as `Engine.takeBackAnswer` says, or throws when the way has none or
+/// the card doesn't exist. An entry that came from another device since is
+/// never taken back.
 private func deleteLastEntry(of cardWay: CardWay, in db: Database) throws {
     _ = try existingCard(cardWay.cardID, in: db)
     try db.execute(
-        sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ? AND way = ?)",
+        sql: """
+            DELETE FROM reviewLog WHERE id = (
+                SELECT max(id) FROM reviewLog WHERE cardId = ? AND way = ? AND NOT isFromAnotherDevice)
+            """,
         arguments: [cardWay.cardID, cardWay.way.rawValue]
     )
     guard db.changesCount == 1 else {

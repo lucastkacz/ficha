@@ -2,10 +2,11 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// Flagging, unflagging, burying and unburying, and taking a flag off as
-/// editing does (`takeFlagOff(_:in:)`, below): this file is the one place
-/// that sets and clears a card's flag and its burial, as
-/// `CODING_STANDARDS.md` says.
+/// Flagging, unflagging, burying and unburying, taking a flag off as editing
+/// does (`takeFlagOff(_:in:)`, below), and taking a flag and a burial as
+/// another device left them, as sync does (`takeFlag(_:of:in:)` and
+/// `takeBurial(_:of:in:)`, below): this file is the one place that sets
+/// and clears a card's flag and its burial, as `CODING_STANDARDS.md` says.
 extension Engine {
     /// Flags a card in Lucas's reviews, or set aside, with his note on what
     /// to fix: it waits in the inbox until it's fixed, in a refine session or
@@ -143,4 +144,20 @@ extension Engine {
 /// editing it, which fixes a flagged card, buried too.
 func takeFlagOff(_ cardID: Int64, in db: Database) throws -> Card {
     try updateCard(cardID, setting: "flagNote = NULL, flaggedAt = NULL", in: db)
+}
+
+/// Leaves the card with this id flagged with `flag`, or without a flag when
+/// it's nil, as another device left it, whatever the card stands as here,
+/// and returns the card, or throws when it doesn't exist: how sync takes a
+/// flag that changed later on another device (ADR 0017).
+func takeFlag(_ flag: Flag?, of cardID: Int64, in db: Database) throws -> Card {
+    try updateCard(cardID, setting: "flagNote = ?, flaggedAt = ?", to: [flag?.note, flag?.flaggedAt], in: db)
+}
+
+/// Leaves the card with this id buried since `buriedAt`, or not buried when
+/// it's nil, as another device left it, whatever the card stands as here,
+/// and returns the card, or throws when it doesn't exist: how sync takes a
+/// burial that changed later on another device (ADR 0017).
+func takeBurial(_ buriedAt: Date?, of cardID: Int64, in db: Database) throws -> Card {
+    try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
 }

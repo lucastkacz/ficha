@@ -670,6 +670,41 @@ enum Schema {
                     END;
                     """)
         }
+        migrator.registerMigration("v22 what this device knows of iCloud") { db in
+            // What this device knows of the records iCloud holds (ADR 0017),
+            // which never syncs, each record by its zone and its name, as
+            // `ICloudRecordID` names it.
+            //
+            // What iCloud said last of each record this device heard of: its
+            // system fields, as CKRecord encodes them, which a save sends
+            // back so that iCloud knows which version it changes, and refuses
+            // it when another device changed it since.
+            try db.create(table: "syncRecord") { table in
+                table.column("zone", .text).notNull()
+                table.column("name", .text).notNull()
+                table.column("systemFields", .blob).notNull()
+                table.primaryKey(["zone", "name"])
+            }
+            // The records from other devices that wait to be applied, each
+            // as `ICloudRecord` encodes it in JSON: one that refers to a row
+            // this device doesn't hold yet, such as a card whose capture
+            // hasn't come, or one this version of Ficha can't read. Each is
+            // tried again whenever records come, and a later version of it
+            // replaces it.
+            try db.create(table: "syncIncoming") { table in
+                table.column("zone", .text).notNull()
+                table.column("name", .text).notNull()
+                table.column("record", .blob).notNull()
+                table.primaryKey(["zone", "name"])
+            }
+            // Whether an entry of the review log came from another device,
+            // whose answer the review panel's ⌘Z never takes back. Every
+            // entry from before this migration was answered on this device.
+            // Adding a column keeps the table's triggers.
+            try db.alter(table: "reviewLog") { table in
+                table.add(column: "isFromAnotherDevice", .boolean).notNull().defaults(to: false)
+            }
+        }
         return migrator
     }()
 }
