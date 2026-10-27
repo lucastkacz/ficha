@@ -20,12 +20,17 @@ final class AppModel {
     var settings: ReviewSettings {
         didSet {
             Preferences.save(settings)
-            // The engine keeps them when they changed. When it can't, it logs
-            // why, and Settings shows them until they're read again.
-            try? engine.saveProgressSettings(settings.progress)
+            if settings.progress != oldValue.progress {
+                keepProgressSettings(changedFrom: oldValue.progress)
+            }
             countProgress()
         }
     }
+    /// Why the engine couldn't keep the last change to the settings that
+    /// decide a card's progress, for Settings to say, until Lucas closes its
+    /// alert. Settings shows the change meanwhile, until the database changes
+    /// again or the app quits.
+    var progressSettingsFailure: EngineError?
     /// Whether the menu-bar icon shows how many cards are due: off by
     /// default, so Ficha doesn't pressure Lucas.
     var showsDueCount = Preferences.showsDueCount {
@@ -66,7 +71,7 @@ final class AppModel {
     private init(engine: Engine, debugTools: DebugTools?) throws(EngineError) {
         self.engine = engine
         self.debugTools = debugTools
-        settings = Preferences.reviewSettings(with: try Self.progressSettings(of: engine))
+        settings = Preferences.reviewSettings(with: try Self.movedInProgressSettings(of: engine))
         backups = engine.openBackups()
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
@@ -214,15 +219,28 @@ final class AppModel {
     /// brought back a copy's. When they can't be read, they stay as they were
     /// (the engine logs why).
     private func readProgressSettings() {
-        guard let progress = try? Self.progressSettings(of: engine), progress != settings.progress else { return }
+        guard let progress = try? Self.movedInProgressSettings(of: engine), progress != settings.progress else {
+            return
+        }
         settings.progress = progress
+    }
+
+    /// Has the engine keep those of the settings that decide a card's
+    /// progress that Lucas changed in Settings from `old`, or keeps why it
+    /// couldn't, for Settings to say.
+    private func keepProgressSettings(changedFrom old: ProgressSettings) {
+        do {
+            try engine.saveProgressSettings(settings.progress, changedFrom: old)
+        } catch {
+            progressSettingsFailure = error
+        }
     }
 
     /// The settings that decide a card's progress, as `engine`'s database
     /// holds them, once the engine moved in those the preferences kept before
     /// they synced, when it held none: at the update, whether the CLI opened
     /// the database first, and after a restore of a copy from before it.
-    private static func progressSettings(of engine: Engine) throws(EngineError) -> ProgressSettings {
+    private static func movedInProgressSettings(of engine: Engine) throws(EngineError) -> ProgressSettings {
         try engine.moveInProgressSettings { Preferences.progressSettingsBeforeSync() }
         return try engine.progressSettings()
     }

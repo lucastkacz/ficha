@@ -250,9 +250,10 @@ final class SyncedFilesTests {
 
         try mac.sync.sendWhatChanged(to: mac.iCloud)
         try await mac.iCloud.sendChanges()
-        var changed = try mac.engine.progressSettings()
+        let before = try mac.engine.progressSettings()
+        var changed = before
         changed.ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
-        try mac.engine.saveProgressSettings(changed)
+        try mac.engine.saveProgressSettings(changed, changedFrom: before)
         try await mac.iCloud.fetchChanges()
         try await mac.iCloud.sendChanges()
 

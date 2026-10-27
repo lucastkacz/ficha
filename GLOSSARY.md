@@ -179,6 +179,10 @@ _Avoid_: schedule, intervals, boxes
 A card's place on the ladder, which sets how long it waits before it's due again.
 _Avoid_: box, level, interval
 
+**Settings that decide progress**:
+The ladder, how many new cards a day the user meets, and after how many "Don't know" a card is forgotten often. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
+_Avoid_: synced settings, review settings
+
 **Due**:
 A card on the ladder whose wait is over.
 _Avoid_: pending, ready
@@ -255,5 +259,5 @@ _Avoid_: revert, roll back
 ### Sync
 
 **Sync**:
-Keeping the user's cards, their progress and the inbox the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since a deletion reaches every device.
+Keeping the user's cards, their progress, the inbox and the settings that decide progress the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since a deletion reaches every device.
 _Avoid_: cloud, mirror, upload

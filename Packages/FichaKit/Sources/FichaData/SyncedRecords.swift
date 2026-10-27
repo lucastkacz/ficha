@@ -227,6 +227,39 @@ func keep(_ systemFields: Data?, of id: ICloudRecordID, in db: Database) throws 
         arguments: [id.zone.name, id.name, systemFields])
 }
 
+/// The record `row` syncs as, without what iCloud said of it: `values`, and
+/// when each of `fields` last changed, of those that changed since the row
+/// came in.
+func syncedRecord(
+    of row: SyncedRow, holding values: [String: ICloudValue?], andTimesOf fields: [SyncedField], in db: Database
+) throws -> ICloudRecord {
+    let times = try fieldTimes(of: row, in: db)
+    var values = values
+    for field in fields {
+        values[field.timeKey] = times[field].map { .int($0.wholeMilliseconds) }
+    }
+    return ICloudRecord(id: row.recordID, type: row.recordType.rawValue, fields: values, systemFields: nil)
+}
+
+/// Has `take` apply to `row` those of `fields` whose change in `record`, from
+/// iCloud, wins over the one in `own`, the record the row syncs as on this
+/// device, as `FieldChange` decides, then keeps when each of them changed, as
+/// `record` says. Each field's value is under its name in both records.
+func takeLatestChanges(
+    of fields: [SyncedField], in record: ICloudRecord, over own: ICloudRecord, to row: SyncedRow, in db: Database,
+    with take: (_ won: Set<SyncedField>) throws -> Void
+) throws {
+    let incoming = try record.fieldTimes(of: fields)
+    let local = try own.fieldTimes(of: fields)
+    let won = Set(
+        fields.filter { field in
+            FieldChange(changedAt: incoming[field], holdsSomething: record.value(of: field.rawValue) != nil)
+                .wins(over: FieldChange(changedAt: local[field], holdsSomething: own.value(of: field.rawValue) != nil))
+        })
+    try take(won)
+    try stamp(incoming.filter { won.contains($0.key) }, of: row, in: db)
+}
+
 /// Keeps `times` as when each of `row`'s fields last changed.
 func stamp(_ times: [SyncedField: Date], of row: SyncedRow, in db: Database) throws {
     for (field, time) in times {
@@ -283,6 +316,29 @@ extension ICloudRecord {
         case .int(let milliseconds)?: return Date(wholeMilliseconds: milliseconds)
         case .string?, .double?, .asset?:
             throw unreadable("A record from iCloud holds something else where a time should be")
+        }
+    }
+
+    /// The whole number the field `key` holds, or an error when it holds
+    /// none.
+    func integer(_ key: String) throws -> Int {
+        guard let number = try optionalInteger(key) else {
+            throw unreadable("A record from iCloud has no number where it should")
+        }
+        return number
+    }
+
+    /// The whole number the field `key` holds, or nil when it holds nothing.
+    func optionalInteger(_ key: String) throws -> Int? {
+        switch value(of: key) {
+        case nil: return nil
+        case .int(let number)?:
+            guard let number = Int(exactly: number) else {
+                throw unreadable("A record from iCloud holds a number too large for this device")
+            }
+            return number
+        case .string?, .double?, .asset?:
+            throw unreadable("A record from iCloud holds something else where a number should be")
         }
     }
 }

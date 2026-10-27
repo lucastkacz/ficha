@@ -21,6 +21,23 @@ public struct ProgressSettings: Sendable, Equatable {
         self.newCardsPerDay = newCardsPerDay
         self.forgottenOftenAfter = forgottenOftenAfter
     }
+
+    /// These settings, but for those that `changed` changed from `old`,
+    /// which it gives: the user changed those, and these may hold another
+    /// device's later change to the others.
+    public func taking(_ changed: ProgressSettings, changedFrom old: ProgressSettings) -> ProgressSettings {
+        var settings = self
+        if changed.ladder != old.ladder {
+            settings.ladder = changed.ladder
+        }
+        if changed.newCardsPerDay != old.newCardsPerDay {
+            settings.newCardsPerDay = changed.newCardsPerDay
+        }
+        if changed.forgottenOftenAfter != old.forgottenOftenAfter {
+            settings.forgottenOftenAfter = changed.forgottenOftenAfter
+        }
+        return settings
+    }
 }
 
 extension ReviewSettings {
