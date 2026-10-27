@@ -190,18 +190,6 @@ func keep(_ systemFields: Data?, of id: ICloudRecordID, in db: Database) throws 
         arguments: [id.zone.name, id.name, systemFields])
 }
 
-/// Whether a field's change, made at `incoming` on another device, wins over
-/// this device's, made at `local`: when it's as late or later. A time that's
-/// nil is a field that hasn't changed since its row came in, older than any
-/// change. iCloud's wins a tie, so every device ends with what iCloud holds.
-func isLatest(_ incoming: Date?, comparedWith local: Date?) -> Bool {
-    switch (incoming, local) {
-    case (_, nil): true
-    case (nil, _?): false
-    case (let incoming?, let local?): incoming >= local
-    }
-}
-
 /// Keeps `times` as when each of `row`'s fields last changed.
 func stamp(_ times: [SyncedField: Date], of row: SyncedRow, in db: Database) throws {
     for (field, time) in times {

@@ -26,7 +26,7 @@ struct SyncedTable: Sendable {
 
     /// A field that keeps when it last changed, with the columns it's made of.
     struct Field: Sendable {
-        let field: SyncedField
+        let syncedField: SyncedField
         let columns: [SyncedColumn]
         /// How the row with an id takes the field from a record, when one
         /// place must set it, as a card's flag and burial (`CODING_STANDARDS.md`),
@@ -34,10 +34,10 @@ struct SyncedTable: Sendable {
         let take: (@Sendable (_ record: ICloudRecord, _ id: Int64, _ db: Database) throws -> Void)?
 
         init(
-            _ field: SyncedField, _ columns: SyncedColumn...,
+            _ syncedField: SyncedField, _ columns: SyncedColumn...,
             takenWith take: (@Sendable (_ record: ICloudRecord, _ id: Int64, _ db: Database) throws -> Void)? = nil
         ) {
-            self.field = field
+            self.syncedField = syncedField
             self.columns = columns
             self.take = take
         }
@@ -140,7 +140,7 @@ struct SyncedTable: Sendable {
             values[column.key] = try column.value(in: stored, in: db)
         }
         let times = try fieldTimes(of: synced, in: db)
-        for field in fields.map(\.field) {
+        for field in fields.map(\.syncedField) {
             values[field.timeKey] = times[field].map { .int($0.wholeMilliseconds) }
         }
         return ICloudRecord(id: synced.recordID, type: synced.recordType.rawValue, fields: values, systemFields: nil)
@@ -153,14 +153,23 @@ struct SyncedTable: Sendable {
     /// nothing, when the record refers to a row the device doesn't hold yet.
     func apply(_ record: ICloudRecord, toRowWith uuid: UUID, in db: Database) throws -> Bool {
         let synced = syncedRow(uuid)
-        let incomingTimes = try record.fieldTimes(of: fields.map(\.field))
+        let incomingTimes = try record.fieldTimes(of: fields.map(\.syncedField))
         guard let stored = try storedRow(with: uuid, in: db) else {
             return try insert(record, as: uuid, changedAt: incomingTimes, in: db)
         }
         let localTimes = try fieldTimes(of: synced, in: db)
         var assignments: [(column: String, value: DatabaseValue)] = []
         var won: [Field] = []
-        for field in fields where isLatest(incomingTimes[field.field], comparedWith: localTimes[field.field]) {
+        for field in fields {
+            let incoming = FieldChange(
+                changedAt: incomingTimes[field.syncedField],
+                holdsSomething: field.columns.contains { record.value(of: $0.key) != nil })
+            let local = FieldChange(
+                changedAt: localTimes[field.syncedField],
+                holdsSomething: field.columns.contains { !(stored[$0.name] as DatabaseValue).isNull })
+            guard incoming.wins(over: local) else {
+                continue
+            }
             won.append(field)
             guard field.take == nil else {
                 continue
@@ -188,7 +197,7 @@ struct SyncedTable: Sendable {
         for field in won {
             try field.take?(record, id, db)
         }
-        try stamp(incomingTimes.filter { time in won.contains { $0.field == time.key } }, of: synced, in: db)
+        try stamp(incomingTimes.filter { time in won.contains { $0.syncedField == time.key } }, of: synced, in: db)
         try check(id, db)
         return true
     }
