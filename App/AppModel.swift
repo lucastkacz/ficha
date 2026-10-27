@@ -20,11 +20,9 @@ final class AppModel {
     var settings: ReviewSettings {
         didSet {
             Preferences.save(settings)
-            if settings.progress != oldValue.progress {
-                // When the engine can't keep them, it logs why, and Settings
-                // shows them until they're read again.
-                try? engine.saveProgressSettings(settings.progress)
-            }
+            // The engine keeps them when they changed. When it can't, it logs
+            // why, and Settings shows them until they're read again.
+            try? engine.saveProgressSettings(settings.progress)
             countProgress()
         }
     }

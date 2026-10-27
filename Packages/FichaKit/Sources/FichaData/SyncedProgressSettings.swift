@@ -21,16 +21,7 @@ extension Engine {
     /// to the user's other devices. When none changed, the database doesn't
     /// either, and no engine hears of it.
     public func saveProgressSettings(_ settings: ProgressSettings) throws(EngineError) {
-        let changed = try writeWithoutTelling { db in
-            guard try (storedProgressSettings(in: db) ?? ReviewSettings.defaults.progress) != settings else {
-                return false
-            }
-            try store(settings, in: db)
-            return true
-        }
-        if changed {
-            databaseChanges.post()
-        }
+        try store(settings) { stored in (stored ?? ReviewSettings.defaults.progress) != settings }
     }
 
     /// Moves in the settings that decide a card's progress as this device
@@ -45,15 +36,24 @@ extension Engine {
         guard try read(storedProgressSettings(in:)) == nil else {
             return
         }
-        let settings = kept()
-        let movedIn = try writeWithoutTelling { db in
-            guard try storedProgressSettings(in: db) == nil else {
+        try store(kept()) { stored in stored == nil }
+    }
+
+    /// Keeps `settings` as the settings that decide a card's progress, in one
+    /// transaction, when `isChange` says so of those the database holds, or
+    /// of nil when it holds none, and only then tells every engine on the
+    /// database that it changed.
+    private func store(_ settings: ProgressSettings, when isChange: (ProgressSettings?) -> Bool)
+        throws(EngineError)
+    {
+        let changed = try writeWithoutTelling { db in
+            guard isChange(try storedProgressSettings(in: db)) else {
                 return false
             }
-            try store(settings, in: db)
+            try FichaData.store(settings, in: db)
             return true
         }
-        if movedIn {
+        if changed {
             databaseChanges.post()
         }
     }
@@ -174,8 +174,11 @@ extension ICloudRecord {
     fileprivate func optionalInteger(_ key: String) throws -> Int? {
         switch value(of: key) {
         case nil: return nil
-        // A record holds 64 bits, as Int does on every device Ficha runs on.
-        case .int(let number)?: return Int(number)
+        case .int(let number)?:
+            guard let number = Int(exactly: number) else {
+                throw unreadable("A record from iCloud holds a number too large for this device")
+            }
+            return number
         case .string?, .double?: throw unreadable("A record from iCloud holds something else where a number should be")
         }
     }
