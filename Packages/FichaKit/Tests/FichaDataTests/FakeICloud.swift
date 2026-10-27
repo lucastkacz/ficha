@@ -46,6 +46,12 @@ final class FakeICloud: Sendable {
         database.withLock(\.saves)
     }
 
+    /// The records it holds now, in every zone, for a test that checks what
+    /// iCloud keeps.
+    var records: [ICloudRecord] {
+        database.withLock { $0.zones.values.flatMap { $0.records.values.map(\.record) } }
+    }
+
     /// Saves `record` as a device with a newer Ficha would, in a zone it
     /// has, for a test.
     func saveFromANewerFicha(_ record: ICloudRecord) {
@@ -127,7 +133,9 @@ final class FakeICloud: Sendable {
 extension FakeICloud.Database {
     /// Saves `record`, when the device that sends it heard of its latest
     /// version or of none, and returns it as saved, with the system fields of
-    /// a new version, or why it isn't.
+    /// a new version, or why it isn't. A record saved with none after it was
+    /// deleted is a new one, as in CloudKit: a device that fetches from
+    /// before the deletion gets it, and not the deletion.
     fileprivate mutating func save(_ record: ICloudRecord) -> Result<ICloudRecord, ICloudError> {
         guard let zone = zones[record.id.zone] else {
             return .failure(.zoneNotFound)
@@ -142,6 +150,7 @@ extension FakeICloud.Database {
             saves += 1
             let saved = record.with(systemFields: Data("change \(lastChange)".utf8))
             zones[record.id.zone]?.records[record.id.name] = FakeICloud.Stored(record: saved, change: lastChange)
+            zones[record.id.zone]?.deletions[record.id.name] = nil
             return .success(saved)
         }
     }
