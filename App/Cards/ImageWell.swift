@@ -99,7 +99,7 @@ struct ImageWell: View {
 
     /// Puts the image `pasteboard` holds on the side.
     private func take(from pasteboard: NSPasteboard) {
-        put(DroppedImage(pasteboardItems: (pasteboard.pasteboardItems ?? []).map(AppKitPasteboardItem.init)))
+        put(DroppedImage(pasteboardItems: AppKitPasteboardItem.items(of: pasteboard)))
     }
 }
 
@@ -114,8 +114,7 @@ extension View {
             // paste an image.
             if hasFocus {
                 Button {
-                    let items = (NSPasteboard.general.pasteboardItems ?? []).map(AppKitPasteboardItem.init)
-                    if let image = DroppedImage(pastedIntoText: items) {
+                    if let image = DroppedImage(pastedIntoText: AppKitPasteboardItem.items(of: .general)) {
                         put(image)
                     } else {
                         // To the field's editor, as the Edit menu's Paste.
@@ -145,5 +144,10 @@ private struct AppKitPasteboardItem: PasteboardItem {
 
     func data(ofType type: String) -> Data? {
         item.data(forType: NSPasteboard.PasteboardType(type))
+    }
+
+    /// The items `pasteboard` holds.
+    static func items(of pasteboard: NSPasteboard) -> [AppKitPasteboardItem] {
+        (pasteboard.pasteboardItems ?? []).map(AppKitPasteboardItem.init)
     }
 }

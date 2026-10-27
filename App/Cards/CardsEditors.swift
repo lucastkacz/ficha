@@ -4,7 +4,8 @@ import SwiftUI
 
 /// The fields the user edits a card in, in place of its detail: its type, or
 /// None, front and back, each with its text, its image and its sound, dragged
-/// or pasted under it, tags, source and Both ways, under the flag's note when
+/// or pasted under it, an image also with ⌘V in its text while the clipboard
+/// holds no text, tags, source and Both ways, under the flag's note when
 /// it's flagged. Return saves, Option-Return starts a new line, and Escape
 /// cancels, as in the capture window, unless the search field has the focus.
 /// Save is off while a sound converts. Saving with a side that has neither

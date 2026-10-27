@@ -144,7 +144,7 @@ struct CardsWindowImageTests {
         #expect(window.failure?.error == .notAnImage)
     }
 
-    @Test("⌘V in a side's text brings a copied image only while the clipboard holds no text, which the text takes")
+    @Test("⌘V in a side's text brings a copied image or an image's file only while the clipboard holds no text")
     func pastingIntoASidesTextBringsAnImageWithoutText() throws {
         let png = try picture(width: 800, height: 600)
         let screenshot = Dragged([("public.png", png)])
@@ -154,11 +154,15 @@ struct CardsWindowImageTests {
         ])
         let words = Dragged([("public.utf8-plain-text", Data("petricor".utf8))])
         let webAddress = Dragged([("public.url", Data("https://aves.example/hornero.png".utf8))])
+        let nest = URL(filePath: "/Users/lucas/Pictures/nido.jpg")
+        let song = URL(filePath: "/Users/lucas/Music/zamba.m4a")
 
         #expect(DroppedImage(pastedIntoText: [screenshot]) == .data(png))
         #expect(DroppedImage(pastedIntoText: [fromFinder]) == nil)
         #expect(DroppedImage(pastedIntoText: [words, screenshot]) == nil)
         #expect(DroppedImage(pastedIntoText: [webAddress]) == nil)
+        #expect(DroppedImage(pastedIntoText: [Dragged([("public.file-url", nest.dataRepresentation)])]) == .file(nest))
+        #expect(DroppedImage(pastedIntoText: [Dragged([("public.file-url", song.dataRepresentation)])]) == nil)
     }
 
     @Test("the detail shows the selected card's images")
