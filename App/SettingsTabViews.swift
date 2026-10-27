@@ -419,7 +419,8 @@ private func spans(
 
 /// The separations to pick from.
 private let separations: [Duration] = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240].map(Duration.minutes)
-/// The look-aheads to pick from.
+/// The look-aheads to pick from, up to `ReviewSettings.longestLookAhead`,
+/// which the ladder counts on to tell two devices' reviews apart.
 private let lookAheads: [Duration] = [0, 5, 10, 15, 20, 30, 45, 60].map(Duration.minutes)
 /// The auto-closes to pick from.
 private let autoCloses: [Duration] = [1, 2, 3, 5, 10, 15, 20, 30, 60].map(Duration.minutes)

@@ -31,7 +31,10 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// What brought the card, or nil for a placement, which nothing brought.
     public let trigger: Trigger?
     /// Whether it was a review ahead: of a card that wasn't due yet, which
-    /// Lucas asked for. Only its again counts (ADR 0002).
+    /// Lucas asked for. Only its again counts (ADR 0002). It's what the
+    /// device that recorded it knew then: the ladder also counts a good as
+    /// ahead when another device's good had answered the same wait
+    /// (ADR 0017).
     public let isAhead: Bool
 
     /// An answer: a first view or a review of the card with the id `cardID`,

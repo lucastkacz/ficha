@@ -76,9 +76,10 @@ public enum EngineError: Error, Equatable {
     /// id was approved or discarded outside the panel, as a refine session or
     /// the Cards window can, so ⌘Z can't take it back. The card didn't change.
     case cannotUndoFollowUp(Int64)
-    /// The review log of the card with this id doesn't start with its first
-    /// view or a placement, or has a second one later, so it isn't known
-    /// where the card stands. The engine logs it.
+    /// The review log of the card with this id has reviews but neither a
+    /// first view nor a placement, or a placement that doesn't start it or is
+    /// on a step below the first, so it isn't known where the card stands.
+    /// The engine logs it.
     case unreadableReviewLog(Int64)
     /// SQLite couldn't open, read or write the database. The engine logs why.
     case storage

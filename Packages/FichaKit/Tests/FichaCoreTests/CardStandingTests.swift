@@ -80,8 +80,48 @@ struct CardStandingTests {
             #expect(!outOfReviews.isLearned(given: learned, on: ladder))
         }
     }
+
+    // Once Ficha syncs, a card's review log joins what the Mac and the iPhone
+    // each recorded without a connection (ADR 0017).
+
+    @Test("a card two devices gave a first view is in Lucas's reviews, due an hour after the first")
+    func twoFirstViewsMakeTheCardDueOnce() throws {
+        let log = [firstView(at: start), firstView(at: start.addingTimeInterval(10 * 60))]
+
+        let standing = try Ladder.standard.standing(after: log)
+
+        #expect(!CardStanding.inReviews.isNew(given: standing))
+        #expect(CardStanding.inReviews.due(given: standing) == start.addingTimeInterval(hour))
+    }
+
+    @Test("a card two devices rated “Know it” for one wait is due one step up, counted from the first rating")
+    func twoKnowItsForOneWaitMakeTheCardDueOneStepUp() throws {
+        // An import placed the card on the standard ladder's fifth step, which
+        // waits 12 days; the sixth waits 30 days, from which a card is learned.
+        let placed = ReviewLogEntry(placing: 1, on: Placement(step: 4, due: start), at: start - 12 * day)
+        let onTheMac = review(.good, at: start)
+        let onTheIPhone = review(.good, at: start.addingTimeInterval(2 * hour))
+
+        let standing = try Ladder.standard.standing(after: [placed, onTheMac, onTheIPhone])
+
+        #expect(CardStanding.inReviews.due(given: standing) == start.addingTimeInterval(30 * day))
+        #expect(CardStanding.inReviews.isLearned(given: standing, on: .standard))
+    }
 }
 
+/// The first view of the card with the id 1 at `time`, from review now.
+private func firstView(at time: Date) -> ReviewLogEntry {
+    ReviewLogEntry(cardID: 1, kind: .firstView, answeredAt: time, responseTime: .seconds(8), trigger: .reviewNow)
+}
+
+/// A review of the card with the id 1 with `rating` at `time`, from review
+/// now.
+private func review(_ rating: Rating, at time: Date) -> ReviewLogEntry {
+    ReviewLogEntry(cardID: 1, kind: .review(rating), answeredAt: time, responseTime: .seconds(3), trigger: .reviewNow)
+}
+
+private let hour: TimeInterval = 60 * 60
+private let day: TimeInterval = 24 * hour
 private let start = Date(timeIntervalSince1970: 1_760_000_000)
 private let flag = Flag(note: "Falta un ejemplo", flaggedAt: start.addingTimeInterval(-3_600))
 private let buriedAt = start.addingTimeInterval(-60)

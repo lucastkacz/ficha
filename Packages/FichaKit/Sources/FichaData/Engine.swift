@@ -281,7 +281,7 @@ func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineErro
     } catch let error as EngineError {
         throw error
     } catch let error as UnexpectedReviewLog {
-        logger.error("Card \(error.cardID)'s review log doesn't start with its first view, or has a second one")
+        logger.error("Card \(error.cardID)'s review log has no first view, or a placement that doesn't start it")
         throw .unreadableReviewLog(error.cardID)
     } catch {
         logger.error("The database failed: \(String(describing: error))")
