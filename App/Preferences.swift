@@ -163,9 +163,10 @@ enum Preferences {
         set { write(newValue, encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
     }
 
-    /// Whether the real Ficha already turned on starting at login, its
-    /// default, the first time it launched: from then on, it's as Lucas
-    /// leaves it.
+    /// Whether start at login is set up: the user answered whether the real
+    /// Ficha opens at login, which it asks at its first launch
+    /// (`StartAtLoginQuestion`), or, before it asked, it turned start at login
+    /// on at its first launch. From then on, it's as the user leaves it.
     static var startsAtLoginIsSetUp: Bool {
         get { read(.startsAtLoginIsSetUp, as: Bool.self) { $0 } ?? false }
         set { write(newValue, for: .startsAtLoginIsSetUp, unless: false) }

@@ -1,0 +1,6 @@
+# The site GitHub Pages publishes from this folder alone, through
+# .github/workflows/pages.yml: Ficha's privacy policy, which Settings' About
+# tab links to. GitHub Pages' theme, Primer, heads a page whose title isn't the
+# site's with the site's, linked to a home page this site doesn't have, so the
+# site's title is the page's.
+title: Ficha Privacy Policy

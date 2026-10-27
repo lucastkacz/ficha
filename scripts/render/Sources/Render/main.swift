@@ -42,6 +42,11 @@ enum Window: String {
     case reviewPanel = "review-panel"
     /// Settings, on its Ladder tab, with those settings not Ficha's.
     case ladder
+    /// Settings, on its About tab.
+    case about
+    /// The alert the real Ficha shows at its first launch, which asks whether
+    /// it opens at login.
+    case startAtLogin = "start-at-login"
 }
 
 /// What the tool was asked to draw.
@@ -281,8 +286,9 @@ let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
                  package), cards-anki-imported (once it came in, a card it put on a step selected), backups
-                 (Settings, on its Backups tab), backups-failed (once a backup failed), or Settings on another
-                 tab, with the settings that decide progress not Ficha's: appearances, review-panel or ladder
+                 (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
+                 or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), about
+                 (Settings, on its About tab) or start-at-login (the alert the real Ficha shows at its first launch)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -780,7 +786,8 @@ func hours(_ count: Int) -> TimeInterval {
 /// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsImport, .cardsImportAnki: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+        return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsAnkiImported: return try ankiImportedModel()
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
     case .backups: return try AppModel(engine: try backupsEngine())
@@ -815,15 +822,22 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try ankiImportedState(of: model))
         return window
-    case .backups, .backupsFailed: return settingsWindow(on: .backups, model: model)
-    case .appearances: return settingsWindow(on: .appearances, model: model)
-    case .reviewPanel: return settingsWindow(on: .reviewPanel, model: model)
-    case .ladder: return settingsWindow(on: .ladder, model: model)
+    case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
+    case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
+    case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
+    case .ladder: return settingsTabWindow(model: model, openingOn: .ladder)
+    case .about: return settingsTabWindow(model: model, openingOn: .about)
+    case .startAtLogin:
+        // The alert's own window, laid out as `runModal()` would show it,
+        // for the real Ficha, the only one that asks.
+        let alert = StartAtLogin.questionAlert(for: .real)
+        alert.layout()
+        return alert.window
     }
 }
 
-/// The Settings window on `tab`, closed, as tall as the tab.
-func settingsWindow(on tab: SettingsTab, model: AppModel) -> NSWindow {
+/// Settings, at the size it opens at, on `tab`.
+func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab) -> NSWindow {
     let window = AppWindow(
         tabs: SettingsTabViewController(
             model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openingOn: tab))
