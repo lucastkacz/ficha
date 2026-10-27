@@ -103,9 +103,6 @@ private struct CardFormSheet: View {
     @FocusState private var isFrontFocused: Bool
     /// The part of the form that has the focus, which it scrolls to.
     @FocusedValue(\.cardFormPart) private var focusedPart
-    /// Whether the form is taller than the sheet, which shows a scroll bar
-    /// only then: with a mouse connected, macOS shows one on any scroll view.
-    @State private var formScrolls = false
     /// The space between the form's parts, and around them.
     private let spacing: CGFloat = 16
     private let padding: CGFloat = 20
@@ -122,7 +119,7 @@ private struct CardFormSheet: View {
                     Divider()
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    ScrollViewReader { scroller in
+                    ScrollViewReader { proxy in
                         ScrollView {
                             VStack(alignment: .leading, spacing: spacing) {
                                 Text("New Card", comment: "The title of the Cards window's card form.")
@@ -135,20 +132,12 @@ private struct CardFormSheet: View {
                         .frame(maxHeight: maximumHeight - padding - buttonsHeight)
                         .fixedSize(horizontal: false, vertical: true)
                         .scrollBounceBehavior(.basedOnSize)
-                        .onScrollGeometryChange(for: Bool.self) { geometry in
-                            // A sheet's window is a whole number of points
-                            // tall, which can leave the form half a point
-                            // taller than what shows it.
-                            geometry.contentSize.height - geometry.containerSize.height >= 1
-                        } action: { _, scrolls in
-                            formScrolls = scrolls
-                        }
-                        .scrollIndicators(formScrolls ? .automatic : .never)
+                        .scrollBarOnlyWhenItOverflows()
                         // Tab, and Add going back to the front, can reach a
                         // part out of view.
                         .onChange(of: focusedPart) {
                             if let focusedPart {
-                                scroller.scrollTo(focusedPart)
+                                proxy.scrollTo(focusedPart)
                             }
                         }
                     }

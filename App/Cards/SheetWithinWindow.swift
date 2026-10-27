@@ -9,6 +9,31 @@ extension View {
     ) -> some View {
         modifier(SheetWithinWindow(isPresented: isPresented, sheet: content))
     }
+
+    /// Shows the scroll bar of a scroll view in such a sheet only while what
+    /// it holds is taller than it is: with a mouse connected, macOS shows one
+    /// on any scroll view.
+    func scrollBarOnlyWhenItOverflows() -> some View {
+        modifier(ScrollBarOnlyWhenItOverflows())
+    }
+}
+
+/// What `scrollBarOnlyWhenItOverflows` does.
+private struct ScrollBarOnlyWhenItOverflows: ViewModifier {
+    /// Whether what the scroll view holds is taller than it is.
+    @State private var overflows = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                // A sheet's window is a whole number of points tall, which can
+                // leave what scrolls half a point taller than its scroll view.
+                geometry.contentSize.height - geometry.containerSize.height >= 1
+            } action: { _, overflows in
+                self.overflows = overflows
+            }
+            .scrollIndicators(overflows ? .automatic : .never)
+    }
 }
 
 /// The sheet `sheetWithinWindow` presents, and the window's height it keeps
@@ -38,8 +63,8 @@ private struct SheetWithinWindow<Sheet: View>: ViewModifier {
             .sheet(isPresented: $isPresented) {
                 let height = openingMaximumHeight ?? maximumHeight
                 sheet(height)
-                    // The height the sheet opened with, which the window's
-                    // may have outgrown by the time it appears.
+                    // What the content was built with, not `maximumHeight`
+                    // as it is once the sheet appears.
                     .onAppear {
                         openingMaximumHeight = height
                     }

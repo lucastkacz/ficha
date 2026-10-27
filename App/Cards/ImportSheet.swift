@@ -265,6 +265,7 @@ struct ImportSheet: View {
             .frame(maxHeight: maximumHeight - 2 * padding - spacing - buttonsHeight)
             .fixedSize(horizontal: false, vertical: true)
             .scrollBounceBehavior(.basedOnSize)
+            .scrollBarOnlyWhenItOverflows()
             .disabled(importing.busy != nil)
             HStack {
                 if importing.busy == nil {
