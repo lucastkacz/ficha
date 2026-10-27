@@ -69,15 +69,24 @@ final class FakeICloud: Sendable {
         database.withLock { $0.sends[id] ?? 0 }
     }
 
-    /// Whether it holds the record with this ID.
-    func holds(_ id: ICloudRecordID) -> Bool {
-        database.withLock { $0.zones[id.zone]?.records[id.name] != nil }
-    }
-
     /// The records it holds now, in every zone, for a test that checks what
     /// iCloud keeps.
     var records: [ICloudRecord] {
         database.withLock { $0.zones.values.flatMap { $0.records.values.map(\.record) } }
+    }
+
+    /// The records `ids` name, as it holds them now, and as deleted those it
+    /// deleted, as `CKDatabase.records(for:)` tells them apart.
+    fileprivate func records(_ ids: [ICloudRecordID]) -> ICloudEvent.FetchedRecordZoneChanges {
+        database.withLock { database in
+            ICloudEvent.FetchedRecordZoneChanges(
+                modifications: ids.compactMap { database.zones[$0.zone]?.records[$0.name]?.record },
+                deletions: ids.compactMap { id in
+                    database.zones[id.zone]?.deletions[id.name].map {
+                        ICloudEvent.RecordDeletion(id: id, type: $0.type)
+                    }
+                })
+        }
     }
 
     /// Saves `zones`, those it doesn't have yet, and returns them all.
@@ -205,6 +214,13 @@ final class FakeSyncEngine: ICloudSyncEngine {
     private let delegate: Sync
     private let state: Mutex<State>
     private let offline = Mutex(false)
+    private let losingFetchedFiles = Mutex(false)
+    private let gettingItsOwnSavesBack = Mutex(true)
+    /// The system fields of the version of each record it saved last.
+    private let ownSaves = Mutex<[ICloudRecordID: Data]>([:])
+    private let whileSaving = Mutex<(@Sendable () throws -> Void)?>(nil)
+    /// The records the device asked for, which it gets at its next fetch.
+    private let asked = Mutex<[ICloudRecordID]>([])
 
     /// What it keeps, which `CKSyncEngine` saves through its state's
     /// serialization.
@@ -228,6 +244,30 @@ final class FakeSyncEngine: ICloudSyncEngine {
     var isOffline: Bool {
         get { offline.withLock { $0 } }
         set { offline.withLock { $0 = newValue } }
+    }
+
+    /// Whether the files of the records it fetches are gone before the
+    /// device reads them, as when the device can't copy them out of the
+    /// folder the system cleans.
+    var losesFetchedFiles: Bool {
+        get { losingFetchedFiles.withLock { $0 } }
+        set { losingFetchedFiles.withLock { $0 = newValue } }
+    }
+
+    /// Whether a fetch hands it back the records it saved itself, as they
+    /// are until another device saves them. The fake does, unless a test
+    /// says otherwise; CloudKit usually doesn't, but may (Apple's developer
+    /// forums, thread 774014).
+    var getsItsOwnSavesBack: Bool {
+        get { gettingItsOwnSavesBack.withLock { $0 } }
+        set { gettingItsOwnSavesBack.withLock { $0 = newValue } }
+    }
+
+    /// Runs `work` once, after iCloud saves the next records it sends and
+    /// before it tells the device: a change the user makes while an upload
+    /// is on its way.
+    func onceSaved(_ work: @escaping @Sendable () throws -> Void) {
+        whileSaving.withLock { $0 = work }
     }
 
     func add(pendingRecordZoneChanges changes: [ICloudPendingRecordZoneChange]) {
@@ -291,8 +331,17 @@ final class FakeSyncEngine: ICloudSyncEngine {
                 }
             }
             if !toSave.isEmpty || !toDelete.isEmpty {
-                try delegate.handle(
-                    .sentRecordZoneChanges(iCloud.modify(saving: toSave, deleting: toDelete)), from: self)
+                let sent = iCloud.modify(saving: toSave, deleting: toDelete)
+                ownSaves.withLock { saves in
+                    for record in sent.savedRecords {
+                        saves[record.id] = record.systemFields
+                    }
+                }
+                try whileSaving.withLock { work in
+                    defer { work = nil }
+                    return work
+                }?()
+                try delegate.handle(.sentRecordZoneChanges(sent), from: self)
             }
         }
         Issue.record("The device kept sending: each answer left changes waiting.")
@@ -304,18 +353,66 @@ final class FakeSyncEngine: ICloudSyncEngine {
         try await fetchChanges(in: nil)
     }
 
+    /// Asks for the records `ids` name, which it hands the device at its
+    /// next fetch: the app's engine hands them over whenever iCloud answers.
+    func fetchRecords(_ ids: [ICloudRecordID]) {
+        asked.withLock { asked in
+            asked.append(contentsOf: ids.filter { !asked.contains($0) })
+        }
+    }
+
     /// Fetches what changed in each of `zones` since it last did, or in every
     /// zone when it's nil, as `CKSyncEngine.fetchChanges(_:)` does with a
-    /// scope of zones, says it fetched it all, and saves how far it fetched.
+    /// scope of zones, then the records the device asked for, says it
+    /// fetched it all, and saves how far it fetched.
     func fetchChanges(in zones: Set<ICloudZone>?) async throws {
         try checkOnline()
         let fetchedUpTo = state.withLock(\.fetchedUpTo)
         for (zone, changes, upTo) in iCloud.changes(since: fetchedUpTo, in: zones) {
-            try delegate.handle(.fetchedRecordZoneChanges(changes), from: self)
+            try delegate.handle(.fetchedRecordZoneChanges(losingFiles(withoutItsOwnSaves(changes))), from: self)
             state.withLock { $0.fetchedUpTo[zone.name] = upTo }
+        }
+        let asked = asked.withLock { asked in
+            defer { asked = [] }
+            return asked
+        }
+        if !asked.isEmpty {
+            try delegate.handle(.fetchedRecordZoneChanges(losingFiles(iCloud.records(asked))), from: self)
         }
         try delegate.handle(.didFetchChanges, from: self)
         try delegate.handle(.stateUpdate(serialization()), from: self)
+    }
+
+    /// `changes` without the records it saved itself, as they are until
+    /// another device saves them, when it doesn't get those back.
+    private func withoutItsOwnSaves(_ changes: ICloudEvent.FetchedRecordZoneChanges)
+        -> ICloudEvent.FetchedRecordZoneChanges
+    {
+        guard !getsItsOwnSavesBack else {
+            return changes
+        }
+        let saves = ownSaves.withLock { $0 }
+        return ICloudEvent.FetchedRecordZoneChanges(
+            modifications: changes.modifications.filter { saves[$0.id] != $0.systemFields },
+            deletions: changes.deletions)
+    }
+
+    /// `changes` with their files gone, when it loses them.
+    private func losingFiles(_ changes: ICloudEvent.FetchedRecordZoneChanges) -> ICloudEvent.FetchedRecordZoneChanges {
+        guard losesFetchedFiles else {
+            return changes
+        }
+        return ICloudEvent.FetchedRecordZoneChanges(
+            modifications: changes.modifications.map { record in
+                ICloudRecord(
+                    id: record.id, type: record.type,
+                    fields: record.fields.mapValues { value in
+                        guard case .asset(let file)? = value else {
+                            return value
+                        }
+                        return .asset(file.deletingLastPathComponent().appending(path: "gone-\(UUID().uuidString)"))
+                    }, systemFields: record.systemFields)
+            }, deletions: changes.deletions)
     }
 
     /// Throws when it's offline, as `CKSyncEngine` does when it can't reach

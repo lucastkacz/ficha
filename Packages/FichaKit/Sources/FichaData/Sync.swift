@@ -93,7 +93,7 @@ public struct Sync: Sendable {
         case .accountChange(let change):
             syncLogger.notice("The iCloud account changed: \(String(describing: change), privacy: .public)")
         case .didFetchChanges:
-            try deleteFilesNoCardUses(from: iCloud)
+            try finishFetchingFiles(with: iCloud)
         }
     }
 
@@ -147,7 +147,7 @@ public struct Sync: Sendable {
 
     /// What to send again of a record iCloud didn't save, as `failure` says
     /// why: the record again, its zone first, or nothing.
-    private func retry(_ failure: ICloudEvent.FailedRecordSave, in db: Database) throws -> (
+    func retry(_ failure: ICloudEvent.FailedRecordSave, in db: Database) throws -> (
         zone: ICloudPendingDatabaseChange?, record: ICloudPendingRecordZoneChange?
     ) {
         let id = failure.record.id

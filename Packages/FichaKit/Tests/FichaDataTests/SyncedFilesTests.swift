@@ -34,6 +34,15 @@ final class SyncedFilesTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
+    /// A device that starts syncing now and fetches what iCloud holds, as a
+    /// new iPhone would: what it keeps is what the user gets on one. It
+    /// sends nothing, so iCloud stays as the test left it.
+    func aFreshDevice() async throws -> Device {
+        let device = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
+        try await device.iCloud.fetchChanges()
+        return device
+    }
+
     @Test("a card's image and sound reach the other device, as they are on the first")
     func aCardsImageAndSoundReachTheOtherDevice() async throws {
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -54,8 +63,10 @@ final class SyncedFilesTests {
     // The iPhone puts the image on a card of its own before it first syncs,
     // as it would by importing the same deck: it sends it too, which iCloud
     // turns down, holding it already.
-    @Test("the same file on two cards is sent once, and a device that has it already keeps it once")
-    func theSameFileOnTwoCardsIsSentOnce() async throws {
+    @Test(
+        "the same file on two cards goes up once from each device that has it, and a device that has it already keeps it once"
+    )
+    func theSameFileOnTwoCardsGoesUpOnceFromEachDevice() async throws {
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let song = try await addTone(440, to: mac.engine)
         try mac.engine.create(
@@ -70,8 +81,8 @@ final class SyncedFilesTests {
             try await device.syncNow()
         }
 
-        #expect(iCloud.timesSent(SyncedFile.image(bird).recordID) == 2)
-        #expect(iCloud.timesSent(SyncedFile.sound(song).recordID) == 1)
+        #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 2)
+        #expect(iCloud.timesSent(SyncedFile(song).recordID) == 1)
         #expect(try iPhone.engine.keptImages() == [bird])
         #expect(try iPhone.engine.keptSounds() == [song])
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
@@ -137,13 +148,13 @@ final class SyncedFilesTests {
         try await mac.iCloud.fetchChanges()
         try await mac.iCloud.sendChanges()
 
-        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages() == [bird])
 
         try await mac.syncNow()
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        #expect(!iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages().isEmpty)
         #expect(try mac.engine.keptImages().isEmpty)
         #expect(try iPhone.engine.keptImages().isEmpty)
         #expect(try iPhone.engine.card(fronted: "¿Qué pájaro es?").frontImage == nil)
@@ -164,14 +175,14 @@ final class SyncedFilesTests {
         try mac.engine.edit(hornero.id, with: card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
         try await mac.syncNow()
         try await mac.syncNow()
-        #expect(!iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages().isEmpty)
 
         iPhone.iCloud.isOffline = false
         for device in [iPhone, iPhone, mac] {
             try await device.syncNow()
         }
 
-        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages() == [bird])
         #expect(try mac.engine.card(fronted: "Furnarius rufus").backImage == bird)
         #expect(try mac.engine.image(bird) == iPhone.engine.image(bird))
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
@@ -195,7 +206,7 @@ final class SyncedFilesTests {
         }
 
         #expect(try mac.engine.image(bird) == iPhone.engine.image(bird))
-        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages() == [bird])
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
     }
 
@@ -216,12 +227,12 @@ final class SyncedFilesTests {
 
         #expect(try iPhone.engine.cards().isEmpty)
         #expect(try iPhone.engine.keptImages() == [bird])
-        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages() == [bird])
 
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        #expect(!iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages().isEmpty)
         #expect(try mac.engine.keptImages().isEmpty)
         #expect(try iPhone.engine.keptImages().isEmpty)
     }
@@ -245,15 +256,74 @@ final class SyncedFilesTests {
         try await mac.iCloud.fetchChanges()
         try await mac.iCloud.sendChanges()
 
-        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages() == [bird])
 
         try await mac.syncNow()
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        #expect(!iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try await aFreshDevice().engine.keptImages().isEmpty)
         #expect(try iPhone.engine.progressSettings() == changed)
         #expect(try iPhone.engine.keptImages().isEmpty)
+    }
+
+    // The Mac's card lets go of the image while its upload is on its way, so
+    // the Mac removes it before it hears iCloud holds it, and, as CloudKit
+    // usually does, iCloud doesn't hand the Mac its own save back. The
+    // iPhone then puts the same image on a card of its own, as an import of
+    // the same deck would, which iCloud turns down, holding the Mac's.
+    @Test(
+        "an image a card lets go of while it uploads, which another device's card takes later, comes back to the first device"
+    )
+    func aFileLetGoOfWhileItUploadsComesBack() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let hornero = try mac.engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        mac.iCloud.getsItsOwnSavesBack = false
+        let macEngine = mac.engine
+        mac.iCloud.onceSaved {
+            try macEngine.edit(hornero.id, with: card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
+        }
+        try await mac.syncNow()
+        #expect(try iPhone.engine.addImage(picture(width: 800, height: 600, red: 0.8)) == bird)
+        try iPhone.engine.create(card(nil, front: "Furnarius rufus", back: "El hornero.", backImage: bird))
+
+        for device in [iPhone, mac, mac] {
+            try await device.syncNow()
+        }
+
+        #expect(try mac.engine.image(bird) == iPhone.engine.image(bird))
+    }
+
+    // The iPhone can't keep the image as it comes, as when its disk is full,
+    // so its card uses an image iCloud holds and it lacks, whose record won't
+    // change again. Meanwhile a sound no card uses any more waits in iCloud,
+    // and the iPhone deletes it only once it has the image.
+    @Test("an image that couldn't be kept as it came is fetched again, and until it is, no file leaves iCloud")
+    func aFileThatCouldntBeKeptIsFetchedAgain() async throws {
+        let song = try await addTone(440, to: mac.engine)
+        let hornero = try mac.engine.create(
+            card(nil, front: "¿Cómo canta el hornero?", back: "Así.", backSound: song))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try mac.engine.edit(hornero.id, with: card(nil, front: "¿Cómo canta el hornero?", back: "A dúo."))
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try mac.engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try mac.sync.sendWhatChanged(to: mac.iCloud)
+        try await mac.iCloud.sendChanges()
+
+        iPhone.iCloud.losesFetchedFiles = true
+        try await iPhone.syncNow()
+        try await iPhone.iCloud.sendChanges()
+
+        #expect(try await aFreshDevice().engine.keptSounds() == [song])
+
+        iPhone.iCloud.losesFetchedFiles = false
+        try await iPhone.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try iPhone.engine.image(bird) == mac.engine.image(bird))
+        #expect(try await aFreshDevice().engine.keptSounds().isEmpty)
     }
 
     // The Mac's fetch ends in sync, and its deletion of the sound waits to be
@@ -271,13 +341,13 @@ final class SyncedFilesTests {
         try iPhone.engine.create(card(nil, front: "Furnarius rufus", back: "El hornero.", frontSound: song))
         try await iPhone.syncNow()
         try await mac.syncNow()
-        #expect(!iCloud.holds(SyncedFile.sound(song).recordID))
+        #expect(try await aFreshDevice().engine.keptSounds().isEmpty)
 
         for device in [iPhone, iPhone, mac] {
             try await device.syncNow()
         }
 
-        #expect(iCloud.holds(SyncedFile.sound(song).recordID))
+        #expect(try await aFreshDevice().engine.keptSounds() == [song])
         #expect(try mac.engine.sound(song) == iPhone.engine.sound(song))
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
     }

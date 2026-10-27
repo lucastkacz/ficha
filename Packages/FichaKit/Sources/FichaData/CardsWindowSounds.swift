@@ -77,7 +77,7 @@ public struct ShownSounds: Sendable, Equatable {
         for name in names where held[name] == nil {
             if case .success = sounds[name] { continue }
             do throws(EngineError) {
-                guard try !engine.awaits(.sound(name)) else {
+                guard try !engine.isOnItsWay(name) else {
                     sounds[name] = nil
                     continue
                 }

@@ -42,18 +42,7 @@ extension Sync {
     func settleDeletions(_ sent: ICloudEvent.SentRecordZoneChanges) throws(EngineError)
         -> [ICloudEvent.FailedRecordSave]
     {
-        var gone = sent.deletedRecordIDs
-        for (id, error) in sent.failedRecordDeletes {
-            switch error {
-            case .unknownItem, .zoneNotFound:
-                gone.append(id)
-            case .retriedByTheEngine:
-                break
-            case .serverRecordChanged, .quotaExceeded, .other:
-                syncLogger.error(
-                    "iCloud didn't delete the record \(id.name, privacy: .public): \(String(describing: error))")
-            }
-        }
+        let gone = sent.deletionsThatWent()
         if !gone.isEmpty {
             try engine.writeWithoutTelling { db in
                 for id in gone {
@@ -73,6 +62,28 @@ extension Sync {
                 images: Set(deleted.flatMap(\.images)), sounds: Set(deleted.flatMap(\.sounds)))
         }
         return sent.failedRecordSaves.filter { !$0.lostToADeletion }
+    }
+}
+
+extension ICloudEvent.SentRecordZoneChanges {
+    /// The records whose deletion went: those iCloud deleted, and those whose
+    /// zone or record it no longer had, which left all the same. A deletion
+    /// iCloud refused for another reason is logged, and keeps waiting, as
+    /// one the engine tries again itself does.
+    func deletionsThatWent() -> [ICloudRecordID] {
+        var gone = deletedRecordIDs
+        for (id, error) in failedRecordDeletes {
+            switch error {
+            case .unknownItem, .zoneNotFound:
+                gone.append(id)
+            case .retriedByTheEngine:
+                break
+            case .serverRecordChanged, .quotaExceeded, .other:
+                syncLogger.error(
+                    "iCloud didn't delete the record \(id.name, privacy: .public): \(String(describing: error))")
+            }
+        }
+        return gone
     }
 }
 

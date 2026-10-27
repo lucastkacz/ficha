@@ -31,6 +31,13 @@ public protocol ICloudSyncEngine: Sendable {
     /// `CKSyncEngine.fetchChanges()` does, instead of when the engine would
     /// on its own.
     func fetchChanges() async throws
+
+    /// Asks iCloud for the records `ids` name, as it holds them now, which
+    /// no fetch of changes would bring again since they didn't change: the
+    /// app's engine reads them through `CKSyncEngine.database`'s
+    /// `records(for:)`. It tells `Sync` of them as fetched changes, and of
+    /// those iCloud lacks as deleted.
+    func fetchRecords(_ ids: [ICloudRecordID])
 }
 
 /// A zone of the user's private database in iCloud, as `CKRecordZone.ID`

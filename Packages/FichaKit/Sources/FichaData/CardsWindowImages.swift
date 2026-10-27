@@ -77,7 +77,7 @@ public struct ShownImages: Sendable, Equatable {
         for name in names where held[name] == nil {
             if case .success = images[name] { continue }
             do throws(EngineError) {
-                images[name] = try engine.awaits(.image(name)) ? nil : .success(try engine.image(name))
+                images[name] = try engine.isOnItsWay(name) ? nil : .success(try engine.image(name))
             } catch {
                 images[name] = .failure(error)
             }
