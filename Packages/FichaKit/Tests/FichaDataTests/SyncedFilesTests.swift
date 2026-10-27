@@ -268,6 +268,30 @@ final class SyncedFilesTests {
         #expect(try iPhone.engine.keptImages().isEmpty)
     }
 
+    // Where #313's account change meets this ticket: iCloud's engine starts
+    // over in the new account, and every row goes again, as #317's account
+    // change will have it. What the old account held of the files means
+    // nothing to the new one.
+    @Test("a card's image reaches the devices of another account the Mac signs into")
+    func anAccountChangeSendsTheFilesAgain() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try mac.engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try await mac.syncNow()
+        let otherAccount = FakeICloud()
+        let iPhoneThere = try Device(
+            Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: otherAccount)
+
+        try mac.sync.handle(.accountChange(.switchAccounts), from: mac.iCloud)
+        try mac.engine.saveSyncEngineState(nil)
+        try mac.engine.write { db in try recordEverythingToSend(in: db) }
+        let macThere = try Device(mac.engine, syncingThrough: otherAccount)
+        try await macThere.syncNow()
+        try await iPhoneThere.syncNow()
+
+        #expect(try iPhoneThere.engine.card(fronted: "¿Qué pájaro es?").frontImage == bird)
+        #expect(try iPhoneThere.engine.image(bird) == mac.engine.image(bird))
+    }
+
     // The Mac's card lets go of the image while its upload is on its way, so
     // the Mac removes it before it hears iCloud holds it, and, as CloudKit
     // usually does, iCloud doesn't hand the Mac its own save back. The
