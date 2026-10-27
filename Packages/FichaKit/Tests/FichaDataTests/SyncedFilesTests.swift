@@ -199,6 +199,63 @@ final class SyncedFilesTests {
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
     }
 
+    // Where #313 meets this ticket: the iPhone takes the Mac's deletion of
+    // the card, which lets go of its image, and keeps the image while iCloud
+    // holds it. Both devices end in sync, and both delete it from iCloud.
+    @Test("an image whose card another device deleted stays while iCloud holds it, and then leaves both devices")
+    func aDeletedCardsImageLeavesWithICloud() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let hornero = try mac.engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        try mac.engine.delete([hornero.id])
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try iPhone.engine.cards().isEmpty)
+        #expect(try iPhone.engine.keptImages() == [bird])
+        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(!iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try mac.engine.keptImages().isEmpty)
+        #expect(try iPhone.engine.keptImages().isEmpty)
+    }
+
+    // Where #315 meets this ticket: a change of the settings waits to go up
+    // like a card's, so the Mac's fetch doesn't end in sync until it went.
+    @Test("an image no card uses stays in iCloud while a change of the settings that decide progress waits to go up")
+    func aFileWaitsForASettingsChangeToGoUp() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let hornero = try mac.engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try mac.engine.edit(hornero.id, with: card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
+
+        try mac.sync.sendWhatChanged(to: mac.iCloud)
+        try await mac.iCloud.sendChanges()
+        var changed = try mac.engine.progressSettings()
+        changed.ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
+        try mac.engine.saveProgressSettings(changed)
+        try await mac.iCloud.fetchChanges()
+        try await mac.iCloud.sendChanges()
+
+        #expect(iCloud.holds(SyncedFile.image(bird).recordID))
+
+        try await mac.syncNow()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(!iCloud.holds(SyncedFile.image(bird).recordID))
+        #expect(try iPhone.engine.progressSettings() == changed)
+        #expect(try iPhone.engine.keptImages().isEmpty)
+    }
+
     // The Mac's fetch ends in sync, and its deletion of the sound waits to be
     // sent while the iPhone sends a card with it, which the Mac fetches only
     // after its deletion went: iCloud then lacks a sound a card uses.
