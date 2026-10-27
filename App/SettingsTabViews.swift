@@ -339,6 +339,41 @@ struct LadderSettings: View {
     }
 }
 
+/// A tab of Settings with some of the settings that decide a card's
+/// progress, in a grouped form, which says when the engine couldn't keep a
+/// change to them, as the Backups tab says what it couldn't do.
+struct ProgressSettingsForm<Settings: View>: View {
+    let model: AppModel
+    let settings: Settings
+
+    var body: some View {
+        Form { settings }
+            .formStyle(.grouped)
+            .failureAlert(failure)
+    }
+
+    /// Why the last change couldn't be kept, as an alert says it, which
+    /// closing it clears.
+    private var failure: Binding<Failure?> {
+        Binding {
+            model.progressSettingsFailure.map { error in
+                Failure(
+                    title: LocalizedStringResource(
+                        "Couldn't save the change",
+                        comment: """
+                            An alert's title in Settings, when a change to the ladder, the new cards per day or the \
+                            forgotten-often count couldn't be saved; the alert says why under it.
+                            """),
+                    error: error)
+            }
+        } set: {
+            if $0 == nil {
+                model.progressSettingsFailure = nil
+            }
+        }
+    }
+}
+
 /// The About tab of Settings: which version of the app this is, as macOS's
 /// About panel shows it. Under the app's icon and name come its version and
 /// its copyright line, from its Info.plist: "Version", the release version,

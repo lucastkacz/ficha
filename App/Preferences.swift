@@ -13,18 +13,22 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "settin
 /// differs from a default is stored, so a setting Lucas never changed follows
 /// its default. A stored value the app can't read, as when it was edited by
 /// hand, goes into `unreadable`, for the app to say so: a setting reads as
-/// its default meanwhile, and a capture shortcut as off.
+/// its default meanwhile, and a capture shortcut as off. The settings that
+/// decide a card's progress sync, so the engine keeps them in the database
+/// instead (#315): the preferences keep them as they were before, for the
+/// engine to move them in.
 enum Preferences {
     /// The names of the stored settings that couldn't be read so far.
     private(set) static var unreadable: Set<String> = []
 
-    /// The settings the engine decides with, as Lucas left them.
-    static func reviewSettings() -> ReviewSettings {
+    /// The settings the engine decides with: this device's own, as Lucas
+    /// left them, and `progress`, the settings that decide a card's
+    /// progress, as the database holds them.
+    static func reviewSettings(with progress: ProgressSettings) -> ReviewSettings {
         var settings = ReviewSettings.defaults
-        settings.ladder = read(.ladder, as: [Int].self, ladder) ?? settings.ladder
+        settings.progress = progress
         settings.cardsPerAppearance =
             read(.cardsPerAppearance, as: Int.self) { $0 >= 1 ? $0 : nil } ?? settings.cardsPerAppearance
-        settings.newCardsPerDay = read(.newCardsPerDay, as: Int.self) { $0 >= 0 ? $0 : nil } ?? settings.newCardsPerDay
         settings.lookAhead = read(.lookAhead, as: Int.self, minutesFrom: 0) ?? settings.lookAhead
         settings.activeHours = read(.activeHours, as: [Int].self, activeHours) ?? settings.activeHours
         settings.separation = read(.separation, as: Int.self, minutesFrom: 0) ?? settings.separation
@@ -38,18 +42,28 @@ enum Preferences {
         settings.idleBeforeTakingKeyboard =
             read(.idleBeforeTakingKeyboard, as: Int.self) { (0...longest).contains($0) ? .seconds($0) : nil }
             ?? settings.idleBeforeTakingKeyboard
+        return settings
+    }
+
+    /// The settings that decide a card's progress as the preferences kept
+    /// them before they synced, which no version writes since, for the engine
+    /// to move them into the database.
+    static func progressSettingsBeforeSync() -> ProgressSettings {
+        var settings = ReviewSettings.defaults.progress
+        settings.ladder = read(.ladder, as: [Int].self, ladder) ?? settings.ladder
+        settings.newCardsPerDay = read(.newCardsPerDay, as: Int.self) { $0 >= 0 ? $0 : nil } ?? settings.newCardsPerDay
         if let offer = read(.forgottenOftenAfter, as: Int.self, StoredOffer.init(stored:)) {
             settings.forgottenOftenAfter = offer.timesForgotten
         }
         return settings
     }
 
-    /// Keeps `settings`, as Lucas changed them in Settings.
+    /// Keeps `settings`, as Lucas changed them in Settings: this device's
+    /// own, since the engine keeps the settings that decide a card's
+    /// progress.
     static func save(_ settings: ReviewSettings) {
         let defaults = ReviewSettings.defaults
-        write(settings.ladder.waits.map(wholeMinutes), for: .ladder, unless: defaults.ladder.waits.map(wholeMinutes))
         write(settings.cardsPerAppearance, for: .cardsPerAppearance, unless: defaults.cardsPerAppearance)
-        write(settings.newCardsPerDay, for: .newCardsPerDay, unless: defaults.newCardsPerDay)
         write(wholeMinutes(settings.lookAhead), for: .lookAhead, unless: wholeMinutes(defaults.lookAhead))
         write(
             [settings.activeHours.lowerBound, settings.activeHours.upperBound], for: .activeHours,
@@ -69,9 +83,6 @@ enum Preferences {
         write(
             settings.idleBeforeTakingKeyboard.components.seconds, for: .idleBeforeTakingKeyboard,
             unless: defaults.idleBeforeTakingKeyboard.components.seconds)
-        write(
-            StoredOffer(settings.forgottenOftenAfter).stored, for: .forgottenOftenAfter,
-            unless: StoredOffer(defaults.forgottenOftenAfter).stored)
     }
 
     /// How often Ficha backs up on its own, and how many backups it keeps, as
@@ -162,7 +173,9 @@ enum Preferences {
     }
 
     /// Each setting's name in the preferences. Spans of time are stored in
-    /// whole minutes, but the idle time, in whole seconds.
+    /// whole minutes, but the idle time, in whole seconds. The ladder, the
+    /// new cards a day and the forgotten-often count are as versions before
+    /// #315 left them, only to be moved into the database.
     private enum Key: String {
         case ladder = "LadderMinutes"
         case cardsPerAppearance = "CardsPerAppearance"
@@ -310,17 +323,13 @@ private enum StoredShortcut {
     case off
 }
 
-/// The offer to flag a card forgotten often, as the preferences store it:
-/// the number of reviews of one of a card's ways rated again that brings it,
-/// or 0 when it's off.
+/// The offer to flag a card forgotten often, as the preferences stored it
+/// before it synced: the number of reviews of one of a card's ways rated
+/// again that brings it, or 0 when it's off.
 private struct StoredOffer {
     /// How many reviews of one of a card's ways rated again bring the offer,
     /// or nil when it's off.
     let timesForgotten: Int?
-
-    init(_ timesForgotten: Int?) {
-        self.timesForgotten = timesForgotten
-    }
 
     /// The offer `stored` says, or nil unless it's 0 or a number from 1 up.
     init?(stored: Int) {
@@ -329,10 +338,5 @@ private struct StoredOffer {
         case 1...: timesForgotten = stored
         default: return nil
         }
-    }
-
-    /// The number the preferences store.
-    var stored: Int {
-        timesForgotten ?? 0
     }
 }

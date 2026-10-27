@@ -705,6 +705,51 @@ enum Schema {
                 table.add(column: "isFromAnotherDevice", .boolean).notNull().defaults(to: false)
             }
         }
+        migrator.registerMigration("v23 the settings that decide progress") { db in
+            // The three settings that decide a card's progress, which sync,
+            // so they're the same on each of the user's devices (ADR 0017):
+            // the ladder, the new cards a day and the forgotten-often count.
+            // Until now the app kept them in its preferences, where the rest
+            // of its settings stay, each device's own. One row, which isn't
+            // there until the app moves in what its preferences kept, since
+            // the CLI, which may run this migration, can't read them; or
+            // until it comes from iCloud. Meanwhile, Ficha's defaults hold.
+            // It comes in with them, and then takes its settings. The ladder
+            // is each step's wait in whole seconds, from the first step up,
+            // as a JSON array; the forgotten-often count is NULL when the
+            // review panel never offers to flag a card.
+            try db.create(table: "progressSettings") { table in
+                table.column("id", .integer).primaryKey().check(sql: "id = 1")
+                table.column("ladder", .text).notNull()
+                table.column("newCardsPerDay", .integer).notNull()
+                table.column("forgottenOftenAfter", .integer)
+            }
+            // The row syncs as one record named by its type, each setting a
+            // field that keeps when it last changed, as `SyncedField` names
+            // it, of which the latest change wins. Its trigger is a tag's,
+            // in "v21 changes recorded to sync", written out: a change to a
+            // setting keeps when, and leaves the row waiting to be sent. Its
+            // coming in, with Ficha's defaults, is no change, and it's never
+            // deleted.
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_progressSettings_updated AFTER UPDATE ON progressSettings
+                    WHEN (SELECT recordsChanges FROM syncWrite) AND (
+                        OLD.ladder IS NOT NEW.ladder OR OLD.newCardsPerDay IS NOT NEW.newCardsPerDay
+                        OR OLD.forgottenOftenAfter IS NOT NEW.forgottenOftenAfter) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'progressSettings', 'progressSettings', field, (SELECT at FROM syncWrite) FROM (
+                        SELECT 'ladder' AS field WHERE OLD.ladder IS NOT NEW.ladder
+                        UNION ALL SELECT 'newCardsPerDay' AS field WHERE OLD.newCardsPerDay IS NOT NEW.newCardsPerDay
+                        UNION ALL SELECT 'forgottenOftenAfter' AS field
+                        WHERE OLD.forgottenOftenAfter IS NOT NEW.forgottenOftenAfter) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'progressSettings' AND recordName = 'progressSettings';
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'progressSettings', 'progressSettings', 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

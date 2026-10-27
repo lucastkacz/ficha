@@ -9,14 +9,15 @@ internal import GRDB
 // reads what they recorded, and is the one way to write without recording.
 
 /// A row that syncs, as iCloud names its record: a card, a capture or an
-/// entry of the review log by its ID unique across devices, or a tag by its
-/// name. Images and sounds are named by their content, as `ImageName` and
-/// `SoundName` say.
+/// entry of the review log by its ID unique across devices, a tag by its
+/// name, or the settings that decide progress, of which there's one. Images
+/// and sounds are named by their content, as `ImageName` and `SoundName` say.
 enum SyncedRow: Sendable, Hashable {
     case card(UUID)
     case capture(UUID)
     case reviewLogEntry(UUID)
     case tag(String)
+    case progressSettings
 
     /// What kind of row it is, as the database names it.
     enum RecordType: String, Sendable {
@@ -24,6 +25,7 @@ enum SyncedRow: Sendable, Hashable {
         case capture
         case reviewLogEntry
         case tag
+        case progressSettings
     }
 
     var recordType: RecordType {
@@ -32,15 +34,18 @@ enum SyncedRow: Sendable, Hashable {
         case .capture: .capture
         case .reviewLogEntry: .reviewLogEntry
         case .tag: .tag
+        case .progressSettings: .progressSettings
         }
     }
 
     /// Its name, as the database keeps it: its ID, in capitals as Foundation
-    /// writes it, or the tag's name, exactly as cards carry it.
+    /// writes it, the tag's name, exactly as cards carry it, or the settings'
+    /// type, which names the one row.
     var recordName: String {
         switch self {
         case .card(let id), .capture(let id), .reviewLogEntry(let id): id.uuidString
         case .tag(let name): name
+        case .progressSettings: RecordType.progressSettings.rawValue
         }
     }
 
@@ -56,6 +61,11 @@ enum SyncedRow: Sendable, Hashable {
         case .capture: self = .capture(try uuid(named: recordName, of: type))
         case .reviewLogEntry: self = .reviewLogEntry(try uuid(named: recordName, of: type))
         case .tag: self = .tag(recordName)
+        case .progressSettings:
+            guard recordName == SyncedRow.progressSettings.recordName else {
+                throw unreadable("The settings that decide progress sync under a name this version doesn't know")
+            }
+            self = .progressSettings
         }
     }
 }
@@ -102,6 +112,10 @@ enum SyncedField: String, Sendable, CaseIterable {
     case switchedOn
     case color
     case emoji
+    // The settings that decide progress, each on its own.
+    case ladder
+    case newCardsPerDay
+    case forgottenOftenAfter
 }
 
 /// A change to a row that syncs, which waits to be sent to iCloud.
@@ -270,5 +284,7 @@ func recordEverythingToSend(in db: Database) throws {
             SELECT '\(tag)', name, 0 FROM (
                 SELECT name FROM tag UNION SELECT recordName FROM syncFieldTime WHERE recordType = '\(tag)')
             ORDER BY name;
+            INSERT INTO syncPending (recordType, recordName, isDeletion)
+            SELECT 'progressSettings', 'progressSettings', 0 FROM progressSettings;
             """)
 }

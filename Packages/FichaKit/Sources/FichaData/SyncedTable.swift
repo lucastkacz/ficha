@@ -135,16 +135,11 @@ struct SyncedTable: Sendable {
         guard let stored = try storedRow(with: uuid, in: db) else {
             return nil
         }
-        let synced = syncedRow(uuid)
         var values: [String: ICloudValue?] = [:]
         for column in columns {
             values[column.key] = try column.value(in: stored, in: db)
         }
-        let times = try fieldTimes(of: synced, in: db)
-        for field in fields.map(\.syncedField) {
-            values[field.timeKey] = times[field].map { .int($0.wholeMilliseconds) }
-        }
-        return ICloudRecord(id: synced.recordID, type: synced.recordType.rawValue, fields: values, systemFields: nil)
+        return try syncedRecord(of: syncedRow(uuid), holding: values, andTimesOf: fields.map(\.syncedField), in: db)
     }
 
     /// Applies `record`, from iCloud, to the row with this ID: it takes each

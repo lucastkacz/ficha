@@ -6,16 +6,17 @@ import FichaData
 /// and starts the appearances. When it can't open it, the app says why and
 /// quits: Ficha doesn't run without its cards.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// The open database, or why it couldn't be opened, which in Ficha Dev
-    /// includes not knowing how far its debug menu moved its time.
+    /// The open database, or why it couldn't be opened, which includes not
+    /// reading the settings that decide a card's progress, and in Ficha Dev
+    /// not knowing how far its debug menu moved its time.
     let opening = Result { () throws -> AppModel in
         let variant = AppVariant.current
         guard variant.hasDebugMenu else {
             // The real Ficha always runs on the system's time.
-            return AppModel(engine: try Engine(location: .folder(variant.dataFolder), time: SystemTimeSource()))
+            return try AppModel(engine: try Engine(location: .folder(variant.dataFolder), time: SystemTimeSource()))
         }
         // Ficha Dev's engine runs on the time its debug menu moves forward.
-        return AppModel(debugTools: try DebugTools(dataFolder: variant.dataFolder))
+        return try AppModel(debugTools: try DebugTools(dataFolder: variant.dataFolder))
     }
 
     /// The app's way into Lucas's cards, for the menu, the capture window and
