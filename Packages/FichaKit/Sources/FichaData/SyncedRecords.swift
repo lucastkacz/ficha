@@ -8,13 +8,15 @@ internal import GRDB
 // changes the row. Of each field that keeps when it last changed, the latest
 // change wins, and the rest merges; a row new to the device comes in whole.
 // Cards, captures and the review log are described by `SyncedTable`, tags by
-// `SyncedTags.swift`.
+// `SyncedTags.swift`, and the settings that decide progress by
+// `SyncedProgressSettings.swift`.
 
 extension SyncedRow {
     /// The ID of the record iCloud keeps the row as, in the cards' zone:
-    /// named by the row's ID unique across devices, or a tag by its name's
+    /// named by the row's ID unique across devices, a tag by its name's
     /// SHA-256 after "tag-", since a record's name is ASCII, up to 255
-    /// characters, and a tag's name can be anything.
+    /// characters, and a tag's name can be anything, and the settings that
+    /// decide progress by their type.
     var recordID: ICloudRecordID {
         switch self {
         case .card(let id), .capture(let id), .reviewLogEntry(let id):
@@ -23,6 +25,8 @@ extension SyncedRow {
             ICloudRecordID(
                 name: "tag-" + SHA256.hash(data: Data(name.utf8)).map { String(format: "%02x", $0) }.joined(),
                 zone: .cards)
+        case .progressSettings:
+            ICloudRecordID(name: recordName, zone: .cards)
         }
     }
 
@@ -40,15 +44,18 @@ extension SyncedRow {
 
 /// The row that syncs as the record with this ID, as the device holds it
 /// now, or nil when it holds none: a card, a capture or an entry of the
-/// review log by its ID, or a tag, which needn't have a row of its own, by
-/// the name whose record it is, among those that wait to be sent or that
-/// have something of their own or had.
+/// review log by its ID, the settings that decide progress, or a tag, which
+/// needn't have a row of its own, by the name whose record it is, among
+/// those that wait to be sent or that have something of their own or had.
 func syncedRow(named id: ICloudRecordID, in db: Database) throws -> SyncedRow? {
     guard id.zone == .cards else {
         return nil
     }
     if let uuid = UUID(uuidString: id.name) {
         return try SyncedTable.all.first { try $0.holdsRow(with: uuid, in: db) }.map { $0.syncedRow(uuid) }
+    }
+    if id == SyncedRow.progressSettings.recordID {
+        return .progressSettings
     }
     let tags = try String.fetchAll(
         db,
@@ -69,6 +76,7 @@ func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
         case .capture(let id): try SyncedTable.captures.record(ofRowWith: id, in: db)
         case .reviewLogEntry(let id): try SyncedTable.reviewLog.record(ofRowWith: id, in: db)
         case .tag(let name): try tagRecord(name, in: db)
+        case .progressSettings: try progressSettingsRecord(in: db)
         }
     return try record?.with(systemFields: systemFields(of: row.recordID, in: db))
 }
@@ -83,6 +91,7 @@ private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) t
     case .capture(let id): try SyncedTable.captures.apply(record, toRowWith: id, in: db)
     case .reviewLogEntry(let id): try SyncedTable.reviewLog.apply(record, toRowWith: id, in: db)
     case .tag(let name): try applyTag(record, named: name, in: db)
+    case .progressSettings: try applyProgressSettings(record, in: db)
     }
 }
 
