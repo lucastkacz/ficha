@@ -47,12 +47,13 @@ extension Engine {
         }
     }
 
-    /// Takes back Lucas's last answer to one of a card's ways, the last entry
-    /// of that way's review log, as the review panel's ⌘Z does: it leaves the
-    /// log, as an answer undone never happened, the way Anki's undo deletes
-    /// it too, and the way stands where it stood before it, while the card's
-    /// other way stays where it is. When the way has no entry left, nothing
-    /// is taken back, and ⌘Z can't undo it.
+    /// Takes back Lucas's last answer to one of a card's ways on this device,
+    /// the last entry this device recorded in that way's review log, as the
+    /// review panel's ⌘Z does: it leaves the log, as an answer undone never
+    /// happened, the way Anki's undo deletes it too, and the way stands where
+    /// it would without it, while the card's other way stays where it is. An
+    /// answer another device synced since stays. When the way has no entry
+    /// of this device left, nothing is taken back, and ⌘Z can't undo it.
     public func takeBackAnswer(of cardID: Int64, way: Way) throws(EngineError) {
         try write { db in
             try deleteLastEntry(of: CardWay(cardID: cardID, way: way), in: db)
@@ -88,7 +89,9 @@ extension Engine {
         }
     }
 
-    /// Every first view, review and placement, in the order they happened.
+    /// Every first view, review and placement, in the order this device
+    /// recorded them: those another device synced come when they came,
+    /// which needn't be when they happened.
     public func reviewLog() throws(EngineError) -> [ReviewLogEntry] {
         try read(logEntries(in:))
     }
@@ -106,13 +109,14 @@ extension Engine {
     }
 }
 
-/// The review log's entries, in the order they happened.
+/// The review log's entries, in the order this device recorded them, as
+/// `Engine.reviewLog()` says.
 func logEntries(in db: Database) throws -> [ReviewLogEntry] {
     try Row.fetchAll(db, sql: "SELECT * FROM reviewLog ORDER BY id").map(ReviewLogEntry.init(row:))
 }
 
-/// A card's entries in the review log, in the order they happened, or an
-/// error when there's no such card.
+/// A card's entries in the review log, in the order this device recorded
+/// them, or an error when there's no such card.
 func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogEntry] {
     guard try Row.fetchOne(db, sql: "SELECT id FROM card WHERE id = ?", arguments: [cardID]) != nil else {
         throw EngineError.cardNotFound(cardID)
@@ -159,14 +163,18 @@ func recordAnswer(
     return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
 }
 
-/// Deletes the last entry of the review log of `cardWay`, one of a card's
-/// ways, which takes back Lucas's last answer to it, as
-/// `Engine.takeBackAnswer` says, or throws when the way has none or the card
-/// doesn't exist.
+/// Deletes the last entry this device recorded in the review log of
+/// `cardWay`, one of a card's ways, which takes back Lucas's last answer to
+/// it, as `Engine.takeBackAnswer` says, or throws when the way has none or
+/// the card doesn't exist. An entry that came from another device since is
+/// never taken back.
 private func deleteLastEntry(of cardWay: CardWay, in db: Database) throws {
     _ = try existingCard(cardWay.cardID, in: db)
     try db.execute(
-        sql: "DELETE FROM reviewLog WHERE id = (SELECT max(id) FROM reviewLog WHERE cardId = ? AND way = ?)",
+        sql: """
+            DELETE FROM reviewLog WHERE id = (
+                SELECT max(id) FROM reviewLog WHERE cardId = ? AND way = ? AND NOT isFromAnotherDevice)
+            """,
         arguments: [cardWay.cardID, cardWay.way.rawValue]
     )
     guard db.changesCount == 1 else {

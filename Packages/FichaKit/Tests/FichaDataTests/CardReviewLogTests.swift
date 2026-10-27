@@ -129,6 +129,22 @@ struct CardReviewLogTests {
         #expect(row.backFirst?.step == 1)
     }
 
+    @Test("a way met after the other way's reviews is listed when it was met, after them")
+    func aWayMetLaterIsListedWhenItWasMet() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.meet(serendipia)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        try engine.setBothWays(true, of: [serendipia.id])
+        time.advance(by: minutes(10))
+        try engine.meet(serendipia, way: .backFirst)
+
+        let log = try engine.reviewLogRows(of: serendipia.id, on: ladder)
+
+        #expect(log.map(\.entry.way) == [.frontFirst, .frontFirst, .backFirst])
+        #expect(log.map(\.entry.kind) == [.firstView, .review(.good), .firstView])
+        #expect(log.map(\.step) == [0, 1, 0])
+    }
+
     @Test("a new card's review log is empty, and a card that doesn't exist isn't found")
     func aNewCardsReviewLogIsEmpty() throws {
         let serendipia = try approveCard("serendipia", in: engine)

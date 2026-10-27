@@ -280,19 +280,23 @@ extension Engine {
     }
 
     /// A card's review log as the Cards window shows it under the card,
-    /// oldest first: each first view, review and placement, either way, with
-    /// the step of `ladder` the entry's way stood on after it. Empty while
-    /// the card is new.
+    /// oldest first, also when it joins two devices' entries, which come in
+    /// any order: each first view, review and placement, either way, with the
+    /// step of `ladder` the entry's way stood on after it. Empty while the
+    /// card is new.
     public func reviewLogRows(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> [ReviewLogRow] {
         try read { db in
-            let entries = try logEntries(ofExisting: cardID, in: db)
-            // Each step is where the ladder puts the entry's way after that
-            // way's log up to the entry, as it works out the way's standing
-            // from its whole log, so the front-first way's last one is the
-            // Step column's. That goes over the log again for each entry, but
-            // a card has few.
+            let entries = try logEntries(ofExisting: cardID, in: db).sorted { entry, other in
+                entry.answeredAt == other.answeredAt
+                    ? entry.isReplayed(before: other) : entry.answeredAt < other.answeredAt
+            }
+            // Each step is where the ladder puts the entry's way after the
+            // entries of that way it replays up to this one, as it works out
+            // the way's standing from its whole log, so the front-first way's
+            // last one is the Step column's. That goes over the log again for
+            // each entry, but a card has few.
             return try entries.indices.map { end in
-                let wayUpToEntry = entries[...end].filter { $0.way == entries[end].way }
+                let wayUpToEntry = entries.filter { $0.way == entries[end].way && !entries[end].isReplayed(before: $0) }
                 guard case .onLadder(let step, _) = try ladder.standing(after: wayUpToEntry) else {
                     // The ladder puts a card with an entry on a step, or
                     // throws.
