@@ -34,12 +34,12 @@ struct AnkiSide {
     /// PNG's, or an SVG's when the package has no PNG by that name; and with
     /// its first sound as `sounds` finds it.
     init(
-        html: String, playing soundNames: [String], images: (String) -> ImageLookup,
-        sounds: (String) async -> SoundLookup, sha1: (String) -> String
-    ) async {
+        html: String, playing soundNames: [String], images: (String) -> ImageLookup, sounds: (String) -> SoundLookup,
+        sha1: (String) -> String
+    ) {
         dropsSounds = soundNames.count > 1
         if let name = soundNames.first {
-            soundLookup = await sounds(name)
+            soundLookup = sounds(name)
         } else {
             soundLookup = nil
         }

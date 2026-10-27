@@ -227,6 +227,91 @@ final class SoundTests {
         try engine.edit(2, with: card(.concept, front: "ubuntu", back: "Soy porque somos.", backSound: la))
         #expect(try engine.read(soundsReferred(in:)) == [la])
     }
+
+    // One at a time, a deck of long sounds took minutes to preview.
+    @Test("sounds convert side by side, though each holds its thread while it waits for its samples")
+    func soundsConvertSideBySide() async {
+        let first = DispatchSemaphore(value: 0)
+        let second = DispatchSemaphore(value: 0)
+
+        async let firstSawSecond = holdingAThread(signalling: first, waitingFor: second)
+        async let secondSawFirst = holdingAThread(signalling: second, waitingFor: first)
+
+        #expect(await [firstSawSecond, secondSawFirst] == [true, true])
+    }
+
+    @Test("the sounds a zip names come in side by side, each once, and one it holds nothing by is missing")
+    func theSoundsAZipNamesComeInSideBySide() async throws {
+        var sounds = FilesInZip<CardSound>(contents: { name in name == "falta.mp3" ? nil : Data(name.utf8) })
+        let bringing = Bringing()
+
+        let answers = await sounds.lookUp(["la.mp3", "mi.mp3", "la.mp3", "falta.mp3"]) {
+            name, data async throws(EngineError) in
+            try await bringing.bring(name, data)
+        }
+
+        let la = try #require(soundName(of: Data("la.mp3".utf8)))
+        let mi = try #require(soundName(of: Data("mi.mp3".utf8)))
+        #expect(answers == ["la.mp3": .found(la), "mi.mp3": .found(mi), "falta.mp3": .missing])
+        #expect(await bringing.brought.sorted() == ["la.mp3", "mi.mp3"])
+        #expect(await bringing.mostAtOnce == 2)
+    }
+}
+
+/// Whether, on `SoundConversion`'s queue, holding its thread as the asset
+/// reader holds one while it waits for samples, once it signals `own`,
+/// `other` is signalled within 5 seconds: whether another conversion
+/// started beside it.
+private func holdingAThread(signalling own: DispatchSemaphore, waitingFor other: DispatchSemaphore) async -> Bool {
+    await withTaskExecutorPreference(SoundConversion.executor) {
+        await onTheExecutor { waits(for: other, signalling: own) }
+    }
+}
+
+/// What `body` returns, run on the task's preferred executor, as
+/// `convertSound(in:to:)` runs.
+private func onTheExecutor<Value>(_ body: () -> Value) async -> Value {
+    body()
+}
+
+/// Whether `other` is signalled within 5 seconds once `own` is, holding the
+/// thread meanwhile.
+private func waits(for other: DispatchSemaphore, signalling own: DispatchSemaphore) -> Bool {
+    own.signal()
+    return other.wait(timeout: .now() + 5) == .success
+}
+
+/// What a test's zip brings in its sounds with, as a sound's conversion
+/// would but without converting: each sound named by its data's SHA-256, as
+/// Ficha names a kept sound, after a while waiting for another to start
+/// beside it, as a long sound's conversion lasts. It keeps the names it
+/// brought, and the most it brought at once.
+private actor Bringing {
+    private(set) var brought: [String] = []
+    private(set) var mostAtOnce = 0
+    private var atOnce = 0
+
+    func bring(_ name: String, _ data: Data) async throws(EngineError) -> CardSound {
+        brought.append(name)
+        atOnce += 1
+        mostAtOnce = max(mostAtOnce, atOnce)
+        defer { atOnce -= 1 }
+        // One at a time, none ever starts beside it.
+        let deadline = ContinuousClock.now + .seconds(5)
+        while mostAtOnce < 2, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        guard let keptName = soundName(of: data) else {
+            throw .soundConversion
+        }
+        return CardSound(name: keptName, data: data)
+    }
+}
+
+/// The name Ficha would keep a sound by if `data` were the sound as it
+/// keeps it: its SHA-256, in lowercase hex, and `m4a`.
+private func soundName(of data: Data) -> SoundName? {
+    SoundName(rawValue: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() + ".m4a")
 }
 
 /// Adds a mono tone of `hertz` lasting a second to `engine`'s sounds, and

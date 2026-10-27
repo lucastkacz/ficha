@@ -53,6 +53,57 @@ struct FilesInZip<File: CardFile> {
         return record(outcome, for: name)
     }
 
+    /// What the zip holds by each of `names`, as `lookUp(_:bringing:)` says,
+    /// with a `bring` that takes a while, as a sound's conversion does, given
+    /// each file's name and data: the files are brought in together, as many
+    /// at once as the Mac has cores, each read from the zip only when its turn
+    /// comes, so that they take no more memory than that many of them.
+    mutating func lookUp(
+        _ names: [String], bringing bring: @escaping @Sendable (String, Data) async throws(EngineError) -> File
+    ) async -> [String: FileLookup<File.Name>] where File: Sendable {
+        var answers: [String: FileLookup<File.Name>] = [:]
+        var waiting: ArraySlice<String> = []
+        for name in names.uniqued() {
+            if let lookup = lookups[name] {
+                answers[name] = lookup
+            } else {
+                waiting.append(name)
+            }
+        }
+        let atOnce = ProcessInfo.processInfo.activeProcessorCount
+        await withTaskGroup(of: (String, Result<File?, any Error>).self) { group in
+            var bringing = 0
+            while bringing > 0 || !waiting.isEmpty {
+                while bringing < atOnce, let name = waiting.popFirst() {
+                    let data: Data?
+                    do {
+                        data = try contents(name)
+                    } catch {
+                        answers[name] = record(.failure(error), for: name)
+                        continue
+                    }
+                    guard let data else {
+                        answers[name] = record(.success(nil), for: name)
+                        continue
+                    }
+                    group.addTask {
+                        do {
+                            return (name, .success(try await bring(name, data)))
+                        } catch {
+                            return (name, .failure(error))
+                        }
+                    }
+                    bringing += 1
+                }
+                if let (name, outcome) = await group.next() {
+                    answers[name] = record(outcome, for: name)
+                    bringing -= 1
+                }
+            }
+        }
+        return answers
+    }
+
     /// Keeps what looking up `name` came to, `outcome`, the file found,
     /// nothing, or why it couldn't be read, and returns it as a lookup.
     private mutating func record(_ outcome: Result<File?, any Error>, for name: String) -> FileLookup<File.Name> {

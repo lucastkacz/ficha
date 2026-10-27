@@ -63,9 +63,10 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) async throws(Car
             images.lookUp(name) { data throws(EngineError) in
                 try pathExtension(of: name) == "svg" ? CardImage(drawing: data, with: svgs) : CardImage(shrinking: data)
             }
-        } sounds: { name in
-            // Converted, as every sound that comes in, a video's included.
-            await sounds.lookUp(name) { data async throws(EngineError) in
+        } sounds: { names in
+            // Converted, as every sound that comes in, a video's included,
+            // together: one at a time, a deck of long sounds took minutes.
+            await sounds.lookUp(names) { name, data async throws(EngineError) in
                 try await CardSound(converting: data, named: name)
             }
         } sha1: { text in

@@ -129,15 +129,17 @@ func soundLength(of data: Data) throws(EngineError) -> Duration {
     }
 }
 
-/// Where sounds convert: a dispatch queue of their own, as a task executor
-/// (SE-0417), away from the threads Swift's tasks share. The asset reader
-/// holds the thread that asks it for the next samples until it has them: run
-/// on the shared threads, as many sounds converting at once as the Mac has
-/// cores held every one of them, and none ever got its samples.
+/// Where sounds convert: a concurrent dispatch queue of their own, as a task
+/// executor (SE-0417), away from the threads Swift's tasks share. The asset
+/// reader holds the thread that asks it for the next samples until it has
+/// them: run on the shared threads, as many sounds converting at once as the
+/// Mac has cores held every one of them, and none ever got its samples.
+/// Dispatch brings up another thread when one is held, so sounds convert
+/// side by side here; on a serial queue, each held the queue until it ended.
 final class SoundConversion: TaskExecutor {
     static let executor = SoundConversion()
 
-    private let queue = DispatchQueue(label: "Ficha.SoundConversion")
+    private let queue = DispatchQueue(label: "Ficha.SoundConversion", attributes: .concurrent)
 
     func enqueue(_ job: consuming ExecutorJob) {
         let job = UnownedJob(job)
