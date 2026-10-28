@@ -100,7 +100,8 @@ private var startingOver: String {
         return "To start over, delete Ficha Dev from the iPhone and install it again."
     #else
         return """
-            To start over, quit Ficha Dev and move its folder, ~/Library/Application Support/Ficha Dev/, to the Trash.
+            To start over, quit Ficha Dev and move its folder, “Ficha Dev” in \
+            ~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha.dev/, to the Trash.
             """
     #endif
 }

@@ -18,9 +18,13 @@ let package = Package(
                 .product(name: "FichaCore", package: "FichaKit"),
                 .product(name: "FichaData", package: "FichaKit"),
             ],
-            // The app's entry point, its icons and its String Catalog stay
-            // out: `main.swift` is this tool's entry point.
-            exclude: ["App/FichaApp.swift", "App/AppIcon.icon", "App/AppIcon-Dev.icon", "App/Localizable.xcstrings"],
+            // The app's entry point, its icons, its String Catalog and its
+            // entitlements stay out: `main.swift` is this tool's entry point,
+            // and the tool runs outside the sandbox.
+            exclude: [
+                "App/FichaApp.swift", "App/AppIcon.icon", "App/AppIcon-Dev.icon", "App/Localizable.xcstrings",
+                "App/Ficha.entitlements",
+            ],
             swiftSettings: [.define("FICHA_DEV"), .defaultIsolation(MainActor.self)]
         )
     ]

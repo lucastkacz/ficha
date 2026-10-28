@@ -323,7 +323,7 @@ private struct FilesComingIn {
         case .sound:
             files.change(sound: .put(try await sound(file, with: engine)), on: side)
         case .file(let url):
-            let data = try contents(of: url)
+            let data = try contents(of: url, with: engine)
             do throws(EngineError) {
                 let image = try CardImage(shrinking: data)
                 images.append(image)
@@ -369,7 +369,7 @@ private struct FilesComingIn {
         case .file(let url):
             let image: CardImage
             do throws(EngineError) {
-                image = try CardImage(shrinking: contents(of: url))
+                image = try CardImage(shrinking: contents(of: url, with: engine))
             } catch .notAnImage {
                 throw .fileNotAnImage(url.lastPathComponent)
             }
@@ -389,7 +389,7 @@ private struct FilesComingIn {
     private mutating func sound(_ file: FileForSide, with engine: Engine) async throws(EngineError) -> SoundName {
         switch file {
         case .file(let url):
-            try checkFile(at: url)
+            try checkFile(at: url, with: engine)
             let sound: CardSound
             do throws(EngineError) {
                 sound = try await CardSound(converting: url)
@@ -407,8 +407,12 @@ private struct FilesComingIn {
     }
 }
 
-/// Checks that there's a file at `url` Ficha can read, or says why not.
-private func checkFile(at url: URL) throws(EngineError) {
+/// Checks that there's a file at `url` Ficha can read, in the Downloads
+/// folder when the engine takes files from there alone, or says why not.
+private func checkFile(at url: URL, with engine: Engine) throws(EngineError) {
+    if let downloads = engine.refineFilesOnlyIn, !url.isInside(downloads) {
+        throw .fileNotInDownloads(url.lastPathComponent)
+    }
     let path = url.path(percentEncoded: false)
     var isFolder: ObjCBool = false
     guard FileManager.default.fileExists(atPath: path, isDirectory: &isFolder), !isFolder.boolValue else {
@@ -421,12 +425,22 @@ private func checkFile(at url: URL) throws(EngineError) {
 }
 
 /// What the file at `url` holds, or why it couldn't be read.
-private func contents(of url: URL) throws(EngineError) -> Data {
-    try checkFile(at: url)
+private func contents(of url: URL, with engine: Engine) throws(EngineError) -> Data {
+    try checkFile(at: url, with: engine)
     do {
         return try Data(contentsOf: url)
     } catch {
         logger.error("Couldn't read a file a refine session gave: \(String(describing: error))")
         throw .unreadableFileForSide(url.lastPathComponent)
+    }
+}
+
+extension URL {
+    /// Whether this file is in `folder`, or in a folder inside it, once
+    /// `..` and the links in both paths lead where they go.
+    fileprivate func isInside(_ folder: URL) -> Bool {
+        let folder = folder.standardizedFileURL.resolvingSymlinksInPath().pathComponents
+        let file = standardizedFileURL.resolvingSymlinksInPath().pathComponents
+        return file.count > folder.count && file.starts(with: folder)
     }
 }

@@ -20,15 +20,19 @@ public struct FichaCommand: ParsableCommand {
 
     public init() {}
 
-    /// Runs the command in the process's arguments on the database in
-    /// `dataFolder`, prints its result as JSON, and exits. A command that
-    /// fails says why on standard error and exits with an error code. It runs
-    /// on the system's time or, for Ficha Dev's CLI, on the time Ficha Dev's
-    /// debug menu moved forward, as Ficha Dev does. A restore, which would
-    /// change the cards under the app that the CLI belongs to, `appName`, is
-    /// refused while `appIsRunning` says it runs, before the database opens.
+    /// Runs the command in the process's arguments on the database in the
+    /// folder `dataFolder` names, or says why it names none, prints its result
+    /// as JSON, and exits. A command that fails says why on standard error and
+    /// exits with an error code. It runs on the system's time or, for Ficha
+    /// Dev's CLI, on the time Ficha Dev's debug menu moved forward, as Ficha
+    /// Dev does. The files it puts on cards come from `downloads` alone, the
+    /// Downloads folder, when the CLI's sandbox lets it read no other. A
+    /// restore, which would change the cards under the app that the CLI
+    /// belongs to, `appName`, is refused while `appIsRunning` says it runs,
+    /// before the database opens.
     public static func main(
-        dataFolder: URL, runsOnDebugTime: Bool, appName: String, appIsRunning: @MainActor () -> Bool
+        dataFolder: () throws -> URL, refineFilesOnlyIn downloads: URL?, runsOnDebugTime: Bool, appName: String,
+        appIsRunning: @MainActor () -> Bool
     ) async -> Never {
         do {
             var command = try parseAsRoot()
@@ -40,13 +44,14 @@ public struct FichaCommand: ParsableCommand {
             if let restore = engineCommand as? RestoreCommand, restore.copy != nil, await appIsRunning() {
                 throw AppIsRunningError(appName: appName)
             }
+            let folder = try dataFolder()
             let time: any TimeSource =
                 if runsOnDebugTime {
-                    try DebugTimeSource(savedIn: dataFolder)
+                    try DebugTimeSource(savedIn: folder)
                 } else {
                     SystemTimeSource()
                 }
-            let engine = try Engine(location: .folder(dataFolder), time: time)
+            let engine = try Engine(location: .folder(folder), time: time, refineFilesOnlyIn: downloads)
             print(try json(await engineCommand.run(on: engine)))
             Self.exit()
         } catch {

@@ -13,7 +13,7 @@ scripts/render/Package.resolved
 *.sqlite-shm
 *.sqlite-wal
 
-# Lucas's Personal Team, which signs the iPhone app (iPhone/Signing.xcconfig)
+# Lucas's paid team, which signs Ficha Dev on the Mac and the iPhone (Signing.xcconfig)
 iPhone/Local.xcconfig
 
 # Claude Code: per-machine settings and session worktrees

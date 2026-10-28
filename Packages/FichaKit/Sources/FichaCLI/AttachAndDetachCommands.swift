@@ -11,7 +11,8 @@ struct AttachCommand: EngineCommand {
             Give the path of a file on your Mac, or the name of an image or a sound Ficha holds, as `ficha cards` \
             prints it, with --front or --back. Ficha tells an image from a sound by the file, shrinks an image, and \
             converts a sound, a video's too, as it comes in, and puts it in place of the side's own. It works on \
-            any card, flagged, buried or set aside, which stays where it is. For example:
+            any card, flagged, buried or set aside, which stays where it is. In its sandbox, as Ficha Dev's is, \
+            the CLI reads files from your Downloads folder alone. For example:
 
               ficha attach 7 --back ~/Downloads/coloratura.mp3
             """

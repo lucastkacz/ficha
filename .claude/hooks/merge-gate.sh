@@ -31,8 +31,10 @@ risky_paths=(
   'docs/agents/'
   # The content guide, which every card Claude drafts follows.
   'docs/content-guide\.md'
-  # CI and the build, with their configuration files, such as the one the
-  # iPhone app signs with (iPhone/Signing.xcconfig).
+  # CI and the build, with their configuration files, such as the one Ficha
+  # Dev signs with (Signing.xcconfig), and what its sandboxes let the app
+  # and the CLI reach: their entitlements, and the CLI's Info.plist, which
+  # gives it a sandbox of its own (ADR 0018).
   '\.github/workflows/'
   '\.github/dependabot\.yml'
   'Makefile'
@@ -41,6 +43,8 @@ risky_paths=(
   '\.xcode-version'
   'project\.yml'
   '.*\.xcconfig$'
+  '.*\.entitlements$'
+  'CLI/Info\.plist'
   # The package's manifest, and the versions it pins.
   'Packages/FichaKit/Package\.swift'
   'Packages/FichaKit/Package\.resolved'

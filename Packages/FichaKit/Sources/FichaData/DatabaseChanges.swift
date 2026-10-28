@@ -21,6 +21,8 @@ struct DatabaseChanges: Sendable {
         let status = notify_post(name)
         if status != NOTIFY_STATUS_OK {
             logger.error("Couldn't tell the other engines that the database changed: notify status \(status)")
+        } else {
+            logger.debug("Told the other engines that the database changed")
         }
     }
 
@@ -30,6 +32,7 @@ struct DatabaseChanges: Sendable {
         AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
             var token: Int32 = 0
             let status = notify_register_dispatch(name, &token, .global()) { _ in
+                logger.debug("Heard that the database changed")
                 continuation.yield()
             }
             guard status == NOTIFY_STATUS_OK else {
