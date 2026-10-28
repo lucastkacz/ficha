@@ -29,6 +29,7 @@ struct MenuContent: View {
     let secondDevice: SecondDeviceActions
 
     var body: some View {
+        let saysICloudIsFull = model.sync?.saysICloudIsFull == true
         if model.backups.lastBackupFailed {
             Button(action: openBackupSettings) {
                 Label {
@@ -43,7 +44,7 @@ struct MenuContent: View {
                 }
             }
         }
-        if model.sync?.saysICloudIsFull == true {
+        if saysICloudIsFull {
             Button(action: openSyncSettings) {
                 Label {
                     Text(
@@ -57,7 +58,7 @@ struct MenuContent: View {
                 }
             }
         }
-        if model.backups.lastBackupFailed || model.sync?.saysICloudIsFull == true {
+        if model.backups.lastBackupFailed || saysICloudIsFull {
             Divider()
         }
         Button("Capture…", action: openCapture)

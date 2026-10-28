@@ -196,17 +196,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// while Settings' switch is on: what waits now, those changes made while
     /// the app didn't run included, and then each change to the database,
     /// whichever process made it. The sync follows the switch as it's turned
-    /// on and off (`CloudKitSync`).
+    /// on and off (`CloudKitSync`). Only then does the app show Settings'
+    /// Sync tab and the menu's line while iCloud is full.
     private func startSyncing(_ model: AppModel) {
         guard AppVariant.current.syncsThroughICloud else { return }
         // CloudKit stops a process that isn't signed for iCloud, as #316
-        // probed, so a build signed without it leaves sync off instead.
+        // probed, so a build signed without it leaves sync off instead, and
+        // shows no Sync tab, which would wait forever for the account.
         guard signedEntitlement("com.apple.developer.icloud-services") != nil else {
             logger.fault("Sync through iCloud stays off: this build isn't signed for iCloud")
             return
         }
         let iCloud = CloudKitSync(engine: model.engine, device: "This Mac")
         self.iCloud = iCloud
+        model.sync = model.engine.openSyncTab()
         Task { await iCloud.run() }
     }
 

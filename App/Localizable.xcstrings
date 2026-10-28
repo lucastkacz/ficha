@@ -1860,7 +1860,7 @@
       "comment" : "A button of the alert at the app's first launch."
     },
     "Not synced yet" : {
-      "comment" : "Settings, under Sync: sync is on, and this Mac never synced yet."
+      "comment" : "Settings, under Sync: sync is on, and this Mac hasn't synced yet, or not since the app's data was deleted from iCloud."
     },
     "Note" : {
       "comment" : "In the Cards window's detail: what Lucas noted with a capture.\nIn the Cards window, the label of a capture's note, while Lucas edits it."

@@ -54,9 +54,10 @@ final class AppModel {
     /// Backups tab, which lists the copies and acts on them: the menu says
     /// when the last backup failed.
     var backups: BackupsState
-    /// Settings' Sync tab, and the menu's line while iCloud is full, in an
-    /// app that syncs (`AppVariant.syncsThroughICloud`), or nil in one that
-    /// doesn't, which shows neither: the real Ficha, until #318.
+    /// Settings' Sync tab, and the menu's line while iCloud is full, which
+    /// the app's delegate opens as it starts syncing, or nil while the app
+    /// doesn't sync, which shows neither: the real Ficha, until #318, and a
+    /// Ficha Dev on a scratch folder or not signed for iCloud.
     var sync: SyncTabState?
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
@@ -83,7 +84,6 @@ final class AppModel {
         backups = engine.openBackups()
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
-        sync = AppVariant.current.syncsThroughICloud ? engine.openSyncTab() : nil
         countProgress()
         readPrioritizeMenu()
         Task { [weak self] in
