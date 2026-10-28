@@ -54,6 +54,11 @@ final class AppModel {
     /// Backups tab, which lists the copies and acts on them: the menu says
     /// when the last backup failed.
     var backups: BackupsState
+    /// Settings' Sync tab, and the menu's line while iCloud is full, which
+    /// the app's delegate opens as it starts syncing, or nil while the app
+    /// doesn't sync, which shows neither: the real Ficha, until #318, and a
+    /// Ficha Dev on a scratch folder or not signed for iCloud.
+    var sync: SyncTabState?
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
     private(set) var progress: ProgressCounts?
@@ -87,6 +92,7 @@ final class AppModel {
                 readProgressSettings()
                 countProgress()
                 readPrioritizeMenu()
+                sync?.read()
                 // So a check can tell, from the log, how soon the menu shows
                 // what the CLI changed.
                 if let progress {
@@ -94,7 +100,9 @@ final class AppModel {
                 }
             }
         }
-        // Cards come due as time passes, without the database changing.
+        // Cards come due as time passes, without the database changing, and
+        // when the device last synced, which the Sync tab says, changes
+        // without the database telling.
         Task { [weak self] in
             while true {
                 do {
@@ -104,6 +112,7 @@ final class AppModel {
                 }
                 guard let self else { return }
                 countProgress()
+                sync?.read()
             }
         }
     }

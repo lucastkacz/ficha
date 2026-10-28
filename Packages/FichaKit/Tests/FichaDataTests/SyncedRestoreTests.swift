@@ -164,6 +164,30 @@ final class SyncedRestoreTests {
         #expect(cardsZonesInICloud().count == 1)
     }
 
+    // The Mac last synced before the restore, which it did then: the line
+    // keeps saying so once sync is on again, until it syncs.
+    @Test(
+        "after a restore, the Sync tab says turning sync on replaces iCloud's copy, and keeps when the Mac last synced")
+    func theSyncTabSaysWhatTurningSyncOnDoes() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        let synced = time.now
+        try await mac.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        time.advance(by: minutes(5))
+
+        try mac.engine.restore(backup.name)
+        var tab = mac.engine.openSyncTab()
+
+        #expect(tab.status == .off(turningOn: .replacesICloudsCopy, sending: nil))
+        #expect(!tab.switchIsOn)
+        #expect(tab.canTurnSwitch)
+
+        tab.turnSync(on: true)
+
+        #expect(tab.status == .on(lastSynced: synced))
+        #expect(tab.switchIsOn)
+    }
+
     // MARK: - Purges
 
     // The iPhone was offline while the user purged Ficha's data and the Mac

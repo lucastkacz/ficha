@@ -51,6 +51,21 @@ public struct ImportPreview: Sendable, Equatable {
     /// progress: all but those whose reversed card alone Anki suspended,
     /// which come in one way.
     public let reversedNoteCountBringingProgress: Int
+    /// What the images and sounds the import brings weigh, of those Ficha
+    /// didn't hold as the file was read.
+    let newFilesWeight: NewFilesWeight
+    /// Whether what the import brings goes up to the user's iCloud: sync was
+    /// on as the file was read, its switch on and the device signed in.
+    let goesUpToICloud: Bool
+
+    /// What the images and sounds an import brings weigh, in bytes, at the
+    /// size Ficha keeps them, each file once, of those Ficha doesn't hold:
+    /// those of the cards that come in new, and with them those the cards it
+    /// updates take, as `ImportChoices.RepeatedCards` chooses.
+    struct NewFilesWeight: Sendable, Equatable {
+        let ofNewCards: Int64
+        let ofNewAndUpdatedCards: Int64
+    }
 
     /// How many of the file's lines, or an Anki package's cards, stay out
     /// for a reason.
@@ -107,6 +122,23 @@ public struct ImportPreview: Sendable, Equatable {
     /// something else too.
     public var cardsWithUnreadableSoundsLeftOut: Int {
         cards.count(where: \.hasUnreadableSoundsLeftOut)
+    }
+
+    /// What the images and sounds the import brings weigh, in bytes, as the
+    /// Import sheet says it while they go up to the user's iCloud: those of
+    /// the cards it brings as `repeatedCards` chooses, so a repeated card it
+    /// skips leaves its files out, and of those only the files Ficha didn't
+    /// hold as the file was read, each once, at the size Ficha keeps them.
+    /// Nil when the sheet says nothing of it: while sync isn't on, or under
+    /// 100 MB (#317's decision of 2026-10-28).
+    public func weightGoingUpToICloud(choosing repeatedCards: ImportChoices.RepeatedCards) -> Int64? {
+        guard goesUpToICloud else {
+            return nil
+        }
+        switch repeatedCards {
+        case .update: return weightWorthSaying(newFilesWeight.ofNewAndUpdatedCards)
+        case .skip: return weightWorthSaying(newFilesWeight.ofNewCards)
+        }
     }
 }
 
@@ -237,9 +269,14 @@ extension Engine {
         _ reading: ImportReading, of fileName: String, kind: ImportPreview.Kind, images: [ImageName: CardImage] = [:],
         sounds: [SoundName: CardSound] = [:]
     ) throws(EngineError) -> ImportPreview {
-        let repeated = try read { db in try repeatedCards(of: reading.cards, in: db) }
+        let (repeated, brought) = try read { db in
+            let repeated = try repeatedCards(of: reading.cards, in: db)
+            return (repeated, try FilesBrought(by: reading.cards, repeating: repeated))
+        }
         let referredImages = Set(reading.cards.flatMap(\.content.images))
         let referredSounds = Set(reading.cards.flatMap(\.content.sounds))
+        let images = images.filter { referredImages.contains($0.key) }
+        let sounds = sounds.filter { referredSounds.contains($0.key) }
         let proposedTags = reading.cards.flatMap(\.proposedTags).uniqued()
         let placedCount = zip(reading.cards, repeated).count { card, repeated in
             switch (card.progress?.stage, repeated) {
@@ -251,14 +288,30 @@ extension Engine {
         let newReversedNotes = zip(reading.cards, repeated).filter { card, repeated in
             repeated == nil && card.backFirstProgress != nil
         }.map(\.0)
+        var broughtByAll = brought.byNewCards
+        broughtByAll.formUnion(brought.byUpdatedCards)
+        /// What the files `files` names weigh, in bytes, of those that came
+        /// in with the file that Ficha doesn't hold.
+        func weightOfFilesNotHeld(_ files: FilesReferred) -> Int64 {
+            weightNotHeld(files.images, among: images) + weightNotHeld(files.sounds, among: sounds)
+        }
         return ImportPreview(
-            fileName: fileName, kind: kind, cards: reading.cards,
-            images: images.filter { referredImages.contains($0.key) },
-            sounds: sounds.filter { referredSounds.contains($0.key) }, leftOut: reading.leftOut,
-            proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
+            fileName: fileName, kind: kind, cards: reading.cards, images: images, sounds: sounds,
+            leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
             placedCount: placedCount,
             reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
-            reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) })
+            reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) },
+            newFilesWeight: ImportPreview.NewFilesWeight(
+                ofNewCards: weightOfFilesNotHeld(brought.byNewCards),
+                ofNewAndUpdatedCards: weightOfFilesNotHeld(broughtByAll)),
+            goesUpToICloud: try syncStatus().sendsToICloud)
+    }
+
+    /// What the files named `names` weigh, in bytes, of those among
+    /// `incoming`, which came in with a file, that Ficha doesn't hold.
+    private func weightNotHeld<File: CardFile>(_ names: Set<File.Name>, among incoming: [File.Name: File]) -> Int64
+    where File.Name: NameOfSyncedFile {
+        names.filter { !$0.isKept(by: self) }.compactMap { incoming[$0] }.reduce(0) { $0 + Int64($1.data.count) }
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that
@@ -422,6 +475,34 @@ extension ImportedCard {
             throw unreadable("The card on line \(line) has a blank front or back after its import")
         }
         return content
+    }
+}
+
+/// The images and sounds an import's cards bring, by name: those of the
+/// cards that come in new, and those the cards it updates take, as an update
+/// gives them its back's image and sound when the file gives them.
+private struct FilesBrought {
+    var byNewCards = FilesReferred()
+    var byUpdatedCards = FilesReferred()
+
+    /// The files `cards` bring, each repeating the user's card at its place
+    /// in `repeated`, or none.
+    init(by cards: [ImportedCard], repeating repeated: [Card?]) throws {
+        for (card, repeated) in zip(cards, repeated) {
+            if let repeated {
+                byUpdatedCards.formUnion(FilesReferred(on: try card.update(of: repeated, adding: [])))
+            } else {
+                byNewCards.formUnion(FilesReferred(on: card.content))
+            }
+        }
+    }
+}
+
+extension FilesReferred {
+    /// The files a card holding `content` refers to, on either side.
+    fileprivate init(on content: CardContent) {
+        images = content.images
+        sounds = content.sounds
     }
 }
 

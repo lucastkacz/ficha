@@ -110,6 +110,15 @@ extension CardsWindowState {
             return importBringsProgress ? preview.reversedNoteCountBringingProgress : preview.reversedNoteCount
         }
 
+        /// What the images and sounds the import brings weigh, in bytes, as
+        /// the preview's line says it while they go up to the user's iCloud,
+        /// with the files of the repeated cards while the user chooses to
+        /// update them; nil while the sheet says nothing of it, as
+        /// `ImportPreview.weightGoingUpToICloud(choosing:)` says.
+        public var weightGoingUpToICloud: Int64? {
+            preview?.weightGoingUpToICloud(choosing: repeatedCards)
+        }
+
         /// What the user chose, for the import, with the cards' progress
         /// brought onto `ladder`, the user's, when the sheet offers it and
         /// it's ticked.

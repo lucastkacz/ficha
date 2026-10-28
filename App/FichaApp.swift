@@ -16,6 +16,7 @@ struct FichaApp: App {
                     captureShortcut: appDelegate.captureShortcut, openReviewPanel: appDelegate.openReviewPanel,
                     openCards: appDelegate.openCards, openDiagnostics: appDelegate.openDiagnostics,
                     openSettings: appDelegate.openSettings, openBackupSettings: appDelegate.openBackupSettings,
+                    openSyncSettings: appDelegate.openSyncSettings,
                     checkAppearance: appDelegate.checkAppearanceNow,
                     secondDevice: SecondDeviceActions(
                         openCards: appDelegate.openSecondDeviceCards, reviewNow: appDelegate.reviewNowOnSecondDevice,

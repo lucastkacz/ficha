@@ -47,6 +47,8 @@ extension SoundName: NameOfFileOnCard {
 protocol CardFile: Sendable {
     associatedtype Name: NameOfFileOnCard
     var name: Name { get }
+    /// The file as Ficha keeps it.
+    var data: Data { get }
 }
 
 extension CardImage: CardFile {}
@@ -155,6 +157,23 @@ enum FileStore<Name: NameOfFileOnCard>: Sendable {
                 }
                 return data
             }
+        }
+    }
+
+    /// What the file named `name` weighs, in bytes, as it's kept, or an
+    /// error when it isn't kept.
+    func size(of name: Name) throws(EngineError) -> Int64 {
+        switch self {
+        case .folder(let folder):
+            let file = folder.appending(path: name.rawValue)
+            return try reportingErrors {
+                guard let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+                    throw CocoaError(.fileReadUnknown, userInfo: [NSURLErrorKey: file])
+                }
+                return Int64(size)
+            }
+        case .memory:
+            return Int64(try data(of: name).count)
         }
     }
 

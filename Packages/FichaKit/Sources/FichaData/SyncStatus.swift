@@ -11,7 +11,9 @@ internal import GRDB
 // This file is the one that writes it. A change to the switch, the account or
 // a full iCloud tells every engine on the database, as a change to the cards
 // does, so the app's sync and the menu follow it; when the device last synced
-// doesn't, since it changes at every sync.
+// doesn't, since it changes at every sync. The file also says whether what
+// changes goes up to iCloud, and from what weight Ficha says what goes up
+// weighs, as the Sync tab and the Import sheet both read them.
 
 /// How sync stands on this device.
 public struct SyncStatus: Sendable, Equatable {
@@ -33,6 +35,21 @@ public struct SyncStatus: Sendable, Equatable {
     public var isOn: Bool {
         offBecause == nil
     }
+
+    /// Whether what changes goes up to the user's iCloud: the switch is on
+    /// and the device is signed into iCloud, as far as the app heard.
+    var sendsToICloud: Bool {
+        isOn && hasICloudAccount == true
+    }
+}
+
+/// `bytes`, what images and sounds going up to the user's iCloud weigh, when
+/// it's enough for Ficha to say so, 100 MB or more, or nil under that: the
+/// Sync tab's line while sync is off, and the Import sheet's while it's on
+/// (#317's decision of 2026-10-28, our own: Anki never warns). 100 MB is
+/// 100,000,000 bytes, as Finder writes sizes.
+func weightWorthSaying(_ bytes: Int64) -> Int64? {
+    bytes >= 100_000_000 ? bytes : nil
 }
 
 /// Why Settings' "Sync with iCloud" switch is off. Its raw value is how the
@@ -166,8 +183,21 @@ func syncOffReason(in db: Database) throws -> SyncOffReason? {
     return try offReason(isOn: device.decode(forColumn: "isOn"), device.decode(forColumn: "offBecause"))
 }
 
-/// Turns sync on: a stretch of it begins (`SyncStretch`).
+/// Turns sync on, unless it's on already: a stretch of it begins
+/// (`SyncStretch`). After a purge, the device forgets when it last synced:
+/// iCloud no longer holds what it synced then, so the Sync tab says it hasn't
+/// synced until it does again. After a restore, it keeps it: it synced then,
+/// and turning sync on replaces what iCloud holds with what it holds now.
 func switchSyncOn(in db: Database) throws {
+    guard let reason = try syncOffReason(in: db) else {
+        return
+    }
+    switch reason {
+    case .user, .restore:
+        break
+    case .purge:
+        try db.execute(sql: "UPDATE syncDevice SET lastSyncedAt = NULL")
+    }
     try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
 }
 

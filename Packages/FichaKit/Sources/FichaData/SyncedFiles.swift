@@ -48,6 +48,11 @@ extension NameOfSyncedFile {
         Self.files(of: engine).contains(self)
     }
 
+    /// What the file weighs, in bytes, as `engine` keeps it.
+    func size(in engine: Engine) throws(EngineError) -> Int64 {
+        try Self.files(of: engine).size(of: self)
+    }
+
     /// Where iCloud's engine reads the file from to send it, as
     /// `FileStore.url(of:)` says.
     func url(in engine: Engine) throws(EngineError) -> URL {
@@ -169,13 +174,32 @@ private struct FilesKnown {
     }
 }
 
+extension Engine {
+    /// The images and sounds sync sends: each one a card on the device uses,
+    /// which the device keeps and iCloud lacks, as far as the device knows.
+    /// The same file on two cards is one.
+    func filesICloudLacks() throws(EngineError) -> Set<SyncedFile> {
+        let known = try read(FilesKnown.init(in:))
+        return known.used.subtracting(known.inICloud).filter { $0.name.isKept(by: self) }
+    }
+
+    /// What the images and sounds sync sends weigh, in bytes, as the device
+    /// keeps them: those `filesICloudLacks()` says.
+    func weightICloudLacks() throws(EngineError) -> Int64 {
+        var weight: Int64 = 0
+        for file in try filesICloudLacks() {
+            weight += try file.name.size(in: self)
+        }
+        return weight
+    }
+}
+
 extension Sync {
     /// Hands `iCloud` the images and sounds to send: each one a card on the
     /// device uses, which the device keeps and iCloud lacks, as far as the
     /// device knows. The same file on two cards is sent once.
     func sendFiles(to iCloud: some ICloudSyncEngine) throws(EngineError) {
-        let known = try engine.read(FilesKnown.init(in:))
-        let lacking = known.used.subtracting(known.inICloud).filter { $0.name.isKept(by: engine) }
+        let lacking = try engine.filesICloudLacks()
         iCloud.add(pendingRecordZoneChanges: lacking.map(\.recordID).sorted(by: byName).map { .saveRecord($0) })
     }
 
