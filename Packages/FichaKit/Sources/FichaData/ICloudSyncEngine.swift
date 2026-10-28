@@ -160,6 +160,9 @@ public enum ICloudError: Error, Sendable, Equatable {
     case unknownItem
     /// The user's iCloud is full (`quotaExceeded`).
     case quotaExceeded
+    /// The user deleted Ficha's data in iCloud's settings, and the zone
+    /// takes nothing until it's saved again (`userDeletedZone`).
+    case userDeletedZone
     /// An error `CKSyncEngine` retries on its own, such as a missing
     /// network, keeping the change waiting: `networkFailure`,
     /// `networkUnavailable`, `zoneBusy`, `serviceUnavailable`,

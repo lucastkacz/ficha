@@ -272,6 +272,8 @@ extension ICloudError {
             self = .unknownItem
         case .quotaExceeded:
             self = .quotaExceeded
+        case .userDeletedZone:
+            self = .userDeletedZone
         case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable, .notAuthenticated,
             .requestRateLimited, .operationCancelled, .accountTemporarilyUnavailable:
             self = .retriedByTheEngine

@@ -72,7 +72,7 @@ extension ICloudEvent.SentRecordZoneChanges {
         var gone = deletedRecordIDs
         for (id, error) in failedRecordDeletes {
             switch error {
-            case .unknownItem, .zoneNotFound:
+            case .unknownItem, .zoneNotFound, .userDeletedZone:
                 gone.append(id)
             case .retriedByTheEngine:
                 break

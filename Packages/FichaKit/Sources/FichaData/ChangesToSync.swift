@@ -185,29 +185,39 @@ extension Engine {
     }
 
     /// Whether sync is on, as Settings' switch says: it is until the user
-    /// turns it off.
+    /// turns it off, or a purge does.
     func syncIsOn() throws(EngineError) -> Bool {
         try read(isSyncOn(in:))
     }
 
-    /// Turns sync on, and leaves every row that syncs waiting to be sent, as
-    /// nothing was recorded while it was off. When it's on already, nothing
+    /// Turns sync on, as the user does in Settings, and leaves every row that
+    /// syncs waiting to be sent, as nothing but deletions was recorded while
+    /// it was off. The app's sync follows it. When it's on already, nothing
     /// changes.
-    func turnSyncOn() throws(EngineError) {
+    public func turnSyncOn() throws(EngineError) {
         try write { db in
             guard try !isSyncOn(in: db) else { return }
-            try db.execute(sql: "UPDATE syncDevice SET isOn = 1")
+            try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
             try recordEverythingToSend(in: db)
         }
     }
 
-    /// Turns sync off: nothing waits to be sent, and nothing is recorded until
-    /// it's on again, which sends everything.
-    func turnSyncOff() throws(EngineError) {
-        try write { db in
-            try db.execute(sql: "UPDATE syncDevice SET isOn = 0")
-            try db.execute(sql: "DELETE FROM syncPending")
+    /// Turns sync off, as the user does in Settings: nothing more is sent or
+    /// fetched, and nothing waits to be sent but the deletions, until it's on
+    /// again, which sends everything. A deletion made meanwhile waits too, so
+    /// that turning it on deletes from iCloud what the device deleted. The
+    /// images and sounds no card uses, which the device kept only because
+    /// iCloud holds them, go: once it's on again, the device asks iCloud for
+    /// any of them a card comes to use. The app's sync follows it. When it's
+    /// off already, nothing changes.
+    public func turnSyncOff() throws(EngineError) {
+        let inICloud = try write { db in
+            try switchSyncOff(because: .user, in: db)
+            return (
+                images: try namesInICloud(ImageName.self, in: db), sounds: try namesInICloud(SoundName.self, in: db)
+            )
         }
+        removeFilesNoCardUses(images: inICloud.images, sounds: inICloud.sounds)
     }
 
     /// The state CKSyncEngine saved last on this device, or nil before it
@@ -236,7 +246,7 @@ func saveSyncEngineState(_ state: Data?, in db: Database) throws {
 }
 
 /// Whether sync is on, as Settings' switch says.
-private func isSyncOn(in db: Database) throws -> Bool {
+func isSyncOn(in db: Database) throws -> Bool {
     guard let isOn = try Bool.fetchOne(db, sql: "SELECT isOn FROM syncDevice") else {
         throw unreadable("The database doesn't say whether sync is on")
     }

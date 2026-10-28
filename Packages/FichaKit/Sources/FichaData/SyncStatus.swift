@@ -1,0 +1,139 @@
+import FichaCore
+import Foundation
+internal import GRDB
+
+// How sync stands on this device (ADR 0017), as Settings' Sync tab and the
+// menu read it: the switch, and why it's off; whether the device is signed
+// into iCloud; whether iCloud is full; and when the device last synced. The
+// device keeps it in its database, which never syncs it (`Schema`'s "v24 how
+// sync stands"), so it holds across launches, and the CLI's restore can turn
+// sync off. A change to the switch, the account or a full iCloud tells every
+// engine on the database, as a change to the cards does, so the app's sync
+// and the menu follow it; when the device last synced doesn't, since it
+// changes at every sync.
+
+/// How sync stands on this device.
+public struct SyncStatus: Sendable, Equatable {
+    /// Why Settings' "Sync with iCloud" switch is off, or nil while it's on.
+    public let offBecause: SyncOffReason?
+    /// Whether the device is signed into iCloud, or nil until the app first
+    /// asked, as in a database only the CLI opened.
+    public let hasICloudAccount: Bool?
+    /// Whether iCloud was full when the device last sent something: the
+    /// changes that didn't fit wait until it isn't.
+    public let iCloudIsFull: Bool
+    /// When the device last synced: a fetch of what the other devices changed
+    /// ended, or iCloud took what the device sent. Nil before it first did.
+    public let lastSynced: Date?
+
+    /// Whether Settings' switch is on.
+    public var isOn: Bool {
+        offBecause == nil
+    }
+}
+
+/// Why Settings' "Sync with iCloud" switch is off. Its raw value is how the
+/// database keeps it, so it never changes.
+public enum SyncOffReason: String, Sendable, Equatable {
+    /// The user turned it off.
+    case user
+    /// The user deleted Ficha's data in iCloud's settings, which turns sync
+    /// off with the cards kept, so that nothing goes back up until the user
+    /// says so: turning it on sends everything.
+    case purge
+}
+
+extension Engine {
+    /// How sync stands on this device now.
+    public func syncStatus() throws(EngineError) -> SyncStatus {
+        try read { db in
+            guard
+                let device = try Row.fetchOne(
+                    db, sql: "SELECT isOn, offBecause, hasICloudAccount, iCloudIsFull, lastSyncedAt FROM syncDevice")
+            else {
+                throw unreadable("The database doesn't keep how sync stands on this device")
+            }
+            return SyncStatus(
+                offBecause: try offReason(
+                    isOn: device.decode(forColumn: "isOn"), device.decode(forColumn: "offBecause")),
+                hasICloudAccount: try device.decode(forColumn: "hasICloudAccount"),
+                iCloudIsFull: try device.decode(forColumn: "iCloudIsFull"),
+                lastSynced: try device.decode(forColumn: "lastSyncedAt"))
+        }
+    }
+
+    /// Keeps whether the device is signed into iCloud, as the app asks iCloud
+    /// at launch and whenever the account changes, whether sync is on or not.
+    func noteICloudAccount(signedIn: Bool) throws(EngineError) {
+        try updateSyncDevice("hasICloudAccount", to: signedIn)
+    }
+
+    /// Keeps whether iCloud is full, as what the device sent last says.
+    func noteICloudIsFull(_ isFull: Bool) throws(EngineError) {
+        try updateSyncDevice("iCloudIsFull", to: isFull)
+    }
+
+    /// Whether the device knows iCloud is full.
+    func iCloudIsFull() throws(EngineError) -> Bool {
+        try read(FichaData.iCloudIsFull(in:))
+    }
+
+    /// Keeps that the device synced now, without telling the other engines:
+    /// it changes at every sync, and nothing else follows it.
+    func noteSynced() throws(EngineError) {
+        let now = time.now
+        try writeWithoutTelling { db in
+            try db.execute(sql: "UPDATE syncDevice SET lastSyncedAt = ?", arguments: [now])
+        }
+    }
+
+    /// Sets `column` of what the device keeps of sync to `value`, telling the
+    /// other engines only when it changed, so that a sync that says what it
+    /// said before changes nothing else.
+    private func updateSyncDevice(_ column: String, to value: Bool) throws(EngineError) {
+        let changed = try writeWithoutTelling { db in
+            guard try Bool.fetchOne(db, sql: "SELECT \(column) FROM syncDevice") != value else {
+                return false
+            }
+            try db.execute(sql: "UPDATE syncDevice SET \(column) = ?", arguments: [value])
+            return true
+        }
+        if changed {
+            databaseChanges.post()
+        }
+    }
+}
+
+/// Whether the device knows iCloud is full.
+func iCloudIsFull(in db: Database) throws -> Bool {
+    guard let isFull = try Bool.fetchOne(db, sql: "SELECT iCloudIsFull FROM syncDevice") else {
+        throw unreadable("The database doesn't say whether iCloud is full")
+    }
+    return isFull
+}
+
+/// Turns sync off, because of `reason`, unless it's off already: nothing
+/// waits to be sent but the deletions, which turning it on sends with every
+/// row as it is then.
+func switchSyncOff(because reason: SyncOffReason, in db: Database) throws {
+    try db.execute(
+        sql: "UPDATE syncDevice SET isOn = 0, offBecause = ? WHERE isOn", arguments: [reason.rawValue])
+    try db.execute(sql: "DELETE FROM syncPending WHERE NOT isDeletion")
+}
+
+/// Why the switch is off, as the database keeps it beside whether it's on,
+/// or nil while it's on; an error when the two disagree, or for a reason
+/// this version of Ficha doesn't know.
+private func offReason(isOn: Bool, _ reason: String?) throws -> SyncOffReason? {
+    switch (isOn, reason) {
+    case (true, nil):
+        return nil
+    case (false, let reason?):
+        guard let known = SyncOffReason(rawValue: reason) else {
+            throw unreadable("Sync is off for a reason, \(reason), that this version of Ficha doesn't know")
+        }
+        return known
+    case (true, _?), (false, nil):
+        throw unreadable("The database doesn't agree with itself on whether sync is on")
+    }
+}

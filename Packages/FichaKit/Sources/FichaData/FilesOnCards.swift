@@ -231,8 +231,9 @@ final class FilesInMemory<Name: NameOfFileOnCard>: Sendable {
 extension Engine {
     /// Removes the files among `images` and `sounds` that no card refers to
     /// any more, now that a change let go of them, such as deleting a card
-    /// or replacing a side's image or sound. One iCloud holds stays until it
-    /// leaves iCloud, as `namesInICloud(_:in:)` says. One that couldn't be
+    /// or replacing a side's image or sound. While sync is on, one iCloud
+    /// holds stays until it leaves iCloud, as `namesInICloud(_:in:)` says.
+    /// One that couldn't be
     /// removed stays, and the engine logs why: the change is saved all the
     /// same.
     func removeFilesNoCardUses(images: Set<ImageName> = [], sounds: Set<SoundName> = []) {
@@ -248,12 +249,13 @@ extension Engine {
     }
 
     /// Removes from `store` the files among `names` that no card refers to,
-    /// and iCloud doesn't hold.
+    /// and iCloud doesn't hold while sync is on.
     private func removeFilesNoCardUses<Name>(among names: Set<Name>, from store: FileStore<Name>) {
         guard !names.isEmpty else { return }
         do throws(EngineError) {
             let unused = try read { db in
-                try names.subtracting(namesReferred(Name.self, in: db)).subtracting(namesInICloud(Name.self, in: db))
+                try names.subtracting(namesReferred(Name.self, in: db))
+                    .subtracting(isSyncOn(in: db) ? namesInICloud(Name.self, in: db) : [])
             }
             try store.remove(unused)
         } catch {

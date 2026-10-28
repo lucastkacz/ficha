@@ -7,18 +7,35 @@ import Testing
 // what waits to be sent.
 @testable import FichaData
 
-/// The user's private database in iCloud, in memory, which a test's devices
-/// share, each through a `FakeSyncEngine` of its own (ADR 0017). It keeps
-/// records as iCloud does: by zone and name, each version with a change tag
-/// of its own, in its system fields. It saves a record only for a device
-/// that heard of its latest version, and otherwise answers with the record
-/// as it is (`serverRecordChanged`), refuses a record in a zone it doesn't
-/// have (`zoneNotFound`) and one a device heard of that it no longer has
-/// (`unknownItem`). It hands each device what changed since that device last
-/// fetched, newest first, since iCloud promises no order. It keeps each
+/// One iCloud account's private database, in memory, which a test's devices
+/// signed into it share, each through a `FakeSyncEngine` of its own (ADR
+/// 0017). It keeps records as iCloud does: by zone and name, each version
+/// with a change tag of its own, in its system fields. It saves a record only
+/// for a device that heard of its latest version, and otherwise answers with
+/// the record as it is (`serverRecordChanged`), refuses a record in a zone it
+/// doesn't have (`zoneNotFound`) and one a device heard of that it no longer
+/// has (`unknownItem`). It hands each device what changed since that device
+/// last fetched, newest first, since iCloud promises no order. It keeps each
 /// record's files apart, as `CKAsset`s, in a folder of its own: a copy of
 /// each file a device sends, which a device that fetches the record reads.
+///
+/// It can be purged, as when the user deletes Ficha's data in iCloud's
+/// settings: every zone goes, each device that fetches hears it was purged,
+/// and a zone purged refuses records (`userDeletedZone`) until a device saves
+/// it again. A zone deleted and saved again before a device fetched reaches
+/// it as changed, with no deletion, as P16 found (#316).
+///
+/// It can fill up: given room for so many bytes, it refuses a record that
+/// doesn't fit (`quotaExceeded`), and a zone once nothing fits, while it
+/// takes every deletion. Where it differs from iCloud: a record's size is
+/// its fields' bytes alone, its text's in UTF-8, eight for a number and the
+/// file's for an asset, where iCloud counts what it likes; and CloudKit's
+/// documentation doesn't say whether a zone counts, so the fake, being the
+/// less forgiving, refuses one when nothing fits.
 final class FakeICloud: Sendable {
+    /// Who signed into the account, as the user record's ID tells accounts
+    /// apart in `CKSyncEngine.Event.AccountChange`.
+    let user = UUID()
     private let database: Mutex<Database>
     /// Where it keeps the records' files.
     private let assets = URL.temporaryDirectory.appending(
@@ -35,14 +52,24 @@ final class FakeICloud: Sendable {
     /// What the database holds.
     fileprivate struct Database {
         var zones: [ICloudZone: Zone] = [:]
+        /// The zones that left, why, and the change that took them, until
+        /// they're saved again.
+        var zoneDeletions: [ICloudZone: (reason: ICloudEvent.ZoneDeletion.Reason, change: Int)] = [:]
         /// The last change, which each change's number follows.
         var lastChange = 0
         /// How many times it saved a record.
         var saves = 0
         /// How many times a device sent each record to save, saved or not.
         var sends: [ICloudRecordID: Int] = [:]
+        /// How many bytes it has room for, or nil for as many as it's sent.
+        var room: Int?
         /// Where it keeps the records' files.
         let assets: URL
+
+        /// How many bytes its records take.
+        var used: Int {
+            zones.values.reduce(0) { used, zone in zone.records.values.reduce(used) { $0 + $1.size } }
+        }
     }
 
     /// A zone's records, and those deleted, by name.
@@ -51,10 +78,12 @@ final class FakeICloud: Sendable {
         var deletions: [String: (type: String, change: Int)] = [:]
     }
 
-    /// A record as iCloud holds it, with the change that saved it.
+    /// A record as iCloud holds it, with the change that saved it and how
+    /// many bytes it takes.
     fileprivate struct Stored {
         let record: ICloudRecord
         let change: Int
+        let size: Int
     }
 
     /// How many times it saved a record, for a test that checks a device sent
@@ -73,6 +102,34 @@ final class FakeICloud: Sendable {
     /// iCloud keeps.
     var records: [ICloudRecord] {
         database.withLock { $0.zones.values.flatMap { $0.records.values.map(\.record) } }
+    }
+
+    /// Fills it up: from now on, only what frees room fits.
+    func fillUp() {
+        database.withLock { $0.room = $0.used }
+    }
+
+    /// Leaves room for `bytes` more than it holds now.
+    func leaveRoom(forBytes bytes: Int) {
+        database.withLock { $0.room = $0.used + bytes }
+    }
+
+    /// Makes room for whatever comes, as when the user frees up space or buys
+    /// more.
+    func makeRoom() {
+        database.withLock { $0.room = nil }
+    }
+
+    /// Deletes every zone, as the user does when they delete Ficha's data in
+    /// iCloud's settings.
+    func purge() {
+        database.withLock { database in
+            for zone in database.zones.keys {
+                database.lastChange += 1
+                database.zoneDeletions[zone] = (.purged, database.lastChange)
+            }
+            database.zones = [:]
+        }
     }
 
     /// The records `asked` name, as it holds them now, and as deleted, with
@@ -97,12 +154,30 @@ final class FakeICloud: Sendable {
         }
     }
 
-    /// Saves `zones`, those it doesn't have yet.
-    fileprivate func save(_ zones: [ICloudZone]) {
+    /// Saves the zones `changes` save, those it doesn't have yet, and deletes
+    /// those they delete, as `CKModifyRecordZonesOperation` does, and returns
+    /// those it couldn't save, and why: once nothing fits, no zone does.
+    fileprivate func modify(_ changes: [ICloudPendingDatabaseChange]) -> [ICloudEvent.FailedZoneSave] {
         database.withLock { database in
-            for zone in zones where database.zones[zone] == nil {
-                database.zones[zone] = Zone()
+            var failed: [ICloudEvent.FailedZoneSave] = []
+            for change in changes {
+                switch change {
+                case .saveZone(let zone) where database.zones[zone] == nil:
+                    if let room = database.room, database.used >= room {
+                        failed.append(ICloudEvent.FailedZoneSave(zone: zone, error: .quotaExceeded))
+                    } else {
+                        database.zones[zone] = Zone()
+                        database.zoneDeletions[zone] = nil
+                    }
+                case .saveZone:
+                    break
+                case .deleteZone(let zone):
+                    guard database.zones.removeValue(forKey: zone) != nil else { continue }
+                    database.lastChange += 1
+                    database.zoneDeletions[zone] = (.deleted, database.lastChange)
+                }
             }
+            return failed
         }
     }
 
@@ -126,7 +201,8 @@ final class FakeICloud: Sendable {
             var failedDeletes: [ICloudRecordID: ICloudError] = [:]
             for id in deletions {
                 guard database.zones[id.zone] != nil else {
-                    failedDeletes[id] = .zoneNotFound
+                    failedDeletes[id] =
+                        database.zoneDeletions[id.zone]?.reason == .purged ? .userDeletedZone : .zoneNotFound
                     continue
                 }
                 if let stored = database.zones[id.zone]?.records.removeValue(forKey: id.name) {
@@ -138,6 +214,18 @@ final class FakeICloud: Sendable {
             return ICloudEvent.SentRecordZoneChanges(
                 savedRecords: saved, failedRecordSaves: failed, deletedRecordIDs: deleted,
                 failedRecordDeletes: failedDeletes)
+        }
+    }
+
+    /// The zones that left since the change `fetchedUpTo` says a device
+    /// fetched the database's changes up to, with the change it's up to then.
+    fileprivate func zoneDeletions(since fetchedUpTo: Int) -> (deletions: [ICloudEvent.ZoneDeletion], upTo: Int) {
+        database.withLock { database in
+            (
+                database.zoneDeletions.filter { $0.value.change > fetchedUpTo }.sorted { $0.key.name < $1.key.name }
+                    .map { ICloudEvent.ZoneDeletion(zone: $0.key, reason: $0.value.reason) },
+                database.lastChange
+            )
         }
     }
 
@@ -171,20 +259,25 @@ final class FakeICloud: Sendable {
 
 extension FakeICloud.Database {
     /// Saves `record`, when the device that sends it heard of its latest
-    /// version or of none, and returns it as saved, with the system fields of
-    /// a new version, or why it isn't. A record saved with none after it was
-    /// deleted is a new one, as in CloudKit: a device that fetches from
-    /// before the deletion gets it, and not the deletion.
+    /// version or of none, and it fits, and returns it as saved, with the
+    /// system fields of a new version, or why it isn't. A record saved with
+    /// none after it was deleted is a new one, as in CloudKit: a device that
+    /// fetches from before the deletion gets it, and not the deletion.
     fileprivate mutating func save(_ record: ICloudRecord) -> Result<ICloudRecord, ICloudError> {
         guard let zone = zones[record.id.zone] else {
-            return .failure(.zoneNotFound)
+            return .failure(zoneDeletions[record.id.zone]?.reason == .purged ? .userDeletedZone : .zoneNotFound)
         }
-        switch (zone.records[record.id.name], record.systemFields) {
+        let stored = zone.records[record.id.name]
+        switch (stored, record.systemFields) {
         case (let stored?, let systemFields) where stored.record.systemFields != systemFields:
             return .failure(.serverRecordChanged(stored.record))
         case (nil, _?):
             return .failure(.unknownItem)
         default:
+            let size = record.fields.values.reduce(0) { $0 + bytes(of: $1) }
+            if let room, used - (stored?.size ?? 0) + size > room {
+                return .failure(.quotaExceeded)
+            }
             let fields: [String: ICloudValue?]
             do {
                 fields = try record.fields.mapValues(keepingAssets)
@@ -195,9 +288,20 @@ extension FakeICloud.Database {
             saves += 1
             let saved = ICloudRecord(
                 id: record.id, type: record.type, fields: fields, systemFields: Data("change \(lastChange)".utf8))
-            zones[record.id.zone]?.records[record.id.name] = FakeICloud.Stored(record: saved, change: lastChange)
+            zones[record.id.zone]?.records[record.id.name] = FakeICloud.Stored(
+                record: saved, change: lastChange, size: size)
             zones[record.id.zone]?.deletions[record.id.name] = nil
             return .success(saved)
+        }
+    }
+
+    /// How many bytes `value` takes, as the fake counts it.
+    private func bytes(of value: ICloudValue?) -> Int {
+        switch value {
+        case nil: 0
+        case .string(let text)?: text.utf8.count
+        case .int?, .double?: 8
+        case .asset(let file)?: (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         }
     }
 
@@ -215,14 +319,27 @@ extension FakeICloud.Database {
 }
 
 /// A device's way to the fake iCloud, as `CKSyncEngine` is the app's: it
-/// keeps the changes waiting to be sent and how far the device fetched, which
-/// it hands `Sync` as its state, and tells `Sync`, its delegate, of each
-/// event. It sends and fetches only when asked, as `CKSyncEngine` does with
-/// automatic sync off, and it can go offline.
+/// keeps the changes waiting to be sent, how far the device fetched and the
+/// account it last knew of, which it hands `Sync` as its state, and tells
+/// `Sync`, its delegate, of each event. It sends and fetches only when asked,
+/// as `CKSyncEngine` does with automatic sync off, and it can go offline.
+///
+/// It reaches the account the device is signed into. As `CKSyncEngine`'s
+/// documentation says, it tells of an account change as soon as the device
+/// signs in or out, or, for a change made while the app didn't run, once it
+/// runs, as one change from the account it last knew of to the one it meets;
+/// and as it tells of it, it forgets the changes it was handed and how far it
+/// fetched. Signed out, it neither sends nor fetches, as the documentation
+/// says it may, keeping what waits. Where it differs from CloudKit: an
+/// engine with no saved state tells of no account change, where CloudKit's
+/// may tell of a sign-in, since its documentation doesn't say, so Ficha's
+/// first sync can't depend on one.
 final class FakeSyncEngine: ICloudSyncEngine {
-    private let iCloud: FakeICloud
     private let delegate: Sync
     private let state: Mutex<State>
+    /// The account the device is signed into now, or nil while it's signed
+    /// out.
+    private let account: Mutex<FakeICloud?>
     private let offline = Mutex(false)
     private let losingFetchedFiles = Mutex(false)
     private let gettingItsOwnSavesBack = Mutex(true)
@@ -239,14 +356,33 @@ final class FakeSyncEngine: ICloudSyncEngine {
         var pendingDatabaseChanges: [ICloudPendingDatabaseChange] = []
         /// The last change it fetched of each zone, by name.
         var fetchedUpTo: [String: Int] = [:]
+        /// The last change it fetched of the database's zones.
+        var fetchedZonesUpTo = 0
+        /// The account it last knew of, or nil before it looked.
+        var account: KnownAccount?
     }
 
-    /// The engine of a device that reaches `iCloud`, telling `delegate` of
-    /// each event, from the state it saved last, or from nothing.
-    init(iCloud: FakeICloud, delegate: Sync, stateSerialization: Data?) throws {
-        self.iCloud = iCloud
+    /// An account as the engine knows it: who's signed in, or no one.
+    private enum KnownAccount: Codable, Equatable {
+        case signedOut
+        case signedIn(UUID)
+
+        init(_ account: FakeICloud?) {
+            self = account.map { .signedIn($0.user) } ?? .signedOut
+        }
+    }
+
+    /// The engine of a device signed into `account`, or signed out when it's
+    /// nil, telling `delegate` of each event, from the state it saved last,
+    /// or from nothing.
+    init(account: FakeICloud?, delegate: Sync, stateSerialization: Data?) throws {
         self.delegate = delegate
-        state = Mutex(try stateSerialization.map { try JSONDecoder().decode(State.self, from: $0) } ?? State())
+        self.account = Mutex(account)
+        var state = try stateSerialization.map { try JSONDecoder().decode(State.self, from: $0) } ?? State()
+        if state.account == nil {
+            state.account = KnownAccount(account)
+        }
+        self.state = Mutex(state)
     }
 
     /// Whether it's offline: then sending and fetching fail, and the changes
@@ -278,6 +414,39 @@ final class FakeSyncEngine: ICloudSyncEngine {
     /// is on its way.
     func onceSaved(_ work: @escaping @Sendable () throws -> Void) {
         whileSaving.withLock { $0 = work }
+    }
+
+    /// Hears that the device signed into `account`, or out when it's nil,
+    /// and tells of it, as `CKSyncEngine` listens for account changes.
+    func signedInto(_ account: FakeICloud?) throws {
+        self.account.withLock { $0 = account }
+        try tellAccountChange()
+    }
+
+    /// Tells the delegate of a change from the account it last knew of to
+    /// the one the device is signed into, if they differ, forgetting first
+    /// every change it was handed and how far it fetched, as `CKSyncEngine`
+    /// resets its state.
+    private func tellAccountChange() throws {
+        let now = KnownAccount(account.withLock { $0 })
+        let change: ICloudEvent.AccountChange? = state.withLock { state in
+            let change: ICloudEvent.AccountChange? =
+                switch (state.account, now) {
+                case (.signedOut?, .signedIn): .signIn
+                case (.signedIn?, .signedOut): .signOut
+                case (.signedIn(let before)?, .signedIn(let after)) where before != after: .switchAccounts
+                default: nil
+                }
+            if change != nil {
+                state = State(account: now)
+            }
+            return change
+        }
+        guard let change else { return }
+        ownSaves.withLock { $0 = [:] }
+        asked.withLock { $0 = [] }
+        try delegate.handle(.accountChange(change), from: self)
+        try delegate.handle(.stateUpdate(serialization()), from: self)
     }
 
     func add(pendingRecordZoneChanges changes: [ICloudPendingRecordZoneChange]) {
@@ -312,18 +481,20 @@ final class FakeSyncEngine: ICloudSyncEngine {
     /// Sends the zones and then the records waiting, a batch at a time, as
     /// long as the delegate's answers leave some to send. A save whose record
     /// the delegate doesn't give keeps waiting, as `CKSyncEngine` keeps it,
-    /// until the delegate removes it.
+    /// until the delegate removes it. A change that failed no longer waits.
     func sendChanges() async throws {
         try checkOnline()
+        try tellAccountChange()
+        guard let account = account.withLock({ $0 }) else { return }
         for _ in 0..<10 {
             let zones = state.withLock { state in
                 defer { state.pendingDatabaseChanges = [] }
                 return state.pendingDatabaseChanges
             }
             if !zones.isEmpty {
-                iCloud.save(zones.compactMap(\.zoneToSave))
+                let failed = account.modify(zones)
                 try delegate.handle(
-                    .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [])), from: self)
+                    .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: failed)), from: self)
             }
             var toSave: [ICloudRecord] = []
             var toDelete: [ICloudRecordID] = []
@@ -343,7 +514,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
                 return try delegate.handle(.stateUpdate(serialization()), from: self)
             }
             if !toSave.isEmpty || !toDelete.isEmpty {
-                let sent = iCloud.modify(saving: toSave, deleting: toDelete)
+                let sent = account.modify(saving: toSave, deleting: toDelete)
                 ownSaves.withLock { saves in
                     for record in sent.savedRecords {
                         saves[record.id] = record.systemFields
@@ -359,8 +530,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
         Issue.record("The device kept sending: each answer left changes waiting.")
     }
 
-    /// Fetches what changed in each zone since it last did, and saves how far
-    /// it fetched.
+    /// Fetches what changed since it last did, and saves how far it fetched.
     func fetchChanges() async throws {
         try await fetchChanges(in: nil)
     }
@@ -373,14 +543,28 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
     }
 
-    /// Fetches what changed in each of `zones` since it last did, or in every
-    /// zone when it's nil, as `CKSyncEngine.fetchChanges(_:)` does with a
-    /// scope of zones, then the records the device asked for, says it
-    /// fetched it all, and saves how far it fetched.
+    /// Fetches the zones that left since it last did, forgetting how far it
+    /// fetched each; then what changed in each of `zones` since it last did,
+    /// or in every zone when it's nil, as `CKSyncEngine.fetchChanges(_:)`
+    /// does with a scope of zones; then the records the device asked for;
+    /// says it fetched it all, and saves how far it fetched.
     func fetchChanges(in zones: Set<ICloudZone>?) async throws {
         try checkOnline()
+        try tellAccountChange()
+        guard let account = account.withLock({ $0 }) else { return }
+        let (deletions, zonesUpTo) = account.zoneDeletions(since: state.withLock(\.fetchedZonesUpTo))
+        if !deletions.isEmpty {
+            try delegate.handle(
+                .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: deletions)), from: self)
+        }
+        state.withLock { state in
+            state.fetchedZonesUpTo = zonesUpTo
+            for deletion in deletions {
+                state.fetchedUpTo[deletion.zone.name] = nil
+            }
+        }
         let fetchedUpTo = state.withLock(\.fetchedUpTo)
-        for (zone, changes, upTo) in iCloud.changes(since: fetchedUpTo, in: zones) {
+        for (zone, changes, upTo) in account.changes(since: fetchedUpTo, in: zones) {
             try delegate.handle(.fetchedRecordZoneChanges(losingFiles(withoutItsOwnSaves(changes))), from: self)
             state.withLock { $0.fetchedUpTo[zone.name] = upTo }
         }
@@ -389,7 +573,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
             return asked
         }
         if !asked.isEmpty {
-            try delegate.handle(.fetchedRecordZoneChanges(losingFiles(iCloud.records(asked))), from: self)
+            try delegate.handle(.fetchedRecordZoneChanges(losingFiles(account.records(asked))), from: self)
         }
         try delegate.handle(.didFetchChanges, from: self)
         try delegate.handle(.stateUpdate(serialization()), from: self)
@@ -462,31 +646,32 @@ extension ICloudPendingDatabaseChange {
         case .saveZone(let zone), .deleteZone(let zone): zone
         }
     }
-
-    /// The zone it saves, or nil when it deletes one.
-    fileprivate var zoneToSave: ICloudZone? {
-        switch self {
-        case .saveZone(let zone): zone
-        case .deleteZone: nil
-        }
-    }
 }
 
 /// One of the user's devices in a test: an engine, in memory or on a data
-/// folder, whose sync reaches the fake iCloud as the app's does.
-struct Device {
+/// folder, whose sync reaches the fake iCloud as the app's does, through the
+/// account the device is signed into.
+final class Device {
     let engine: Engine
     let sync: Sync
-    let iCloud: FakeSyncEngine
+    /// Its way to iCloud: a new one each time the app launches, or turns sync
+    /// on.
+    private(set) var iCloud: FakeSyncEngine
+    /// The account it's signed into, or nil while it's signed out.
+    private(set) var account: FakeICloud?
 
-    /// The device `engine` runs, which starts syncing through `iCloud`, from
-    /// the state its engine saved last, as the app does when it launches.
-    init(_ engine: Engine, syncingThrough iCloud: FakeICloud) throws {
+    /// The device `engine` runs, signed into `account`, or signed out when
+    /// it's nil, which starts syncing, from the state its engine saved last,
+    /// as the app does when it launches: it notes whether the device is
+    /// signed in, and starts while sync is on.
+    init(_ engine: Engine, syncingThrough account: FakeICloud?) throws {
         self.engine = engine
+        self.account = account
         sync = Sync(engine: engine)
-        self.iCloud = try FakeSyncEngine(
-            iCloud: iCloud, delegate: sync, stateSerialization: engine.savedSyncEngineState())
-        try sync.start(with: self.iCloud)
+        iCloud = try FakeSyncEngine(
+            account: account, delegate: sync, stateSerialization: engine.savedSyncEngineState())
+        try sync.noteAccount(signedIn: account != nil)
+        try sync.start(with: iCloud)
     }
 
     /// Syncs as the app does once it hears the database changed and iCloud
@@ -496,5 +681,42 @@ struct Device {
         try sync.sendWhatChanged(to: iCloud)
         try await iCloud.sendChanges()
         try await iCloud.fetchChanges()
+    }
+
+    /// Signs the device out of iCloud, which its engine hears, as the app
+    /// does too, whether sync is on or not.
+    func signOut() throws {
+        account = nil
+        try sync.noteAccount(signedIn: false)
+        try iCloud.signedInto(nil)
+    }
+
+    /// Signs the device into `account`, as `signOut()` does.
+    func signIn(to account: FakeICloud) throws {
+        self.account = account
+        try sync.noteAccount(signedIn: true)
+        try iCloud.signedInto(account)
+    }
+
+    /// Turns sync on, as the user does in Settings: the app starts a new
+    /// engine, from the state the device saved last.
+    func turnSyncOn() throws {
+        try engine.turnSyncOn()
+        try relaunch()
+    }
+
+    /// Turns sync off, as the user does in Settings: the app lets its engine
+    /// go, and its events are left aside.
+    func turnSyncOff() throws {
+        try engine.turnSyncOff()
+    }
+
+    /// Starts a new engine from the state the device saved last, as the app
+    /// does when it launches.
+    func relaunch() throws {
+        iCloud = try FakeSyncEngine(
+            account: account, delegate: sync, stateSerialization: engine.savedSyncEngineState())
+        try sync.noteAccount(signedIn: account != nil)
+        try sync.start(with: iCloud)
     }
 }
