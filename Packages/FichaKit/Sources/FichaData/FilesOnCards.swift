@@ -47,6 +47,8 @@ extension SoundName: NameOfFileOnCard {
 protocol CardFile: Sendable {
     associatedtype Name: NameOfFileOnCard
     var name: Name { get }
+    /// The file as Ficha keeps it.
+    var data: Data { get }
 }
 
 extension CardImage: CardFile {}

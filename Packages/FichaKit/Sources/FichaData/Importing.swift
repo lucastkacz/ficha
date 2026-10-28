@@ -136,8 +136,8 @@ public struct ImportPreview: Sendable, Equatable {
             return nil
         }
         switch repeatedCards {
-        case .update: return heavyUpload(newFilesWeight.ofNewAndUpdatedCards)
-        case .skip: return heavyUpload(newFilesWeight.ofNewCards)
+        case .update: return weightWorthSaying(newFilesWeight.ofNewAndUpdatedCards)
+        case .skip: return weightWorthSaying(newFilesWeight.ofNewCards)
         }
     }
 }
@@ -290,6 +290,11 @@ extension Engine {
         }.map(\.0)
         var broughtByAll = brought.byNewCards
         broughtByAll.formUnion(brought.byUpdatedCards)
+        /// What the files `files` names weigh, in bytes, of those that came
+        /// in with the file that Ficha doesn't hold.
+        func weightOfFilesNotHeld(_ files: FilesReferred) -> Int64 {
+            weightNotHeld(files.images, among: images) + weightNotHeld(files.sounds, among: sounds)
+        }
         return ImportPreview(
             fileName: fileName, kind: kind, cards: reading.cards, images: images, sounds: sounds,
             leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
@@ -297,21 +302,16 @@ extension Engine {
             reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
             reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) },
             newFilesWeight: ImportPreview.NewFilesWeight(
-                ofNewCards: weightOfFilesNotHeld(brought.byNewCards, among: images, sounds),
-                ofNewAndUpdatedCards: weightOfFilesNotHeld(broughtByAll, among: images, sounds)),
+                ofNewCards: weightOfFilesNotHeld(brought.byNewCards),
+                ofNewAndUpdatedCards: weightOfFilesNotHeld(broughtByAll)),
             goesUpToICloud: try syncStatus().sendsToICloud)
     }
 
-    /// What the files `files` names weigh, in bytes, of those among `images`
-    /// and `sounds`, which came in with a file, that Ficha doesn't hold.
-    private func weightOfFilesNotHeld(
-        _ files: FilesReferred, among images: [ImageName: CardImage], _ sounds: [SoundName: CardSound]
-    ) -> Int64 {
-        let imagesWeight = files.images.filter { !self.images.contains($0) }.compactMap { images[$0] }
-            .reduce(0) { $0 + Int64($1.data.count) }
-        let soundsWeight = files.sounds.filter { !self.sounds.contains($0) }.compactMap { sounds[$0] }
-            .reduce(0) { $0 + Int64($1.data.count) }
-        return imagesWeight + soundsWeight
+    /// What the files named `names` weigh, in bytes, of those among
+    /// `incoming`, which came in with a file, that Ficha doesn't hold.
+    private func weightNotHeld<File: CardFile>(_ names: Set<File.Name>, among incoming: [File.Name: File]) -> Int64
+    where File.Name: NameOfSyncedFile {
+        names.filter { !$0.isKept(by: self) }.compactMap { incoming[$0] }.reduce(0) { $0 + Int64($1.data.count) }
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that
@@ -489,15 +489,20 @@ private struct FilesBrought {
     /// in `repeated`, or none.
     init(by cards: [ImportedCard], repeating repeated: [Card?]) throws {
         for (card, repeated) in zip(cards, repeated) {
-            guard let repeated else {
-                byNewCards.images.formUnion(card.content.images)
-                byNewCards.sounds.formUnion(card.content.sounds)
-                continue
+            if let repeated {
+                byUpdatedCards.formUnion(FilesReferred(on: try card.update(of: repeated, adding: [])))
+            } else {
+                byNewCards.formUnion(FilesReferred(on: card.content))
             }
-            let updated = try card.update(of: repeated, adding: [])
-            byUpdatedCards.images.formUnion(updated.images)
-            byUpdatedCards.sounds.formUnion(updated.sounds)
         }
+    }
+}
+
+extension FilesReferred {
+    /// The files a card holding `content` refers to, on either side.
+    fileprivate init(on content: CardContent) {
+        images = content.images
+        sounds = content.sounds
     }
 }
 

@@ -91,7 +91,8 @@ public struct SyncTabState: Sendable {
                 status = .noAccount
             case (true?, let reason?):
                 status = .off(
-                    turningOn: Self.turningOn(after: reason), sending: heavyUpload(try engine.weightICloudLacks()))
+                    turningOn: Self.turningOn(after: reason),
+                    sending: weightWorthSaying(try engine.weightICloudLacks()))
             case (true?, nil):
                 status = stored.iCloudIsFull ? .iCloudFull : .on(lastSynced: stored.lastSynced)
             }
@@ -133,23 +134,6 @@ public struct SyncTabState: Sendable {
     public mutating func dismissFailure() {
         failure = nil
     }
-}
-
-extension SyncStatus {
-    /// Whether what changes goes up to the user's iCloud: the switch is on
-    /// and the device is signed into iCloud, as far as the app heard.
-    var sendsToICloud: Bool {
-        isOn && hasICloudAccount == true
-    }
-}
-
-/// `bytes` of images and sounds going up to the user's iCloud, when they
-/// weigh enough for Ficha to say so, 100 MB or more, or nil under that: the
-/// Sync tab's line while sync is off, and the Import sheet's while it's on
-/// (#317's decision of 2026-10-28, our own: Anki never warns). 100 MB is
-/// 100,000,000 bytes, as Finder writes sizes.
-func heavyUpload(_ bytes: Int64) -> Int64? {
-    bytes >= 100_000_000 ? bytes : nil
 }
 
 extension Engine {

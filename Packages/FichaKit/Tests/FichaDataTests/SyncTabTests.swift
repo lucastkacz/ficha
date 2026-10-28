@@ -203,11 +203,10 @@ final class SyncTabTests {
 }
 
 /// An image of `bytes` bytes that `engine` keeps, as an image Ficha shrank
-/// would be, though it holds only zeros, which take no memory until read: what
-/// goes up to iCloud is weighed, never read. Its name is `digit`, a
-/// hexadecimal digit, 64 times, which tells it from the test's other images.
+/// would be, though it holds only zeros, which take no memory until read,
+/// named as `imageName(of:)` names it.
 func heavyImage(weighing bytes: Int, named digit: Character, in engine: Engine) throws -> ImageName {
-    let name = try #require(ImageName(rawValue: String(repeating: digit, count: 64) + ".jpg"))
+    let name = try imageName(of: digit)
     try engine.images.keep(Data(count: bytes), as: name)
     return name
 }

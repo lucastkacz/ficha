@@ -10,7 +10,9 @@ internal import GRDB
 // writes it. A change to the switch, the account or a full iCloud tells every
 // engine on the database, as a change to the cards does, so the app's sync
 // and the menu follow it; when the device last synced doesn't, since it
-// changes at every sync.
+// changes at every sync. The file also says whether what changes goes up to
+// iCloud, and from what weight Ficha says what goes up weighs, as the Sync tab
+// and the Import sheet both read them.
 
 /// How sync stands on this device.
 public struct SyncStatus: Sendable, Equatable {
@@ -32,6 +34,21 @@ public struct SyncStatus: Sendable, Equatable {
     public var isOn: Bool {
         offBecause == nil
     }
+
+    /// Whether what changes goes up to the user's iCloud: the switch is on
+    /// and the device is signed into iCloud, as far as the app heard.
+    var sendsToICloud: Bool {
+        isOn && hasICloudAccount == true
+    }
+}
+
+/// `bytes`, what images and sounds going up to the user's iCloud weigh, when
+/// it's enough for Ficha to say so, 100 MB or more, or nil under that: the
+/// Sync tab's line while sync is off, and the Import sheet's while it's on
+/// (#317's decision of 2026-10-28, our own: Anki never warns). 100 MB is
+/// 100,000,000 bytes, as Finder writes sizes.
+func weightWorthSaying(_ bytes: Int64) -> Int64? {
+    bytes >= 100_000_000 ? bytes : nil
 }
 
 /// Why Settings' "Sync with iCloud" switch is off. Its raw value is how the

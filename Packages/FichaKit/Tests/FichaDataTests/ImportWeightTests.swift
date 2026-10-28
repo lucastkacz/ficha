@@ -110,12 +110,16 @@ final class ImportWeightTests {
 }
 
 /// An image of `bytes` bytes as it comes in with a file, as an image Ficha
-/// shrank would be, though it holds only zeros. Its name is `digit`, a
-/// hexadecimal digit, 64 times, which tells it from the test's other images.
+/// shrank would be, though it holds only zeros, named as `imageName(of:)`
+/// names it.
 func incomingImage(weighing bytes: Int, named digit: Character) throws -> CardImage {
-    CardImage(
-        name: try #require(ImageName(rawValue: String(repeating: digit, count: 64) + ".jpg")),
-        data: Data(count: bytes))
+    CardImage(name: try imageName(of: digit), data: Data(count: bytes))
+}
+
+/// A JPEG's name, as Ficha names an image by its content: `digit`, a
+/// hexadecimal digit, 64 times, which tells it from the test's other images.
+func imageName(of digit: Character) throws -> ImageName {
+    try #require(ImageName(rawValue: String(repeating: digit, count: 64) + ".jpg"))
 }
 
 /// A sound of `bytes` bytes as it comes in with a file, as `incomingImage`
