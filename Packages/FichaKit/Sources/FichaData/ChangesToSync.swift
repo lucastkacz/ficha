@@ -224,11 +224,9 @@ extension Engine {
     public func turnSyncOff() throws(EngineError) {
         let inICloud = try write { db in
             try switchSyncOff(because: .user, in: db)
-            return (
-                images: try namesInICloud(ImageName.self, in: db), sounds: try namesInICloud(SoundName.self, in: db)
-            )
+            return try FilesInICloud(in: db)
         }
-        removeFilesNoCardUses(images: inICloud.images, sounds: inICloud.sounds)
+        removeFilesNoCardUses(inICloud)
     }
 
     /// The state CKSyncEngine saved last on this device, or nil before it

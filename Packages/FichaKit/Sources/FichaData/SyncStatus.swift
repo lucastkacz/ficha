@@ -129,7 +129,8 @@ private enum SyncDeviceFlag: String {
     case iCloudIsFull
 }
 
-/// Keeps whether iCloud is full, in a write that tells the other engines.
+/// Keeps whether iCloud is full, in `db`'s write, as
+/// `Engine.noteICloudIsFull(_:)` does in a write of its own.
 func noteICloudIsFull(_ isFull: Bool, in db: Database) throws {
     _ = try note(.iCloudIsFull, isFull, in: db)
 }

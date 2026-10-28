@@ -39,7 +39,6 @@ final class SyncEventsTests {
     func aFreshDevice(in account: FakeICloud) async throws -> Device {
         let device = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: account)
         try await device.iCloud.fetchChanges()
-        try await device.iCloud.fetchChanges()
         return device
     }
 
@@ -259,9 +258,11 @@ final class SyncEventsTests {
         try iPhone.engine.create(card(nil, front: "Furnarius rufus", back: "El hornero.", backImage: bird))
         try await iPhone.syncNow()
         try mac.turnSyncOn()
-        for device in [mac, mac, iPhone] {
-            try await device.syncNow()
-        }
+        // The Mac's first sync brings the iPhone's card, whose image iCloud
+        // holds and the Mac let go of: it asks iCloud for it as the fetch
+        // ends, and it comes with the next.
+        try await mac.syncNow()
+        try await mac.syncNow()
 
         #expect(try mac.engine.card(fronted: "Furnarius rufus").backImage == bird)
         #expect(try mac.engine.card(fronted: "¿Qué pájaro es?").frontImage == nil)

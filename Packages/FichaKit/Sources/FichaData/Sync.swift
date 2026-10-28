@@ -208,7 +208,7 @@ public struct Sync: Sendable {
             try recordEverythingToSend(in: db)
             return files
         }
-        engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
+        engine.removeFilesNoCardUses(forgotten)
         guard change != .signOut else { return }
         iCloud.askForBothZones()
         try sendWhatChanged(to: iCloud)
@@ -241,11 +241,11 @@ public struct Sync: Sendable {
                 try recordEverythingToSend(in: db)
             }
             guard toSendAgain.contains(.files) else {
-                return (images: Set<ImageName>(), sounds: Set<SoundName>())
+                return FilesInICloud()
             }
             return try forgetFilesInICloud(in: db)
         }
-        engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
+        engine.removeFilesNoCardUses(forgotten)
         iCloud.add(pendingDatabaseChanges: toSendAgain.sorted { $0.name < $1.name }.map { .saveZone($0) })
         try sendWhatChanged(to: iCloud)
     }
@@ -266,7 +266,7 @@ public struct Sync: Sendable {
             try saveSyncEngineState(nil, in: db)
             return try forgetWhatICloudSaid(in: db)
         }
-        engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
+        engine.removeFilesNoCardUses(forgotten)
     }
 
     /// Applies `records`, which other devices saved, or this one, as iCloud
@@ -358,7 +358,8 @@ public struct Sync: Sendable {
             syncLogger.notice("iCloud is full: a change waits until there's room")
             return (nil, nil)
         case .userDeletedZone:
-            // A purge, which `handle(_:from:)` takes before it gets here.
+            // A purge, which `handle(_:from:startedIn:)` takes before it
+            // gets here.
             return (nil, nil)
         case .retriedByTheEngine:
             return (nil, nil)
@@ -381,7 +382,7 @@ public struct Sync: Sendable {
 /// so the device sends each one its cards use, which the account turns down
 /// when it holds it. Returns them, for the device to remove those no card
 /// uses.
-private func forgetWhatICloudSaid(in db: Database) throws -> (images: Set<ImageName>, sounds: Set<SoundName>) {
+private func forgetWhatICloudSaid(in db: Database) throws -> FilesInICloud {
     let files = try forgetFilesInICloud(in: db)
     try db.execute(sql: "DELETE FROM syncRecord")
     try db.execute(sql: "DELETE FROM syncIncoming")
@@ -389,8 +390,8 @@ private func forgetWhatICloudSaid(in db: Database) throws -> (images: Set<ImageN
 }
 
 /// Forgets which images and sounds iCloud holds, and returns them.
-private func forgetFilesInICloud(in db: Database) throws -> (images: Set<ImageName>, sounds: Set<SoundName>) {
-    let files = (images: try namesInICloud(ImageName.self, in: db), sounds: try namesInICloud(SoundName.self, in: db))
+private func forgetFilesInICloud(in db: Database) throws -> FilesInICloud {
+    let files = try FilesInICloud(in: db)
     try db.execute(sql: "DELETE FROM syncRecord WHERE zone = ?", arguments: [ICloudZone.files.name])
     return files
 }

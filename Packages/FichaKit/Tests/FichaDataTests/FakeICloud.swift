@@ -19,6 +19,7 @@ import notify
 /// last fetched, newest first, since iCloud promises no order. It keeps each
 /// record's files apart, as `CKAsset`s, in a folder of its own: a copy of
 /// each file a device sends, which a device that fetches the record reads.
+/// It refuses a record whose file it can't read (`assetFileNotFound`).
 ///
 /// It can be purged, as when the user deletes Ficha's data in iCloud's
 /// settings: every zone goes, each device that fetches hears it was purged,
@@ -275,7 +276,14 @@ extension FakeICloud.Database {
         case (nil, _?):
             return .failure(.unknownItem)
         default:
-            let size = record.fields.values.reduce(0) { $0 + bytes(of: $1) }
+            // A file it can't read or copy fails the save, as CloudKit fails
+            // an asset whose file it can't find.
+            let size: Int
+            do {
+                size = try record.fields.values.reduce(0) { try $0 + bytes(of: $1) }
+            } catch {
+                return .failure(.other("assetFileNotFound"))
+            }
             if let room, used - (stored?.size ?? 0) + size > room {
                 return .failure(.quotaExceeded)
             }
@@ -296,13 +304,21 @@ extension FakeICloud.Database {
         }
     }
 
-    /// How many bytes `value` takes, as the fake counts it.
-    private func bytes(of value: ICloudValue?) -> Int {
+    /// How many bytes `value` takes, as the fake counts it, or an error for
+    /// a file it can't read.
+    private func bytes(of value: ICloudValue?) throws -> Int {
         switch value {
-        case nil: 0
-        case .string(let text)?: text.utf8.count
-        case .int?, .double?: 8
-        case .asset(let file)?: (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        case nil:
+            return 0
+        case .string(let text)?:
+            return text.utf8.count
+        case .int?, .double?:
+            return 8
+        case .asset(let file)?:
+            guard let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+                throw CocoaError(.fileReadUnknown, userInfo: [NSURLErrorKey: file])
+            }
+            return size
         }
     }
 
