@@ -123,7 +123,7 @@ enum AppVariant {
             #if os(macOS)
                 switch self {
                 case .dev:
-                    let group = try signedGroupFolder(named: "com.lucastkacz.ficha.dev")
+                    let group = try signedGroupFolder(named: Self.devGroupName)
                     guard let scratch = try scratchName else {
                         return group.appending(path: folderName, directoryHint: .isDirectory)
                     }
@@ -148,7 +148,7 @@ enum AppVariant {
         /// preferences meanwhile.
         var groupDefaults: UserDefaults? {
             switch self {
-            case .dev: signedGroup(named: "com.lucastkacz.ficha.dev").flatMap(UserDefaults.init(suiteName:))
+            case .dev: signedGroup(named: Self.devGroupName).flatMap(UserDefaults.init(suiteName:))
             case .real: nil
             }
         }
@@ -197,6 +197,11 @@ enum DataFolderError: Error, LocalizedError {
 
 #if os(macOS)
     extension AppVariant {
+        /// The name of Ficha Dev's App Group, after the team's ID that macOS
+        /// puts before it, as `FICHA_APP_GROUP` in `project.yml` names it:
+        /// its app, its CLI and its widget share the group's folder.
+        fileprivate static let devGroupName = "com.lucastkacz.ficha.dev"
+
         /// Whether this process is signed for iCloud, with iCloud's
         /// entitlements: CloudKit stops a process that isn't, as #316 probed,
         /// so a build signed without them reaches no iCloud at all.
