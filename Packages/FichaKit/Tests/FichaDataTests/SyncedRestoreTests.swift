@@ -214,7 +214,7 @@ final class SyncedRestoreTests {
     // An iPad whose cards were made before it ever synced starts syncing
     // after the Mac restored and turned sync on.
     @Test(
-        "a device that starts syncing after a restore's zone started keeps its own cards, which join the restored ones")
+        "a device that starts syncing after a restore keeps its own cards, which join the restored ones")
     func aDeviceThatStartsSyncingAfterARestoreJoins() async throws {
         try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
         try await mac.syncNow()

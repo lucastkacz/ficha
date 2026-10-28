@@ -796,8 +796,8 @@ final class Device {
 
     /// Syncs as the app does once it hears the database changed and iCloud
     /// tells it of other devices' changes: hands iCloud's engine the changes
-    /// waiting, sends them, and fetches what changed, noting the fetch ended
-    /// once it did without an error. While the device chooses its cards'
+    /// waiting, sends them, and fetches what changed, finishing the fetch
+    /// once it ended without an error. While the device chooses its cards'
     /// zone, before it sends and after, as an account change its engine
     /// tells as it sends has it choose again, it catches up first
     /// (`catchUpWhileChoosing()`).
@@ -807,17 +807,17 @@ final class Device {
         try await iCloud.sendChanges()
         try await catchUpWhileChoosing()
         try await iCloud.fetchChanges()
-        try sync.noteFetchEnded(with: iCloud)
+        try sync.finishAFetchWithoutAnError(with: iCloud)
     }
 
     /// While the device chooses its cards' zone, fetches what changed, as
-    /// the app catches up as it starts, noting the fetch ended; and once the
+    /// the app catches up as it starts, finishing the fetch; and once the
     /// device chose, sends what it handed iCloud's engine as it did, as the
     /// app's engine does on its own.
     private func catchUpWhileChoosing() async throws {
         guard try sync.choosesItsCardsZone() else { return }
         try await iCloud.fetchChanges()
-        try sync.noteFetchEnded(with: iCloud)
+        try sync.finishAFetchWithoutAnError(with: iCloud)
         guard try !sync.choosesItsCardsZone() else { return }
         try await iCloud.sendChanges()
     }
@@ -844,9 +844,13 @@ final class Device {
     }
 
     /// Tries again what waits while iCloud is full, as the app does now and
-    /// then, and sends it, as the app's engine does on its own.
+    /// then: fetches, finishing the fetch once it ended without an error,
+    /// which hands iCloud's engine the zones and what waits, and sends it, as
+    /// the app's engine does on its own.
     func tryAgainWhileICloudIsFull() async throws {
-        try sync.tryAgainInAFullICloud(with: iCloud)
+        guard try sync.iCloudIsFull() else { return }
+        try await iCloud.fetchChanges()
+        try sync.finishAFetchWithoutAnError(with: iCloud)
         try await iCloud.sendChanges()
     }
 

@@ -333,6 +333,45 @@ final class SyncEventsTests {
         #expect(try await mac.followTheDatabase() == 1)
     }
 
+    // The Mac knows iCloud is full, and its engine sent what it was handed
+    // as its last fetch ended. It's asleep while the user deletes Ficha's
+    // data to make room, and then a change or its retry while iCloud is full
+    // wakes it before it fetches.
+    @Test(
+        "a device that knew iCloud was full and missed a purge loses no card, and saves no zone under its old name",
+        arguments: [WhatWakesTheDevice.aChange, .itsRetryWhileICloudIsFull])
+    func aFullICloudPurgedMeanwhileLosesNoCard(_ wake: WhatWakesTheDevice) async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        iCloud.fillUp()
+        try mac.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+        try await mac.syncNow()
+        try await mac.iCloud.sendChanges()
+        #expect(try mac.engine.syncStatus().iCloudIsFull)
+        let zonesBefore = iCloud.zones
+
+        iCloud.purge()
+        time.advance(by: minutes(1))
+        switch wake {
+        case .aChange:
+            try mac.engine.edit(ubuntu.id, with: card(.concept, front: "ubuntu", back: "Yo soy porque somos."))
+            try await mac.send()
+        case .itsRetryWhileICloudIsFull:
+            try await mac.tryAgainWhileICloudIsFull()
+        }
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front).sorted() == ["petricor", "saudade", "ubuntu"])
+        #expect(try iPhone.engine.cards().map(\.front).sorted() == ["petricor", "ubuntu"])
+        for device in [mac, iPhone] {
+            #expect(try device.engine.syncStatus().offBecause == .purge)
+        }
+        #expect(iCloud.zones.isDisjoint(with: zonesBefore))
+    }
+
     // A zone doesn't fit either, so nothing does.
     @Test("a device whose first sync meets a full iCloud sends everything once there's room")
     func aFirstSyncIntoAFullICloudWaits() async throws {
@@ -351,4 +390,12 @@ final class SyncEventsTests {
         #expect(try !mac.engine.syncStatus().iCloudIsFull)
         #expect(try await aFreshDevice(in: full).engine.cards().map(\.front) == ["ubuntu"])
     }
+}
+
+/// What wakes a device's sync while iCloud is full, as the app's does.
+enum WhatWakesTheDevice: CaseIterable, Sendable {
+    /// A change to its database, which the app hands iCloud's engine.
+    case aChange
+    /// The app's try now and then of what waits in a full iCloud.
+    case itsRetryWhileICloudIsFull
 }

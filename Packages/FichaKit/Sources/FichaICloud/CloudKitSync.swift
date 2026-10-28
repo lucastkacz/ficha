@@ -104,18 +104,27 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// says there's room soon after the user made some.
     private static let whileICloudIsFull = Duration.seconds(15 * 60)
 
-    /// Hands the engine again what waits, every `whileICloudIsFull`, while
-    /// iCloud is full, since nothing tells the device when room comes, until
-    /// the task that runs it is cancelled (`Sync.tryAgainInAFullICloud(with:)`).
+    /// Tries again what waits, every `whileICloudIsFull`, while iCloud is
+    /// full, since nothing tells the device when room comes, until the task
+    /// that runs it is cancelled: the engine fetches, and a fetch that ended
+    /// without an error hands it the zones and what waits again
+    /// (`Sync.finishAFetchWithoutAnError(with:)`), so that the device hears
+    /// of a purge before it saves a zone again.
     private func tryAgainNowAndThenWhileICloudIsFull() async {
         while (try? await Task.sleep(for: Self.whileICloudIsFull, tolerance: .seconds(60))) != nil {
             guard let syncEngine else { continue }
             do {
-                try sync.tryAgainInAFullICloud(with: CloudKitSyncEngine(engine: syncEngine, device: self))
+                guard try sync.iCloudIsFull() else { continue }
+                try await syncEngine.fetchChanges()
             } catch {
                 iCloudLogger.error(
-                    "\(self.device, privacy: .public) couldn't try again what waits in a full iCloud: \(String(describing: error), privacy: .public)"
+                    "\(self.device, privacy: .public) couldn't fetch to try again what waits in a full iCloud: \(String(describing: error), privacy: .public)"
                 )
+                continue
+            }
+            // An engine the device let go meanwhile hands nothing on.
+            if syncEngine === self.syncEngine {
+                finishAFetchWithoutAnError(by: syncEngine)
             }
         }
     }
@@ -211,21 +220,24 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// fetch that ends without an error to tell it iCloud holds none, it
     /// catches up on what changed in iCloud first, and then starts CloudKit's
     /// engine from the state the device saved last, and hands it every change
-    /// that waits; on any other, which never synced, the engine fetches
-    /// everything as it starts. A saved state it can't read leaves sync
-    /// stopped, and the log says why: starting from none would fetch
-    /// everything again as a new device. Sync turned off while it caught up
-    /// leaves it stopped too, and turned off and on again starts it over, in
-    /// the new stretch, since `Sync` left aside what it caught up on. A fetch
-    /// now asked for meanwhile comes once it started.
+    /// that waits, and then what the end of the fetch it caught up with asks
+    /// for, if that ended without an error
+    /// (`Sync.finishAFetchWithoutAnError(with:)`); on any other, which never
+    /// synced, the engine fetches everything as it starts. A saved state it
+    /// can't read leaves sync stopped, and the log says why: starting from
+    /// none would fetch everything again as a new device. Sync turned off
+    /// while it caught up leaves it stopped too, and turned off and on again
+    /// starts it over, in the new stretch, since `Sync` left aside what it
+    /// caught up on. A fetch now asked for meanwhile comes once it started.
     private func start() async {
         guard syncEngine == nil, !isStarting else { return }
         isStarting = true
         while let stretch, syncEngine == nil {
             do {
                 let saved = try sync.savedState()
+                var caughtUp = false
                 if try saved != nil || sync.choosesItsCardsZone() {
-                    await catchUp(from: try saved.map { try CKSyncEngine.State.Serialization(saved: $0) })
+                    caughtUp = await catchUp(from: try saved.map { try CKSyncEngine.State.Serialization(saved: $0) })
                     let now = try sync.stretchNow()
                     guard now == stretch else {
                         self.stretch = now
@@ -239,6 +251,9 @@ public actor CloudKitSync: CKSyncEngineDelegate {
                     "\(self.device, privacy: .public) starts syncing, \(state == nil ? "for the first time" : "from its saved state", privacy: .public)"
                 )
                 try sync.start(with: CloudKitSyncEngine(engine: engine, device: self))
+                if caughtUp {
+                    finishAFetchWithoutAnError(by: engine)
+                }
             } catch {
                 iCloudLogger.fault(
                     "\(self.device, privacy: .public) can't start syncing: \(String(describing: error), privacy: .public)"
@@ -262,20 +277,18 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// left aside, which only costs fetching those changes again, and so are
     /// the changes `Sync` handed this engine, which `Sync` hands the next one
     /// again: what waits to go up as it starts, and the files to delete or
-    /// ask for again as a fetch ends; a cards' zone the device made, which
-    /// iCloud never held, goes up again with the first record sent into it,
-    /// which iCloud refuses without it. A fetch that ends without an error
-    /// says the device synced, which the engine's own end of a fetch doesn't,
-    /// since it may come after one that failed, and so it's the one that
-    /// tells a device choosing its cards' zone that iCloud holds none.
-    private func catchUp(from state: CKSyncEngine.State.Serialization?) async {
+    /// ask for again as a fetch ends. Returns whether its fetch ended without
+    /// an error, which the engine's own end of a fetch doesn't say, since it
+    /// may come after one that failed, while the device still caught up with
+    /// it: then `start()` finishes the fetch on the engine it starts, which
+    /// keeps what it's handed.
+    private func catchUp(from state: CKSyncEngine.State.Serialization?) async -> Bool {
         let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: false)
         catchUpEngine = engine
+        var endedWithoutAnError = false
         do {
             try await engine.fetchChanges()
-            if engine === catchUpEngine {
-                noteFetchEnded(by: engine)
-            }
+            endedWithoutAnError = engine === catchUpEngine
         } catch {
             iCloudLogger.error(
                 "\(self.device, privacy: .public) couldn't catch up on what changed in iCloud: \(error.localizedDescription, privacy: .public)"
@@ -283,16 +296,18 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         }
         try? await Task.sleep(for: .milliseconds(500))
         catchUpEngine = nil
+        return endedWithoutAnError
     }
 
-    /// Keeps that a fetch the device asked `engine` for ended without an
-    /// error.
-    private func noteFetchEnded(by engine: CKSyncEngine) {
+    /// Finishes a fetch that ended without an error, handing what that asks
+    /// for to `engine`, the engine that runs, as
+    /// `Sync.finishAFetchWithoutAnError(with:)` says.
+    private func finishAFetchWithoutAnError(by engine: CKSyncEngine) {
         do {
-            try sync.noteFetchEnded(with: CloudKitSyncEngine(engine: engine, device: self))
+            try sync.finishAFetchWithoutAnError(with: CloudKitSyncEngine(engine: engine, device: self))
         } catch {
             iCloudLogger.error(
-                "\(self.device, privacy: .public) couldn't keep that it synced: \(String(describing: error), privacy: .public)"
+                "\(self.device, privacy: .public) couldn't finish a fetch that ended without an error: \(String(describing: error), privacy: .public)"
             )
         }
     }

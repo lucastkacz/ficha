@@ -998,7 +998,7 @@ func model(for name: Window) throws -> AppModel {
         return try AppModel(engine: engine)
     case .sync:
         return try syncModel(showing: "when the Mac last synced") { _, sync in
-            try sync.noteFetchEnded(with: RenderICloud())
+            try sync.finishAFetchWithoutAnError(with: RenderICloud())
         } isShown: {
             if case .on(_?) = $0 { true } else { false }
         }
