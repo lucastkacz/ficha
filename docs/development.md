@@ -178,6 +178,21 @@ A PR that changes what you see shows it in pictures, which `make render` draws f
 
 The squash merge leaves both commits off `main`, and GitHub keeps a PR's commits after its branch is deleted, so the links keep working.
 
+## Cleaning up after a merge
+
+Each change is built in a worktree of its own, in `.claude/worktrees/`, with build folders of several GB. Once its PR merges, `make clean-merged`, run from the main folder on `main`, removes it:
+
+```bash
+make clean-merged
+```
+
+- For each folder in `.claude/worktrees/`, the implementers' `agent-*` included, it removes the worktree, its build folders and its branch only when nothing is lost: the worktree has no uncommitted changes (`git status --porcelain` prints nothing), and its branch's last commit is a merged PR's head (`headRefOid`), or inside one, as an implementer's branch joined into its spec's branch is. The squash merge leaves those commits off `main`, and the PR keeps them.
+- Every other worktree stays, listed with the reason: uncommitted changes, an open PR, a last commit no merged PR holds, or a branch with no commits of its own off `main`, as a session's that has only just started.
+- Claude Code locks a session's worktree while the session runs, naming its process, and leaves the lock when it ends. A worktree whose process still runs stays, so archive the finished session first; a lock whose process ended is lifted. Any other lock keeps its worktree. Reading Claude Code's locks is our own.
+- It deletes the branches with `git branch -D` without asking, since the check above stands in for the prompt. The prompt stays for `git branch -D` typed by hand (`.claude/settings.json`).
+- Then it updates `main` with `git pull --ff-only`.
+- It reads the last 200 merged PRs through `gh`, and removes nothing when it can't reach them. `scripts/test-clean-merged.sh`, which `make check` runs, tests it on a scratch repo with a fake `gh`.
+
 ## The README's pictures
 
 The pictures in `docs/images/` show the app's own views with Ficha Dev's sample cards, captured without showing anything on screen. After a change to the review panel or the capture window, capture them again the same way, with a throwaway Swift package outside the repo:

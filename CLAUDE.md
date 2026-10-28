@@ -28,8 +28,9 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 |---|---|
 | Lucas brings an idea, a feature or a change | `/grill-with-docs` |
 | An idea is settled in the conversation | `/to-spec`, then `/to-tickets`, in the same session |
-| A ticket is ready for an agent | `/implement #<ticket>`, then `/clear` before the next one |
-| All of a spec's tickets are ready, and Lucas would rather not drive each one | `/implement-spec #<spec>`: parallel agents build them on one branch, `<spec>-<short-name>`, behind one PR |
+| A spec of one ticket, or one issue outside any spec, is ready for an agent | `/implement #<ticket>`, then `/clear` before the next one |
+| Several issues outside any spec are ready, of one kind and one risk, such as the retros' environment issues | `/implement #<a> #<b> #<c>`: one session and one PR that closes them all, one commit per issue, up to a ticket's size (`docs/agents/issue-tracker.md`). One risk:high issue would make the whole PR risk:high, and the normal ones would lose auto-merge |
+| A spec with more than one ticket is ready | `/implement-spec #<spec>`: an agent per ticket, each in a fresh context and a worktree of its own, builds them on one branch, `<spec>-<short-name>`, behind one PR that closes the spec and all its tickets; a spec in stages gets one PR per stage |
 | A small change that fits in this session | `/implement`, right here, without a spec or tickets |
 | A spec's ticket or a fix to a product bug is done, and it went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007. Ours, narrower than the plugin's: never after environment work, whose retro turns up more of it |
 | Raw issues are waiting: ideas from Lucas's phone, bug reports | `/triage` |
@@ -47,15 +48,16 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 ## Shipping
 
-- Every change goes through a pull request from a branch named `<issue>-<short-name>`, built in a worktree of its own, so Lucas's main folder stays on `main` for the other sessions working in it. Before the first edit, call `EnterWorktree` with that name, which creates `.claude/worktrees/<name>`, then give the branch that name with `git branch -m`: the tool names it `worktree-<name>`, and the rename is our own. Never commit on `main`: a hook blocks it, and GitHub rejects pushes to it.
+- Every change goes through a pull request from a branch named `<issue>-<short-name>`, after the spec for a spec's tickets and after the first issue for several issues together, built in a worktree of its own, so Lucas's main folder stays on `main` for the other sessions working in it. Before the first edit, call `EnterWorktree` with that name, which creates `.claude/worktrees/<name>`, then give the branch that name with `git branch -m`: the tool names it `worktree-<name>`, and the rename is our own. Never commit on `main`: a hook blocks it, and GitHub rejects pushes to it.
 - Before opening the PR, `make check` passes and the `code-review` skill has run. A PR whose files are all Markdown skips `make check`, as CI does, since none of its steps reads Markdown.
 - The PR body says `Closes #<n>` for each issue it resolves.
 - **Merging:**
-  - A normal PR: once the review is addressed and the last push is done, Claude turns on auto-merge with `gh pr merge <n> --auto --squash`, alone on the line (a hook allows only that form). GitHub merges it when CI is green. To push again to a PR with auto-merge on, turn it off first (`gh pr merge <n> --disable-auto`), push, and turn it on again; a hook enforces it.
+  - A normal PR: Claude turns on auto-merge as it opens it, or marks a draft ready, since the review ran before, with `gh pr merge <n> --auto --squash`, alone on the line (a hook allows only that form). GitHub merges it when CI is green. To push again to a PR with auto-merge on, turn it off first (`gh pr merge <n> --disable-auto`), push, and turn it on again; a hook enforces it.
   - A `risk:high` PR: Lucas reviews and merges it. A PR is `risk:high` when it changes a path listed in `.claude/hooks/merge-gate.sh` (process files, CI, the build, and the project and package manifests) or touches the database schema or migrations, the scheduler or the content guide. Claude adds the label and never removes it. The PR that creates the schema, the scheduler or the content guide adds their paths to that list. The hook blocks Claude from merging either kind.
+- A building session ends when its PR opens, ready for review: with auto-merge on, or with a risk:high PR labeled and Lucas's merge command, `gh pr merge <n> --auto --squash`, alone in a bash block, last in its message. It leaves CI and the merge to GitHub and Lucas: if CI fails, Lucas comes back to that session, which knows the change.
 - A PR that changes what Lucas sees shows it in pictures from `make render`, or `make render-iphone` for the iPhone, as "The PR's pictures" in `docs/development.md` describes.
 - What only Lucas can check on his Mac (real meetings, full-screen apps, Spaces, how the panel feels) becomes a `ready-for-human` issue, linked from the PR.
-- After a merge, the PR's worktree is removed, and its build folders, several GB, go with it. The session that made the PR removes its own; the session that launched implementer subagents removes theirs, `.claude/worktrees/agent-*`. Before removing a worktree, check that nothing is lost: it has no uncommitted changes (`git status --porcelain` prints nothing), and its branch's head is the PR's (`git rev-parse <branch>` matches `gh pr view <n> --json headRefOid`), so every commit the squash merge left off `main` is in the PR. When both hold, remove it on your own: the check stands in for the confirmation `ExitWorktree` asks before `discard_changes`. When either fails, ask Lucas. Leave your own worktree first, with `ExitWorktree`, `remove` and `discard_changes`, since from inside it the harness blocks git in the main folder. Then, from the main folder, check and remove each subagent's worktree with `git worktree remove <path>`, run `git pull --ff-only` on `main`, and delete each removed worktree's branch with `git branch -D`, which still asks for permission: `ExitWorktree` deletes only `worktree-<name>`.
+- After a merge, the session Lucas tells, the ORCHESTRATOR in his setup, archives the finished session, whose worktree stays locked while it runs, and then runs `make clean-merged` from the main folder, on `main`: "Cleaning up after a merge" in `docs/development.md` says what it removes and what it keeps.
 
 ## Map
 
@@ -65,7 +67,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
-- `scripts/`: the hook tests and the render tools.
+- `scripts/`: the hook tests, the render tools, and the cleanup after a merge with its tests.
 
 ## Commands
 
@@ -84,6 +86,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
 - Skills, hooks, settings and `CLAUDE.md` load when a session starts, from the folder it started in, also when it then works in a worktree, and its subagents get that `CLAUDE.md` too. So a change to any of them can be checked in a new session once the main folder's `main` has it.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
+- Subagents can't launch subagents (`.claude/settings.json` sets the spawn depth to 1), so an implementer's `code-review` is a self-review. The session that launched them runs `code-review` on each ticket's branch before it joins the spec's branch, and gives the findings, with the branch, to a fresh agent to fix: the implementer, resumed with its whole context, costs far more. `/implement-spec`'s own `code-review` of the whole branch still runs once every ticket has joined.
 - Ficha Dev and its `ficha` run in their sandboxes. A worktree builds them signed only with `iPhone/Local.xcconfig` copied in from the main folder, and agents run that `ficha` with `FICHA_DEV_SCRATCH=<name>`, never on Ficha Dev's cards: "Agents' runs of Ficha Dev's `ficha`" in `docs/development.md` says how.
 - Search the repo with `git grep -n <text> -- '<pathspec>'`, like `-- '*.swift'`: it skips `.build/` and everything git ignores, and the quotes keep zsh from expanding the pathspec. It reads only the files git tracks: add `--untracked` for new ones. For `\b`, pass `-P`: with `-E` it matches nothing, silently. Every option goes before `<text>`, as `-n` does: git reads one after it as a revision.
 

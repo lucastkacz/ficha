@@ -28,6 +28,14 @@ The table is complete only once every ticket has its number, so publish the tick
 
 A spec opens with the thread alone, up to where it came from, under the same heading: its Problem Statement already speaks from Lucas's side, and its tickets come later.
 
+## How big a ticket is
+
+A ticket is all one agent can build in one fresh context without compacting: up to about 1,500 changed lines, tests included. That is the size "sized to fit in a single fresh context window" means here, when `/to-tickets` drafts its slices. Each ticket costs about $14 before its first line, plus about $1 per 100 changed lines, so fewer, bigger tickets cost less, up to the size where a session compacts.
+
+- A spec that fits in one ticket is one ticket, published as the spec's sub-issue like any other and built with `/implement` in one session.
+- A spec splits into tickets only past that size, and its tickets land together, on one branch behind one PR (`/implement-spec`, in `CLAUDE.md`).
+- A spec that needs Lucas at his Mac partway, such as a hand check before the next tickets can start, splits there into **stages**, one PR each, and the breakdown names each ticket's stage.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
