@@ -377,9 +377,10 @@ public struct Sync: Sendable {
     /// Moves the device into the cards' zone `newest`, from where it stood,
     /// `standing`, and deletes from iCloud the zone it leaves. A device that
     /// last synced in a zone older than a restore's takes the copy: it saves
-    /// a copy before taking iCloud's copy first, then drops every row that
-    /// syncs, with its changes not yet sent, and takes the zone's records as
-    /// they come. Any other joins the zone, as at an account change: one that
+    /// a copy before taking iCloud's copy first, so that the cards the
+    /// restore removed can still be found, which is our own guard, and none
+    /// for an engine in memory; then it drops every row that syncs, with its
+    /// changes not yet sent, and takes the zone's records as they come. Any other joins the zone, as at an account change: one that
     /// never synced in this account, or one whose zone a restore didn't make,
     /// which never deletes a card. One that chose the zone it last synced in
     /// goes on in it. A device that moves forgets which images and sounds
@@ -402,29 +403,31 @@ public struct Sync: Sendable {
         }
         let takesTheCopy = newest.isMadeByARestore && standing.zone.map { $0 < newest } == true
         if takesTheCopy {
-            try engine.saveCopyBeforeTakingICloudsCopy()
+            try engine.saveCopy(.beforeICloudsCopy)
         }
         let toRemove = try engine.writeWithoutRecording { db in
-            var toRemove = FilesReferred()
+            // After a purge, iCloud holds none of the files the device knew
+            // it held: they're among those to remove, and none is kept for
+            // iCloud. Otherwise the device keeps them, for the zone's cards.
+            var toRemove = FileNames()
+            var keptForICloud = FileNames()
             if afterAPurge {
-                let gone = try forgetWhatICloudSaid(in: db)
-                (toRemove.images, toRemove.sounds) = (gone.images, gone.sounds)
+                toRemove = try forgetWhatICloudSaid(in: db)
+            } else {
+                keptForICloud = try forgetFilesInICloud(in: db)
             }
-            let kept = try forgetFilesInICloud(in: db)
             try CardsZoneStanding.move(to: newest, in: db)
             guard takesTheCopy else {
                 try recordEverythingToSend(in: db)
                 return toRemove
             }
-            let dropped = try dropEverythingThatSyncs(in: db)
-            toRemove.images.formUnion(dropped.images.subtracting(kept.images))
-            toRemove.sounds.formUnion(dropped.sounds.subtracting(kept.sounds))
+            toRemove.formUnion(try dropEverythingThatSyncs(in: db).subtracting(keptForICloud))
             return toRemove
         }
         syncLogger.notice(
             "The cards move to the zone \(zones.cards(newest).name, privacy: .public): this device \(takesTheCopy ? "takes its cards in place of its own" : "joins it", privacy: .public)"
         )
-        engine.removeFilesNoCardUses(images: toRemove.images, sounds: toRemove.sounds)
+        engine.removeFilesNoCardUses(toRemove)
         iCloud.delete(standing.zone.map { [$0] } ?? [])
         moved.add(pendingDatabaseChanges: [.saveZone(.files)])
         try handOverWhatWaits(to: moved)
@@ -449,7 +452,7 @@ public struct Sync: Sendable {
                 try recordEverythingToSend(in: db)
             }
             guard toSendAgain.contains(.files) else {
-                return FilesInICloud()
+                return FileNames()
             }
             return try forgetFilesInICloud(in: db)
         }
@@ -593,7 +596,7 @@ public struct Sync: Sendable {
 /// so the device sends each one its cards use, which the account turns down
 /// when it holds it. Returns them, for the device to remove those no card
 /// uses.
-private func forgetWhatICloudSaid(in db: Database) throws -> FilesInICloud {
+private func forgetWhatICloudSaid(in db: Database) throws -> FileNames {
     let files = try forgetFilesInICloud(in: db)
     try db.execute(sql: "DELETE FROM syncRecord")
     try db.execute(sql: "DELETE FROM syncIncoming")
@@ -601,8 +604,8 @@ private func forgetWhatICloudSaid(in db: Database) throws -> FilesInICloud {
 }
 
 /// Forgets which images and sounds iCloud holds, and returns them.
-private func forgetFilesInICloud(in db: Database) throws -> FilesInICloud {
-    let files = try FilesInICloud(in: db)
+private func forgetFilesInICloud(in db: Database) throws -> FileNames {
+    let files = try FileNames(heldByICloudIn: db)
     try db.execute(sql: "DELETE FROM syncRecord WHERE zone = ?", arguments: [ICloudZone.files.name])
     return files
 }

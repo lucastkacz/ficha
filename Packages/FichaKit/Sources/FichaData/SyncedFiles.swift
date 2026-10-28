@@ -130,31 +130,14 @@ func namesInICloud<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws
             .compactMap(Name.init(rawValue:)))
 }
 
-/// The images and sounds iCloud holds, as far as the device knows
-/// (`namesInICloud(_:in:)`), for the device to remove those no card uses
-/// once it no longer keeps them for iCloud: as sync turns off, or as it
-/// forgets what iCloud holds.
-struct FilesInICloud: Sendable {
-    var images: Set<ImageName> = []
-    var sounds: Set<SoundName> = []
-
-    /// No file.
-    init() {}
-
-    /// The files iCloud holds, as far as the device whose database is `db`
-    /// knows.
-    init(in db: Database) throws {
+extension FileNames {
+    /// The images and sounds iCloud holds, as far as the device whose
+    /// database is `db` knows (`namesInICloud(_:in:)`), for the device to
+    /// remove those no card uses once it no longer keeps them for iCloud: as
+    /// sync turns off, or as it forgets what iCloud holds.
+    init(heldByICloudIn db: Database) throws {
         images = try namesInICloud(ImageName.self, in: db)
         sounds = try namesInICloud(SoundName.self, in: db)
-    }
-}
-
-extension Engine {
-    /// Removes the files among `files` that no card uses, and iCloud doesn't
-    /// hold while sync is on, as `removeFilesNoCardUses(images:sounds:)`
-    /// says.
-    func removeFilesNoCardUses(_ files: FilesInICloud) {
-        removeFilesNoCardUses(images: files.images, sounds: files.sounds)
     }
 }
 

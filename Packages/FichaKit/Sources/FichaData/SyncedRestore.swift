@@ -50,18 +50,6 @@ struct SyncKeptThroughARestore {
     }
 }
 
-extension Engine {
-    /// Saves a copy before taking iCloud's copy in the Backups folder, as a
-    /// device is about to take another device's restore in place of its own
-    /// cards (`Sync`), so the cards the restore removes can still be found:
-    /// none for an engine in memory, which keeps no copies. Saving it is our
-    /// own guard.
-    func saveCopyBeforeTakingICloudsCopy() throws(EngineError) {
-        guard let backupsFolder else { return }
-        try saveCopy(of: database, as: .beforeICloudsCopy, at: time.now, in: backupsFolder)
-    }
-}
-
 /// Drops every row that syncs, in a write that records nothing to send, as a
 /// device takes a restore's cards in place of its own: the cards, their
 /// review log, the captures and the tags, with what waited to be sent and
@@ -70,8 +58,8 @@ extension Engine {
 /// restore's take their place as they come. Returns the images and sounds
 /// the rows used, for the device to remove those iCloud doesn't hold: those
 /// it holds stay, for the restore's cards that use them.
-func dropEverythingThatSyncs(in db: Database) throws -> FilesReferred {
-    let referred = try FilesReferred(in: db)
+func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
+    let referred = try FileNames(referredIn: db)
     try db.execute(
         sql: """
             DELETE FROM reviewLog;

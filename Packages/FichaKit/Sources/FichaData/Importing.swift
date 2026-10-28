@@ -292,7 +292,7 @@ extension Engine {
         broughtByAll.formUnion(brought.byUpdatedCards)
         /// What the files `files` names weigh, in bytes, of those that came
         /// in with the file that Ficha doesn't hold.
-        func weightOfFilesNotHeld(_ files: FilesReferred) -> Int64 {
+        func weightOfFilesNotHeld(_ files: FileNames) -> Int64 {
             weightNotHeld(files.images, among: images) + weightNotHeld(files.sounds, among: sounds)
         }
         return ImportPreview(
@@ -343,7 +343,7 @@ extension Engine {
         guard preview.cards.count > skippedCount else {
             return ImportOutcome(added: 0, updated: 0, skipped: skippedCount, copyBeforeImport: nil)
         }
-        let copy = try copyBeforeImport()
+        let copy = try saveCopy(.beforeImport)
         let importedAt = time.now
         // The images and sounds that came in, kept before the cards that
         // refer to them, and those of them no card uses removed again after,
@@ -403,15 +403,6 @@ extension Engine {
         if card.progress?.isSuspended == true {
             _ = try bury(cardID, at: importedAt, in: db)
         }
-    }
-
-    /// Saves a copy before an import in the Backups folder, and returns it,
-    /// or nil for an engine in memory, which keeps no copies.
-    private func copyBeforeImport() throws(EngineError) -> DatabaseCopy? {
-        guard let backupsFolder else {
-            return nil
-        }
-        return try saveCopy(of: database, as: .beforeImport, at: time.now, in: backupsFolder)
     }
 }
 
@@ -482,23 +473,23 @@ extension ImportedCard {
 /// cards that come in new, and those the cards it updates take, as an update
 /// gives them its back's image and sound when the file gives them.
 private struct FilesBrought {
-    var byNewCards = FilesReferred()
-    var byUpdatedCards = FilesReferred()
+    var byNewCards = FileNames()
+    var byUpdatedCards = FileNames()
 
     /// The files `cards` bring, each repeating the user's card at its place
     /// in `repeated`, or none.
     init(by cards: [ImportedCard], repeating repeated: [Card?]) throws {
         for (card, repeated) in zip(cards, repeated) {
             if let repeated {
-                byUpdatedCards.formUnion(FilesReferred(on: try card.update(of: repeated, adding: [])))
+                byUpdatedCards.formUnion(FileNames(on: try card.update(of: repeated, adding: [])))
             } else {
-                byNewCards.formUnion(FilesReferred(on: card.content))
+                byNewCards.formUnion(FileNames(on: card.content))
             }
         }
     }
 }
 
-extension FilesReferred {
+extension FileNames {
     /// The files a card holding `content` refers to, on either side.
     fileprivate init(on content: CardContent) {
         images = content.images

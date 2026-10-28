@@ -89,6 +89,37 @@ func namesReferred<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws
         })
 }
 
+/// The names of some files on cards, of every kind: those the cards in a
+/// database refer to, those iCloud holds, or those a change let go of.
+struct FileNames: Sendable, Equatable {
+    var images: Set<ImageName> = []
+    var sounds: Set<SoundName> = []
+
+    /// No file.
+    init() {}
+
+    /// The files the cards in `db` refer to, on either side, as
+    /// `namesReferred(_:in:)` reads them.
+    init(referredIn db: Database) throws {
+        images = try namesReferred(ImageName.self, in: db)
+        sounds = try namesReferred(SoundName.self, in: db)
+    }
+
+    /// Adds `other`'s files.
+    mutating func formUnion(_ other: FileNames) {
+        images.formUnion(other.images)
+        sounds.formUnion(other.sounds)
+    }
+
+    /// These files without `other`'s.
+    func subtracting(_ other: FileNames) -> FileNames {
+        var rest = self
+        rest.images.subtract(other.images)
+        rest.sounds.subtract(other.sounds)
+        return rest
+    }
+}
+
 /// Where the engine keeps the files named by `Name` on cards, each once, by
 /// its name: a folder beside the database, with a file for each, or memory,
 /// for an engine in memory.
@@ -258,6 +289,12 @@ extension Engine {
     func removeFilesNoCardUses(images: Set<ImageName> = [], sounds: Set<SoundName> = []) {
         removeFilesNoCardUses(among: images, from: self.images)
         removeFilesNoCardUses(among: sounds, from: self.sounds)
+    }
+
+    /// Removes the files among `files` that no card refers to any more, as
+    /// `removeFilesNoCardUses(images:sounds:)` says.
+    func removeFilesNoCardUses(_ files: FileNames) {
+        removeFilesNoCardUses(images: files.images, sounds: files.sounds)
     }
 
     /// Removes the images and sounds a card had `before` a change and no

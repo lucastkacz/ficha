@@ -229,7 +229,7 @@ extension Engine {
     public func turnSyncOff() throws(EngineError) {
         let inICloud = try write { db in
             try switchSyncOff(because: .user, in: db)
-            return try FilesInICloud(in: db)
+            return try FileNames(heldByICloudIn: db)
         }
         removeFilesNoCardUses(inICloud)
     }
