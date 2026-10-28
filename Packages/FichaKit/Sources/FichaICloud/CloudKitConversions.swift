@@ -195,7 +195,9 @@ extension ICloudEvent {
             self = .accountChange(try AccountChange(change.changeType))
         case .fetchedDatabaseChanges(let changes):
             self = .fetchedDatabaseChanges(
-                FetchedDatabaseChanges(deletions: try changes.deletions.map(ZoneDeletion.init)))
+                FetchedDatabaseChanges(
+                    modifications: changes.modifications.map { ICloudZone(name: $0.zoneID.zoneName) },
+                    deletions: try changes.deletions.map(ZoneDeletion.init)))
         case .fetchedRecordZoneChanges(let changes):
             self = .fetchedRecordZoneChanges(
                 FetchedRecordZoneChanges(
@@ -235,11 +237,22 @@ extension ICloudEvent {
 extension ICloudEvent.AccountChange {
     init(_ change: CKSyncEngine.Event.AccountChange.ChangeType) throws(CloudKitConversionError) {
         switch change {
-        case .signIn: self = .signIn
-        case .signOut: self = .signOut
-        case .switchAccounts: self = .switchAccounts
-        @unknown default: throw .unknownAccountChange
+        case .signIn(let current):
+            self = .signIn(currentUser: ICloudUser(current))
+        case .signOut(let previous):
+            self = .signOut(previousUser: ICloudUser(previous))
+        case .switchAccounts(let previous, let current):
+            self = .switchAccounts(previousUser: ICloudUser(previous), currentUser: ICloudUser(current))
+        @unknown default:
+            throw .unknownAccountChange
         }
+    }
+}
+
+extension ICloudUser {
+    /// The user whose user record's ID is `id`.
+    init(_ id: CKRecord.ID) {
+        self.init(recordName: id.recordName)
     }
 }
 
@@ -272,6 +285,8 @@ extension ICloudError {
             self = .unknownItem
         case .quotaExceeded:
             self = .quotaExceeded
+        case .userDeletedZone:
+            self = .userDeletedZone
         case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable, .notAuthenticated,
             .requestRateLimited, .operationCancelled, .accountTemporarilyUnavailable:
             self = .retriedByTheEngine

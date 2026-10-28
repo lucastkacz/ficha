@@ -340,6 +340,13 @@ struct BackupsTab: View {
             String(
                 localized: "Before an import",
                 comment: "Settings, under Backups: a copy's kind, saved before cards were imported from a file.")
+        case .beforeICloudsCopy:
+            String(
+                localized: "Before taking iCloud's copy",
+                comment: """
+                    Settings, under Backups: a copy's kind, saved before this Mac replaced its cards with those \
+                    another device restored and synced through iCloud.
+                    """)
         }
     }
 }

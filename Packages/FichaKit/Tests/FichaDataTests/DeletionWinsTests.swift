@@ -236,8 +236,9 @@ final class DeletionWinsTests {
             try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, on: ladder) == afterTheFirstView)
     }
 
-    // iCloud's engine starts over in the new account, and every row goes
-    // again, as #317's account change will have it.
+    // What the Mac heard of its records from the first account means nothing
+    // in the other, which lacks them: sent with it, they'd come back as
+    // deleted there.
     @Test("a device signed into another account that already holds Ficha's zone keeps its cards")
     func anAccountChangeKeepsTheCards() async throws {
         _ = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -248,14 +249,11 @@ final class DeletionWinsTests {
         _ = try iPhoneThere.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
         try await iPhoneThere.syncNow()
 
-        try mac.sync.handle(.accountChange(.switchAccounts), from: mac.iCloud)
-        try mac.engine.saveSyncEngineState(nil)
-        try mac.engine.write { db in try recordEverythingToSend(in: db) }
-        let macThere = try Device(mac.engine, syncingThrough: otherAccount)
-        try await macThere.syncNow()
+        try mac.signIn(to: otherAccount)
+        try await mac.syncNow()
         try await iPhoneThere.syncNow()
 
-        for device in [macThere, iPhoneThere] {
+        for device in [mac, iPhoneThere] {
             #expect(try device.engine.cards().map(\.front).sorted() == ["saudade", "ubuntu"])
         }
     }

@@ -1,3 +1,4 @@
+import FichaData
 import Foundation
 
 #if os(macOS)
@@ -9,8 +10,8 @@ import Foundation
 /// configuration in `project.yml` names its app, gives it its own bundle
 /// identifier (and so its own preferences) and sets the flag `current` reads.
 /// The `ficha` CLI compiles this file too, so the CLI built with each app
-/// opens that app's cards, and so does the iPhone app, which is only Ficha
-/// Dev for now.
+/// opens that app's cards, and so do the widget's extension, which reads
+/// them, and the iPhone app, which is only Ficha Dev for now.
 enum AppVariant {
     /// Ficha Dev, which `make run` builds and opens.
     case dev
@@ -74,36 +75,63 @@ enum AppVariant {
 
     /// Whether the app syncs its cards through the user's iCloud (ADR 0017):
     /// Ficha Dev does, in the Development environment of Ficha's container,
-    /// unless `FICHA_DEV_SCRATCH` opens a scratch folder, which is an agent's:
-    /// iCloud would carry its cards into Ficha Dev's. The real Ficha builds
-    /// the same code, but keeps sync off until it's signed with the team and
-    /// holds iCloud's entitlements (#318), since CloudKit stops an app that
-    /// asks for a container without them.
+    /// a scratch run too, in zones of its own (`scratchName`). The real Ficha
+    /// builds the same code, but keeps sync off until it's signed with the
+    /// team and holds iCloud's entitlements (#318), since CloudKit stops an
+    /// app that asks for a container without them.
     var syncsThroughICloud: Bool {
         switch self {
-        case .dev: ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] == nil
+        case .dev: true
         case .real: false
+        }
+    }
+
+    /// The scratch run `FICHA_DEV_SCRATCH` names in Ficha Dev, an agent's,
+    /// or nil for Ficha Dev's own data folder, and always for the real Ficha.
+    /// It names the scratch folder the app opens and the zones it syncs in,
+    /// "Cards-<name>…" and "Files-<name>", which Ficha Dev's own devices
+    /// leave alone, so its cards never reach Ficha Dev's. A name that can't
+    /// name one, with anything but letters, digits, `-` and `_`, fails.
+    var scratchName: ScratchName? {
+        get throws(DataFolderError) {
+            switch self {
+            case .dev:
+                guard let name = ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] else {
+                    return nil
+                }
+                guard let scratch = ScratchName(name) else {
+                    throw .unusableScratchName(name)
+                }
+                return scratch
+            case .real:
+                return nil
+            }
         }
     }
 
     /// Where the app keeps its data, such as its database: a folder of its
     /// own, named apart from `name`, so renaming an app never moves its cards.
-    /// On the Mac, Ficha Dev's is in its App Group's folder, which its sandbox
-    /// and its CLI's share (ADR 0018), unless `FICHA_DEV_SCRATCH` names a
-    /// scratch folder there, so an agent's runs of the CLI stay out of Ficha
-    /// Dev's cards. The real Ficha's stays in Application Support until it
-    /// moves into its own group (#309), and on the iPhone it's in the app's
-    /// own Application Support.
+    /// On the Mac, Ficha Dev's is in its App Group's folder, which its sandbox,
+    /// its CLI's and its widget's share (ADR 0018), unless `FICHA_DEV_SCRATCH`
+    /// names a scratch folder there, so an agent's runs of the CLI stay out of
+    /// Ficha Dev's cards. The real Ficha's stays in Application Support until
+    /// it moves into its own group (#309), which its widget, in its sandbox,
+    /// can't reach meanwhile, and on the iPhone it's in the app's own
+    /// Application Support.
     var dataFolder: URL {
         get throws(DataFolderError) {
             #if os(macOS)
                 switch self {
                 case .dev:
-                    let group = try signedGroupFolder(named: "com.lucastkacz.ficha.dev")
-                    guard let scratch = ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] else {
+                    let group = try signedGroupFolder(named: Self.devGroupName)
+                    guard let scratch = try scratchName else {
                         return group.appending(path: folderName, directoryHint: .isDirectory)
                     }
-                    return try scratchFolder(named: scratch, in: group)
+                    // A data folder of its own, which the app doesn't hear,
+                    // since the database's changes are named after its path.
+                    // It has to be in the group's folder, since the CLI's
+                    // sandbox lets it write nowhere else.
+                    return group.appending(path: "Scratch/\(scratch.rawValue)", directoryHint: .isDirectory)
                 case .real:
                     break
                 }
@@ -111,6 +139,20 @@ enum AppVariant {
             return URL.applicationSupportDirectory.appending(path: folderName, directoryHint: .isDirectory)
         }
     }
+
+    #if os(macOS)
+        /// The defaults of the app's App Group, which the app and its widget
+        /// share, or nil where the app doesn't run in its group: in a build not
+        /// signed with it, and in the real Ficha, whose cards stay outside its
+        /// group until #309, so nothing writes to its group or to its
+        /// preferences meanwhile.
+        var groupDefaults: UserDefaults? {
+            switch self {
+            case .dev: signedGroup(named: Self.devGroupName).flatMap(UserDefaults.init(suiteName:))
+            case .real: nil
+            }
+        }
+    #endif
 
     /// The name of the app's data folder.
     private var folderName: String {
@@ -154,6 +196,20 @@ enum DataFolderError: Error, LocalizedError {
 }
 
 #if os(macOS)
+    extension AppVariant {
+        /// The name of Ficha Dev's App Group, after the team's ID that macOS
+        /// puts before it, as `FICHA_APP_GROUP` in `project.yml` names it:
+        /// its app, its CLI and its widget share the group's folder.
+        fileprivate static let devGroupName = "com.lucastkacz.ficha.dev"
+
+        /// Whether this process is signed for iCloud, with iCloud's
+        /// entitlements: CloudKit stops a process that isn't, as #316 probed,
+        /// so a build signed without them reaches no iCloud at all.
+        static var isSignedForICloud: Bool {
+            signedEntitlement("com.apple.developer.icloud-services") != nil
+        }
+    }
+
     /// The value of `entitlement` this process is signed with, read from its
     /// own signature, or nil when it has none, as an unsigned build hasn't.
     /// So the team's ID, which names the App Groups, is never written in the
@@ -164,28 +220,23 @@ enum DataFolderError: Error, LocalizedError {
         return SecTaskCopyValueForEntitlement(task, entitlement as CFString, nil)
     }
 
+    /// The App Group this process is signed with whose name, after the team's
+    /// ID that macOS puts before it, is `name`, or nil when it isn't signed
+    /// with one.
+    private func signedGroup(named name: String) -> String? {
+        let groups = signedEntitlement("com.apple.security.application-groups") as? [String] ?? []
+        return groups.first { $0.hasSuffix(".\(name)") }
+    }
+
     /// The folder of the App Group this process is signed with whose name,
     /// after the team's ID that macOS puts before it, is `name`.
     private func signedGroupFolder(named name: String) throws(DataFolderError) -> URL {
-        let groups = signedEntitlement("com.apple.security.application-groups") as? [String] ?? []
-        guard let group = groups.first(where: { $0.hasSuffix(".\(name)") }) else {
+        guard let group = signedGroup(named: name) else {
             throw .notSignedWithItsGroup
         }
         guard let folder = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {
             throw .noGroupFolder(group)
         }
         return folder
-    }
-
-    /// The scratch folder `name` in the group's folder `group`: a data folder
-    /// of its own, which the app doesn't hear, since the database's changes
-    /// are named after its path. It has to be in the group's folder, since
-    /// the CLI's sandbox lets it write nowhere else.
-    private func scratchFolder(named name: String, in group: URL) throws(DataFolderError) -> URL {
-        guard !name.isEmpty, name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "-_".contains($0)) })
-        else {
-            throw .unusableScratchName(name)
-        }
-        return group.appending(path: "Scratch/\(name)", directoryHint: .isDirectory)
     }
 #endif

@@ -539,7 +539,8 @@ enum Schema {
             // so a change sent is forgotten by its id, and one made while it
             // was being sent stays. It survives an iCloud account change,
             // which empties CKSyncEngine's own queue. While sync is off,
-            // nothing waits: turning it on sends everything.
+            // nothing waits: turning it on sends everything. Since "v24 how
+            // sync stands", a deletion waits while it's off too.
             try db.create(table: "syncPending") { table in
                 table.autoIncrementedPrimaryKey("id")
                 table.column("recordType", .text).notNull()
@@ -748,6 +749,81 @@ enum Schema {
                     INSERT INTO syncPending (recordType, recordName, isDeletion)
                     SELECT 'progressSettings', 'progressSettings', 0 WHERE (SELECT isOn FROM syncDevice);
                     END;
+                    """)
+        }
+        migrator.registerMigration("v24 how sync stands") { db in
+            // How sync stands on this device, for Settings' Sync tab and the
+            // menu (ADR 0017), which never syncs: why the switch is off,
+            // "user" when the user turned it off and "purge" when they
+            // deleted Ficha's data in iCloud's settings, or NULL while it's
+            // on; whether the device is signed into iCloud, NULL until the
+            // app first asks; whether iCloud was full when the device last
+            // sent something; when the device last synced, NULL before it
+            // first did; and how many times sync turned off, which tells the
+            // app's engine that saw an off, however brief, to stop
+            // (`SyncStretch`). Adding columns keeps the triggers that read
+            // whether sync is on.
+            try db.alter(table: "syncDevice") { table in
+                table.add(column: "offBecause", .text)
+                table.add(column: "hasICloudAccount", .boolean)
+                table.add(column: "iCloudIsFull", .boolean).notNull().defaults(to: false)
+                table.add(column: "lastSyncedAt", .datetime)
+                table.add(column: "timesTurnedOff", .integer).notNull().defaults(to: 0)
+            }
+            try db.execute(sql: "UPDATE syncDevice SET offBecause = 'user' WHERE NOT isOn")
+            // A deletion now waits to be sent while sync is off too, so that
+            // turning sync on deletes from iCloud what the device deleted
+            // meanwhile, instead of leaving it there for the other devices:
+            // the triggers of "v21 changes recorded to sync" that record a
+            // deletion, made again without asking whether sync is on. A
+            // change of any other kind still waits only while it's on, since
+            // turning it on sends every row as it is. A migration that makes
+            // the card, capture or reviewLog table again makes these.
+            for (table, type) in [("card", "card"), ("capture", "capture"), ("reviewLog", "reviewLogEntry")] {
+                let forgetsFieldTimes =
+                    table == "reviewLog"
+                    ? "" : "DELETE FROM syncFieldTime WHERE recordType = '\(type)' AND recordName = OLD.uuid;"
+                try db.execute(
+                    sql: """
+                        DROP TRIGGER sync_\(table)_deleted;
+                        CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
+                        \(forgetsFieldTimes)
+                        DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = OLD.uuid;
+                        INSERT INTO syncPending (recordType, recordName, isDeletion)
+                        SELECT '\(type)', OLD.uuid, 1 WHERE (SELECT recordsChanges FROM syncWrite);
+                        END;
+                        """)
+            }
+        }
+        migrator.registerMigration("v25 the cards' zone in iCloud") { db in
+            // Where the device stands among the zones the cards have had in
+            // iCloud, which never syncs (`CardsZoneStanding`): the cards'
+            // zone it syncs in, or while it chooses one, the one it last
+            // synced in, by its name among Ficha's own, such as "Cards" or
+            // "Cards.1761650000000.restore", NULL when it never synced in
+            // one in this account; whether it chooses one, waiting for a
+            // fetch before it sends anything, as a device does before its
+            // first sync; the zone it left as it turned sync on after a
+            // restore, which its next engine deletes, or NULL; and the user
+            // it last synced as, by their user record's name, as its engine
+            // tells of an account change, which tells another account's zones
+            // from this one's, or NULL until it tells of one. A device that
+            // synced before this migration synced in "Cards", the only cards'
+            // zone there was: it goes on there once its engine saved a state,
+            // and one a purge turned off, which has none, chooses, as one
+            // the purge turns off now does. "restore" joins the reasons why
+            // the switch is off. Adding columns keeps the triggers that read
+            // whether sync is on.
+            try db.alter(table: "syncDevice") { table in
+                table.add(column: "cardsZone", .text)
+                table.add(column: "choosesCardsZone", .boolean).notNull().defaults(to: true)
+                table.add(column: "cardsZoneLeft", .text)
+                table.add(column: "iCloudUser", .text)
+            }
+            try db.execute(
+                sql: """
+                    UPDATE syncDevice SET cardsZone = 'Cards' WHERE engineState IS NOT NULL OR offBecause = 'purge';
+                    UPDATE syncDevice SET choosesCardsZone = 0 WHERE engineState IS NOT NULL;
                     """)
         }
         return migrator

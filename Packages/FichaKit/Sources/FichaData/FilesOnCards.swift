@@ -47,6 +47,8 @@ extension SoundName: NameOfFileOnCard {
 protocol CardFile: Sendable {
     associatedtype Name: NameOfFileOnCard
     var name: Name { get }
+    /// The file as Ficha keeps it.
+    var data: Data { get }
 }
 
 extension CardImage: CardFile {}
@@ -85,6 +87,37 @@ func namesReferred<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws
             }
             return name
         })
+}
+
+/// The names of some files on cards, of every kind: those the cards in a
+/// database refer to, those iCloud holds, or those a change let go of.
+struct FileNames: Sendable, Equatable {
+    var images: Set<ImageName> = []
+    var sounds: Set<SoundName> = []
+
+    /// No file.
+    init() {}
+
+    /// The files the cards in `db` refer to, on either side, as
+    /// `namesReferred(_:in:)` reads them.
+    init(referredIn db: Database) throws {
+        images = try namesReferred(ImageName.self, in: db)
+        sounds = try namesReferred(SoundName.self, in: db)
+    }
+
+    /// Adds `other`'s files.
+    mutating func formUnion(_ other: FileNames) {
+        images.formUnion(other.images)
+        sounds.formUnion(other.sounds)
+    }
+
+    /// These files without `other`'s.
+    func subtracting(_ other: FileNames) -> FileNames {
+        var rest = self
+        rest.images.subtract(other.images)
+        rest.sounds.subtract(other.sounds)
+        return rest
+    }
 }
 
 /// Where the engine keeps the files named by `Name` on cards, each once, by
@@ -155,6 +188,23 @@ enum FileStore<Name: NameOfFileOnCard>: Sendable {
                 }
                 return data
             }
+        }
+    }
+
+    /// What the file named `name` weighs, in bytes, as it's kept, or an
+    /// error when it isn't kept.
+    func size(of name: Name) throws(EngineError) -> Int64 {
+        switch self {
+        case .folder(let folder):
+            let file = folder.appending(path: name.rawValue)
+            return try reportingErrors {
+                guard let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+                    throw CocoaError(.fileReadUnknown, userInfo: [NSURLErrorKey: file])
+                }
+                return Int64(size)
+            }
+        case .memory:
+            return Int64(try data(of: name).count)
         }
     }
 
@@ -231,13 +281,20 @@ final class FilesInMemory<Name: NameOfFileOnCard>: Sendable {
 extension Engine {
     /// Removes the files among `images` and `sounds` that no card refers to
     /// any more, now that a change let go of them, such as deleting a card
-    /// or replacing a side's image or sound. One iCloud holds stays until it
-    /// leaves iCloud, as `namesInICloud(_:in:)` says. One that couldn't be
+    /// or replacing a side's image or sound. While sync is on, one iCloud
+    /// holds stays until it leaves iCloud, as `namesInICloud(_:in:)` says.
+    /// One that couldn't be
     /// removed stays, and the engine logs why: the change is saved all the
     /// same.
     func removeFilesNoCardUses(images: Set<ImageName> = [], sounds: Set<SoundName> = []) {
         removeFilesNoCardUses(among: images, from: self.images)
         removeFilesNoCardUses(among: sounds, from: self.sounds)
+    }
+
+    /// Removes the files among `files` that no card refers to any more, as
+    /// `removeFilesNoCardUses(images:sounds:)` says.
+    func removeFilesNoCardUses(_ files: FileNames) {
+        removeFilesNoCardUses(images: files.images, sounds: files.sounds)
     }
 
     /// Removes the images and sounds a card had `before` a change and no
@@ -248,12 +305,13 @@ extension Engine {
     }
 
     /// Removes from `store` the files among `names` that no card refers to,
-    /// and iCloud doesn't hold.
+    /// and iCloud doesn't hold while sync is on.
     private func removeFilesNoCardUses<Name>(among names: Set<Name>, from store: FileStore<Name>) {
         guard !names.isEmpty else { return }
         do throws(EngineError) {
             let unused = try read { db in
-                try names.subtracting(namesReferred(Name.self, in: db)).subtracting(namesInICloud(Name.self, in: db))
+                try names.subtracting(namesReferred(Name.self, in: db))
+                    .subtracting(isSyncOn(in: db) ? namesInICloud(Name.self, in: db) : [])
             }
             try store.remove(unused)
         } catch {

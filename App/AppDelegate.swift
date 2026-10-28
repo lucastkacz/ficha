@@ -8,10 +8,11 @@ import os
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 
 /// Opens the database in this app's own data folder when the app launches,
-/// and starts the appearances and, in Ficha Dev, sync through iCloud. When it
-/// can't open it, the app says why and quits: Ficha doesn't run without its
-/// cards. It and `SecondDevice` are the only files of the app that load
-/// CloudKit, so `make render` leaves them out.
+/// and starts the appearances, the widget's reloads and, in Ficha Dev, sync
+/// through iCloud. When it can't open the database, the app says why and
+/// quits: Ficha doesn't run without its cards. It also opens the links a
+/// click on the widget opens the app with. It and `SecondDevice` are the only
+/// files of the app that load CloudKit, so `make render` leaves them out.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The app, once it launched with its cards, for its App Intents, which
     /// macOS runs in the app's process.
@@ -63,6 +64,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var iCloud: CloudKitSync?
     /// Ficha Dev's second device, once its debug menu opened it.
     private var secondDevice: SecondDevice?
+    /// What reloads the widget, once the app launched with its cards.
+    private var widgetReloads: WidgetReloads?
+    /// The widget's link that launched the app, which macOS hands over before
+    /// the app finished launching, until the review panel can open it.
+    private var pendingLink: WidgetLink?
 
     /// Opens the capture window with empty fields, or brings it forward
     /// when it's open, with what Lucas typed. Either way it takes the
@@ -111,6 +117,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openSettings(on: .backups)
     }
 
+    /// Opens the Settings window on its Sync tab, as "iCloud is full" in the
+    /// menu does. When it's open, it comes forward on that tab.
+    func openSyncSettings() {
+        openSettings(on: .sync)
+    }
+
     /// Opens the Settings window on `tab`, or on the tab Lucas left it on
     /// last. When it's open, it comes forward, on `tab` if there's one.
     private func openSettings(on tab: SettingsTab?) {
@@ -144,6 +156,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel?.openReviewNow()
     }
 
+    /// Opens the links of the app's scheme, which a click on its widget opens:
+    /// a review now that starts with the card the widget showed. One that
+    /// launches the app comes before it finished launching, and opens once it
+    /// has.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let scheme = WidgetHandover.linkScheme, let link = WidgetLink(url, scheme: scheme) else {
+                widgetLogger.error("Ignored a link the app doesn't open: \(url, privacy: .public)")
+                continue
+            }
+            widgetLogger.info("Opening the widget's link \(url, privacy: .public)")
+            open(link)
+        }
+    }
+
+    /// Opens a review now that starts with the card `link` names, or keeps
+    /// it until the review panel can open it.
+    private func open(_ link: WidgetLink) {
+        guard let panel else {
+            pendingLink = link
+            return
+        }
+        panel.openReviewNow(startingWith: link.startingWith)
+    }
+
+    /// What to do once Ficha Dev's debug menu moved its time forward: count
+    /// the menu's progress again, since cards may have come due, and reload
+    /// the widget.
+    func timeMoved() {
+        model?.countProgress()
+        widgetReloads?.timeMoved()
+    }
+
     /// Asks the engine right away whether the review panel shows up on its
     /// own, for Ficha Dev's debug menu, and shows it if so, as every check
     /// does, noting an appearance a suppression holds back: what the check
@@ -164,19 +209,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let mac = SystemMacSignals { model.now }
             let panel = ReviewPanel(model: model, mac: mac)
             let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
+            // Before any panel opens, since an open panel holds the widget's
+            // reloads back.
+            let widgetReloads = WidgetReloads(model: model)
+            panel.whenOpened = { widgetReloads.panelOpened() }
+            panel.whenClosed = { widgetReloads.panelClosed() }
             self.mac = mac
             self.panel = panel
             self.appearances = appearances
+            self.widgetReloads = widgetReloads
             // Before the alert at first launch, which an App Intent can run
             // during.
             Self.launched = self
             appearances.start()
             model.startBackups()
             startSyncing(model)
+            widgetReloads.start()
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.askAtFirstLaunch()
             sayIfSettingsAreUnreadable()
+            if let pendingLink {
+                self.pendingLink = nil
+                open(pendingLink)
+            }
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,
@@ -186,19 +242,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Starts syncing `model`'s cards through iCloud, when the app syncs: what
-    /// waits now, those changes made while the app didn't run included, and
-    /// then each change to the database, whichever process made it.
+    /// Starts syncing `model`'s cards through iCloud, when the app syncs and
+    /// while Settings' switch is on: what waits now, those changes made while
+    /// the app didn't run included, and then each change to the database,
+    /// whichever process made it. The sync follows the switch as it's turned
+    /// on and off (`CloudKitSync`). Only then does the app show Settings'
+    /// Sync tab and the menu's line while iCloud is full. A scratch run syncs
+    /// in zones of its own (`AppVariant.scratchName`).
     private func startSyncing(_ model: AppModel) {
         guard AppVariant.current.syncsThroughICloud else { return }
-        // CloudKit stops a process that isn't signed for iCloud, as #316
-        // probed, so a build signed without it leaves sync off instead.
-        guard signedEntitlement("com.apple.developer.icloud-services") != nil else {
+        // A build signed without iCloud's entitlements leaves sync off
+        // instead, and shows no Sync tab, which would wait forever for the
+        // account.
+        guard AppVariant.isSignedForICloud else {
             logger.fault("Sync through iCloud stays off: this build isn't signed for iCloud")
             return
         }
-        let iCloud = CloudKitSync(engine: model.engine, device: "This Mac")
+        let zones: ICloudZones
+        do {
+            zones = try AppVariant.current.scratchName.map(ICloudZones.scratch) ?? .ficha
+        } catch {
+            // The data folder opened, named after the same scratch run, so
+            // this never happens.
+            logger.fault("Sync through iCloud stays off: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let iCloud = CloudKitSync(engine: model.engine, zones: zones, device: "This Mac")
         self.iCloud = iCloud
+        model.sync = model.engine.openSyncTab()
         Task { await iCloud.run() }
     }
 
@@ -237,9 +308,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showAlert(
                 "Ficha Dev doesn't sync, so it has no second device",
                 details: """
-                    It doesn't sync through iCloud when FICHA_DEV_SCRATCH opens a scratch folder, or when it isn't \
-                    signed for iCloud. Build it with make run, with your team's ID in iPhone/Local.xcconfig, as \
-                    docs/development.md says.
+                    It doesn't sync through iCloud when it isn't signed for iCloud. Build it with make run, with \
+                    your team's ID in iPhone/Local.xcconfig, as docs/development.md says.
                     """,
                 style: .warning, button: "OK")
             return nil

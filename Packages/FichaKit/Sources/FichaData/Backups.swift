@@ -38,7 +38,10 @@ extension Engine {
     /// or week it's saved in. Returns the backup.
     @discardableResult
     public func backUpNow(_ settings: BackupSettings) throws(EngineError) -> DatabaseCopy {
-        let backup = try saveCopy(.backup)
+        guard let backup = try saveCopy(.backup) else {
+            logger.error("An engine in memory has no Backups folder to save a backup in")
+            throw .backupsFolder
+        }
         let extras = try copies().filter { $0.kind == .backup }.dropFirst(settings.keptCount)
         for extra in extras {
             try removeCopy(extra)
@@ -61,7 +64,12 @@ extension Engine {
     /// keeps. A copy that a newer version of Ficha migrated is refused, and
     /// nothing changes. One that an older version left is migrated once it's
     /// restored, with a copy before an update, as when the engine opens the
-    /// database.
+    /// database. Sync turns off, and the device's own sync stays in place of
+    /// the copy's, as `SyncKeptThroughARestore` says: the copy comes in
+    /// through a database in memory, where it's migrated and takes the
+    /// device's sync, so that no engine on the database, such as the app's
+    /// sync running beside it, ever reads what the copy waited to send, nor
+    /// takes it for a stretch of sync being on.
     @discardableResult
     public func restore(_ name: String) throws(EngineError) -> Restoration {
         guard let dataFolder, let backupsFolder else {
@@ -85,16 +93,26 @@ extension Engine {
                 logger.error("Refused to restore \(name, privacy: .public), which a newer version of Ficha migrated")
                 throw .copyMigratedByNewerVersion(name)
             }
-            let copyBeforeRestore = try saveCopy(.beforeRestore)
-            let replaced = try read(FilesReferred.init(in:))
+            // Never nil: the engine has a Backups folder.
+            guard let copyBeforeRestore = try saveCopy(.beforeRestore) else {
+                throw .backupsFolder
+            }
+            let (replaced, sync) = try read { db in
+                (try FileNames(referredIn: db), try SyncKeptThroughARestore(in: db))
+            }
             try bringBackFiles(
-                try reportingStorageErrors { try source.read(FilesReferred.init(in:)) }, from: backupsFolder,
+                try reportingStorageErrors { try source.read(FileNames.init(referredIn:)) }, from: backupsFolder,
                 into: dataFolder)
-            try reportingStorageErrors { try source.backup(to: database) }
-            try migrate(database, savingACopyIn: backupsFolder, at: time.now)
+            let restored = try reportingStorageErrors { try DatabaseQueue() }
+            try reportingStorageErrors { try source.backup(to: restored) }
+            try migrate(restored, savingACopyIn: backupsFolder, at: time.now)
+            try reportingStorageErrors {
+                try restored.write(sync.keep(in:))
+                try restored.backup(to: database)
+            }
             return (Restoration(restored: copy, copyBeforeRestore: copyBeforeRestore), replaced)
         }
-        removeFilesNoCardUses(images: replaced.images, sounds: replaced.sounds)
+        removeFilesNoCardUses(replaced)
         databaseChanges.post()
         logger.notice("Restored \(name, privacy: .public)")
         return restoration
@@ -137,12 +155,14 @@ extension Engine {
     }
 
     /// Saves a copy of `kind` of the database as it is now in the Backups
-    /// folder, at the engine's time, and returns it.
-    private func saveCopy(_ kind: DatabaseCopy.Kind) throws(EngineError) -> DatabaseCopy {
-        guard let backupsFolder else {
-            logger.error("An engine in memory has no Backups folder to save a copy in")
-            throw .backupsFolder
-        }
+    /// folder, at the engine's time, and returns it: nil for an engine in
+    /// memory, which keeps no copies, and whose caller decides whether that's
+    /// an error. The engine saves each copy of its database through it, but
+    /// for a copy before an update, which the database's migration saves
+    /// (`migrate(_:savingACopyIn:at:)`).
+    @discardableResult
+    func saveCopy(_ kind: DatabaseCopy.Kind) throws(EngineError) -> DatabaseCopy? {
+        guard let backupsFolder else { return nil }
         return try FichaData.saveCopy(of: database, as: kind, at: time.now, in: backupsFolder)
     }
 
@@ -257,7 +277,7 @@ func saveCopy(
         logger.error("Couldn't make the Backups folder: \(String(describing: error))")
         throw .backupsFolder
     }
-    let files: FilesReferred
+    let files: FileNames
     do {
         let copy = try DatabaseQueue(path: file.path(percentEncoded: false))
         try database.backup(to: copy)
@@ -265,7 +285,7 @@ func saveCopy(
         try copy.writeWithoutTransaction { db in
             try db.execute(sql: "PRAGMA journal_mode = DELETE")
         }
-        files = try copy.read(FilesReferred.init(in:))
+        files = try copy.read(FileNames.init(referredIn:))
         try copy.close()
     } catch {
         logger.error("Couldn't save a copy of the database: \(String(describing: error))")
