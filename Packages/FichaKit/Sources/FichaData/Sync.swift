@@ -30,7 +30,8 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// on, then `sendWhatChanged(to:)` whenever the database changes, and passes
 /// it each event and request of `CKSyncEngine`'s delegate. While sync is off,
 /// it hands iCloud's engine nothing and takes nothing from it: the app lets
-/// its engine go, and starts one again once sync is on.
+/// its engine go, and starts one again once sync is on. An off, however
+/// brief, ends the engine that saw it (`SyncStretch`).
 public struct Sync: Sendable {
     let engine: Engine
 
@@ -45,10 +46,11 @@ public struct Sync: Sendable {
         try engine.savedSyncEngineState()
     }
 
-    /// Whether sync is on, as Settings' switch says, which the app's engine
-    /// follows: it runs only while it is.
-    public func isOn() throws(EngineError) -> Bool {
-        try engine.syncIsOn()
+    /// The stretch of time sync is on now, as Settings' switch says, or nil
+    /// while it's off, which the app's engine follows: it runs only while
+    /// sync is on, in the stretch it started in.
+    public func stretchNow() throws(EngineError) -> SyncStretch? {
+        try engine.syncStretch()
     }
 
     /// Keeps whether the device is signed into iCloud, which the app asks
@@ -58,6 +60,14 @@ public struct Sync: Sendable {
         try engine.noteICloudAccount(signedIn: signedIn)
     }
 
+    /// Keeps that the device synced now, as a fetch the app asked iCloud's
+    /// engine for ended without an error, while sync is on: iCloud answered,
+    /// even with nothing new.
+    public func noteFetchEnded() throws(EngineError) {
+        guard try engine.syncIsOn() else { return }
+        try engine.noteSynced()
+    }
+
     /// Starts syncing through `iCloud`, while sync is on: on a device whose
     /// engine never saved a state, it asks iCloud for the cards' zone and the
     /// files', and it hands `iCloud` every change that waits, those made
@@ -65,7 +75,7 @@ public struct Sync: Sendable {
     public func start(with iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard try engine.syncIsOn() else { return }
         if try engine.savedSyncEngineState() == nil {
-            iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
+            iCloud.askForBothZones()
         }
         try sendWhatChanged(to: iCloud)
     }
@@ -74,15 +84,28 @@ public struct Sync: Sendable {
     /// changes, whichever process changed it, and then the images and sounds
     /// its cards use that iCloud lacks, while sync is on. One it already
     /// holds stays as one. While iCloud is full, it asks for the zones again
-    /// first, in case one didn't fit, since this is how what waits goes once
-    /// there's room.
+    /// first, in case one didn't fit: what didn't fit goes again at each
+    /// change to the database, and as `tryAgainInAFullICloud(with:)` says.
     public func sendWhatChanged(to iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard try engine.syncIsOn() else { return }
         if try engine.iCloudIsFull() {
-            iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
+            iCloud.askForBothZones()
         }
         iCloud.add(pendingRecordZoneChanges: try engine.changesToSend().map(\.pendingRecordZoneChange))
         try sendFiles(to: iCloud)
+    }
+
+    /// Hands `iCloud` again what waits, its zones first, while iCloud is
+    /// full, in case there's room now; while it isn't, nothing. Nothing tells
+    /// the device when room comes, and iCloud's engine doesn't try again on
+    /// its own a change that didn't fit: `quotaExceeded` isn't among the
+    /// errors `CKSyncEngine`'s documentation says it retries. So the app
+    /// calls it now and then while iCloud is full, as each fetch's end does,
+    /// beside each change to the database (`sendWhatChanged(to:)`) and each
+    /// launch (`start(with:)`).
+    public func tryAgainInAFullICloud(with iCloud: some ICloudSyncEngine) throws(EngineError) {
+        guard try engine.iCloudIsFull() else { return }
+        try sendWhatChanged(to: iCloud)
     }
 
     /// The record `iCloud` saves for `id`, as its row is now, with what
@@ -111,18 +134,22 @@ public struct Sync: Sendable {
         return record
     }
 
-    /// Handles an event of iCloud's engine, as `CKSyncEngine`'s delegate's
-    /// `handleEvent(_:syncEngine:)` does, while sync is on. While it's off,
-    /// an event, such as one an engine the app let go of still tells, is
-    /// left aside: the next engine starts from the state saved before, and
-    /// fetches again what it brought.
-    public func handle(_ event: ICloudEvent, from iCloud: some ICloudSyncEngine) throws(EngineError) {
-        guard try engine.syncIsOn() else {
-            return syncLogger.debug("Sync is off: an event of iCloud's engine is left aside")
+    /// Handles an event of iCloud's engine, which started in `stretch`, as
+    /// `CKSyncEngine`'s delegate's `handleEvent(_:syncEngine:)` does, while
+    /// sync is on in that stretch. Once sync is off, an event, such as one an
+    /// engine the app let go of still tells, is left aside, and so is every
+    /// event of that engine after, even once sync is on again: the next
+    /// engine starts from the state saved before the off, and fetches again
+    /// what it brought.
+    public func handle(_ event: ICloudEvent, from iCloud: some ICloudSyncEngine, startedIn stretch: SyncStretch)
+        throws(EngineError)
+    {
+        guard try engine.syncStretch() == stretch else {
+            return syncLogger.debug("Sync went off since iCloud's engine started: its event is left aside")
         }
-        // A record refused because the user deleted Ficha's data in iCloud's
-        // settings is a purge, which the device may hear of before it fetches
-        // the zone's deletion.
+        // A record or a deletion refused because the user deleted Ficha's
+        // data in iCloud's settings is a purge, which the device may hear of
+        // before it fetches the zone's deletion.
         guard !event.saysTheUserDeletedFichasData else {
             return try takePurge()
         }
@@ -157,11 +184,7 @@ public struct Sync: Sendable {
             try takeAccountChange(change, with: iCloud)
         case .didFetchChanges:
             try finishFetchingFiles(with: iCloud)
-            // While iCloud is full, each fetch tries again what waits, in
-            // case the user made room meanwhile.
-            if try engine.iCloudIsFull() {
-                try sendWhatChanged(to: iCloud)
-            }
+            try tryAgainInAFullICloud(with: iCloud)
         }
     }
 
@@ -185,9 +208,9 @@ public struct Sync: Sendable {
             try recordEverythingToSend(in: db)
             return files
         }
-        engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
+        engine.removeFilesNoCardUses(forgotten)
         guard change != .signOut else { return }
-        iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
+        iCloud.askForBothZones()
         try sendWhatChanged(to: iCloud)
     }
 
@@ -218,11 +241,11 @@ public struct Sync: Sendable {
                 try recordEverythingToSend(in: db)
             }
             guard toSendAgain.contains(.files) else {
-                return (images: Set<ImageName>(), sounds: Set<SoundName>())
+                return FilesInICloud()
             }
             return try forgetFilesInICloud(in: db)
         }
-        engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
+        engine.removeFilesNoCardUses(forgotten)
         iCloud.add(pendingDatabaseChanges: toSendAgain.sorted { $0.name < $1.name }.map { .saveZone($0) })
         try sendWhatChanged(to: iCloud)
     }
@@ -239,11 +262,11 @@ public struct Sync: Sendable {
         let forgotten = try engine.write { db in
             try switchSyncOff(because: .purge, in: db)
             try db.execute(sql: "DELETE FROM syncPending")
-            try db.execute(sql: "UPDATE syncDevice SET iCloudIsFull = 0")
+            try noteICloudIsFull(false, in: db)
             try saveSyncEngineState(nil, in: db)
             return try forgetWhatICloudSaid(in: db)
         }
-        engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
+        engine.removeFilesNoCardUses(forgotten)
     }
 
     /// Applies `records`, which other devices saved, or this one, as iCloud
@@ -288,7 +311,14 @@ public struct Sync: Sendable {
         guard !toRetry.isEmpty else {
             return
         }
-        let retries = try engine.writeWithoutRecording { db in
+        // Only a record iCloud holds as it changed since, which the device
+        // takes, is news to the other engines: what sync keeps of the others
+        // would only wake the app to send them again, and again for as long
+        // as iCloud is full.
+        let takesICloudsRecords = toRetry.contains {
+            if case .serverRecordChanged = $0.error { true } else { false }
+        }
+        let retries = try engine.writeWithoutRecording(tellingTheOtherEngines: takesICloudsRecords) { db in
             try toRetry.map { failure in try retry(failure, in: db) }
         }
         iCloud.add(pendingDatabaseChanges: retries.compactMap(\.zone))
@@ -328,7 +358,8 @@ public struct Sync: Sendable {
             syncLogger.notice("iCloud is full: a change waits until there's room")
             return (nil, nil)
         case .userDeletedZone:
-            // A purge, which `handle(_:from:)` takes before it gets here.
+            // A purge, which `handle(_:from:startedIn:)` takes before it
+            // gets here.
             return (nil, nil)
         case .retriedByTheEngine:
             return (nil, nil)
@@ -351,7 +382,7 @@ public struct Sync: Sendable {
 /// so the device sends each one its cards use, which the account turns down
 /// when it holds it. Returns them, for the device to remove those no card
 /// uses.
-private func forgetWhatICloudSaid(in db: Database) throws -> (images: Set<ImageName>, sounds: Set<SoundName>) {
+private func forgetWhatICloudSaid(in db: Database) throws -> FilesInICloud {
     let files = try forgetFilesInICloud(in: db)
     try db.execute(sql: "DELETE FROM syncRecord")
     try db.execute(sql: "DELETE FROM syncIncoming")
@@ -359,8 +390,8 @@ private func forgetWhatICloudSaid(in db: Database) throws -> (images: Set<ImageN
 }
 
 /// Forgets which images and sounds iCloud holds, and returns them.
-private func forgetFilesInICloud(in db: Database) throws -> (images: Set<ImageName>, sounds: Set<SoundName>) {
-    let files = (images: try namesInICloud(ImageName.self, in: db), sounds: try namesInICloud(SoundName.self, in: db))
+private func forgetFilesInICloud(in db: Database) throws -> FilesInICloud {
+    let files = try FilesInICloud(in: db)
     try db.execute(sql: "DELETE FROM syncRecord WHERE zone = ?", arguments: [ICloudZone.files.name])
     return files
 }
@@ -384,24 +415,39 @@ extension ICloudEvent {
         }
     }
 
-    /// Whether the device synced as it happened: a fetch of what the other
-    /// devices changed ended, or iCloud took records or deletions it sent.
+    /// Whether it shows iCloud answered the device as it happened: it
+    /// brought zones that left or records, or iCloud took records or
+    /// deletions the device sent. The end of a fetch doesn't, since
+    /// `CKSyncEngine`'s documentation doesn't say it comes only after a fetch
+    /// that didn't fail: a fetch the app sees end without an error says so
+    /// (`noteFetchEnded()`).
     fileprivate var saysTheDeviceSynced: Bool {
         switch self {
-        case .didFetchChanges:
-            true
+        case .fetchedDatabaseChanges(let changes):
+            !changes.deletions.isEmpty
+        case .fetchedRecordZoneChanges(let changes):
+            !changes.modifications.isEmpty || !changes.deletions.isEmpty
         case .sentRecordZoneChanges(let sent):
             !sent.savedRecords.isEmpty || !sent.deletedRecordIDs.isEmpty
-        case .stateUpdate, .accountChange, .fetchedDatabaseChanges, .fetchedRecordZoneChanges, .sentDatabaseChanges:
+        case .stateUpdate, .accountChange, .sentDatabaseChanges, .didFetchChanges:
             false
         }
     }
 
-    /// Whether iCloud refused a record because the user deleted Ficha's data
-    /// in iCloud's settings.
+    /// Whether iCloud refused a record, or a deletion, because the user
+    /// deleted Ficha's data in iCloud's settings.
     fileprivate var saysTheUserDeletedFichasData: Bool {
         guard case .sentRecordZoneChanges(let sent) = self else { return false }
         return sent.failedRecordSaves.contains { $0.error == .userDeletedZone }
+            || sent.failedRecordDeletes.values.contains(.userDeletedZone)
+    }
+}
+
+extension ICloudSyncEngine {
+    /// Asks iCloud for the cards' zone and the files', which it saves unless
+    /// it holds them already.
+    fileprivate func askForBothZones() {
+        add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
     }
 }
 

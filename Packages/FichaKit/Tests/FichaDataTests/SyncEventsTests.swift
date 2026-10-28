@@ -39,7 +39,6 @@ final class SyncEventsTests {
     func aFreshDevice(in account: FakeICloud) async throws -> Device {
         let device = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: account)
         try await device.iCloud.fetchChanges()
-        try await device.iCloud.fetchChanges()
         return device
     }
 
@@ -146,6 +145,22 @@ final class SyncEventsTests {
         #expect(iCloud.records.isEmpty)
     }
 
+    // The Mac hears of the purge as iCloud refuses its deletion, before it
+    // fetches.
+    @Test("a purge heard as iCloud refuses a deletion turns sync off, as one heard on a save does")
+    func aPurgeHeardOnADeletionTurnsSyncOff() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+
+        iCloud.purge()
+        try mac.engine.delete([mac.engine.card(fronted: "petricor").id])
+        try await mac.send()
+
+        #expect(try mac.engine.syncStatus().offBecause == .purge)
+        #expect(try mac.engine.cards().map(\.front) == ["ubuntu"])
+    }
+
     @Test("turning sync on after a purge sends every card and file again, and each device's cards join, none deleted")
     func turningSyncOnAfterAPurgeSendsEverything() async throws {
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -204,6 +219,26 @@ final class SyncEventsTests {
         #expect(try mac.engine.syncStatus().offBecause == nil)
     }
 
+    // The user turns sync off and on again before the app hears of either:
+    // the engine running fetches while sync is off, which is left aside, and
+    // tells its state once it's on again. The app then starts a new engine.
+    @Test(
+        "an engine that saw sync go off, however briefly, is left aside, and the next one fetches what came meanwhile")
+    func aBriefOffEndsTheEngineThatSawIt() async throws {
+        try await mac.syncNow()
+        try iPhone.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+        try await iPhone.syncNow()
+
+        try mac.engine.turnSyncOff()
+        try await mac.iCloud.fetchChanges()
+        try mac.engine.turnSyncOn()
+        try await mac.iCloud.sendChanges()
+        try mac.relaunch()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front) == ["saudade"])
+    }
+
     // The Mac's card lets go of the image before it sends that change, so
     // the Mac kept the image only because iCloud holds it. The iPhone later
     // puts it on a card of its own.
@@ -223,9 +258,11 @@ final class SyncEventsTests {
         try iPhone.engine.create(card(nil, front: "Furnarius rufus", back: "El hornero.", backImage: bird))
         try await iPhone.syncNow()
         try mac.turnSyncOn()
-        for device in [mac, mac, iPhone] {
-            try await device.syncNow()
-        }
+        // The Mac's first sync brings the iPhone's card, whose image iCloud
+        // holds and the Mac let go of: it asks iCloud for it as the fetch
+        // ends, and it comes with the next.
+        try await mac.syncNow()
+        try await mac.syncNow()
 
         #expect(try mac.engine.card(fronted: "Furnarius rufus").backImage == bird)
         #expect(try mac.engine.card(fronted: "¿Qué pájaro es?").frontImage == nil)
@@ -233,15 +270,21 @@ final class SyncEventsTests {
         #expect(try mac.engine.image(bird) == iPhone.engine.image(bird))
     }
 
+    // Nothing changed to send or fetch at first: the fetch that ends without
+    // an error is what says the device synced. Offline, the fetch's end
+    // comes all the same, which says nothing.
     @Test("the status says when the device last synced, which stays while it can't reach iCloud")
     func theStatusSaysWhenTheDeviceLastSynced() async throws {
         #expect(try mac.engine.syncStatus().lastSynced == nil)
         let synced = time.now
         try await mac.syncNow()
+        #expect(try mac.engine.syncStatus().lastSynced == synced)
+
         time.advance(by: minutes(5))
         mac.iCloud.isOffline = true
         try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        await #expect(throws: FakeICloudError.self) { try await self.mac.syncNow() }
+        await #expect(throws: FakeICloudError.self) { try await self.mac.send() }
+        await #expect(throws: FakeICloudError.self) { try await self.mac.iCloud.fetchChanges() }
 
         #expect(try mac.engine.syncStatus().lastSynced == synced)
     }
@@ -266,15 +309,28 @@ final class SyncEventsTests {
         #expect(try iPhone.engine.card(fronted: "¿Cómo suena un la?").backSound == song)
         #expect(try iPhone.engine.keptSounds().isEmpty)
 
-        // Room comes without a change on the Mac: its next fetch sends what
-        // waited.
+        // Room comes without a change on the Mac, which tries again now and
+        // then while iCloud is full.
         iCloud.makeRoom()
-        try await mac.iCloud.fetchChanges()
-        try await mac.iCloud.sendChanges()
+        try await mac.tryAgainWhileICloudIsFull()
         try await iPhone.syncNow()
 
         #expect(try !mac.engine.syncStatus().iCloudIsFull)
         #expect(try iPhone.engine.sound(song) == mac.engine.sound(song))
+    }
+
+    // The new card doesn't fit. A database change wakes the app's sync,
+    // which hands what waits to iCloud's engine, which sends it on its own.
+    @Test("a change that didn't fit in a full iCloud waits without the app sending it again and again")
+    func aFullICloudSendsAChangeOncePerTry() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        iCloud.fillUp()
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        #expect(try mac.engine.syncStatus().iCloudIsFull)
+
+        #expect(try await mac.followTheDatabase() == 1)
     }
 
     // A zone doesn't fit either, so nothing does.
@@ -290,7 +346,7 @@ final class SyncEventsTests {
         #expect(full.records.isEmpty)
 
         full.makeRoom()
-        try await macThere.syncNow()
+        try await macThere.tryAgainWhileICloudIsFull()
 
         #expect(try !mac.engine.syncStatus().iCloudIsFull)
         #expect(try await aFreshDevice(in: full).engine.cards().map(\.front) == ["ubuntu"])

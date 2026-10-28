@@ -144,8 +144,10 @@ struct ChangeToSend: Sendable, Equatable {
 
 extension Engine {
     /// What waits to be sent to iCloud, oldest first: a change to each row
-    /// that syncs that changed since its last change was sent, recorded
-    /// while sync was on.
+    /// that syncs that changed since its last change was sent. A save is
+    /// recorded only while sync is on, and a deletion whether it's on or not,
+    /// so that turning it on deletes from iCloud what the device deleted
+    /// meanwhile (`Schema`'s "v24 how sync stands").
     func changesToSend() throws(EngineError) -> [ChangeToSend] {
         try read { db in
             try Row.fetchAll(db, sql: "SELECT * FROM syncPending ORDER BY id").map { pending in
@@ -174,14 +176,23 @@ extension Engine {
     /// their changes to send: for what comes from iCloud, which mustn't go
     /// back. Nor does a row they delete wait to be sent any more, nor keep
     /// when its fields changed. When each field they change last changed is
-    /// for them to write.
-    func writeWithoutRecording<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
-        try write { db in
+    /// for them to write. It tells the other engines the database changed,
+    /// unless `tellingTheOtherEngines` says not to, for a write that keeps
+    /// only what sync keeps for itself, which would wake the app's sync to
+    /// send again what waits.
+    func writeWithoutRecording<Value>(
+        tellingTheOtherEngines: Bool = true, _ updates: (Database) throws -> Value
+    ) throws(EngineError) -> Value {
+        let value = try writeWithoutTelling { db in
             try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
             let value = try updates(db)
             try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
             return value
         }
+        if tellingTheOtherEngines {
+            databaseChanges.post()
+        }
+        return value
     }
 
     /// Whether sync is on, as Settings' switch says: it is until the user
@@ -197,7 +208,7 @@ extension Engine {
     public func turnSyncOn() throws(EngineError) {
         try write { db in
             guard try !isSyncOn(in: db) else { return }
-            try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
+            try switchSyncOn(in: db)
             try recordEverythingToSend(in: db)
         }
     }
@@ -213,11 +224,9 @@ extension Engine {
     public func turnSyncOff() throws(EngineError) {
         let inICloud = try write { db in
             try switchSyncOff(because: .user, in: db)
-            return (
-                images: try namesInICloud(ImageName.self, in: db), sounds: try namesInICloud(SoundName.self, in: db)
-            )
+            return try FilesInICloud(in: db)
         }
-        removeFilesNoCardUses(images: inICloud.images, sounds: inICloud.sounds)
+        removeFilesNoCardUses(inICloud)
     }
 
     /// The state CKSyncEngine saved last on this device, or nil before it
