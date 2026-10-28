@@ -70,8 +70,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cardsWindow = window
     }
 
-    /// Opens the Diagnostics window: what each detector sees right now, and
-    /// the latest appearances. When it's open, it comes forward.
+    /// Opens the Diagnostics window: what each detector sees right now,
+    /// whether a Focus holds appearances back, and the latest appearances.
+    /// When it's open, it comes forward.
     func openDiagnostics() {
         guard let model, let mac else { return }
         open(&diagnosticsWindow) {
@@ -149,13 +150,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.mac = mac
             self.panel = panel
             self.appearances = appearances
+            // Before the alert at first launch, which an App Intent can run
+            // during.
+            Self.launched = self
             appearances.start()
             model.startBackups()
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.askAtFirstLaunch()
             sayIfSettingsAreUnreadable()
-            Self.launched = self
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,

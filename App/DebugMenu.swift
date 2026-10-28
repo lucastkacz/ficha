@@ -104,7 +104,10 @@ struct DebugMenu: View {
         case .nothingDue:
             "No card is due, and no new card can come in today."
         case .suppressed(let suppression):
-            "\(heldBackBy(suppression)) holds appearances back: Diagnostics says what each detector sees."
+            """
+            \(heldBackBy(suppression)) holds appearances back: Diagnostics says what each detector and the Focus \
+            filter see.
+            """
         case .tooSoonAfterSuppression(let until):
             """
             A suppression ended less than \(inWords(settings.waitAfterSuppression)) ago: an appearance can come \

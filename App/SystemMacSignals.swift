@@ -35,7 +35,7 @@ final class SystemMacSignals: DeviceSignals {
     private var detecting: Task<Void, Never>?
     /// The suppressions that couldn't be told at the last look: by their
     /// detectors, or, for a Focus, by Ficha's filter.
-    private var cantTell: Set<Suppression> = []
+    private(set) var cantTell: Set<Suppression> = []
 
     /// The Mac's signals, noting its wakes and its suppressions' ends by
     /// `now`, the engine's time.
@@ -83,15 +83,17 @@ final class SystemMacSignals: DeviceSignals {
     /// off, but only once it's connected to Ficha: until then it tries to
     /// launch Ficha, which its own sandbox refuses, as #307's probe found on
     /// macOS 26.3, and Ficha never hears. So Ficha reads it as it reads the
-    /// detectors.
+    /// detectors. When it can't, the log says why, once.
     private func readFocusFilter() {
         Task { [weak self] in
-            let filter = try? await HoldBackAppearancesFilter.current
-            guard let self else { return }
-            if let filter {
+            do {
+                let filter = try await HoldBackAppearancesFilter.current
+                guard let self else { return }
                 noteCantTell(cantTell.subtracting([.focus]))
                 focusChanged(holdsBack: filter.holdsBack)
-            } else {
+            } catch {
+                guard let self, !cantTell.contains(.focus) else { return }
+                logger.error("Can't read Ficha's Focus filter: \(error.localizedDescription, privacy: .public)")
                 noteCantTell(cantTell.union([.focus]))
             }
         }

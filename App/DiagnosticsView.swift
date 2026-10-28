@@ -13,7 +13,9 @@ struct DiagnosticsView: View {
     /// appearances back.
     let mac: SystemMacSignals
     @State private var detection: Detection?
-    @State private var isFocusHoldingBack = false
+    /// Whether a Focus holds appearances back, or nil when Ficha couldn't
+    /// read its filter at the last look.
+    @State private var isFocusHoldingBack: Bool? = false
     @State private var appearances: Result<[AppearanceLogEntry], EngineError>?
 
     var body: some View {
@@ -49,10 +51,13 @@ struct DiagnosticsView: View {
                     }
                 }
                 LabeledContent {
-                    if isFocusHoldingBack {
+                    switch isFocusHoldingBack {
+                    case true?:
                         Text("Holding appearances back", comment: "In Diagnostics: what Ficha's Focus filter says.")
-                    } else {
+                    case false?:
                         Text("Not holding appearances back", comment: "In Diagnostics: what Ficha's Focus filter says.")
+                    case nil:
+                        Text("Can't tell", comment: "A detector the OS didn't answer, in Diagnostics.")
                     }
                 } label: {
                     Text(
@@ -106,7 +111,7 @@ struct DiagnosticsView: View {
     /// Reads the detectors, the Focus filter and the appearance log again.
     private func refresh() {
         detection = Detection.read()
-        isFocusHoldingBack = mac.suppressions.contains(.focus)
+        isFocusHoldingBack = mac.cantTell.contains(.focus) ? nil : mac.suppressions.contains(.focus)
         appearances = Result { () throws(EngineError) in try model.latestAppearances(20) }
     }
 

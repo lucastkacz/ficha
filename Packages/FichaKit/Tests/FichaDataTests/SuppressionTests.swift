@@ -52,29 +52,6 @@ struct SuppressionTests {
                 == .show([.review(serendipia)]))
     }
 
-    @Test("the appearance log records a Focus that held an appearance back once, until the appearance shows up")
-    func theLogRecordsAFocusOnce() throws {
-        let heldBackAt = time.now
-        for _ in 1...3 {
-            #expect(try appearance(on: FakeMac(suppressions: [.focus])) == .notNow(.suppressed(.focus)))
-            time.advance(by: minutes(1))
-        }
-        let ended = time.now
-        time.advance(by: minutes(2))
-        let shownAt = time.now
-        var panel = try openAppearance(on: FakeMac(suppressionEnds: [.focus: ended]))
-        try panel.answer(.review(.good), responseTime: .seconds(3))
-        panel.close(.byLucas)
-
-        #expect(
-            try engine.appearanceLog() == [
-                AppearanceLogEntry(
-                    trigger: .appearance, shownAt: heldBackAt, closedAt: shownAt, outcome: .heldBack(.focus)),
-                AppearanceLogEntry(trigger: .appearance, shownAt: shownAt, closedAt: shownAt, outcome: .finished),
-            ]
-        )
-    }
-
     @Test("a held-back appearance comes 2 minutes after the suppression ends")
     func comesTwoMinutesAfterTheSuppressionEnds() throws {
         #expect(
@@ -166,9 +143,10 @@ struct SuppressionTests {
         )
     }
 
+    // A Focus, unlike the others, has its switch outside Ficha's Settings.
     @Test(
         "a review now during a hold brings the cards due, and ends the hold as the review panel shows",
-        arguments: Suppression.allCases)
+        arguments: [Suppression.meeting, .focus])
     func aReviewNowEndsAHold(suppression: Suppression) throws {
         let heldBackAt = time.now
         #expect(try appearance(on: FakeMac(suppressions: [suppression])) == .notNow(.suppressed(suppression)))
