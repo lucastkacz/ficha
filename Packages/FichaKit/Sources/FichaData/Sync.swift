@@ -313,8 +313,8 @@ public struct Sync: Sendable {
         }
         // Only a record iCloud holds as it changed since, which the device
         // takes, is news to the other engines: what sync keeps of the others
-        // would only wake the app to send them again, as again as iCloud is
-        // full.
+        // would only wake the app to send them again, and again for as long
+        // as iCloud is full.
         let takesICloudsRecords = toRetry.contains {
             if case .serverRecordChanged = $0.error { true } else { false }
         }
