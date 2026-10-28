@@ -8,7 +8,7 @@ xcuserdata/
 # The render tool's: FichaKit's own pins its dependencies, which Dependabot updates
 scripts/render/Package.resolved
 
-# Lucas's cards live in ~/Library/Application Support/Ficha, never in the repo
+# Lucas's cards live in ~/Library/Group Containers/<TeamID>.com.lucastkacz.ficha/Ficha, never in the repo
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

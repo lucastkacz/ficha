@@ -88,28 +88,40 @@ enum AppVariant {
 
     /// Where the app keeps its data, such as its database: a folder of its
     /// own, named apart from `name`, so renaming an app never moves its cards.
-    /// On the Mac, Ficha Dev's is in its App Group's folder, which its sandbox
-    /// and its CLI's share (ADR 0018), unless `FICHA_DEV_SCRATCH` names a
-    /// scratch folder there, so an agent's runs of the CLI stay out of Ficha
-    /// Dev's cards. The real Ficha's stays in Application Support until it
-    /// moves into its own group (#309), and on the iPhone it's in the app's
-    /// own Application Support.
+    /// On the Mac, it's in the app's App Group's folder, which the app and its
+    /// CLI share (ADR 0018). Ficha Dev's is there unless `FICHA_DEV_SCRATCH`
+    /// names a scratch folder, so an agent's runs of the CLI stay out of Ficha
+    /// Dev's cards. The real Ficha's is there once it holds the database, and
+    /// in Application Support while Lucas's data waits there to move
+    /// (`dataWaitingToMove`), so a copy that failed leaves him on his cards,
+    /// never on an empty Ficha. On the iPhone, it's in the app's own
+    /// Application Support.
     var dataFolder: URL {
         get throws(DataFolderError) {
             #if os(macOS)
                 switch self {
                 case .dev:
-                    let group = try signedGroupFolder(named: "com.lucastkacz.ficha.dev")
                     guard let scratch = ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] else {
-                        return group.appending(path: folderName, directoryHint: .isDirectory)
+                        return try groupDataFolder
                     }
-                    return try scratchFolder(named: scratch, in: group)
+                    return try scratchFolder(named: scratch, in: try signedGroupFolder(named: groupName))
                 case .real:
-                    break
+                    guard let waiting = try dataWaitingToMove else {
+                        return try groupDataFolder
+                    }
+                    return waiting.from
                 }
+            #else
+                return applicationSupportDataFolder
             #endif
-            return URL.applicationSupportDirectory.appending(path: folderName, directoryHint: .isDirectory)
         }
+    }
+
+    /// The app's data folder in Application Support, where the real Ficha
+    /// kept its data before it moved into its App Group's folder, and where
+    /// the iPhone app keeps it.
+    private var applicationSupportDataFolder: URL {
+        URL.applicationSupportDirectory.appending(path: folderName, directoryHint: .isDirectory)
     }
 
     /// The name of the app's data folder.
@@ -121,13 +133,54 @@ enum AppVariant {
     }
 }
 
-/// Why Ficha Dev can't find its data folder on the Mac. Only Ficha Dev, the
-/// build for development, ever shows these, and they speak of how it's built
-/// and tried, so like its debug tools' messages, each is in English and
-/// verbatim, never translated (ADR 0009).
+#if os(macOS)
+    extension AppVariant {
+        /// The real Ficha's data folders before and after its move into its
+        /// App Group's folder (#309), while Lucas's data waits to move:
+        /// Application Support's still holds the database, and the group's
+        /// holds none, before the last build without the sandbox copies it,
+        /// or when the copy failed. Nil once it moved, or when there was
+        /// nothing to move, as for anyone but Lucas, and for Ficha Dev, which
+        /// moves nothing: its sandboxed build started empty in its group.
+        var dataWaitingToMove: (from: URL, to: URL)? {
+            get throws(DataFolderError) {
+                guard self == .real else { return nil }
+                let group = try groupDataFolder
+                let applicationSupport = applicationSupportDataFolder
+                guard !holdsDatabase(group), holdsDatabase(applicationSupport) else { return nil }
+                return (applicationSupport, group)
+            }
+        }
+
+        /// The app's data folder in its App Group's folder.
+        var groupDataFolder: URL {
+            get throws(DataFolderError) {
+                try signedGroupFolder(named: groupName).appending(path: folderName, directoryHint: .isDirectory)
+            }
+        }
+
+        /// The name of the app's App Group, after the team's ID that macOS
+        /// puts before it: its bundle identifier.
+        fileprivate var groupName: String {
+            bundleIdentifier
+        }
+    }
+
+    /// Whether the data folder `folder` holds the engine's database file,
+    /// `Ficha.sqlite`.
+    private func holdsDatabase(_ folder: URL) -> Bool {
+        FileManager.default.fileExists(atPath: folder.appending(path: "Ficha.sqlite").path(percentEncoded: false))
+    }
+#endif
+
+/// Why the app can't find its data folder on the Mac. Only a build made
+/// without the team's ID, which `make run` and `make install` refuse to make,
+/// or an agent's run of Ficha Dev, ever shows these, and they speak of how
+/// it's built and tried, so like Ficha Dev's debug tools' messages, each is
+/// in English and verbatim, never translated (ADR 0009).
 enum DataFolderError: Error, LocalizedError {
-    /// The build isn't signed with Ficha Dev's App Group, as one built
-    /// without the team's ID isn't.
+    /// The build isn't signed with its App Group, as one built without the
+    /// team's ID isn't.
     case notSignedWithItsGroup
     /// macOS gave no folder for the App Group with this name, which the
     /// build is signed with.
@@ -139,11 +192,11 @@ enum DataFolderError: Error, LocalizedError {
         switch self {
         case .notSignedWithItsGroup:
             """
-            This Ficha Dev isn't signed with its App Group, whose folder holds its cards. Build it with make run, \
-            with your team's ID in iPhone/Local.xcconfig, as docs/development.md says.
+            This build isn't signed with its App Group, whose folder holds its cards. Build Ficha Dev with make run, \
+            or Ficha with make install, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says.
             """
         case .noGroupFolder(let group):
-            "macOS gave Ficha Dev no folder for its App Group, \(group). Try again, and if it keeps happening, report it."
+            "macOS gave no folder for the App Group \(group), which holds the cards. Try again, and if it keeps happening, report it."
         case .unusableScratchName(let name):
             """
             FICHA_DEV_SCRATCH is “\(name)”, which can't name a scratch folder: use letters, digits, - and _ alone, \

@@ -9,7 +9,18 @@ Requires macOS 26 and the Xcode that [`.xcode-version`](../.xcode-version) names
 ```bash
 make bootstrap   # installs XcodeGen, shellcheck and actionlint
 make run         # builds and opens Ficha Dev, the development app
-make install     # installs Ficha in /Applications
+make install     # installs Ficha in /Applications, signed with your team
+```
+
+The real Ficha that `make install` builds keeps its cards in its App Group's folder, which its `ficha` shares: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha/Ficha/`. It signs with your paid team, as Ficha Dev does, so macOS lets it into that folder, and `make install` stops without `iPhone/Local.xcconfig`. It doesn't run in the sandbox yet ([#310](https://github.com/lucastkacz/ficha/issues/310)). Its first launch moves Lucas's data there from `~/Library/Application Support/Ficha/` ([#309](https://github.com/lucastkacz/ficha/issues/309), [ADR 0018](adr/0018-the-app-and-the-cli-each-run-in-a-sandbox.md)):
+
+- It copies the database through SQLite's online backup, and `Images/`, `Sounds/` and `Backups/` as files, into a hidden folder beside the new one. It checks the copy (SQLite's integrity check, the same rows in every table, the same files), and only then gives it the folder's name.
+- The old folder stays as it was. While a copy fails, the app and its `ficha` work from the old folder, and the next launch tries again.
+- From then on, it keeps all its preferences in `Preferences.plist` in the new folder, written again as one changes. The sandboxed Ficha reads them in at its first launch, and never again.
+- The log's `data move` category says what the copy held once it matched, or why it failed:
+
+```bash
+/usr/bin/log show --last 1d --info --predicate 'subsystem == "com.lucastkacz.ficha" AND category == "data move"'
 ```
 
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.

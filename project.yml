@@ -29,9 +29,9 @@ settings:
     # The build number, CFBundleVersion. The Makefile sets it from git on
     # each build; this one is only for a build outside it.
     CURRENT_PROJECT_VERSION: "1"
-    # The real Ficha: signed to run locally, not notarized, until it moves into
-    # its sandbox (#310). Ficha Dev signs with Lucas's paid team instead, as
-    # its targets' Debug settings say.
+    # Signed to run locally, not notarized, unless a target's settings say
+    # otherwise: Ficha Dev, and the real Ficha's app and CLI, sign with
+    # Lucas's paid team, as their targets' settings say.
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
@@ -51,9 +51,12 @@ settings:
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
       FICHA_ICLOUD_ENVIRONMENT: Development
       FICHA_PUSH_ENVIRONMENT: development
-    # The real Ficha: `make install` puts it in /Applications.
+    # The real Ficha: `make install` puts it in /Applications. It and its CLI
+    # share its App Group's folder, where its last build without the sandbox
+    # moves Lucas's data (#309).
     Release:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
+      FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha
 
 packages:
   FichaKit:
@@ -105,10 +108,11 @@ targets:
         copy:
           destination: wrapper
           subpath: Contents/Helpers
-    # Ficha Dev signs with Lucas's paid team, whose ID this file takes from
+    # Both apps sign with Lucas's paid team, whose ID this file takes from
     # one that git ignores.
     configFiles:
       Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       groups: [zstd]
       base:
@@ -151,10 +155,17 @@ targets:
           CODE_SIGN_ENTITLEMENTS: App/Ficha.entitlements
           ENABLE_APP_SANDBOX: YES
           ENABLE_HARDENED_RUNTIME: YES
+        # The real Ficha's last build without the sandbox, which moves Lucas's
+        # data into its App Group's folder (#309), signs with the team, as
+        # Ficha Dev does, so macOS lets it into the group's folder: its
+        # entitlements hold that group alone, until #310 sandboxes it.
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_ENTITLEMENTS: App/GroupWithoutSandbox.entitlements
 
   # The `ficha` CLI (ADR 0008): its commands live in FichaKit, and this tool
   # only picks whose cards they open, and, in its sandbox, takes files from
@@ -176,6 +187,7 @@ targets:
         product: FichaCLI
     configFiles:
       Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       groups: [zstd]
       base:
@@ -197,6 +209,15 @@ targets:
           CODE_SIGN_ENTITLEMENTS: CLI/ficha.entitlements
           ENABLE_APP_SANDBOX: YES
           ENABLE_HARDENED_RUNTIME: YES
+        # The real Ficha's CLI signs with the team too, with the same App
+        # Group as its app, which the folder it shares with the app is in,
+        # and no sandbox until #310 (#309).
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.cli
+          INFOPLIST_FILE: CLI/Info.plist
+          CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_ENTITLEMENTS: App/GroupWithoutSandbox.entitlements
 
   # The SVG drawer (ADR 0018): an XPC service inside each app that draws the
   # SVGs an import brings in, with WebKit, which needs the network

@@ -71,18 +71,20 @@ BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: 
 XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
 	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 
-# Ficha Dev signs with Lucas's paid team, whose ID git ignores, in
-# iPhone/Local.xcconfig, which Signing.xcconfig includes. Its iCloud and push
-# entitlements need a provisioning profile, which Xcode makes and keeps
-# through the account in its settings, registering the Mac with the team the
-# first time. Without the team's ID, as in CI and in a new worktree, Ficha
-# Dev's builds go unsigned: they check the code, but don't run in their
-# sandbox or sync. Building unsigned without it is our own.
+# Ficha Dev, and the real Ficha that `make install` builds, sign with Lucas's
+# paid team, whose ID git ignores, in iPhone/Local.xcconfig, which
+# Signing.xcconfig includes. Ficha Dev's iCloud and push entitlements need a
+# provisioning profile, which Xcode makes and keeps through the account in its
+# settings, registering the Mac with the team the first time. Without the
+# team's ID, as in CI and in a new worktree, Ficha Dev's builds go unsigned:
+# they check the code, but don't run in their sandbox or sync. Building
+# unsigned without it is our own. The real Ficha needs it, to reach its App
+# Group's folder, so `make install` stops without it.
 TEAM := $(shell grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig && echo yes)
 SIGNING := $(if $(TEAM),-allowProvisioningUpdates -allowProvisioningDeviceRegistration,CODE_SIGNING_ALLOWED=NO)
 
 .PHONY: team
-team: ## Fail unless iPhone/Local.xcconfig has the team's ID, which signs Ficha Dev.
+team: ## Fail unless iPhone/Local.xcconfig has the team's ID, which signs Ficha Dev and the real Ficha.
 	@[ -n "$(TEAM)" ] || { \
 		echo "No team: write your team's ID in iPhone/Local.xcconfig, or copy that file into this worktree from the main folder, as docs/development.md explains." >&2; \
 		exit 1; }
@@ -164,8 +166,8 @@ render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, i
 	scripts/render-iphone.sh "$(DERIVED)/Build/Products/Debug-iphonesimulator/Ficha Dev.app" $(ARGS)
 
 .PHONY: install
-install: project ## Build the real Ficha into /Applications, replacing the running one.
-	$(XCODEBUILD) -configuration Release build
+install: team project ## Build the real Ficha, signed with your team, into /Applications, replacing the running one.
+	$(XCODEBUILD) -configuration Release build $(SIGNING)
 	@pkill -x Ficha || true
 	rm -rf /Applications/Ficha.app
 	cp -R $(DERIVED)/Build/Products/Release/Ficha.app /Applications/
