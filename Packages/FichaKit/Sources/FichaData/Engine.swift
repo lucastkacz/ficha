@@ -64,7 +64,7 @@ public struct Engine: Sendable {
         switch location {
         case .folder(let folder):
             let file = folder.appending(path: "Ficha.sqlite")
-            database = try whileNoOtherProcessOpens(file) { () throws(EngineError) in
+            let pool = try whileNoOtherProcessOpens(file) { () throws(EngineError) in
                 let pool = try reportingStorageErrors {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                     // The app and the CLI write to the same file, so a write
@@ -83,23 +83,16 @@ public struct Engine: Sendable {
                 try migrate(pool, savingACopyIn: backups, at: time.now)
                 return pool
             }
-            databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
-            dataFolder = folder
-            images = .folder(folderOfImages(in: folder))
-            sounds = .folder(FichaData.folder(of: SoundName.self, in: folder))
+            self.init(
+                database: pool, in: folder, time: time, calendar: calendar, refineFilesOnlyIn: downloads,
+                drawingSVGsWith: newSVGDrawer)
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
             try migrate(queue, savingACopyIn: nil, at: time.now)
-            database = queue
-            databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
-            dataFolder = nil
-            images = .memory(FilesInMemory())
-            sounds = .memory(FilesInMemory())
+            self.init(
+                database: queue, in: nil, time: time, calendar: calendar, refineFilesOnlyIn: downloads,
+                drawingSVGsWith: newSVGDrawer)
         }
-        self.time = time
-        self.calendar = calendar
-        refineFilesOnlyIn = downloads
-        self.newSVGDrawer = newSVGDrawer
     }
 
     /// Opens the database in the data folder `folder` to read it alone, as
@@ -115,18 +108,43 @@ public struct Engine: Sendable {
         calendar: Calendar = .autoupdatingCurrent
     ) throws(EngineError) {
         let file = folder.appending(path: "Ficha.sqlite")
-        guard let pool = try whileNoOtherProcessWrites(file, { () throws(EngineError) in try openToRead(file) }) else {
+        guard
+            let pool = try whileNoOtherProcessOpens(file, to: .read, { () throws(EngineError) in try openToRead(file) })
+        else {
             return nil
         }
-        database = pool
-        databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
-        dataFolder = folder
-        images = .folder(folderOfImages(in: folder))
-        sounds = .folder(FichaData.folder(of: SoundName.self, in: folder))
+        self.init(
+            database: pool, in: folder, time: time, calendar: calendar, refineFilesOnlyIn: nil, drawingSVGsWith: nil)
+    }
+
+    /// An engine on `database`, which is in the data folder `folder`, with
+    /// its images and sounds beside it, or in memory with them when `folder`
+    /// is nil.
+    private init(
+        database: any DatabaseWriter,
+        in folder: URL?,
+        time: any TimeSource,
+        calendar: Calendar,
+        refineFilesOnlyIn downloads: URL?,
+        drawingSVGsWith newSVGDrawer: (@Sendable () -> any SVGDrawer)?
+    ) {
+        self.database = database
+        if let folder {
+            databaseChanges = DatabaseChanges(
+                database: folder.appending(path: "Ficha.sqlite").path(percentEncoded: false))
+            dataFolder = folder
+            images = .folder(folderOfImages(in: folder))
+            sounds = .folder(FichaData.folder(of: SoundName.self, in: folder))
+        } else {
+            databaseChanges = DatabaseChanges(database: "in memory \(UUID().uuidString)")
+            dataFolder = nil
+            images = .memory(FilesInMemory())
+            sounds = .memory(FilesInMemory())
+        }
         self.time = time
         self.calendar = calendar
-        refineFilesOnlyIn = nil
-        newSVGDrawer = nil
+        refineFilesOnlyIn = downloads
+        self.newSVGDrawer = newSVGDrawer
     }
 
     /// Every change to the database from now on, by this engine or by another
@@ -251,44 +269,38 @@ public struct Engine: Sendable {
     }
 }
 
-/// Runs `work` on `file` while no other process does the same, as GRDB's guide
-/// to sharing a database says: Ficha and its CLI may open the database at the
-/// same time, and both could migrate it, or copy it once it's migrated.
-func whileNoOtherProcessOpens<Value>(
-    _ file: URL,
-    _ work: () throws(EngineError) -> Value
-) throws(EngineError) -> Value {
-    var result: Result<Value, EngineError>?
-    var coordinationError: NSError?
-    NSFileCoordinator(filePresenter: nil).coordinate(
-        writingItemAt: file,
-        options: .forMerging,
-        error: &coordinationError
-    ) { _ in
-        result = Result(catching: work)
-    }
-    guard let result else {
-        logger.error("Couldn't wait for other processes to open the database: \(String(describing: coordinationError))")
-        throw .storage
-    }
-    return try result.get()
+/// What a process opens the database for.
+enum DatabaseOpening {
+    /// To write it, as the app and the CLI do, which may create, migrate or
+    /// restore it.
+    case write
+    /// To read it alone, as the widget's extension does.
+    case read
 }
 
-/// Runs `work`, which reads `file`, once no other process opens it to write,
-/// as GRDB's guide to sharing a database says: so the widget never reads a
-/// database the app or the CLI is creating or migrating.
-private func whileNoOtherProcessWrites<Value>(
+/// Runs `work`, which opens `file` to write it, or to read it alone, while no
+/// other process opens it to write, as GRDB's guide to sharing a database
+/// says: Ficha and its CLI may open the database at the same time, and both
+/// could migrate it, or copy it once it's migrated, and the widget never
+/// reads a database the app or the CLI is creating or migrating. Processes
+/// that open it to read don't wait for each other.
+func whileNoOtherProcessOpens<Value>(
     _ file: URL,
+    to opening: DatabaseOpening = .write,
     _ work: () throws(EngineError) -> Value
 ) throws(EngineError) -> Value {
     var result: Result<Value, EngineError>?
     var coordinationError: NSError?
-    NSFileCoordinator(filePresenter: nil).coordinate(
-        readingItemAt: file,
-        options: .withoutChanges,
-        error: &coordinationError
-    ) { _ in
-        result = Result(catching: work)
+    let coordinator = NSFileCoordinator(filePresenter: nil)
+    switch opening {
+    case .write:
+        coordinator.coordinate(writingItemAt: file, options: .forMerging, error: &coordinationError) { _ in
+            result = Result(catching: work)
+        }
+    case .read:
+        coordinator.coordinate(readingItemAt: file, options: .withoutChanges, error: &coordinationError) { _ in
+            result = Result(catching: work)
+        }
     }
     guard let result else {
         logger.error("Couldn't wait for other processes to open the database: \(String(describing: coordinationError))")
