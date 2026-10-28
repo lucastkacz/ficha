@@ -5,10 +5,11 @@ import SwiftUI
 
 /// Ficha Dev's debug menu, in the menu under its icon, so Lucas and agents can
 /// try a change in minutes: it loads sample cards, moves Ficha Dev's time
-/// forward, checks for an appearance right away and turns on a capture
-/// shortcut of Ficha Dev's own. The real Ficha has none
-/// (`AppVariant.hasDebugMenu`). Its texts are in English and verbatim, so they
-/// stay out of the String Catalog: the debug menu isn't translated (ADR 0009).
+/// forward, checks for an appearance right away, turns on a capture shortcut
+/// of Ficha Dev's own, and opens a second device that syncs through iCloud
+/// with this one. The real Ficha has none (`AppVariant.hasDebugMenu`). Its
+/// texts are in English and verbatim, so they stay out of the String Catalog:
+/// the debug menu isn't translated (ADR 0009).
 struct DebugMenu: View {
     let tools: DebugTools
     /// The settings the engine decides with, to say why there's no
@@ -21,6 +22,8 @@ struct DebugMenu: View {
     /// The shortcut that opens "Capture…" from any app, which the menu turns
     /// on and off.
     let captureShortcut: CaptureShortcutRegistration
+    /// What the menu does with the second device and with sync.
+    let secondDevice: SecondDeviceActions
 
     var body: some View {
         Menu {
@@ -51,6 +54,20 @@ struct DebugMenu: View {
                 isOn: Binding(get: { captureShortcut.shortcut == .fichaDev }, set: { turnCaptureShortcut(on: $0) })
             ) {
                 Text(verbatim: "Capture shortcut \(CaptureShortcut.fichaDev.symbols)")
+            }
+            Divider()
+            Menu {
+                Button(action: secondDevice.openCards) {
+                    Text(verbatim: "Cards…")
+                }
+                Button(action: secondDevice.reviewNow) {
+                    Text(verbatim: "Review now")
+                }
+            } label: {
+                Text(verbatim: "Second device")
+            }
+            Button(action: secondDevice.syncNow) {
+                Text(verbatim: "Sync now")
             }
             Divider()
             Text(timeShiftLine)
@@ -146,6 +163,17 @@ struct DebugMenu: View {
             showAlert(failure, explaining: error, style: .warning, button: "OK")
         }
     }
+}
+
+/// What Ficha Dev's debug menu does with its second device, which opens on
+/// first use, and with sync: the app delegate's, which holds them.
+struct SecondDeviceActions {
+    /// Opens the second device's Cards window.
+    let openCards: () -> Void
+    /// Opens the second device's review panel with a review now.
+    let reviewNow: () -> Void
+    /// Sends and fetches now, on this Mac and on the second device.
+    let syncNow: () -> Void
 }
 
 /// A span of time in words, in English, like "1 day, 2 hours".

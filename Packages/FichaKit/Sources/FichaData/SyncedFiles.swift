@@ -207,7 +207,8 @@ extension Sync {
         }
         let askedAgain = known.used.intersection(known.inICloud).filter { !$0.name.isKept(by: engine) }
         guard askedAgain.isEmpty else {
-            return iCloud.fetchRecords(askedAgain.map(\.recordID).sorted(by: byName))
+            return iCloud.fetchRecords(
+                askedAgain.sorted { byName($0.recordID, $1.recordID) }.map { ($0.recordID, $0.recordType.rawValue) })
         }
         guard !isWaiting, known.used.allSatisfy({ $0.name.isKept(by: engine) == known.inICloud.contains($0) })
         else {

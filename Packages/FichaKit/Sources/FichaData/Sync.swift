@@ -31,6 +31,12 @@ public struct Sync: Sendable {
         self.engine = engine
     }
 
+    /// The state iCloud's engine saved last on this device, which the app
+    /// starts it from at launch, or nil before it saved one.
+    public func savedState() throws(EngineError) -> Data? {
+        try engine.savedSyncEngineState()
+    }
+
     /// Starts syncing through `iCloud`: on a device whose engine never saved
     /// a state, it asks iCloud for the cards' zone and the files', and it
     /// hands `iCloud` every change that waits, those made while the app

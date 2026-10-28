@@ -44,9 +44,13 @@ settings:
     # `make install-iphone` puts the iPhone app on Lucas's iPhone. On the Mac,
     # it and its CLI share its App Group's folder, named after the team's ID,
     # which Xcode puts before it (ADR 0018).
+    # It syncs in the Development environment of Ficha's iCloud container,
+    # apart from Lucas's cards, which sync in Production (ADR 0017).
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
+      FICHA_ICLOUD_ENVIRONMENT: Development
+      FICHA_PUSH_ENVIRONMENT: development
     # The real Ficha: `make install` puts it in /Applications.
     Release:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
@@ -85,6 +89,10 @@ targets:
         product: FichaCore
       - package: FichaKit
         product: FichaData
+      # Sync through iCloud, the only part that loads CloudKit, which the app
+      # alone links (ADR 0017).
+      - package: FichaKit
+        product: FichaICloud
       # The `ficha` CLI ships inside the app, so the two are always the same
       # version. It goes in Contents/Helpers, since Contents/MacOS holds the
       # real Ficha's own `Ficha`, and macOS doesn't tell the two names apart.
@@ -121,11 +129,16 @@ targets:
       configs:
         # Ficha Dev runs in the App Sandbox, in its App Group, with the
         # hardened runtime, as the real Ficha will in the Mac App Store (ADR
-        # 0018).
+        # 0018). It syncs through iCloud, whose entitlements, and push's, are
+        # restricted: they need a provisioning profile, which Xcode makes and
+        # keeps through Lucas's account in Xcode, as automatic signing does.
+        # The real Ficha takes them with its own signing (#310), since an ad
+        # hoc signature can't hold them.
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
+          CODE_SIGN_STYLE: Automatic
           CODE_SIGN_IDENTITY: Apple Development
           CODE_SIGN_ENTITLEMENTS: App/Ficha.entitlements
           ENABLE_APP_SANDBOX: YES

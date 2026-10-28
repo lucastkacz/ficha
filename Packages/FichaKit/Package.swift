@@ -20,10 +20,14 @@ let zstdConfigurationMacros: [CSetting] =
 let package = Package(
     name: "FichaKit",
     // The iPhone app links FichaCore and FichaData. The CLI is the Mac's only.
+    // FichaICloud, the only one that imports CloudKit, is linked by the Mac
+    // app alone, so that neither the CLI, `swift test` nor `make render`
+    // loads CloudKit (ADR 0017).
     platforms: [.macOS(.v26), .iOS(.v26)],
     products: [
         .library(name: "FichaCore", targets: ["FichaCore"]),
         .library(name: "FichaData", targets: ["FichaData"]),
+        .library(name: "FichaICloud", targets: ["FichaICloud"]),
         .library(name: "FichaCLI", targets: ["FichaCLI"]),
     ],
     dependencies: [
@@ -49,6 +53,15 @@ let package = Package(
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "libzstd", package: "zstd"),
             ],
+            cSettings: zstdConfigurationMacros,
+            swiftSettings: [.treatAllWarnings(as: .error)]
+        ),
+        // Sync through the user's iCloud: a thin adapter over CloudKit's
+        // `CKSyncEngine`, which implements FichaData's `ICloudSyncEngine`. No
+        // test target depends on it.
+        .target(
+            name: "FichaICloud",
+            dependencies: ["FichaData"],
             cSettings: zstdConfigurationMacros,
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),

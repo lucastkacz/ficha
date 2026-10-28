@@ -20,6 +20,22 @@ Its cards are in its App Group's folder, which its `ficha` shares: `~/Library/Gr
 
 Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `Ficha Dev` in its App Group's folder, to the Trash.
 
+### Sync through iCloud
+
+Ficha Dev syncs its cards through your iCloud, in the Development environment of Ficha's container, `iCloud.com.lucastkacz.ficha`, apart from the real Ficha's, which will sync in Production ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). iCloud and push are restricted entitlements, which need a provisioning profile: with your team's ID there, `make build` has Xcode make one through the account in Xcode › Settings › Accounts, and register the Mac with your team the first time. The real Ficha builds the same code with sync off, until it's signed with the team ([#318](https://github.com/lucastkacz/ficha/issues/318)): an ad hoc signature can't hold those entitlements, and CloudKit stops an app that asks for a container without them.
+
+It syncs while it runs: it catches up on what changed in iCloud as it starts, sends each change as it's made, by the app or by its `ficha`, and fetches what another device changed when iCloud pushes it. CloudKit's engine, asked to fetch, asks iCloud nothing unless a push came, so to fetch right away Ficha Dev starts its engine again, catching up first, which is our own.
+
+Debug's "Second device" opens another copy of the cards, in `Ficha Dev-second-device`, beside Ficha Dev's folder, which syncs as one more device: "Cards…" opens its Cards window, and "Review now" its review panel. iCloud doesn't push a change to the device that made it, and both run on this Mac, so each fetches as soon as the other sent a change: our own stand-in for the push. "Sync now" sends what waits and fetches, on both. To start the second device over, quit Ficha Dev and move its folder to the Trash.
+
+The log says what each device sent and fetched, and why it couldn't. zsh has a `log` of its own, so the full path:
+
+```bash
+/usr/bin/log stream --level info --predicate 'subsystem == "com.lucastkacz.ficha" AND category IN {"icloud", "sync"}'
+```
+
+What iCloud holds is in [CloudKit Console](https://icloud.developer.apple.com/), signed in with your developer account: Ficha's container, the Development environment, and its private database as your own iCloud account.
+
 ## On the iPhone
 
 The iPhone app is on its way ([#97](https://github.com/lucastkacz/ficha/issues/97)). For now it's only Ficha Dev, which loads the sample cards the first time it opens and shows how many cards there are and how many are due. It needs iOS 26, on an iPhone: there's no iPad version. Its files are in `iPhone/`, and `make check` builds it for the simulator, as CI does.
@@ -98,6 +114,7 @@ FICHA_DEV_SCRATCH=agent-304 <Ficha Dev's ficha> capture "serendipia"
 ```
 
 - `FICHA_DEV_SCRATCH=<name>`, with letters, digits, `-` and `_`, makes Ficha Dev's `ficha` open the cards in `Scratch/<name>/`, in Ficha Dev's App Group's folder: a data folder of its own, which starts empty, on the system's time. The open Ficha Dev doesn't hear it, since the notification of a change is named after the database's path. Only Ficha Dev's build reads the variable, and the folder has to be in the group's folder, since the sandbox lets the CLI write nowhere else. The variable is our own, which [#301](https://github.com/lucastkacz/ficha/issues/301) probed.
+- Ficha Dev itself, opened with `open -n --env FICHA_DEV_SCRATCH=<name> <Ficha Dev.app>`, runs on the scratch folder too, and doesn't sync through iCloud, so an agent's cards never reach Ficha Dev's through it.
 - `CFFIXED_USER_HOME`, which keeps the render tool's files in a scratch home, doesn't keep a sandboxed CLI's apart: the group's folder doesn't follow it.
 - `.claude/settings.json` keeps Claude out of both groups' folders, so the scratch folders stay. Starting Ficha Dev over leaves them, since they're beside its `Ficha Dev` folder: to delete them, move the group folder's `Scratch` to the Trash.
 - In a worktree, Claude's Bash refuses to run a path with a space, like `Ficha Dev.app/Contents/Helpers/ficha`, and a heredoc beside a command. A two-line script in the scratchpad that runs the CLI, `exec "<path>" "$@"`, gets around the first, and a file gets around the second: `ficha approve 1 < cards.json`.

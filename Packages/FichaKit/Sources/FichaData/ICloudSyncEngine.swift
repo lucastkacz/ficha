@@ -37,12 +37,13 @@ public protocol ICloudSyncEngine: Sendable {
     /// on its own.
     func fetchChanges() async throws
 
-    /// Asks iCloud for the records `ids` name, as it holds them now, which
-    /// no fetch of changes would bring again since they didn't change: the
-    /// app's engine reads them through `CKSyncEngine.database`'s
+    /// Asks iCloud for the records `records` name, as it holds them now,
+    /// which no fetch of changes would bring again since they didn't change:
+    /// the app's engine reads them through `CKSyncEngine.database`'s
     /// `records(for:)`. It tells `Sync` of them as fetched changes, and of
-    /// those iCloud lacks as deleted.
-    func fetchRecords(_ ids: [ICloudRecordID])
+    /// those iCloud lacks as deleted, each with the type given, which iCloud
+    /// doesn't say of a record it lacks.
+    func fetchRecords(_ records: [(id: ICloudRecordID, type: String)])
 }
 
 /// A zone of the user's private database in iCloud, as `CKRecordZone.ID`
