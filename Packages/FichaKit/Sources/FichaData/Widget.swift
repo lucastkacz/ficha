@@ -14,6 +14,15 @@ public enum WidgetContent: Sendable, Equatable {
     case noneComing
     /// Lucas has no cards at all.
     case noCards
+
+    /// The link a click on the widget opens while it shows this: a review now
+    /// that starts with its card, when it shows one, and as usual otherwise.
+    public var link: WidgetLink {
+        switch self {
+        case .card(let card): WidgetLink(startingWith: card.way)
+        case .nextCard, .noneComing, .noCards: WidgetLink(startingWith: nil)
+        }
+    }
 }
 
 /// The card the widget shows: the side the review panel would show first,

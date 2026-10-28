@@ -1,0 +1,56 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ can't read your cards." : {
+      "comment" : "In the widget, when it couldn't read the cards. The reason follows, small."
+    },
+    "Back first" : {
+      "comment" : "A badge on the card the widget shows, when it shows its back first."
+    },
+    "Image" : {
+      "comment" : "The accessibility label of an image on a card's side."
+    },
+    "Image that couldn't be shown" : {
+      "comment" : "In the widget, in place of an image on a card's side that couldn't be read."
+    },
+    "New" : {
+      "comment" : "A badge on the card the widget shows, when it's new."
+    },
+    "Next Card" : {
+      "comment" : "The widget's name in the widget gallery."
+    },
+    "Next card at %@" : {
+      "comment" : "In the widget: when the next card comes, today."
+    },
+    "Next card on %@ at %@" : {
+      "comment" : "In the widget: when the next card comes, another day. The day is a weekday or a date.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Next card on %1$@ at %2$@"
+          }
+        }
+      }
+    },
+    "No card waiting" : {
+      "comment" : "In the widget, when no card waits to be reviewed."
+    },
+    "No cards to review" : {
+      "comment" : "In the widget, when no card waits and none comes on its own: they're buried, flagged or set aside."
+    },
+    "No cards yet" : {
+      "comment" : "In the widget, when the user has no cards at all."
+    },
+    "Open %@ to see your next card." : {
+      "comment" : "In the widget, before the app made or updated its database."
+    },
+    "Sound" : {
+      "comment" : "In the widget, the speaker on a card's side that holds only a sound."
+    },
+    "The next card to review, or when it comes. Click it to review it." : {
+      "comment" : "The widget's description in the widget gallery."
+    }
+  },
+  "version" : "1.0"
+}

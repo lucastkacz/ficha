@@ -38,6 +38,18 @@ The log says what each device sent and fetched, and why it couldn't. zsh has a `
 
 What iCloud holds is in [CloudKit Console](https://icloud.developer.apple.com/), signed in with your developer account: Ficha's container, the Development environment, and its private database as your own iCloud account.
 
+### The widget
+
+Each app has a widget, "Next Card" in the widget gallery, which shows the card a review now would start with, or when the next one comes ([#308](https://github.com/lucastkacz/ficha/issues/308)). Its files are in `Widget/`, a WidgetKit extension in the app's `Contents/PlugIns`, sandboxed in the app's App Group, where it reads the database alone. A click on it opens the app through a link of its scheme, `ficha-dev://review-now?card=<id>&way=<way>` for Ficha Dev's, which starts a review now with that card. The real Ficha's widget reads nothing until the app moves into its group ([#309](https://github.com/lucastkacz/ficha/issues/309)), and says to open Ficha.
+
+It stays up to date as WidgetKit documents: its timeline has an entry at each time what it shows changes as time passes, such as the next card's due time, and the app asks WidgetKit to reload it as it launches, after each change to the database that changes what it shows, the CLI's included, and after Debug moves Ficha Dev's time. The extension runs only while WidgetKit asks it for a timeline, so it listens to nothing. Ficha Dev's widget runs on Ficha Dev's time too, and its entries go on the system's, which WidgetKit's timeline runs on.
+
+`make build` registers the extension with macOS at the build's path, without launching the app. When several builds registered it, as from several worktrees, macOS picks one, by rules Apple doesn't document: `pluginkit -m -p com.apple.widgetkit-extension -v | grep ficha` lists each with its path. The log says what the widget showed and when the app reloaded it:
+
+```bash
+/usr/bin/log stream --level info --predicate 'subsystem == "com.lucastkacz.ficha" AND category == "widget"'
+```
+
 ## On the iPhone
 
 The iPhone app is on its way ([#97](https://github.com/lucastkacz/ficha/issues/97)). For now it's only Ficha Dev, which loads the sample cards the first time it opens and shows how many cards there are and how many are due. It needs iOS 26, on an iPhone: there's no iPad version. Its files are in `iPhone/`, and `make check` builds it for the simulator, as CI does.
@@ -83,7 +95,7 @@ xcrun simctl spawn booted log show --last 5m --info --predicate 'subsystem == "c
 
 ## The apps' texts
 
-The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's and `iPhone/Localizable.xcstrings` for the iPhone's, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
+The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's, `Widget/Localizable.xcstrings` for the Mac's widget and `iPhone/Localizable.xcstrings` for the iPhone's, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
 
 When a text with plural variations changes, the export brings the new text in plain, without them: move the variations over from the stale entry by hand, delete the stale entry, and run `make strings` again, which should change nothing.
 

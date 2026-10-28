@@ -23,6 +23,8 @@ struct MenuContent: View {
     /// Asks right away whether the review panel shows up on its own, for
     /// Ficha Dev's debug menu.
     let checkAppearance: () -> AppearanceCheck?
+    /// What to do once Ficha Dev's debug menu moved its time forward.
+    let timeMoved: () -> Void
     /// What Ficha Dev's debug menu does with its second device and with sync.
     let secondDevice: SecondDeviceActions
 
@@ -59,7 +61,7 @@ struct MenuContent: View {
         if let debugTools = model.debugTools {
             Divider()
             DebugMenu(
-                tools: debugTools, settings: model.settings, timeMoved: model.countProgress,
+                tools: debugTools, settings: model.settings, timeMoved: timeMoved,
                 checkAppearance: checkAppearance, captureShortcut: captureShortcut, secondDevice: secondDevice)
         }
         Divider()

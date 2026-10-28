@@ -9,8 +9,8 @@ import Foundation
 /// configuration in `project.yml` names its app, gives it its own bundle
 /// identifier (and so its own preferences) and sets the flag `current` reads.
 /// The `ficha` CLI compiles this file too, so the CLI built with each app
-/// opens that app's cards, and so does the iPhone app, which is only Ficha
-/// Dev for now.
+/// opens that app's cards, and so do the widget's extension, which reads
+/// them, and the iPhone app, which is only Ficha Dev for now.
 enum AppVariant {
     /// Ficha Dev, which `make run` builds and opens.
     case dev
@@ -53,6 +53,17 @@ enum AppVariant {
         "\(bundleIdentifier).svg-drawer"
     }
 
+    /// The scheme of the links that open the app, as a click on its widget
+    /// does, the same as `FICHA_URL_SCHEME` in `project.yml`, which the app's
+    /// Info.plist claims: one for each app, so a link opens the app whose
+    /// widget made it.
+    var urlScheme: String {
+        switch self {
+        case .dev: "ficha-dev"
+        case .real: "ficha"
+        }
+    }
+
     /// The menu-bar icon, an SF Symbol: different for each app, so Lucas can tell them apart.
     var menuBarSymbol: String {
         switch self {
@@ -88,12 +99,13 @@ enum AppVariant {
 
     /// Where the app keeps its data, such as its database: a folder of its
     /// own, named apart from `name`, so renaming an app never moves its cards.
-    /// On the Mac, Ficha Dev's is in its App Group's folder, which its sandbox
-    /// and its CLI's share (ADR 0018), unless `FICHA_DEV_SCRATCH` names a
-    /// scratch folder there, so an agent's runs of the CLI stay out of Ficha
-    /// Dev's cards. The real Ficha's stays in Application Support until it
-    /// moves into its own group (#309), and on the iPhone it's in the app's
-    /// own Application Support.
+    /// On the Mac, Ficha Dev's is in its App Group's folder, which its sandbox,
+    /// its CLI's and its widget's share (ADR 0018), unless `FICHA_DEV_SCRATCH`
+    /// names a scratch folder there, so an agent's runs of the CLI stay out of
+    /// Ficha Dev's cards. The real Ficha's stays in Application Support until
+    /// it moves into its own group (#309), which its widget, in its sandbox,
+    /// can't reach meanwhile, and on the iPhone it's in the app's own
+    /// Application Support.
     var dataFolder: URL {
         get throws(DataFolderError) {
             #if os(macOS)

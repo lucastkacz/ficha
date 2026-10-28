@@ -54,6 +54,24 @@ struct WidgetTests {
                         text: "Su bandera", image: flag, showsSpeaker: false)))
     }
 
+    @Test("a side with only an image shows the image, and no speaker even when the side has a sound too")
+    func aSideWithOnlyAnImageShowsTheImage() async throws {
+        let flag = try engine.addImage(picture(width: 300, height: 200, red: 0.3))
+        let anthem = try await engine.addSound(tone(seconds: 1, hertz: 440), named: "himno.wav")
+        let capture = try engine.newCapture("La bandera argentina")
+        let argentina = try #require(
+            try engine.approve(
+                capture.id, into: [card(.word, front: "", back: "Argentina", frontImage: flag, frontSound: anthem)]
+            ).first)
+
+        #expect(
+            try engine.widgetTimeline().entries.first?.content
+                == .card(
+                    WidgetCard(
+                        way: CardWay(cardID: argentina.id, way: .frontFirst), isNew: true, side: .front, text: "",
+                        image: flag, showsSpeaker: false)))
+    }
+
     @Test("a side with only a sound shows a speaker, and a new card is marked as new")
     func aSideWithOnlyASoundShowsASpeaker() async throws {
         let la = try await engine.addSound(tone(seconds: 1, hertz: 440), named: "la.wav")

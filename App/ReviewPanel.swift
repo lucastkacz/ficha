@@ -19,15 +19,16 @@ final class ReviewPanel {
         window?.isVisible == true
     }
 
-    /// Opens the panel with the cards a review now brings, or, when it's
-    /// already open, brings it forward, so Lucas goes on with its cards.
-    /// Either way it takes the keyboard.
-    func openReviewNow() {
+    /// Opens the panel with the cards a review now brings, starting with
+    /// `first`, the card the widget showed, while review now still brings it,
+    /// or, when it's already open, brings it forward, so Lucas goes on with
+    /// its cards. Either way it takes the keyboard.
+    func openReviewNow(startingWith first: CardWay? = nil) {
         if let window, window.isVisible {
             window.bringForward()
             return
         }
-        let window = ReviewPanelWindow(model: model.startReviewNow())
+        let window = ReviewPanelWindow(model: model.startReviewNow(startingWith: first))
         window.show()
         self.window = window
     }

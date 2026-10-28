@@ -123,10 +123,15 @@ final class AppModel {
     }
 
     /// Starts a review now: the cards it brings, for the review panel to go
-    /// through, or why they couldn't be brought.
-    func startReviewNow() -> Result<ReviewPanelModel, EngineError> {
+    /// through, or why they couldn't be brought. A click on the widget starts
+    /// it with the card the widget showed, `first`, while review now still
+    /// brings it.
+    func startReviewNow(startingWith first: CardWay? = nil) -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            try openPanel(.reviewNow, with: engine.reviewNow(settings))
+            guard let first else {
+                return try openPanel(.reviewNow, with: engine.reviewNow(settings))
+            }
+            return try openPanel(.reviewNow, with: engine.reviewNow(settings, startingWith: first))
         }
     }
 

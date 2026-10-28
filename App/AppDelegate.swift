@@ -6,9 +6,11 @@ import FichaSVG
 import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
+private let widgetLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "widget")
 
 /// Opens the database in this app's own data folder when the app launches,
-/// and starts the appearances and, in Ficha Dev, sync through iCloud. When it
+/// and starts the appearances, the widget's reloads and, in Ficha Dev, sync
+/// through iCloud, and it opens the widget's links. When it
 /// can't open it, the app says why and quits: Ficha doesn't run without its
 /// cards. It and `SecondDevice` are the only files of the app that load
 /// CloudKit, so `make render` leaves them out.
@@ -63,6 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var iCloud: CloudKitSync?
     /// Ficha Dev's second device, once its debug menu opened it.
     private var secondDevice: SecondDevice?
+    /// What reloads the widget, once the app launched with its cards.
+    private var widgetReloads: WidgetReloads?
+    /// The widget's link that launched the app, which macOS hands over before
+    /// the app finished launching, until the review panel can open it.
+    private var pendingLink: WidgetLink?
 
     /// Opens the capture window with empty fields, or brings it forward
     /// when it's open, with what Lucas typed. Either way it takes the
@@ -144,6 +151,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel?.openReviewNow()
     }
 
+    /// Opens the links of the app's scheme, which a click on its widget opens:
+    /// a review now that starts with the card the widget showed. One that
+    /// launches the app comes before it finished launching, and opens once it
+    /// has.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let link = WidgetLink(url, scheme: AppVariant.current.urlScheme) else {
+                widgetLogger.error("Ignored a link the app doesn't open: \(url, privacy: .public)")
+                continue
+            }
+            widgetLogger.info("Opening the widget's link \(url, privacy: .public)")
+            open(link)
+        }
+    }
+
+    /// Opens a review now that starts with the card `link` names, or keeps
+    /// it until the review panel can open it.
+    private func open(_ link: WidgetLink) {
+        guard let panel else {
+            pendingLink = link
+            return
+        }
+        panel.openReviewNow(startingWith: link.startingWith)
+    }
+
+    /// What to do once Ficha Dev's debug menu moved its time forward: count
+    /// the menu's progress again, since cards may have come due, and reload
+    /// the widget.
+    func timeMoved() {
+        model?.countProgress()
+        widgetReloads?.timeMoved()
+    }
+
     /// Asks the engine right away whether the review panel shows up on its
     /// own, for Ficha Dev's debug menu, and shows it if so, as every check
     /// does, noting an appearance a suppression holds back: what the check
@@ -173,10 +213,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appearances.start()
             model.startBackups()
             startSyncing(model)
+            let widgetReloads = WidgetReloads(model: model)
+            widgetReloads.start()
+            self.widgetReloads = widgetReloads
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.askAtFirstLaunch()
             sayIfSettingsAreUnreadable()
+            if let pendingLink {
+                self.pendingLink = nil
+                open(pendingLink)
+            }
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,
