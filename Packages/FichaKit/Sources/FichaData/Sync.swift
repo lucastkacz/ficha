@@ -282,30 +282,39 @@ public struct Sync: Sendable {
     /// be sent, with the deletions that waited (`recordEverythingToSend`). A
     /// record the account holds then merges with the device's row, and one it
     /// lacks is saved. The device chooses its cards' zone again, at its next
-    /// fetch, which starts from nothing (`takeZoneChanges(_:in:)`): signed
-    /// into another account, it forgets the zone it synced in, another
-    /// account's, and joins as on a first sync; signed out and in again, it
-    /// keeps it, so that it takes a restore's copy made meanwhile. Signed
+    /// fetch, which starts from nothing (`takeZoneChanges(_:in:)`). Signed
+    /// into another account than the one it last synced in, as a switch says,
+    /// or a sign-in as another user than the one it last synced as, it
+    /// forgets the zone it synced in, another account's, and joins as on a
+    /// first sync; signed out and in again as the same user, it keeps it, so
+    /// that it takes a restore's copy made meanwhile. A device that doesn't
+    /// know who it last synced as, as one that synced before Ficha kept it,
+    /// learns it from a sign-out or a sign-in, and keeps its zone. Signed
     /// out, sync stops until the device is signed in, when iCloud's engine
     /// tells of it again. An engine that never saved a state may tell of a
     /// sign-in as it first meets the account, which `CKSyncEngine`'s
-    /// documentation leaves open: the device then only gets again what it
-    /// handed it as it started (`start(in:)`), since it forgot it.
+    /// documentation leaves open: as the same user, the device then only
+    /// gets again what it handed it as it started (`startSyncing(through:)`),
+    /// since it forgot it.
     private func takeAccountChange(_ change: ICloudEvent.AccountChange, in iCloud: ICloudInItsZones)
         throws(EngineError)
     {
-        syncLogger.notice("The iCloud account changed: \(String(describing: change), privacy: .public)")
-        try engine.noteICloudAccount(signedIn: change != .signOut)
-        if change == .signIn, try engine.savedSyncEngineState() == nil {
+        // Never the users' IDs.
+        syncLogger.notice("The iCloud account changed: \(change.kind, privacy: .public)")
+        try engine.noteICloudAccount(signedIn: change.signsIn)
+        let anotherUser = try engine.read(CardsZoneStanding.init(in:)).anotherUser(after: change)
+        if case .signIn(let user) = change, anotherUser == nil, try engine.savedSyncEngineState() == nil {
+            try engine.writeWithoutTelling { db in try CardsZoneStanding.learn(user, in: db) }
             return try start(in: iCloud)
         }
         try engine.noteICloudIsFull(false)
         let forgotten = try engine.write { db in
             let files = try forgetWhatICloudSaid(in: db)
-            if change == .switchAccounts {
-                try CardsZoneStanding.chooseAgainInAnotherAccount(in: db)
+            if let anotherUser {
+                try CardsZoneStanding.chooseAgain(inTheAccountOf: anotherUser, in: db)
             } else {
                 try CardsZoneStanding.chooseAgain(in: db)
+                try CardsZoneStanding.learn(change.userSyncedAs, in: db)
             }
             try recordEverythingToSend(in: db)
             return files
@@ -635,6 +644,31 @@ extension ICloudEvent {
         guard case .sentRecordZoneChanges(let sent) = self else { return false }
         return sent.failedRecordSaves.contains { $0.error == .userDeletedZone }
             || sent.failedRecordDeletes.values.contains(.userDeletedZone)
+    }
+}
+
+extension ICloudEvent.AccountChange {
+    /// Which change it is, for the log, without the users' IDs.
+    fileprivate var kind: String {
+        switch self {
+        case .signIn: "signIn"
+        case .signOut: "signOut"
+        case .switchAccounts: "switchAccounts"
+        }
+    }
+
+    /// Whether the device is signed into iCloud after it.
+    fileprivate var signsIn: Bool {
+        if case .signOut = self { false } else { true }
+    }
+
+    /// The user the device last synced as, as it says: the one signed in
+    /// after it, or, after a sign-out, the one signed in before.
+    fileprivate var userSyncedAs: ICloudUser {
+        switch self {
+        case .signIn(let current), .switchAccounts(_, let current): current
+        case .signOut(let previous): previous
+        }
     }
 }
 

@@ -290,6 +290,34 @@ final class SyncedRestoreTests {
         #expect(try iPad.cardsAsSeen() == mac.cardsAsSeen())
     }
 
+    // The iPad synced in another account first. Its user signs it out of
+    // that account and into the Mac's while the app runs, after the Mac
+    // restored and turned sync on: its engine tells a sign-out, then a
+    // sign-in, rather than a switch.
+    @Test("a device signed out and then into another account that holds a restore's zone keeps its cards, which join")
+    func aDeviceSignedOutAndIntoAnotherAccountJoins() async throws {
+        let iPad = try Device(
+            Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: FakeICloud())
+        try iPad.engine.create(card(.word, front: "efímero", back: "Que dura poco."))
+        try await iPad.syncNow()
+        time.advance(by: minutes(1))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+
+        try mac.engine.restore(backup.name)
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try iPad.signOut()
+        try iPad.signIn(to: iCloud)
+        try await iPad.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front).sorted() == ["efímero", "petricor"])
+        #expect(try iPad.cardsAsSeen() == mac.cardsAsSeen())
+    }
+
     // The user purged Ficha's data. The Mac restores and turns sync on; the
     // iPhone, off since the purge, with a card made since, is turned on after.
     @Test("a device off since a purge takes the copy of a restore made since, once its sync is turned on")

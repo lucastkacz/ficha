@@ -201,17 +201,23 @@ struct CardsZoneStanding: Equatable {
     /// The zone the device left as it turned sync on after a restore, which
     /// the engine that runs next deletes from iCloud, or nil.
     var left: CardsZone?
+    /// The user the device last synced as, whose account the zones above
+    /// are in, as its engine told of an account change, or nil before it
+    /// told of one, as on a device that synced before Ficha kept it.
+    var user: ICloudUser?
 
     /// Where the device whose database is `db` stands.
     init(in db: Database) throws {
         guard
-            let device = try Row.fetchOne(db, sql: "SELECT cardsZone, choosesCardsZone, cardsZoneLeft FROM syncDevice")
+            let device = try Row.fetchOne(
+                db, sql: "SELECT cardsZone, choosesCardsZone, cardsZoneLeft, iCloudUser FROM syncDevice")
         else {
             throw unreadable("The database doesn't say which zone the cards sync in")
         }
         zone = try Self.zone(named: device.decode(forColumn: "cardsZone"))
         chooses = try device.decode(forColumn: "choosesCardsZone")
         left = try Self.zone(named: device.decode(forColumn: "cardsZoneLeft"))
+        user = try (device.decode(forColumn: "iCloudUser") as String?).map(ICloudUser.init(recordName:))
         guard chooses || zone != nil else {
             throw unreadable("The database says the cards sync in no zone, and that the device doesn't choose one")
         }
@@ -220,8 +226,24 @@ struct CardsZoneStanding: Equatable {
     /// Keeps it as where the device whose database is `db` stands.
     func keep(in db: Database) throws {
         try db.execute(
-            sql: "UPDATE syncDevice SET cardsZone = ?, choosesCardsZone = ?, cardsZoneLeft = ?",
-            arguments: [zone.map(Self.name(of:)), chooses, left.map(Self.name(of:))])
+            sql: "UPDATE syncDevice SET cardsZone = ?, choosesCardsZone = ?, cardsZoneLeft = ?, iCloudUser = ?",
+            arguments: [zone.map(Self.name(of:)), chooses, left.map(Self.name(of:)), user?.recordName])
+    }
+
+    /// The user `change` signs the device into when it's another than the
+    /// one it last synced as, whose account's zones the device never synced
+    /// in, or nil: a switch's, or a sign-in's as another user than the one
+    /// the device knows. A sign-in while it knows none is taken as the same
+    /// user's: the device keeps its zone, and learns the user.
+    func anotherUser(after change: ICloudEvent.AccountChange) -> ICloudUser? {
+        switch change {
+        case .switchAccounts(_, let current):
+            current
+        case .signIn(let current):
+            user.flatMap { $0 == current ? nil : current }
+        case .signOut:
+            nil
+        }
     }
 
     /// The cards' zone the database names `name`, by its name among Ficha's
@@ -302,15 +324,25 @@ extension CardsZoneStanding {
     }
 
     /// Has the device whose database is `db` choose its cards' zone again, at
-    /// its next fetch, as its engine starts over in another account than the
-    /// one it last synced in: it forgets the zone it last synced in and the
-    /// one it left, whose names mean nothing in this account, and joins as on
-    /// a first sync.
-    static func chooseAgainInAnotherAccount(in db: Database) throws {
+    /// its next fetch, as its engine starts over in the account of `user`,
+    /// another than the one it last synced in: it forgets the zone it last
+    /// synced in and the one it left, whose names mean nothing in this
+    /// account, and joins as on a first sync, as `user` from now on.
+    static func chooseAgain(inTheAccountOf user: ICloudUser, in db: Database) throws {
         try change(in: db) { standing in
             standing.zone = nil
             standing.left = nil
             standing.chooses = true
+            standing.user = user
+        }
+    }
+
+    /// Keeps `user` as the one the device whose database is `db` last synced
+    /// as, when it didn't know: one that synced before Ficha kept it learns
+    /// it as its engine tells of an account change.
+    static func learn(_ user: ICloudUser, in db: Database) throws {
+        try change(in: db) { standing in
+            standing.user = standing.user ?? user
         }
     }
 

@@ -803,8 +803,11 @@ enum Schema {
             // "Cards.1761650000000.restore", NULL when it never synced in
             // one in this account; whether it chooses one, waiting for a
             // fetch before it sends anything, as a device does before its
-            // first sync; and the zone it left as it turned sync on after a
-            // restore, which its next engine deletes, or NULL. A device that
+            // first sync; the zone it left as it turned sync on after a
+            // restore, which its next engine deletes, or NULL; and the user
+            // it last synced as, by their user record's name, as its engine
+            // tells of an account change, which tells another account's zones
+            // from this one's, or NULL until it tells of one. A device that
             // synced before this migration synced in "Cards", the only cards'
             // zone there was: it goes on there once its engine saved a state,
             // and one a purge turned off, which has none, chooses, as one
@@ -815,6 +818,7 @@ enum Schema {
                 table.add(column: "cardsZone", .text)
                 table.add(column: "choosesCardsZone", .boolean).notNull().defaults(to: true)
                 table.add(column: "cardsZoneLeft", .text)
+                table.add(column: "iCloudUser", .text)
             }
             try db.execute(
                 sql: """

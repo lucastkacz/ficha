@@ -39,8 +39,8 @@ import notify
 /// less forgiving, refuses one when nothing fits.
 final class FakeICloud: Sendable {
     /// Who signed into the account, as the user record's ID tells accounts
-    /// apart in `CKSyncEngine.Event.AccountChange`.
-    let user = UUID()
+    /// apart in `CKSyncEngine.Event.AccountChange`, with a name of its own.
+    let user = ICloudUser(recordName: "_\(UUID().uuidString)")
     private let database: Mutex<Database>
     /// Where it keeps the records' files.
     private let assets = URL.temporaryDirectory.appending(
@@ -427,7 +427,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
     /// An account as the engine knows it: who's signed in, or no one.
     private enum KnownAccount: Codable, Equatable {
         case signedOut
-        case signedIn(UUID)
+        case signedIn(ICloudUser)
 
         init(_ account: FakeICloud?) {
             self = account.map { .signedIn($0.user) } ?? .signedOut
@@ -497,18 +497,22 @@ final class FakeSyncEngine: ICloudSyncEngine {
     }
 
     /// Tells the delegate of a change from the account it last knew of to
-    /// the one the device is signed into, if they differ, forgetting first
-    /// every change it was handed and how far it fetched, as `CKSyncEngine`
-    /// resets its state.
+    /// the one the device is signed into, if they differ, with the users
+    /// signed in before and after it, forgetting first every change it was
+    /// handed and how far it fetched, as `CKSyncEngine` resets its state.
     private func tellAccountChange() throws {
         let now = KnownAccount(account.withLock { $0 })
         let change: ICloudEvent.AccountChange? = state.withLock { state in
             let change: ICloudEvent.AccountChange? =
                 switch (state.account, now) {
-                case (.signedOut?, .signedIn): .signIn
-                case (.signedIn?, .signedOut): .signOut
-                case (.signedIn(let before)?, .signedIn(let after)) where before != after: .switchAccounts
-                default: nil
+                case (.signedOut?, .signedIn(let current)):
+                    .signIn(currentUser: current)
+                case (.signedIn(let previous)?, .signedOut):
+                    .signOut(previousUser: previous)
+                case (.signedIn(let previous)?, .signedIn(let current)) where previous != current:
+                    .switchAccounts(previousUser: previous, currentUser: current)
+                default:
+                    nil
                 }
             if change != nil {
                 state = State(account: now)

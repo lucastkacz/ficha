@@ -80,6 +80,18 @@ public struct ICloudRecordID: Sendable, Hashable, Codable {
     }
 }
 
+/// A user of iCloud, as `CKSyncEngine.Event.AccountChange` names the one
+/// signed in before a change and after it, by their user record's name, which
+/// tells one account from another. The device keeps the one it last synced as
+/// (`CardsZoneStanding`), and never logs it.
+public struct ICloudUser: Sendable, Hashable, Codable {
+    public let recordName: String
+
+    public init(recordName: String) {
+        self.recordName = recordName
+    }
+}
+
 /// A value a record's field holds, as `CKRecordValue`: text, a whole number,
 /// a number with a fraction, or a file. Times travel as whole milliseconds
 /// since 1970, as the database keeps them, so iCloud never rounds them and
@@ -198,11 +210,14 @@ public enum ICloudEvent: Sendable {
     case didFetchChanges
 
     /// A change of the iCloud account, as
-    /// `CKSyncEngine.Event.AccountChange.ChangeType`.
+    /// `CKSyncEngine.Event.AccountChange.ChangeType`, with the user signed in
+    /// after it, before it, or both. While the app runs, signing out of one
+    /// account and into another comes as a sign-out and then a sign-in; a
+    /// switch comes from changes made while it didn't.
     public enum AccountChange: Sendable, Equatable {
-        case signIn
-        case signOut
-        case switchAccounts
+        case signIn(currentUser: ICloudUser)
+        case signOut(previousUser: ICloudUser)
+        case switchAccounts(previousUser: ICloudUser, currentUser: ICloudUser)
     }
 
     /// As `CKSyncEngine.Event.FetchedDatabaseChanges`: the zones that came

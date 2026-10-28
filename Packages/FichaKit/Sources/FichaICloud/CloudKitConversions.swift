@@ -237,11 +237,22 @@ extension ICloudEvent {
 extension ICloudEvent.AccountChange {
     init(_ change: CKSyncEngine.Event.AccountChange.ChangeType) throws(CloudKitConversionError) {
         switch change {
-        case .signIn: self = .signIn
-        case .signOut: self = .signOut
-        case .switchAccounts: self = .switchAccounts
-        @unknown default: throw .unknownAccountChange
+        case .signIn(let current):
+            self = .signIn(currentUser: ICloudUser(current))
+        case .signOut(let previous):
+            self = .signOut(previousUser: ICloudUser(previous))
+        case .switchAccounts(let previous, let current):
+            self = .switchAccounts(previousUser: ICloudUser(previous), currentUser: ICloudUser(current))
+        @unknown default:
+            throw .unknownAccountChange
         }
+    }
+}
+
+extension ICloudUser {
+    /// The user whose user record's ID is `id`.
+    init(_ id: CKRecord.ID) {
+        self.init(recordName: id.recordName)
     }
 }
 
