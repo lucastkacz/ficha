@@ -123,7 +123,7 @@ private func recordHolding(_ settings: ProgressSettings, in db: Database) throws
 
 /// The settings that decide a card's progress, as the database holds them,
 /// or nil before it holds any.
-private func storedProgressSettings(in db: Database) throws -> ProgressSettings? {
+func storedProgressSettings(in db: Database) throws -> ProgressSettings? {
     guard let row = try Row.fetchOne(db, sql: "SELECT * FROM progressSettings") else {
         return nil
     }

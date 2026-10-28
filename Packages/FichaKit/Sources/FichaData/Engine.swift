@@ -2,6 +2,8 @@ import FichaCore
 import FichaSVG
 import Foundation
 internal import GRDB
+// SQLite's own API, for what GRDB leaves to it: keeping the side files.
+internal import SQLite3
 import os
 
 /// The engine's log, for FichaData's files.
@@ -67,9 +69,13 @@ public struct Engine: Sendable {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                     // The app and the CLI write to the same file, so a write
                     // waits for the other process's to end instead of failing,
-                    // as GRDB's guide to sharing a database says.
+                    // as GRDB's guide to sharing a database says. The widget
+                    // reads it alone, which needs SQLite's side files, so as
+                    // the guide says, the writers keep them between
+                    // connections (persistent WAL).
                     var configuration = Configuration()
                     configuration.busyMode = .timeout(5)
+                    configuration.prepareDatabase(keepingSideFiles)
                     return try DatabasePool(path: file.path(percentEncoded: false), configuration: configuration)
                 }
                 let backups = folderOfBackups(in: folder)
@@ -94,6 +100,33 @@ public struct Engine: Sendable {
         self.calendar = calendar
         refineFilesOnlyIn = downloads
         self.newSVGDrawer = newSVGDrawer
+    }
+
+    /// Opens the database in the data folder `folder` to read it alone, as
+    /// the widget's extension does (#171), beside the app and the CLI, which
+    /// write it: it never creates, migrates or writes it, and a write through
+    /// it fails. So it's nil while there's no database there yet, or while
+    /// its schema is older than this version's, until the app or the CLI
+    /// opens it, and a database a newer version migrated is refused. Days
+    /// start at midnight by `calendar`: the Mac's, except in tests.
+    public init?(
+        readingOnlyIn folder: URL,
+        time: any TimeSource,
+        calendar: Calendar = .autoupdatingCurrent
+    ) throws(EngineError) {
+        let file = folder.appending(path: "Ficha.sqlite")
+        guard let pool = try whileNoOtherProcessWrites(file, { () throws(EngineError) in try openToRead(file) }) else {
+            return nil
+        }
+        database = pool
+        databaseChanges = DatabaseChanges(database: file.path(percentEncoded: false))
+        dataFolder = folder
+        images = .folder(folderOfImages(in: folder))
+        sounds = .folder(FichaData.folder(of: SoundName.self, in: folder))
+        self.time = time
+        self.calendar = calendar
+        refineFilesOnlyIn = nil
+        newSVGDrawer = nil
     }
 
     /// Every change to the database from now on, by this engine or by another
@@ -239,6 +272,80 @@ func whileNoOtherProcessOpens<Value>(
         throw .storage
     }
     return try result.get()
+}
+
+/// Runs `work`, which reads `file`, once no other process opens it to write,
+/// as GRDB's guide to sharing a database says: so the widget never reads a
+/// database the app or the CLI is creating or migrating.
+private func whileNoOtherProcessWrites<Value>(
+    _ file: URL,
+    _ work: () throws(EngineError) -> Value
+) throws(EngineError) -> Value {
+    var result: Result<Value, EngineError>?
+    var coordinationError: NSError?
+    NSFileCoordinator(filePresenter: nil).coordinate(
+        readingItemAt: file,
+        options: .withoutChanges,
+        error: &coordinationError
+    ) { _ in
+        result = Result(catching: work)
+    }
+    guard let result else {
+        logger.error("Couldn't wait for other processes to open the database: \(String(describing: coordinationError))")
+        throw .storage
+    }
+    return try result.get()
+}
+
+/// Has a connection that writes the database keep SQLite's side files, its
+/// `-wal` and `-shm`, once it closes (persistent WAL), as GRDB's guide to
+/// sharing a database does: a process that reads alone, as the widget's
+/// extension does, needs them. A connection that only reads leaves them be.
+@Sendable
+private func keepingSideFiles(_ db: Database) throws {
+    guard !db.configuration.readonly else { return }
+    var flag: CInt = 1
+    let code = withUnsafeMutablePointer(to: &flag) { flag in
+        sqlite3_file_control(db.sqliteConnection, nil, SQLITE_FCNTL_PERSIST_WAL, flag)
+    }
+    guard code == SQLITE_OK else {
+        throw DatabaseError(resultCode: ResultCode(rawValue: code))
+    }
+}
+
+/// The database in `file`, opened to read alone, as GRDB's guide to sharing a
+/// database opens it in a process that only reads, or nil when there's none
+/// yet, or when its schema is older than this version's. One a newer version
+/// migrated is refused.
+private func openToRead(_ file: URL) throws(EngineError) -> DatabasePool? {
+    let path = file.path(percentEncoded: false)
+    let pool: DatabasePool
+    do {
+        var configuration = Configuration()
+        configuration.readonly = true
+        pool = try DatabasePool(path: path, configuration: configuration)
+    } catch {
+        guard FileManager.default.fileExists(atPath: path) else {
+            logger.info("No database to read yet: the app hasn't made it")
+            return nil
+        }
+        logger.error("Couldn't open the database to read it: \(String(describing: error))")
+        throw .storage
+    }
+    let (isNewer, isUpToDate) = try reportingStorageErrors {
+        try pool.read { db in
+            (try Schema.migrator.hasBeenSuperseded(db), try Schema.migrator.hasCompletedMigrations(db))
+        }
+    }
+    if isNewer {
+        logger.error("Refused to read a database that a newer version of Ficha migrated")
+        throw .migratedByNewerVersion
+    }
+    guard isUpToDate else {
+        logger.info("The database waits for the app to migrate it before it can be read")
+        return nil
+    }
+    return pool
 }
 
 /// Migrates the database to this version's schema. A database that a newer
