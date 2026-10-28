@@ -1,12 +1,22 @@
 import AppKit
 import FichaCore
 import FichaData
+import FichaICloud
 import FichaSVG
+import os
+
+private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 
 /// Opens the database in this app's own data folder when the app launches,
-/// and starts the appearances. When it can't open it, the app says why and
-/// quits: Ficha doesn't run without its cards.
+/// and starts the appearances and, in Ficha Dev, sync through iCloud. When it
+/// can't open it, the app says why and quits: Ficha doesn't run without its
+/// cards. It and `SecondDevice` are the only files of the app that load
+/// CloudKit, so `make render` leaves them out.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// The app, once it launched with its cards, for its App Intents, which
+    /// macOS runs in the app's process.
+    private(set) static weak var launched: AppDelegate?
+
     /// The open database, or why it couldn't be opened, which includes not
     /// reading the settings that decide a card's progress, and in Ficha Dev
     /// not knowing how far its debug menu moved its time.
@@ -46,6 +56,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// What shows the review panel on its own, once the app launched with its
     /// cards.
     private var appearances: AppearanceLoop?
+    /// What the Mac tells Ficha, once the app launched with its cards.
+    private var mac: SystemMacSignals?
+    /// This Mac's sync through iCloud, once the app launched with its cards,
+    /// when it syncs (`AppVariant.syncsThroughICloud`).
+    private var iCloud: CloudKitSync?
+    /// Ficha Dev's second device, once its debug menu opened it.
+    private var secondDevice: SecondDevice?
 
     /// Opens the capture window with empty fields, or brings it forward
     /// when it's open, with what Lucas typed. Either way it takes the
@@ -70,14 +87,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cardsWindow = window
     }
 
-    /// Opens the Diagnostics window: what each detector sees right now, and
-    /// the latest appearances. When it's open, it comes forward.
+    /// Opens the Diagnostics window: what each detector sees right now,
+    /// whether a Focus holds appearances back, and the latest appearances.
+    /// When it's open, it comes forward.
     func openDiagnostics() {
-        guard let model else { return }
+        guard let model, let mac else { return }
         open(&diagnosticsWindow) {
             AppWindow(
                 title: String(localized: "Diagnostics", comment: "The Diagnostics window's title."),
-                content: DiagnosticsView(model: model))
+                content: DiagnosticsView(model: model, mac: mac))
         }
     }
 
@@ -134,16 +152,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appearances?.check()
     }
 
+    /// Holds appearances back, or stops, as Ficha's filter in a Focus says
+    /// when macOS runs it as the Focus turns on or off.
+    func focusChanged(holdsBack: Bool) {
+        mac?.focusChanged(holdsBack: holdsBack)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         switch opening {
         case .success(let model):
             let mac = SystemMacSignals { model.now }
             let panel = ReviewPanel(model: model, mac: mac)
             let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
+            self.mac = mac
             self.panel = panel
             self.appearances = appearances
+            // Before the alert at first launch, which an App Intent can run
+            // during.
+            Self.launched = self
             appearances.start()
             model.startBackups()
+            startSyncing(model)
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.askAtFirstLaunch()
@@ -154,6 +183,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 style: .critical, button: String(localized: "Quit")
             )
             NSApplication.shared.terminate(nil)
+        }
+    }
+
+    /// Starts syncing `model`'s cards through iCloud, when the app syncs: what
+    /// waits now, those changes made while the app didn't run included, and
+    /// then each change to the database, whichever process made it.
+    private func startSyncing(_ model: AppModel) {
+        guard AppVariant.current.syncsThroughICloud else { return }
+        // CloudKit stops a process that isn't signed for iCloud, as #316
+        // probed, so a build signed without it leaves sync off instead.
+        guard signedEntitlement("com.apple.developer.icloud-services") != nil else {
+            logger.fault("Sync through iCloud stays off: this build isn't signed for iCloud")
+            return
+        }
+        let iCloud = CloudKitSync(engine: model.engine, device: "This Mac")
+        self.iCloud = iCloud
+        Task { await iCloud.run() }
+    }
+
+    /// Opens the second device's Cards window, for Ficha Dev's debug menu,
+    /// opening the second device first if it isn't open.
+    func openSecondDeviceCards() {
+        openedSecondDevice()?.openCards()
+    }
+
+    /// Opens the second device's review panel with the cards a review now
+    /// brings there, for Ficha Dev's debug menu.
+    func reviewNowOnSecondDevice() {
+        openedSecondDevice()?.reviewNow()
+    }
+
+    /// Sends what waits and fetches what changed now, on this Mac and on the
+    /// second device once it's open, for Ficha Dev's debug menu, instead of
+    /// waiting for iCloud's engine.
+    func syncNow() {
+        let thisMac = iCloud
+        let secondDevice = secondDevice
+        Task {
+            await thisMac?.syncNow()
+            await secondDevice?.syncNow()
+        }
+    }
+
+    /// Ficha Dev's second device, opened if it isn't yet, or nil when it
+    /// can't be, which an alert says why.
+    private func openedSecondDevice() -> SecondDevice? {
+        if let secondDevice {
+            return secondDevice
+        }
+        guard let debugTools = model?.debugTools else { return nil }
+        guard let iCloud else {
+            showAlert(
+                "Ficha Dev doesn't sync, so it has no second device",
+                details: """
+                    It doesn't sync through iCloud when FICHA_DEV_SCRATCH opens a scratch folder, or when it isn't \
+                    signed for iCloud. Build it with make run, with your team's ID in iPhone/Local.xcconfig, as \
+                    docs/development.md says.
+                    """,
+                style: .warning, button: "OK")
+            return nil
+        }
+        do {
+            let device = try SecondDevice(debugTools: debugTools, beside: iCloud)
+            secondDevice = device
+            return device
+        } catch {
+            showAlert("Couldn't open the second device", explaining: error, style: .warning, button: "OK")
+            return nil
         }
     }
 

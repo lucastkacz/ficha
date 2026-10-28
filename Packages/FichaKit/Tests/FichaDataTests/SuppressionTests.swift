@@ -23,12 +23,33 @@ struct SuppressionTests {
     }
 
     @Test(
-        "no appearance shows up during a meeting, a video or a full-screen app",
-        arguments: [Suppression.meeting, .video, .fullScreen])
+        "no appearance shows up during a meeting, a video, a full-screen app or a Focus that holds appearances back",
+        arguments: [Suppression.meeting, .video, .fullScreen, .focus])
     func aSuppressionHoldsAppearancesBack(suppression: Suppression) throws {
         let decision = try engine.checkAppearance(settings, mac: FakeMac(suppressions: [suppression]))
 
         #expect(decision == .notNow(.suppressed(suppression)))
+    }
+
+    // Its switch is Ficha's filter, in System Settings, not Ficha's Settings.
+    @Test("a Focus holds appearances back, and makes them wait once it ends, with every suppression off in Settings")
+    func aFocusAppliesWhateverTheSettings() throws {
+        var settings = settings
+        settings.suppressionsThatApply = []
+        #expect(
+            try engine.checkAppearance(settings, mac: FakeMac(suppressions: [.focus, .meeting]))
+                == .notNow(.suppressed(.focus)))
+        time.advance(by: minutes(40))
+        let ended = time.now
+
+        time.advance(by: minutes(1))
+        #expect(
+            try engine.checkAppearance(settings, mac: FakeMac(suppressionEnds: [.focus: ended]))
+                == .notNow(.tooSoonAfterSuppression(until: ended + minutes(2))))
+        time.advance(by: minutes(1))
+        #expect(
+            try engine.checkAppearance(settings, mac: FakeMac(suppressionEnds: [.focus: ended]))
+                == .show([.review(serendipia)]))
     }
 
     @Test("a held-back appearance comes 2 minutes after the suppression ends")
@@ -122,20 +143,25 @@ struct SuppressionTests {
         )
     }
 
-    @Test("a review now during a hold ends it as the review panel shows")
-    func aReviewNowEndsAHold() throws {
+    // A Focus, unlike the others, has its switch outside Ficha's Settings.
+    @Test(
+        "a review now during a hold brings the cards due, and ends the hold as the review panel shows",
+        arguments: [Suppression.meeting, .focus])
+    func aReviewNowEndsAHold(suppression: Suppression) throws {
         let heldBackAt = time.now
-        #expect(try appearance(on: FakeMac(suppressions: [.meeting])) == .notNow(.suppressed(.meeting)))
+        #expect(try appearance(on: FakeMac(suppressions: [suppression])) == .notNow(.suppressed(suppression)))
         time.advance(by: minutes(5))
         let reviewNowAt = time.now
-        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        let cards = try engine.reviewNow(settings)
+        #expect(cards == [.review(serendipia)])
+        var panel = try engine.openPanel(.reviewNow, with: cards, settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
         panel.close(.byLucas)
 
         #expect(
             try engine.appearanceLog() == [
                 AppearanceLogEntry(
-                    trigger: .appearance, shownAt: heldBackAt, closedAt: reviewNowAt, outcome: .heldBack(.meeting)),
+                    trigger: .appearance, shownAt: heldBackAt, closedAt: reviewNowAt, outcome: .heldBack(suppression)),
                 AppearanceLogEntry(
                     trigger: .reviewNow, shownAt: reviewNowAt, closedAt: reviewNowAt, outcome: .finished),
             ]

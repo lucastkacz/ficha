@@ -72,11 +72,14 @@ XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'pla
 	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 
 # Ficha Dev signs with Lucas's paid team, whose ID git ignores, in
-# iPhone/Local.xcconfig, which Signing.xcconfig includes. Without it, as in CI
-# and in a new worktree, Ficha Dev's builds go unsigned: they check the code,
-# but don't run in their sandbox. Building unsigned without it is our own.
+# iPhone/Local.xcconfig, which Signing.xcconfig includes. Its iCloud and push
+# entitlements need a provisioning profile, which Xcode makes and keeps
+# through the account in its settings, registering the Mac with the team the
+# first time. Without the team's ID, as in CI and in a new worktree, Ficha
+# Dev's builds go unsigned: they check the code, but don't run in their
+# sandbox or sync. Building unsigned without it is our own.
 TEAM := $(shell grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig && echo yes)
-UNLESS_TEAM := $(if $(TEAM),,CODE_SIGNING_ALLOWED=NO)
+SIGNING := $(if $(TEAM),-allowProvisioningUpdates -allowProvisioningDeviceRegistration,CODE_SIGNING_ALLOWED=NO)
 
 .PHONY: team
 team: ## Fail unless iPhone/Local.xcconfig has the team's ID, which signs Ficha Dev.
@@ -87,7 +90,7 @@ team: ## Fail unless iPhone/Local.xcconfig has the team's ID, which signs Ficha 
 .PHONY: build
 CHECKS += build
 build: project ## Build the app, signed when the team's ID is there; warnings are errors.
-	$(XCODEBUILD) -configuration Debug build $(UNLESS_TEAM)
+	$(XCODEBUILD) -configuration Debug build $(SIGNING)
 
 # The iPhone app, which stage 1 builds only as Ficha Dev, in the Debug
 # configuration (#97).
@@ -111,7 +114,7 @@ build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI
 CATALOGS := App/Localizable.xcstrings iPhone/Localizable.xcstrings
 STRINGS := .build/strings
 EXPORT_STRINGS = $(XCODEBUILD) -exportLocalizations -localizationPath $(STRINGS) -exportLanguage en \
-	$(UNLESS_TEAM) CREATE_INFOPLIST_SECTION_IN_BINARY=NO
+	$(SIGNING) CREATE_INFOPLIST_SECTION_IN_BINARY=NO
 
 .PHONY: strings
 strings: project ## Sync the String Catalogs with the code's UI texts.

@@ -3,12 +3,19 @@ import FichaData
 import SwiftUI
 
 /// The Diagnostics window's content: what each detector sees right now, and
-/// the latest appearances, with how each one closed or what held it back, so
+/// whether Ficha's Focus filter holds appearances back, and the latest
+/// appearances, with how each one closed or what held it back, so
 /// Lucas can tell whether the suppressions work. It reads both again every
 /// second while it's open.
 struct DiagnosticsView: View {
     let model: AppModel
+    /// What the Mac tells Ficha, which says whether a Focus holds
+    /// appearances back.
+    let mac: SystemMacSignals
     @State private var detection: Detection?
+    /// Whether a Focus holds appearances back, or nil when Ficha couldn't
+    /// read its filter at the last look.
+    @State private var isFocusHoldingBack: Bool? = false
     @State private var appearances: Result<[AppearanceLogEntry], EngineError>?
 
     var body: some View {
@@ -42,6 +49,23 @@ struct DiagnosticsView: View {
                     } label: {
                         Text("Full screen", comment: "A detector in Diagnostics: the app in front in full screen.")
                     }
+                }
+                LabeledContent {
+                    switch isFocusHoldingBack {
+                    case true?:
+                        Text("Holding appearances back", comment: "In Diagnostics: what Ficha's Focus filter says.")
+                    case false?:
+                        Text("Not holding appearances back", comment: "In Diagnostics: what Ficha's Focus filter says.")
+                    case nil:
+                        Text("Can't tell", comment: "A detector the OS didn't answer, in Diagnostics.")
+                    }
+                } label: {
+                    Text(
+                        "Focus filter",
+                        comment: """
+                            In Diagnostics: Ficha's filter in a Focus of macOS, which the user adds in System \
+                            Settings.
+                            """)
                 }
             }
             Section("Latest appearances") {
@@ -84,9 +108,10 @@ struct DiagnosticsView: View {
         }
     }
 
-    /// Reads the detectors and the appearance log again.
+    /// Reads the detectors, the Focus filter and the appearance log again.
     private func refresh() {
         detection = Detection.read()
+        isFocusHoldingBack = mac.cantTell.contains(.focus) ? nil : mac.suppressions.contains(.focus)
         appearances = Result { () throws(EngineError) in try model.latestAppearances(20) }
     }
 
@@ -109,7 +134,10 @@ struct DiagnosticsView: View {
             String(localized: "On its own", comment: "In Diagnostics: the review panel showed up on its own.")
         case .reviewNow:
             String(
-                localized: "From the menu", comment: "In Diagnostics: Lucas opened the review panel with Review now.")
+                localized: "With review now",
+                comment: """
+                    In Diagnostics: Lucas opened the review panel with Review now, from the menu or the Shortcuts app.
+                    """)
         }
     }
 
@@ -129,6 +157,10 @@ struct DiagnosticsView: View {
             String(
                 localized: "Held back by a full-screen app",
                 comment: "In Diagnostics: the app in front was in full screen.")
+        case .heldBack(.focus):
+            String(
+                localized: "Held back by a Focus",
+                comment: "In Diagnostics: a Focus of macOS was on, and Ficha's filter in it holds appearances back.")
         }
     }
 }

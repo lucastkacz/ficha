@@ -72,6 +72,20 @@ enum AppVariant {
         }
     }
 
+    /// Whether the app syncs its cards through the user's iCloud (ADR 0017):
+    /// Ficha Dev does, in the Development environment of Ficha's container,
+    /// unless `FICHA_DEV_SCRATCH` opens a scratch folder, which is an agent's:
+    /// iCloud would carry its cards into Ficha Dev's. The real Ficha builds
+    /// the same code, but keeps sync off until it's signed with the team and
+    /// holds iCloud's entitlements (#318), since CloudKit stops an app that
+    /// asks for a container without them.
+    var syncsThroughICloud: Bool {
+        switch self {
+        case .dev: ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] == nil
+        case .real: false
+        }
+    }
+
     /// Where the app keeps its data, such as its database: a folder of its
     /// own, named apart from `name`, so renaming an app never moves its cards.
     /// On the Mac, Ficha Dev's is in its App Group's folder, which its sandbox

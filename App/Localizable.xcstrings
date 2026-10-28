@@ -29,6 +29,9 @@
     "%@ can't open your cards" : {
 
     },
+    "%@ can't open your cards. Open it to see why." : {
+      "comment" : "An error from the app's Review Now action, when the app couldn't open its cards at launch. Opening the app again shows an alert that says why."
+    },
     "%@ couldn't read these settings, as when they're edited by hand: %@. They're at their defaults, and a capture shortcut is off, until you set them again in Settings." : {
       "comment" : "An alert at launch. The names are the settings' names in the app's preferences.",
       "localizations" : {
@@ -1235,6 +1238,9 @@
     "Discard… (⌘⌫)" : {
       "comment" : "The tooltip of the Cards window's button that discards the capture."
     },
+    "Doesn't hold back appearances" : {
+      "comment" : "The app's filter in a Focus, with its switch off."
+    },
     "Don't flag" : {
       "comment" : "The button that declines the review panel's offer to flag a card the user forgot often: the card stays in their reviews."
     },
@@ -1364,6 +1370,9 @@
     "Flip" : {
 
     },
+    "Focus filter" : {
+      "comment" : "In Diagnostics: Ficha's filter in a Focus of macOS, which the user adds in System Settings."
+    },
     "Folder" : {
       "comment" : "Settings, under Backups: the folder the copies are in."
     },
@@ -1413,9 +1422,6 @@
         }
       }
     },
-    "From the menu" : {
-      "comment" : "In Diagnostics: Lucas opened the review panel with Review now."
-    },
     "Front" : {
       "comment" : "A column of the Cards window: the card's front.\nIn the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
     },
@@ -1440,6 +1446,9 @@
     "Green" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Held back by a Focus" : {
+      "comment" : "In Diagnostics: a Focus of macOS was on, and Ficha's filter in it holds appearances back."
+    },
     "Held back by a full-screen app" : {
       "comment" : "In Diagnostics: the app in front was in full screen."
     },
@@ -1451,6 +1460,21 @@
     },
     "Hold appearances back during" : {
 
+    },
+    "Hold back appearances" : {
+      "comment" : "The switch in the app's filter in a Focus, in System Settings."
+    },
+    "Hold Back Appearances" : {
+      "comment" : "The name of the app's filter in a Focus, in System Settings."
+    },
+    "Holding appearances back" : {
+      "comment" : "In Diagnostics: what Ficha's Focus filter says."
+    },
+    "Holds back appearances" : {
+      "comment" : "The app's filter in a Focus, with its switch on."
+    },
+    "Holds back appearances while this Focus is on. Review now still works." : {
+      "comment" : "What the app's filter in a Focus does, in System Settings."
     },
     "Idle for" : {
       "comment" : "Settings, under Review panel: how long Lucas must be idle before the panel takes the keyboard, in the \"Once you're idle\" focus mode."
@@ -1796,6 +1820,9 @@
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
     },
+    "Not holding appearances back" : {
+      "comment" : "In Diagnostics: what Ficha's Focus filter says."
+    },
     "Not in use" : {
       "comment" : "What a detector sees in Diagnostics."
     },
@@ -1869,6 +1896,9 @@
     },
     "Open Login Items" : {
 
+    },
+    "Opens the review panel with the cards that are due, as the menu's Review now does." : {
+      "comment" : "What the app's Review Now action does, in the Shortcuts app."
     },
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
@@ -1962,6 +1992,9 @@
     },
     "Review now" : {
 
+    },
+    "Review Now" : {
+      "comment" : "The name of the app's action in the Shortcuts app and Spotlight."
     },
     "Review now (%lld due)" : {
 
@@ -2120,7 +2153,7 @@
       "comment" : "Under the title of the Cards window's question before it deletes several cards."
     },
     "Then wait" : {
-      "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
+      "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video, a full-screen app or a Focus ends."
     },
     "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so nothing was saved. To keep what you typed, copy it before you cancel." : {
       "comment" : "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
@@ -2222,6 +2255,9 @@
     },
     "When it shows up on its own. Opened with Review now, it takes the keyboard at once." : {
 
+    },
+    "With review now" : {
+      "comment" : "In Diagnostics: Lucas opened the review panel with Review now, from the menu or the Shortcuts app."
     },
     "Word" : {
       "comment" : "A card type."
