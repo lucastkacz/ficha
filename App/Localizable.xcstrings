@@ -2307,6 +2307,9 @@
     "Yellow" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "You restored a copy of your cards. Turning sync on replaces iCloud's copy with this Mac's." : {
+      "comment" : "Settings, under Sync, after the user restored a backup, which turned sync off: turning it on replaces the cards in iCloud, and on the user's other devices, with this Mac's."
+    },
     "You went through every card." : {
 
     },
