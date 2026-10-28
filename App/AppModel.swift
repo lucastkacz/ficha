@@ -10,7 +10,8 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "menu")
 /// the menu shows up to date, whether the app or the `ficha` CLI changed it.
 @Observable
 final class AppModel {
-    private let engine: Engine
+    /// The engine on Lucas's cards, which sync through iCloud works on too.
+    let engine: Engine
     /// What Ficha Dev's debug menu does, or nil in the real Ficha, which has no
     /// debug menu.
     let debugTools: DebugTools?

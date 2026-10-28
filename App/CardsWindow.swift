@@ -8,8 +8,6 @@ import SwiftUI
 /// the Dock and in ⌘Tab, so he can switch back to it as to any app; once it
 /// closes, the app lives in the menu bar only again.
 final class CardsWindow: NSWindow {
-    /// The name the window's frame is kept under in the app's preferences.
-    private static let frameName = "Cards"
     /// The least the window's content can be below its toolbar: enough for
     /// the sidebar, the table and the detail side by side.
     static let minimumSize = NSSize(width: 880, height: 440)
@@ -21,8 +19,10 @@ final class CardsWindow: NSWindow {
     /// app.
     private var isOpen = false
 
-    /// The window, closed, for Lucas's cards in `model`.
-    init(model: AppModel) {
+    /// The window, closed, for Lucas's cards in `model`, which opens where he
+    /// left it, as the app's preferences keep it under `frameName`: Ficha
+    /// Dev's second device keeps its own.
+    init(model: AppModel, frameName: String = "Cards") {
         self.model = model
         super.init(
             contentRect: NSRect(origin: .zero, size: Self.firstSize),
@@ -34,10 +34,10 @@ final class CardsWindow: NSWindow {
         // The toolbar, where the split view puts its sidebar button.
         toolbar = NSToolbar()
         toolbarStyle = .unified
-        if !setFrameUsingName(Self.frameName) {
+        if !setFrameUsingName(frameName) {
             center()
         }
-        setFrameAutosaveName(Self.frameName)
+        setFrameAutosaveName(frameName)
     }
 
     /// Opens the window where Lucas left it, with his cards as they are now,
@@ -88,11 +88,14 @@ final class CardsWindow: NSWindow {
     }
 
     /// Closes the window and its content, and takes the app out of the Dock
-    /// and ⌘Tab.
+    /// and ⌘Tab, unless another Cards window is open, as Ficha Dev's second
+    /// device's may be.
     override func close() {
         super.close()
         isOpen = false
         contentView = nil
+        guard !NSApplication.shared.windows.contains(where: { $0 !== self && ($0 as? CardsWindow)?.isOpen == true })
+        else { return }
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 }

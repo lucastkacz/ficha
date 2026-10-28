@@ -5,9 +5,10 @@ import Foundation
 // links, so that neither the CLI, `swift test` nor `make render` loads
 // CloudKit; in tests, a fake iCloud that two or more devices share. Each type
 // here stands for the one of `CKSyncEngine` it's named after, with what Ficha
-// needs of it, so the adapter only converts: a record to a `CKRecord` and
+// needs of it, so the adapter mostly converts: a record to a `CKRecord` and
 // back, an event from the engine's delegate to `ICloudEvent`, and `Sync`'s
-// answers back to the engine.
+// answers back to the engine. What it adds is how a device fetches right
+// away, which `CloudKitSync` explains.
 
 /// iCloud as sync reaches it: what `CKSyncEngine` does for the app. It
 /// sends the changes it's given, asking `Sync` for each record to save as it
@@ -37,12 +38,13 @@ public protocol ICloudSyncEngine: Sendable {
     /// on its own.
     func fetchChanges() async throws
 
-    /// Asks iCloud for the records `ids` name, as it holds them now, which
-    /// no fetch of changes would bring again since they didn't change: the
-    /// app's engine reads them through `CKSyncEngine.database`'s
+    /// Asks iCloud for the records `records` name, as it holds them now,
+    /// which no fetch of changes would bring again since they didn't change:
+    /// the app's engine reads them through `CKSyncEngine.database`'s
     /// `records(for:)`. It tells `Sync` of them as fetched changes, and of
-    /// those iCloud lacks as deleted.
-    func fetchRecords(_ ids: [ICloudRecordID])
+    /// those iCloud lacks as deleted, each with the type given, which iCloud
+    /// doesn't say of a record it lacks.
+    func fetchRecords(_ records: [(id: ICloudRecordID, type: String)])
 }
 
 /// A zone of the user's private database in iCloud, as `CKRecordZone.ID`

@@ -75,16 +75,16 @@ final class FakeICloud: Sendable {
         database.withLock { $0.zones.values.flatMap { $0.records.values.map(\.record) } }
     }
 
-    /// The records `ids` name, as it holds them now, and as deleted those it
-    /// deleted, as `CKDatabase.records(for:)` tells them apart.
-    fileprivate func records(_ ids: [ICloudRecordID]) -> ICloudEvent.FetchedRecordZoneChanges {
+    /// The records `asked` name, as it holds them now, and as deleted, with
+    /// the type asked for, those it doesn't hold, as `CKDatabase.records(for:)`
+    /// answers `unknownItem` for a record it deleted or never had.
+    fileprivate func records(_ asked: [(id: ICloudRecordID, type: String)]) -> ICloudEvent.FetchedRecordZoneChanges {
         database.withLock { database in
-            ICloudEvent.FetchedRecordZoneChanges(
-                modifications: ids.compactMap { database.zones[$0.zone]?.records[$0.name]?.record },
-                deletions: ids.compactMap { id in
-                    database.zones[id.zone]?.deletions[id.name].map {
-                        ICloudEvent.RecordDeletion(id: id, type: $0.type)
-                    }
+            let held = asked.compactMap { database.zones[$0.id.zone]?.records[$0.id.name]?.record }
+            return ICloudEvent.FetchedRecordZoneChanges(
+                modifications: held,
+                deletions: asked.filter { record in !held.contains { $0.id == record.id } }.map {
+                    ICloudEvent.RecordDeletion(id: $0.id, type: $0.type)
                 })
         }
     }
@@ -230,7 +230,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
     private let ownSaves = Mutex<[ICloudRecordID: Data]>([:])
     private let whileSaving = Mutex<(@Sendable () throws -> Void)?>(nil)
     /// The records the device asked for, which it gets at its next fetch.
-    private let asked = Mutex<[ICloudRecordID]>([])
+    private let asked = Mutex<[(id: ICloudRecordID, type: String)]>([])
 
     /// What it keeps, which `CKSyncEngine` saves through its state's
     /// serialization.
@@ -365,11 +365,11 @@ final class FakeSyncEngine: ICloudSyncEngine {
         try await fetchChanges(in: nil)
     }
 
-    /// Asks for the records `ids` name, which it hands the device at its
+    /// Asks for the records `records` name, which it hands the device at its
     /// next fetch: the app's engine hands them over whenever iCloud answers.
-    func fetchRecords(_ ids: [ICloudRecordID]) {
+    func fetchRecords(_ records: [(id: ICloudRecordID, type: String)]) {
         asked.withLock { asked in
-            asked.append(contentsOf: ids.filter { !asked.contains($0) })
+            asked.append(contentsOf: records.filter { record in !asked.contains { $0.id == record.id } })
         }
     }
 
