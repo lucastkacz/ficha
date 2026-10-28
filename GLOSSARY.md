@@ -252,6 +252,9 @@ A copy of everything as it was just before a restore, so restoring it undoes the
 **Copy before an import**:
 A copy of everything as it was just before an import, so restoring it undoes the import. Ficha never deletes it on its own.
 
+**Copy before taking iCloud's copy**:
+A copy of everything as it was just before a device took the cards another device restored, in place of its own, as sync does, so the cards the restore removed can still be found. Ficha never deletes it on its own.
+
 **Restore**:
 Bringing back a backup, or another copy Ficha saved, in place of everything as it is now. On a device that syncs, it turns sync off, and once the user turns it on again, the restored copy replaces what their other devices hold.
 _Avoid_: revert, roll back
