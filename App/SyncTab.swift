@@ -44,14 +44,19 @@ struct SyncTab: View {
                 "Last synced \(lastSynced.formatted(date: .abbreviated, time: .shortened))",
                 comment: "Settings, under Sync: when this Mac last synced, with the date and time.")
         case .on(nil):
-            Text("Not synced yet", comment: "Settings, under Sync: sync is on, and this Mac never synced yet.")
+            Text(
+                "Not synced yet",
+                comment: """
+                    Settings, under Sync: sync is on, and this Mac hasn't synced yet, or not since the app's data \
+                    was deleted from iCloud.
+                    """)
         case .iCloudFull:
             Text(
                 "iCloud is full: your changes wait until you free up space",
                 comment: "Settings, under Sync: iCloud refused what this Mac sent, for lack of room.")
-        case .off(let reason, let sending):
-            if let line = turningOnLine(after: reason) {
-                line
+        case .off(let turningOn, let sending):
+            if let turningOn {
+                turningOnLine(turningOn)
             }
             if let sending {
                 Text(
@@ -72,13 +77,11 @@ struct SyncTab: View {
         }
     }
 
-    /// What turning the switch on does, after sync went off for `reason`, or
-    /// nil when it only syncs again, as after the user turned it off.
-    private func turningOnLine(after reason: SyncOffReason) -> Text? {
-        switch reason {
-        case .user:
-            nil
-        case .purge:
+    /// What turning the switch on does beyond syncing again, as the state
+    /// says.
+    private func turningOnLine(_ turningOn: SyncTabState.TurningOn) -> Text {
+        switch turningOn {
+        case .sendsAllCardsAgain:
             Text(
                 "\(AppVariant.current.name)'s data was deleted from iCloud. Turning sync on sends all your cards again.",
                 comment: """

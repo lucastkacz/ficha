@@ -152,8 +152,24 @@ func iCloudIsFull(in db: Database) throws -> Bool {
     return isFull
 }
 
-/// Turns sync on: a stretch of it begins (`SyncStretch`).
+/// Turns sync on, unless it's on already: a stretch of it begins
+/// (`SyncStretch`). After a purge, the device forgets when it last synced:
+/// iCloud no longer holds what it synced then, so the Sync tab says it hasn't
+/// synced until it does again.
 func switchSyncOn(in db: Database) throws {
+    guard let device = try Row.fetchOne(db, sql: "SELECT isOn, offBecause FROM syncDevice") else {
+        throw unreadable("The database doesn't say whether sync is on")
+    }
+    guard let reason = try offReason(isOn: device.decode(forColumn: "isOn"), device.decode(forColumn: "offBecause"))
+    else {
+        return
+    }
+    switch reason {
+    case .user:
+        break
+    case .purge:
+        try db.execute(sql: "UPDATE syncDevice SET lastSyncedAt = NULL")
+    }
     try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
 }
 

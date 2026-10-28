@@ -991,14 +991,14 @@ func model(for name: Window) throws -> AppModel {
             try engine.turnSyncOff()
             try weighFilesOnCards(800_000_000, in: engine)
         } isShown: {
-            $0 == .off(.user, sending: 800_000_000)
+            $0 == .off(turningOn: nil, sending: 800_000_000)
         }
     case .syncPurged:
         return try syncModel(showing: "that a purge turned sync off") { _, sync in
             let purge = ICloudEvent.ZoneDeletion(zone: ICloudZone(name: "Cards"), reason: .purged)
             try tell(.fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: [purge])), to: sync)
         } isShown: {
-            if case .off(.purge, _) = $0 { true } else { false }
+            if case .off(turningOn: .sendsAllCardsAgain?, _) = $0 { true } else { false }
         }
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()

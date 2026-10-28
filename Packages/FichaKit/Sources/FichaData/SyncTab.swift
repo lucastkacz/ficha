@@ -17,10 +17,11 @@ public struct SyncTabState: Sendable {
         case on(lastSynced: Date?)
         /// iCloud is full: what changes waits until the user frees up space.
         case iCloudFull
-        /// The switch is off, for this reason, which says what turning it on
-        /// does. Turning it on sends `sending` bytes of images and sounds,
+        /// The switch is off. Turning it on does what `turningOn` says, as
+        /// why sync went off decides, or only syncs again, as after the user
+        /// turned it off; and it sends `sending` bytes of images and sounds,
         /// which the line says from 100 MB on, or nil under that.
-        case off(SyncOffReason, sending: Int64?)
+        case off(turningOn: TurningOn?, sending: Int64?)
         /// The Mac has no iCloud account: nothing syncs, whatever the switch
         /// was left at.
         case noAccount
@@ -29,6 +30,14 @@ public struct SyncTabState: Sendable {
         case checkingAccount
         /// How sync stands couldn't be read, for this reason.
         case unreadable(EngineError)
+    }
+
+    /// What turning the switch on does beyond syncing again, which the status
+    /// line says while it's off.
+    public enum TurningOn: Sendable, Equatable {
+        /// It sends all the device's cards again, since the user deleted
+        /// Ficha's data in iCloud's settings.
+        case sendsAllCardsAgain
     }
 
     /// Why turning the switch failed, which the tab says until the user
@@ -81,7 +90,8 @@ public struct SyncTabState: Sendable {
             case (false?, _):
                 status = .noAccount
             case (true?, let reason?):
-                status = .off(reason, sending: heavyUpload(try engine.weightICloudLacks()))
+                status = .off(
+                    turningOn: Self.turningOn(after: reason), sending: heavyUpload(try engine.weightICloudLacks()))
             case (true?, nil):
                 status = stored.iCloudIsFull ? .iCloudFull : .on(lastSynced: stored.lastSynced)
             }
@@ -89,6 +99,16 @@ public struct SyncTabState: Sendable {
         } catch {
             status = .unreadable(error)
             switchIsOn = false
+        }
+    }
+
+    /// What turning the switch on does beyond syncing again, after sync went
+    /// off for `reason`, or nil when it only syncs again, as after the user
+    /// turned it off: the off switch says all there is then.
+    private static func turningOn(after reason: SyncOffReason) -> TurningOn? {
+        switch reason {
+        case .user: nil
+        case .purge: .sendsAllCardsAgain
         }
     }
 

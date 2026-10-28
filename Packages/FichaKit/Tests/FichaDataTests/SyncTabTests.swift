@@ -91,7 +91,7 @@ final class SyncTabTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        #expect(tab.status == .off(.user, sending: nil))
+        #expect(tab.status == .off(turningOn: nil, sending: nil))
         #expect(!tab.switchIsOn)
         #expect(tab.canTurnSwitch)
         #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
@@ -119,33 +119,45 @@ final class SyncTabTests {
         try mac.engine.create(card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map))
         tab.read()
 
-        #expect(tab.status == .off(.user, sending: nil))
+        #expect(tab.status == .off(turningOn: nil, sending: nil))
 
         let flag = try heavyImage(weighing: 1, named: "b", in: mac.engine)
         try mac.engine.create(card(nil, front: "¿De qué país es?", back: "De la Argentina.", frontImage: flag))
         tab.read()
 
-        #expect(tab.status == .off(.user, sending: 100_000_000))
+        #expect(tab.status == .off(turningOn: nil, sending: 100_000_000))
     }
 
-    // What turning it on then does is the line's, by the reason: the view's.
-    @Test("after a purge of Ficha's data in iCloud, the switch shows off, for that reason, and can be turned on")
+    // Turned off by the user, the switch says all there is: turning it on
+    // syncs again. After a purge, it sends all the cards again, which the
+    // line says; and the sync from before the purge, of what iCloud no longer
+    // holds, isn't one, so the line says none until the Mac syncs again.
+    @Test("after a purge, the line says turning sync on sends all the cards again, and then no sync from before it")
     func afterAPurge() async throws {
         try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         try await mac.syncNow()
 
         iCloud.purge()
+        time.advance(by: minutes(5))
         try await mac.syncNow()
         var tab = mac.engine.openSyncTab()
 
-        #expect(tab.status == .off(.purge, sending: nil))
+        #expect(tab.status == .off(turningOn: .sendsAllCardsAgain, sending: nil))
         #expect(!tab.switchIsOn)
         #expect(tab.canTurnSwitch)
 
         tab.turnSync(on: true)
 
-        #expect(tab.status == .on(lastSynced: try mac.engine.syncStatus().lastSynced))
+        #expect(tab.status == .on(lastSynced: nil))
         #expect(tab.switchIsOn)
+
+        try mac.relaunch()
+        time.advance(by: minutes(5))
+        let synced = time.now
+        try await mac.syncNow()
+        tab.read()
+
+        #expect(tab.status == .on(lastSynced: synced))
     }
 
     // The app asks iCloud at launch, which a database only the CLI opened
