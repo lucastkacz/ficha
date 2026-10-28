@@ -204,8 +204,8 @@ extension Engine {
     /// Turns sync on, as the user does in Settings, and leaves every row that
     /// syncs waiting to be sent, as nothing but deletions was recorded while
     /// it was off. Off after a restore or a purge, the device sends its cards
-    /// into a zone of its own, which the other devices move to: they take a
-    /// restore's cards in place of theirs, and join a purge's
+    /// into another cards' zone, which the other devices move to: they take
+    /// a restore's cards in place of theirs, and join a purge's
     /// (`ICloudZones.swift`). The app's sync follows it. When it's on
     /// already, nothing changes.
     public func turnSyncOn() throws(EngineError) {

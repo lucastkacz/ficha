@@ -103,8 +103,126 @@ final class SyncedRestoreTests {
         #expect(try iPhone.engine.card(fronted: "¿Qué pájaro es?").back == "Un hornero.")
         #expect(try iPhone.engine.keptImages() == [bird])
         #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 1)
-        let cardsZones = Set(iCloud.records.filter { $0.type == "card" }.map(\.id.zone))
-        #expect(cardsZones.count == 1)
+        #expect(cardsZonesInICloud().count == 1)
         #expect(try mac.engine.syncStatus().isOn)
+    }
+
+    // `ficha restore` runs while the app does, on an engine of its own on the
+    // Mac's data folder; the app hears of it as of any change the CLI makes.
+    @Test("ficha restore turns sync off too, and turning it on replaces the other devices' cards")
+    func theCLIsRestoreDoesTheSame() async throws {
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        time.advance(by: minutes(1))
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try iPhone.engine.create(card(.word, front: "efímero", back: "Que dura poco."))
+        try await iPhone.syncNow()
+
+        let cli = try Engine(location: .folder(folder), time: time, calendar: calendar)
+        try cli.restore(backup.name)
+        try await mac.syncNow()
+        #expect(try mac.engine.syncStatus().offBecause == .restore)
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front) == ["petricor"])
+        #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(cardsZonesInICloud().count == 1)
+    }
+
+    // An iPad whose cards were made before it ever synced starts syncing
+    // after the Mac restored and turned sync on.
+    @Test(
+        "a device that starts syncing after a restore's zone started keeps its own cards, which join the restored ones")
+    func aDeviceThatStartsSyncingAfterARestoreJoins() async throws {
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        try mac.engine.restore(backup.name)
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+
+        time.advance(by: minutes(1))
+        let iPadsEngine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        try iPadsEngine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        let iPad = try Device(iPadsEngine, syncingThrough: iCloud)
+        try await iPad.syncNow()
+        try await iPad.syncNow()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front).sorted() == ["petricor", "ubuntu"])
+        #expect(try iPad.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(cardsZonesInICloud().count == 1)
+    }
+
+    // MARK: - Purges
+
+    // The iPhone was offline while the user purged Ficha's data and the Mac
+    // turned sync on again; it fetches first, so it hears of the purge and
+    // of the Mac's zone at once.
+    @Test(
+        "turning sync on after a purge joins every device's cards, and a device that missed the purge deletes none and stays on"
+    )
+    func aDeviceThatMissedThePurgeJoins() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        iPhone.iCloud.isOffline = true
+        try iPhone.engine.create(card(.word, front: "efímero", back: "Que dura poco."))
+
+        iCloud.purge()
+        try await mac.syncNow()
+        time.advance(by: minutes(1))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        iPhone.iCloud.isOffline = false
+        try await iPhone.iCloud.fetchChanges()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front).sorted() == ["efímero", "petricor", "ubuntu"])
+        #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(try iPhone.engine.syncStatus().isOn)
+        #expect(cardsZonesInICloud().count == 1)
+    }
+
+    // Both devices heard of the purge, and the user turns sync on again on
+    // each, a while apart.
+    @Test("devices that turn sync on one by one after a purge sync in one zone, and a deletion made while off wins")
+    func devicesTurningSyncOnAfterAPurgeLandInOneZone() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        iCloud.purge()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try iPhone.engine.delete([iPhone.engine.card(fronted: "ubuntu").id])
+
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        time.advance(by: minutes(5))
+        try iPhone.turnSyncOn()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front) == ["petricor"])
+        #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(cardsZonesInICloud().count == 1)
+    }
+
+    /// The zones the cards in iCloud are in.
+    private func cardsZonesInICloud() -> Set<ICloudZone> {
+        Set(iCloud.records.filter { $0.type == "card" }.map(\.id.zone))
     }
 }

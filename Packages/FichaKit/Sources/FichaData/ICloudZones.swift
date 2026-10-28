@@ -13,10 +13,12 @@ internal import GRDB
 //   its cards never reach Ficha Dev's: each device leaves alone the zones
 //   that aren't its own.
 // - The cards have had more than one zone: a device that turns sync on after
-//   a restore or a purge starts another, whose name says why and when, such
-//   as "Cards.restore.1761650000000" (`CardsZone`), since a zone deleted and
-//   saved again under its own name reaches the other devices as changed,
-//   with no deletion (P16, #316). The files' zone keeps its name.
+//   a restore or a purge starts another, whose name says why, and when for a
+//   restore, such as "Cards.restore.1761650000000" (`CardsZone`), since a
+//   zone deleted and saved again under its own name reaches the other
+//   devices as changed, with no deletion (P16, #316), and a device that
+//   sends into it what iCloud said of its records before would take each
+//   refusal as a deletion. The files' zone keeps its name.
 //
 // `Sync` speaks to iCloud's engine through `ICloudInItsZones`, which turns
 // one set of names into the other, and leaves out what iCloud tells of any
@@ -85,8 +87,10 @@ public struct ICloudZones: Sendable, Equatable {
 enum CardsZone: Sendable, Hashable, Comparable {
     /// The first, which no device started on purpose: "Cards".
     case first
-    /// One a device started as it turned sync on after `start`, at `time`,
-    /// in whole milliseconds since 1970 by that device's clock.
+    /// One a device started as it turned sync on after `start`, at `time`:
+    /// after a restore, when it turned it on, in whole milliseconds since
+    /// 1970 by its clock; after a purge, one past the zone the purge deleted
+    /// (`afterItsPurge`).
     case started(after: Start, at: Int64)
 
     /// Why a device started a cards' zone. Its raw value is how its name
@@ -119,6 +123,19 @@ enum CardsZone: Sendable, Hashable, Comparable {
             return nil
         }
         self = .started(after: start, at: time)
+    }
+
+    /// The zone each device that heard the user purge this one starts as it
+    /// turns sync on again: one past it, newer than it and than every zone
+    /// before it, and the same on every device, so that they all land in it,
+    /// one by one, and a deletion one made while sync was off still wins, as
+    /// in one zone. A restore later than the purge starts a newer one still,
+    /// unless a clock is off by more than the time between them.
+    var afterItsPurge: CardsZone {
+        switch self {
+        case .first: .started(after: .purge, at: 1)
+        case .started(_, let time): .started(after: .purge, at: time + 1)
+        }
     }
 
     /// The first comes before every other, and the others by when they
@@ -249,18 +266,20 @@ func noteSyncingInTheCardsZone(since time: Date, in db: Database) throws {
     try db.execute(sql: "UPDATE syncDevice SET cardsZoneSince = ? WHERE cardsZoneSince IS NULL", arguments: [time])
 }
 
-/// Starts a cards' zone of the device's own, from `time`, as sync turns on
-/// while it's off after a restore or a purge: the device sends every card
-/// into it, and the other devices move to it, as `Sync` says. Turning it on
-/// after the user turned it off keeps the zone the device synced in.
+/// Starts another cards' zone, from `time`, as sync turns on while it's off
+/// after a restore or a purge: after a restore, one of the device's own,
+/// started now; after a purge, the one past the zone it deleted
+/// (`CardsZone.afterItsPurge`). The device sends every card into it, and the
+/// other devices move to it, as `Sync` says. Turning sync on after the user
+/// turned it off keeps the zone the device synced in.
 func startACardsZoneIfOffAfterARestoreOrAPurge(at time: Date, in db: Database) throws {
-    let start: CardsZone.Start
+    let zone: CardsZone
     switch try syncOffReason(in: db) {
-    case .restore?: start = .restore
-    case .purge?: start = .purge
+    case .restore?: zone = .started(after: .restore, at: time.wholeMilliseconds)
+    case .purge?: zone = try cardsZone(in: db).afterItsPurge
     case .user?, nil: return
     }
-    try moveCards(to: .started(after: start, at: time.wholeMilliseconds), at: time, in: db)
+    try moveCards(to: zone, at: time, in: db)
 }
 
 extension ICloudPendingRecordZoneChange {

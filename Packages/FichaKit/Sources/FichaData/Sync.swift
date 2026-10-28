@@ -23,7 +23,7 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// signed into an account, the device's rows join its records, as in a first
 /// sync. A purge of Ficha's data in iCloud's settings turns sync off, with
 /// the cards kept, and so does a restore (`SyncedRestore.swift`). Turning it
-/// on after either sends the device's cards into a zone of its own, newer
+/// on after either sends the device's cards into another cards' zone, newer
 /// than the one before, as `ICloudZones.swift` names it, which every device
 /// moves to as it hears of it: one that synced since before a restore's zone
 /// started takes its cards in place of its own, its changes not yet sent
