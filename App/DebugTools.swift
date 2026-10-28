@@ -19,7 +19,9 @@ final class DebugTools {
     /// one time. Its imports draw SVGs through Ficha Dev's SVG drawer.
     init(dataFolder: URL) throws {
         time = try DebugTimeSource(savedIn: dataFolder)
-        engine = try Engine(location: .folder(dataFolder), time: time, drawingSVGsWith: { ServiceSVGDrawer() })
+        let svgDrawer = AppVariant.dev.svgDrawerIdentifier
+        engine = try Engine(
+            location: .folder(dataFolder), time: time, drawingSVGsWith: { ServiceSVGDrawer(serviceName: svgDrawer) })
         timeShift = time.shift
     }
 

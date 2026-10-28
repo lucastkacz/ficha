@@ -64,13 +64,10 @@ import Synchronization
         /// import's SVGs don't each wait for it.
         private let gaveUp = Mutex(false)
 
-        /// A drawer that asks the service inside this app, which is named
-        /// after the app: `<the app's bundle identifier>.svg-drawer`.
-        public convenience init() {
-            // A Mac app always has a bundle identifier. Without one, there's
-            // no service to find, and each SVG's drawing says so in the log.
-            let app = Bundle.main.bundleIdentifier ?? ""
-            self.init(connection: NSXPCConnection(serviceName: "\(app).svg-drawer"))
+        /// A drawer that asks the service inside this app whose bundle
+        /// identifier is `serviceName`.
+        public convenience init(serviceName: String) {
+            self.init(connection: NSXPCConnection(serviceName: serviceName))
         }
 
         /// A drawer that asks the service listening at `endpoint`, as in

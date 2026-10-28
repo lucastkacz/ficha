@@ -15,10 +15,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard variant.hasDebugMenu else {
             // The real Ficha always runs on the system's time. Its imports
             // draw SVGs through its SVG drawer, as Ficha Dev's do.
+            let svgDrawer = variant.svgDrawerIdentifier
             return try AppModel(
                 engine: try Engine(
                     location: .folder(try variant.dataFolder), time: SystemTimeSource(),
-                    drawingSVGsWith: { ServiceSVGDrawer() }))
+                    drawingSVGsWith: { ServiceSVGDrawer(serviceName: svgDrawer) }))
         }
         // Ficha Dev's engine runs on the time its debug menu moves forward.
         return try AppModel(debugTools: try DebugTools(dataFolder: try variant.dataFolder))

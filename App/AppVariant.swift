@@ -46,6 +46,13 @@ enum AppVariant {
         }
     }
 
+    /// The bundle identifier of the SVG drawer, the XPC service inside the
+    /// app that draws an import's SVGs, the same as the `SVGDrawer` target's
+    /// `PRODUCT_BUNDLE_IDENTIFIER` in `project.yml`, by which the app asks it.
+    var svgDrawerIdentifier: String {
+        "\(bundleIdentifier).svg-drawer"
+    }
+
     /// The menu-bar icon, an SF Symbol: different for each app, so Lucas can tell them apart.
     var menuBarSymbol: String {
         switch self {

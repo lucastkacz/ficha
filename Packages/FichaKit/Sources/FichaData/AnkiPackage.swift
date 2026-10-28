@@ -29,10 +29,10 @@ func isAnkiPackage(_ archive: Archive) -> Bool {
 /// importReading(in:images:sounds:sha1:)` makes them of its collection, with
 /// their due days as dates in `calendar`, and the images they show and the
 /// sounds they play, by the names Ficha keeps them by, as they come in, from
-/// the package's media, each read on its own, its SVGs drawn by `svgs`; or
+/// the package's media, each read on its own, its SVGs drawn by `drawer`; or
 /// why it can't be read. An image or a sound the package lacks, or holds
 /// damaged, keeps out only the cards that hold nothing else on a side.
-func readAnkiPackage(_ archive: Archive, in calendar: Calendar, drawingSVGsWith svgs: (any SVGDrawer)?)
+func readAnkiPackage(_ archive: Archive, in calendar: Calendar, drawingSVGsWith drawer: (any SVGDrawer)?)
     async throws(CardsFileProblem) -> (
         reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound]
     )
@@ -63,7 +63,8 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar, drawingSVGsWith 
             // Shrunk, as every image that comes in, or drawn, when its name
             // ends in `.svg`, which is how Anki tells an SVG.
             images.lookUp(name) { data throws(EngineError) in
-                try pathExtension(of: name) == "svg" ? CardImage(drawing: data, with: svgs) : CardImage(shrinking: data)
+                try pathExtension(of: name) == "svg"
+                    ? CardImage(drawing: data, with: drawer) : CardImage(shrinking: data)
             }
         } sounds: { names in
             // Converted, as every sound that comes in, a video's included,

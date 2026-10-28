@@ -87,8 +87,8 @@ func zipOfCards(text: String, named textFileName: String, images: [CardImage], s
 /// Finder adds, in `__MACOSX` or named with a leading dot. A file's name is
 /// found in any case, as a Mac finds a file. Each file is read on its own,
 /// and one the zip holds damaged is one Ficha can't read. Its SVGs are drawn
-/// by `svgs`.
-func readZipOfCards(_ archive: Archive, drawingSVGsWith svgs: (any SVGDrawer)?) async throws(CardsFileProblem) -> (
+/// by `drawer`.
+func readZipOfCards(_ archive: Archive, drawingSVGsWith drawer: (any SVGDrawer)?) async throws(CardsFileProblem) -> (
     reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound]
 ) {
     let files = archive.filter { $0.type == .file && !isAddedByFinder($0.path) }
@@ -119,7 +119,7 @@ func readZipOfCards(_ archive: Archive, drawingSVGsWith svgs: (any SVGDrawer)?) 
         // Drawn, when its name ends in `.svg`, as Anki tells an SVG.
         images.lookUp(name) { data throws(EngineError) in
             try pathExtension(of: name) == "svg"
-                ? CardImage(drawing: data, with: svgs) : CardImage(fromZip: data, named: name)
+                ? CardImage(drawing: data, with: drawer) : CardImage(fromZip: data, named: name)
         }
     } sounds: { name in
         await sounds.lookUp(name) { data async throws(EngineError) in
