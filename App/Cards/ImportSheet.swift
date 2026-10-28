@@ -327,6 +327,16 @@ struct ImportSheet: View {
                 )
                 .fixedSize(horizontal: false, vertical: true)
             }
+            if let weight = importing.weightGoingUpToICloud {
+                Text(
+                    "Their images and sounds weigh \(weight.formatted(.byteCount(style: .file))), and go up to your iCloud.",
+                    comment: """
+                        In the Import sheet's preview while sync is on: what the images and sounds the import brings, \
+                        which go up to the user's iCloud, weigh, said from 100 MB.
+                        """
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
             if !preview.leftOut.isEmpty {
                 leftOut(of: preview)
             }

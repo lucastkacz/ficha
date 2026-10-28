@@ -48,6 +48,11 @@ extension NameOfSyncedFile {
         Self.files(of: engine).contains(self)
     }
 
+    /// What the file weighs, in bytes, as `engine` keeps it.
+    func size(in engine: Engine) throws(EngineError) -> Int64 {
+        try Self.files(of: engine).size(of: self)
+    }
+
     /// Where iCloud's engine reads the file from to send it, as
     /// `FileStore.url(of:)` says.
     func url(in engine: Engine) throws(EngineError) -> URL {
@@ -125,6 +130,34 @@ func namesInICloud<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws
             .compactMap(Name.init(rawValue:)))
 }
 
+/// The images and sounds iCloud holds, as far as the device knows
+/// (`namesInICloud(_:in:)`), for the device to remove those no card uses
+/// once it no longer keeps them for iCloud: as sync turns off, or as it
+/// forgets what iCloud holds.
+struct FilesInICloud: Sendable {
+    var images: Set<ImageName> = []
+    var sounds: Set<SoundName> = []
+
+    /// No file.
+    init() {}
+
+    /// The files iCloud holds, as far as the device whose database is `db`
+    /// knows.
+    init(in db: Database) throws {
+        images = try namesInICloud(ImageName.self, in: db)
+        sounds = try namesInICloud(SoundName.self, in: db)
+    }
+}
+
+extension Engine {
+    /// Removes the files among `files` that no card uses, and iCloud doesn't
+    /// hold while sync is on, as `removeFilesNoCardUses(images:sounds:)`
+    /// says.
+    func removeFilesNoCardUses(_ files: FilesInICloud) {
+        removeFilesNoCardUses(images: files.images, sounds: files.sounds)
+    }
+}
+
 /// What a device knows of the images and sounds that sync: those its cards
 /// use, and those iCloud holds, as far as it knows. A file of a kind this
 /// version of Ficha doesn't know is neither: it never sends, fetches or
@@ -141,13 +174,32 @@ private struct FilesKnown {
     }
 }
 
+extension Engine {
+    /// The images and sounds sync sends: each one a card on the device uses,
+    /// which the device keeps and iCloud lacks, as far as the device knows.
+    /// The same file on two cards is one.
+    func filesICloudLacks() throws(EngineError) -> Set<SyncedFile> {
+        let known = try read(FilesKnown.init(in:))
+        return known.used.subtracting(known.inICloud).filter { $0.name.isKept(by: self) }
+    }
+
+    /// What the images and sounds sync sends weigh, in bytes, as the device
+    /// keeps them: those `filesICloudLacks()` says.
+    func weightICloudLacks() throws(EngineError) -> Int64 {
+        var weight: Int64 = 0
+        for file in try filesICloudLacks() {
+            weight += try file.name.size(in: self)
+        }
+        return weight
+    }
+}
+
 extension Sync {
     /// Hands `iCloud` the images and sounds to send: each one a card on the
     /// device uses, which the device keeps and iCloud lacks, as far as the
     /// device knows. The same file on two cards is sent once.
     func sendFiles(to iCloud: some ICloudSyncEngine) throws(EngineError) {
-        let known = try engine.read(FilesKnown.init(in:))
-        let lacking = known.used.subtracting(known.inICloud).filter { $0.name.isKept(by: engine) }
+        let lacking = try engine.filesICloudLacks()
         iCloud.add(pendingRecordZoneChanges: lacking.map(\.recordID).sorted(by: byName).map { .saveRecord($0) })
     }
 
@@ -172,8 +224,8 @@ extension Sync {
     }
 
     /// Handles the part of `event` about images and sounds, and returns the
-    /// rest of it, about the cards' zone, for `handle(_:from:)` to go on
-    /// with.
+    /// rest of it, about the cards' zone, for `handle(_:from:startedIn:)` to
+    /// go on with.
     func handleFiles(in event: ICloudEvent, from iCloud: some ICloudSyncEngine) throws(EngineError) -> ICloudEvent {
         switch event {
         case .fetchedRecordZoneChanges(let changes):
