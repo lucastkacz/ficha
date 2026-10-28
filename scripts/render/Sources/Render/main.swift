@@ -5,6 +5,7 @@ import CryptoKit
 import FichaCore
 import FichaData
 import SQLite3
+import SwiftUI
 
 // Draws one of the app's windows as a PNG, with Ficha Dev's sample cards,
 // without showing anything on screen: `make render ARGS="cards --dark"`. The
@@ -59,6 +60,9 @@ enum Window: String {
     /// Settings, on its Sync tab, once the user deleted Ficha's data in
     /// iCloud's settings, which turned sync off.
     case syncPurged = "sync-purged"
+    /// The menu under Ficha's icon while iCloud is full, its content drawn in
+    /// a window, since the tool can't open the menu offscreen.
+    case menuICloudFull = "menu-icloud-full"
     /// Settings, on its About tab.
     case about
     /// The alert the real Ficha shows at its first launch, which asks whether
@@ -311,8 +315,9 @@ let usage = """
                  or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
                  (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
                  full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
-                 in iCloud), about (Settings, on its About tab), start-at-login (the alert the real Ficha shows at
-                 its first launch) or diagnostics (while a Focus holds appearances back, once it held one back)
+                 in iCloud), menu-icloud-full (the menu's content while iCloud is full, in a window), about
+                 (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
+                 or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -686,11 +691,12 @@ func tell(_ event: ICloudEvent, to sync: Sync) throws {
 }
 
 /// The app's model on the sample cards in `renderDataFolder`, for Settings'
-/// Sync tab: on a Mac signed into iCloud, once `change` did what the picture
-/// shows, through the engine and its sync, which takes sync's events through
-/// `RenderICloud`. It stops the tool unless the tab then says what
-/// `isShown` looks for, `shown` in words, as when sync's rules changed what an
-/// event does.
+/// Sync tab and the menu's line while iCloud is full: on a Mac signed into
+/// iCloud, once `change` did what the picture shows, through the engine and
+/// its sync, which takes sync's events through `RenderICloud`, with the tab
+/// open, as the app's delegate opens it once it starts syncing. It stops the
+/// tool unless the tab then says what `isShown` looks for, `shown` in words,
+/// as when sync's rules changed what an event does.
 func syncModel(
     showing shown: String, _ change: (Engine, Sync) throws -> Void, isShown: (SyncTabState.Status) -> Bool
 ) throws -> AppModel {
@@ -700,6 +706,7 @@ func syncModel(
     try sync.noteAccount(signedIn: true)
     try change(engine, sync)
     let model = try AppModel(engine: engine)
+    model.sync = engine.openSyncTab()
     guard let status = model.sync?.status, isShown(status) else {
         throw RenderError(
             description: """
@@ -737,9 +744,16 @@ func weighFilesOnCards(_ bytes: Int64, in engine: Engine) throws {
             others += Int64(size)
         }
     }
+    guard let flagSize = UInt64(exactly: bytes - others) else {
+        throw RenderError(
+            description: """
+                The sample's files other than the flag weigh \(others) bytes, more than the \(bytes) the picture \
+                says: weigh more in model(for:).
+                """)
+    }
     let handle = try FileHandle(forWritingTo: renderDataFolder.appending(path: "Images/\(flag.rawValue)"))
     defer { try? handle.close() }
-    try handle.truncate(atOffset: UInt64(bytes - others))
+    try handle.truncate(atOffset: flagSize)
 }
 
 /// The Cards window's state partway through importing a zip of cards, as
@@ -759,8 +773,16 @@ func heavyImportingState(of model: AppModel) throws -> CardsWindowState {
     var lines = ["#separator:tab", "#html:false", "#columns:Front\tBack\tFront image"]
     var files = [text]
     for (index, country) in ["Chile", "Uruguay", "Bolivia"].enumerated() {
+        let padding = 80_000_000 + index - jpeg.count
+        guard padding >= 0 else {
+            throw RenderError(
+                description: """
+                    The sample flag's image weighs \(jpeg.count) bytes, more than the 80 MB each map weighs: weigh \
+                    more in heavyImportingState(of:).
+                    """)
+        }
         var image = jpeg
-        image.append(Data(count: 80_000_000 + index - jpeg.count))
+        image.append(Data(count: padding))
         let name = SHA256.hash(data: image).map { String(format: "%02x", $0) }.joined() + ".jpg"
         let file = folder.appending(path: name)
         try image.write(to: file)
@@ -956,8 +978,8 @@ func hours(_ count: Int) -> TimeInterval {
 }
 
 /// The app's model for `name`'s window: on the sample cards in memory, and
-/// for Settings' Backups tab and Sync tab, in `renderDataFolder`, with copies
-/// to list, and files to weigh.
+/// for Settings' Backups tab and Sync tab, and the menu while iCloud is full,
+/// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
@@ -979,9 +1001,9 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             $0 == .noAccount
         }
-    case .syncFull:
+    case .syncFull, .menuICloudFull:
         return try syncModel(showing: "that iCloud is full") { _, sync in
-            let full = ICloudEvent.FailedZoneSave(zone: ICloudZone(name: "Cards"), error: .quotaExceeded)
+            let full = ICloudEvent.FailedZoneSave(zone: .cards, error: .quotaExceeded)
             try tell(.sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [full])), to: sync)
         } isShown: {
             $0 == .iCloudFull
@@ -995,7 +1017,7 @@ func model(for name: Window) throws -> AppModel {
         }
     case .syncPurged:
         return try syncModel(showing: "that a purge turned sync off") { _, sync in
-            let purge = ICloudEvent.ZoneDeletion(zone: ICloudZone(name: "Cards"), reason: .purged)
+            let purge = ICloudEvent.ZoneDeletion(zone: .cards, reason: .purged)
             try tell(.fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: [purge])), to: sync)
         } isShown: {
             if case .off(turningOn: .sendsAllCardsAgain?, _) = $0 { true } else { false }
@@ -1041,6 +1063,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
     case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged:
         return settingsTabWindow(model: model, openingOn: .sync)
+    case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
     case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
     case .ladder: return settingsTabWindow(model: model, openingOn: .ladder)
@@ -1056,6 +1079,28 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         mac.focusChanged(holdsBack: true)
         return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
     }
+}
+
+/// The menu under Ficha's icon, its content in a window, as SwiftUI lays it
+/// out there: its items as buttons, its submenu as a pop-up button and its
+/// separators as lines. The menu itself is a `MenuBarExtra`'s, which AppKit
+/// draws only while the menu is open, and opening it takes the mouse: its
+/// content shows which lines the menu has, and in what order, not how it
+/// looks.
+func menuWindow(model: AppModel) -> NSWindow {
+    let content = VStack(alignment: .leading) {
+        MenuContent(
+            model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
+            openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {}, openSyncSettings: {},
+            checkAppearance: { nil }, secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))
+    }
+    .padding()
+    .fixedSize()
+    let window = AppWindow(title: "Menu", content: content)
+    if let view = window.contentView {
+        window.setContentSize(view.fittingSize)
+    }
+    return window
 }
 
 /// Settings, at the size it opens at, on `tab`.
