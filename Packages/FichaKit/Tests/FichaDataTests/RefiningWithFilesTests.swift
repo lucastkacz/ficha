@@ -306,6 +306,60 @@ final class RefiningWithFilesTests {
         #expect(try engine.keptImages().isEmpty)
     }
 
+    // As in the CLI's sandbox, which lets it read files from the Downloads
+    // folder alone (ADR 0018), and reaches it through a link in its own
+    // container, where `~` leads.
+    @Test(
+        "an engine that takes files from Downloads alone refuses one from elsewhere, and takes one there, through a link too"
+    )
+    func filesFromDownloadsAlone() async throws {
+        let downloads = folder.appending(path: "Downloads", directoryHint: .isDirectory)
+        let desktop = folder.appending(path: "Desktop", directoryHint: .isDirectory)
+        let container = folder.appending(path: "Container", directoryHint: .isDirectory)
+        for created in [downloads, desktop, container] {
+            try FileManager.default.createDirectory(at: created, withIntermediateDirectories: true)
+        }
+        try FileManager.default.createSymbolicLink(
+            at: container.appending(path: "Downloads"), withDestinationURL: downloads)
+        let photo = try picture(width: 800, height: 600, red: 0.8)
+        try photo.write(to: desktop.appending(path: "hornero.png"))
+        try photo.write(to: downloads.appending(path: "hornero.png"))
+        let engine = try Engine(location: .inMemory, time: time, refineFilesOnlyIn: downloads)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.2))
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        let capture = try engine.newCapture("nido")
+
+        await #expect(throws: EngineError.fileNotInDownloads("hornero.png")) {
+            try await engine.attach(.file(desktop.appending(path: "hornero.png")), to: .front, of: hornero.id)
+        }
+        await #expect(throws: EngineError.fileNotInDownloads("hornero.png")) {
+            try await engine.attach(
+                .file(downloads.appending(path: "../Desktop/hornero.png")), to: .front, of: hornero.id)
+        }
+        await #expect(throws: EngineError.fileNotInDownloads("hornero.png")) {
+            try await engine.approve(
+                capture.id,
+                into: [
+                    draft(
+                        .word, front: "nido", back: "Lo hace el hornero.",
+                        frontImage: .put(.file(desktop.appending(path: "hornero.png"))))
+                ])
+        }
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages() == [bird])
+
+        let fromDownloads = try await engine.attach(
+            .file(downloads.appending(path: "hornero.png")), to: .front, of: hornero.id)
+        let throughTheLink = try await engine.attach(
+            .file(container.appending(path: "Downloads/hornero.png")), to: .back, of: hornero.id)
+        let byItsName = try await engine.approve(
+            capture.id, into: [draft(.word, front: "nido", back: "Lo hace el hornero.", frontImage: .put(.image(bird)))]
+        )
+        #expect(fromDownloads.frontImage != nil)
+        #expect(throughTheLink.backImage == fromDownloads.frontImage)
+        #expect(byItsName.map(\.frontImage) == [bird])
+    }
+
     @Test("a refused approval or fix keeps none of the files it brought in, and changes nothing")
     func aRefusedChangeKeepsNoneOfItsFiles() async throws {
         let engine = try Engine(location: .inMemory, time: time)

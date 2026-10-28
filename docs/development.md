@@ -14,7 +14,11 @@ make install     # installs Ficha in /Applications
 
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
-Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `~/Library/Application Support/Ficha Dev/`, to the Trash.
+Ficha Dev runs in the App Sandbox, as the real Ficha will in the Mac App Store ([ADR 0018](adr/0018-the-app-and-the-cli-each-run-in-a-sandbox.md)), signed with Apple Development and your paid team, whose ID it takes from `iPhone/Local.xcconfig`, as [On the iPhone](#on-the-iphone) explains. Without that file, as in CI, `make build` builds Ficha Dev unsigned, which checks the code but can't run in the sandbox, and `make run` stops and says so. A new worktree hasn't the file either, since git ignores it: copy it there from the main folder.
+
+Its cards are in its App Group's folder, which its `ficha` shares: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha.dev/Ficha Dev/`, with the database, `Images/`, `Sounds/` and `Backups/`, laid out as the real Ficha's. Its preferences are in its sandbox's own folder, `~/Library/Containers/com.lucastkacz.ficha.dev/`. Before its sandbox, Ficha Dev kept its cards in `~/Library/Application Support/Ficha Dev/`, which stays as it was: the sandboxed Ficha Dev started empty, and its debug menu loads the sample cards.
+
+Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `Ficha Dev` in its App Group's folder, to the Trash.
 
 ## On the iPhone
 
@@ -24,10 +28,10 @@ Its appearances arrive as card notifications, which the app plans ahead ([ADR 00
 
 Debug also moves Ficha Dev's time forward, by the steps of the Mac's menu, so cards come due without waiting. Ficha Dev's time keeps running from there and stays ahead when the app opens again. Moving it counts the cards again and plans the appearances again, each notification at the real time that matches its appearance's time by Ficha Dev's: one whose time came already arrives a second later, while the app is in front, so to watch it, bring it with "Bring the next appearance now" and lock the iPhone. To start Ficha Dev over on the iPhone, with the sample cards and on the system's time, delete it and install it again.
 
-It installs on your iPhone from the Mac, signed with your free Apple ID's Personal Team. The first time:
+It installs on your iPhone from the Mac, signed with your paid team, which signs Ficha Dev on the Mac too. The first time:
 
-1. Xcode › Settings › Accounts: sign in with your Apple ID, which makes the Personal Team.
-2. Write the team's ID in `iPhone/Local.xcconfig`, which git ignores, as a line like `DEVELOPMENT_TEAM = ABCDE12345`. The file is our own convention: `iPhone/Signing.xcconfig` includes it with Xcode's `#include?`, which skips a file that isn't there, as in CI. `defaults read com.apple.dt.Xcode IDEProvisioningTeamByIdentifier` shows the ID as the `teamID` next to `isFreeProvisioningTeam = 1`. That's an Xcode preference Apple doesn't document; if it's gone, Keychain Access shows the ID as the Organizational Unit of your "Apple Development" certificate.
+1. Xcode › Settings › Accounts: sign in with your developer account's Apple ID.
+2. Write the team's ID in `iPhone/Local.xcconfig`, which git ignores, as a line like `DEVELOPMENT_TEAM = ABCDE12345`. The file is our own convention: `Signing.xcconfig` includes it with Xcode's `#include?`, which skips a file that isn't there, as in CI. Apple's developer site shows the ID in your account's Membership details, and Keychain Access as the Organizational Unit of your "Apple Development" certificate.
 3. Connect the iPhone with a cable, unlock it and trust the Mac. On the iPhone, turn on Settings › Privacy & Security › Developer Mode, which restarts it.
 
 Then, each time, with the iPhone unlocked, on the cable or on the Mac's Wi-Fi, from the folder where you wrote `iPhone/Local.xcconfig`:
@@ -38,7 +42,7 @@ make install-iphone   # builds Ficha Dev for the iPhone paired with this Mac and
 
 After the first install, trust the developer on the iPhone, in Settings › General › VPN & Device Management, before opening it. With `iPhone/Local.xcconfig` written, Xcode's Run button signs it too, with the `iPhone` scheme.
 
-A free Apple ID's apps run for 7 days. After that, iOS won't open Ficha Dev until you install it again, the same way, which keeps its cards. It also allows 3 such apps on the iPhone, and 10 App IDs a week: Ficha Dev takes one of each.
+A free Apple ID's limits, apps that stop opening after 7 days and 3 such apps on the iPhone, don't bind a paid team. Ficha Dev opens until its provisioning profile expires, and installing it again, the same way, renews it and keeps its cards.
 
 ### In the simulator
 
@@ -83,7 +87,21 @@ Ficha ships with a command-line tool inside the app. Claude uses it to turn your
 alias ficha="/Applications/Ficha.app/Contents/Helpers/ficha"
 ```
 
-The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Build/Products/Debug/Ficha Dev.app/Contents/Helpers/`, works on Ficha Dev's cards.
+The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Build/Products/Debug/Ficha Dev.app/Contents/Helpers/`, works on Ficha Dev's cards. It runs in a sandbox of its own, as the real Ficha's will, so it reads the files it puts on cards from your Downloads folder alone: a file elsewhere is refused, with a message that says to copy it to Downloads. The names of the images and sounds Ficha holds work as before.
+
+### Agents' runs of Ficha Dev's `ficha`
+
+An agent that tries Ficha Dev's `ficha` runs it on a scratch folder of its own, so Ficha Dev's cards stay as they were:
+
+```bash
+FICHA_DEV_SCRATCH=agent-304 <Ficha Dev's ficha> capture "serendipia"
+```
+
+- `FICHA_DEV_SCRATCH=<name>`, with letters, digits, `-` and `_`, makes Ficha Dev's `ficha` open the cards in `Scratch/<name>/`, in Ficha Dev's App Group's folder: a data folder of its own, which starts empty, on the system's time. The open Ficha Dev doesn't hear it, since the notification of a change is named after the database's path. Only Ficha Dev's build reads the variable, and the folder has to be in the group's folder, since the sandbox lets the CLI write nowhere else. The variable is our own, which [#301](https://github.com/lucastkacz/ficha/issues/301) probed.
+- `CFFIXED_USER_HOME`, which keeps the render tool's files in a scratch home, doesn't keep a sandboxed CLI's apart: the group's folder doesn't follow it.
+- `.claude/settings.json` keeps Claude out of both groups' folders, so the scratch folders stay. Starting Ficha Dev over leaves them, since they're beside its `Ficha Dev` folder: to delete them, move the group folder's `Scratch` to the Trash.
+- In a worktree, Claude's Bash refuses to run a path with a space, like `Ficha Dev.app/Contents/Helpers/ficha`, and a heredoc beside a command. A two-line script in the scratchpad that runs the CLI, `exec "<path>" "$@"`, gets around the first, and a file gets around the second: `ficha approve 1 < cards.json`.
+- An unsigned build's `ficha`, as from a worktree without `iPhone/Local.xcconfig`, says it isn't signed with its App Group and opens nothing.
 
 ## A window's picture
 
@@ -112,7 +130,7 @@ make render ARGS="cards --key cmd+f --type serendip --out .build/render/search.p
 - What the tool can't do yet, for a ticket that needs it to extend: right-click, as on a table's headers for their menu, or double-click; and keep a menu or a popover the window opens, like a picker's, below the desktop picture, as it does sheets.
 - The window and its sheet act as the key window, with the title bar's buttons in color, but their selections and default buttons stay gray.
 - The window is in English, the app's base language: the tool leaves the String Catalog out.
-- The windows so far: `cards`, `cards-import`, the Cards window with its Import sheet on the preview of a file the tool writes, which `--key return` imports, `cards-import-anki`, the same on an Anki package the tool writes with SQLite and `zip`, `cards-anki-imported`, the Cards window once that package came in with its progress, on the card of the femur, which climbed since from the step the import put it on, `backups`, Settings on its Backups tab, `backups-failed`, the same once a backup failed, `appearances`, `review-panel` and `ladder`, Settings on those tabs, with the settings that decide a card's progress, which the engine keeps, not Ficha's, `about`, Settings on its About tab, which says "Unknown version", since the tool has no Info.plist, and `start-at-login`, the alert the real Ficha shows at its first launch, drawn from its own window as `runModal()` would show it. The Import sheet before a file is chosen is `cards --key cmd+shift+i`, since the tool can't drive the open panel, and the Export sheet is `cards --key cmd+shift+e`, which stops before its save panel. The tool bundles no instructions for an AI, so the Import sheet's Copy Instructions for an AI says they're missing. For the Backups tab, the sample cards go in Ficha Dev's data folder in the tool's scratch home, with a backup each of the last eight days, of which it keeps seven, a copy before an update and a copy before a restore; the tool deletes the folder as it ends, so render these one at a time. Another window is one more case in `Window`, in `model(for:)` and in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
+- The windows so far: `cards`, `cards-import`, the Cards window with its Import sheet on the preview of a file the tool writes, which `--key return` imports, `cards-import-anki`, the same on an Anki package the tool writes with SQLite and `zip`, `cards-anki-imported`, the Cards window once that package came in with its progress, on the card of the femur, which climbed since from the step the import put it on, `backups`, Settings on its Backups tab, `backups-failed`, the same once a backup failed, `appearances`, `review-panel` and `ladder`, Settings on those tabs, with the settings that decide a card's progress, which the engine keeps, not Ficha's, `about`, Settings on its About tab, which says "Unknown version", since the tool has no Info.plist, and `start-at-login`, the alert the real Ficha shows at its first launch, drawn from its own window as `runModal()` would show it. The Import sheet before a file is chosen is `cards --key cmd+shift+i`, since the tool can't drive the open panel, and the Export sheet is `cards --key cmd+shift+e`, which stops before its save panel. The tool bundles no instructions for an AI, so the Import sheet's Copy Instructions for an AI says they're missing. For the Backups tab, the sample cards go in Ficha Dev's data folder in the tool's scratch home, in Application Support, where Ficha Dev kept it before its sandbox, which the tool runs outside, with a backup each of the last eight days, of which it keeps seven, a copy before an update and a copy before a restore; the tool deletes the folder as it ends, so render these one at a time. Another window is one more case in `Window`, in `model(for:)` and in `window(_:model:)`, in `scripts/render/Sources/Render/main.swift`.
 - The tool compiles the app's own files, through `scripts/render/Sources/Render/App`, a link to `App/`, so `make check` builds it: a change to the app that breaks it fails the check.
 
 ### The iPhone's screen

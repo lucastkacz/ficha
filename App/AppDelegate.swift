@@ -13,10 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let variant = AppVariant.current
         guard variant.hasDebugMenu else {
             // The real Ficha always runs on the system's time.
-            return try AppModel(engine: try Engine(location: .folder(variant.dataFolder), time: SystemTimeSource()))
+            return try AppModel(engine: try Engine(location: .folder(try variant.dataFolder), time: SystemTimeSource()))
         }
         // Ficha Dev's engine runs on the time its debug menu moves forward.
-        return try AppModel(debugTools: try DebugTools(dataFolder: variant.dataFolder))
+        return try AppModel(debugTools: try DebugTools(dataFolder: try variant.dataFolder))
     }
 
     /// The app's way into Lucas's cards, for the menu, the capture window and

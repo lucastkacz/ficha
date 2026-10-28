@@ -32,6 +32,10 @@ public struct Engine: Sendable {
     /// Where the sounds on cards are kept: the Sounds folder beside the
     /// database, or memory with it.
     let sounds: FileStore<SoundName>
+    /// The Downloads folder, when a refine session's files may come from
+    /// there alone, as in the `ficha` CLI's sandbox (ADR 0018), or nil when
+    /// they may come from anywhere.
+    let refineFilesFolder: URL?
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
@@ -39,11 +43,14 @@ public struct Engine: Sendable {
     /// in the Backups folder, where it first moves those that versions before
     /// backups left next to the database. A database that a newer version
     /// migrated is refused, and left as it was. Days start at midnight by
-    /// `calendar`: the Mac's, except in tests.
+    /// `calendar`: the Mac's, except in tests. A refine session's files come
+    /// from `downloads` alone, the Downloads folder, when it's given, and from
+    /// anywhere when it isn't.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
-        calendar: Calendar = .autoupdatingCurrent
+        calendar: Calendar = .autoupdatingCurrent,
+        refineFilesOnlyIn downloads: URL? = nil
     ) throws(EngineError) {
         switch location {
         case .folder(let folder):
@@ -78,6 +85,7 @@ public struct Engine: Sendable {
         }
         self.time = time
         self.calendar = calendar
+        refineFilesFolder = downloads
     }
 
     /// Every change to the database from now on, by this engine or by another

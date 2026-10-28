@@ -29,8 +29,9 @@ settings:
     # The build number, CFBundleVersion. The Makefile sets it from git on
     # each build; this one is only for a build outside it.
     CURRENT_PROJECT_VERSION: "1"
-    # Personal apps: signed to run locally, not notarized. The iPhone app
-    # signs with Lucas's Personal Team instead.
+    # The real Ficha: signed to run locally, not notarized, until it moves into
+    # its sandbox (#310). Ficha Dev signs with Lucas's paid team instead, as
+    # its targets' Debug settings say.
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
@@ -40,9 +41,12 @@ settings:
   # CLI alike, for the menu-bar icon and the data folder.
   configs:
     # Ficha Dev, for development: `make run` builds and opens it, and
-    # `make install-iphone` puts the iPhone app on Lucas's iPhone.
+    # `make install-iphone` puts the iPhone app on Lucas's iPhone. On the Mac,
+    # it and its CLI share its App Group's folder, named after the team's ID,
+    # which Xcode puts before it (ADR 0018).
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
+      FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
     # The real Ficha: `make install` puts it in /Applications.
     Release:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
@@ -88,6 +92,10 @@ targets:
         copy:
           destination: wrapper
           subpath: Contents/Helpers
+    # Ficha Dev signs with Lucas's paid team, whose ID this file takes from
+    # one that git ignores.
+    configFiles:
+      Debug: Signing.xcconfig
     settings:
       groups: [zstd]
       base:
@@ -104,17 +112,24 @@ targets:
         # Xcode 26's defaults for app targets: main actor by default.
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         SWIFT_APPROACHABLE_CONCURRENCY: YES
-        # Personal app: no sandbox.
+        # The real Ficha: no sandbox, until #310.
         ENABLE_APP_SANDBOX: NO
       # Each configuration names its app and gives it a bundle identifier of
       # its own, and so preferences of its own. It also picks the app's icon,
       # an Icon Composer document in App/, named without its `.icon`: Ficha
       # Dev's is Ficha's drawing in another color, to tell the two apart.
       configs:
+        # Ficha Dev runs in the App Sandbox, in its App Group, with the
+        # hardened runtime, as the real Ficha will in the Mac App Store (ADR
+        # 0018).
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
+          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_ENTITLEMENTS: App/Ficha.entitlements
+          ENABLE_APP_SANDBOX: YES
+          ENABLE_HARDENED_RUNTIME: YES
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
@@ -129,16 +144,37 @@ targets:
     platform: macOS
     sources:
       - path: CLI
+        # Its Info.plist and entitlements go in through its settings.
+        excludes:
+          - Info.plist
+          - "*.entitlements"
       - path: App/AppVariant.swift
     dependencies:
       - package: FichaKit
         product: FichaCLI
+    configFiles:
+      Debug: Signing.xcconfig
     settings:
       groups: [zstd]
       base:
         PRODUCT_NAME: ficha
         # Built into the app, never installed on its own.
         SKIP_INSTALL: YES
+      # Ficha Dev's CLI runs in a sandbox of its own, not its app's, which a
+      # terminal can't start (ADR 0018): it needs an Info.plist in its binary,
+      # with a bundle identifier, the app's with `.cli`. Its entitlements give
+      # it Ficha Dev's App Group, and the Downloads folder to read files from,
+      # with no `inherit`. A sandbox of its own is our own, as #301 probed:
+      # Apple documents a tool that inherits its app's.
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev.cli
+          INFOPLIST_FILE: CLI/Info.plist
+          CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_ENTITLEMENTS: CLI/ficha.entitlements
+          ENABLE_APP_SANDBOX: YES
+          ENABLE_HARDENED_RUNTIME: YES
 
   # Ficha on the iPhone (#97), with files of its own in iPhone/. Stage 1
   # builds it only as Ficha Dev, in the Debug configuration, which its code
@@ -154,10 +190,10 @@ targets:
           - "*.xcconfig"
       - path: App/AppVariant.swift
       - path: App/AppIcon-Dev.icon
-    # It signs automatically with Lucas's free Personal Team, whose ID this
-    # file takes from one that git ignores.
+    # It signs automatically with Lucas's paid team, whose ID this file takes
+    # from one that git ignores.
     configFiles:
-      Debug: iPhone/Signing.xcconfig
+      Debug: Signing.xcconfig
     dependencies:
       - package: FichaKit
         product: FichaCore

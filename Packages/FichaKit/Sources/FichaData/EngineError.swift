@@ -111,6 +111,10 @@ public enum EngineError: Error, Equatable {
     /// A refine session gave a side of a card the file at this path on the
     /// Mac, and there's none there.
     case noSuchFile(String)
+    /// A refine session gave a side of a card the file with this name from
+    /// outside the Downloads folder, the only one the `ficha` CLI's sandbox
+    /// lets it read (ADR 0018).
+    case fileNotInDownloads(String)
     /// A refine session gave a side of a card the file with this name, or
     /// the sound Ficha holds by it, as its image, and it isn't an image the
     /// system can read.
@@ -336,6 +340,13 @@ extension EngineError: LocalizedError {
                 localized: """
                     There's no file at “\(path)”. Check the path: a path that doesn't start with / or ~ starts from \
                     the folder the command runs in.
+                    """
+            )
+        case .fileNotInDownloads(let name):
+            String(
+                localized: """
+                    Ficha reads files only from your Downloads folder, and “\(name)” isn't in it. Copy the file to \
+                    Downloads, and give its path there.
                     """
             )
         case .fileNotAnImage(let name):

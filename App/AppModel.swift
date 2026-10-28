@@ -2,6 +2,9 @@ import FichaCore
 import FichaData
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "menu")
 
 /// The app's way into Lucas's cards: it goes through the engine and keeps what
 /// the menu shows up to date, whether the app or the `ficha` CLI changed it.
@@ -83,6 +86,9 @@ final class AppModel {
                 readProgressSettings()
                 countProgress()
                 readPrioritizeMenu()
+                // So a check can tell, from the log, how soon the menu shows
+                // what the CLI changed.
+                logger.debug("Counted again after a change: \(self.progress?.inInbox ?? -1) in the inbox")
             }
         }
         // Cards come due as time passes, without the database changing.

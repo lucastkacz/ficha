@@ -1,6 +1,0 @@
-// Ficha Dev on the iPhone signs automatically with Lucas's free Personal Team
-// (#97). The team's ID stays out of the repo, in Local.xcconfig next to this
-// file, which git ignores: a line like `DEVELOPMENT_TEAM = ABCDE12345`, as
-// docs/development.md explains. Without it, the app still builds for the
-// simulator, as CI builds it, but not for an iPhone.
-#include? "Local.xcconfig"

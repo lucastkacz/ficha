@@ -479,7 +479,9 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
 }
 
 /// Ficha Dev's data folder in the tool's scratch home, which the Backups tab
-/// shows as `~/Library/Application Support/Ficha Dev/Backups`, as on a Mac.
+/// shows as `~/Library/Application Support/Ficha Dev/Backups`: where Ficha
+/// Dev kept it before its sandbox, which the tool runs outside. On a Mac,
+/// Ficha Dev's own is in its App Group's folder (ADR 0018).
 let renderDataFolder = URL.applicationSupportDirectory.appending(path: "Ficha Dev", directoryHint: .isDirectory)
 
 /// An engine with the sample cards in `renderDataFolder`, and copies of

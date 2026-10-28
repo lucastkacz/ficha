@@ -845,7 +845,8 @@ extension EngineError {
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
             .cardSetAside, .notOneEmoji, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .storage,
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
-            .unreadableFileForSide, .noSuchFile, .fileNotAnImage, .fileNotASound, .notAnImageOrSound, .noFileNamed,
+            .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
+            .notAnImageOrSound, .noFileNamed,
             .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
             localizedDescription
         }

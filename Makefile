@@ -71,10 +71,23 @@ BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: 
 XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
 	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 
+# Ficha Dev signs with Lucas's paid team, whose ID git ignores, in
+# iPhone/Local.xcconfig, which Signing.xcconfig includes. Without it, as in CI
+# and in a new worktree, Ficha Dev's builds go unsigned: they check the code,
+# but don't run in their sandbox.
+TEAM := $(shell grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig && echo yes)
+UNLESS_TEAM := $(if $(TEAM),,CODE_SIGNING_ALLOWED=NO)
+
+.PHONY: team
+team: ## Fail unless iPhone/Local.xcconfig has the team's ID, which signs Ficha Dev.
+	@[ -n "$(TEAM)" ] || { \
+		echo "No team: write your team's ID in iPhone/Local.xcconfig, or copy that file into this worktree from the main folder, as docs/development.md explains." >&2; \
+		exit 1; }
+
 .PHONY: build
 CHECKS += build
-build: project ## Build the app; warnings are errors.
-	$(XCODEBUILD) -configuration Debug build
+build: project ## Build the app, signed when the team's ID is there; warnings are errors.
+	$(XCODEBUILD) -configuration Debug build $(UNLESS_TEAM)
 
 # The iPhone app, which stage 1 builds only as Ficha Dev, in the Debug
 # configuration (#97).
@@ -91,11 +104,14 @@ build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI
 # texts, and drops the ones the code no longer has, or marks them stale when
 # they have plural variations. Whatever the scheme, it builds both apps on the
 # way, the iPhone's for an iPhone and unsigned, so it takes the build's derived
-# data and build number, and writes its own copy of the texts to a scratch
-# folder.
+# data, build number and signing, and writes its own copy of the texts to a
+# scratch folder. It builds the Mac's for Intel too, and Xcode then processes
+# Ficha Dev's CLI's Info.plist for Apple silicon alone, so its link for Intel
+# can't find it: the export, which only reads the code, leaves it out.
 CATALOGS := App/Localizable.xcstrings iPhone/Localizable.xcstrings
 STRINGS := .build/strings
-EXPORT_STRINGS = $(XCODEBUILD) -exportLocalizations -localizationPath $(STRINGS) -exportLanguage en
+EXPORT_STRINGS = $(XCODEBUILD) -exportLocalizations -localizationPath $(STRINGS) -exportLanguage en \
+	$(UNLESS_TEAM) CREATE_INFOPLIST_SECTION_IN_BINARY=NO
 
 .PHONY: strings
 strings: project ## Sync the String Catalogs with the code's UI texts.
@@ -127,7 +143,7 @@ render-build: ## Build the render tool, so a change to the app's views can't bre
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
 
 .PHONY: run
-run: build ## Build and open Ficha Dev, restarting it; the real Ficha keeps running.
+run: team build ## Build and open Ficha Dev, in its sandbox, restarting it; the real Ficha keeps running.
 	@pkill -x "Ficha Dev" || true
 	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 
@@ -154,9 +170,7 @@ PAIRED_IPHONE := hardwareProperties.deviceType == 'iPhone' AND hardwarePropertie
 	AND connectionProperties.pairingState == 'paired'
 
 .PHONY: install-iphone
-install-iphone: project ## Build Ficha Dev for the connected iPhone, signed with your Personal Team, and install it.
-	@grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig || { \
-		echo "No team: write your Personal Team's ID in iPhone/Local.xcconfig, as docs/development.md explains." >&2; exit 1; }
+install-iphone: team project ## Build Ficha Dev for the connected iPhone, signed with your team, and install it.
 	@mkdir -p .build
 	@xcrun devicectl list devices --quiet --json-output $(IPHONES) --sort-by connectionProperties.tunnelState \
 		--filter "$(PAIRED_IPHONE)"
