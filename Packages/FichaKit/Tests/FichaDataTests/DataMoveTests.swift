@@ -1,20 +1,21 @@
 import FichaCore
-import FichaData
 import Foundation
 import GRDB
 import Testing
 
-/// Tests on the move of Lucas's data into the App Group's folder (ADR 0018):
-/// a data folder copied into another, in a scratch folder of the test's own
-/// that stands for Application Support and the group's folder.
+@testable import FichaData
+
+/// Tests on Lucas's data move into the App Group's folder (ADR 0018): a data
+/// folder copied into another, in a scratch folder of the test's own that
+/// stands for Application Support and the group's folder.
 final class DataMoveTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     /// The test's own scratch folder, which holds both data folders.
     let scratch = URL.temporaryDirectory.appending(
         path: "FichaDataMoveTests-\(UUID().uuidString)", directoryHint: .isDirectory)
-    /// The data folder the copy is made from, as Application Support's.
+    /// The data folder the data moves from, as Application Support's.
     let source: URL
-    /// The data folder the copy goes to, as the one in the group's folder.
+    /// The data folder it moves to, as the one in the group's folder.
     let target: URL
 
     init() {
@@ -26,8 +27,19 @@ final class DataMoveTests {
         try? FileManager.default.removeItem(at: scratch)
     }
 
-    @Test("a data folder's copy holds its cards, their review logs, images, sounds and backups, as they were")
-    func theCopyHoldsEverything() async throws {
+    @Test("a move waits while the old data folder holds a database and the new one holds none, until it ran")
+    func aMoveWaitsUntilItRan() throws {
+        #expect(DataMove(waitingFrom: source, to: target) == nil)
+        let engine = try Engine(location: .folder(source), time: time)
+        try engine.newCapture("serendipia")
+
+        try #require(DataMove(waitingFrom: source, to: target)).run()
+
+        #expect(DataMove(waitingFrom: source, to: target) == nil)
+    }
+
+    @Test("a data move brings the cards, their review logs, images, sounds and backups, as they were")
+    func theMoveBringsEverything() async throws {
         let engine = try Engine(location: .folder(source), time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let la = try await addTone(440, to: engine)
@@ -41,55 +53,67 @@ final class DataMoveTests {
         let backup = try engine.backUpNow(.defaults)
         let before = try filesAsTheyAre(in: source)
 
-        try copyDataFolder(from: source, to: target)
+        try #require(DataMove(waitingFrom: source, to: target)).run()
 
-        let copy = try Engine(location: .folder(target), time: time)
-        #expect(try copy.cards() == engine.cards())
-        #expect(try copy.reviewLog() == engine.reviewLog())
-        #expect(try copy.inbox().captures == engine.inbox().captures)
-        #expect(try copy.image(bird) == engine.image(bird))
-        #expect(try copy.sound(la) == engine.sound(la))
-        #expect(try copy.copies() == [backup])
+        let moved = try Engine(location: .folder(target), time: time)
+        #expect(try moved.cards() == engine.cards())
+        #expect(try moved.reviewLog() == engine.reviewLog())
+        #expect(try moved.inbox().captures == engine.inbox().captures)
+        #expect(try moved.image(bird) == engine.image(bird))
+        #expect(try moved.sound(la) == engine.sound(la))
+        #expect(try moved.copies() == [backup])
         #expect(try filesAsTheyAre(in: source) == before)
     }
 
-    // As the CLI may, in a refine session, while the app launches and copies.
-    @Test("a copy made while another engine writes holds together, with the captures saved before it began")
-    func aCopyWhileAnotherEngineWrites() async throws {
+    // As the CLI may, in a refine session, while the app launches and moves.
+    @Test(
+        """
+        a move made while another engine writes holds together, but fails rather than miss a write, and the next \
+        one brings every capture
+        """)
+    func aMoveWhileAnotherEngineWrites() async throws {
         let engine = try Engine(location: .folder(source), time: time)
         for word in ["serendipia", "ojalá", "sobremesa"] {
             try engine.newCapture(word)
         }
-        let (started, start) = AsyncStream.makeStream(of: Void.self)
+        // Each capture the writer saves, as it saves it, to a reader waiting
+        // for one: one saved while none waits is dropped.
+        let (saves, saved) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(0))
         let writing = Task.detached {
-            var saved = 0
+            defer { saved.finish() }
+            var count = 0
             while !Task.isCancelled {
-                try engine.newCapture("palabra \(saved)")
-                saved += 1
-                start.yield()
+                try engine.newCapture("palabra \(count)")
+                count += 1
+                saved.yield()
             }
-            return saved
+            return count
         }
-        for await _ in started {
-            break
-        }
+        var nextSave = saves.makeAsyncIterator()
+        await nextSave.next()
 
-        let copied = try copyDataFolder(from: source, to: target)
+        let staged = try #require(DataMove(waitingFrom: source, to: target)).stage()
+        // A capture saved once the move copied the database, before it gives
+        // the new folder its name.
+        await nextSave.next()
         writing.cancel()
-        let savedWhileCopying = try await writing.value
+        let savedWhileMoving = try await writing.value
 
+        #expect(try #require(staged.moved.rows["capture"]) > 3)
+        #expect(throws: DataMoveError.sourceChanged(source)) {
+            try staged.finish()
+        }
+        #expect(try inGroupFolder() == [])
+        try #require(DataMove(waitingFrom: source, to: target)).run()
         let captures = try Engine(location: .folder(target), time: time).inbox().captures.map(\.text)
-        let saved = try engine.inbox().captures.map(\.text)
-        #expect(captures.count > 3)
-        #expect(Array(saved.prefix(captures.count)) == captures)
-        #expect(copied.rows["capture"] == captures.count)
-        #expect(saved.count == 3 + savedWhileCopying)
+        #expect(try captures == engine.inbox().captures.map(\.text))
+        #expect(captures.count == 3 + savedWhileMoving)
     }
 
     @Test(
-        "a broken file leaves the copy's folder empty, and the data folder as it was",
+        "a broken file leaves the new folder's place empty, and the old data folder as it was",
         arguments: [BrokenFile.database, .image])
-    func aBrokenFileLeavesNoCopy(_ broken: BrokenFile) throws {
+    func aBrokenFileMovesNothing(_ broken: BrokenFile) throws {
         do {
             let engine = try Engine(location: .folder(source), time: time)
             let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
@@ -97,14 +121,26 @@ final class DataMoveTests {
         }
         try broken.breakIt(in: source)
         let before = try filesAsTheyAre(in: source)
+        let move = try #require(DataMove(waitingFrom: source, to: target))
 
-        #expect(throws: DataFolderCopyError.self) {
-            try copyDataFolder(from: source, to: target)
+        #expect(throws: DataMoveError.self) {
+            try move.run()
         }
 
-        let group = target.deletingLastPathComponent()
-        #expect(try FileManager.default.contentsOfDirectory(atPath: group.path(percentEncoded: false)) == [])
+        #expect(try inGroupFolder() == [])
         #expect(try filesAsTheyAre(in: source) == before)
+    }
+
+    @Test("a move first removes the hidden folder that a move the app was killed in left")
+    func aMoveRemovesWhatAKilledOneLeft() throws {
+        let engine = try Engine(location: .folder(source), time: time)
+        try engine.newCapture("serendipia")
+        // Killed before the move gave its hidden folder the new folder's name.
+        _ = try #require(DataMove(waitingFrom: source, to: target)).stage()
+
+        try #require(DataMove(waitingFrom: source, to: target)).run()
+
+        #expect(try inGroupFolder() == [target.lastPathComponent])
     }
 
     @Test("the preferences file carries every setting the last build kept into the sandboxed app's preferences")
@@ -125,7 +161,7 @@ final class DataMoveTests {
         }
     }
 
-    @Test("the sandboxed app reads the preferences file in at its first launch, and never again")
+    @Test("the sandboxed app reads the preferences file in at the first launch that finds it, and never again")
     func thePreferencesFileIsReadInOnce() throws {
         let lastBuild = try preferences(named: "last-build")
         lastBuild.defaults.set(5, forKey: "CardsPerAppearance")
@@ -143,8 +179,32 @@ final class DataMoveTests {
         #expect(sandboxed.defaults.integer(forKey: "CardsPerAppearance") == 2)
     }
 
-    /// The preferences file in the data folder the copy goes to, once the
-    /// copy made the folder.
+    // As when the sandboxed app launches before the move ran.
+    @Test("a preferences file that isn't there yet is read in once it is")
+    func aMissingPreferencesFileIsReadInLater() throws {
+        let file = try preferencesFile()
+        let sandboxed = try preferences(named: "sandboxed")
+        let readInBeforeTheFile = try file.readIn(to: sandboxed.defaults)
+
+        let lastBuild = try preferences(named: "last-build")
+        lastBuild.defaults.set(5, forKey: "CardsPerAppearance")
+        try file.write(lastBuild.domain, from: lastBuild.defaults)
+        let readIn = try file.readIn(to: sandboxed.defaults)
+
+        #expect(!readInBeforeTheFile)
+        #expect(readIn)
+        #expect(sandboxed.defaults.integer(forKey: "CardsPerAppearance") == 5)
+    }
+
+    /// What the folder that stands for the group's holds, by name, hidden
+    /// items too.
+    private func inGroupFolder() throws -> [String] {
+        try FileManager.default.contentsOfDirectory(
+            atPath: target.deletingLastPathComponent().path(percentEncoded: false))
+    }
+
+    /// The preferences file in the data folder the data moves to, once the
+    /// move made the folder.
     private func preferencesFile() throws -> PreferencesFile {
         try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
         return PreferencesFile(in: target)
@@ -176,7 +236,7 @@ final class DataMoveTests {
     }
 }
 
-/// A file in a data folder that a test breaks before copying it.
+/// A file in a data folder that a test breaks before moving it.
 enum BrokenFile {
     /// The database's file, whose pages past the first, which names the
     /// tables, hold garbage.
@@ -188,7 +248,7 @@ enum BrokenFile {
     func breakIt(in folder: URL) throws {
         switch self {
         case .database:
-            let database = folder.appending(path: "Ficha.sqlite")
+            let database = databaseFile(in: folder)
             // Every page into the database's file, out of its write-ahead log.
             try DatabaseQueue(path: database.path(percentEncoded: false)).writeWithoutTransaction { db in
                 try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")

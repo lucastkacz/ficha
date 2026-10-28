@@ -61,7 +61,7 @@ public struct Engine: Sendable {
     ) throws(EngineError) {
         switch location {
         case .folder(let folder):
-            let file = folder.appending(path: "Ficha.sqlite")
+            let file = databaseFile(in: folder)
             database = try whileNoOtherProcessOpens(file) { () throws(EngineError) in
                 let pool = try reportingStorageErrors {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -216,6 +216,14 @@ public struct Engine: Sendable {
             }
         }
     }
+}
+
+/// The name of the database's file in a data folder.
+let databaseFileName = "Ficha.sqlite"
+
+/// The database's file in the data folder `folder`.
+func databaseFile(in folder: URL) -> URL {
+    folder.appending(path: databaseFileName)
 }
 
 /// Runs `work` on `file` while no other process does the same, as GRDB's guide

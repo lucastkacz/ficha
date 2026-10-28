@@ -73,7 +73,7 @@ extension Engine {
         }
         // While no other engine opens the database, which could migrate it
         // at the same time.
-        let (restoration, replaced) = try whileNoOtherProcessOpens(dataFolder.appending(path: "Ficha.sqlite")) {
+        let (restoration, replaced) = try whileNoOtherProcessOpens(databaseFile(in: dataFolder)) {
             () throws(EngineError) in
             let source = try reportingStorageErrors {
                 var configuration = Configuration()

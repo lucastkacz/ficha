@@ -3,7 +3,8 @@ import Foundation
 /// The app's preferences in a file of its data folder, which carries them
 /// into its sandbox, where the app has preferences of its own (ADR 0018):
 /// the last build of the real Ficha without its sandbox writes them there,
-/// all of them, and the sandboxed Ficha reads them in at its first launch.
+/// all of them, and the sandboxed Ficha reads them in at the first launch
+/// that finds the file.
 public struct PreferencesFile: Sendable {
     /// The file, `Preferences.plist` in the data folder.
     public let file: URL
@@ -29,12 +30,12 @@ public struct PreferencesFile: Sendable {
     }
 
     /// Reads the file's preferences into `defaults`, the app's own, in place
-    /// of those it holds, the first time it's asked, and never again, which
-    /// `defaults` keeps: at the sandboxed app's first launch. A file that
-    /// isn't there, as for anyone but Lucas, has nothing to read in, and the
-    /// app never asks again either. A file that can't be read is refused,
-    /// and the app asks again at its next launch. Returns whether it read
-    /// preferences in.
+    /// of those it holds, the first time it's there, and never again, which
+    /// `defaults` keeps: at the sandboxed app's first launch once the move
+    /// wrote it. A file that isn't there, as for anyone but Lucas, or before
+    /// the move ran, has nothing to read in yet, and the app asks again at
+    /// its next launch. So does a file that can't be read, which is refused.
+    /// Returns whether it read preferences in.
     @discardableResult
     public func readIn(to defaults: UserDefaults) throws(PreferencesFileError) -> Bool {
         guard !defaults.bool(forKey: readInKey) else {
@@ -50,7 +51,6 @@ public struct PreferencesFile: Sendable {
             }
             preferences = read
         } catch CocoaError.fileReadNoSuchFile {
-            defaults.set(true, forKey: readInKey)
             return false
         } catch {
             moveLogger.error("Couldn't read the preferences file: \(String(describing: error), privacy: .public)")

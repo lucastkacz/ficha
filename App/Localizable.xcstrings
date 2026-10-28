@@ -1704,6 +1704,9 @@
         }
       }
     },
+    "macOS gave no folder for the App Group %@, which holds your cards. Quit the app and open it again, and if it keeps happening, report it." : {
+      "comment" : "An alert at launch. The value is the App Group's identifier, such as ABCDE12345.com.lucastkacz.ficha, which stays as it is."
+    },
     "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
 
     },
@@ -2154,6 +2157,9 @@
     },
     "Then wait" : {
       "comment" : "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video, a full-screen app or a Focus ends."
+    },
+    "This build isn't signed with its App Group, whose folder holds its cards. Build Ficha Dev with make run, or Ficha with make install, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says." : {
+      "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. make run and make install are commands, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
     },
     "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so nothing was saved. To keep what you typed, copy it before you cancel." : {
       "comment" : "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."

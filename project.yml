@@ -143,9 +143,9 @@ targets:
         # network entitlement: the SVG drawer below does. It syncs through
         # iCloud, whose entitlements, and push's, are restricted: they need a
         # provisioning profile, which Xcode makes and keeps through Lucas's
-        # account in Xcode, as automatic signing does. The real Ficha takes
-        # them once it's signed with the team for the App Store (#310) and
-        # syncs (#318), since an ad hoc signature can't hold them.
+        # account in Xcode, as automatic signing does. The real Ficha, signed
+        # with the team too, holds its App Group alone, and takes them once it
+        # syncs (#318).
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
