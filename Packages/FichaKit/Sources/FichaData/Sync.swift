@@ -107,10 +107,11 @@ public struct Sync: Sendable {
         guard try engine.syncIsOn() else { return }
         try engine.noteSynced()
         guard try choosesItsCardsZone() else { return }
-        let zone = CardsZone.made(at: engine.time.now, because: .new)
-        try engine.writeWithoutTelling { db in
-            try moveCards(to: zone, in: db)
+        let now = engine.time.now
+        let zone = try engine.writeWithoutTelling { db in
+            let zone = try CardsZoneStanding.makeAZoneWhereICloudHoldsNone(at: now, in: db)
             try recordEverythingToSend(in: db)
+            return zone
         }
         syncLogger.notice(
             "iCloud holds no cards' zone: the cards go into a new one, \(zones.cards(zone).name, privacy: .public)")
@@ -137,7 +138,7 @@ public struct Sync: Sendable {
         if try engine.savedSyncEngineState() == nil {
             iCloud.askForBothZones()
         }
-        if let left = try engine.writeWithoutTelling(takeTheCardsZoneLeft(in:)) {
+        if let left = try engine.writeWithoutTelling(CardsZoneStanding.takeTheZoneLeft(in:)) {
             iCloud.delete([left])
         }
         try sendWhatChanged(in: iCloud)
@@ -301,7 +302,11 @@ public struct Sync: Sendable {
         try engine.noteICloudIsFull(false)
         let forgotten = try engine.write { db in
             let files = try forgetWhatICloudSaid(in: db)
-            try chooseTheCardsZoneAgain(forgettingTheLast: change == .switchAccounts, in: db)
+            if change == .switchAccounts {
+                try CardsZoneStanding.chooseAgainInAnotherAccount(in: db)
+            } else {
+                try CardsZoneStanding.chooseAgain(in: db)
+            }
             try recordEverythingToSend(in: db)
             return files
         }
@@ -376,11 +381,11 @@ public struct Sync: Sendable {
     ) throws(EngineError) {
         let moved = iCloud.movedTo(newest)
         guard newest != standing.zone else {
-            try engine.writeWithoutTelling { db in try moveCards(to: newest, in: db) }
+            try engine.writeWithoutTelling { db in try CardsZoneStanding.move(to: newest, in: db) }
             syncLogger.notice("The cards go on in the zone \(zones.cards(newest).name, privacy: .public)")
             return try sendWhatChanged(in: moved)
         }
-        let takesTheCopy = newest.isARestores && standing.zone.map { $0 < newest } == true
+        let takesTheCopy = newest.isMadeByARestore && standing.zone.map { $0 < newest } == true
         if takesTheCopy {
             try engine.saveCopyBeforeTakingICloudsCopy()
         }
@@ -391,7 +396,7 @@ public struct Sync: Sendable {
                 (toRemove.images, toRemove.sounds) = (gone.images, gone.sounds)
             }
             let kept = try forgetFilesInICloud(in: db)
-            try moveCards(to: newest, in: db)
+            try CardsZoneStanding.move(to: newest, in: db)
             guard takesTheCopy else {
                 try recordEverythingToSend(in: db)
                 return toRemove
@@ -453,7 +458,7 @@ public struct Sync: Sendable {
             try db.execute(sql: "DELETE FROM syncPending")
             try noteICloudIsFull(false, in: db)
             try saveSyncEngineState(nil, in: db)
-            try chooseTheCardsZoneAgain(forgettingTheLast: false, in: db)
+            try CardsZoneStanding.chooseAgain(in: db)
             return try forgetWhatICloudSaid(in: db)
         }
         engine.removeFilesNoCardUses(forgotten)

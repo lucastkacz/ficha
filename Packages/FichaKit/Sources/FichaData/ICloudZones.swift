@@ -127,13 +127,27 @@ enum CardsZone: Sendable, Hashable, Comparable {
         case new
     }
 
-    /// The zone a device makes at `time`, because of `reason`.
-    static func made(at time: Date, because reason: Reason) -> CardsZone {
-        .made(millisecondsSince1970: time.wholeMilliseconds, because: reason)
+    /// The zone a device makes at `time`, because of `reason`, which sorts
+    /// newer than `newest`, the newest it knows, if any: named after `time`,
+    /// or a millisecond after `newest` when the device's clock is behind the
+    /// time in its name, so that the other devices move to it, as they move
+    /// only to a newer zone.
+    static func made(at time: Date, after newest: CardsZone?, because reason: Reason) -> CardsZone {
+        let afterTheNewest = newest?.millisecondsSince1970.map { $0 + 1 } ?? .min
+        return .made(millisecondsSince1970: max(time.wholeMilliseconds, afterTheNewest), because: reason)
+    }
+
+    /// When a device made it, in milliseconds since 1970 by its clock, or
+    /// nil for the first, which no device made.
+    private var millisecondsSince1970: Int64? {
+        switch self {
+        case .first: nil
+        case .made(let milliseconds, _): milliseconds
+        }
     }
 
     /// Whether a device made it as it turned sync on after a restore.
-    var isARestores: Bool {
+    var isMadeByARestore: Bool {
         if case .made(_, .restore) = self { true } else { false }
     }
 
@@ -228,63 +242,99 @@ struct CardsZoneStanding: Equatable {
     }
 }
 
-/// Moves the device whose database is `db` into the cards' zone `zone`, done
-/// choosing, as `CardsZoneStanding.move(to:in:)` says.
-func moveCards(to zone: CardsZone, in db: Database) throws {
-    var standing = try CardsZoneStanding(in: db)
-    try standing.move(to: zone, in: db)
-}
-
 extension CardsZoneStanding {
     /// Moves the device whose database is `db` into the cards' zone `zone`,
-    /// done choosing, and keeps where it stands then: it forgets what iCloud
-    /// said of the records of the zone it leaves, which mean nothing in
-    /// another, and the records that waited for a row, which came from it.
-    fileprivate mutating func move(to zone: CardsZone, in db: Database) throws {
+    /// done choosing: it forgets what iCloud said of the records of the zone
+    /// it leaves, which mean nothing in another, and the records that waited
+    /// for a row, which came from it.
+    static func move(to zone: CardsZone, in db: Database) throws {
+        try change(in: db) { $0.move(to: zone) }
+        try forgetTheRecordsOfTheZoneLeft(in: db)
+    }
+
+    /// Makes a cards' zone of its own, which iCloud holds none of, as the
+    /// device whose database is `db` chose and the fetch it waited for ended
+    /// with none, at `time`, and moves into it, as `move(to:in:)` says.
+    /// Returns it.
+    static func makeAZoneWhereICloudHoldsNone(at time: Date, in db: Database) throws -> CardsZone {
+        let zone = try change(in: db) { standing in
+            let zone = CardsZone.made(at: time, after: standing.zone, because: .new)
+            standing.move(to: zone)
+            return zone
+        }
+        try forgetTheRecordsOfTheZoneLeft(in: db)
+        return zone
+    }
+
+    /// Makes a cards' zone of its own, at `time`, as sync turns on on the
+    /// device whose database is `db` while it's off after a restore, and
+    /// moves into it, as `move(to:in:)` says: the device sends every card
+    /// into it, and deletes the zone it leaves as its engine starts; the
+    /// other devices move to it, as `Sync` says. Turning sync on after a
+    /// purge has the device choose, as the purge left it, and after the user
+    /// turned it off, keeps its zone.
+    static func makeAZoneIfOffAfterARestore(at time: Date, in db: Database) throws {
+        guard try syncOffReason(in: db) == .restore else { return }
+        try change(in: db) { standing in
+            standing.left = standing.zone
+            standing.move(to: .made(at: time, after: standing.zone, because: .restore))
+        }
+        try forgetTheRecordsOfTheZoneLeft(in: db)
+    }
+
+    /// The zone the device whose database is `db` left as it turned sync on
+    /// after a restore, which it forgets, as its engine deletes it from
+    /// iCloud, or nil.
+    static func takeTheZoneLeft(in db: Database) throws -> CardsZone? {
+        try change(in: db) { standing in
+            defer { standing.left = nil }
+            return standing.left
+        }
+    }
+
+    /// Has the device whose database is `db` choose its cards' zone again, at
+    /// its next fetch, as its engine starts over in the account it last
+    /// synced in: after a purge, a sign-out or a sign-in as the user it last
+    /// synced as. It keeps the zone it last synced in, so that it takes the
+    /// copy of a restore made meanwhile.
+    static func chooseAgain(in db: Database) throws {
+        try change(in: db) { $0.chooses = true }
+    }
+
+    /// Has the device whose database is `db` choose its cards' zone again, at
+    /// its next fetch, as its engine starts over in another account than the
+    /// one it last synced in: it forgets the zone it last synced in and the
+    /// one it left, whose names mean nothing in this account, and joins as on
+    /// a first sync.
+    static func chooseAgainInAnotherAccount(in db: Database) throws {
+        try change(in: db) { standing in
+            standing.zone = nil
+            standing.left = nil
+            standing.chooses = true
+        }
+    }
+
+    /// Reads where the device whose database is `db` stands, changes it as
+    /// `change` does, keeps it, and returns what `change` returns.
+    private static func change<Result>(in db: Database, _ change: (inout Self) throws -> Result) throws -> Result {
+        var standing = try Self(in: db)
+        let result = try change(&standing)
+        try standing.keep(in: db)
+        return result
+    }
+
+    /// Moves into the cards' zone `zone`, done choosing.
+    private mutating func move(to zone: CardsZone) {
         self.zone = zone
         chooses = false
-        try keep(in: db)
+    }
+
+    /// Forgets, in `db`, what iCloud said of the records of the cards' zone a
+    /// device left, and the records that waited for a row, which came from it.
+    private static func forgetTheRecordsOfTheZoneLeft(in db: Database) throws {
         try db.execute(sql: "DELETE FROM syncRecord WHERE zone = ?", arguments: [ICloudZone.cards.name])
         try db.execute(sql: "DELETE FROM syncIncoming")
     }
-}
-
-/// The zone the device whose database is `db` left as it turned sync on
-/// after a restore, which it forgets, as its engine deletes it from iCloud,
-/// or nil.
-func takeTheCardsZoneLeft(in db: Database) throws -> CardsZone? {
-    var standing = try CardsZoneStanding(in: db)
-    guard let left = standing.left else {
-        return nil
-    }
-    standing.left = nil
-    try standing.keep(in: db)
-    return left
-}
-
-/// Has the device whose database is `db` choose its cards' zone again, at its
-/// next fetch, as its engine starts over: after an account change or a purge.
-/// It keeps the zone it last synced in, unless `forgettingIt` says it's
-/// another account's.
-func chooseTheCardsZoneAgain(forgettingTheLast forgettingIt: Bool, in db: Database) throws {
-    var standing = try CardsZoneStanding(in: db)
-    standing.chooses = true
-    if forgettingIt {
-        standing.zone = nil
-    }
-    try standing.keep(in: db)
-}
-
-/// Makes a cards' zone of the device's own, at `time`, as sync turns on while
-/// it's off after a restore: the device sends every card into it, and deletes
-/// the zone it leaves as its engine starts; the other devices move to it, as
-/// `Sync` says. Turning sync on after a purge has the device choose, as the
-/// purge left it, and after the user turned it off, keeps its zone.
-func makeACardsZoneIfOffAfterARestore(at time: Date, in db: Database) throws {
-    guard try syncOffReason(in: db) == .restore else { return }
-    var standing = try CardsZoneStanding(in: db)
-    standing.left = standing.zone
-    try standing.move(to: .made(at: time, because: .restore), in: db)
 }
 
 /// iCloud's engine as sync's rules reach it, in the two zones inside the

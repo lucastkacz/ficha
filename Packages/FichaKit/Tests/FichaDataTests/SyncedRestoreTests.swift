@@ -140,6 +140,28 @@ final class SyncedRestoreTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }
 
+    // The backup is from before the bird went up, so only the Mac knows
+    // iCloud holds it, which no fetch would tell it again: the bird's record
+    // doesn't change.
+    @Test(
+        "a restore keeps what the device knows iCloud holds of its images, so turning sync on sends none of them again")
+    func aRestoreKeepsWhatTheDeviceKnowsOfItsFilesInICloud() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try mac.engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let backup = try mac.engine.backUpNow(.defaults)
+        try await mac.syncNow()
+        #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 1)
+
+        try mac.engine.restore(backup.name)
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await mac.syncNow()
+
+        #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 1)
+        #expect(try mac.engine.keptImages() == [bird])
+    }
+
     // The Mac is the only device, so no other fetches the zone it leaves.
     @Test("turning sync on after a restore deletes the zone of the cards before it, with no other device to hear of it")
     func turningSyncOnAfterARestoreDeletesTheZoneItLeaves() async throws {
@@ -323,6 +345,33 @@ final class SyncedRestoreTests {
         let copy = try #require(otherMac.engine.copies().first { $0.kind == .beforeICloudsCopy })
         try otherMac.engine.restore(copy.name)
         #expect(try otherMac.engine.cards() == before)
+    }
+
+    // The iPad's clock is an hour ahead of the Mac's, and the iPad made the
+    // zone the devices sync in, named after its own clock.
+    @Test("a restore's zone is newer than the zone it leaves, even when the Mac's clock is behind that zone's time")
+    func aRestoresZoneIsNewerThanTheOneItLeaves() async throws {
+        let iPad = try Device(
+            Engine(location: .inMemory, time: ManualTimeSource(now: time.now + hours(1)), calendar: calendar),
+            syncingThrough: iCloud)
+        try iPad.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await iPad.syncNow()
+        try await mac.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        try iPad.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+        try await iPad.syncNow()
+        try await mac.syncNow()
+
+        try mac.engine.restore(backup.name)
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPad.syncNow()
+        try await mac.syncNow()
+
+        #expect(try iPad.engine.cards().map(\.front) == ["ubuntu"])
+        #expect(try iPad.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(cardsZonesInICloud().count == 1)
     }
 
     // `CKSyncEngine`'s documentation doesn't say whether an engine with no

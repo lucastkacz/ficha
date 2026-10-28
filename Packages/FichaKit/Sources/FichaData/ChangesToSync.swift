@@ -212,7 +212,7 @@ extension Engine {
         let now = time.now
         try write { db in
             guard try !isSyncOn(in: db) else { return }
-            try makeACardsZoneIfOffAfterARestore(at: now, in: db)
+            try CardsZoneStanding.makeAZoneIfOffAfterARestore(at: now, in: db)
             try switchSyncOn(in: db)
             try recordEverythingToSend(in: db)
         }
