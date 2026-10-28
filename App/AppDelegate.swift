@@ -12,6 +12,10 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud
 /// cards. It and `SecondDevice` are the only files of the app that load
 /// CloudKit, so `make render` leaves them out.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// The app, once it launched with its cards, for its App Intents, which
+    /// macOS runs in the app's process.
+    private(set) static weak var launched: AppDelegate?
+
     /// The open database, or why it couldn't be opened, which includes not
     /// reading the settings that decide a card's progress, and in Ficha Dev
     /// not knowing how far its debug menu moved its time.
@@ -46,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// What shows the review panel on its own, once the app launched with its
     /// cards.
     private var appearances: AppearanceLoop?
+    /// What the Mac tells Ficha, once the app launched with its cards.
+    private var mac: SystemMacSignals?
     /// This Mac's sync through iCloud, once the app launched with its cards,
     /// when it syncs (`AppVariant.syncsThroughICloud`).
     private var iCloud: CloudKitSync?
@@ -75,14 +81,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cardsWindow = window
     }
 
-    /// Opens the Diagnostics window: what each detector sees right now, and
-    /// the latest appearances. When it's open, it comes forward.
+    /// Opens the Diagnostics window: what each detector sees right now,
+    /// whether a Focus holds appearances back, and the latest appearances.
+    /// When it's open, it comes forward.
     func openDiagnostics() {
-        guard let model else { return }
+        guard let model, let mac else { return }
         open(&diagnosticsWindow) {
             AppWindow(
                 title: String(localized: "Diagnostics", comment: "The Diagnostics window's title."),
-                content: DiagnosticsView(model: model))
+                content: DiagnosticsView(model: model, mac: mac))
         }
     }
 
@@ -139,14 +146,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appearances?.check()
     }
 
+    /// Holds appearances back, or stops, as Ficha's filter in a Focus says
+    /// when macOS runs it as the Focus turns on or off.
+    func focusChanged(holdsBack: Bool) {
+        mac?.focusChanged(holdsBack: holdsBack)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         switch opening {
         case .success(let model):
             let mac = SystemMacSignals { model.now }
             let panel = ReviewPanel(model: model, mac: mac)
             let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
+            self.mac = mac
             self.panel = panel
             self.appearances = appearances
+            // Before the alert at first launch, which an App Intent can run
+            // during.
+            Self.launched = self
             appearances.start()
             model.startBackups()
             startSyncing(model)

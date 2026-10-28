@@ -15,8 +15,8 @@ public protocol DeviceSignals {
     /// How long it's been since Lucas last pressed a key, clicked, moved the
     /// pointer or scrolled, or nil when the device doesn't say.
     var idleTime: Duration? { get }
-    /// What holds appearances back now: a meeting, a video or a full-screen
-    /// app, or none of them.
+    /// What holds appearances back now: a meeting, a video, a full-screen
+    /// app or a Focus, or none of them.
     var suppressions: Set<Suppression> { get }
     /// When each suppression last ended, by the engine's time. One that
     /// hasn't ended since Ficha started has none.

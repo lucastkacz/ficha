@@ -10,11 +10,11 @@ The cards in these pictures are samples, in Spanish. Yours can be in any languag
 
 ## A card every so often
 
-You don't sit down to study. When some of your cards are due, or a new one is waiting for you, a small panel shows up near the top of the screen with up to five cards: the ones due, and a new one when there's room. It only comes during the day, at least half an hour after the last one, and never during a meeting, a video or a full-screen app.
+You don't sit down to study. When some of your cards are due, or a new one is waiting for you, a small panel shows up near the top of the screen with up to five cards: the ones due, and a new one when there's room. It only comes during the day, at least half an hour after the last one, and never during a meeting, a video or a full-screen app. Add Ficha's filter to a Focus in System Settings, turn on "Hold back appearances", and it waits while that Focus is on too.
 
 It doesn't catch what you're typing: it waits until you stop for a moment, or until you click it. If now isn't a good time, press Esc, and the cards wait for the next one. Left alone, it closes after ten minutes.
 
-You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due. The menu also shows how many cards you've learned and how many wait in the inbox.
+You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due, or from the Shortcuts app, Spotlight or a keyboard shortcut you set there. The menu also shows how many cards you've learned and how many wait in the inbox.
 
 <p align="center">
   <img src="docs/images/menu.png" width="364" alt="Ficha's menu, with the items Capture…, Review now (3 due), a line saying 8 cards learned · 2 in the inbox, Diagnostics, Settings… and Quit.">

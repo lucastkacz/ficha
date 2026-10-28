@@ -121,7 +121,10 @@ struct DebugMenu: View {
         case .nothingDue:
             "No card is due, and no new card can come in today."
         case .suppressed(let suppression):
-            "\(heldBackBy(suppression)) holds appearances back: Diagnostics says what each detector sees."
+            """
+            \(heldBackBy(suppression)) holds appearances back: Diagnostics says what each detector and the Focus \
+            filter see.
+            """
         case .tooSoonAfterSuppression(let until):
             """
             A suppression ended less than \(inWords(settings.waitAfterSuppression)) ago: an appearance can come \
@@ -136,6 +139,7 @@ struct DebugMenu: View {
         case .meeting: "A meeting (the camera or the microphone in use)"
         case .video: "A video (an app keeping the display awake)"
         case .fullScreen: "A full-screen app"
+        case .focus: "A Focus with Ficha's filter on"
         }
     }
 
