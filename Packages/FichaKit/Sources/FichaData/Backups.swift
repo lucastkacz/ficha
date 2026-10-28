@@ -61,7 +61,12 @@ extension Engine {
     /// keeps. A copy that a newer version of Ficha migrated is refused, and
     /// nothing changes. One that an older version left is migrated once it's
     /// restored, with a copy before an update, as when the engine opens the
-    /// database.
+    /// database. Sync turns off, and the device's own sync stays in place of
+    /// the copy's, as `SyncKeptThroughARestore` says: the copy comes in
+    /// through a database in memory, where it's migrated and takes the
+    /// device's sync, so that no engine on the database, such as the app's
+    /// sync running beside it, ever reads what the copy waited to send, nor
+    /// takes it for a stretch of sync being on.
     @discardableResult
     public func restore(_ name: String) throws(EngineError) -> Restoration {
         guard let dataFolder, let backupsFolder else {
@@ -86,12 +91,17 @@ extension Engine {
                 throw .copyMigratedByNewerVersion(name)
             }
             let copyBeforeRestore = try saveCopy(.beforeRestore)
-            let replaced = try read(FilesReferred.init(in:))
+            let (replaced, sync) = try read { db in (try FilesReferred(in: db), try SyncKeptThroughARestore(in: db)) }
             try bringBackFiles(
                 try reportingStorageErrors { try source.read(FilesReferred.init(in:)) }, from: backupsFolder,
                 into: dataFolder)
-            try reportingStorageErrors { try source.backup(to: database) }
-            try migrate(database, savingACopyIn: backupsFolder, at: time.now)
+            let restored = try reportingStorageErrors { try DatabaseQueue() }
+            try reportingStorageErrors { try source.backup(to: restored) }
+            try migrate(restored, savingACopyIn: backupsFolder, at: time.now)
+            try reportingStorageErrors {
+                try restored.write(sync.keep(in:))
+                try restored.backup(to: database)
+            }
             return (Restoration(restored: copy, copyBeforeRestore: copyBeforeRestore), replaced)
         }
         removeFilesNoCardUses(images: replaced.images, sounds: replaced.sounds)

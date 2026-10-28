@@ -6,11 +6,12 @@ internal import GRDB
 // menu read it: the switch, and why it's off; whether the device is signed
 // into iCloud; whether iCloud is full; and when the device last synced. The
 // device keeps it in its database, which never syncs it (`Schema`'s "v24 how
-// sync stands"), so it holds across launches, and this file is the one that
-// writes it. A change to the switch, the account or a full iCloud tells every
-// engine on the database, as a change to the cards does, so the app's sync
-// and the menu follow it; when the device last synced doesn't, since it
-// changes at every sync.
+// sync stands"), so it holds across launches, and across a restore, which
+// keeps the device's own and turns the switch off (`SyncedRestore.swift`).
+// This file is the one that writes it. A change to the switch, the account or
+// a full iCloud tells every engine on the database, as a change to the cards
+// does, so the app's sync and the menu follow it; when the device last synced
+// doesn't, since it changes at every sync.
 
 /// How sync stands on this device.
 public struct SyncStatus: Sendable, Equatable {
@@ -43,6 +44,11 @@ public enum SyncOffReason: String, Sendable, Equatable {
     /// off with the cards kept, so that nothing goes back up until the user
     /// says so: turning it on sends everything.
     case purge
+    /// The user restored a backup, or another copy Ficha saved, which turns
+    /// sync off, so that the next sync doesn't bring back what the restore
+    /// undid: turning it on replaces the cards iCloud holds with this
+    /// device's, which the other devices then take in place of theirs.
+    case restore
 }
 
 /// A stretch of time with sync on, from when Settings' switch turns on until
@@ -165,6 +171,47 @@ func switchSyncOff(because reason: SyncOffReason, in db: Database) throws {
         sql: "UPDATE syncDevice SET isOn = 0, offBecause = ?, timesTurnedOff = timesTurnedOff + 1 WHERE isOn",
         arguments: [reason.rawValue])
     try db.execute(sql: "DELETE FROM syncPending WHERE NOT isDeletion")
+}
+
+/// How sync stands on the device, as a restore keeps it in place of the
+/// copy's own, which the copy brought back as it stood when it was saved.
+struct SyncStandingKept {
+    let wasOn: Bool
+    let hasICloudAccount: Bool?
+    let iCloudIsFull: Bool
+    let lastSynced: Date?
+    let timesTurnedOff: Int
+
+    /// How sync stands on the device whose database is `db`, before the
+    /// restore replaces it.
+    init(in db: Database) throws {
+        guard
+            let device = try Row.fetchOne(
+                db, sql: "SELECT isOn, hasICloudAccount, iCloudIsFull, lastSyncedAt, timesTurnedOff FROM syncDevice")
+        else {
+            throw unreadable("The database doesn't keep how sync stands on this device")
+        }
+        wasOn = try device.decode(forColumn: "isOn")
+        hasICloudAccount = try device.decode(forColumn: "hasICloudAccount")
+        iCloudIsFull = try device.decode(forColumn: "iCloudIsFull")
+        lastSynced = try device.decode(forColumn: "lastSyncedAt")
+        timesTurnedOff = try device.decode(forColumn: "timesTurnedOff")
+    }
+
+    /// Keeps it in `db`, a restored copy, with the switch off because of the
+    /// restore, which ends the stretch of sync being on, if it was, and no
+    /// state of iCloud's engine: the next engine starts from nothing.
+    func keep(in db: Database) throws {
+        try db.execute(
+            sql: """
+                UPDATE syncDevice SET isOn = 0, offBecause = ?, engineState = NULL, hasICloudAccount = ?,
+                    iCloudIsFull = ?, lastSyncedAt = ?, timesTurnedOff = ?
+                """,
+            arguments: [
+                SyncOffReason.restore.rawValue, hasICloudAccount, iCloudIsFull, lastSynced,
+                timesTurnedOff + (wasOn ? 1 : 0),
+            ])
+    }
 }
 
 /// Why the switch is off, as the database keeps it beside whether it's on,
