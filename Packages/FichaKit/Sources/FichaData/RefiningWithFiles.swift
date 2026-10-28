@@ -410,7 +410,7 @@ private struct FilesComingIn {
 /// Checks that there's a file at `url` Ficha can read, in the Downloads
 /// folder when the engine takes files from there alone, or says why not.
 private func checkFile(at url: URL, with engine: Engine) throws(EngineError) {
-    if let downloads = engine.refineFilesFolder, !url.isInside(downloads) {
+    if let downloads = engine.refineFilesOnlyIn, !url.isInside(downloads) {
         throw .fileNotInDownloads(url.lastPathComponent)
     }
     let path = url.path(percentEncoded: false)

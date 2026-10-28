@@ -74,7 +74,7 @@ XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'pla
 # Ficha Dev signs with Lucas's paid team, whose ID git ignores, in
 # iPhone/Local.xcconfig, which Signing.xcconfig includes. Without it, as in CI
 # and in a new worktree, Ficha Dev's builds go unsigned: they check the code,
-# but don't run in their sandbox.
+# but don't run in their sandbox. Building unsigned without it is our own.
 TEAM := $(shell grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig && echo yes)
 UNLESS_TEAM := $(if $(TEAM),,CODE_SIGNING_ALLOWED=NO)
 

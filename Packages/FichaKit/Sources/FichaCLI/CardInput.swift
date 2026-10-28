@@ -20,7 +20,8 @@ let cardFields = """
 let fileFields = """
     frontImage, backImage, frontSound and backSound put an image or a sound on a side: the path of a file on your \
     Mac, such as "~/Downloads/coloratura.mp3", or the name of one Ficha holds, as `ficha cards` prints it. Ficha \
-    shrinks an image, and converts a sound, a video's too, as it comes in.
+    shrinks an image, and converts a sound, a video's too, as it comes in. In its sandbox, as Ficha Dev's is, the \
+    CLI reads files from your Downloads folder alone.
     """
 
 /// What `ficha approve-expansion` and `ficha fix` do with a side's image or

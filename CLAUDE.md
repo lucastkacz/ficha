@@ -61,7 +61,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 - `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards.
 - `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
-- `iPhone/`: the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, signs with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores: a worktree needs a copy for a signed build.
+- `iPhone/`: the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, signs with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
@@ -84,6 +84,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - In a worktree, run one plain command per Bash call, with literal absolute paths, and write files with Write or Edit: the harness refuses what it can't verify stays in the worktree, such as a heredoc beside other commands or `git -C` into the main folder.
 - Skills, hooks, settings and `CLAUDE.md` load when a session starts, from the folder it started in, also when it then works in a worktree, and its subagents get that `CLAUDE.md` too. So a change to any of them can be checked in a new session once the main folder's `main` has it.
 - Xcode builds are heavy: one at a time. Parallel agents run `swift test` while they work and the full `make check` once at the end.
+- Ficha Dev and its `ficha` run in their sandboxes. A worktree builds them signed only with `iPhone/Local.xcconfig` copied in from the main folder, and agents run that `ficha` with `FICHA_DEV_SCRATCH=<name>`, never on Ficha Dev's cards: "Agents' runs of Ficha Dev's `ficha`" in `docs/development.md` says how.
 - Search the repo with `git grep -n <text> -- '<pathspec>'`, like `-- '*.swift'`: it skips `.build/` and everything git ignores, and the quotes keep zsh from expanding the pathspec. It reads only the files git tracks: add `--untracked` for new ones. For `\b`, pass `-P`: with `-E` it matches nothing, silently. Every option goes before `<text>`, as `-n` does: git reads one after it as a revision.
 
 ## Agent skills

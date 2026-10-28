@@ -136,9 +136,10 @@ targets:
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   # The `ficha` CLI (ADR 0008): its commands live in FichaKit, and this tool
-  # only picks whose cards they open. It's built with each app, in the same
-  # configuration, and compiles `AppVariant` too, so the CLI inside Ficha Dev
-  # opens Ficha Dev's cards, and the one inside the real Ficha opens Lucas's.
+  # only picks whose cards they open, and, in its sandbox, takes files from
+  # Downloads alone. It's built with each app, in the same configuration, and
+  # compiles `AppVariant` too, so the CLI inside Ficha Dev opens Ficha Dev's
+  # cards, and the one inside the real Ficha opens Lucas's.
   CLI:
     type: tool
     platform: macOS
@@ -179,8 +180,8 @@ targets:
   # Ficha on the iPhone (#97), with files of its own in iPhone/. Stage 1
   # builds it only as Ficha Dev, in the Debug configuration, which its code
   # checks: the real Ficha on the iPhone comes with stage 2. It compiles
-  # `AppVariant` too, for the same app name and data folder as the Mac's, in
-  # its own Application Support.
+  # `AppVariant` too, for the same app name as the Mac's, and a data folder of
+  # the same name in its own Application Support.
   iPhone:
     type: application
     platform: iOS

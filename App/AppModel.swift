@@ -88,7 +88,9 @@ final class AppModel {
                 readPrioritizeMenu()
                 // So a check can tell, from the log, how soon the menu shows
                 // what the CLI changed.
-                logger.debug("Counted again after a change: \(self.progress?.inInbox ?? -1) in the inbox")
+                if let progress {
+                    logger.debug("Counted again after a change: \(progress.inInbox) in the inbox")
+                }
             }
         }
         // Cards come due as time passes, without the database changing.

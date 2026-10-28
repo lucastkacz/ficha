@@ -100,15 +100,19 @@ enum AppVariant {
     }
 }
 
-/// Why Ficha Dev can't find its data folder on the Mac. Like Ficha Dev's
-/// debug tools, each message is in English and verbatim, never translated
-/// (ADR 0009).
+/// Why Ficha Dev can't find its data folder on the Mac. Only Ficha Dev, the
+/// build for development, ever shows these, and they speak of how it's built
+/// and tried, so like its debug tools' messages, each is in English and
+/// verbatim, never translated (ADR 0009).
 enum DataFolderError: Error, LocalizedError {
     /// The build isn't signed with Ficha Dev's App Group, as one built
     /// without the team's ID isn't.
     case notSignedWithItsGroup
+    /// macOS gave no folder for the App Group with this name, which the
+    /// build is signed with.
+    case noGroupFolder(String)
     /// `FICHA_DEV_SCRATCH` holds this, which can't name a folder.
-    case scratchName(String)
+    case unusableScratchName(String)
 
     var errorDescription: String? {
         switch self {
@@ -117,7 +121,9 @@ enum DataFolderError: Error, LocalizedError {
             This Ficha Dev isn't signed with its App Group, whose folder holds its cards. Build it with make run, \
             with your team's ID in iPhone/Local.xcconfig, as docs/development.md says.
             """
-        case .scratchName(let name):
+        case .noGroupFolder(let group):
+            "macOS gave Ficha Dev no folder for its App Group, \(group). Try again, and if it keeps happening, report it."
+        case .unusableScratchName(let name):
             """
             FICHA_DEV_SCRATCH is “\(name)”, which can't name a scratch folder: use letters, digits, - and _ alone, \
             as in FICHA_DEV_SCRATCH=agent-304.
@@ -141,10 +147,11 @@ enum DataFolderError: Error, LocalizedError {
     /// after the team's ID that macOS puts before it, is `name`.
     private func signedGroupFolder(named name: String) throws(DataFolderError) -> URL {
         let groups = signedEntitlement("com.apple.security.application-groups") as? [String] ?? []
-        guard let group = groups.first(where: { $0.hasSuffix(".\(name)") }),
-            let folder = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
-        else {
+        guard let group = groups.first(where: { $0.hasSuffix(".\(name)") }) else {
             throw .notSignedWithItsGroup
+        }
+        guard let folder = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {
+            throw .noGroupFolder(group)
         }
         return folder
     }
@@ -156,7 +163,7 @@ enum DataFolderError: Error, LocalizedError {
     private func scratchFolder(named name: String, in group: URL) throws(DataFolderError) -> URL {
         guard !name.isEmpty, name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "-_".contains($0)) })
         else {
-            throw .scratchName(name)
+            throw .unusableScratchName(name)
         }
         return group.appending(path: "Scratch/\(name)", directoryHint: .isDirectory)
     }

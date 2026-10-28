@@ -35,7 +35,7 @@ public struct Engine: Sendable {
     /// The Downloads folder, when a refine session's files may come from
     /// there alone, as in the `ficha` CLI's sandbox (ADR 0018), or nil when
     /// they may come from anywhere.
-    let refineFilesFolder: URL?
+    let refineFilesOnlyIn: URL?
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
@@ -85,7 +85,7 @@ public struct Engine: Sendable {
         }
         self.time = time
         self.calendar = calendar
-        refineFilesFolder = downloads
+        refineFilesOnlyIn = downloads
     }
 
     /// Every change to the database from now on, by this engine or by another
