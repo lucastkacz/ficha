@@ -119,7 +119,7 @@ struct BackupsTab: View {
         twoLineRow {
             Text("Folder", comment: "Settings, under Backups: the folder the copies are in.")
         } detail: {
-            Text(verbatim: (folder.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath)
+            Text(verbatim: folder.path(abbreviatingHome: Self.homeFolder))
                 .textSelection(.enabled)
         } control: {
             Button {
@@ -128,6 +128,18 @@ struct BackupsTab: View {
                 Text("Show in Finder", comment: "Settings, under Backups: shows the Backups folder in Finder.")
             }
         }
+    }
+
+    /// The user's own home folder, `/Users/<name>`, from the user database
+    /// (`getpwuid`), which the folder's path starts with a tilde for: in the
+    /// sandbox, Foundation's home folder is the app's container, which the
+    /// App Group's folder isn't in (#305). Foundation's, as before, when the
+    /// user database doesn't say.
+    private static var homeFolder: String {
+        guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else {
+            return NSHomeDirectory()
+        }
+        return String(cString: directory)
     }
 
     /// When the last backup was saved, or why the last attempt failed, with
