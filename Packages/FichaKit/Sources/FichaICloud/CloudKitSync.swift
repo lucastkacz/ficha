@@ -81,16 +81,40 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// whether the device is signed into iCloud, now and whenever the account
     /// changes; it starts, if sync is on; and then, each time the device's
     /// database changes, it follows the switch, and hands the engine the
-    /// changes that wait. A second call returns at once.
+    /// changes that wait. While iCloud is full, it tries again now and then
+    /// too. A second call returns at once.
     public func run() async {
         guard !isRunning else { return }
         isRunning = true
         async let followingTheAccount: Void = followTheAccount()
+        async let tryingAgainWhileFull: Void = tryAgainNowAndThenWhileICloudIsFull()
         await followTheSwitch()
         for await _ in changes {
             await followTheSwitch()
         }
-        await followingTheAccount
+        _ = await (followingTheAccount, tryingAgainWhileFull)
+    }
+
+    /// How long the device waits between its tries of what waits while
+    /// iCloud is full: our own guess, long enough not to send a large file
+    /// again and again into a full iCloud, short enough that the Sync tab
+    /// says there's room soon after the user made some.
+    private static let whileICloudIsFull = Duration.seconds(15 * 60)
+
+    /// Hands the engine again what waits, every `whileICloudIsFull`, while
+    /// iCloud is full, since nothing tells the device when room comes, until
+    /// the task that runs it is cancelled (`Sync.tryAgainInAFullICloud(with:)`).
+    private func tryAgainNowAndThenWhileICloudIsFull() async {
+        while (try? await Task.sleep(for: Self.whileICloudIsFull, tolerance: .seconds(60))) != nil {
+            guard let syncEngine else { continue }
+            do {
+                try sync.tryAgainInAFullICloud(with: CloudKitSyncEngine(engine: syncEngine, device: self))
+            } catch {
+                iCloudLogger.error(
+                    "\(self.device, privacy: .public) couldn't try again what waits in a full iCloud: \(String(describing: error), privacy: .public)"
+                )
+            }
+        }
     }
 
     /// Keeps whether the device is signed into iCloud, now and each time the

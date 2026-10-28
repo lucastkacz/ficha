@@ -308,15 +308,28 @@ final class SyncEventsTests {
         #expect(try iPhone.engine.card(fronted: "¿Cómo suena un la?").backSound == song)
         #expect(try iPhone.engine.keptSounds().isEmpty)
 
-        // Room comes without a change on the Mac: its next fetch sends what
-        // waited.
+        // Room comes without a change on the Mac, which tries again now and
+        // then while iCloud is full.
         iCloud.makeRoom()
-        try await mac.iCloud.fetchChanges()
-        try await mac.iCloud.sendChanges()
+        try await mac.tryAgainWhileICloudIsFull()
         try await iPhone.syncNow()
 
         #expect(try !mac.engine.syncStatus().iCloudIsFull)
         #expect(try iPhone.engine.sound(song) == mac.engine.sound(song))
+    }
+
+    // The new card doesn't fit. A database change wakes the app's sync,
+    // which hands what waits to iCloud's engine, which sends it on its own.
+    @Test("a change that didn't fit in a full iCloud waits without the app sending it again and again")
+    func aFullICloudSendsAChangeOncePerTry() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        iCloud.fillUp()
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        #expect(try mac.engine.syncStatus().iCloudIsFull)
+
+        #expect(try await mac.followTheDatabase() == 1)
     }
 
     // A zone doesn't fit either, so nothing does.
@@ -332,7 +345,7 @@ final class SyncEventsTests {
         #expect(full.records.isEmpty)
 
         full.makeRoom()
-        try await macThere.syncNow()
+        try await macThere.tryAgainWhileICloudIsFull()
 
         #expect(try !mac.engine.syncStatus().iCloudIsFull)
         #expect(try await aFreshDevice(in: full).engine.cards().map(\.front) == ["ubuntu"])

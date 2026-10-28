@@ -176,14 +176,23 @@ extension Engine {
     /// their changes to send: for what comes from iCloud, which mustn't go
     /// back. Nor does a row they delete wait to be sent any more, nor keep
     /// when its fields changed. When each field they change last changed is
-    /// for them to write.
-    func writeWithoutRecording<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
-        try write { db in
+    /// for them to write. It tells the other engines the database changed,
+    /// unless `tellingTheOtherEngines` says not to, for a write that keeps
+    /// only what sync keeps for itself, which would wake the app's sync to
+    /// send again what waits.
+    func writeWithoutRecording<Value>(
+        tellingTheOtherEngines: Bool = true, _ updates: (Database) throws -> Value
+    ) throws(EngineError) -> Value {
+        let value = try writeWithoutTelling { db in
             try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
             let value = try updates(db)
             try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
             return value
         }
+        if tellingTheOtherEngines {
+            databaseChanges.post()
+        }
+        return value
     }
 
     /// Whether sync is on, as Settings' switch says: it is until the user

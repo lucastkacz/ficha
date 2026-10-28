@@ -2,6 +2,7 @@ import FichaCore
 import Foundation
 import Synchronization
 import Testing
+import notify
 
 // For the interface to iCloud's engine, which the fake implements, and for
 // what waits to be sent.
@@ -666,6 +667,33 @@ extension ICloudPendingDatabaseChange {
     }
 }
 
+/// The changes an engine's database tells of, as the app's sync hears them,
+/// which a test asks for when it likes: notify(3) says a check after a post
+/// sees it, and a token not made by `notify_register_check` gives no false
+/// ones.
+private final class ChangesHeard {
+    private var token: Int32 = 0
+
+    /// Hears the changes `engine`'s database tells of from now on.
+    init(by engine: Engine) {
+        let status = notify_register_dispatch(engine.databaseChanges.name, &token, .global()) { _ in }
+        #expect(status == NOTIFY_STATUS_OK)
+        // The first check of a token always says yes.
+        _ = sinceLastAsked()
+    }
+
+    deinit {
+        notify_cancel(token)
+    }
+
+    /// Whether the database told of a change since it was last asked.
+    func sinceLastAsked() -> Bool {
+        var check: Int32 = 0
+        notify_check(token, &check)
+        return check != 0
+    }
+}
+
 /// One of the user's devices in a test: an engine, in memory or on a data
 /// folder, whose sync reaches the fake iCloud as the app's does, through the
 /// account the device is signed into.
@@ -707,6 +735,27 @@ final class Device {
     /// own once the app hands it a change.
     func send() async throws {
         try sync.sendWhatChanged(to: iCloud)
+        try await iCloud.sendChanges()
+    }
+
+    /// Sends what waits as the app does when it hears the database changed,
+    /// and again each time sending tells the database changed, as the app
+    /// would hear it, up to ten times. Returns how many times it sent.
+    func followTheDatabase() async throws -> Int {
+        let changes = ChangesHeard(by: engine)
+        for times in 1...10 {
+            try await send()
+            guard changes.sinceLastAsked() else {
+                return times
+            }
+        }
+        return 10
+    }
+
+    /// Tries again what waits while iCloud is full, as the app does now and
+    /// then, and sends it, as the app's engine does on its own.
+    func tryAgainWhileICloudIsFull() async throws {
+        try sync.tryAgainInAFullICloud(with: iCloud)
         try await iCloud.sendChanges()
     }
 

@@ -75,7 +75,7 @@ public struct Sync: Sendable {
     public func start(with iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard try engine.syncIsOn() else { return }
         if try engine.savedSyncEngineState() == nil {
-            iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
+            iCloud.askForBothZones()
         }
         try sendWhatChanged(to: iCloud)
     }
@@ -84,15 +84,28 @@ public struct Sync: Sendable {
     /// changes, whichever process changed it, and then the images and sounds
     /// its cards use that iCloud lacks, while sync is on. One it already
     /// holds stays as one. While iCloud is full, it asks for the zones again
-    /// first, in case one didn't fit, since this is how what waits goes once
-    /// there's room.
+    /// first, in case one didn't fit: what didn't fit goes again at each
+    /// change to the database, and as `tryAgainInAFullICloud(with:)` says.
     public func sendWhatChanged(to iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard try engine.syncIsOn() else { return }
         if try engine.iCloudIsFull() {
-            iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
+            iCloud.askForBothZones()
         }
         iCloud.add(pendingRecordZoneChanges: try engine.changesToSend().map(\.pendingRecordZoneChange))
         try sendFiles(to: iCloud)
+    }
+
+    /// Hands `iCloud` again what waits, its zones first, while iCloud is
+    /// full, in case there's room now; while it isn't, nothing. Nothing tells
+    /// the device when room comes, and iCloud's engine doesn't try again on
+    /// its own a change that didn't fit: `quotaExceeded` isn't among the
+    /// errors `CKSyncEngine`'s documentation says it retries. So the app
+    /// calls it now and then while iCloud is full, as each fetch's end does,
+    /// beside each change to the database (`sendWhatChanged(to:)`) and each
+    /// launch (`start(with:)`).
+    public func tryAgainInAFullICloud(with iCloud: some ICloudSyncEngine) throws(EngineError) {
+        guard try engine.iCloudIsFull() else { return }
+        try sendWhatChanged(to: iCloud)
     }
 
     /// The record `iCloud` saves for `id`, as its row is now, with what
@@ -171,11 +184,7 @@ public struct Sync: Sendable {
             try takeAccountChange(change, with: iCloud)
         case .didFetchChanges:
             try finishFetchingFiles(with: iCloud)
-            // While iCloud is full, each fetch tries again what waits, in
-            // case the user made room meanwhile.
-            if try engine.iCloudIsFull() {
-                try sendWhatChanged(to: iCloud)
-            }
+            try tryAgainInAFullICloud(with: iCloud)
         }
     }
 
@@ -201,7 +210,7 @@ public struct Sync: Sendable {
         }
         engine.removeFilesNoCardUses(images: forgotten.images, sounds: forgotten.sounds)
         guard change != .signOut else { return }
-        iCloud.add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
+        iCloud.askForBothZones()
         try sendWhatChanged(to: iCloud)
     }
 
@@ -302,7 +311,14 @@ public struct Sync: Sendable {
         guard !toRetry.isEmpty else {
             return
         }
-        let retries = try engine.writeWithoutRecording { db in
+        // Only a record iCloud holds as it changed since, which the device
+        // takes, is news to the other engines: what sync keeps of the others
+        // would only wake the app to send them again, as again as iCloud is
+        // full.
+        let takesICloudsRecords = toRetry.contains {
+            if case .serverRecordChanged = $0.error { true } else { false }
+        }
+        let retries = try engine.writeWithoutRecording(tellingTheOtherEngines: takesICloudsRecords) { db in
             try toRetry.map { failure in try retry(failure, in: db) }
         }
         iCloud.add(pendingDatabaseChanges: retries.compactMap(\.zone))
@@ -423,6 +439,14 @@ extension ICloudEvent {
         guard case .sentRecordZoneChanges(let sent) = self else { return false }
         return sent.failedRecordSaves.contains { $0.error == .userDeletedZone }
             || sent.failedRecordDeletes.values.contains(.userDeletedZone)
+    }
+}
+
+extension ICloudSyncEngine {
+    /// Asks iCloud for the cards' zone and the files', which it saves unless
+    /// it holds them already.
+    fileprivate func askForBothZones() {
+        add(pendingDatabaseChanges: [.saveZone(.cards), .saveZone(.files)])
     }
 }
 
