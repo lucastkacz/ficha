@@ -195,7 +195,9 @@ extension ICloudEvent {
             self = .accountChange(try AccountChange(change.changeType))
         case .fetchedDatabaseChanges(let changes):
             self = .fetchedDatabaseChanges(
-                FetchedDatabaseChanges(deletions: try changes.deletions.map(ZoneDeletion.init)))
+                FetchedDatabaseChanges(
+                    modifications: changes.modifications.map { ICloudZone(name: $0.zoneID.zoneName) },
+                    deletions: try changes.deletions.map(ZoneDeletion.init)))
         case .fetchedRecordZoneChanges(let changes):
             self = .fetchedRecordZoneChanges(
                 FetchedRecordZoneChanges(

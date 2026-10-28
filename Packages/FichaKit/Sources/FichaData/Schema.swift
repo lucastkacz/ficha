@@ -795,6 +795,22 @@ enum Schema {
                         """)
             }
         }
+        migrator.registerMigration("v25 the cards' zone in iCloud") { db in
+            // Which of the zones the cards have had in iCloud the device
+            // syncs in, which never syncs (`CardsZone`): NULL for the first,
+            // and for another, why a device started it and when, as the end
+            // of its name says, such as "restore.1761650000000". Every device
+            // syncs in the first until a restore or a purge starts another.
+            // And when the device began syncing in it: NULL for one that did
+            // before this migration, as every device that synced then did, or
+            // that hasn't started yet. "restore" joins the reasons why the
+            // switch is off. Adding columns keeps the triggers that read
+            // whether sync is on.
+            try db.alter(table: "syncDevice") { table in
+                table.add(column: "cardsZone", .text)
+                table.add(column: "cardsZoneSince", .datetime)
+            }
+        }
         return migrator
     }()
 }

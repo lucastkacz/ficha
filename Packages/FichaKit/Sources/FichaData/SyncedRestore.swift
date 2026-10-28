@@ -11,7 +11,10 @@ internal import GRDB
 // the copy held. Of what the device knows iCloud holds, it keeps the images
 // and sounds alone, which a restore leaves alone in iCloud (`SyncedFiles.swift`),
 // so that turning sync on sends only those iCloud lacks. Turning it on then
-// replaces the cards iCloud holds with this device's.
+// replaces the cards iCloud holds with this device's: the device sends them
+// into a cards' zone of its own, and each other device that synced since
+// before takes them in place of its own (`Sync`), dropping every row that
+// syncs first, as `dropEverythingThatSyncs(in:)` says.
 
 /// What a device keeps of its sync through a restore, in place of the
 /// restored copy's: how sync stands, with the switch turned off, and what it
@@ -44,4 +47,27 @@ struct SyncKeptThroughARestore {
             try FichaData.keep(file.systemFields, of: ICloudRecordID(name: file.name, zone: .files), in: db)
         }
     }
+}
+
+/// Drops every row that syncs, in a write that records nothing to send, as a
+/// device takes a restore's cards in place of its own: the cards, their
+/// review log, the captures and the tags, with what waited to be sent and
+/// when each field last changed. The settings that decide progress stay, as
+/// their row is never deleted, but with no time of change, so that the
+/// restore's take their place as they come. Returns the images and sounds
+/// the rows used, for the device to remove those iCloud doesn't hold: those
+/// it holds stay, for the restore's cards that use them.
+func dropEverythingThatSyncs(in db: Database) throws -> FilesReferred {
+    let referred = try FilesReferred(in: db)
+    try db.execute(
+        sql: """
+            DELETE FROM reviewLog;
+            UPDATE capture SET expandsCardId = NULL, followsUpCardId = NULL;
+            DELETE FROM card;
+            DELETE FROM capture;
+            DELETE FROM tag;
+            DELETE FROM syncFieldTime;
+            DELETE FROM syncPending;
+            """)
+    return referred
 }

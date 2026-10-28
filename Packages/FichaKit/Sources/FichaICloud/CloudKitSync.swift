@@ -43,6 +43,8 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     private static let containerIdentifier = "iCloud.com.lucastkacz.ficha"
 
     private let sync: Sync
+    /// The zones the device syncs in, by their names in iCloud.
+    public nonisolated let zones: ICloudZones
     /// Each change to the device's database, whichever process made it,
     /// heard from the moment the sync is made, so that none falls in between.
     private let changes: AsyncStream<Void>
@@ -69,10 +71,11 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// Whether it runs, so that it runs once.
     private var isRunning = false
 
-    /// The sync of the device whose database `engine` opens, named `device`
-    /// in the log.
-    public init(engine: Engine, device: String) {
-        sync = Sync(engine: engine)
+    /// The sync of the device whose database `engine` opens, in `zones`,
+    /// named `device` in the log.
+    public init(engine: Engine, zones: ICloudZones, device: String) {
+        sync = Sync(engine: engine, zones: zones)
+        self.zones = zones
         changes = engine.changes()
         self.device = device
     }

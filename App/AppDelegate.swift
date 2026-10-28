@@ -199,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.fault("Sync through iCloud stays off: this build isn't signed for iCloud")
             return
         }
-        let iCloud = CloudKitSync(engine: model.engine, device: "This Mac")
+        let iCloud = CloudKitSync(engine: model.engine, zones: .ficha, device: "This Mac")
         self.iCloud = iCloud
         Task { await iCloud.run() }
     }

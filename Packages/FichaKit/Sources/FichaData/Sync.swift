@@ -22,8 +22,15 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// room. An account change never deletes a card: signed out, sync stops;
 /// signed into an account, the device's rows join its records, as in a first
 /// sync. A purge of Ficha's data in iCloud's settings turns sync off, with
-/// the cards kept. What the Sync tab and the menu read of it all is
-/// `SyncStatus`.
+/// the cards kept, and so does a restore (`SyncedRestore.swift`). Turning it
+/// on after either sends the device's cards into a zone of its own, newer
+/// than the one before, as `ICloudZones.swift` names it, which every device
+/// moves to as it hears of it: one that synced since before a restore's zone
+/// started takes its cards in place of its own, its changes not yet sent
+/// dropped, and any other joins it, as at an account change, so a purge
+/// never deletes a card. The device that moves deletes the zone it leaves,
+/// and any older one it hears of. What the Sync tab and the menu read of it
+/// all is `SyncStatus`.
 ///
 /// The app makes one when sync starts, tells it whether the device is signed
 /// into iCloud (`noteAccount(signedIn:)`), calls `start(with:)` while sync is
@@ -34,10 +41,21 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// brief, ends the engine that saw it (`SyncStretch`).
 public struct Sync: Sendable {
     let engine: Engine
+    /// The zones the device syncs in, by their names in iCloud.
+    let zones: ICloudZones
 
-    /// The rules of sync for the device `engine` runs on.
-    public init(engine: Engine) {
+    /// The rules of sync for the device `engine` runs on, in `zones`.
+    public init(engine: Engine, zones: ICloudZones) {
         self.engine = engine
+        self.zones = zones
+    }
+
+    /// `iCloud` in the zones the device syncs in now, which every rule
+    /// speaks to it through (`ICloudInItsZones`): once again after the device
+    /// moved to another cards' zone.
+    private func inItsZones(_ iCloud: some ICloudSyncEngine) throws(EngineError) -> ICloudInItsZones {
+        let base = (iCloud as? ICloudInItsZones)?.base ?? iCloud
+        return ICloudInItsZones(base: base, cards: zones.cards(try engine.read(cardsZone(in:))), files: zones.files)
     }
 
     /// The state iCloud's engine saved last on this device, which the app
@@ -70,11 +88,15 @@ public struct Sync: Sendable {
 
     /// Starts syncing through `iCloud`, while sync is on: on a device whose
     /// engine never saved a state, it asks iCloud for the cards' zone and the
-    /// files', and it hands `iCloud` every change that waits, those made
-    /// while the app didn't run, by the CLI or offline, included.
+    /// files', noting it syncs in that cards' zone from now, unless it knows
+    /// since when already, and it hands `iCloud` every change that waits,
+    /// those made while the app didn't run, by the CLI or offline, included.
     public func start(with iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard try engine.syncIsOn() else { return }
+        let iCloud = try inItsZones(iCloud)
         if try engine.savedSyncEngineState() == nil {
+            let now = engine.time.now
+            try engine.writeWithoutTelling { db in try noteSyncingInTheCardsZone(since: now, in: db) }
             iCloud.askForBothZones()
         }
         try sendWhatChanged(to: iCloud)
@@ -88,6 +110,7 @@ public struct Sync: Sendable {
     /// change to the database, and as `tryAgainInAFullICloud(with:)` says.
     public func sendWhatChanged(to iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard try engine.syncIsOn() else { return }
+        let iCloud = try inItsZones(iCloud)
         if try engine.iCloudIsFull() {
             iCloud.askForBothZones()
         }
@@ -114,24 +137,31 @@ public struct Sync: Sendable {
     /// record provider of
     /// `CKSyncEngine.RecordZoneChangeBatch(pendingChanges:recordProvider:)`.
     /// A file's record is as `fileRecordToSave(_:)` says. While sync is off,
-    /// it's nil for every record.
+    /// it's nil for every record, and so it is for a record of a zone the
+    /// device no longer syncs in, whose save waited as the device moved.
     public func recordToSave(_ id: ICloudRecordID, from iCloud: some ICloudSyncEngine) throws(EngineError)
         -> ICloudRecord?
     {
+        let iCloud = try inItsZones(iCloud)
         let record: ICloudRecord?
         if try !engine.syncIsOn() {
             record = nil
-        } else if id.zone == .files {
-            record = try fileRecordToSave(id)
-        } else {
-            record = try engine.read { db in
-                try syncedRow(named: id, in: db).flatMap { try FichaData.record(of: $0, in: db) }
+        } else if let inside = iCloud.insideTheDevice(id) {
+            if inside.zone == .files {
+                record = try fileRecordToSave(inside)
+            } else {
+                record = try engine.read { db in
+                    try syncedRow(named: inside, in: db).flatMap { try FichaData.record(of: $0, in: db) }
+                }
             }
+        } else {
+            record = nil
         }
-        if record == nil {
-            iCloud.remove(pendingRecordZoneChanges: [.saveRecord(id)])
+        guard let record else {
+            iCloud.base.remove(pendingRecordZoneChanges: [.saveRecord(id)])
+            return nil
         }
-        return record
+        return record.with(id: id)
     }
 
     /// Handles an event of iCloud's engine, which started in `stretch`, as
@@ -147,24 +177,26 @@ public struct Sync: Sendable {
         guard try engine.syncStretch() == stretch else {
             return syncLogger.debug("Sync went off since iCloud's engine started: its event is left aside")
         }
+        // The rest speaks of the zones inside the device.
+        let iCloud = try inItsZones(iCloud)
+        let inside = event.insideTheDevice(iCloud)
         // A record or a deletion refused because the user deleted Ficha's
         // data in iCloud's settings is a purge, which the device may hear of
         // before it fetches the zone's deletion.
-        guard !event.saysTheUserDeletedFichasData else {
+        guard !inside.saysTheUserDeletedFichasData else {
             return try takePurge()
         }
-        if event.saysTheDeviceSynced {
+        if inside.saysTheDeviceSynced {
             try engine.noteSynced()
         }
         // Whether iCloud is full is noted first, so that a record that didn't
         // fit waits rather than going again at once.
-        if let isFull = event.saysICloudIsFull {
+        if let isFull = inside.saysICloudIsFull {
             try engine.noteICloudIsFull(isFull)
         }
         // Images and sounds first, in `SyncedFiles.swift`; the rest is the
         // cards' zone's.
-        let event = try handleFiles(in: event, from: iCloud)
-        switch event {
+        switch try handleFiles(in: inside, from: iCloud) {
         case .stateUpdate(let state):
             try engine.saveSyncEngineState(state)
         case .fetchedRecordZoneChanges(let changes):
@@ -179,7 +211,7 @@ public struct Sync: Sendable {
                 )
             }
         case .fetchedDatabaseChanges(let changes):
-            try takeZoneDeletions(changes.deletions, with: iCloud)
+            try takeZoneChanges(changes, with: iCloud)
         case .accountChange(let change):
             try takeAccountChange(change, with: iCloud)
         case .didFetchChanges:
@@ -195,43 +227,122 @@ public struct Sync: Sendable {
     /// and the records that waited for a row, and leaves every row waiting to
     /// be sent, with the deletions that waited (`recordEverythingToSend`). A
     /// record the account holds then merges with the device's row, and one it
-    /// lacks is saved. Signed out, sync stops until the device is signed in,
-    /// when iCloud's engine tells of it again.
-    private func takeAccountChange(_ change: ICloudEvent.AccountChange, with iCloud: some ICloudSyncEngine)
+    /// lacks is saved. The device goes back to the first cards' zone, from
+    /// now, since the zone it synced in is another account's: if the account
+    /// it meets holds a newer one, the device joins it, as it hears of it
+    /// (`takeZoneChanges(_:with:)`). Signed out, sync stops until the device
+    /// is signed in, when iCloud's engine tells of it again.
+    private func takeAccountChange(_ change: ICloudEvent.AccountChange, with iCloud: ICloudInItsZones)
         throws(EngineError)
     {
         syncLogger.notice("The iCloud account changed: \(String(describing: change), privacy: .public)")
         try engine.noteICloudAccount(signedIn: change != .signOut)
         try engine.noteICloudIsFull(false)
+        let now = engine.time.now
         let forgotten = try engine.write { db in
             let files = try forgetWhatICloudSaid(in: db)
+            try moveCards(to: .first, at: now, in: db)
             try recordEverythingToSend(in: db)
             return files
         }
         engine.removeFilesNoCardUses(forgotten)
         guard change != .signOut else { return }
+        let iCloud = try inItsZones(iCloud)
         iCloud.askForBothZones()
         try sendWhatChanged(to: iCloud)
     }
 
-    /// Takes the zones that left iCloud. A purge, of either zone, turns sync
-    /// off, as `takePurge()` says. The files' zone deleted or reset, which no
-    /// version of Ficha deletes, goes up again whole: the device forgets the
-    /// files iCloud held, and sends each one a card uses. The cards' zone
-    /// reset with the user's encrypted data goes up again whole too, as
-    /// `CKSyncEngine`'s documentation asks. The cards' zone deleted by
-    /// another device is only logged: it's a restore's (#317).
-    private func takeZoneDeletions(_ deletions: [ICloudEvent.ZoneDeletion], with iCloud: some ICloudSyncEngine)
+    /// Takes the zones that changed in iCloud or left it, of those the
+    /// device's zones name. When a cards' zone newer than the device's own
+    /// changed, the device moves to the newest, as `move(to:afterAPurge:with:)`
+    /// says, even when the same fetch says the user purged Ficha's data: a
+    /// device turned sync on since, starting it. Otherwise a purge, of the
+    /// device's cards' zone or of the files', turns sync off, as `takePurge()`
+    /// says; a purge of an older zone is one the device heard of before it
+    /// moved, or that came before its first fetch. Then, as
+    /// `takeZoneDeletions(_:with:)` says for the device's own zones, and the
+    /// device deletes from iCloud each cards' zone older than its own it
+    /// heard changed, left behind by the devices that moved.
+    private func takeZoneChanges(_ changes: ICloudEvent.FetchedDatabaseChanges, with iCloud: ICloudInItsZones)
         throws(EngineError)
     {
+        let deletions = changes.deletions.filter { zones.contains($0.zone) }
         for deletion in deletions {
             syncLogger.notice(
                 "The zone \(deletion.zone.name, privacy: .public) left iCloud: \(String(describing: deletion.reason), privacy: .public)"
             )
         }
-        guard !deletions.contains(where: { $0.reason == .purged }) else {
+        let isPurged = deletions.contains { $0.reason == .purged && iCloud.insideTheDevice($0.zone) != nil }
+        let changedCardsZones = changes.modifications.compactMap(zones.cardsZone)
+        var current = try engine.read(cardsZone(in:))
+        var iCloud = iCloud
+        if let newest = changedCardsZones.max(), newest > current {
+            try move(to: newest, afterAPurge: isPurged, with: iCloud)
+            current = newest
+            iCloud = try inItsZones(iCloud)
+        } else if isPurged {
             return try takePurge()
+        } else {
+            try takeZoneDeletions(
+                deletions.compactMap { deletion in
+                    iCloud.insideTheDevice(deletion.zone).map {
+                        ICloudEvent.ZoneDeletion(zone: $0, reason: deletion.reason)
+                    }
+                }, with: iCloud)
         }
+        let leftBehind = Set(changedCardsZones.filter { $0 < current }).sorted()
+        iCloud.base.add(pendingDatabaseChanges: leftBehind.map { .deleteZone(zones.cards($0)) })
+    }
+
+    /// Moves the device to the cards' zone `newest`, newer than its own,
+    /// which another device started as it turned sync on after a restore or
+    /// a purge, and deletes from iCloud the zone it leaves. A device that
+    /// synced since before a restore's zone started takes the copy: it drops
+    /// every row that syncs, with its changes not yet sent, and the images
+    /// and sounds only those rows used, and takes the zone's records as they
+    /// come. Any other joins the zone, as at an account change: one that
+    /// started syncing since, or one whose zone is a purge's, which never
+    /// deletes a card. `afterAPurge` says the device also heard of the purge
+    /// before it: it forgets what iCloud said of each record, the files'
+    /// included, as `takePurge()` does, and stays on.
+    private func move(to newest: CardsZone, afterAPurge: Bool, with iCloud: ICloudInItsZones) throws(EngineError) {
+        let now = engine.time.now
+        let (forgotten, dropped, takesTheCopy) = try engine.writeWithoutRecording { db in
+            let takesTheCopy: Bool
+            if case .started(.restore, let time) = newest {
+                takesTheCopy = try cardsZoneSince(in: db) ?? .distantPast < Date(wholeMilliseconds: time)
+            } else {
+                takesTheCopy = false
+            }
+            let forgotten = afterAPurge ? try forgetWhatICloudSaid(in: db) : FilesInICloud()
+            try moveCards(to: newest, at: now, in: db)
+            guard takesTheCopy else {
+                try recordEverythingToSend(in: db)
+                return (forgotten, FilesReferred(), false)
+            }
+            return (forgotten, try dropEverythingThatSyncs(in: db), true)
+        }
+        syncLogger.notice(
+            "The cards move to the zone \(zones.cards(newest).name, privacy: .public): this device \(takesTheCopy ? "takes its cards in place of its own" : "joins it", privacy: .public)"
+        )
+        engine.removeFilesNoCardUses(forgotten)
+        engine.removeFilesNoCardUses(images: dropped.images, sounds: dropped.sounds)
+        iCloud.base.add(pendingDatabaseChanges: [.deleteZone(iCloud.cards)])
+        let moved = try inItsZones(iCloud)
+        moved.askForBothZones()
+        try sendWhatChanged(to: moved)
+    }
+
+    /// Takes the device's own zones that left iCloud, but for a purge. The
+    /// files' zone deleted or reset, which no version of Ficha deletes, goes
+    /// up again whole: the device forgets the files iCloud held, and sends
+    /// each one a card uses. The cards' zone reset with the user's encrypted
+    /// data goes up again whole too, as `CKSyncEngine`'s documentation asks.
+    /// The cards' zone deleted by another device is only logged: it's an
+    /// older Ficha's, or one a device moving left as this one moves too.
+    private func takeZoneDeletions(_ deletions: [ICloudEvent.ZoneDeletion], with iCloud: ICloudInItsZones)
+        throws(EngineError)
+    {
         let toSendAgain = Set(deletions.filter { $0.zone == .files || $0.reason == .encryptedDataReset }.map(\.zone))
         guard !toSendAgain.isEmpty else { return }
         let forgotten = try engine.write { db in
@@ -416,15 +527,15 @@ extension ICloudEvent {
     }
 
     /// Whether it shows iCloud answered the device as it happened: it
-    /// brought zones that left or records, or iCloud took records or
-    /// deletions the device sent. The end of a fetch doesn't, since
+    /// brought zones that changed or left, or records, or iCloud took records
+    /// or deletions the device sent. The end of a fetch doesn't, since
     /// `CKSyncEngine`'s documentation doesn't say it comes only after a fetch
     /// that didn't fail: a fetch the app sees end without an error says so
     /// (`noteFetchEnded()`).
     fileprivate var saysTheDeviceSynced: Bool {
         switch self {
         case .fetchedDatabaseChanges(let changes):
-            !changes.deletions.isEmpty
+            !changes.modifications.isEmpty || !changes.deletions.isEmpty
         case .fetchedRecordZoneChanges(let changes):
             !changes.modifications.isEmpty || !changes.deletions.isEmpty
         case .sentRecordZoneChanges(let sent):

@@ -16,7 +16,10 @@ import notify
 /// the record as it is (`serverRecordChanged`), refuses a record in a zone it
 /// doesn't have (`zoneNotFound`) and one a device heard of that it no longer
 /// has (`unknownItem`). It hands each device what changed since that device
-/// last fetched, newest first, since iCloud promises no order. It keeps each
+/// last fetched: the zones that came, changed or left, as
+/// `CKFetchDatabaseChangesOperation` tells them, a zone changing as it comes
+/// and as a record in it is saved or deleted; then each zone's records,
+/// newest first, since iCloud promises no order. It keeps each
 /// record's files apart, as `CKAsset`s, in a folder of its own: a copy of
 /// each file a device sends, which a device that fetches the record reads.
 /// It refuses a record whose file it can't read (`assetFileNotFound`).
@@ -74,10 +77,13 @@ final class FakeICloud: Sendable {
         }
     }
 
-    /// A zone's records, and those deleted, by name.
+    /// A zone's records, and those deleted, by name, and the last change to
+    /// it: the one that saved it, or that saved or deleted one of its
+    /// records.
     fileprivate struct Zone {
         var records: [String: Stored] = [:]
         var deletions: [String: (type: String, change: Int)] = [:]
+        var lastChange: Int
     }
 
     /// A record as iCloud holds it, with the change that saved it and how
@@ -168,7 +174,8 @@ final class FakeICloud: Sendable {
                     if let room = database.room, database.used >= room {
                         failed.append(ICloudEvent.FailedZoneSave(zone: zone, error: .quotaExceeded))
                     } else {
-                        database.zones[zone] = Zone()
+                        database.lastChange += 1
+                        database.zones[zone] = Zone(lastChange: database.lastChange)
                         database.zoneDeletions[zone] = nil
                     }
                 case .saveZone:
@@ -210,6 +217,7 @@ final class FakeICloud: Sendable {
                 if let stored = database.zones[id.zone]?.records.removeValue(forKey: id.name) {
                     database.lastChange += 1
                     database.zones[id.zone]?.deletions[id.name] = (stored.record.type, database.lastChange)
+                    database.zones[id.zone]?.lastChange = database.lastChange
                 }
                 deleted.append(id)
             }
@@ -219,13 +227,18 @@ final class FakeICloud: Sendable {
         }
     }
 
-    /// The zones that left since the change `fetchedUpTo` says a device
-    /// fetched the database's changes up to, with the change it's up to then.
-    fileprivate func zoneDeletions(since fetchedUpTo: Int) -> (deletions: [ICloudEvent.ZoneDeletion], upTo: Int) {
+    /// The zones that came or changed, and those that left, since the change
+    /// `fetchedUpTo` says a device fetched the database's changes up to, with
+    /// the change it's up to then.
+    fileprivate func zoneChanges(since fetchedUpTo: Int) -> (changes: ICloudEvent.FetchedDatabaseChanges, upTo: Int) {
         database.withLock { database in
             (
-                database.zoneDeletions.filter { $0.value.change > fetchedUpTo }.sorted { $0.key.name < $1.key.name }
-                    .map { ICloudEvent.ZoneDeletion(zone: $0.key, reason: $0.value.reason) },
+                ICloudEvent.FetchedDatabaseChanges(
+                    modifications: database.zones.filter { $0.value.lastChange > fetchedUpTo }.keys
+                        .sorted { $0.name < $1.name },
+                    deletions: database.zoneDeletions.filter { $0.value.change > fetchedUpTo }
+                        .sorted { $0.key.name < $1.key.name }
+                        .map { ICloudEvent.ZoneDeletion(zone: $0.key, reason: $0.value.reason) }),
                 database.lastChange
             )
         }
@@ -300,6 +313,7 @@ extension FakeICloud.Database {
             zones[record.id.zone]?.records[record.id.name] = FakeICloud.Stored(
                 record: saved, change: lastChange, size: size)
             zones[record.id.zone]?.deletions[record.id.name] = nil
+            zones[record.id.zone]?.lastChange = lastChange
             return .success(saved)
         }
     }
@@ -572,8 +586,8 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
     }
 
-    /// Fetches the zones that left since it last did, forgetting how far it
-    /// fetched each; then what changed in each of `zones` since it last did,
+    /// Fetches the zones that came, changed or left since it last did,
+    /// forgetting how far it fetched each that left; then what changed in each of `zones` since it last did,
     /// or in every zone when it's nil, as `CKSyncEngine.fetchChanges(_:)`
     /// does with a scope of zones; then the records the device asked for;
     /// says it fetched it all, and saves how far it fetched. Offline, it
@@ -588,13 +602,13 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
         try tellAccountChange()
         guard let account = account.withLock({ $0 }) else { return }
-        let (deletions, zonesUpTo) = account.zoneDeletions(since: state.withLock(\.fetchedZonesUpTo))
-        if !deletions.isEmpty {
-            try tell(.fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: deletions)))
+        let (zoneChanges, zonesUpTo) = account.zoneChanges(since: state.withLock(\.fetchedZonesUpTo))
+        if !zoneChanges.modifications.isEmpty || !zoneChanges.deletions.isEmpty {
+            try tell(.fetchedDatabaseChanges(zoneChanges))
         }
         state.withLock { state in
             state.fetchedZonesUpTo = zonesUpTo
-            for deletion in deletions {
+            for deletion in zoneChanges.deletions {
                 state.fetchedUpTo[deletion.zone.name] = nil
             }
         }
@@ -723,13 +737,14 @@ final class Device {
     private(set) var account: FakeICloud?
 
     /// The device `engine` runs, signed into `account`, or signed out when
-    /// it's nil, which starts syncing, from the state its engine saved last,
-    /// as the app does when it launches: it notes whether the device is
-    /// signed in, and starts while sync is on.
-    init(_ engine: Engine, syncingThrough account: FakeICloud?) throws {
+    /// it's nil, which starts syncing in `zones`, Ficha's own unless a test
+    /// says otherwise, from the state its engine saved last, as the app does
+    /// when it launches: it notes whether the device is signed in, and starts
+    /// while sync is on.
+    init(_ engine: Engine, syncingThrough account: FakeICloud?, in zones: ICloudZones = .ficha) throws {
         self.engine = engine
         self.account = account
-        sync = Sync(engine: engine)
+        sync = Sync(engine: engine, zones: zones)
         iCloud = try FakeSyncEngine(
             account: account, delegate: sync, stateSerialization: engine.savedSyncEngineState())
         try sync.noteAccount(signedIn: account != nil)

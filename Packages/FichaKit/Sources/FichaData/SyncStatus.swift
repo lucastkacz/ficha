@@ -158,6 +158,14 @@ func iCloudIsFull(in db: Database) throws -> Bool {
     return isFull
 }
 
+/// Why sync is off, or nil while it's on.
+func syncOffReason(in db: Database) throws -> SyncOffReason? {
+    guard let device = try Row.fetchOne(db, sql: "SELECT isOn, offBecause FROM syncDevice") else {
+        throw unreadable("The database doesn't say whether sync is on")
+    }
+    return try offReason(isOn: device.decode(forColumn: "isOn"), device.decode(forColumn: "offBecause"))
+}
+
 /// Turns sync on: a stretch of it begins (`SyncStretch`).
 func switchSyncOn(in db: Database) throws {
     try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
@@ -181,13 +189,22 @@ struct SyncStandingKept {
     let iCloudIsFull: Bool
     let lastSynced: Date?
     let timesTurnedOff: Int
+    /// The cards' zone the device syncs in, as the database keeps it, and
+    /// since when (`ICloudZones.swift`).
+    let cardsZone: String?
+    let cardsZoneSince: Date?
 
     /// How sync stands on the device whose database is `db`, before the
     /// restore replaces it.
     init(in db: Database) throws {
         guard
             let device = try Row.fetchOne(
-                db, sql: "SELECT isOn, hasICloudAccount, iCloudIsFull, lastSyncedAt, timesTurnedOff FROM syncDevice")
+                db,
+                sql: """
+                    SELECT isOn, hasICloudAccount, iCloudIsFull, lastSyncedAt, timesTurnedOff, cardsZone,
+                        cardsZoneSince
+                    FROM syncDevice
+                    """)
         else {
             throw unreadable("The database doesn't keep how sync stands on this device")
         }
@@ -196,6 +213,8 @@ struct SyncStandingKept {
         iCloudIsFull = try device.decode(forColumn: "iCloudIsFull")
         lastSynced = try device.decode(forColumn: "lastSyncedAt")
         timesTurnedOff = try device.decode(forColumn: "timesTurnedOff")
+        cardsZone = try device.decode(forColumn: "cardsZone")
+        cardsZoneSince = try device.decode(forColumn: "cardsZoneSince")
     }
 
     /// Keeps it in `db`, a restored copy, with the switch off because of the
@@ -205,11 +224,11 @@ struct SyncStandingKept {
         try db.execute(
             sql: """
                 UPDATE syncDevice SET isOn = 0, offBecause = ?, engineState = NULL, hasICloudAccount = ?,
-                    iCloudIsFull = ?, lastSyncedAt = ?, timesTurnedOff = ?
+                    iCloudIsFull = ?, lastSyncedAt = ?, timesTurnedOff = ?, cardsZone = ?, cardsZoneSince = ?
                 """,
             arguments: [
                 SyncOffReason.restore.rawValue, hasICloudAccount, iCloudIsFull, lastSynced,
-                timesTurnedOff + (wasOn ? 1 : 0),
+                timesTurnedOff + (wasOn ? 1 : 0), cardsZone, cardsZoneSince,
             ])
     }
 }

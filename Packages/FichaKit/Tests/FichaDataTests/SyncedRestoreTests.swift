@@ -63,4 +63,48 @@ final class SyncedRestoreTests {
         #expect(try mac.engine.savedSyncEngineState() == nil)
         #expect(iCloud.saves == saves)
     }
+
+    // The iPhone was offline while the Mac restored and turned sync on: it
+    // sends what it changed meanwhile before it fetches, as iCloud's engine
+    // may.
+    @Test(
+        "turning sync on after a restore replaces the other devices' cards with the restored ones, their unsynced changes dropped, and leaves the files"
+    )
+    func turningSyncOnAfterARestoreReplacesTheOtherDevicesCards() async throws {
+        let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try mac.engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        time.advance(by: minutes(1))
+        try mac.engine.delete([mac.engine.card(fronted: "petricor").id])
+        try mac.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        iPhone.iCloud.isOffline = true
+        time.advance(by: minutes(1))
+        let hornero = try iPhone.engine.card(fronted: "¿Qué pájaro es?")
+        try iPhone.engine.edit(
+            hornero.id,
+            with: card(nil, front: "¿Qué pájaro es?", back: "Un hornero, Furnarius rufus.", frontImage: bird))
+        try iPhone.engine.create(card(.word, front: "efímero", back: "Que dura poco."))
+
+        try mac.engine.restore(backup.name)
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        iPhone.iCloud.isOffline = false
+        try await iPhone.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front).sorted() == ["petricor", "¿Qué pájaro es?"])
+        #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(try iPhone.engine.card(fronted: "¿Qué pájaro es?").back == "Un hornero.")
+        #expect(try iPhone.engine.keptImages() == [bird])
+        #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 1)
+        let cardsZones = Set(iCloud.records.filter { $0.type == "card" }.map(\.id.zone))
+        #expect(cardsZones.count == 1)
+        #expect(try mac.engine.syncStatus().isOn)
+    }
 }

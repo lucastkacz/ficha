@@ -57,11 +57,14 @@ public struct ICloudZone: Sendable, Hashable, Codable {
     }
 
     /// The zone of the cards and everything else that syncs but images and
-    /// sounds: captures, the review log and tags.
+    /// sounds: captures, the review log and tags, as sync names it inside
+    /// the device. Its name in iCloud is the one of the cards' zones the
+    /// device syncs in now (`ICloudZones`).
     public static let cards = ICloudZone(name: "Cards")
 
     /// The zone of the images and sounds on cards, apart from the cards', so
-    /// that a restore, which replaces the cards' zone, leaves them alone.
+    /// that a restore, which replaces the cards' zone, leaves them alone, as
+    /// sync names it inside the device (`ICloudZones`).
     public static let files = ICloudZone(name: "Files")
 }
 
@@ -181,7 +184,7 @@ public enum ICloudEvent: Sendable {
     case stateUpdate(Data)
     /// The user signed into iCloud, out of it, or into another account.
     case accountChange(AccountChange)
-    /// Zones came into iCloud or left it.
+    /// Zones came into iCloud, changed or left it.
     case fetchedDatabaseChanges(FetchedDatabaseChanges)
     /// Records other devices saved or deleted, or this one's, as iCloud
     /// holds them now.
@@ -202,12 +205,16 @@ public enum ICloudEvent: Sendable {
         case switchAccounts
     }
 
-    /// As `CKSyncEngine.Event.FetchedDatabaseChanges`, but the zones that
-    /// came, which sync doesn't read: it makes its own zone when it sends.
+    /// As `CKSyncEngine.Event.FetchedDatabaseChanges`: the zones that came
+    /// or changed, by their IDs, and those that left. A zone deleted and
+    /// saved again since the device last fetched comes as changed, with no
+    /// deletion (P16, #316).
     public struct FetchedDatabaseChanges: Sendable {
+        public let modifications: [ICloudZone]
         public let deletions: [ZoneDeletion]
 
-        public init(deletions: [ZoneDeletion]) {
+        public init(modifications: [ICloudZone], deletions: [ZoneDeletion]) {
+            self.modifications = modifications
             self.deletions = deletions
         }
     }

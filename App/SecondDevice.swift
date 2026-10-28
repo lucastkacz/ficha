@@ -21,10 +21,10 @@ final class SecondDevice {
     private var cardsWindow: CardsWindow?
 
     /// Opens the second device's cards with `debugTools`, on Ficha Dev's
-    /// time, and starts syncing them beside `thisMac`.
+    /// time, and starts syncing them beside `thisMac`, in its zones.
     init(debugTools: DebugTools, beside thisMac: CloudKitSync) throws {
         let model = try AppModel(engine: try debugTools.openSecondDevice())
-        let iCloud = CloudKitSync(engine: model.engine, device: "Second device")
+        let iCloud = CloudKitSync(engine: model.engine, zones: thisMac.zones, device: "Second device")
         self.model = model
         self.iCloud = iCloud
         panel = ReviewPanel(model: model, mac: SystemMacSignals { model.now })
