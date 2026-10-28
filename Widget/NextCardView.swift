@@ -69,13 +69,21 @@ struct NextCardView: View {
         }
     }
 
-    /// The app's name and icon, and the card's badges, when it has some.
+    /// The app's icon, and its name unless the small size needs the room for
+    /// the card's badges, and the badges, when it has some.
     private var header: some View {
         HStack(spacing: 4) {
-            Label {
-                Text(verbatim: variant.name)
-            } icon: {
-                Image(systemName: variant.menuBarSymbol)
+            Group {
+                if family == .systemSmall, hasBadges {
+                    Image(systemName: variant.menuBarSymbol)
+                        .accessibilityLabel(Text(verbatim: variant.name))
+                } else {
+                    Label {
+                        Text(verbatim: variant.name)
+                    } icon: {
+                        Image(systemName: variant.menuBarSymbol)
+                    }
+                }
             }
             .font(.caption2.weight(.medium))
             .foregroundStyle(.secondary)
@@ -96,6 +104,12 @@ struct NextCardView: View {
                 }
             }
         }
+    }
+
+    /// Whether the card the widget shows has a badge.
+    private var hasBadges: Bool {
+        guard case .content(.card(let card), _) = entry.shows else { return false }
+        return card.isNew || card.way.way == .backFirst
     }
 
     @ViewBuilder
@@ -134,10 +148,10 @@ struct NextCardView: View {
         }
     }
 
-    /// A message in place of a card: a symbol above a line, and a detail
-    /// under it, smaller, when there's one.
+    /// A message in place of a card, in the middle: a symbol above a line, and
+    /// a detail under it, smaller, when there's one.
     private func message(_ line: Text, detail: Text?, symbol: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 4) {
             Spacer(minLength: 0)
             Image(systemName: symbol)
                 .font(.title2)
@@ -152,7 +166,10 @@ struct NextCardView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
             }
+            Spacer(minLength: 0)
         }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
     }
 
     /// When the next card comes: its time, today, and its day too on
@@ -177,10 +194,10 @@ struct NextCardView: View {
     }
 }
 
-/// The side of the card the widget shows: its image, fitted to the widget,
-/// beside its text in the medium size and above it otherwise, its text, or a
-/// speaker when it holds only a sound. An image that couldn't be read shows
-/// as a symbol.
+/// The side of the card the widget shows, in the middle, as the review panel
+/// shows a card: its image, fitted to the widget, beside its text in the
+/// medium size and above it otherwise, its text, or a speaker when it holds
+/// only a sound. An image that couldn't be read shows as a symbol.
 private struct CardSideView: View {
     let card: WidgetCard
     /// The image, made small, or nil when the side has none or it couldn't be
@@ -189,22 +206,27 @@ private struct CardSideView: View {
     let family: WidgetFamily
 
     var body: some View {
-        if card.image != nil, family == .systemMedium {
-            HStack(alignment: .top, spacing: 12) {
-                picture
-                text
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                if card.image != nil {
+        Group {
+            if card.image != nil, family == .systemMedium {
+                HStack(spacing: 12) {
                     picture
+                    text
                 }
-                text
-                if card.showsSpeaker {
-                    speaker
+            } else {
+                VStack(spacing: 8) {
+                    if card.image != nil {
+                        picture
+                    }
+                    // The image gives up the room the text needs.
+                    text
+                        .layoutPriority(1)
+                    if card.showsSpeaker {
+                        speaker
+                    }
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -214,7 +236,7 @@ private struct CardSideView: View {
                 .resizable()
                 .scaledToFit()
                 .clipShape(.rect(cornerRadius: 6))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity, maxHeight: family == .systemLarge ? 220 : .infinity)
                 .accessibilityLabel(Text("Image", comment: "The accessibility label of an image on a card's side."))
         } else {
             Image(systemName: "photo")
@@ -233,9 +255,10 @@ private struct CardSideView: View {
         if !card.text.isEmpty {
             Text(card.text)
                 .font(font.weight(.semibold))
-                .minimumScaleFactor(0.7)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.5)
                 .lineLimit(card.image == nil ? nil : lines)
-                .frame(maxWidth: .infinity, maxHeight: card.image == nil ? .infinity : nil, alignment: .topLeading)
+                .frame(maxWidth: .infinity)
         }
     }
 
@@ -243,17 +266,18 @@ private struct CardSideView: View {
         Image(systemName: "speaker.wave.2.fill")
             .font(.system(size: family == .systemSmall ? 34 : 44))
             .foregroundStyle(.tint)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityLabel(
                 Text("Sound", comment: "In the widget, the speaker on a card's side that holds only a sound."))
     }
 
-    /// The text's size: larger as the widget is.
+    /// The text's size: larger as the widget is, and a step smaller beside or
+    /// under an image.
     private var font: Font {
-        switch family {
-        case .systemSmall: .title3
-        case .systemLarge, .systemExtraLarge: .title
-        default: .title2
+        let besideAnImage = card.image != nil
+        return switch family {
+        case .systemSmall: besideAnImage ? .headline : .title2
+        case .systemLarge, .systemExtraLarge: besideAnImage ? .title : .largeTitle
+        default: besideAnImage ? .title2 : .title
         }
     }
 

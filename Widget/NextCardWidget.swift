@@ -102,12 +102,17 @@ private func readTimeline(for family: WidgetFamily) -> Timeline<NextCardEntry> {
         return single(.unreadable(error.localizedDescription), at: now)
     }
     // WidgetKit's timeline runs on the system's time, which Ficha Dev's runs
-    // ahead of.
+    // ahead of, and so does the clock Lucas reads the next card's time by.
     let shift = (time as? DebugTimeSource).map { TimeInterval($0.shift.components.seconds) } ?? 0
     var images = SmallImages(engine: engine)
     let entries = timeline.entries.map { entry in
-        NextCardEntry(
-            date: entry.date - shift, shows: .content(entry.content, image: images.image(for: entry.content)))
+        let content: WidgetContent =
+            if case .nextCard(let time) = entry.content {
+                .nextCard(at: time - shift)
+            } else {
+                entry.content
+            }
+        return NextCardEntry(date: entry.date - shift, shows: .content(content, image: images.image(for: content)))
     }
     let policy: TimelineReloadPolicy = timeline.refreshAt.map { .after($0 - shift) } ?? .never
     log(entries, refreshAt: timeline.refreshAt.map { $0 - shift })
@@ -146,7 +151,7 @@ private func described(_ shows: NextCardEntry.Shows) -> String {
         return
             "card \(card.way.cardID) \(card.way.way.rawValue)\(card.isNew ? ", new," : "") on its \(card.side)\(image)"
             + (card.showsSpeaker ? " with a speaker" : "")
-    case .content(.nextCard(let time), _): return "no card waiting, the next at \(time) by the engine's time"
+    case .content(.nextCard(let time), _): return "no card waiting, the next at \(time)"
     case .content(.noneComing, _): return "no card coming"
     case .content(.noCards, _): return "no cards"
     case .notReady: return "that the app hasn't opened its database yet"
