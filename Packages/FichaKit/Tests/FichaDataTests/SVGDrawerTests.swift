@@ -37,39 +37,102 @@ struct SVGDrawerTests {
 
     // An import waits for each drawing on a thread of Swift's concurrency
     // pool, which has one per core: on GitHub's three-core Macs, imports at
-    // once take them all.
-    @Test("SVGs are drawn while more imports at once than the Mac has cores each wait for one")
-    func svgsAreDrawnWhileImportsTakeEveryThread() async {
-        let imports = 2 * ProcessInfo.processInfo.activeProcessorCount
-
-        let drawn = await withTaskGroup(of: Bool.self) { group in
-            for _ in 0..<imports {
-                group.addTask { InProcessSVGDrawer().image(of: sunSVG, longestSide: 100) != nil }
-            }
-            return await group.reduce(0) { $1 ? $0 + 1 : $0 }
-        }
-
-        #expect(drawn == imports)
+    // once take them all. One drawing, with one web view, while tasks hold
+    // the pool's other threads, keeps WebKit's processes as few as an import
+    // starts.
+    @Test("an SVG is drawn while the drawing and other tasks hold every thread of Swift's concurrency pool")
+    func anSVGIsDrawnWhileEveryThreadWaits() async {
+        #expect(await isDrawnWhileEveryThreadWaits(by: InProcessSVGDrawer()))
     }
 
     // The app draws through the drawer's XPC service, which hands each
     // drawing back as its pixels; here the service listens in the process.
     @Test("an SVG drawn by the drawer's XPC service comes in as one drawn in the process, and a damaged one doesn't")
     func anSVGDrawnByTheServiceComesInTheSame() throws {
+        let service = ServiceInTheProcess()
+        defer { extendLifetime(service) }
+
+        let sun = try CardImage(drawing: sunSVG, with: service.drawer)
+
+        #expect(try sun == CardImage(drawing: sunSVG, with: InProcessSVGDrawer()))
+        #expect(throws: EngineError.notAnImage) {
+            try CardImage(drawing: Data("<svg xmlns=\"http://www.w3.org/2000/svg\"".utf8), with: service.drawer)
+        }
+    }
+
+    // XPC hands the service's answer to the app on a thread that macOS holds
+    // back while the pool's threads all wait.
+    @Test(
+        "an SVG is drawn by the drawer's XPC service while the drawing and other tasks hold every thread of Swift's concurrency pool"
+    )
+    func anSVGIsDrawnByTheServiceWhileEveryThreadWaits() async {
+        let service = ServiceInTheProcess()
+        defer { extendLifetime(service) }
+
+        #expect(await isDrawnWhileEveryThreadWaits(by: service.drawer))
+    }
+}
+
+/// The SVG drawer's XPC service, listening in the process, and a drawer that
+/// asks it, as the app's drawer asks the service in its bundle.
+private final class ServiceInTheProcess {
+    let drawer: ServiceSVGDrawer
+    /// The listener's delegate, which it holds weakly.
+    private let service: SVGDrawerService
+    private let listener: NSXPCListener
+
+    init() {
         let service = SVGDrawerService()
         let listener = NSXPCListener.anonymous()
         listener.delegate = service
         listener.resume()
-        defer { listener.invalidate() }
-        let drawer = ServiceSVGDrawer(endpoint: listener.endpoint)
+        self.service = service
+        self.listener = listener
+        drawer = ServiceSVGDrawer(endpoint: listener.endpoint)
+    }
 
-        let sun = try CardImage(drawing: sunSVG, with: drawer)
+    deinit {
+        listener.invalidate()
+    }
+}
 
-        #expect(try sun == CardImage(drawing: sunSVG, with: InProcessSVGDrawer()))
-        #expect(throws: EngineError.notAnImage) {
-            try CardImage(drawing: Data("<svg xmlns=\"http://www.w3.org/2000/svg\"".utf8), with: drawer)
+/// Whether `drawer` draws an SVG while tasks hold every other thread of
+/// Swift's concurrency pool, and the drawing holds its own.
+private func isDrawnWhileEveryThreadWaits(by drawer: some SVGDrawer) async -> Bool {
+    let others = ProcessInfo.processInfo.activeProcessorCount - 1
+    let holding = DispatchSemaphore(value: 0)
+    let done = DispatchSemaphore(value: 0)
+
+    async let isDrawn = drawing(sunSVG, by: drawer, once: others, hold: holding, then: done)
+    await withTaskGroup(of: Void.self) { group in
+        for _ in 0..<others {
+            group.addTask { holdingAThread(saying: holding, until: done) }
         }
     }
+    return await isDrawn
+}
+
+/// Whether `drawer` draws `svg` once `count` tasks hold their threads, which
+/// each tells through `held`, while this one holds its own; it lets them go
+/// through `done` once it's drawn, or once they took 30 seconds to hold
+/// theirs.
+private func drawing(
+    _ svg: Data, by drawer: some SVGDrawer, once count: Int, hold held: DispatchSemaphore, then done: DispatchSemaphore
+) -> Bool {
+    defer {
+        for _ in 0..<count { done.signal() }
+    }
+    for _ in 0..<count where held.wait(timeout: .now() + 30) == .timedOut {
+        return false
+    }
+    return drawer.image(of: svg, longestSide: 100) != nil
+}
+
+/// Holds its thread, once it tells so through `holding`, until `done` is
+/// signalled, or for 30 seconds at most.
+private func holdingAThread(saying holding: DispatchSemaphore, until done: DispatchSemaphore) {
+    holding.signal()
+    _ = done.wait(timeout: .now() + 30)
 }
 
 /// A web server on this Mac, on a port of its own, that counts the

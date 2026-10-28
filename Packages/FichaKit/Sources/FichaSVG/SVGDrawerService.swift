@@ -55,14 +55,14 @@ import Synchronization
 
     /// Draws an import's SVGs through the SVG drawer's XPC service, on one
     /// connection, which it closes once it's gone. A drawing waits for the
-    /// service, as an import does, which runs away from the main actor.
+    /// service, as an import does, which runs away from the main actor, and
+    /// takes the answer on the thread that waits: XPC hands an answer on to
+    /// a thread of its own otherwise, which macOS holds back while every
+    /// thread of Swift's concurrency pool waits, as imports at once make them.
     public final class ServiceSVGDrawer: SVGDrawer {
         /// The connection, which Foundation doesn't mark as safe to share
         /// between threads.
         private let connection: Mutex<NSXPCConnection>
-        /// Whether the service stopped answering, so that the rest of an
-        /// import's SVGs don't each wait for it.
-        private let gaveUp = Mutex(false)
 
         /// A drawer that asks the service inside this app whose bundle
         /// identifier is `serviceName`.
@@ -87,16 +87,14 @@ import Synchronization
         }
 
         /// The SVG `svg` as the service draws it, or nil when it can't draw
-        /// it, can't be reached, or stopped answering, for this SVG or one
-        /// before it.
+        /// it or can't be reached. It waits with no limit of its own: the
+        /// service answers once it waited its 10 seconds for WebKit, and XPC
+        /// tells when it quits or crashes.
         public func image(of svg: Data, longestSide: Int) -> CGImage? {
-            guard !gaveUp.withLock({ $0 }) else {
-                return nil
-            }
             let drawing = PendingDrawing()
             let isAsked = connection.withLock { connection in
                 let service =
-                    connection.remoteObjectProxyWithErrorHandler { error in
+                    connection.synchronousRemoteObjectProxyWithErrorHandler { error in
                         logger.error("Couldn't reach the SVG drawer's XPC service: \(error, privacy: .public)")
                         drawing.finish(with: nil)
                     } as? SVGDrawing
@@ -111,17 +109,14 @@ import Synchronization
                 logger.error("The SVG drawer's XPC connection gave no service to ask")
                 return nil
             }
-            // The service waits 10 seconds for WebKit, and macOS starts it
-            // first.
-            switch drawing.wait(seconds: 15) {
+            // XPC ended the drawing before `draw` returned.
+            switch drawing.wait(seconds: 0) {
             case .drawn(let image):
                 return image
             case .notDrawn:
                 return nil
             case .unanswered:
-                logger.error(
-                    "The SVG drawer's XPC service didn't answer in 15 seconds, so the import's other SVGs aren't drawn")
-                gaveUp.withLock { $0 = true }
+                logger.error("The SVG drawer's XPC connection returned with no answer and no error")
                 return nil
             }
         }
