@@ -141,6 +141,68 @@ struct WidgetTests {
         #expect(timeline.refreshAt == nil)
     }
 
+    @Test("a click on the widget starts review now with its card, and the others review now brings follow")
+    func aClickStartsReviewNowWithItsCard() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.meet(serendipia)
+        time.advance(by: hours(1))
+
+        #expect(
+            try engine.reviewNow(.defaults, startingWith: CardWay(cardID: ubuntu.id, way: .frontFirst))
+                == [.firstView(ubuntu), .review(serendipia)])
+    }
+
+    @Test("a click on a card review now no longer brings, as one reviewed meanwhile, starts review now as usual")
+    func aClickOnACardNoLongerWaitingStartsReviewNowAsUsual() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.meet(serendipia)
+        try engine.meet(ubuntu)
+        time.advance(by: hours(1))
+        try engine.review(serendipia, .good)
+
+        #expect(
+            try engine.reviewNow(.defaults, startingWith: CardWay(cardID: serendipia.id, way: .frontFirst))
+                == [.review(ubuntu)])
+    }
+
+    @Test("the link a click on the widget opens names its card, and the app takes no other link for it")
+    func theWidgetsLinkNamesItsCard() throws {
+        let toACard = WidgetLink(startingWith: CardWay(cardID: 12, way: .backFirst))
+        let toReviewNow = WidgetLink(startingWith: nil)
+        let url = try #require(toACard.url(scheme: "ficha-dev"))
+
+        #expect(WidgetLink(url, scheme: "ficha-dev") == toACard)
+        #expect(WidgetLink(try #require(toReviewNow.url(scheme: "ficha-dev")), scheme: "ficha-dev") == toReviewNow)
+        // The real Ficha's, and links the widget never makes.
+        #expect(WidgetLink(url, scheme: "ficha") == nil)
+        #expect(WidgetLink(try #require(URL(string: "ficha-dev://review-now?card=x")), scheme: "ficha-dev") == nil)
+        #expect(WidgetLink(try #require(URL(string: "ficha-dev://capture")), scheme: "ficha-dev") == nil)
+    }
+
+    @Test("the app reloads the widget the first time, and then only when what it shows from then on changes")
+    func theAppReloadsTheWidgetOnlyWhenWhatItShowsChanges() throws {
+        var reloading = WidgetReloading()
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.meet(serendipia)
+
+        let atLaunch = reloading.reloads(for: try engine.widgetTimeline())
+        time.advance(by: minutes(1))
+        try engine.newCapture("ubuntu")
+        let afterACapture = reloading.reloads(for: try engine.widgetTimeline())
+        // The widget's timeline shows serendipia once it's due.
+        time.advance(by: hours(1))
+        let onceDue = reloading.reloads(for: try engine.widgetTimeline())
+        try engine.review(serendipia, .good)
+        let afterAReview = reloading.reloads(for: try engine.widgetTimeline())
+
+        #expect(atLaunch)
+        #expect(!afterACapture)
+        #expect(!onceDue)
+        #expect(afterAReview)
+    }
+
     /// When `card`'s front-first way is due, on the default ladder.
     private func dueTime(of card: Card) throws -> Date {
         try #require(try engine.standing(of: card.id, on: ReviewSettings.defaults.ladder).due)

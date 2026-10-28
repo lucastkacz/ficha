@@ -67,6 +67,96 @@ public struct WidgetTimeline: Sendable, Equatable {
     public let refreshAt: Date?
 }
 
+extension WidgetTimeline {
+    /// What it shows from `now` on: what it shows then, from the last entry
+    /// at or before it, if any, then each later entry, and when WidgetKit
+    /// asks for it again.
+    fileprivate func shown(from now: Date) -> (current: WidgetContent?, later: [Entry], refreshAt: Date?) {
+        (entries.last { $0.date <= now }?.content, entries.filter { $0.date > now }, refreshAt)
+    }
+}
+
+/// When the app asks WidgetKit to reload the widget, whose reloads WidgetKit
+/// counts against a daily budget ("Keeping a widget up to date"): the first
+/// time, as the database may have changed while the app didn't run, and then
+/// only when what the widget shows from then on changes, so a write that
+/// changes no card it shows, or a sync, spends none.
+public struct WidgetReloading: Sendable {
+    /// The timeline of the last reload, or nil before the first.
+    private var reloaded: WidgetTimeline?
+
+    public init() {}
+
+    /// Whether the app asks WidgetKit to reload the widget, now that it shows
+    /// `timeline`, as the engine works it out now: when that shows something
+    /// else than the timeline of the last reload from now on, or when there
+    /// was none. A reload makes `timeline` the last one.
+    public mutating func reloads(for timeline: WidgetTimeline) -> Bool {
+        if let reloaded, let now = timeline.entries.first?.date, reloaded.shown(from: now) == timeline.shown(from: now)
+        {
+            return false
+        }
+        reloaded = timeline
+        return true
+    }
+}
+
+/// The link a click on the widget opens in the app: a review now, which
+/// starts with the card the widget showed, the way it showed it, when it
+/// showed one. In a URL with the app's own scheme, like
+/// `ficha://review-now?card=12&way=backFirst`, which the app's Info.plist
+/// claims (`FICHA_URL_SCHEME` in `project.yml`).
+public struct WidgetLink: Sendable, Equatable {
+    /// The card the review now starts with, or nil for a review now as usual.
+    public let startingWith: CardWay?
+
+    public init(startingWith: CardWay?) {
+        self.startingWith = startingWith
+    }
+
+    /// The link a URL with `scheme` names, or nil when it names none, as
+    /// another app's link may not.
+    public init?(_ url: URL, scheme: String) {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            components.scheme == scheme, components.host == reviewNowHost, components.path.isEmpty
+        else {
+            return nil
+        }
+        let items = components.queryItems ?? []
+        let card = items.first { $0.name == "card" }?.value
+        let way = items.first { $0.name == "way" }?.value
+        switch (card, way) {
+        case (nil, nil):
+            startingWith = nil
+        case (let card?, let way?):
+            guard let cardID = Int64(card), let way = Way(rawValue: way) else {
+                return nil
+            }
+            startingWith = CardWay(cardID: cardID, way: way)
+        case (_?, nil), (nil, _?):
+            return nil
+        }
+    }
+
+    /// The link as a URL with `scheme`, the app's, or nil when the scheme
+    /// can't make one.
+    public func url(scheme: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = reviewNowHost
+        if let startingWith {
+            components.queryItems = [
+                URLQueryItem(name: "card", value: String(startingWith.cardID)),
+                URLQueryItem(name: "way", value: startingWith.way.rawValue),
+            ]
+        }
+        return components.url
+    }
+}
+
+/// The part of the widget's link that names a review now.
+private let reviewNowHost = "review-now"
+
 extension Engine {
     /// What the widget shows from now on, as `NextWayTimeline` says, or that
     /// Lucas has no cards at all. It picks the cards with the settings that
@@ -90,6 +180,20 @@ extension Engine {
                 },
                 refreshAt: timeline.refreshAt)
         }
+    }
+
+    /// The cards a review now brings when Lucas clicks the widget on `first`,
+    /// a card the way it showed it: those `reviewNow(_:)` brings, with `first`
+    /// first when review now brings it. When it no longer does, as when he
+    /// reviewed it meanwhile, review now starts as usual.
+    public func reviewNow(_ settings: ReviewSettings, startingWith first: CardWay) throws(EngineError)
+        -> [PanelCard]
+    {
+        var cards = try reviewNow(settings)
+        if let index = cards.firstIndex(where: { $0.cardWay == first }) {
+            cards.insert(cards.remove(at: index), at: 0)
+        }
+        return cards
     }
 }
 
