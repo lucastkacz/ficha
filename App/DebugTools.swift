@@ -1,4 +1,5 @@
 import FichaData
+import FichaSVG
 import Foundation
 import Observation
 
@@ -19,10 +20,12 @@ final class DebugTools {
 
     /// Opens the database in Ficha Dev's data folder on Ficha Dev's time, as
     /// far ahead as the debug menu left it, so the engine and the menu share
-    /// one time.
+    /// one time. Its imports draw SVGs through Ficha Dev's SVG drawer.
     init(dataFolder: URL) throws {
         time = try DebugTimeSource(savedIn: dataFolder)
-        engine = try Engine(location: .folder(dataFolder), time: time)
+        let svgDrawer = AppVariant.dev.svgDrawerIdentifier
+        engine = try Engine(
+            location: .folder(dataFolder), time: time, drawingSVGsWith: { ServiceSVGDrawer(serviceName: svgDrawer) })
         secondDeviceFolder = dataFolder.deletingLastPathComponent()
             .appending(path: "\(dataFolder.lastPathComponent)-second-device", directoryHint: .isDirectory)
         timeShift = time.shift

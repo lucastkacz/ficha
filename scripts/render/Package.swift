@@ -17,6 +17,7 @@ let package = Package(
             dependencies: [
                 .product(name: "FichaCore", package: "FichaKit"),
                 .product(name: "FichaData", package: "FichaKit"),
+                .product(name: "FichaSVG", package: "FichaKit"),
             ],
             // The app's entry point and its delegate, its icons, its String
             // Catalog and its entitlements stay out: `main.swift` is this

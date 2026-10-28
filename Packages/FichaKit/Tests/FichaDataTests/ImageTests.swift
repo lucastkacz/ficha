@@ -1,5 +1,6 @@
 import CoreGraphics
 import FichaCore
+import FichaSVG
 import Foundation
 import GRDB
 import ImageIO
@@ -279,8 +280,8 @@ final class ImageTests {
     // imported again.
     @Test("an SVG is drawn the same, and named the same, whatever was drawn before it")
     func anSVGIsDrawnTheSame() throws {
-        let first = SVGDrawer()
-        let second = SVGDrawer()
+        let first = InProcessSVGDrawer()
+        let second = InProcessSVGDrawer()
         let moon = Data(
             """
             <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>
@@ -299,7 +300,7 @@ final class ImageTests {
     @Test("an SVG isn't drawn on the main thread")
     func anSVGIsntDrawnOnTheMainThread() {
         #expect(throws: EngineError.notAnImage) {
-            try CardImage(drawing: sunSVG, with: SVGDrawer())
+            try CardImage(drawing: sunSVG, with: InProcessSVGDrawer())
         }
     }
 }

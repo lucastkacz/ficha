@@ -19,7 +19,8 @@ let zstdConfigurationMacros: [CSetting] =
 
 let package = Package(
     name: "FichaKit",
-    // The iPhone app links FichaCore and FichaData. The CLI is the Mac's only.
+    // The iPhone app links FichaCore and FichaData. The CLI is the Mac's only,
+    // as is the SVG drawer's XPC service, which links FichaSVG alone.
     // FichaICloud, the only one that imports CloudKit, is linked by the Mac
     // app alone, so that neither the CLI, `swift test` nor `make render`
     // loads CloudKit (ADR 0017).
@@ -27,6 +28,7 @@ let package = Package(
     products: [
         .library(name: "FichaCore", targets: ["FichaCore"]),
         .library(name: "FichaData", targets: ["FichaData"]),
+        .library(name: "FichaSVG", targets: ["FichaSVG"]),
         .library(name: "FichaICloud", targets: ["FichaICloud"]),
         .library(name: "FichaCLI", targets: ["FichaCLI"]),
     ],
@@ -45,10 +47,17 @@ let package = Package(
             name: "FichaCore",
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
+        // The SVG drawer, which draws the SVGs an import brings in with WebKit,
+        // in the app's XPC service or in the process (ADR 0018).
+        .target(
+            name: "FichaSVG",
+            swiftSettings: [.treatAllWarnings(as: .error)]
+        ),
         .target(
             name: "FichaData",
             dependencies: [
                 "FichaCore",
+                "FichaSVG",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "libzstd", package: "zstd"),
@@ -87,6 +96,7 @@ let package = Package(
             dependencies: [
                 "FichaCore",
                 "FichaData",
+                "FichaSVG",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "libzstd", package: "zstd"),

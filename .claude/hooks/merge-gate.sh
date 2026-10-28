@@ -32,9 +32,10 @@ risky_paths=(
   # The content guide, which every card Claude drafts follows.
   'docs/content-guide\.md'
   # CI and the build, with their configuration files, such as the one Ficha
-  # Dev signs with (Signing.xcconfig), and what its sandboxes let the app
-  # and the CLI reach: their entitlements, and the CLI's Info.plist, which
-  # gives it a sandbox of its own (ADR 0018).
+  # Dev signs with (Signing.xcconfig), and what its sandboxes let the app,
+  # the CLI and the SVG drawer, the one on the network, reach: their
+  # entitlements, and the CLI's Info.plist, which gives it a sandbox of its
+  # own (ADR 0018).
   '\.github/workflows/'
   '\.github/dependabot\.yml'
   'Makefile'

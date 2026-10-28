@@ -37,7 +37,7 @@ xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-v
 		exit 1; }
 
 # The render tool's own files: its `Sources/Render/App` is a link to `App/`.
-SWIFT_SOURCES := App CLI iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
+SWIFT_SOURCES := App CLI SVGDrawer iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
 	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift
 # The shell scripts, for shellcheck. actionlint finds the workflows on its own,
 # in .github/workflows, and runs shellcheck on each step's `run:` script too.

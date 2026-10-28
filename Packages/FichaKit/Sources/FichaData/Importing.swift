@@ -204,10 +204,11 @@ extension Engine {
         do throws(CardsFileProblem) {
             if let archive = try zipArchive(at: file) {
                 if isAnkiPackage(archive) {
-                    (reading, images, sounds) = try await readAnkiPackage(archive, in: calendar)
+                    (reading, images, sounds) = try await readAnkiPackage(
+                        archive, in: calendar, drawingSVGsWith: newSVGDrawer?())
                     kind = .ankiPackage
                 } else {
-                    (reading, images, sounds) = try await readZipOfCards(archive)
+                    (reading, images, sounds) = try await readZipOfCards(archive, drawingSVGsWith: newSVGDrawer?())
                     kind = .cardsFile
                 }
             } else if file.pathExtension.lowercased() == "apkg" {

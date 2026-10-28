@@ -1,5 +1,6 @@
 import CryptoKit
 import FichaCore
+import FichaSVG
 import Foundation
 internal import GRDB
 internal import ZIPFoundation
@@ -28,12 +29,14 @@ func isAnkiPackage(_ archive: Archive) -> Bool {
 /// importReading(in:images:sounds:sha1:)` makes them of its collection, with
 /// their due days as dates in `calendar`, and the images they show and the
 /// sounds they play, by the names Ficha keeps them by, as they come in, from
-/// the package's media, each read on its own; or why it can't be read. An
-/// image or a sound the package lacks, or holds damaged, keeps out only the
-/// cards that hold nothing else on a side.
-func readAnkiPackage(_ archive: Archive, in calendar: Calendar) async throws(CardsFileProblem) -> (
-    reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound]
-) {
+/// the package's media, each read on its own, its SVGs drawn by `drawer`; or
+/// why it can't be read. An image or a sound the package lacks, or holds
+/// damaged, keeps out only the cards that hold nothing else on a side.
+func readAnkiPackage(_ archive: Archive, in calendar: Calendar, drawingSVGsWith drawer: (any SVGDrawer)?)
+    async throws(CardsFileProblem) -> (
+        reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound]
+    )
+{
     let collection: AnkiCollection
     let media: AnkiMedia
     do {
@@ -54,14 +57,14 @@ func readAnkiPackage(_ archive: Archive, in calendar: Calendar) async throws(Car
     }
     var images = FilesInZip<CardImage>(contents: media.contents(ofFileNamed:))
     var sounds = FilesInZip<CardSound>(contents: media.contents(ofFileNamed:))
-    let svgs = SVGDrawer()
     let reading: ImportReading
     do {
         reading = try await collection.importReading(in: calendar) { name in
             // Shrunk, as every image that comes in, or drawn, when its name
             // ends in `.svg`, which is how Anki tells an SVG.
             images.lookUp(name) { data throws(EngineError) in
-                try pathExtension(of: name) == "svg" ? CardImage(drawing: data, with: svgs) : CardImage(shrinking: data)
+                try pathExtension(of: name) == "svg"
+                    ? CardImage(drawing: data, with: drawer) : CardImage(shrinking: data)
             }
         } sounds: { names in
             // Converted, as every sound that comes in, a video's included,

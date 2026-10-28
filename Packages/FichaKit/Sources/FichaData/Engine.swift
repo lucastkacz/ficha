@@ -1,4 +1,5 @@
 import FichaCore
+import FichaSVG
 import Foundation
 internal import GRDB
 import os
@@ -36,6 +37,9 @@ public struct Engine: Sendable {
     /// there alone, as in the `ficha` CLI's sandbox (ADR 0018), or nil when
     /// they may come from anywhere.
     let refineFilesOnlyIn: URL?
+    /// A new SVG drawer for each import's SVGs, or nil when its imports draw
+    /// none.
+    let newSVGDrawer: (@Sendable () -> any SVGDrawer)?
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
@@ -45,12 +49,15 @@ public struct Engine: Sendable {
     /// migrated is refused, and left as it was. Days start at midnight by
     /// `calendar`: the Mac's, except in tests. A refine session's files come
     /// from `downloads` alone, the Downloads folder, when it's given, and from
-    /// anywhere when it isn't.
+    /// anywhere when it isn't. An import draws its SVGs with a drawer
+    /// `newSVGDrawer` makes, in the app its XPC service, and without one, as
+    /// in the CLI and on the iPhone, which don't import, it draws none.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
         calendar: Calendar = .autoupdatingCurrent,
-        refineFilesOnlyIn downloads: URL? = nil
+        refineFilesOnlyIn downloads: URL? = nil,
+        drawingSVGsWith newSVGDrawer: (@Sendable () -> any SVGDrawer)? = nil
     ) throws(EngineError) {
         switch location {
         case .folder(let folder):
@@ -86,6 +93,7 @@ public struct Engine: Sendable {
         self.time = time
         self.calendar = calendar
         refineFilesOnlyIn = downloads
+        self.newSVGDrawer = newSVGDrawer
     }
 
     /// Every change to the database from now on, by this engine or by another
