@@ -29,10 +29,14 @@ struct Detection: Equatable {
             displayAwake: appsKeepingTheDisplayAwake(), fullScreen: fullScreenApp())
     }
 
+    /// The suppressions the detectors read. A Focus isn't one: macOS says
+    /// when it's on, through Ficha's filter.
+    static let suppressions: [Suppression] = [.meeting, .video, .fullScreen]
+
     /// Whether `suppression` is on, by the readings, or nil when they can't
     /// tell: a meeting while a camera or a microphone is in use, a video
     /// while an app keeps the display awake, and the app in front in full
-    /// screen.
+    /// screen. They never tell a Focus.
     func isOn(_ suppression: Suppression) -> Bool? {
         switch suppression {
         case .meeting:
@@ -45,6 +49,7 @@ struct Detection: Equatable {
             }
         case .video: displayAwake.isInUse
         case .fullScreen: fullScreen.isInUse
+        case .focus: nil
         }
     }
 }

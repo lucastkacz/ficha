@@ -10,7 +10,7 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "suppre
 /// What Lucas's Mac tells Ficha, read from the OS without asking for any
 /// permission (#10's and #12's findings): whether it or its screens are
 /// asleep, when they last woke, how long Lucas has been idle, and what holds
-/// appearances back.
+/// appearances back, a Focus by Ficha's filter in it.
 final class SystemMacSignals: DeviceSignals {
     /// How often it looks at what holds appearances back: an appearance waits
     /// 2 minutes after a suppression ends anyway, so a few seconds late is
@@ -33,8 +33,9 @@ final class SystemMacSignals: DeviceSignals {
     private var observers: [any NSObjectProtocol] = []
     /// The detectors' polling, for as long as Ficha runs.
     private var detecting: Task<Void, Never>?
-    /// The suppressions whose detectors couldn't tell at the last look.
-    private var cantTell: Set<Suppression> = []
+    /// The suppressions that couldn't be told at the last look: by their
+    /// detectors, or, for a Focus, by Ficha's filter.
+    private(set) var cantTell: Set<Suppression> = []
 
     /// The Mac's signals, noting its wakes and its suppressions' ends by
     /// `now`, the engine's time.
@@ -64,27 +65,65 @@ final class SystemMacSignals: DeviceSignals {
         }
     }
 
-    /// Notes what holds appearances back now, and when each of those that
-    /// stopped ended, and says when that changed. A suppression whose
-    /// detector can't tell stays as it was, so a failed reading neither
-    /// starts nor ends one, and the log says so.
+    /// Notes what the detectors and Ficha's Focus filter say holds
+    /// appearances back now. A suppression that can't be told stays as it
+    /// was, so a failed reading neither starts nor ends one, and the log says
+    /// so.
     private func detectSuppressions() {
         let detection = Detection.read()
-        let unknown = Set(Suppression.allCases.filter { detection.isOn($0) == nil })
-        if unknown != cantTell {
-            let names = Suppression.allCases.filter(unknown.contains).map(\.rawValue).joined(separator: ", ")
-            logger.error(
-                "Can't tell whether these hold appearances back: \(names.isEmpty ? "none" : names, privacy: .public)")
-            cantTell = unknown
+        let unknown = Set(Detection.suppressions.filter { detection.isOn($0) == nil })
+        noteCantTell(unknown.union(cantTell.intersection([.focus])))
+        let detected = Detection.suppressions.filter { detection.isOn($0) ?? suppressions.contains($0) }
+        hold(suppressions.subtracting(Detection.suppressions).union(detected))
+        readFocusFilter()
+    }
+
+    /// Reads whether a Focus holds appearances back, by Ficha's filter. macOS
+    /// says so too, through the filter's `perform`, as the Focus turns on or
+    /// off, but only once it's connected to Ficha: until then it tries to
+    /// launch Ficha, which its own sandbox refuses, as #307's probe found on
+    /// macOS 26.3, and Ficha never hears. So Ficha reads it as it reads the
+    /// detectors. When it can't, the log says why, once.
+    private func readFocusFilter() {
+        Task { [weak self] in
+            do {
+                let filter = try await HoldBackAppearancesFilter.current
+                guard let self else { return }
+                noteCantTell(cantTell.subtracting([.focus]))
+                focusChanged(holdsBack: filter.holdsBack)
+            } catch {
+                guard let self, !cantTell.contains(.focus) else { return }
+                logger.error("Can't read Ficha's Focus filter: \(error.localizedDescription, privacy: .public)")
+                noteCantTell(cantTell.union([.focus]))
+            }
         }
-        let detected = Set(Suppression.allCases.filter { detection.isOn($0) ?? suppressions.contains($0) })
-        guard detected != suppressions else { return }
+    }
+
+    /// Notes `unknown` as the suppressions that can't be told now, and logs
+    /// it when that changed.
+    private func noteCantTell(_ unknown: Set<Suppression>) {
+        guard unknown != cantTell else { return }
+        let names = Suppression.allCases.filter(unknown.contains).map(\.rawValue).joined(separator: ", ")
+        logger.error(
+            "Can't tell whether these hold appearances back: \(names.isEmpty ? "none" : names, privacy: .public)")
+        cantTell = unknown
+    }
+
+    /// Notes whether a Focus holds appearances back, as Ficha's filter says.
+    func focusChanged(holdsBack: Bool) {
+        hold(holdsBack ? suppressions.union([.focus]) : suppressions.subtracting([.focus]))
+    }
+
+    /// Notes `held` as what holds appearances back now, and when each of
+    /// those that stopped ended, and says when that changed.
+    private func hold(_ held: Set<Suppression>) {
+        guard held != suppressions else { return }
         let endedAt = now()
-        for ended in suppressions.subtracting(detected) {
+        for ended in suppressions.subtracting(held) {
             suppressionEnds[ended] = endedAt
         }
-        suppressions = detected
-        let names = Suppression.allCases.filter(detected.contains).map(\.rawValue).joined(separator: ", ")
+        suppressions = held
+        let names = Suppression.allCases.filter(held.contains).map(\.rawValue).joined(separator: ", ")
         logger.info("Holding appearances back now: \(names.isEmpty ? "nothing" : names, privacy: .public)")
         suppressionsChanged?()
     }
