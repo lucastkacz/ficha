@@ -128,10 +128,7 @@ final class AppModel {
     /// brings it.
     func startReviewNow(startingWith first: CardWay? = nil) -> Result<ReviewPanelModel, EngineError> {
         Result { () throws(EngineError) in
-            guard let first else {
-                return try openPanel(.reviewNow, with: engine.reviewNow(settings))
-            }
-            return try openPanel(.reviewNow, with: engine.reviewNow(settings, startingWith: first))
+            try openPanel(.reviewNow, with: engine.reviewNow(settings, startingWith: first))
         }
     }
 

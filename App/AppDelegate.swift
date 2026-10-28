@@ -6,14 +6,13 @@ import FichaSVG
 import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
-private let widgetLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "widget")
 
 /// Opens the database in this app's own data folder when the app launches,
 /// and starts the appearances, the widget's reloads and, in Ficha Dev, sync
-/// through iCloud, and it opens the widget's links. When it
-/// can't open it, the app says why and quits: Ficha doesn't run without its
-/// cards. It and `SecondDevice` are the only files of the app that load
-/// CloudKit, so `make render` leaves them out.
+/// through iCloud. When it can't open the database, the app says why and
+/// quits: Ficha doesn't run without its cards. It also opens the links a
+/// click on the widget opens the app with. It and `SecondDevice` are the only
+/// files of the app that load CloudKit, so `make render` leaves them out.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The app, once it launched with its cards, for its App Intents, which
     /// macOS runs in the app's process.
@@ -157,7 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// has.
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            guard let link = WidgetLink(url, scheme: AppVariant.current.urlScheme) else {
+            guard let scheme = WidgetHandover.linkScheme, let link = WidgetLink(url, scheme: scheme) else {
                 widgetLogger.error("Ignored a link the app doesn't open: \(url, privacy: .public)")
                 continue
             }
@@ -204,18 +203,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let mac = SystemMacSignals { model.now }
             let panel = ReviewPanel(model: model, mac: mac)
             let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
+            // Before any panel opens, since an open panel holds the widget's
+            // reloads back.
+            let widgetReloads = WidgetReloads(model: model)
+            panel.whenOpened = { widgetReloads.panelOpened() }
+            panel.whenClosed = { widgetReloads.panelClosed() }
             self.mac = mac
             self.panel = panel
             self.appearances = appearances
+            self.widgetReloads = widgetReloads
             // Before the alert at first launch, which an App Intent can run
             // during.
             Self.launched = self
             appearances.start()
             model.startBackups()
             startSyncing(model)
-            let widgetReloads = WidgetReloads(model: model)
             widgetReloads.start()
-            self.widgetReloads = widgetReloads
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
             StartAtLogin.askAtFirstLaunch()

@@ -24,7 +24,7 @@ struct WidgetTests {
         time.advance(by: hours(1))
 
         #expect(
-            try engine.widgetTimeline().entries == [
+            try engine.widgetTimeline(.defaults, engineAheadBy: .zero).entries == [
                 WidgetTimeline.Entry(
                     date: time.now,
                     content: .card(
@@ -47,11 +47,35 @@ struct WidgetTests {
         try engine.review(bothWays, .good)
 
         #expect(
-            try engine.widgetTimeline().entries.first?.content
+            try engine.widgetTimeline(.defaults, engineAheadBy: .zero).entries.first?.content
                 == .card(
                     WidgetCard(
                         way: CardWay(cardID: argentina.id, way: .backFirst), isNew: false, side: .back,
                         text: "Su bandera", image: flag, showsSpeaker: false)))
+    }
+
+    @Test("the widget picks by this Mac's cards per appearance, which the app hands over, as review now does")
+    func picksByThisMacsCardsPerAppearance() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.meet(serendipia)
+        time.advance(by: hours(1))
+        let ubuntu = try approve(card(.word, front: "ubuntu", back: "Humanidad.", tags: ["urgente"]), in: engine)
+        try engine.togglePriority(of: "urgente")
+        // With a single card, a priority card's new way comes before
+        // another card's due way, and takes the only place.
+        var settings = ReviewSettings.defaults
+        settings.cardsPerAppearance = 1
+        let ubuntuFrontFirst = CardWay(cardID: ubuntu.id, way: .frontFirst)
+
+        let shown = try engine.widgetTimeline(WidgetSettings(settings), engineAheadBy: .zero).entries.first?.content
+
+        #expect(try engine.reviewNow(settings) == [.firstView(ubuntu)])
+        #expect(
+            shown
+                == .card(
+                    WidgetCard(
+                        way: ubuntuFrontFirst, isNew: true, side: .front, text: "ubuntu", image: nil,
+                        showsSpeaker: false)))
     }
 
     @Test("a side with only an image shows the image, and no speaker even when the side has a sound too")
@@ -65,7 +89,7 @@ struct WidgetTests {
             ).first)
 
         #expect(
-            try engine.widgetTimeline().entries.first?.content
+            try engine.widgetTimeline(.defaults, engineAheadBy: .zero).entries.first?.content
                 == .card(
                     WidgetCard(
                         way: CardWay(cardID: argentina.id, way: .frontFirst), isNew: true, side: .front, text: "",
@@ -80,7 +104,7 @@ struct WidgetTests {
             try engine.approve(capture.id, into: [card(.word, front: "", back: "La, a 440 Hz", frontSound: la)]).first)
 
         #expect(
-            try engine.widgetTimeline().entries.first?.content
+            try engine.widgetTimeline(.defaults, engineAheadBy: .zero).entries.first?.content
                 == .card(
                     WidgetCard(
                         way: CardWay(cardID: note.id, way: .frontFirst), isNew: true, side: .front, text: "",
@@ -93,7 +117,7 @@ struct WidgetTests {
         try engine.meet(serendipia)
         let due = time.now + hours(1)
 
-        let timeline = try engine.widgetTimeline()
+        let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: .zero)
 
         #expect(
             timeline.entries == [
@@ -115,7 +139,7 @@ struct WidgetTests {
         let midnight = try #require(calendar.dateInterval(of: .day, for: time.now)?.end)
 
         #expect(
-            try engine.widgetTimeline().entries.prefix(2) == [
+            try engine.widgetTimeline(.defaults, engineAheadBy: .zero).entries.prefix(2) == [
                 WidgetTimeline.Entry(date: time.now, content: .nextCard(at: midnight)),
                 WidgetTimeline.Entry(
                     date: midnight,
@@ -126,7 +150,7 @@ struct WidgetTests {
             ])
     }
 
-    @Test("what comes due less than 5 minutes after an entry shows 5 minutes after it, as WidgetKit asks")
+    @Test("what comes due less than 5 minutes after an entry shows 5 minutes after it in WidgetKit, as it asks")
     func entriesAreFiveMinutesApart() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let serendipia = try approveCard("serendipia", in: engine)
@@ -136,13 +160,15 @@ struct WidgetTests {
         time.move(to: ubuntuDue - hours(1) + minutes(1))
         try engine.meet(serendipia)
 
-        #expect(
-            try engine.widgetTimeline().entries.map(\.date) == [time.now, ubuntuDue, ubuntuDue + minutes(5)])
+        let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: .zero)
+
+        #expect(timeline.entries.map(\.date) == [time.now, ubuntuDue, ubuntuDue + minutes(1)])
+        #expect(timeline.spacedEntries.map(\.date) == [time.now, ubuntuDue, ubuntuDue + minutes(5)])
     }
 
     @Test("with no cards at all, the widget says so")
     func noCardsAtAll() throws {
-        let timeline = try engine.widgetTimeline()
+        let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: .zero)
 
         #expect(timeline.entries == [WidgetTimeline.Entry(date: time.now, content: .noCards)])
         #expect(timeline.refreshAt == nil)
@@ -153,7 +179,7 @@ struct WidgetTests {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.bury([serendipia.id])
 
-        let timeline = try engine.widgetTimeline()
+        let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: .zero)
 
         #expect(timeline.entries == [WidgetTimeline.Entry(date: time.now, content: .noneComing)])
         #expect(timeline.refreshAt == nil)
@@ -185,6 +211,26 @@ struct WidgetTests {
                 == [.review(ubuntu)])
     }
 
+    @Test("a click on the widget's card starts review now in the open panel's place at its end, and not before")
+    func aClickReplacesTheOpenPanelAtItsEnd() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        // Review now brings one new card, and then "See more?", which brings
+        // no new card.
+        var panel = try engine.openPanel(.reviewNow, with: try engine.reviewNow(.defaults), settings: .defaults)
+        let widgetsCard = CardWay(cardID: ubuntu.id, way: .frontFirst)
+
+        let onItsCard = panel.givesWay(toAReviewNowStartingWith: widgetsCard)
+        panel.endFirstView()
+        let atItsEnd = panel.givesWay(toAReviewNowStartingWith: widgetsCard)
+        let atItsEndWithNoCard = panel.givesWay(toAReviewNowStartingWith: nil)
+
+        #expect(panel.cards == [.firstView(serendipia)])
+        #expect(!onItsCard)
+        #expect(atItsEnd)
+        #expect(!atItsEndWithNoCard)
+    }
+
     @Test("the link a click on the widget opens names its card, and the app takes no other link for it")
     func theWidgetsLinkNamesItsCard() throws {
         let toACard = WidgetLink(startingWith: CardWay(cardID: 12, way: .backFirst))
@@ -205,15 +251,17 @@ struct WidgetTests {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
 
-        let atLaunch = reloading.reloads(for: try engine.widgetTimeline())
+        let atLaunch = reloading.reloadsAsTheAppDoes(for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
         time.advance(by: minutes(1))
         try engine.newCapture("ubuntu")
-        let afterACapture = reloading.reloads(for: try engine.widgetTimeline())
+        let afterACapture = reloading.reloadsAsTheAppDoes(
+            for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
         // The widget's timeline shows serendipia once it's due.
         time.advance(by: hours(1))
-        let onceDue = reloading.reloads(for: try engine.widgetTimeline())
+        let onceDue = reloading.reloadsAsTheAppDoes(for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
         try engine.review(serendipia, .good)
-        let afterAReview = reloading.reloads(for: try engine.widgetTimeline())
+        let afterAReview = reloading.reloadsAsTheAppDoes(
+            for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
 
         #expect(atLaunch)
         #expect(!afterACapture)
@@ -221,9 +269,166 @@ struct WidgetTests {
         #expect(afterAReview)
     }
 
+    @Test(
+        "with more due times than the timeline looks at, a write that changes nothing the widget shows reloads nothing")
+    func aTimelineCutShortReloadsOnlyWhenWhatItShowsChanges() throws {
+        var reloading = WidgetReloading()
+        // 250 cards met a second apart, each due an hour later.
+        let cards = try engine.approve(
+            engine.newCapture("muchas").id,
+            into: (1...250).map { try card(.word, front: "palabra \($0)", back: "Lo que quiere decir.") })
+        for card in cards {
+            try engine.meet(card)
+            time.advance(by: 1)
+        }
+        let atLaunch = reloading.reloadsAsTheAppDoes(for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
+        // The first ten came due, so the timeline looks ten due times further.
+        time.move(to: try dueTime(of: cards[9]))
+        try engine.newCapture("ubuntu")
+        let afterACapture = reloading.reloadsAsTheAppDoes(
+            for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
+        try engine.review(cards[0], .good)
+        let afterAReview = reloading.reloadsAsTheAppDoes(
+            for: try engine.widgetTimeline(.defaults, engineAheadBy: .zero))
+
+        #expect(atLaunch)
+        #expect(!afterACapture)
+        #expect(afterAReview)
+    }
+
+    @Test(
+        "the app gathers a burst of changes to the database into one look at the widget, once they stop for 30 seconds")
+    func aBurstOfChangesMakesOneLook() {
+        var reloading = WidgetReloading()
+        let start = time.now
+
+        let first = reloading.databaseChanged(at: start)
+        let second = reloading.databaseChanged(at: start + 10)
+        // The look the first change set: another came since.
+        let looksForTheFirst = reloading.looks(at: start + 30)
+        let looksForTheSecond = reloading.looks(at: start + 40)
+        // Nothing changed since that look.
+        let looksAgain = reloading.looks(at: start + 70)
+
+        #expect(first == start + 30)
+        #expect(second == start + 40)
+        #expect(!looksForTheFirst)
+        #expect(looksForTheSecond)
+        #expect(!looksAgain)
+    }
+
+    @Test("the review panel holds the widget's reloads back while it's open, and the app looks once as it closes")
+    func theReviewPanelHoldsReloadsBack() {
+        var reloading = WidgetReloading()
+        let start = time.now
+
+        reloading.panelOpened()
+        let whileOpen = [reloading.databaseChanged(at: start), reloading.databaseChanged(at: start + 10)]
+        let looksWhileOpen = reloading.looks(at: start + 60)
+        let looksAsItCloses = reloading.panelClosed()
+        reloading.panelOpened()
+        let looksAsItClosesUnchanged = reloading.panelClosed()
+
+        #expect(whileOpen == [nil, nil])
+        #expect(!looksWhileOpen)
+        #expect(looksAsItCloses)
+        #expect(!looksAsItClosesUnchanged)
+    }
+
     /// When `card`'s front-first way is due, on the default ladder.
     private func dueTime(of card: Card) throws -> Date {
         try #require(try engine.standing(of: card.id, on: ReviewSettings.defaults.ladder).due)
+    }
+}
+
+/// Tests on Ficha Dev's widget, whose engine runs on the time its debug menu
+/// moved forward, while WidgetKit's timeline runs on the system's.
+final class FichaDevWidgetTests {
+    let calendar: Calendar
+    /// The system's time.
+    let system: ManualTimeSource
+    /// Ficha Dev's time, a day ahead of the system's.
+    let fichaDevTime: DebugTimeSource
+    let engine: Engine
+    /// Ficha Dev's data folder, which keeps how far its time moved.
+    let folder = URL.temporaryDirectory.appending(
+        path: "FichaDataTests-\(UUID().uuidString)",
+        directoryHint: .isDirectory
+    )
+
+    init() throws {
+        calendar = try buenosAiresCalendar()
+        system = ManualTimeSource(now: try morning(of: 14, in: calendar))
+        fichaDevTime = try DebugTimeSource(savedIn: folder, base: system)
+        try fichaDevTime.moveForward(by: .seconds(24 * 60 * 60))
+        engine = try Engine(location: .inMemory, time: fichaDevTime, calendar: calendar)
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: folder)
+    }
+
+    @Test("Ficha Dev's widget shows a new card at the system's midnight before Ficha Dev's, and asks nothing more")
+    func aNewCardShowsAtTheSystemsMidnight() throws {
+        var settings = ReviewSettings.defaults.progress
+        settings.newCardsPerDay = 1
+        try engine.saveProgressSettings(settings, changedFrom: ReviewSettings.defaults.progress)
+        let met = try approveCard("serendipia", in: engine)
+        let new = try approveCard("ubuntu", in: engine)
+        // The day's new card, met, and out of the way.
+        try engine.meet(met)
+        try engine.bury([met.id])
+        // A day before Ficha Dev's midnight, which is a day ahead.
+        let systemsMidnight = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 0)))
+
+        let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: fichaDevTime.shift)
+
+        #expect(
+            timeline.entries == [
+                WidgetTimeline.Entry(date: system.now, content: .nextCard(at: systemsMidnight)),
+                WidgetTimeline.Entry(
+                    date: systemsMidnight,
+                    content: .card(
+                        WidgetCard(
+                            way: CardWay(cardID: new.id, way: .frontFirst), isNew: true, side: .front,
+                            text: "ubuntu", image: nil, showsSpeaker: false))),
+            ])
+        #expect(timeline.refreshAt == nil)
+    }
+
+    @Test("Ficha Dev's widget asks for its timeline again on the system's time")
+    func refreshesOnTheSystemsTime() throws {
+        // A due time for each of 250 cards, a minute apart, more than the
+        // timeline looks at, so it stops at the 200th.
+        let cards = try engine.approve(
+            engine.newCapture("muchas").id,
+            into: (1...250).map { try card(.word, front: "palabra \($0)", back: "Lo que quiere decir.") })
+        for card in cards {
+            try engine.meet(card)
+            system.advance(by: 1)
+        }
+
+        let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: fichaDevTime.shift)
+
+        // Met a second apart, and due an hour after, by the system's time.
+        #expect(timeline.refreshAt == system.now - 250 + hours(1) + 199)
+    }
+}
+
+extension WidgetSettings {
+    /// What the app hands over of Ficha's own settings, as Lucas never
+    /// changed them.
+    fileprivate static let defaults = WidgetSettings(ReviewSettings.defaults)
+}
+
+extension WidgetReloading {
+    /// Whether the app reloads the widget for `timeline`, as it does once it
+    /// looked: then the reload is the last one.
+    fileprivate mutating func reloadsAsTheAppDoes(for timeline: WidgetTimeline) -> Bool {
+        guard needsReload(for: timeline) else { return false }
+        recordReload(of: timeline)
+        return true
     }
 }
 
@@ -259,13 +464,16 @@ final class WidgetDatabaseTests {
         try app.meet(ubuntu)
         time.advance(by: hours(1))
         let widget = try #require(try Engine(readingOnlyIn: folder, time: time))
-        let before = try widget.widgetTimeline().entries.first?.content
+        let before = try widget.widgetTimeline(.defaults, engineAheadBy: .zero).entries.first?.content
 
         let cli = try Engine(location: .folder(folder), time: time)
         try cli.review(serendipia, .good)
 
         #expect(before == .card(widgetCardOfMetCard(serendipia)))
-        #expect(try widget.widgetTimeline().entries.first?.content == .card(widgetCardOfMetCard(ubuntu)))
+        #expect(
+            try widget.widgetTimeline(.defaults, engineAheadBy: .zero).entries.first?.content
+                == .card(widgetCardOfMetCard(ubuntu))
+        )
     }
 
     // SQLite's side files, which a process that reads alone needs, stay once
@@ -284,7 +492,7 @@ final class WidgetDatabaseTests {
         let widget = try #require(try Engine(readingOnlyIn: folder, time: time))
 
         #expect(
-            try widget.widgetTimeline().entries.first?.content
+            try widget.widgetTimeline(.defaults, engineAheadBy: .zero).entries.first?.content
                 == .card(
                     WidgetCard(
                         way: CardWay(cardID: serendipia.id, way: .frontFirst), isNew: true, side: .front,

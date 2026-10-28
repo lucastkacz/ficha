@@ -53,17 +53,6 @@ enum AppVariant {
         "\(bundleIdentifier).svg-drawer"
     }
 
-    /// The scheme of the links that open the app, as a click on its widget
-    /// does, the same as `FICHA_URL_SCHEME` in `project.yml`, which the app's
-    /// Info.plist claims: one for each app, so a link opens the app whose
-    /// widget made it.
-    var urlScheme: String {
-        switch self {
-        case .dev: "ficha-dev"
-        case .real: "ficha"
-        }
-    }
-
     /// The menu-bar icon, an SF Symbol: different for each app, so Lucas can tell them apart.
     var menuBarSymbol: String {
         switch self {
@@ -124,6 +113,20 @@ enum AppVariant {
         }
     }
 
+    #if os(macOS)
+        /// The defaults of the app's App Group, which the app and its widget
+        /// share, or nil where the app doesn't run in its group: in a build not
+        /// signed with it, and in the real Ficha, whose cards stay outside its
+        /// group until #309, so nothing writes to its group or to its
+        /// preferences meanwhile.
+        var groupDefaults: UserDefaults? {
+            switch self {
+            case .dev: signedGroup(named: "com.lucastkacz.ficha.dev").flatMap(UserDefaults.init(suiteName:))
+            case .real: nil
+            }
+        }
+    #endif
+
     /// The name of the app's data folder.
     private var folderName: String {
         switch self {
@@ -176,11 +179,18 @@ enum DataFolderError: Error, LocalizedError {
         return SecTaskCopyValueForEntitlement(task, entitlement as CFString, nil)
     }
 
+    /// The App Group this process is signed with whose name, after the team's
+    /// ID that macOS puts before it, is `name`, or nil when it isn't signed
+    /// with one.
+    private func signedGroup(named name: String) -> String? {
+        let groups = signedEntitlement("com.apple.security.application-groups") as? [String] ?? []
+        return groups.first { $0.hasSuffix(".\(name)") }
+    }
+
     /// The folder of the App Group this process is signed with whose name,
     /// after the team's ID that macOS puts before it, is `name`.
     private func signedGroupFolder(named name: String) throws(DataFolderError) -> URL {
-        let groups = signedEntitlement("com.apple.security.application-groups") as? [String] ?? []
-        guard let group = groups.first(where: { $0.hasSuffix(".\(name)") }) else {
+        guard let group = signedGroup(named: name) else {
             throw .notSignedWithItsGroup
         }
         guard let folder = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {

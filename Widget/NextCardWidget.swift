@@ -2,15 +2,9 @@ import FichaCore
 import FichaData
 import Foundation
 import ImageIO
-import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 import WidgetKit
-
-/// What the extension logs, so a run with the widget reads from the log
-/// alone: each timeline it builds, whether it opened the database in the
-/// group's folder, and what it shows.
-private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "widget")
 
 /// The widget with the next card to review (#171), on the desktop or in
 /// Notification Center, in each app, Ficha Dev's for its cards and the real
@@ -73,50 +67,46 @@ private let retryAfter: TimeInterval = 15 * 60
 private func readTimeline(for family: WidgetFamily) -> Timeline<NextCardEntry> {
     let variant = AppVariant.current
     let now = SystemTimeSource().now
-    logger.info(
+    widgetLogger.info(
         "Building a timeline for \(variant.name, privacy: .public)'s \(family.description, privacy: .public) widget")
     let folder: URL
-    let time: any TimeSource
+    let debugTime: DebugTimeSource?
     let engine: Engine
     do {
         folder = try variant.dataFolder
         // Ficha Dev's engine runs on the time its debug menu moved forward,
         // as its app and its CLI do.
-        time = variant.hasDebugMenu ? try DebugTimeSource(savedIn: folder) : SystemTimeSource()
-        guard let opened = try Engine(readingOnlyIn: folder, time: time) else {
-            logger.info("No database to read in \(folder.path(percentEncoded: false), privacy: .public) yet")
+        debugTime = variant.hasDebugMenu ? try DebugTimeSource(savedIn: folder) : nil
+        guard let opened = try Engine(readingOnlyIn: folder, time: debugTime ?? SystemTimeSource()) else {
+            widgetLogger.info("No database to read in \(folder.path(percentEncoded: false), privacy: .public) yet")
             return single(.notReady, at: now)
         }
         engine = opened
     } catch {
-        logger.error("Couldn't open the cards to read them: \(String(describing: error), privacy: .public)")
+        widgetLogger.error("Couldn't open the cards to read them: \(String(describing: error), privacy: .public)")
         return single(.unreadable(error.localizedDescription), at: now)
     }
-    logger.info("Opened the database in \(folder.path(percentEncoded: false), privacy: .public) to read it")
+    widgetLogger.info("Opened the database in \(folder.path(percentEncoded: false), privacy: .public) to read it")
+    // Picks with this Mac's settings, as review now does, once the app
+    // handed them over.
+    guard let settings = WidgetHandover.handedOver() else {
+        widgetLogger.info("The app hasn't handed over this Mac's settings yet")
+        return single(.notReady, at: now)
+    }
 
     let timeline: WidgetTimeline
     do {
-        timeline = try engine.widgetTimeline()
+        timeline = try engine.widgetTimeline(settings, engineAheadBy: debugTime?.shift ?? .zero)
     } catch {
-        logger.error("Couldn't read what the widget shows: \(String(describing: error), privacy: .public)")
+        widgetLogger.error("Couldn't read what the widget shows: \(String(describing: error), privacy: .public)")
         return single(.unreadable(error.localizedDescription), at: now)
     }
-    // WidgetKit's timeline runs on the system's time, which Ficha Dev's runs
-    // ahead of, and so does the clock Lucas reads the next card's time by.
-    let shift = (time as? DebugTimeSource).map { TimeInterval($0.shift.components.seconds) } ?? 0
     var images = SmallImages(engine: engine)
-    let entries = timeline.entries.map { entry in
-        let content: WidgetContent =
-            if case .nextCard(let time) = entry.content {
-                .nextCard(at: time - shift)
-            } else {
-                entry.content
-            }
-        return NextCardEntry(date: entry.date - shift, shows: .content(content, image: images.image(for: content)))
+    let entries = timeline.spacedEntries.map { entry in
+        NextCardEntry(date: entry.date, shows: .content(entry.content, image: images.image(for: entry.content)))
     }
-    let policy: TimelineReloadPolicy = timeline.refreshAt.map { .after($0 - shift) } ?? .never
-    log(entries, refreshAt: timeline.refreshAt.map { $0 - shift })
-    return Timeline(entries: entries, policy: policy)
+    log(entries, refreshAt: timeline.refreshAt)
+    return Timeline(entries: entries, policy: timeline.refreshAt.map { .after($0) } ?? .never)
 }
 
 /// A timeline that shows `shows`, which isn't the cards, from `now` on: until
@@ -135,7 +125,7 @@ private func log(_ entries: [NextCardEntry], refreshAt: Date?) {
     let later = entries.dropFirst().prefix(3).map { "\(described($0.shows)) at \($0.date)" }
     let next = later.isEmpty ? "" : " (\(later.joined(separator: "; ")))"
     let refresh = refreshAt.map { "at \($0)" } ?? "when the app reloads it"
-    logger.info(
+    widgetLogger.info(
         """
         The widget shows \(described(first.shows), privacy: .public) from \(first.date, privacy: .public), \
         then \(entries.count - 1, privacy: .public) more entries\(next, privacy: .public), and reads the cards \
@@ -154,7 +144,7 @@ private func described(_ shows: NextCardEntry.Shows) -> String {
     case .content(.nextCard(let time), _): return "no card waiting, the next at \(time)"
     case .content(.noneComing, _): return "no card coming"
     case .content(.noCards, _): return "no cards"
-    case .notReady: return "that the app hasn't opened its database yet"
+    case .notReady: return "that the app hasn't opened its database or handed over its settings yet"
     case .unreadable: return "that it couldn't read the cards"
     }
 }
@@ -163,7 +153,8 @@ private func described(_ shows: NextCardEntry.Shows) -> String {
 /// every entry's view, and a widget's extension has little memory.
 private struct SmallImages {
     let engine: Engine
-    private var read: [ImageName: Data?] = [:]
+    /// Each image read so far, made small, or nil when it couldn't be.
+    private var cache: [ImageName: Data?] = [:]
 
     init(engine: Engine) {
         self.engine = engine
@@ -173,18 +164,18 @@ private struct SmallImages {
     /// it has none or it couldn't be read.
     mutating func image(for content: WidgetContent) -> Data? {
         guard case .card(let card) = content, let name = card.image else { return nil }
-        if let image = read[name] {
+        if let image = cache[name] {
             return image
         }
         let image: Data?
         do {
             image = shrunk(try engine.image(name))
         } catch {
-            logger.error(
+            widgetLogger.error(
                 "Couldn't read an image on card \(card.way.cardID): \(String(describing: error), privacy: .public)")
             image = nil
         }
-        read[name] = image
+        cache[name] = image
         return image
     }
 }

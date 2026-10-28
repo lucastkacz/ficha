@@ -54,8 +54,29 @@ public struct WidgetCard: Sendable, Equatable {
     }
 }
 
+/// What the widget needs of this Mac's own settings to pick the card a review
+/// now would start with, which the app keeps in its preferences, where the
+/// widget can't read them, so it hands them over: the rest, the settings that
+/// decide a card's progress, the widget reads in the database.
+public struct WidgetSettings: Sendable, Equatable {
+    /// How many cards an appearance or a review now brings at most.
+    public let cardsPerAppearance: Int
+
+    /// What the widget needs of `settings`, this Mac's.
+    public init(_ settings: ReviewSettings) {
+        cardsPerAppearance = settings.cardsPerAppearance
+    }
+
+    /// The settings with `cardsPerAppearance` cards per appearance, or nil
+    /// when that's fewer than one, which Settings never keeps.
+    public init?(cardsPerAppearance: Int) {
+        guard cardsPerAppearance >= 1 else { return nil }
+        self.cardsPerAppearance = cardsPerAppearance
+    }
+}
+
 /// What the widget shows from now on, as if Lucas rated nothing in between,
-/// by the engine's time.
+/// by the system's time, which WidgetKit's timeline runs on.
 public struct WidgetTimeline: Sendable, Equatable {
     /// What the widget shows from a time on, until the next entry.
     public struct Entry: Sendable, Equatable {
@@ -68,45 +89,151 @@ public struct WidgetTimeline: Sendable, Equatable {
         }
     }
 
-    /// The entries, the first one now.
+    /// The entries, the first one now, then one at the very time what the
+    /// widget shows changes, each time it does.
     public let entries: [Entry]
-    /// When WidgetKit asks for the timeline again, by the engine's time, as
-    /// it stopped before what the widget shows stops changing, or nil when
-    /// only a change to the cards changes it.
+    /// When WidgetKit asks for the timeline again, as it stopped before what
+    /// the widget shows stops changing, or nil when only a change to the
+    /// cards changes it.
     public let refreshAt: Date?
-}
 
-extension WidgetTimeline {
-    /// What it shows from `now` on: what it shows then, from the last entry
-    /// at or before it, if any, then each later entry, and when WidgetKit
-    /// asks for it again.
-    fileprivate func shown(from now: Date) -> (current: WidgetContent?, later: [Entry], refreshAt: Date?) {
-        (entries.last { $0.date <= now }?.content, entries.filter { $0.date > now }, refreshAt)
+    /// The entries as WidgetKit takes them, at least about 5 minutes apart
+    /// ("Keeping a widget up to date"): what changes sooner after an entry
+    /// shows 5 minutes after it.
+    public var spacedEntries: [Entry] {
+        guard let first = entries.first else { return [] }
+        var spaced = [first]
+        for entry in entries.dropFirst() {
+            guard let last = spaced.last, entry.date > last.date else { continue }
+            let date = max(entry.date, last.date.addingTimeInterval(entrySpacing))
+            if let content = content(at: date), content != last.content {
+                spaced.append(Entry(date: date, content: content))
+            }
+        }
+        return spaced
+    }
+
+    /// What it shows at `time`, from its last entry at or before it, or nil
+    /// before its first.
+    func content(at time: Date) -> WidgetContent? {
+        entries.last { $0.date <= time }?.content
+    }
+
+    /// The same timeline `shift` sooner: by the system's time, when it was
+    /// worked out on an engine's that runs `shift` ahead of it.
+    fileprivate func sooner(by shift: Duration) -> WidgetTimeline {
+        WidgetTimeline(
+            entries: entries.map { entry in
+                let content: WidgetContent =
+                    if case .nextCard(let time) = entry.content {
+                        .nextCard(at: time.adding(.zero - shift))
+                    } else {
+                        entry.content
+                    }
+                return Entry(date: entry.date.adding(.zero - shift), content: content)
+            },
+            refreshAt: refreshAt?.adding(.zero - shift))
     }
 }
 
-/// When the app asks WidgetKit to reload the widget, whose reloads WidgetKit
-/// counts against a daily budget ("Keeping a widget up to date"): the first
-/// time, as the database may have changed while the app didn't run, and then
-/// only when what the widget shows from then on changes, so a write that
-/// changes no card it shows, or a sync, spends none.
+/// The least time between two entries of the widget's timeline in WidgetKit,
+/// which asks for entries "at least about 5 minutes apart" ("Keeping a widget
+/// up to date").
+private let entrySpacing: TimeInterval = 5 * 60
+
+extension WidgetTimeline {
+    /// Whether the widget shows the same by `later`, worked out since, as by
+    /// this one, at every time from `later`'s start until either is asked
+    /// for again: where they stop, and where they put an entry, which only
+    /// says what they look at, doesn't count. When this one was asked for
+    /// again already, WidgetKit holds a timeline the app doesn't know, which
+    /// is never the same.
+    fileprivate func showsTheSame(as later: WidgetTimeline) -> Bool {
+        guard let now = later.entries.first?.date else { return false }
+        let until = [refreshAt, later.refreshAt].compactMap(\.self).min()
+        if let until, until <= now {
+            return false
+        }
+        let changes = (entries + later.entries).map(\.date).filter { date in
+            date > now && until.map { date < $0 } ?? true
+        }
+        return ([now] + changes).allSatisfy { content(at: $0) == later.content(at: $0) }
+    }
+}
+
+/// When the app looks at what the widget shows, and asks WidgetKit to reload
+/// it, whose reloads WidgetKit counts against a daily budget of 40 to 70
+/// ("Keeping a widget up to date"). The app, in the menu bar, with a review
+/// panel that never activates it, is never in the foreground, which alone
+/// would make them free. So it looks as it launches, since the database may
+/// have changed while it didn't run, and then once a burst of changes to the
+/// database stops, as a refine session's writes or a sync's do, and once the
+/// review panel closes, which holds them back while it's open: each card
+/// Lucas rates in it changes what the widget shows. And it reloads only when
+/// what the widget shows from then on changed, so a write that changes no
+/// card it shows spends none.
 public struct WidgetReloading: Sendable {
+    /// How long the app waits after a change to the database for another,
+    /// before it looks at what the widget shows.
+    public static let quietPeriod: Duration = .seconds(30)
+
     /// The timeline of the last reload, or nil before the first.
     private var reloaded: WidgetTimeline?
+    /// When the last change to the database the app hasn't looked at came,
+    /// or nil when it looked at them all.
+    private var changedAt: Date?
+    /// Whether the review panel is open.
+    private var panelIsOpen = false
 
     public init() {}
+
+    /// Notes a change to the database at `time`, and says when the app looks
+    /// at what the widget shows for it: once the quiet period passed, unless
+    /// another change comes first, or, while the review panel is open, as it
+    /// closes, which it says by nil.
+    public mutating func databaseChanged(at time: Date) -> Date? {
+        changedAt = time
+        return panelIsOpen ? nil : time.adding(Self.quietPeriod)
+    }
+
+    /// Whether the app looks at what the widget shows at `time`, for the
+    /// changes to the database since its last look: once none came for the
+    /// quiet period, while the review panel is closed. Then it takes them.
+    public mutating func looks(at time: Date) -> Bool {
+        guard !panelIsOpen, let changedAt, time >= changedAt.adding(Self.quietPeriod) else {
+            return false
+        }
+        self.changedAt = nil
+        return true
+    }
+
+    /// Notes that the review panel opened.
+    public mutating func panelOpened() {
+        panelIsOpen = true
+    }
+
+    /// Notes that the review panel closed, and says whether the app looks at
+    /// what the widget shows now, for the changes to the database since its
+    /// last look: any, made while the panel was open or just before.
+    public mutating func panelClosed() -> Bool {
+        panelIsOpen = false
+        guard changedAt != nil else { return false }
+        changedAt = nil
+        return true
+    }
 
     /// Whether the app asks WidgetKit to reload the widget, now that it shows
     /// `timeline`, as the engine works it out now: when that shows something
     /// else than the timeline of the last reload from now on, or when there
-    /// was none. A reload makes `timeline` the last one.
-    public mutating func reloads(for timeline: WidgetTimeline) -> Bool {
-        if let reloaded, let now = timeline.entries.first?.date, reloaded.shown(from: now) == timeline.shown(from: now)
-        {
-            return false
-        }
+    /// was none.
+    public func needsReload(for timeline: WidgetTimeline) -> Bool {
+        reloaded.map { !$0.showsTheSame(as: timeline) } ?? true
+    }
+
+    /// Notes that the app asked WidgetKit to reload the widget, which shows
+    /// `timeline` from then on.
+    public mutating func recordReload(of timeline: WidgetTimeline) {
         reloaded = timeline
-        return true
     }
 }
 
@@ -168,19 +295,28 @@ private let reviewNowHost = "review-now"
 
 extension Engine {
     /// What the widget shows from now on, as `NextWayTimeline` says, or that
-    /// Lucas has no cards at all. It picks the cards with the settings that
-    /// decide a card's progress, which the database holds, and Ficha's own
-    /// for the rest, which the app keeps in preferences the widget can't
-    /// read: the card it shows differs from the one review now starts with
-    /// only when review now brings a single card and a priority card is new.
-    public func widgetTimeline() throws(EngineError) -> WidgetTimeline {
+    /// Lucas has no cards at all, by the system's time, which WidgetKit's
+    /// timeline runs on, and so does the clock Lucas reads the next card's
+    /// time by. In Ficha Dev, whose debug menu moves the engine's time
+    /// `shift` ahead of the system's, each entry, the next card's time and
+    /// the refresh come `shift` sooner, as Ficha Dev's own time gets there;
+    /// elsewhere `shift` is zero. It picks the cards as review now does, with
+    /// the settings that decide a card's progress, which the database holds,
+    /// and with `widgetSettings`, this Mac's own, which the app hands over.
+    public func widgetTimeline(_ widgetSettings: WidgetSettings, engineAheadBy shift: Duration) throws(EngineError)
+        -> WidgetTimeline
+    {
         let now = time.now
         return try read { db in
             guard try Table("card").fetchCount(db) > 0 else {
                 return WidgetTimeline(entries: [WidgetTimeline.Entry(date: now, content: .noCards)], refreshAt: nil)
             }
+            // The pick reads the ladder, the new cards a day and the cards per
+            // appearance alone: Ficha's own fill in the rest, which it never
+            // reads.
             var settings = ReviewSettings.defaults
-            settings.progress = try storedProgressSettings(in: db) ?? settings.progress
+            settings.progress = try FichaData.progressSettings(in: db)
+            settings.cardsPerAppearance = widgetSettings.cardsPerAppearance
             let cards = try cardsThatShowUp(in: db)
             let timeline = try settings.nextWayTimeline(cards: cards.inReviews, from: now, calendar: calendar)
             return WidgetTimeline(
@@ -189,20 +325,7 @@ extension Engine {
                 },
                 refreshAt: timeline.refreshAt)
         }
-    }
-
-    /// The cards a review now brings when Lucas clicks the widget on `first`,
-    /// a card the way it showed it: those `reviewNow(_:)` brings, with `first`
-    /// first when review now brings it. When it no longer does, as when he
-    /// reviewed it meanwhile, review now starts as usual.
-    public func reviewNow(_ settings: ReviewSettings, startingWith first: CardWay) throws(EngineError)
-        -> [PanelCard]
-    {
-        var cards = try reviewNow(settings)
-        if let index = cards.firstIndex(where: { $0.cardWay == first }) {
-            cards.insert(cards.remove(at: index), at: 0)
-        }
-        return cards
+        .sooner(by: shift)
     }
 }
 

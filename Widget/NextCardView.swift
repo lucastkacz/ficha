@@ -14,8 +14,8 @@ struct NextCardEntry: TimelineEntry {
         /// the card's side, made small, when it has one and it could be read.
         case content(WidgetContent, image: Data?)
         /// There's no database to read yet, or it waits for the app to
-        /// migrate it: the app hasn't opened it since it was installed or
-        /// updated.
+        /// migrate it, or the app hasn't handed over this Mac's settings yet:
+        /// it hasn't run since it was installed or updated.
         case notReady
         /// The cards couldn't be read, for this reason, which the log details.
         case unreadable(String)
@@ -23,6 +23,21 @@ struct NextCardEntry: TimelineEntry {
 
     let date: Date
     let shows: Shows
+
+    /// The card it shows, when it shows one.
+    var card: WidgetCard? {
+        guard case .content(.card(let card), _) = shows else { return nil }
+        return card
+    }
+
+    /// The link a click on the widget opens while it shows this: a review
+    /// now, which starts with its card, if it shows one.
+    var link: WidgetLink {
+        switch shows {
+        case .content(let content, _): content.link
+        case .notReady, .unreadable: WidgetLink(startingWith: nil)
+        }
+    }
 
     /// What the widget gallery and WidgetKit show while the widget loads: a
     /// card of its own, never one of Lucas's.
@@ -57,16 +72,7 @@ struct NextCardView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(link.url(scheme: variant.urlScheme))
-    }
-
-    /// The link a click opens: a review now, which starts with the card the
-    /// widget shows, if it shows one.
-    private var link: WidgetLink {
-        switch entry.shows {
-        case .content(let content, _): content.link
-        case .notReady, .unreadable: WidgetLink(startingWith: nil)
-        }
+        .widgetURL(WidgetHandover.linkScheme.flatMap(entry.link.url(scheme:)))
     }
 
     /// The app's icon, and its name unless the small size needs the room for
@@ -74,7 +80,7 @@ struct NextCardView: View {
     private var header: some View {
         HStack(spacing: 4) {
             Group {
-                if family == .systemSmall, hasBadges {
+                if family == .systemSmall, entry.card?.hasBadges == true {
                     Image(systemName: variant.menuBarSymbol)
                         .accessibilityLabel(Text(verbatim: variant.name))
                 } else {
@@ -89,13 +95,13 @@ struct NextCardView: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             Spacer(minLength: 4)
-            if case .content(.card(let card), _) = entry.shows {
+            if let card = entry.card {
                 if card.isNew {
                     Badge(
                         title: Text("New", comment: "A badge on the card the widget shows, when it's new."),
                         isProminent: true)
                 }
-                if card.way.way == .backFirst {
+                if card.showsBackFirst {
                     Badge(
                         title: Text(
                             "Back first",
@@ -104,12 +110,6 @@ struct NextCardView: View {
                 }
             }
         }
-    }
-
-    /// Whether the card the widget shows has a badge.
-    private var hasBadges: Bool {
-        guard case .content(.card(let card), _) = entry.shows else { return false }
-        return card.isNew || card.way.way == .backFirst
     }
 
     @ViewBuilder
@@ -137,7 +137,9 @@ struct NextCardView: View {
             message(
                 Text(
                     "Open \(variant.name) to see your next card.",
-                    comment: "In the widget, before the app made or updated its database."),
+                    comment:
+                        "In the widget, before the app ran once since it was installed or updated, to make or update its database and hand over its settings."
+                ),
                 detail: nil, symbol: "rectangle.stack")
         case .unreadable(let reason):
             message(
@@ -207,14 +209,14 @@ private struct CardSideView: View {
 
     var body: some View {
         Group {
-            if card.image != nil, family == .systemMedium {
+            if hasImage, family == .systemMedium {
                 HStack(spacing: 12) {
                     picture
                     text
                 }
             } else {
                 VStack(spacing: 8) {
-                    if card.image != nil {
+                    if hasImage {
                         picture
                     }
                     // The image gives up the room the text needs.
@@ -227,6 +229,11 @@ private struct CardSideView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Whether the side has an image, read or not.
+    private var hasImage: Bool {
+        card.image != nil
     }
 
     @ViewBuilder
@@ -257,7 +264,7 @@ private struct CardSideView: View {
                 .font(font.weight(.semibold))
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.5)
-                .lineLimit(card.image == nil ? nil : lines)
+                .lineLimit(hasImage ? lines : nil)
                 .frame(maxWidth: .infinity)
         }
     }
@@ -273,11 +280,10 @@ private struct CardSideView: View {
     /// The text's size: larger as the widget is, and a step smaller beside or
     /// under an image.
     private var font: Font {
-        let besideAnImage = card.image != nil
-        return switch family {
-        case .systemSmall: besideAnImage ? .headline : .title2
-        case .systemLarge, .systemExtraLarge: besideAnImage ? .title : .largeTitle
-        default: besideAnImage ? .title2 : .title
+        switch family {
+        case .systemSmall: hasImage ? .headline : .title2
+        case .systemLarge: hasImage ? .title : .largeTitle
+        default: hasImage ? .title2 : .title
         }
     }
 
@@ -287,6 +293,18 @@ private struct CardSideView: View {
         case .systemSmall: 2
         default: 3
         }
+    }
+}
+
+extension WidgetCard {
+    /// Whether it shows its back first, which a badge says.
+    fileprivate var showsBackFirst: Bool {
+        way.way == .backFirst
+    }
+
+    /// Whether it has a badge: "New", "Back first" or both.
+    fileprivate var hasBadges: Bool {
+        isNew || showsBackFirst
     }
 }
 

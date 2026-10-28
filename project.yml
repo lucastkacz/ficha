@@ -47,8 +47,8 @@ settings:
     # It syncs in the Development environment of Ficha's iCloud container,
     # apart from Lucas's cards, which sync in Production (ADR 0017).
     # `FICHA_URL_SCHEME` is the scheme of the links that open each app, as a
-    # click on its widget does, which its Info.plist claims, the same as
-    # `AppVariant.urlScheme`.
+    # click on its widget does, which its Info.plist claims, and which the
+    # app and the widget read from their Info.plists (`WidgetHandover`).
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
@@ -258,7 +258,9 @@ targets:
   # inside each app, which macOS runs in its sandbox, in its app's App Group,
   # where it reads the cards alone, beside the app and the CLI, which write
   # them. It compiles `AppVariant` too, for its app's name, data folder and
-  # link scheme. Its bundle identifier is its app's with `.widget`. Ficha
+  # group's defaults, and `WidgetHandover`, for what the app hands it there,
+  # its link scheme and its log. Its bundle identifier is its app's with
+  # `.widget`. Its Info.plist holds the link scheme, as the app's does. Ficha
   # Dev's signs as its CLI does, with Apple Development and no provisioning
   # profile, which a group named after the team needs none of on the Mac;
   # the real Ficha's, as that app does, to run locally, until #310.
@@ -272,6 +274,7 @@ targets:
           - Info.plist
           - "*.entitlements"
       - path: App/AppVariant.swift
+      - path: App/WidgetHandover.swift
     dependencies:
       - package: FichaKit
         product: FichaCore

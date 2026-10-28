@@ -13,5 +13,7 @@
 			</array>
 		</dict>
 	</array>
+	<key>FichaURLScheme</key>
+	<string>$(FICHA_URL_SCHEME)</string>
 </dict>
 </plist>
