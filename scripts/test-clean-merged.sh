@@ -20,7 +20,9 @@ fail() {
 }
 
 # The fake gh answers `pr list --state <state>` from $FAKE_GH/prs-<state>.json,
-# applying --jq like the real one. A missing file is a failure.
+# applying --jq like the real one. A missing file is a failure. Unlike the
+# real one, it ignores the other options, such as --limit and --json, so each
+# file holds only the fields the script asks for.
 mkdir -p "$tmp/bin" "$tmp/gh"
 cat >"$tmp/bin/gh" <<'EOF'
 #!/bin/bash
@@ -98,7 +100,7 @@ cat >"$tmp/gh/prs-merged.json" <<EOF
  {"number":16,"headRefOid":"$(tip "$worktrees/16-live")"},
  {"number":17,"headRefOid":"$(tip "$worktrees/17-ended")"}]
 EOF
-echo '[{"number":13,"headRefName":"13-open"}]' >"$tmp/gh/prs-open.json"
+echo "[{\"number\":13,\"headRefOid\":\"$(tip "$worktrees/13-open")\"}]" >"$tmp/gh/prs-open.json"
 echo "uncommitted" >>"$worktrees/11-dirty/11-dirty.txt"
 
 # Another clone moves origin's main forward, as a squash merge does.
@@ -117,7 +119,6 @@ expect_kept() {
   fi
 }
 # expect_gone <description> <worktree> <branch>
-
 expect_gone() {
   if [[ ! -e $worktrees/$2 ]] && ! git -C "$main" rev-parse -q --verify "refs/heads/$3" >/dev/null; then
     pass "$1"
@@ -125,10 +126,17 @@ expect_gone() {
     fail "$1 (the worktree or its branch stays)"
   fi
 }
+worktree_count() { find "$worktrees" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '; }
+all_worktrees=$(worktree_count)
+# expect_nothing_removed <the script's exit code> <description>
 expect_nothing_removed() {
   local count
-  count=$(find "$worktrees" -mindepth 1 -maxdepth 1 -type d | wc -l)
-  if [[ $1 != 0 && $count -eq 9 ]]; then pass "$2"; else fail "$2 (exit $1, $count of 9 worktrees left)"; fi
+  count=$(worktree_count)
+  if [[ $1 != 0 && $count == "$all_worktrees" ]]; then
+    pass "$2"
+  else
+    fail "$2 (exit $1, $count of $all_worktrees worktrees left)"
+  fi
 }
 
 echo "clean-merged"
@@ -145,7 +153,7 @@ if [[ $status == 0 ]]; then pass "it succeeds in the main folder on main"; else 
 expect_gone "a merged, clean worktree goes with its branch and its build folders" 10-merged 10-merged
 expect_kept "a worktree with uncommitted changes stays" 11-dirty 11-dirty "uncommitted changes"
 expect_kept "a worktree whose head isn't the merged pull request's stays" 12-ahead 12-ahead "isn't merged"
-expect_kept "a worktree whose pull request is open stays" 13-open 13-open "#13, is still open"
+expect_kept "a worktree whose pull request is open stays" 13-open 13-open "pull request #13, which is still open"
 expect_gone "an implementer's branch inside a merged spec's branch goes" agent-a1 worktree-agent-a1
 expect_gone "the merged spec's branch goes" 14-spec 14-spec
 expect_kept "a worktree with no commits of its own stays" 15-fresh 15-fresh "no commits of its own"

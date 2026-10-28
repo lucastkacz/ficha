@@ -35,7 +35,6 @@ A ticket is all one agent can build in one fresh context without compacting: up 
 - A spec that fits in one ticket is one ticket, published as the spec's sub-issue like any other and built with `/implement` in one session.
 - A spec splits into tickets only past that size, and its tickets land together, on one branch behind one PR (`/implement-spec`, in `CLAUDE.md`).
 - A spec that needs Lucas at his Mac partway, such as a hand check before the next tickets can start, splits there into **stages**, one PR each, and the breakdown names each ticket's stage.
-- Issues outside any spec, of one kind and one risk, join up to this size in one session and one PR, as `CLAUDE.md`'s skill map says.
 
 ## Pull requests as a triage surface
 
