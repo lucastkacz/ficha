@@ -683,6 +683,13 @@ final class Device {
         try await iCloud.fetchChanges()
     }
 
+    /// Sends what waits, without fetching, as the app's engine does on its
+    /// own once the app hands it a change.
+    func send() async throws {
+        try sync.sendWhatChanged(to: iCloud)
+        try await iCloud.sendChanges()
+    }
+
     /// Signs the device out of iCloud, which its engine hears, as the app
     /// does too, whether sync is on or not.
     func signOut() throws {

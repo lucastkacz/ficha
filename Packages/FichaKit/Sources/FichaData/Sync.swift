@@ -120,9 +120,9 @@ public struct Sync: Sendable {
         guard try engine.syncIsOn() else {
             return syncLogger.debug("Sync is off: an event of iCloud's engine is left aside")
         }
-        // A record refused because the user deleted Ficha's data in iCloud's
-        // settings is a purge, which the device may hear of before it fetches
-        // the zone's deletion.
+        // A record or a deletion refused because the user deleted Ficha's
+        // data in iCloud's settings is a purge, which the device may hear of
+        // before it fetches the zone's deletion.
         guard !event.saysTheUserDeletedFichasData else {
             return try takePurge()
         }
@@ -397,11 +397,12 @@ extension ICloudEvent {
         }
     }
 
-    /// Whether iCloud refused a record because the user deleted Ficha's data
-    /// in iCloud's settings.
+    /// Whether iCloud refused a record, or a deletion, because the user
+    /// deleted Ficha's data in iCloud's settings.
     fileprivate var saysTheUserDeletedFichasData: Bool {
         guard case .sentRecordZoneChanges(let sent) = self else { return false }
         return sent.failedRecordSaves.contains { $0.error == .userDeletedZone }
+            || sent.failedRecordDeletes.values.contains(.userDeletedZone)
     }
 }
 

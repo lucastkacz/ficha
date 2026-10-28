@@ -146,6 +146,22 @@ final class SyncEventsTests {
         #expect(iCloud.records.isEmpty)
     }
 
+    // The Mac hears of the purge as iCloud refuses its deletion, before it
+    // fetches.
+    @Test("a purge heard as iCloud refuses a deletion turns sync off, as one heard on a save does")
+    func aPurgeHeardOnADeletionTurnsSyncOff() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try await mac.syncNow()
+
+        iCloud.purge()
+        try mac.engine.delete([mac.engine.card(fronted: "petricor").id])
+        try await mac.send()
+
+        #expect(try mac.engine.syncStatus().offBecause == .purge)
+        #expect(try mac.engine.cards().map(\.front) == ["ubuntu"])
+    }
+
     @Test("turning sync on after a purge sends every card and file again, and each device's cards join, none deleted")
     func turningSyncOnAfterAPurgeSendsEverything() async throws {
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
