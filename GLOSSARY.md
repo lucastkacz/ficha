@@ -100,7 +100,7 @@ The small floating window on the Mac where cards show up and the user goes throu
 _Avoid_: popup, window, notification
 
 **Widget**:
-A small view of Ficha on the Mac's desktop or in Notification Center, with the front of the next card to review, or when the next one comes, which opens the review panel on that card.
+A small view of Ficha on the Mac's desktop or in Notification Center, with the next card to review, on the side the review panel shows first, or when the next one comes, which opens the review panel on that card.
 _Avoid_: tile, complication
 
 **Review**:

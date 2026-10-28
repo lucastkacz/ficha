@@ -20,15 +20,16 @@ let package = Package(
                 .product(name: "FichaSVG", package: "FichaKit"),
             ],
             // The app's entry point and its delegate, its icons, its String
-            // Catalog and its entitlements stay out: `main.swift` is this
-            // tool's entry point, and the tool runs outside the sandbox. So do
-            // the delegate, Ficha Dev's second device and the app's
-            // `main.swift`, the only files that load CloudKit, which the tool
-            // never loads (ADR 0017): the App Intents reach a delegate of the
-            // tool's own, `AppDelegateStandIn.swift`.
+            // Catalog, its Info.plist and its entitlements stay out:
+            // `main.swift` is this tool's entry point, and the tool runs
+            // outside the sandbox. So do the delegate, Ficha Dev's second
+            // device and the app's `main.swift`, the only files that load
+            // CloudKit, which the tool never loads (ADR 0017): the App Intents
+            // reach a delegate of the tool's own, `AppDelegateStandIn.swift`.
             exclude: [
                 "App/main.swift", "App/FichaApp.swift", "App/AppDelegate.swift", "App/SecondDevice.swift",
-                "App/AppIcon.icon", "App/AppIcon-Dev.icon", "App/Localizable.xcstrings", "App/Ficha.entitlements",
+                "App/AppIcon.icon", "App/AppIcon-Dev.icon", "App/Localizable.xcstrings", "App/Info.plist",
+                "App/Ficha.entitlements",
             ],
             swiftSettings: [.define("FICHA_DEV"), .defaultIsolation(MainActor.self)]
         )

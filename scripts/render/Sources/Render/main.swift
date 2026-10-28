@@ -1107,7 +1107,8 @@ func menuWindow(model: AppModel) -> NSWindow {
         MenuContent(
             model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
             openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {}, openSyncSettings: {},
-            checkAppearance: { nil }, secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))
+            checkAppearance: { nil }, timeMoved: {},
+            secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))
     }
     .padding()
     .fixedSize()

@@ -40,6 +40,8 @@ final class ReviewPanelWindow: NSPanel {
     private var mac: SystemMacSignals?
     /// Watches the panel while it's open.
     private var watching: Task<Void, Never>?
+    /// What to do once the panel closed, however it closes.
+    var whenClosed: () -> Void = {}
 
     /// A panel for the cards a review now or an appearance brought, which
     /// closes itself when Lucas closes it or it closes on its own, or for why
@@ -142,6 +144,18 @@ final class ReviewPanelWindow: NSPanel {
         // too, before its view could stop the sound.
         player.stop()
         super.close()
+        // Once.
+        let closed = whenClosed
+        whenClosed = {}
+        closed()
+    }
+
+    /// Whether a click on the widget, on `first`, the card it showed, starts
+    /// a review now in the panel's place, as its state decides. A panel that
+    /// says why it couldn't bring its cards comes forward instead.
+    func givesWay(toAReviewNowStartingWith first: CardWay?) -> Bool {
+        guard case .success(let panel) = model else { return false }
+        return panel.state.givesWay(toAReviewNowStartingWith: first)
     }
 
     /// Takes the focus from the button AppKit gave it as the panel showed, so

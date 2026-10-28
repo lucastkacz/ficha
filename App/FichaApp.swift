@@ -17,7 +17,7 @@ struct FichaApp: App {
                     openCards: appDelegate.openCards, openDiagnostics: appDelegate.openDiagnostics,
                     openSettings: appDelegate.openSettings, openBackupSettings: appDelegate.openBackupSettings,
                     openSyncSettings: appDelegate.openSyncSettings,
-                    checkAppearance: appDelegate.checkAppearanceNow,
+                    checkAppearance: appDelegate.checkAppearanceNow, timeMoved: appDelegate.timeMoved,
                     secondDevice: SecondDeviceActions(
                         openCards: appDelegate.openSecondDeviceCards, reviewNow: appDelegate.reviewNowOnSecondDevice,
                         syncNow: appDelegate.syncNow))
