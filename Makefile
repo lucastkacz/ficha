@@ -140,6 +140,11 @@ CHECKS += hooks-test
 hooks-test: ## Test the Claude Code hooks.
 	scripts/test-hooks.sh
 
+.PHONY: clean-merged-test
+CHECKS += clean-merged-test
+clean-merged-test: ## Test make clean-merged on a scratch repo, with a fake gh.
+	scripts/test-clean-merged.sh
+
 .PHONY: render-build
 CHECKS += render-build
 render-build: ## Build the render tool, so a change to the app's views can't break it unnoticed.
@@ -182,6 +187,10 @@ install-iphone: team project ## Build Ficha Dev for the connected iPhone, signed
 	$(XCODEBUILD_IPHONE) -destination "id=$$udid" -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
 		build && \
 	xcrun devicectl device install app --device "$$udid" "$(DERIVED)/Build/Products/Debug-iphoneos/Ficha Dev.app"
+
+.PHONY: clean-merged
+clean-merged: ## From the main folder, on main: remove the worktrees whose work merged, with their branches, list the others, and update main.
+	@scripts/clean-merged.sh
 
 # Every check above, in the order of their `CHECKS +=` lines. It comes last:
 # make expands a rule's prerequisites when it reads the rule, and here CHECKS
