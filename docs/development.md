@@ -18,7 +18,7 @@ Ficha Dev runs in the App Sandbox, as the real Ficha will in the Mac App Store (
 
 Its cards are in its App Group's folder, which its `ficha` shares: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha.dev/Ficha Dev/`, with the database, `Images/`, `Sounds/` and `Backups/`, laid out as the real Ficha's. Its preferences are in its sandbox's own folder, `~/Library/Containers/com.lucastkacz.ficha.dev/`. Before its sandbox, Ficha Dev kept its cards in `~/Library/Application Support/Ficha Dev/`, which stays as it was: the sandboxed Ficha Dev started empty, and its debug menu loads the sample cards.
 
-Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `Ficha Dev` in its App Group's folder, to the Trash.
+Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `Ficha Dev` in its App Group's folder, to the Trash, and start over in iCloud too, as "Sync through iCloud" below says, or iCloud brings the cards back.
 
 ### Sync through iCloud
 
@@ -27,6 +27,8 @@ Ficha Dev syncs its cards through your iCloud, in the Development environment of
 It syncs while it runs: it catches up on what changed in iCloud as it starts, sends each change as it's made, by the app or by its `ficha`, and fetches what another device changed when iCloud pushes it. CloudKit's engine, asked to fetch, asks iCloud nothing unless a push came, so to fetch right away Ficha Dev starts its engine again, catching up first, which is our own.
 
 Debug's "Second device" opens another copy of the cards, in `Ficha Dev-second-device`, beside Ficha Dev's folder, which syncs as one more device: "Cards…" opens its Cards window, and "Review now" its review panel. iCloud doesn't push a change to the device that made it, and both run on this Mac, so each fetches as soon as the other sent a change: our own stand-in for the push. "Sync now" sends what waits and fetches, on both. To start the second device over, quit Ficha Dev and move its folder to the Trash.
+
+Starting Ficha Dev or its second device over brings their cards back from iCloud as they start, and loading the sample cards again adds a second copy of each to iCloud. To start over in iCloud too, quit Ficha Dev, move both folders to the Trash, and reset the Development environment in CloudKit Console (below), which deletes every record there and leaves the real Ficha's, in Production, as they are.
 
 The log says what each device sent and fetched, and why it couldn't. zsh has a `log` of its own, so the full path:
 

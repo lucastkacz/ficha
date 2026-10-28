@@ -5,9 +5,10 @@ import Foundation
 // links, so that neither the CLI, `swift test` nor `make render` loads
 // CloudKit; in tests, a fake iCloud that two or more devices share. Each type
 // here stands for the one of `CKSyncEngine` it's named after, with what Ficha
-// needs of it, so the adapter only converts: a record to a `CKRecord` and
+// needs of it, so the adapter mostly converts: a record to a `CKRecord` and
 // back, an event from the engine's delegate to `ICloudEvent`, and `Sync`'s
-// answers back to the engine.
+// answers back to the engine. What it adds is how a device fetches right
+// away, which `CloudKitSync` explains.
 
 /// iCloud as sync reaches it: what `CKSyncEngine` does for the app. It
 /// sends the changes it's given, asking `Sync` for each record to save as it

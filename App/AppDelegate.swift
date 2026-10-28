@@ -176,14 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let iCloud = CloudKitSync(engine: model.engine, device: "This Mac")
         self.iCloud = iCloud
-        // Listening before starting, so no change falls in between.
-        let changes = model.changes()
-        Task {
-            await iCloud.start()
-            for await _ in changes {
-                await iCloud.sendWhatChanged()
-            }
-        }
+        Task { await iCloud.run() }
     }
 
     /// Opens the second device's Cards window, for Ficha Dev's debug menu,
@@ -202,20 +195,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// second device once it's open, for Ficha Dev's debug menu, instead of
     /// waiting for iCloud's engine.
     func syncNow() {
-        let devices = (iCloud, secondDevice)
+        let thisMac = iCloud
+        let secondDevice = secondDevice
         Task {
-            await devices.0?.syncNow()
-            await devices.1?.syncNow()
+            await thisMac?.syncNow()
+            await secondDevice?.syncNow()
         }
     }
 
     /// Ficha Dev's second device, opened if it isn't yet, or nil when it
-    /// can't be, which an alert says why, or when this Mac doesn't sync.
+    /// can't be, which an alert says why.
     private func openedSecondDevice() -> SecondDevice? {
         if let secondDevice {
             return secondDevice
         }
-        guard let debugTools = model?.debugTools, let iCloud else { return nil }
+        guard let debugTools = model?.debugTools else { return nil }
+        guard let iCloud else {
+            showAlert(
+                "Ficha Dev doesn't sync, so it has no second device",
+                details: """
+                    It doesn't sync through iCloud when FICHA_DEV_SCRATCH opens a scratch folder, or when it isn't \
+                    signed for iCloud. Build it with make run, with your team's ID in iPhone/Local.xcconfig, as \
+                    docs/development.md says.
+                    """,
+                style: .warning, button: "OK")
+            return nil
+        }
         do {
             let device = try SecondDevice(debugTools: debugTools, beside: iCloud)
             secondDevice = device

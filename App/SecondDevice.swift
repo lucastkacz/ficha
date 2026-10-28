@@ -28,15 +28,10 @@ final class SecondDevice {
         self.model = model
         self.iCloud = iCloud
         panel = ReviewPanel(model: model, mac: SystemMacSignals { model.now })
-        // Listening before starting, so no change falls in between.
-        let changes = model.changes()
         Task {
             await iCloud.afterSending { await thisMac.fetchNow() }
             await thisMac.afterSending { await iCloud.fetchNow() }
-            await iCloud.start()
-            for await _ in changes {
-                await iCloud.sendWhatChanged()
-            }
+            await iCloud.run()
         }
     }
 

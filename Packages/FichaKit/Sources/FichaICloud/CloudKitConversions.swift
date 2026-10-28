@@ -56,21 +56,37 @@ enum CloudKitConversionError: Error, CustomStringConvertible {
     case unknownAccountChange
     /// The state iCloud's engine saved last can't be read back.
     case unreadableEngineState
+    /// The state iCloud's engine gives can't be written down to save.
+    case unwritableEngineState
 
     var description: String {
         switch self {
         case .unknownValue(let field, let type):
-            "The field \(field) of a record of type \(type) holds a kind of value Ficha never sends"
+            """
+            The field \(field) of a record of type \(type) holds a kind of value Ficha never sends, as a later \
+            version might: the record stays in iCloud for one that reads it. Update Ficha.
+            """
         case .assetWithoutFile(let field, let type):
-            "The file in the field \(field) of a record of type \(type) has no place on this device"
+            """
+            The file in the field \(field) of a record of type \(type) has no place on this device, so the record \
+            is left out. If it keeps happening, report it.
+            """
         case .unreadableSystemFields(let type):
-            "What iCloud said last of a record of type \(type) can't be read back"
+            """
+            What iCloud said last of a record of type \(type) can't be read back, so the record isn't sent. If it \
+            keeps happening, report it.
+            """
         case .unknownZoneDeletionReason(let zone):
-            "The zone \(zone) left iCloud for a reason this version of Ficha doesn't know"
+            "The zone \(zone) left iCloud for a reason this version of Ficha doesn't know. Update Ficha."
         case .unknownAccountChange:
-            "The iCloud account changed in a way this version of Ficha doesn't know"
+            "The iCloud account changed in a way this version of Ficha doesn't know. Update Ficha."
         case .unreadableEngineState:
-            "The state iCloud's engine saved last on this device can't be read back, so sync stays off"
+            "The state iCloud's engine saved last on this device can't be read back, so sync stays off. Report it."
+        case .unwritableEngineState:
+            """
+            The state iCloud's engine gave can't be written down, so the device fetches again what came since it \
+            saved one. If it keeps happening, report it.
+            """
         }
     }
 }
@@ -168,10 +184,13 @@ extension ICloudEvent {
     /// `event` as sync reads it, or nil for an event sync doesn't need: one
     /// that only says a fetch or a send starts or ends, but the end of a
     /// fetch.
-    init?(_ event: CKSyncEngine.Event) throws {
+    init?(_ event: CKSyncEngine.Event) throws(CloudKitConversionError) {
         switch event {
         case .stateUpdate(let update):
-            self = .stateUpdate(try JSONEncoder().encode(update.stateSerialization))
+            guard let state = try? JSONEncoder().encode(update.stateSerialization) else {
+                throw .unwritableEngineState
+            }
+            self = .stateUpdate(state)
         case .accountChange(let change):
             self = .accountChange(try AccountChange(change.changeType))
         case .fetchedDatabaseChanges(let changes):
@@ -194,8 +213,8 @@ extension ICloudEvent {
             self = .sentRecordZoneChanges(
                 SentRecordZoneChanges(
                     savedRecords: ICloudRecord.all(sent.savedRecords),
-                    failedRecordSaves: try sent.failedRecordSaves.map {
-                        FailedRecordSave(record: try ICloudRecord($0.record), error: ICloudError($0.error))
+                    failedRecordSaves: try sent.failedRecordSaves.map { failed throws(CloudKitConversionError) in
+                        FailedRecordSave(record: try ICloudRecord(failed.record), error: ICloudError(failed.error))
                     },
                     deletedRecordIDs: sent.deletedRecordIDs.map(ICloudRecordID.init),
                     failedRecordDeletes: Dictionary(

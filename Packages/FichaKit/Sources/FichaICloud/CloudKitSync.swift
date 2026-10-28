@@ -22,32 +22,35 @@ let iCloudLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 /// sync on its own, which asks iCloud each time, and then starts its own
 /// engine from the state that one left. Catching up this way is our own.
 ///
-/// The app makes one per device, calls `start()`, and then
-/// `sendWhatChanged()` whenever the device's database changes. It never
-/// makes one in a process without iCloud's entitlements, such as the CLI,
-/// `swift test` or `make render`: CloudKit stops a process that makes a
-/// container without them, as #316 probed.
+/// The app makes one per device and calls `run()`. It never makes one in a
+/// process without iCloud's entitlements, such as the CLI, `swift test` or
+/// `make render`: CloudKit stops a process that makes a container without
+/// them, as #316 probed.
 public actor CloudKitSync: CKSyncEngineDelegate {
     /// The iCloud container both apps sync through, in the environment their
     /// entitlements name: Development for Ficha Dev, Production for the real
     /// Ficha.
-    public static let containerIdentifier = "iCloud.com.lucastkacz.ficha"
+    private static let containerIdentifier = "iCloud.com.lucastkacz.ficha"
 
     private let sync: Sync
+    /// Each change to the device's database, whichever process made it,
+    /// heard from the moment the sync is made, so that none falls in between.
+    private let changes: AsyncStream<Void>
     /// Which device it is, for the log.
     private let device: String
     /// CloudKit's engine, which syncs on its own, while it runs.
     private var syncEngine: CKSyncEngine?
     /// The engine that catches up on what changed in iCloud, while it does.
-    private var catchingUp: CKSyncEngine?
+    private var catchUpEngine: CKSyncEngine?
     /// Whether the device is starting its engine, catching up first.
     private var isStarting = false
-    /// Whether the engine is sending changes, which a fetch now waits for.
+    /// Whether the engine is sending changes.
     private var isSending = false
-    /// Whether a fetch now waits for the engine to finish sending.
-    private var fetchesAfterSending = false
+    /// Whether a fetch now waits for the engine to finish starting or
+    /// sending.
+    private var fetchWaits = false
     /// What to do once the engine sent changes that iCloud took, if anything.
-    private var afterSending: (@Sendable () async -> Void)?
+    private var workAfterSending: (@Sendable () async -> Void)?
     /// Whether iCloud took a change since the engine last finished sending.
     private var sentSomething = false
 
@@ -55,7 +58,17 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// in the log.
     public init(engine: Engine, device: String) {
         sync = Sync(engine: engine)
+        changes = engine.changes()
         self.device = device
+    }
+
+    /// Syncs while the app runs: it starts, and then hands the engine the
+    /// changes that wait each time the device's database changes.
+    public func run() async {
+        await start()
+        for await _ in changes {
+            sendWhatChanged()
+        }
     }
 
     /// Starts syncing. On a device that synced before, it catches up on what
@@ -63,11 +76,11 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// state the device saved last, and hands it every change that waits; on
     /// one that never did, the engine fetches everything as it starts. A
     /// saved state it can't read leaves sync off, and the log says why:
-    /// starting from none would fetch everything again as a new device.
-    public func start() async {
+    /// starting from none would fetch everything again as a new device. A
+    /// fetch now asked for meanwhile comes once it started.
+    private func start() async {
         guard syncEngine == nil, !isStarting else { return }
         isStarting = true
-        defer { isStarting = false }
         do {
             if let saved = try sync.savedState() {
                 await catchUp(from: try CKSyncEngine.State.Serialization(saved: saved))
@@ -83,25 +96,34 @@ public actor CloudKitSync: CKSyncEngineDelegate {
             iCloudLogger.fault(
                 "\(self.device, privacy: .public) can't start syncing: \(String(describing: error), privacy: .public)")
         }
+        isStarting = false
+        if fetchWaits {
+            fetchWaits = false
+            await fetchNow()
+        }
     }
 
     /// Fetches what changed in iCloud since `state` through an engine that
     /// doesn't sync on its own, whose events `Sync` handles as the device's
     /// engine's: what it fetched, and the state it leaves, which it tells of
     /// a moment after it fetched. Without a connection, it ends with an error,
-    /// or once the connection is back.
+    /// or once the connection is back. Half a second is our own guess at that
+    /// moment: a state told later is left aside, which only costs fetching
+    /// those changes again, and so are the changes `Sync` handed this engine,
+    /// which `Sync` hands the next one again: what waits to go up as it
+    /// starts, and the files to delete or ask for again as a fetch ends.
     private func catchUp(from state: CKSyncEngine.State.Serialization) async {
         let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: false)
-        catchingUp = engine
+        catchUpEngine = engine
         do {
             try await engine.fetchChanges()
         } catch {
             iCloudLogger.error(
-                "\(self.device, privacy: .public) couldn't catch up on what changed in iCloud: \(String(describing: error), privacy: .public)"
+                "\(self.device, privacy: .public) couldn't catch up on what changed in iCloud: \(error.localizedDescription, privacy: .public)"
             )
         }
         try? await Task.sleep(for: .milliseconds(500))
-        catchingUp = nil
+        catchUpEngine = nil
     }
 
     /// CloudKit's engine on the user's private database in Ficha's container,
@@ -119,7 +141,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
 
     /// Hands the engine the changes that wait, as the database changed,
     /// whichever process changed it.
-    public func sendWhatChanged() {
+    private func sendWhatChanged() {
         guard let syncEngine else { return }
         do {
             try sync.sendWhatChanged(to: CloudKitSyncEngine(engine: syncEngine, device: self))
@@ -138,7 +160,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
                 try await syncEngine.sendChanges()
             } catch {
                 iCloudLogger.error(
-                    "\(self.device, privacy: .public) couldn't send now: \(String(describing: error), privacy: .public)"
+                    "\(self.device, privacy: .public) couldn't send now: \(error.localizedDescription, privacy: .public)"
                 )
             }
         }
@@ -147,17 +169,18 @@ public actor CloudKitSync: CKSyncEngineDelegate {
 
     /// Fetches what changed in iCloud now, instead of on the next push: the
     /// device lets its engine go, catches up and starts a new one. While the
-    /// engine sends, it waits until it's done, so that a large file's upload
-    /// isn't cut short. What changes meanwhile waits in the database, which
-    /// the new engine takes as it starts. The engine let go isn't cancelled,
-    /// since `CKSyncEngine.cancelOperations()` stops the app, as #316 found:
-    /// it sends no more records, and what it tells is left aside.
+    /// engine starts or sends, it waits until it's done, so that a large
+    /// file's upload isn't cut short. What changes meanwhile waits in the
+    /// database, which the new engine takes as it starts. The engine let go
+    /// isn't cancelled, since `CKSyncEngine.cancelOperations()` stops the app,
+    /// as #316 found: it sends no more records, and what it tells is left
+    /// aside.
     public func fetchNow() async {
-        guard syncEngine != nil else { return }
-        guard !isSending else {
-            fetchesAfterSending = true
+        guard !isStarting, !isSending else {
+            fetchWaits = true
             return
         }
+        guard syncEngine != nil else { return }
         syncEngine = nil
         await start()
     }
@@ -167,14 +190,14 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// fetch them: iCloud doesn't push a change to the device that made it,
     /// and both run on one Mac.
     public func afterSending(_ work: @escaping @Sendable () async -> Void) {
-        afterSending = work
+        workAfterSending = work
     }
 
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
         // An engine the device stopped may still tell of what it did, which
         // the new one does again.
-        guard syncEngine === self.syncEngine || syncEngine === catchingUp else { return }
-        log(event)
+        guard syncEngine === self.syncEngine || syncEngine === catchUpEngine else { return }
+        log(event, of: syncEngine)
         switch event {
         case .willSendChanges:
             isSending = true
@@ -184,12 +207,12 @@ public actor CloudKitSync: CKSyncEngineDelegate {
             // Detached, since CloudKit stops the app when its engine is asked
             // to do something by a task this event started, as #316 found.
             isSending = false
-            if sentSomething, let afterSending {
-                Task.detached { await afterSending() }
+            if sentSomething, let workAfterSending {
+                Task.detached { await workAfterSending() }
             }
             sentSomething = false
-            if fetchesAfterSending {
-                fetchesAfterSending = false
+            if fetchWaits {
+                fetchWaits = false
                 Task.detached { await self.fetchNow() }
             }
         default:
@@ -200,8 +223,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
             converted = try ICloudEvent(event)
         } catch {
             return iCloudLogger.fault(
-                "\(self.device, privacy: .public) can't read an event of iCloud's engine: \(String(describing: error), privacy: .public)"
-            )
+                "\(self.device, privacy: .public) can't read an event of iCloud's engine: \(error, privacy: .public)")
         }
         guard let converted else { return }
         do {
@@ -242,14 +264,26 @@ public actor CloudKitSync: CKSyncEngineDelegate {
 
     /// Asks iCloud for the records `records` name, and hands `Sync` those it
     /// holds as fetched changes, and those it lacks as deleted, while the
-    /// fetched records, and so their files, are still at hand.
+    /// fetched records, and so their files, are still at hand. It asks for
+    /// 200 at a time, our own number: CloudKit turns down a request that's
+    /// too large (`limitExceeded`) without saying how many records one may
+    /// name. What comes back once the engine that asked stopped is left
+    /// aside: `Sync` asks again as the next fetch ends.
     func fetch(_ records: [(id: ICloudRecordID, type: String)], through iCloud: CloudKitSyncEngine) async {
-        let results: [CKRecord.ID: Result<CKRecord, any Error>]
-        do {
-            results = try await iCloud.engine.database.records(for: records.map { CKRecord.ID($0.id) })
-        } catch {
-            return iCloudLogger.error(
-                "\(self.device, privacy: .public) couldn't ask iCloud for \(records.count) records: \(String(describing: error), privacy: .public)"
+        var results: [CKRecord.ID: Result<CKRecord, any Error>] = [:]
+        for first in stride(from: 0, to: records.count, by: 200) {
+            let batch = records[first..<min(first + 200, records.count)]
+            do {
+                results.merge(try await iCloud.engine.database.records(for: batch.map { CKRecord.ID($0.id) })) { $1 }
+            } catch {
+                return iCloudLogger.error(
+                    "\(self.device, privacy: .public) couldn't ask iCloud for \(records.count) records: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+        guard iCloud.engine === syncEngine || iCloud.engine === catchUpEngine else {
+            return iCloudLogger.info(
+                "\(self.device, privacy: .public) leaves aside the records it asked iCloud for: the engine that asked stopped"
             )
         }
         var modifications: [ICloudRecord] = []
@@ -262,7 +296,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
                 deletions.append(ICloudEvent.RecordDeletion(id: id, type: type))
             case .failure(let error):
                 iCloudLogger.error(
-                    "\(self.device, privacy: .public) couldn't get a record of type \(type, privacy: .public) from iCloud: \(String(describing: error), privacy: .public)"
+                    "\(self.device, privacy: .public) couldn't get a record of type \(type, privacy: .public) from iCloud: \(error.localizedDescription, privacy: .public)"
                 )
             case nil:
                 iCloudLogger.error(
@@ -285,9 +319,11 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         }
     }
 
-    /// Logs what the engine did, for the probes and for a device that
-    /// doesn't sync: counts and zones, never a card's content.
-    private func log(_ event: CKSyncEngine.Event) {
+    /// Logs what `engine` did, for the probes and for a device that doesn't
+    /// sync: counts and zones, never a card's content, which CloudKit's
+    /// errors can hold, so of an error it logs only its code and what it
+    /// says in general.
+    private func log(_ event: CKSyncEngine.Event, of engine: CKSyncEngine) {
         switch event {
         case .stateUpdate:
             iCloudLogger.debug("\(self.device, privacy: .public): the engine's state changed")
@@ -317,7 +353,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         case .didFetchRecordZoneChanges(let did):
             if let error = did.error {
                 iCloudLogger.error(
-                    "\(self.device, privacy: .public) couldn't fetch the zone \(did.zoneID.zoneName, privacy: .public): \(error.code.rawValue) \(String(describing: error), privacy: .public)"
+                    "\(self.device, privacy: .public) couldn't fetch the zone \(did.zoneID.zoneName, privacy: .public): \(error.code.rawValue) \(error.localizedDescription, privacy: .public)"
                 )
             }
         case .didFetchChanges:
@@ -328,7 +364,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
             )
         case .didSendChanges(let did):
             iCloudLogger.info(
-                "\(self.device, privacy: .public) sent its changes (\(String(describing: did.context.reason), privacy: .public)), \(self.syncEngine?.state.pendingRecordZoneChanges.count ?? 0) still wait"
+                "\(self.device, privacy: .public) sent its changes (\(String(describing: did.context.reason), privacy: .public)), \(engine.state.pendingRecordZoneChanges.count) still wait"
             )
         case .willFetchRecordZoneChanges:
             break
@@ -367,11 +403,17 @@ struct CloudKitSyncEngine: ICloudSyncEngine {
         try await engine.sendChanges()
     }
 
+    /// Through the device's `CloudKitSync.fetchNow()`, since the engine,
+    /// which syncs on its own, asks iCloud nothing unless a push came.
     func fetchChanges() async throws {
-        try await engine.fetchChanges()
+        await device.fetchNow()
     }
 
     func fetchRecords(_ records: [(id: ICloudRecordID, type: String)]) {
-        Task { await device.fetch(records, through: self) }
+        // Detached, like the work `CloudKitSync.handleEvent` starts: `Sync`
+        // asks for them as it handles an event, and CloudKit stops the app
+        // when a task that event started asks its engine for something, as
+        // #316 found.
+        Task.detached { [self] in await device.fetch(records, through: self) }
     }
 }
