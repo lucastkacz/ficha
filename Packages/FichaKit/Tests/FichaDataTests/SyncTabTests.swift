@@ -160,6 +160,30 @@ final class SyncTabTests {
         #expect(tab.status == .on(lastSynced: synced))
     }
 
+    // The map and the flag went up to iCloud, so turning sync off says
+    // nothing of them. The purge takes them from iCloud: turning sync on
+    // sends them again, and the line says so.
+    @Test("after a purge, the off line counts every file the cards use, those iCloud held before it too")
+    func afterAPurgeEveryFileCounts() async throws {
+        let map = try heavyImage(weighing: 60_000_000, named: "a", in: mac.engine)
+        let flag = try heavyImage(weighing: 40_000_000, named: "b", in: mac.engine)
+        try mac.engine.create(card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map))
+        try mac.engine.create(card(nil, front: "¿De qué país es?", back: "De la Argentina.", frontImage: flag))
+        try await mac.syncNow()
+        var tab = mac.engine.openSyncTab()
+        tab.turnSync(on: false)
+
+        #expect(tab.status == .off(turningOn: nil, sending: nil))
+
+        tab.turnSync(on: true)
+        try mac.relaunch()
+        iCloud.purge()
+        try await mac.syncNow()
+        tab.read()
+
+        #expect(tab.status == .off(turningOn: .sendsAllCardsAgain, sending: 100_000_000))
+    }
+
     // The app asks iCloud at launch, which a database only the CLI opened
     // never heard: the switch shows as it was left, and the user can turn it.
     @Test("until the app knows whether the Mac has an iCloud account, the line says it's checking")
