@@ -15,6 +15,14 @@ let iCloudLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 /// actor, it hands `Sync` one event at a time, whether from the engine or
 /// from records it asked iCloud for.
 ///
+/// It follows Settings' switch, which the database keeps: the Sync tab turns
+/// it on and off through `Engine.turnSyncOn()` and `Engine.turnSyncOff()`,
+/// and a purge of Ficha's data turns it off. Turned off, the device lets its
+/// engine go, as `fetchNow()` does, without cancelling it; turned on, it
+/// starts one again. It also keeps whether the device is signed into iCloud,
+/// as CloudKit says at launch and whenever the account changes, for the Sync
+/// tab, whether sync is on or not.
+///
 /// An engine that syncs on its own fetches only on push: asked to fetch, it
 /// asks iCloud nothing unless a push came, whatever its documentation says,
 /// as #316 probed. So, to fetch what changed while the app didn't run, or
@@ -53,6 +61,10 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     private var workAfterSending: (@Sendable () async -> Void)?
     /// Whether iCloud took a change since the engine last finished sending.
     private var sentSomething = false
+    /// Whether Settings' switch was on when the device last looked.
+    private var switchWasOn = false
+    /// What hears of the iCloud account's changes, once it runs.
+    private var accountObserver: (any NSObjectProtocol)?
 
     /// The sync of the device whose database `engine` opens, named `device`
     /// in the log.
@@ -62,28 +74,119 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         self.device = device
     }
 
-    /// Syncs while the app runs: it starts, and then hands the engine the
-    /// changes that wait each time the device's database changes.
+    /// Syncs while the app runs: it notes whether the device is signed into
+    /// iCloud, and does again whenever the account changes; it starts, if
+    /// sync is on; and then, each time the device's database changes, it
+    /// follows the switch, and hands the engine the changes that wait.
     public func run() async {
-        await start()
+        accountObserver = NotificationCenter.default.addObserver(
+            forName: .CKAccountChanged, object: nil, queue: nil
+        ) { _ in
+            Task { await self.noteAccount() }
+        }
+        await noteAccount()
+        await followTheSwitch()
         for await _ in changes {
-            sendWhatChanged()
+            await followTheSwitch()
         }
     }
 
-    /// Starts syncing. On a device that synced before, it catches up on what
-    /// changed in iCloud since, and then starts CloudKit's engine from the
-    /// state the device saved last, and hands it every change that waits; on
-    /// one that never did, the engine fetches everything as it starts. A
-    /// saved state it can't read leaves sync off, and the log says why:
-    /// starting from none would fetch everything again as a new device. A
+    /// Starts or stops syncing as Settings' switch turned on or off since the
+    /// device last looked, or hands the engine the changes that wait while
+    /// it stays on.
+    private func followTheSwitch() async {
+        let isOn: Bool
+        do {
+            isOn = try sync.isOn()
+        } catch {
+            return iCloudLogger.fault(
+                "\(self.device, privacy: .public) can't tell whether sync is on: \(String(describing: error), privacy: .public)"
+            )
+        }
+        switch (switchWasOn, isOn) {
+        case (false, true):
+            switchWasOn = true
+            await start()
+        case (true, false):
+            switchWasOn = false
+            stop()
+        case (true, true):
+            sendWhatChanged()
+        case (false, false):
+            break
+        }
+    }
+
+    /// Stops syncing, as sync turned off: the device lets its engine go,
+    /// and the one catching up, without cancelling them, since
+    /// `CKSyncEngine.cancelOperations()` stops the app, as #316 found. They
+    /// send no more records, and what they tell is left aside.
+    private func stop() {
+        iCloudLogger.notice("\(self.device, privacy: .public) stops syncing: sync is off")
+        syncEngine = nil
+        catchUpEngine = nil
+        isSending = false
+        fetchWaits = false
+        sentSomething = false
+    }
+
+    /// Keeps whether the device is signed into iCloud, as CloudKit says. An
+    /// account that's there but not ready yet, such as one whose new terms
+    /// the user didn't accept, counts as signed in, and one the device's
+    /// restrictions keep from apps as signed out. When CloudKit can't tell,
+    /// the device keeps what it knew.
+    private func noteAccount() async {
+        let status: CKAccountStatus
+        do {
+            status = try await CKContainer(identifier: Self.containerIdentifier).accountStatus()
+        } catch {
+            return iCloudLogger.error(
+                "\(self.device, privacy: .public) couldn't ask whether it's signed into iCloud: \(error.localizedDescription, privacy: .public)"
+            )
+        }
+        let signedIn: Bool
+        switch status {
+        case .available, .temporarilyUnavailable:
+            signedIn = true
+        case .noAccount, .restricted:
+            signedIn = false
+        case .couldNotDetermine:
+            return iCloudLogger.error("\(self.device, privacy: .public) can't tell whether it's signed into iCloud")
+        @unknown default:
+            return iCloudLogger.notice(
+                "\(self.device, privacy: .public): an account status this version doesn't know: \(status.rawValue)")
+        }
+        iCloudLogger.info(
+            "\(self.device, privacy: .public) is signed \(signedIn ? "into" : "out of", privacy: .public) iCloud (\(status.rawValue))"
+        )
+        do {
+            try sync.noteAccount(signedIn: signedIn)
+        } catch {
+            iCloudLogger.error(
+                "\(self.device, privacy: .public) couldn't keep whether it's signed into iCloud: \(String(describing: error), privacy: .public)"
+            )
+        }
+    }
+
+    /// Starts syncing, while sync is on. On a device that synced before, it
+    /// catches up on what changed in iCloud since, and then starts CloudKit's
+    /// engine from the state the device saved last, and hands it every change
+    /// that waits; on one that never did, the engine fetches everything as it
+    /// starts. A saved state it can't read leaves sync stopped, and the log
+    /// says why: starting from none would fetch everything again as a new
+    /// device. Sync turned off while it caught up leaves it stopped too. A
     /// fetch now asked for meanwhile comes once it started.
     private func start() async {
         guard syncEngine == nil, !isStarting else { return }
         isStarting = true
         do {
-            if let saved = try sync.savedState() {
+            if let saved = try sync.savedState(), try sync.isOn() {
                 await catchUp(from: try CKSyncEngine.State.Serialization(saved: saved))
+            }
+            guard try sync.isOn() else {
+                isStarting = false
+                fetchWaits = false
+                return
             }
             let state = try sync.savedState().map { try CKSyncEngine.State.Serialization(saved: $0) }
             let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: true)

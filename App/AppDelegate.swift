@@ -186,9 +186,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Starts syncing `model`'s cards through iCloud, when the app syncs: what
-    /// waits now, those changes made while the app didn't run included, and
-    /// then each change to the database, whichever process made it.
+    /// Starts syncing `model`'s cards through iCloud, when the app syncs and
+    /// while Settings' switch is on: what waits now, those changes made while
+    /// the app didn't run included, and then each change to the database,
+    /// whichever process made it. The sync follows the switch as it's turned
+    /// on and off (`CloudKitSync`).
     private func startSyncing(_ model: AppModel) {
         guard AppVariant.current.syncsThroughICloud else { return }
         // CloudKit stops a process that isn't signed for iCloud, as #316
