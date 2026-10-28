@@ -277,6 +277,10 @@ final class DeletionWinsTests {
         try iPhone.engine.delete([iPhone.engine.card(fronted: "¿Qué pájaro es?").id])
         try await iPhone.syncNow()
         try await macOnDisk.syncNow()
+        // The image leaves the Mac once it leaves iCloud, which the iPhone,
+        // in sync, deletes at its next send (#314).
+        try await iPhone.syncNow()
+        try await macOnDisk.syncNow()
 
         #expect(try macOnDisk.engine.cards().isEmpty)
         #expect(try macOnDisk.engine.keptImages().isEmpty)

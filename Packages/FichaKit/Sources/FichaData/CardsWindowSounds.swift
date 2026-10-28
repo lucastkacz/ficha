@@ -49,7 +49,8 @@ public struct ShownSounds: Sendable, Equatable {
     private var held: [SoundName: ShownSound] = [:]
 
     /// The sound named `name`, with its length, or why it couldn't be read,
-    /// or nil when the window doesn't show it.
+    /// or nil when the window doesn't show it, or while it's on its way from
+    /// another device, so its side shows without it.
     public subscript(name: SoundName) -> Result<ShownSound, EngineError>? {
         held[name].map(Result.success) ?? sounds[name]
     }
@@ -68,16 +69,22 @@ public struct ShownSounds: Sendable, Equatable {
     }
 
     /// Shows the sounds named `names`: reads with `engine` those it hasn't
-    /// read yet, or couldn't, with their length, and lets go of the others,
-    /// held ones too.
+    /// read yet, or couldn't, or that were on their way from another device,
+    /// with their length, and lets go of the others, held ones too.
     mutating func show(_ names: Set<SoundName>, readingWith engine: Engine) {
         held = held.filter { names.contains($0.key) }
         sounds = sounds.filter { names.contains($0.key) }
         for name in names where held[name] == nil {
             if case .success = sounds[name] { continue }
-            sounds[name] = Result { () throws(EngineError) in
+            do throws(EngineError) {
+                guard try !engine.isOnItsWay(name) else {
+                    sounds[name] = nil
+                    continue
+                }
                 let data = try engine.sound(name)
-                return ShownSound(data: data, length: try soundLength(of: data))
+                sounds[name] = .success(ShownSound(data: data, length: try soundLength(of: data)))
+            } catch {
+                sounds[name] = .failure(error)
             }
         }
     }

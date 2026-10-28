@@ -49,7 +49,8 @@ public struct ShownImages: Sendable, Equatable {
     private var held: [ImageName: Data] = [:]
 
     /// The image named `name`, as a JPEG or a PNG, or why it couldn't be
-    /// read, or nil when the window doesn't show it.
+    /// read, or nil when the window doesn't show it, or while it's on its
+    /// way from another device, so its side shows without it.
     public subscript(name: ImageName) -> Result<Data, EngineError>? {
         held[name].map(Result.success) ?? images[name]
     }
@@ -68,13 +69,18 @@ public struct ShownImages: Sendable, Equatable {
     }
 
     /// Shows the images named `names`: reads with `engine` those it hasn't
-    /// read yet, or couldn't, and lets go of the others, held ones too.
+    /// read yet, or couldn't, or that were on their way from another device,
+    /// and lets go of the others, held ones too.
     mutating func show(_ names: Set<ImageName>, readingWith engine: Engine) {
         held = held.filter { names.contains($0.key) }
         images = images.filter { names.contains($0.key) }
         for name in names where held[name] == nil {
             if case .success = images[name] { continue }
-            images[name] = Result { () throws(EngineError) in try engine.image(name) }
+            do throws(EngineError) {
+                images[name] = try engine.isOnItsWay(name) ? nil : .success(try engine.image(name))
+            } catch {
+                images[name] = .failure(error)
+            }
         }
     }
 }

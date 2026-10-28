@@ -36,6 +36,13 @@ public protocol ICloudSyncEngine: Sendable {
     /// `CKSyncEngine.fetchChanges()` does, instead of when the engine would
     /// on its own.
     func fetchChanges() async throws
+
+    /// Asks iCloud for the records `ids` name, as it holds them now, which
+    /// no fetch of changes would bring again since they didn't change: the
+    /// app's engine reads them through `CKSyncEngine.database`'s
+    /// `records(for:)`. It tells `Sync` of them as fetched changes, and of
+    /// those iCloud lacks as deleted.
+    func fetchRecords(_ ids: [ICloudRecordID])
 }
 
 /// A zone of the user's private database in iCloud, as `CKRecordZone.ID`
@@ -50,6 +57,10 @@ public struct ICloudZone: Sendable, Hashable, Codable {
     /// The zone of the cards and everything else that syncs but images and
     /// sounds: captures, the review log and tags.
     public static let cards = ICloudZone(name: "Cards")
+
+    /// The zone of the images and sounds on cards, apart from the cards', so
+    /// that a restore, which replaces the cards' zone, leaves them alone.
+    public static let files = ICloudZone(name: "Files")
 }
 
 /// A record's ID in iCloud, as `CKRecord.ID`: its name, unique in its zone,
@@ -65,13 +76,18 @@ public struct ICloudRecordID: Sendable, Hashable, Codable {
 }
 
 /// A value a record's field holds, as `CKRecordValue`: text, a whole number,
-/// or a number with a fraction. Times travel as whole milliseconds since
-/// 1970, as the database keeps them, so iCloud never rounds them and every
-/// device holds the same.
+/// a number with a fraction, or a file. Times travel as whole milliseconds
+/// since 1970, as the database keeps them, so iCloud never rounds them and
+/// every device holds the same.
 public enum ICloudValue: Sendable, Hashable, Codable {
     case string(String)
     case int(Int64)
     case double(Double)
+    /// A file iCloud keeps apart from its record, as `CKAsset`, beyond the
+    /// record's 1 MB, by where it is on the device: the file to send, which
+    /// stays there until it's sent, or one iCloud fetched, into a folder the
+    /// system cleans, which sync copies out as it handles the event.
+    case asset(URL)
 }
 
 /// A record in iCloud, as `CKRecord`: its ID, its type, its fields and what
@@ -153,7 +169,7 @@ public enum ICloudError: Error, Sendable, Equatable {
 
 /// What `CKSyncEngine` tells its delegate, as `CKSyncEngine.Event`, but the
 /// events sync doesn't need: those that only say a fetch or a send starts
-/// or ends.
+/// or ends, other than the end of a fetch.
 public enum ICloudEvent: Sendable {
     /// The engine's state changed: what it starts from at the next launch,
     /// as its `State.Serialization` encodes it.
@@ -169,6 +185,9 @@ public enum ICloudEvent: Sendable {
     case sentDatabaseChanges(SentDatabaseChanges)
     /// What became of the records the engine sent.
     case sentRecordZoneChanges(SentRecordZoneChanges)
+    /// The engine fetched every change iCloud had for the device, as
+    /// `CKSyncEngine.Event.didFetchChanges` says.
+    case didFetchChanges
 
     /// A change of the iCloud account, as
     /// `CKSyncEngine.Event.AccountChange.ChangeType`.

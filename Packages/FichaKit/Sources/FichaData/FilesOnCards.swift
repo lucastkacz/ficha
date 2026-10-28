@@ -110,6 +110,38 @@ enum FileStore<Name: NameOfFileOnCard>: Sendable {
         }
     }
 
+    /// Keeps a copy of `file`, such as one that came from iCloud, as the file
+    /// `name`, as `keep(_:as:)` does, unless a file with that name is kept
+    /// already.
+    func keep(copyOf file: URL, as name: Name) throws(EngineError) {
+        guard !contains(name) else { return }
+        try keep(try reportingErrors { try Data(contentsOf: file) }, as: name)
+    }
+
+    /// Where the file named `name` can be read from, as iCloud's engine reads
+    /// a file it sends: the file itself, in the folder, or for an engine in
+    /// memory a copy of it, in a temporary folder that goes with the engine.
+    /// An error when it isn't kept.
+    func url(of name: Name) throws(EngineError) -> URL {
+        switch self {
+        case .folder(let folder):
+            let file = folder.appending(path: name.rawValue)
+            guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
+                logger.error("No \(Name.kind) named \(name.rawValue, privacy: .public) is kept to send")
+                throw Name.folderError
+            }
+            return file
+        case .memory(let memory):
+            let copy = memory.copies.appending(path: name.rawValue)
+            let data = try data(of: name)
+            try reportingErrors {
+                try FileManager.default.createDirectory(at: memory.copies, withIntermediateDirectories: true)
+                try data.write(to: copy, options: .atomic)
+            }
+            return copy
+        }
+    }
+
     /// The file named `name`, or an error when it isn't kept.
     func data(of name: Name) throws(EngineError) -> Data {
         switch self {
@@ -186,13 +218,23 @@ enum FileStore<Name: NameOfFileOnCard>: Sendable {
 /// The files of an engine in memory, gone with it.
 final class FilesInMemory<Name: NameOfFileOnCard>: Sendable {
     let files = Mutex<[Name: Data]>([:])
+    /// A temporary folder for copies of its files that iCloud's engine reads
+    /// as it sends them, gone with it too.
+    let copies = URL.temporaryDirectory.appending(
+        path: "Ficha-\(Name.folderName)-\(UUID().uuidString)", directoryHint: .isDirectory)
+
+    deinit {
+        try? FileManager.default.removeItem(at: copies)
+    }
 }
 
 extension Engine {
     /// Removes the files among `images` and `sounds` that no card refers to
     /// any more, now that a change let go of them, such as deleting a card
-    /// or replacing a side's image or sound. One that couldn't be removed
-    /// stays, and the engine logs why: the change is saved all the same.
+    /// or replacing a side's image or sound. One iCloud holds stays until it
+    /// leaves iCloud, as `namesInICloud(_:in:)` says. One that couldn't be
+    /// removed stays, and the engine logs why: the change is saved all the
+    /// same.
     func removeFilesNoCardUses(images: Set<ImageName> = [], sounds: Set<SoundName> = []) {
         removeFilesNoCardUses(among: images, from: self.images)
         removeFilesNoCardUses(among: sounds, from: self.sounds)
@@ -205,11 +247,14 @@ extension Engine {
             images: before.images.subtracting(after.images), sounds: before.sounds.subtracting(after.sounds))
     }
 
-    /// Removes from `store` the files among `names` that no card refers to.
+    /// Removes from `store` the files among `names` that no card refers to,
+    /// and iCloud doesn't hold.
     private func removeFilesNoCardUses<Name>(among names: Set<Name>, from store: FileStore<Name>) {
         guard !names.isEmpty else { return }
         do throws(EngineError) {
-            let unused = try read { db in try names.subtracting(namesReferred(Name.self, in: db)) }
+            let unused = try read { db in
+                try names.subtracting(namesReferred(Name.self, in: db)).subtracting(namesInICloud(Name.self, in: db))
+            }
             try store.remove(unused)
         } catch {
             logger.error(

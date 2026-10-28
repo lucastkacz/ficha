@@ -35,20 +35,10 @@ extension Sync {
 
     /// Settles the deletions iCloud's engine sent: one iCloud took, or whose
     /// record it no longer holds, stops waiting; one it refused for another
-    /// reason keeps waiting, for the next time the database changes.
+    /// reason keeps waiting, for the next time the database changes, as
+    /// `deletionsThatWent()` says.
     func settleSentDeletions(_ sent: ICloudEvent.SentRecordZoneChanges) throws(EngineError) {
-        var gone = sent.deletedRecordIDs
-        for (id, error) in sent.failedRecordDeletes {
-            switch error {
-            case .unknownItem, .zoneNotFound:
-                gone.append(id)
-            case .retriedByTheEngine:
-                break
-            case .serverRecordChanged, .quotaExceeded, .other:
-                syncLogger.error(
-                    "iCloud didn't delete the record \(id.name, privacy: .public): \(String(describing: error))")
-            }
-        }
+        let gone = sent.deletionsThatWent()
         guard !gone.isEmpty else {
             return
         }
@@ -70,6 +60,28 @@ extension Sync {
                 ICloudEvent.RecordDeletion(id: $0.record.id, type: $0.record.type)
             })
         return failures.filter { !$0.lostToADeletion }
+    }
+}
+
+extension ICloudEvent.SentRecordZoneChanges {
+    /// The records whose deletion went: those iCloud deleted, and those whose
+    /// zone or record it no longer had, which left all the same. A deletion
+    /// iCloud refused for another reason is logged, and keeps waiting, as
+    /// one the engine tries again itself does.
+    func deletionsThatWent() -> [ICloudRecordID] {
+        var gone = deletedRecordIDs
+        for (id, error) in failedRecordDeletes {
+            switch error {
+            case .unknownItem, .zoneNotFound:
+                gone.append(id)
+            case .retriedByTheEngine:
+                break
+            case .serverRecordChanged, .quotaExceeded, .other:
+                syncLogger.error(
+                    "iCloud didn't delete the record \(id.name, privacy: .public): \(String(describing: error))")
+            }
+        }
+        return gone
     }
 }
 
