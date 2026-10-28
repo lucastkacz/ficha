@@ -119,6 +119,7 @@ struct DebugMenu: View {
         case .meeting: "A meeting (the camera or the microphone in use)"
         case .video: "A video (an app keeping the display awake)"
         case .fullScreen: "A full-screen app"
+        case .focus: "A Focus with Ficha's filter on"
         }
     }
 

@@ -75,9 +75,10 @@ enum Preferences {
         write(
             wholeMinutes(settings.waitAfterSuppression), for: .waitAfterSuppression,
             unless: wholeMinutes(defaults.waitAfterSuppression))
+        let inSettings = Suppression.allCases.filter(\.isInSettings)
         write(
-            Suppression.allCases.filter(settings.suppressionsThatApply.contains).map(\.rawValue),
-            for: .suppressionsThatApply, unless: Suppression.allCases.map(\.rawValue))
+            inSettings.filter(settings.suppressionsThatApply.contains).map(\.rawValue),
+            for: .suppressionsThatApply, unless: inSettings.map(\.rawValue))
         write(wholeMinutes(settings.autoClose), for: .autoClose, unless: wholeMinutes(defaults.autoClose))
         write(settings.focusMode.rawValue, for: .focusMode, unless: defaults.focusMode.rawValue)
         write(
@@ -186,7 +187,7 @@ enum Preferences {
         case separation = "SeparationMinutes"
         case waitAfterWaking = "WaitAfterWakingMinutes"
         case waitAfterSuppression = "WaitAfterSuppressionMinutes"
-        /// The raw values of the suppressions that apply.
+        /// The raw values of the suppressions in Settings that apply.
         case suppressionsThatApply = "SuppressionsThatApply"
         case autoClose = "AutoCloseMinutes"
         case focusMode = "FocusMode"

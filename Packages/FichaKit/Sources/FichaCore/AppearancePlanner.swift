@@ -9,6 +9,15 @@ public enum Suppression: String, CaseIterable, Sendable {
     case video
     /// The app in front is in full screen.
     case fullScreen
+    /// A Focus of macOS is on, and the user turned on "Hold back
+    /// appearances" in the filter they added to it in System Settings.
+    case focus
+
+    /// Whether Lucas can turn it off in Settings. A Focus can't: its switch
+    /// is Ficha's filter, in System Settings, so it always applies.
+    public var isInSettings: Bool {
+        self != .focus
+    }
 }
 
 /// What the appearance planner decides at a moment: whether the review panel
@@ -70,9 +79,9 @@ extension ReviewSettings {
     /// that closing and `waitAfterWaking` since the device woke, it shows up
     /// once a card is due, or, with nothing due, once a new card may come in
     /// as it would without priority tags, which never move an appearance,
-    /// unless one of `suppressionsThatApply` holds it back, or one of them
-    /// ended less than `waitAfterSuppression` ago. It brings the cards review
-    /// now would, along with those due within `lookAhead`.
+    /// unless one of `suppressionsThatApply`, or a Focus, holds it back, or
+    /// one of them ended less than `waitAfterSuppression` ago. It brings the
+    /// cards review now would, along with those due within `lookAhead`.
     public func appearance(
         cards: CardsInReviews,
         lastClosing: Date?,
@@ -106,7 +115,7 @@ extension ReviewSettings {
         guard isAnyCardDue || mayMeetNewCard else {
             return .notNow(.nothingDue)
         }
-        let applying = Suppression.allCases.filter(suppressionsThatApply.contains)
+        let applying = Suppression.allCases.filter { !$0.isInSettings || suppressionsThatApply.contains($0) }
         if let suppression = applying.first(where: signals.suppressions.contains) {
             return .notNow(.suppressed(suppression))
         }

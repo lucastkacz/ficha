@@ -226,7 +226,7 @@ The Mac's review panel closing on its own: once it's been untouched for a while,
 _Avoid_: timeout, expiry
 
 **Suppression**:
-A situation in which Ficha holds back appearances on the Mac so as not to interrupt: a meeting, a video or a full-screen app.
+A situation in which Ficha holds back appearances on the Mac so as not to interrupt: a meeting, a video, a full-screen app, or a Focus of macOS in which the user turned on Ficha's filter. The user turns the first three off in Settings, and the Focus's in System Settings.
 _Avoid_: exception, block, do not disturb
 
 **Focus mode**:

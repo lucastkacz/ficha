@@ -27,8 +27,8 @@ public struct ReviewSettings: Sendable, Equatable {
     /// How long an appearance waits at least after a suppression ends, so
     /// Lucas has a moment to wrap up.
     public var waitAfterSuppression: Duration
-    /// The suppressions that hold appearances back: Lucas can turn each one
-    /// off.
+    /// The suppressions in Settings that hold appearances back: Lucas can
+    /// turn each one off. A Focus isn't in Settings, and always applies.
     public var suppressionsThatApply: Set<Suppression>
     /// How long the review panel stays open untouched before it closes on its
     /// own, which counts as a snooze.
@@ -55,7 +55,7 @@ public struct ReviewSettings: Sendable, Equatable {
         separation: .seconds(30 * 60),
         waitAfterWaking: .seconds(2 * 60),
         waitAfterSuppression: .seconds(2 * 60),
-        suppressionsThatApply: Set(Suppression.allCases),
+        suppressionsThatApply: Set(Suppression.allCases.filter(\.isInSettings)),
         autoClose: .seconds(10 * 60),
         focusMode: .onceIdle,
         idleBeforeTakingKeyboard: .seconds(5),

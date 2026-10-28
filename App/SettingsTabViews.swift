@@ -129,7 +129,7 @@ struct AppearancesSettings: View {
                 Text(
                     "Then wait",
                     comment:
-                        "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video or a full-screen app ends."
+                        "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video, a full-screen app or a Focus ends."
                 )
             }
         }
