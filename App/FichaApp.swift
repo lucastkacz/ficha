@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Ficha lives in the menu bar only: no Dock icon and no main window
-/// (`LSUIElement` in `project.yml`).
-@main
+/// (`LSUIElement` in `project.yml`). `main.swift` starts it.
 struct FichaApp: App {
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     private let variant = AppVariant.current

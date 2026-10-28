@@ -190,7 +190,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// while Settings' switch is on: what waits now, those changes made while
     /// the app didn't run included, and then each change to the database,
     /// whichever process made it. The sync follows the switch as it's turned
-    /// on and off (`CloudKitSync`).
+    /// on and off (`CloudKitSync`). A scratch run syncs in zones of its own
+    /// (`AppVariant.scratchName`).
     private func startSyncing(_ model: AppModel) {
         guard AppVariant.current.syncsThroughICloud else { return }
         // CloudKit stops a process that isn't signed for iCloud, as #316
@@ -199,7 +200,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.fault("Sync through iCloud stays off: this build isn't signed for iCloud")
             return
         }
-        let iCloud = CloudKitSync(engine: model.engine, zones: .ficha, device: "This Mac")
+        let zones = AppVariant.current.scratchName.map(ICloudZones.scratch) ?? .ficha
+        let iCloud = CloudKitSync(engine: model.engine, zones: zones, device: "This Mac")
         self.iCloud = iCloud
         Task { await iCloud.run() }
     }
@@ -239,9 +241,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showAlert(
                 "Ficha Dev doesn't sync, so it has no second device",
                 details: """
-                    It doesn't sync through iCloud when FICHA_DEV_SCRATCH opens a scratch folder, or when it isn't \
-                    signed for iCloud. Build it with make run, with your team's ID in iPhone/Local.xcconfig, as \
-                    docs/development.md says.
+                    It doesn't sync through iCloud when it isn't signed for iCloud. Build it with make run, with \
+                    your team's ID in iPhone/Local.xcconfig, as docs/development.md says.
                     """,
                 style: .warning, button: "OK")
             return nil

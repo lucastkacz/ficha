@@ -107,8 +107,8 @@ final class SyncedRestoreTests {
         #expect(try mac.engine.syncStatus().isOn)
     }
 
-    // `ficha restore` runs while the app does, on an engine of its own on the
-    // Mac's data folder; the app hears of it as of any change the CLI makes.
+    // `ficha restore` runs on an engine of its own on the Mac's data folder,
+    // only while the app doesn't, which then launches.
     @Test("ficha restore turns sync off too, and turning it on replaces the other devices' cards")
     func theCLIsRestoreDoesTheSame() async throws {
         try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
@@ -123,6 +123,7 @@ final class SyncedRestoreTests {
 
         let cli = try Engine(location: .folder(folder), time: time, calendar: calendar)
         try cli.restore(backup.name)
+        try mac.relaunch()
         try await mac.syncNow()
         #expect(try mac.engine.syncStatus().offBecause == .restore)
         try mac.turnSyncOn()
@@ -219,6 +220,47 @@ final class SyncedRestoreTests {
         #expect(try mac.engine.cards().map(\.front) == ["petricor"])
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
         #expect(cardsZonesInICloud().count == 1)
+    }
+
+    // MARK: - Scratch runs
+
+    // An agent's scratch run of Ficha Dev, with its second device, syncs in
+    // the same account as the user's devices, and the Mac restores meanwhile.
+    @Test("a scratch run syncs in zones of its own, which the user's devices leave alone, and no card crosses over")
+    func aScratchRunSyncsInZonesOfItsOwn() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        let scratch = try Device(
+            Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud,
+            in: .scratch("agent-317"))
+        let scratchSecond = try Device(
+            Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud,
+            in: .scratch("agent-317"))
+        let bird = try scratch.engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        try scratch.engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        try await scratch.syncNow()
+        try await scratchSecond.syncNow()
+
+        let backup = try mac.engine.backUpNow(.defaults)
+        try mac.engine.restore(backup.name)
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+        try await scratch.syncNow()
+        try await scratchSecond.syncNow()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.cards().map(\.front) == ["ubuntu"])
+            #expect(try device.engine.keptImages().isEmpty)
+        }
+        #expect(try scratchSecond.engine.cards().map(\.front) == ["¿Qué pájaro es?"])
+        #expect(try scratchSecond.engine.keptImages() == [bird])
+        let zones = Set(iCloud.records.map(\.id.zone.name))
+        #expect(zones.contains("Cards-agent-317") && zones.contains("Files-agent-317"))
+        #expect(zones.filter { $0.hasPrefix("Cards") }.count == 2)
     }
 
     /// The zones the cards in iCloud are in.

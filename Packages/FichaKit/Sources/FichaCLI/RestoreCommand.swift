@@ -13,7 +13,8 @@ struct RestoreCommand: EngineCommand {
             (backup, beforeUpdate, beforeRestore or beforeImport), when it was saved in "savedAt", its "size" in bytes, and the \
             "name" to restore it by. With a copy's name, it first saves everything as it is now in a copy before a \
             restore, then brings the copy back, and prints both: restoring the copy before the restore undoes it. \
-            It won't restore while the app runs: quit the app first.
+            It won't restore while the app runs: quit the app first. On a Mac that syncs, a restore turns sync off: \
+            turning it on again in Settings replaces the cards on your other devices with the restored ones.
             """
     )
 

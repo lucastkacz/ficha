@@ -40,7 +40,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// The iCloud container both apps sync through, in the environment their
     /// entitlements name: Development for Ficha Dev, Production for the real
     /// Ficha.
-    private static let containerIdentifier = "iCloud.com.lucastkacz.ficha"
+    static let containerIdentifier = "iCloud.com.lucastkacz.ficha"
 
     private let sync: Sync
     /// The zones the device syncs in, by their names in iCloud.

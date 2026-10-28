@@ -74,15 +74,26 @@ enum AppVariant {
 
     /// Whether the app syncs its cards through the user's iCloud (ADR 0017):
     /// Ficha Dev does, in the Development environment of Ficha's container,
-    /// unless `FICHA_DEV_SCRATCH` opens a scratch folder, which is an agent's:
-    /// iCloud would carry its cards into Ficha Dev's. The real Ficha builds
-    /// the same code, but keeps sync off until it's signed with the team and
-    /// holds iCloud's entitlements (#318), since CloudKit stops an app that
-    /// asks for a container without them.
+    /// a scratch run too, in zones of its own (`scratchName`). The real Ficha
+    /// builds the same code, but keeps sync off until it's signed with the
+    /// team and holds iCloud's entitlements (#318), since CloudKit stops an
+    /// app that asks for a container without them.
     var syncsThroughICloud: Bool {
         switch self {
-        case .dev: ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] == nil
+        case .dev: true
         case .real: false
+        }
+    }
+
+    /// The name of the scratch folder `FICHA_DEV_SCRATCH` opens in Ficha
+    /// Dev, an agent's, or nil for Ficha Dev's own data folder, and always
+    /// for the real Ficha. A scratch run syncs in zones named after it,
+    /// "Cards-<name>" and "Files-<name>", which Ficha Dev's own devices leave
+    /// alone, so its cards never reach Ficha Dev's.
+    var scratchName: String? {
+        switch self {
+        case .dev: ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"]
+        case .real: nil
         }
     }
 
@@ -100,7 +111,7 @@ enum AppVariant {
                 switch self {
                 case .dev:
                     let group = try signedGroupFolder(named: "com.lucastkacz.ficha.dev")
-                    guard let scratch = ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] else {
+                    guard let scratch = scratchName else {
                         return group.appending(path: folderName, directoryHint: .isDirectory)
                     }
                     return try scratchFolder(named: scratch, in: group)
