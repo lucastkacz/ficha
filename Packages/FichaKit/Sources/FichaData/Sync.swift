@@ -259,10 +259,10 @@ public struct Sync: Sendable {
     /// device turned sync on since, starting it. Otherwise a purge, of the
     /// device's cards' zone or of the files', turns sync off, as `takePurge()`
     /// says; a purge of an older zone is one the device heard of before it
-    /// moved, or that came before its first fetch. Then, as
-    /// `takeZoneDeletions(_:with:)` says for the device's own zones, and the
-    /// device deletes from iCloud each cards' zone older than its own it
-    /// heard changed, left behind by the devices that moved.
+    /// moved, or that came before its first fetch. Otherwise the device's
+    /// own zones that left go as `takeZoneDeletions(_:with:)` says. Last, the
+    /// device deletes from iCloud each cards' zone older than its own that it
+    /// heard changed, which the devices that moved left behind.
     private func takeZoneChanges(_ changes: ICloudEvent.FetchedDatabaseChanges, with iCloud: ICloudInItsZones)
         throws(EngineError)
     {
@@ -275,11 +275,9 @@ public struct Sync: Sendable {
         let isPurged = deletions.contains { $0.reason == .purged && iCloud.insideTheDevice($0.zone) != nil }
         let changedCardsZones = changes.modifications.compactMap(zones.cardsZone)
         var current = try engine.read(cardsZone(in:))
-        var iCloud = iCloud
         if let newest = changedCardsZones.max(), newest > current {
             try move(to: newest, afterAPurge: isPurged, with: iCloud)
             current = newest
-            iCloud = try inItsZones(iCloud)
         } else if isPurged {
             return try takePurge()
         } else {
