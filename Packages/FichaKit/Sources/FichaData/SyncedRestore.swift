@@ -12,9 +12,10 @@ internal import GRDB
 // and sounds alone, which a restore leaves alone in iCloud (`SyncedFiles.swift`),
 // so that turning sync on sends only those iCloud lacks. Turning it on then
 // replaces the cards iCloud holds with this device's: the device sends them
-// into a cards' zone of its own, and each other device that synced since
-// before takes them in place of its own (`Sync`), dropping every row that
-// syncs first, as `dropEverythingThatSyncs(in:)` says.
+// into a cards' zone it makes, named for the restore, and deletes the one it
+// leaves; each other device that last synced in an older zone takes them in
+// place of its own (`Sync`), saving a copy of its cards first, and dropping
+// every row that syncs, as `dropEverythingThatSyncs(in:)` says.
 
 /// What a device keeps of its sync through a restore, in place of the
 /// restored copy's: how sync stands, with the switch turned off, and what it
@@ -46,6 +47,18 @@ struct SyncKeptThroughARestore {
         for file in filesInICloud {
             try FichaData.keep(file.systemFields, of: ICloudRecordID(name: file.name, zone: .files), in: db)
         }
+    }
+}
+
+extension Engine {
+    /// Saves a copy before taking iCloud's copy in the Backups folder, as a
+    /// device is about to take another device's restore in place of its own
+    /// cards (`Sync`), so the cards the restore removes can still be found:
+    /// none for an engine in memory, which keeps no copies. Saving it is our
+    /// own guard.
+    func saveCopyBeforeTakingICloudsCopy() throws(EngineError) {
+        guard let backupsFolder else { return }
+        try saveCopy(of: database, as: .beforeICloudsCopy, at: time.now, in: backupsFolder)
     }
 }
 

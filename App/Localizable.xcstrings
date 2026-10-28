@@ -816,6 +816,9 @@
     "Before an update" : {
       "comment" : "Settings, under Backups: a copy's kind, saved before a new version changed the database."
     },
+    "Before taking iCloud's copy" : {
+      "comment" : "Settings, under Backups: a copy's kind, saved before this Mac replaced its cards with those another device restored and synced through iCloud."
+    },
     "Blue" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },

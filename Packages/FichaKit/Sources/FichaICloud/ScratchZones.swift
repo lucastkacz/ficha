@@ -12,8 +12,8 @@ public enum ScratchZones {
     /// Deletes the zones of the scratch run `name`, in the environment the
     /// app's entitlements name, and returns their names, sorted: never
     /// another run's, nor Ficha's own, which no scratch run's name, written
-    /// with letters, digits, `-` and `_` alone, can spell.
-    public static func delete(ofScratch name: String) async throws(ScratchZonesError) -> [String] {
+    /// with letters, digits, `-` and `_` alone, can spell (`ScratchName`).
+    public static func delete(ofScratch name: ScratchName) async throws(ScratchZonesError) -> [String] {
         let zones = ICloudZones.scratch(name)
         let database = CKContainer(identifier: CloudKitSync.containerIdentifier).privateCloudDatabase
         do {

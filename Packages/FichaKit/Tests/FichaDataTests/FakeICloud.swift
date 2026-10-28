@@ -112,6 +112,28 @@ final class FakeICloud: Sendable {
         database.withLock { $0.zones.values.flatMap { $0.records.values.map(\.record) } }
     }
 
+    /// The zones it holds now, empty or not, for a test that checks what
+    /// iCloud keeps.
+    var zones: Set<ICloudZone> {
+        database.withLock { Set($0.zones.keys) }
+    }
+
+    /// Whether an engine that starts with no saved state tells of a sign-in
+    /// as it first meets this account, forgetting what it was handed, as
+    /// `CKSyncEngine` may: its documentation doesn't say. Off unless a test
+    /// says otherwise.
+    var freshEnginesTellASignIn: Bool {
+        get { tellingASignIn.withLock { $0 } }
+        set { tellingASignIn.withLock { $0 = newValue } }
+    }
+    private let tellingASignIn = Mutex(false)
+
+    /// Saves the zone `name`, empty, as a version of Ficha before #317 did,
+    /// which synced the cards in one zone, "Cards", for a test.
+    func saveZoneOfAnOlderFicha(_ name: String) {
+        _ = modify([.saveZone(ICloudZone(name: name))])
+    }
+
     /// Fills it up: from now on, only what frees room fits.
     func fillUp() {
         database.withLock { $0.room = $0.used }
@@ -362,11 +384,14 @@ extension FakeICloud.Database {
 /// and as it tells of it, it forgets the changes it was handed and how far it
 /// fetched. Signed out, it neither sends nor fetches, as the documentation
 /// says it may, keeping what waits. Where it differs from CloudKit: an
-/// engine with no saved state tells of no account change, where CloudKit's
-/// may tell of a sign-in, since its documentation doesn't say, so Ficha's
-/// first sync can't depend on one; and a fetch that fails offline says it
-/// ended, where CloudKit's may not, since its documentation doesn't say, so
-/// the end of a fetch can't say the device synced.
+/// engine with no saved state tells of no account change, unless the account
+/// says it does (`FakeICloud.freshEnginesTellASignIn`), where CloudKit's may
+/// tell of a sign-in, since its documentation doesn't say, so Ficha's first
+/// sync can't depend on one; a fetch that fails offline says it ended, where
+/// CloudKit's may not, since its documentation doesn't say, so the end of a
+/// fetch can't say the device synced; and it sends every record that waits
+/// in one batch, unless a test says how many (`recordsPerBatch`), where
+/// CloudKit picks the size.
 final class FakeSyncEngine: ICloudSyncEngine {
     private let delegate: Sync
     /// The stretch of sync being on it started in, as the app notes it for
@@ -418,10 +443,20 @@ final class FakeSyncEngine: ICloudSyncEngine {
         self.account = Mutex(account)
         var state = try stateSerialization.map { try JSONDecoder().decode(State.self, from: $0) } ?? State()
         if state.account == nil {
-            state.account = KnownAccount(account)
+            state.account = account?.freshEnginesTellASignIn == true ? .signedOut : KnownAccount(account)
         }
         self.state = Mutex(state)
     }
+
+    /// How many records it sends at most in one batch, or nil for all that
+    /// wait: `CKSyncEngine` sends them in batches of a size it picks, and a
+    /// test can make them small, to have another device fetch between two
+    /// (`onceSaved(_:)`).
+    var recordsPerBatch: Int? {
+        get { batchSize.withLock { $0 } }
+        set { batchSize.withLock { $0 = newValue } }
+    }
+    private let batchSize = Mutex<Int?>(nil)
 
     /// Whether it's offline: then sending and fetching fail, and the changes
     /// keep waiting.
@@ -522,15 +557,18 @@ final class FakeSyncEngine: ICloudSyncEngine {
         state.withLock(\.pendingRecordZoneChanges)
     }
 
-    /// Sends the zones and then the records waiting, a batch at a time, as
-    /// long as the delegate's answers leave some to send. A save whose record
-    /// the delegate doesn't give keeps waiting, as `CKSyncEngine` keeps it,
-    /// until the delegate removes it. A change that failed no longer waits.
+    /// Sends the zones and then the records waiting, a batch at a time, of
+    /// `recordsPerBatch` records at most, as long as the delegate's answers
+    /// leave some to send, and the device is online as each batch goes. A
+    /// save whose record the delegate doesn't give keeps waiting, as
+    /// `CKSyncEngine` keeps it, until the delegate removes it. A change that
+    /// failed no longer waits.
     func sendChanges() async throws {
         try checkOnline()
         try tellAccountChange()
         guard let account = account.withLock({ $0 }) else { return }
-        for _ in 0..<10 {
+        for _ in 0..<(10 + pendingRecordZoneChanges.count) {
+            try checkOnline()
             let zones = state.withLock { state in
                 defer { state.pendingDatabaseChanges = [] }
                 return state.pendingDatabaseChanges
@@ -542,6 +580,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
             var toSave: [ICloudRecord] = []
             var toDelete: [ICloudRecordID] = []
             for change in pendingRecordZoneChanges {
+                guard toSave.count + toDelete.count < recordsPerBatch ?? .max else { break }
                 switch change {
                 case .saveRecord(let id):
                     guard let record = try delegate.recordToSave(id, from: self) else {
@@ -754,12 +793,29 @@ final class Device {
     /// Syncs as the app does once it hears the database changed and iCloud
     /// tells it of other devices' changes: hands iCloud's engine the changes
     /// waiting, sends them, and fetches what changed, noting the fetch ended
-    /// once it did without an error.
+    /// once it did without an error. While the device chooses its cards'
+    /// zone, before it sends and after, as an account change its engine
+    /// tells as it sends has it choose again, it catches up first
+    /// (`catchUpWhileChoosing()`).
     func syncNow() async throws {
+        try await catchUpWhileChoosing()
         try sync.sendWhatChanged(to: iCloud)
         try await iCloud.sendChanges()
+        try await catchUpWhileChoosing()
         try await iCloud.fetchChanges()
-        try sync.noteFetchEnded()
+        try sync.noteFetchEnded(with: iCloud)
+    }
+
+    /// While the device chooses its cards' zone, fetches what changed, as
+    /// the app catches up as it starts, noting the fetch ended; and once the
+    /// device chose, sends what it handed iCloud's engine as it did, as the
+    /// app's engine does on its own.
+    private func catchUpWhileChoosing() async throws {
+        guard try sync.choosesItsCardsZone() else { return }
+        try await iCloud.fetchChanges()
+        try sync.noteFetchEnded(with: iCloud)
+        guard try !sync.choosesItsCardsZone() else { return }
+        try await iCloud.sendChanges()
     }
 
     /// Sends what waits, without fetching, as the app's engine does on its

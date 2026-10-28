@@ -184,18 +184,18 @@ func syncOffReason(in db: Database) throws -> SyncOffReason? {
 }
 
 /// Turns sync on, unless it's on already: a stretch of it begins
-/// (`SyncStretch`). After a purge, the device forgets when it last synced:
-/// iCloud no longer holds what it synced then, so the Sync tab says it hasn't
-/// synced until it does again. After a restore, it keeps it: it synced then,
-/// and turning sync on replaces what iCloud holds with what it holds now.
+/// (`SyncStretch`). After a purge or a restore, the device forgets when it
+/// last synced: iCloud no longer holds what it synced then, purged or about
+/// to be replaced by the restored cards, so the Sync tab says it hasn't
+/// synced until it does again.
 func switchSyncOn(in db: Database) throws {
     guard let reason = try syncOffReason(in: db) else {
         return
     }
     switch reason {
-    case .user, .restore:
+    case .user:
         break
-    case .purge:
+    case .purge, .restore:
         try db.execute(sql: "UPDATE syncDevice SET lastSyncedAt = NULL")
     }
     try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
@@ -219,22 +219,15 @@ struct SyncStandingKept {
     let iCloudIsFull: Bool
     let lastSynced: Date?
     let timesTurnedOff: Int
-    /// The cards' zone the device syncs in, as the database keeps it, and
-    /// since when (`ICloudZones.swift`).
-    let cardsZone: String?
-    let cardsZoneSince: Date?
+    /// Where the device stands among the cards' zones (`ICloudZones.swift`).
+    let cardsZone: CardsZoneStanding
 
     /// How sync stands on the device whose database is `db`, before the
     /// restore replaces it.
     init(in db: Database) throws {
         guard
             let device = try Row.fetchOne(
-                db,
-                sql: """
-                    SELECT isOn, hasICloudAccount, iCloudIsFull, lastSyncedAt, timesTurnedOff, cardsZone,
-                        cardsZoneSince
-                    FROM syncDevice
-                    """)
+                db, sql: "SELECT isOn, hasICloudAccount, iCloudIsFull, lastSyncedAt, timesTurnedOff FROM syncDevice")
         else {
             throw unreadable("The database doesn't keep how sync stands on this device")
         }
@@ -243,8 +236,7 @@ struct SyncStandingKept {
         iCloudIsFull = try device.decode(forColumn: "iCloudIsFull")
         lastSynced = try device.decode(forColumn: "lastSyncedAt")
         timesTurnedOff = try device.decode(forColumn: "timesTurnedOff")
-        cardsZone = try device.decode(forColumn: "cardsZone")
-        cardsZoneSince = try device.decode(forColumn: "cardsZoneSince")
+        cardsZone = try CardsZoneStanding(in: db)
     }
 
     /// Keeps it in `db`, a restored copy, with the switch off because of the
@@ -254,12 +246,13 @@ struct SyncStandingKept {
         try db.execute(
             sql: """
                 UPDATE syncDevice SET isOn = 0, offBecause = ?, engineState = NULL, hasICloudAccount = ?,
-                    iCloudIsFull = ?, lastSyncedAt = ?, timesTurnedOff = ?, cardsZone = ?, cardsZoneSince = ?
+                    iCloudIsFull = ?, lastSyncedAt = ?, timesTurnedOff = ?
                 """,
             arguments: [
                 SyncOffReason.restore.rawValue, hasICloudAccount, iCloudIsFull, lastSynced,
-                timesTurnedOff + (wasOn ? 1 : 0), cardsZone, cardsZoneSince,
+                timesTurnedOff + (wasOn ? 1 : 0),
             ])
+        try cardsZone.keep(in: db)
     }
 }
 

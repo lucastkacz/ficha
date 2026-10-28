@@ -61,12 +61,12 @@ final class SyncedFilesTests {
     }
 
     // The iPhone puts the image on a card of its own before it first syncs,
-    // as it would by importing the same deck: it sends it too, which iCloud
-    // turns down, holding it already.
+    // as it would by importing the same deck: its first sync fetches before
+    // it sends, so it hears iCloud holds the image, and doesn't send it.
     @Test(
-        "the same file on two cards goes up once from each device that has it, and a device that has it already keeps it once"
+        "the same file on two cards goes up once, and a device that has it already neither sends it nor keeps it twice"
     )
-    func theSameFileOnTwoCardsGoesUpOnceFromEachDevice() async throws {
+    func theSameFileOnTwoCardsGoesUpOnce() async throws {
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let song = try await addTone(440, to: mac.engine)
         try mac.engine.create(
@@ -81,7 +81,7 @@ final class SyncedFilesTests {
             try await device.syncNow()
         }
 
-        #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 2)
+        #expect(iCloud.timesSent(SyncedFile(bird).recordID) == 1)
         #expect(iCloud.timesSent(SyncedFile(song).recordID) == 1)
         #expect(try iPhone.engine.keptImages() == [bird])
         #expect(try iPhone.engine.keptSounds() == [song])
@@ -101,7 +101,7 @@ final class SyncedFilesTests {
         try await mac.syncNow()
         try iPhone.sync.sendWhatChanged(to: iPhone.iCloud)
         try await iPhone.iCloud.sendChanges()
-        try await iPhone.iCloud.fetchChanges(in: [.cards])
+        try await iPhone.iCloud.fetchChanges(in: iCloud.zones.filter { $0 != .files })
         let hornero = try iPhone.engine.card(fronted: "¿Qué pájaro es?")
         let ladder = ReviewSettings.defaults.ladder
         var window = iPhone.engine.openCardsWindow(on: ladder)
@@ -290,11 +290,13 @@ final class SyncedFilesTests {
     // the Mac removes it before it hears iCloud holds it, and, as CloudKit
     // usually does, iCloud doesn't hand the Mac its own save back. The
     // iPhone then puts the same image on a card of its own, as an import of
-    // the same deck would, which iCloud turns down, holding the Mac's.
+    // the same deck would, before the Mac fetches again: the iPhone hears
+    // iCloud holds the Mac's.
     @Test(
         "an image a card lets go of while it uploads, which another device's card takes later, comes back to the first device"
     )
     func aFileLetGoOfWhileItUploadsComesBack() async throws {
+        try await mac.syncNow()
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let hornero = try mac.engine.create(
             card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
@@ -303,7 +305,7 @@ final class SyncedFilesTests {
         mac.iCloud.onceSaved {
             try macEngine.edit(hornero.id, with: card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
         }
-        try await mac.syncNow()
+        try await mac.send()
         #expect(try iPhone.engine.addImage(picture(width: 800, height: 600, red: 0.8)) == bird)
         try iPhone.engine.create(card(nil, front: "Furnarius rufus", back: "El hornero.", backImage: bird))
 

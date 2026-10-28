@@ -160,7 +160,8 @@ targets:
   # only picks whose cards they open, and, in its sandbox, takes files from
   # Downloads alone. It's built with each app, in the same configuration, and
   # compiles `AppVariant` too, so the CLI inside Ficha Dev opens Ficha Dev's
-  # cards, and the one inside the real Ficha opens Lucas's.
+  # cards, and the one inside the real Ficha opens Lucas's; `AppVariant`
+  # reads a scratch run's name with FichaData.
   CLI:
     type: tool
     platform: macOS
@@ -174,6 +175,8 @@ targets:
     dependencies:
       - package: FichaKit
         product: FichaCLI
+      - package: FichaKit
+        product: FichaData
     configFiles:
       Debug: Signing.xcconfig
     settings:

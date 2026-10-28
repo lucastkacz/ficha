@@ -203,16 +203,16 @@ extension Engine {
 
     /// Turns sync on, as the user does in Settings, and leaves every row that
     /// syncs waiting to be sent, as nothing but deletions was recorded while
-    /// it was off. Off after a restore or a purge, the device sends its cards
-    /// into another cards' zone, which the other devices move to: they take
-    /// a restore's cards in place of theirs, and join a purge's
-    /// (`ICloudZones.swift`). The app's sync follows it. When it's on
-    /// already, nothing changes.
+    /// it was off. Off after a restore, the device makes a cards' zone of its
+    /// own and sends its cards into it, which the other devices take in place
+    /// of theirs; off after a purge, it fetches first, and joins the zone
+    /// another device made since, or makes one (`ICloudZones.swift`). The
+    /// app's sync follows it. When it's on already, nothing changes.
     public func turnSyncOn() throws(EngineError) {
         let now = time.now
         try write { db in
             guard try !isSyncOn(in: db) else { return }
-            try startACardsZoneIfOffAfterARestoreOrAPurge(at: now, in: db)
+            try makeACardsZoneIfOffAfterARestore(at: now, in: db)
             try switchSyncOn(in: db)
             try recordEverythingToSend(in: db)
         }

@@ -201,14 +201,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// in zones of its own (`AppVariant.scratchName`).
     private func startSyncing(_ model: AppModel) {
         guard AppVariant.current.syncsThroughICloud else { return }
-        // CloudKit stops a process that isn't signed for iCloud, as #316
-        // probed, so a build signed without it leaves sync off instead, and
-        // shows no Sync tab, which would wait forever for the account.
-        guard signedEntitlement("com.apple.developer.icloud-services") != nil else {
+        // A build signed without iCloud's entitlements leaves sync off
+        // instead, and shows no Sync tab, which would wait forever for the
+        // account.
+        guard AppVariant.isSignedForICloud else {
             logger.fault("Sync through iCloud stays off: this build isn't signed for iCloud")
             return
         }
-        let zones = AppVariant.current.scratchName.map(ICloudZones.scratch) ?? .ficha
+        let zones: ICloudZones
+        do {
+            zones = try AppVariant.current.scratchName.map(ICloudZones.scratch) ?? .ficha
+        } catch {
+            // The data folder opened, named after the same scratch run, so
+            // this never happens.
+            logger.fault("Sync through iCloud stays off: \(error.localizedDescription, privacy: .public)")
+            return
+        }
         let iCloud = CloudKitSync(engine: model.engine, zones: zones, device: "This Mac")
         self.iCloud = iCloud
         model.sync = model.engine.openSyncTab()

@@ -207,9 +207,11 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     }
 
     /// Starts syncing, in the stretch sync is on in. On a device that synced
-    /// before, it catches up on what changed in iCloud since, and then starts
-    /// CloudKit's engine from the state the device saved last, and hands it
-    /// every change that waits; on one that never did, the engine fetches
+    /// before, and on one that chooses its cards' zone, which waits for a
+    /// fetch that ends without an error to tell it iCloud holds none, it
+    /// catches up on what changed in iCloud first, and then starts CloudKit's
+    /// engine from the state the device saved last, and hands it every change
+    /// that waits; on any other, which never synced, the engine fetches
     /// everything as it starts. A saved state it can't read leaves sync
     /// stopped, and the log says why: starting from none would fetch
     /// everything again as a new device. Sync turned off while it caught up
@@ -221,8 +223,9 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         isStarting = true
         while let stretch, syncEngine == nil {
             do {
-                if let saved = try sync.savedState() {
-                    await catchUp(from: try CKSyncEngine.State.Serialization(saved: saved))
+                let saved = try sync.savedState()
+                if try saved != nil || sync.choosesItsCardsZone() {
+                    await catchUp(from: try saved.map { try CKSyncEngine.State.Serialization(saved: $0) })
                     let now = try sync.stretchNow()
                     guard now == stretch else {
                         self.stretch = now
@@ -250,25 +253,28 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         }
     }
 
-    /// Fetches what changed in iCloud since `state` through an engine that
-    /// doesn't sync on its own, whose events `Sync` handles as the device's
-    /// engine's: what it fetched, and the state it leaves, which it tells of
-    /// a moment after it fetched. Without a connection, it ends with an error,
-    /// or once the connection is back. Half a second is our own guess at that
-    /// moment: a state told later is left aside, which only costs fetching
-    /// those changes again, and so are the changes `Sync` handed this engine,
-    /// which `Sync` hands the next one again: what waits to go up as it
-    /// starts, and the files to delete or ask for again as a fetch ends. A
-    /// fetch that ends without an error says the device synced, which the
-    /// engine's own end of a fetch doesn't, since it may come after one that
-    /// failed.
-    private func catchUp(from state: CKSyncEngine.State.Serialization) async {
+    /// Fetches what changed in iCloud since `state`, or everything from none,
+    /// through an engine that doesn't sync on its own, whose events `Sync`
+    /// handles as the device's engine's: what it fetched, and the state it
+    /// leaves, which it tells of a moment after it fetched. Without a
+    /// connection, it ends with an error, or once the connection is back.
+    /// Half a second is our own guess at that moment: a state told later is
+    /// left aside, which only costs fetching those changes again, and so are
+    /// the changes `Sync` handed this engine, which `Sync` hands the next one
+    /// again: what waits to go up as it starts, and the files to delete or
+    /// ask for again as a fetch ends; a cards' zone the device made, which
+    /// iCloud never held, goes up again with the first record sent into it,
+    /// which iCloud refuses without it. A fetch that ends without an error
+    /// says the device synced, which the engine's own end of a fetch doesn't,
+    /// since it may come after one that failed, and so it's the one that
+    /// tells a device choosing its cards' zone that iCloud holds none.
+    private func catchUp(from state: CKSyncEngine.State.Serialization?) async {
         let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: false)
         catchUpEngine = engine
         do {
             try await engine.fetchChanges()
             if engine === catchUpEngine {
-                noteFetchEnded()
+                noteFetchEnded(by: engine)
             }
         } catch {
             iCloudLogger.error(
@@ -279,10 +285,11 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         catchUpEngine = nil
     }
 
-    /// Keeps that a fetch the device asked for ended without an error.
-    private func noteFetchEnded() {
+    /// Keeps that a fetch the device asked `engine` for ended without an
+    /// error.
+    private func noteFetchEnded(by engine: CKSyncEngine) {
         do {
-            try sync.noteFetchEnded()
+            try sync.noteFetchEnded(with: CloudKitSyncEngine(engine: engine, device: self))
         } catch {
             iCloudLogger.error(
                 "\(self.device, privacy: .public) couldn't keep that it synced: \(String(describing: error), privacy: .public)"

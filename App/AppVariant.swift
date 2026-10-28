@@ -1,3 +1,4 @@
+import FichaData
 import Foundation
 
 #if os(macOS)
@@ -85,15 +86,26 @@ enum AppVariant {
         }
     }
 
-    /// The name of the scratch folder `FICHA_DEV_SCRATCH` opens in Ficha
-    /// Dev, an agent's, or nil for Ficha Dev's own data folder, and always
-    /// for the real Ficha. A scratch run syncs in zones named after it,
-    /// "Cards-<name>" and "Files-<name>", which Ficha Dev's own devices leave
-    /// alone, so its cards never reach Ficha Dev's.
-    var scratchName: String? {
-        switch self {
-        case .dev: ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"]
-        case .real: nil
+    /// The scratch run `FICHA_DEV_SCRATCH` names in Ficha Dev, an agent's,
+    /// or nil for Ficha Dev's own data folder, and always for the real Ficha.
+    /// It names the scratch folder the app opens and the zones it syncs in,
+    /// "Cards-<name>…" and "Files-<name>", which Ficha Dev's own devices
+    /// leave alone, so its cards never reach Ficha Dev's. A name that can't
+    /// name one, with anything but letters, digits, `-` and `_`, fails.
+    var scratchName: ScratchName? {
+        get throws(DataFolderError) {
+            switch self {
+            case .dev:
+                guard let name = ProcessInfo.processInfo.environment["FICHA_DEV_SCRATCH"] else {
+                    return nil
+                }
+                guard let scratch = ScratchName(name) else {
+                    throw .unusableScratchName(name)
+                }
+                return scratch
+            case .real:
+                return nil
+            }
         }
     }
 
@@ -111,10 +123,14 @@ enum AppVariant {
                 switch self {
                 case .dev:
                     let group = try signedGroupFolder(named: "com.lucastkacz.ficha.dev")
-                    guard let scratch = scratchName else {
+                    guard let scratch = try scratchName else {
                         return group.appending(path: folderName, directoryHint: .isDirectory)
                     }
-                    return try scratchFolder(named: scratch, in: group)
+                    // A data folder of its own, which the app doesn't hear,
+                    // since the database's changes are named after its path.
+                    // It has to be in the group's folder, since the CLI's
+                    // sandbox lets it write nowhere else.
+                    return group.appending(path: "Scratch/\(scratch.rawValue)", directoryHint: .isDirectory)
                 case .real:
                     break
                 }
@@ -165,6 +181,15 @@ enum DataFolderError: Error, LocalizedError {
 }
 
 #if os(macOS)
+    extension AppVariant {
+        /// Whether this process is signed for iCloud, with iCloud's
+        /// entitlements: CloudKit stops a process that isn't, as #316 probed,
+        /// so a build signed without them reaches no iCloud at all.
+        static var isSignedForICloud: Bool {
+            signedEntitlement("com.apple.developer.icloud-services") != nil
+        }
+    }
+
     /// The value of `entitlement` this process is signed with, read from its
     /// own signature, or nil when it has none, as an unsigned build hasn't.
     /// So the team's ID, which names the App Groups, is never written in the
@@ -186,17 +211,5 @@ enum DataFolderError: Error, LocalizedError {
             throw .noGroupFolder(group)
         }
         return folder
-    }
-
-    /// The scratch folder `name` in the group's folder `group`: a data folder
-    /// of its own, which the app doesn't hear, since the database's changes
-    /// are named after its path. It has to be in the group's folder, since
-    /// the CLI's sandbox lets it write nowhere else.
-    private func scratchFolder(named name: String, in group: URL) throws(DataFolderError) -> URL {
-        guard !name.isEmpty, name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "-_".contains($0)) })
-        else {
-            throw .unusableScratchName(name)
-        }
-        return group.appending(path: "Scratch/\(name)", directoryHint: .isDirectory)
     }
 #endif

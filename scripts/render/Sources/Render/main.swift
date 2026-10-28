@@ -695,7 +695,8 @@ func tell(_ event: ICloudEvent, to sync: Sync) throws {
 
 /// The app's model on the sample cards in `renderDataFolder`, for Settings'
 /// Sync tab and the menu's line while iCloud is full: on a Mac signed into
-/// iCloud, once `change` did what the picture shows, through the engine and
+/// iCloud, which syncs its cards in "Cards", the zone it heard of as it first
+/// fetched, once `change` did what the picture shows, through the engine and
 /// its sync, which takes sync's events through `RenderICloud`, with the tab
 /// open, as the app's delegate opens it once it starts syncing. It stops the
 /// tool unless the tab then says what `isShown` looks for, `shown` in words,
@@ -707,6 +708,9 @@ func syncModel(
     let engine = try sampleEngine(at: .folder(renderDataFolder)).engine
     let sync = Sync(engine: engine, zones: .ficha)
     try sync.noteAccount(signedIn: true)
+    try tell(
+        .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(modifications: [.cards, .files], deletions: [])),
+        to: sync)
     try change(engine, sync)
     let model = try AppModel(engine: engine)
     model.sync = engine.openSyncTab()
@@ -994,7 +998,7 @@ func model(for name: Window) throws -> AppModel {
         return try AppModel(engine: engine)
     case .sync:
         return try syncModel(showing: "when the Mac last synced") { _, sync in
-            try sync.noteFetchEnded()
+            try sync.noteFetchEnded(with: RenderICloud())
         } isShown: {
             if case .on(_?) = $0 { true } else { false }
         }

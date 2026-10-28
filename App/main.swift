@@ -1,3 +1,4 @@
+import FichaData
 import FichaICloud
 import Foundation
 
@@ -23,20 +24,20 @@ enum ScratchZonesDeletion {
     static let argument = "--delete-scratch-zones"
 
     static func run() -> Never {
-        guard AppVariant.current == .dev, let name = AppVariant.current.scratchName else {
+        let scratchName: ScratchName?
+        do {
+            scratchName = try AppVariant.current.scratchName
+        } catch {
+            stop(error.localizedDescription)
+        }
+        guard let name = scratchName else {
             stop(
                 """
                 Only Ficha Dev deletes a scratch run's zones, those FICHA_DEV_SCRATCH names: run \
                 FICHA_DEV_SCRATCH=<name> "<Ficha Dev.app>/Contents/MacOS/Ficha Dev" \(argument).
                 """)
         }
-        // A name that can't name a scratch folder names no zones either.
-        do {
-            _ = try AppVariant.current.dataFolder
-        } catch {
-            stop(error.localizedDescription)
-        }
-        guard signedEntitlement("com.apple.developer.icloud-services") != nil else {
+        guard AppVariant.isSignedForICloud else {
             stop(
                 """
                 This Ficha Dev isn't signed for iCloud, so it can't reach the scratch run's zones: build it with \
@@ -48,7 +49,7 @@ enum ScratchZonesDeletion {
                 let deleted = try await ScratchZones.delete(ofScratch: name)
                 print(
                     deleted.isEmpty
-                        ? "iCloud holds no zone of the scratch run \(name)."
+                        ? "iCloud holds no zone of the scratch run \(name.rawValue)."
                         : "Deleted from iCloud: \(deleted.joined(separator: ", ")).")
                 exit(0)
             } catch {

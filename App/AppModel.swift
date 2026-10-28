@@ -57,7 +57,7 @@ final class AppModel {
     /// Settings' Sync tab, and the menu's line while iCloud is full, which
     /// the app's delegate opens as it starts syncing, or nil while the app
     /// doesn't sync, which shows neither: the real Ficha, until #318, and a
-    /// Ficha Dev on a scratch folder or not signed for iCloud.
+    /// Ficha Dev not signed for iCloud.
     var sync: SyncTabState?
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
