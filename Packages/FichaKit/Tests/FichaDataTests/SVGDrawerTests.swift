@@ -35,6 +35,23 @@ struct SVGDrawerTests {
         #expect(server.connections == 0)
     }
 
+    // An import waits for each drawing on a thread of Swift's concurrency
+    // pool, which has one per core: on GitHub's three-core Macs, imports at
+    // once take them all.
+    @Test("SVGs are drawn while more imports at once than the Mac has cores each wait for one")
+    func svgsAreDrawnWhileImportsTakeEveryThread() async {
+        let imports = 2 * ProcessInfo.processInfo.activeProcessorCount
+
+        let drawn = await withTaskGroup(of: Bool.self) { group in
+            for _ in 0..<imports {
+                group.addTask { InProcessSVGDrawer().image(of: sunSVG, longestSide: 100) != nil }
+            }
+            return await group.reduce(0) { $1 ? $0 + 1 : $0 }
+        }
+
+        #expect(drawn == imports)
+    }
+
     // The app draws through the drawer's XPC service, which hands each
     // drawing back as its pixels; here the service listens in the process.
     @Test("an SVG drawn by the drawer's XPC service comes in as one drawn in the process, and a damaged one doesn't")

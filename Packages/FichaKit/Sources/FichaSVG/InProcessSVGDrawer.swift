@@ -49,18 +49,19 @@ import Synchronization
             let drawing = PendingDrawing()
             let opened = page.withLock { $0 }
             Task { @MainActor [self] in
-                let open: SVGPage
                 if let opened {
-                    open = opened
-                } else {
-                    guard let rules = await rulesBlockingEveryLoad() else {
+                    opened.draw(svg, longestSide: longestSide) { drawing.finish(with: $0) }
+                    return
+                }
+                withRulesBlockingEveryLoad { [self] rules in
+                    guard let rules else {
                         drawing.finish(with: nil)
                         return
                     }
-                    open = SVGPage(blocking: rules)
+                    let open = SVGPage(blocking: rules)
                     page.withLock { $0 = open }
+                    open.draw(svg, longestSide: longestSide) { drawing.finish(with: $0) }
                 }
-                open.draw(svg, longestSide: longestSide) { drawing.finish(with: $0) }
             }
             // Far longer than a drawing takes, some 25 ms for a flag.
             switch drawing.wait(seconds: 10) {
@@ -78,30 +79,57 @@ import Synchronization
 
     /// WebKit's content rules that block every load, from the web, the disk or
     /// anywhere else, compiled once for the process, whatever its drawers.
-    @MainActor private var blockingEveryLoad: Task<WKContentRuleList?, Never>?
+    @MainActor private var blockingEveryLoad = RulesBlockingEveryLoad.notAskedFor
 
-    /// The content rules that block every load, or nil when WebKit couldn't
-    /// compile them, and then no SVG is drawn.
+    /// Where the content rules that block every load stand.
+    private enum RulesBlockingEveryLoad {
+        case notAskedFor
+        /// Being compiled, for the drawings that wait for them.
+        case compiling(waiting: [@MainActor (WKContentRuleList?) -> Void])
+        /// Compiled, or nil when WebKit couldn't compile them.
+        case compiled(WKContentRuleList?)
+    }
+
+    /// Hands `use` the content rules that block every load, compiled the
+    /// first time, or nil when WebKit couldn't compile them, and then no SVG
+    /// is drawn. It never awaits WebKit: its `async` compile resumes on a
+    /// thread of Swift's concurrency pool, and an import waits for its drawing
+    /// on one of those, so imports at once, as in `swift test` on GitHub's
+    /// three-core Macs, can take them all, and the drawing waits for theirs to
+    /// give up. WebKit calls the completion handler on the main thread.
     @MainActor
-    private func rulesBlockingEveryLoad() async -> WKContentRuleList? {
-        let compiling =
-            blockingEveryLoad
-            ?? Task {
-                // Compiled into a scratch folder, which WebKit keeps them in.
-                let store = WKContentRuleListStore(url: URL.temporaryDirectory.appending(path: "SVGDrawerRules"))
-                do {
-                    return try await store?.compileContentRuleList(
-                        forIdentifier: "BlockEveryLoad",
-                        encodedContentRuleList: #"[{"trigger": {"url-filter": ".*"}, "action": {"type": "block"}}]"#)
-                } catch {
+    private func withRulesBlockingEveryLoad(_ use: @escaping @MainActor (WKContentRuleList?) -> Void) {
+        switch blockingEveryLoad {
+        case .compiled(let rules):
+            use(rules)
+        case .compiling(let waiting):
+            blockingEveryLoad = .compiling(waiting: waiting + [use])
+        case .notAskedFor:
+            // Compiled into a scratch folder, which WebKit keeps them in.
+            guard let store = WKContentRuleListStore(url: URL.temporaryDirectory.appending(path: "SVGDrawerRules"))
+            else {
+                logger.error("WebKit gave no store for the rules that keep the SVG drawer off the network")
+                blockingEveryLoad = .compiled(nil)
+                use(nil)
+                return
+            }
+            blockingEveryLoad = .compiling(waiting: [use])
+            store.compileContentRuleList(
+                forIdentifier: "BlockEveryLoad",
+                encodedContentRuleList: #"[{"trigger": {"url-filter": ".*"}, "action": {"type": "block"}}]"#
+            ) { rules, error in
+                if let error {
                     logger.error(
                         "WebKit couldn't compile the rules that keep the SVG drawer off the network: \(error, privacy: .public)"
                     )
-                    return nil
+                }
+                guard case .compiling(let waiting) = blockingEveryLoad else { return }
+                blockingEveryLoad = .compiled(rules)
+                for use in waiting {
+                    use(rules)
                 }
             }
-        blockingEveryLoad = compiling
-        return await compiling.value
+        }
     }
 
     /// A web view that draws one SVG at a time, as an `<img>` of its first,
