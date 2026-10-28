@@ -47,6 +47,9 @@ enum Window: String {
     /// The alert the real Ficha shows at its first launch, which asks whether
     /// it opens at login.
     case startAtLogin = "start-at-login"
+    /// The Diagnostics window, while a Focus holds appearances back, once it
+    /// held one back.
+    case diagnostics
 }
 
 /// What the tool was asked to draw.
@@ -288,7 +291,8 @@ let usage = """
                  package), cards-anki-imported (once it came in, a card it put on a step selected), backups
                  (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
                  or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), about
-                 (Settings, on its About tab) or start-at-login (the alert the real Ficha shows at its first launch)
+                 (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
+                 or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -616,6 +620,29 @@ func progressSettingsModel() throws -> AppModel {
     return try AppModel(engine: engine)
 }
 
+/// The app's model on the sample cards, an hour after their last review, once
+/// a Focus held an appearance back, for Diagnostics' latest appearances.
+func focusHeldBackModel() throws -> AppModel {
+    let (engine, time) = try sampleEngine(at: .inMemory)
+    time.advance(by: hours(1))
+    let model = try AppModel(engine: engine)
+    let decision = try model.checkAppearance(mac: MacInAFocus())
+    guard decision == .notNow(.suppressed(.focus)) else {
+        throw RenderError(
+            description: "A Focus didn't hold the sample's appearance back: \(decision). Fix focusHeldBackModel().")
+    }
+    return model
+}
+
+/// A Mac that's awake and in use, in a Focus with Ficha's filter on.
+struct MacInAFocus: DeviceSignals {
+    var isAsleep: Bool { false }
+    var lastWake: Date? { nil }
+    var idleTime: Duration? { .zero }
+    var suppressions: Set<Suppression> { [.focus] }
+    var suppressionEnds: [Suppression: Date] { [:] }
+}
+
 /// The Cards window's state once the sample Anki package came in, with the
 /// card of the femur selected, so the detail shows its review log.
 func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
@@ -792,6 +819,7 @@ func model(for name: Window) throws -> AppModel {
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsAnkiImported: return try ankiImportedModel()
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
+    case .diagnostics: return try focusHeldBackModel()
     case .backups: return try AppModel(engine: try backupsEngine())
     case .backupsFailed:
         let model = try AppModel(engine: try backupsEngine())
@@ -835,6 +863,10 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let alert = StartAtLogin.questionAlert(for: .real)
         alert.layout()
         return alert.window
+    case .diagnostics:
+        let mac = SystemMacSignals { model.now }
+        mac.focusChanged(holdsBack: true)
+        return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
     }
 }
 
