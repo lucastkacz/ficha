@@ -610,7 +610,7 @@ extension ICloudEvent {
     /// or deletions the device sent. The end of a fetch doesn't, since
     /// `CKSyncEngine`'s documentation doesn't say it comes only after a fetch
     /// that didn't fail: a fetch the app sees end without an error says so
-    /// (`noteFetchEnded()`).
+    /// (`noteFetchEnded(with:)`).
     fileprivate var saysTheDeviceSynced: Bool {
         switch self {
         case .fetchedDatabaseChanges(let changes):
