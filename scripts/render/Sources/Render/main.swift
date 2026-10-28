@@ -675,6 +675,16 @@ nonisolated struct RenderICloud: ICloudSyncEngine {
     func fetchRecords(_ records: [(id: ICloudRecordID, type: String)]) {}
 }
 
+/// Tells `sync` of `event`, as an engine of iCloud's that started now does,
+/// while sync is on.
+func tell(_ event: ICloudEvent, to sync: Sync) throws {
+    guard let stretch = try sync.stretchNow() else {
+        throw RenderError(
+            description: "Sync is off before the tool tells it of iCloud's event: fix syncModel(showing:).")
+    }
+    try sync.handle(event, from: RenderICloud(), startedIn: stretch)
+}
+
 /// The app's model on the sample cards in `renderDataFolder`, for Settings'
 /// Sync tab: on a Mac signed into iCloud, once `change` did what the picture
 /// shows, through the engine and its sync, which takes sync's events through
@@ -959,7 +969,7 @@ func model(for name: Window) throws -> AppModel {
         return try AppModel(engine: engine)
     case .sync:
         return try syncModel(showing: "when the Mac last synced") { _, sync in
-            try sync.handle(.didFetchChanges, from: RenderICloud())
+            try sync.noteFetchEnded()
         } isShown: {
             if case .on(_?) = $0 { true } else { false }
         }
@@ -972,8 +982,7 @@ func model(for name: Window) throws -> AppModel {
     case .syncFull:
         return try syncModel(showing: "that iCloud is full") { _, sync in
             let full = ICloudEvent.FailedZoneSave(zone: ICloudZone(name: "Cards"), error: .quotaExceeded)
-            try sync.handle(
-                .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [full])), from: RenderICloud())
+            try tell(.sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [full])), to: sync)
         } isShown: {
             $0 == .iCloudFull
         }
@@ -987,8 +996,7 @@ func model(for name: Window) throws -> AppModel {
     case .syncPurged:
         return try syncModel(showing: "that a purge turned sync off") { _, sync in
             let purge = ICloudEvent.ZoneDeletion(zone: ICloudZone(name: "Cards"), reason: .purged)
-            try sync.handle(
-                .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: [purge])), from: RenderICloud())
+            try tell(.fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: [purge])), to: sync)
         } isShown: {
             if case .off(.purge, _) = $0 { true } else { false }
         }
