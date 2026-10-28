@@ -43,7 +43,7 @@
       "comment" : "In the widget, when the user has no cards at all."
     },
     "Open %@ to see your next card." : {
-      "comment" : "In the widget, before the app made or updated its database."
+      "comment" : "In the widget, before the app ran once since it was installed or updated, to make or update its database and hand over its settings."
     },
     "Sound" : {
       "comment" : "In the widget, the speaker on a card's side that holds only a sound."
