@@ -55,6 +55,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - Swift Testing: `import Testing`, `@Test`, `#expect`, and `try #require` to unwrap.
 - Few and meaningful: test what can break in a way that matters, like scheduling, which cards show and when, storage and migrations, and import and export. No tests for trivial code, and no mocks that only check which calls were made.
+- A fake of a system service, such as `FakeICloud` for CloudKit and `CKSyncEngine`, does what the service's documentation says, and where the documentation says nothing, the less forgiving thing: a fake kinder than the service passes tests the app then fails. Its doc comment names each place it differs from the real service. The reviewer reads a change to a fake, or to code a fake stands in for, against the service's documentation.
 - Test names are sentences that state the behavior: `@Test("a wrong answer sends the card back to the first step")`.
 - Fixtures are made by hand, never taken from Lucas's cards.
 
