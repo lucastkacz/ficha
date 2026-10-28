@@ -1,6 +1,7 @@
 import AVFoundation
 import AppKit
 import Carbon.HIToolbox
+import CryptoKit
 import FichaCore
 import FichaData
 import SQLite3
@@ -30,6 +31,10 @@ enum Window: String {
     /// The Cards window once that Anki package came in with its progress,
     /// with a card it put on a step selected, and reviewed since.
     case cardsAnkiImported = "cards-anki-imported"
+    /// The Cards window with its Import sheet showing the preview of a zip
+    /// of cards whose images weigh 240 MB, while sync is on, which says they
+    /// go up to iCloud.
+    case cardsImportHeavy = "cards-import-heavy"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -42,6 +47,18 @@ enum Window: String {
     case reviewPanel = "review-panel"
     /// Settings, on its Ladder tab, with those settings not Ficha's.
     case ladder
+    /// Settings, on its Sync tab, once the Mac synced.
+    case sync
+    /// Settings, on its Sync tab, on a Mac signed out of iCloud.
+    case syncNoAccount = "sync-no-account"
+    /// Settings, on its Sync tab, while iCloud is full.
+    case syncFull = "sync-full"
+    /// Settings, on its Sync tab, once the user turned sync off, with 800 MB
+    /// of images and sounds for turning it on to send.
+    case syncOff = "sync-off"
+    /// Settings, on its Sync tab, once the user deleted Ficha's data in
+    /// iCloud's settings, which turned sync off.
+    case syncPurged = "sync-purged"
     /// Settings, on its About tab.
     case about
     /// The alert the real Ficha shows at its first launch, which asks whether
@@ -288,11 +305,14 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
-                 package), cards-anki-imported (once it came in, a card it put on a step selected), backups
+                 package), cards-anki-imported (once it came in, a card it put on a step selected),
+                 cards-import-heavy (previewing a zip whose images weigh 240 MB, while sync is on), backups
                  (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
-                 or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), about
-                 (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
-                 or diagnostics (while a Focus holds appearances back, once it held one back)
+                 or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
+                 (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
+                 full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
+                 in iCloud), about (Settings, on its About tab), start-at-login (the alert the real Ficha shows at
+                 its first launch) or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
@@ -643,6 +663,131 @@ struct MacInAFocus: DeviceSignals {
     var suppressionEnds: [Suppression: Date] { [:] }
 }
 
+/// iCloud's engine as the tool tells sync's events through it, for the Sync
+/// tab's pictures: it takes what sync hands it, and does nothing with it,
+/// since the tool never loads CloudKit (ADR 0017). This stand-in is our own.
+nonisolated struct RenderICloud: ICloudSyncEngine {
+    func add(pendingRecordZoneChanges: [ICloudPendingRecordZoneChange]) {}
+    func remove(pendingRecordZoneChanges: [ICloudPendingRecordZoneChange]) {}
+    func add(pendingDatabaseChanges: [ICloudPendingDatabaseChange]) {}
+    func sendChanges() async throws {}
+    func fetchChanges() async throws {}
+    func fetchRecords(_ records: [(id: ICloudRecordID, type: String)]) {}
+}
+
+/// The app's model on the sample cards in `renderDataFolder`, for Settings'
+/// Sync tab: on a Mac signed into iCloud, once `change` did what the picture
+/// shows, through the engine and its sync, which takes sync's events through
+/// `RenderICloud`. It stops the tool unless the tab then says what
+/// `isShown` looks for, `shown` in words, as when sync's rules changed what an
+/// event does.
+func syncModel(
+    showing shown: String, _ change: (Engine, Sync) throws -> Void, isShown: (SyncTabState.Status) -> Bool
+) throws -> AppModel {
+    try? FileManager.default.removeItem(at: renderDataFolder)
+    let engine = try sampleEngine(at: .folder(renderDataFolder)).engine
+    let sync = Sync(engine: engine)
+    try sync.noteAccount(signedIn: true)
+    try change(engine, sync)
+    let model = try AppModel(engine: engine)
+    guard let status = model.sync?.status, isShown(status) else {
+        throw RenderError(
+            description: """
+                The Sync tab doesn't show \(shown): it says \(String(describing: model.sync?.status)). Fix what \
+                model(for:) does for its window.
+                """)
+    }
+    return model
+}
+
+/// The sample's card with images, whose front shows the flag.
+func sampleFlagImage(of engine: Engine) throws -> ImageName {
+    guard let flag = try engine.cards().first(where: { $0.front == "¿De qué país es esta bandera?" })?.frontImage
+    else {
+        throw RenderError(description: "The sample's card with the flag on its front is gone: fix sampleEngine(at:).")
+    }
+    return flag
+}
+
+/// Makes the images and sounds on the sample's cards in `renderDataFolder`
+/// weigh `bytes` in all, as the Sync tab weighs them: the flag's image grows,
+/// with zeros after its end, which on APFS take no room on the disk, since
+/// nothing writes them.
+func weighFilesOnCards(_ bytes: Int64, in engine: Engine) throws {
+    let flag = try sampleFlagImage(of: engine)
+    var others: Int64 = 0
+    for folder in ["Images", "Sounds"] {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: renderDataFolder.appending(path: folder, directoryHint: .isDirectory),
+            includingPropertiesForKeys: [.fileSizeKey])
+        for file in files where file.lastPathComponent != flag.rawValue {
+            guard let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+                throw RenderError(description: "Couldn't weigh the sample's file \(file.lastPathComponent).")
+            }
+            others += Int64(size)
+        }
+    }
+    let handle = try FileHandle(forWritingTo: renderDataFolder.appending(path: "Images/\(flag.rawValue)"))
+    defer { try? handle.close() }
+    try handle.truncate(atOffset: UInt64(bytes - others))
+}
+
+/// The Cards window's state partway through importing a zip of cards, as
+/// the Import sheet shows it once the user chose one, while sync is on: the
+/// preview of three maps, a zip the tool writes in its scratch home, each
+/// image the sample flag's as Ficha keeps it, made to weigh 80 MB with zeros
+/// after its end, which a JPEG's readers skip, and named by its content, so
+/// that the import takes it as it is and brings 240 MB that go up to iCloud.
+/// The files go once they're read.
+func heavyImportingState(of model: AppModel) throws -> CardsWindowState {
+    let folder = URL.documentsDirectory.appending(path: "Mapas", directoryHint: .isDirectory)
+    try? FileManager.default.removeItem(at: folder)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let jpeg = try model.engine.image(sampleFlagImage(of: model.engine))
+    let text = folder.appending(path: "Mapas.txt")
+    var lines = ["#separator:tab", "#html:false", "#columns:Front\tBack\tFront image"]
+    var files = [text]
+    for (index, country) in ["Chile", "Uruguay", "Bolivia"].enumerated() {
+        var image = jpeg
+        image.append(Data(count: 80_000_000 + index - jpeg.count))
+        let name = SHA256.hash(data: image).map { String(format: "%02x", $0) }.joined() + ".jpg"
+        let file = folder.appending(path: name)
+        try image.write(to: file)
+        files.append(file)
+        lines.append("¿Qué país es este?\t\(country).\t\(name)")
+    }
+    try Data(lines.joined(separator: "\n").utf8).write(to: text)
+    let zip = URL.documentsDirectory.appending(path: "Mapas.zip")
+    defer { try? FileManager.default.removeItem(at: zip) }
+    try zipFiles(files, into: zip, describing: "the sample zip of maps")
+    var state = model.openCardsWindow()
+    state.startImport()
+    try previewImportAtOnce(of: zip, in: &state)
+    guard state.importing?.weightGoingUpToICloud != nil else {
+        throw RenderError(
+            description:
+                "The sample zip of maps says nothing of iCloud: \(String(describing: state.importing)). Fix heavyImportingState(of:)."
+        )
+    }
+    return state
+}
+
+/// Zips `files` into `file`, flat, with `zip`, replacing what's there;
+/// `described` names the file, in what the tool says when it fails.
+func zipFiles(_ files: [URL], into file: URL, describing described: String) throws {
+    try? FileManager.default.removeItem(at: file)
+    let zip = Process()
+    zip.executableURL = URL(filePath: "/usr/bin/zip")
+    zip.arguments = ["-q", "-j"] + ([file] + files).map { $0.path(percentEncoded: false) }
+    try zip.run()
+    zip.waitUntilExit()
+    guard zip.terminationStatus == 0 else {
+        throw RenderError(
+            description: "zip couldn't make \(described) (exit \(zip.terminationStatus)). \(whenMacOSRefuses)")
+    }
+}
+
 /// The Cards window's state once the sample Anki package came in, with the
 /// card of the femur selected, so the detail shows its review log.
 func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
@@ -677,18 +822,7 @@ func writeSampleAnkiPackage(to file: URL) throws {
     try SamplePicture.sun.png().write(to: sun)
     let media = folder.appending(path: "media")
     try Data(#"{"0":"bandera.png","1":"sol.png"}"#.utf8).write(to: media)
-    try? FileManager.default.removeItem(at: file)
-    let zip = Process()
-    zip.executableURL = URL(filePath: "/usr/bin/zip")
-    zip.arguments = ["-q", "-j"] + [file, meta, collection, flag, sun, media].map { $0.path(percentEncoded: false) }
-    try zip.run()
-    zip.waitUntilExit()
-    guard zip.terminationStatus == 0 else {
-        throw RenderError(
-            description:
-                "zip couldn't make the sample Anki package (exit \(zip.terminationStatus)). \(whenMacOSRefuses)"
-        )
-    }
+    try zipFiles([meta, collection, flag, sun, media], into: file, describing: "the sample Anki package")
 }
 
 /// Runs `sql` on the SQLite database at `file`, which it makes.
@@ -812,12 +946,52 @@ func hours(_ count: Int) -> TimeInterval {
 }
 
 /// The app's model for `name`'s window: on the sample cards in memory, and
-/// for Settings' Backups tab, in `renderDataFolder`, with copies to list.
+/// for Settings' Backups tab and Sync tab, in `renderDataFolder`, with copies
+/// to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsAnkiImported: return try ankiImportedModel()
+    case .cardsImportHeavy:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try Sync(engine: engine).noteAccount(signedIn: true)
+        return try AppModel(engine: engine)
+    case .sync:
+        return try syncModel(showing: "when the Mac last synced") { _, sync in
+            try sync.handle(.didFetchChanges, from: RenderICloud())
+        } isShown: {
+            if case .on(_?) = $0 { true } else { false }
+        }
+    case .syncNoAccount:
+        return try syncModel(showing: "that the Mac has no iCloud account") { _, sync in
+            try sync.noteAccount(signedIn: false)
+        } isShown: {
+            $0 == .noAccount
+        }
+    case .syncFull:
+        return try syncModel(showing: "that iCloud is full") { _, sync in
+            let full = ICloudEvent.FailedZoneSave(zone: ICloudZone(name: "Cards"), error: .quotaExceeded)
+            try sync.handle(
+                .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: [full])), from: RenderICloud())
+        } isShown: {
+            $0 == .iCloudFull
+        }
+    case .syncOff:
+        return try syncModel(showing: "that turning sync on sends 800 MB") { engine, _ in
+            try engine.turnSyncOff()
+            try weighFilesOnCards(800_000_000, in: engine)
+        } isShown: {
+            $0 == .off(.user, sending: 800_000_000)
+        }
+    case .syncPurged:
+        return try syncModel(showing: "that a purge turned sync off") { _, sync in
+            let purge = ICloudEvent.ZoneDeletion(zone: ICloudZone(name: "Cards"), reason: .purged)
+            try sync.handle(
+                .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: [purge])), from: RenderICloud())
+        } isShown: {
+            if case .off(.purge, _) = $0 { true } else { false }
+        }
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
     case .backups: return try AppModel(engine: try backupsEngine())
@@ -852,7 +1026,13 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try ankiImportedState(of: model))
         return window
+    case .cardsImportHeavy:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try heavyImportingState(of: model))
+        return window
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
+    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged:
+        return settingsTabWindow(model: model, openingOn: .sync)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
     case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
     case .ladder: return settingsTabWindow(model: model, openingOn: .ladder)

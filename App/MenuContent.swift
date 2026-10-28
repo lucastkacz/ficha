@@ -20,6 +20,8 @@ struct MenuContent: View {
     let openSettings: () -> Void
     /// Opens the Settings window on its Backups tab.
     let openBackupSettings: () -> Void
+    /// Opens the Settings window on its Sync tab.
+    let openSyncSettings: () -> Void
     /// Asks right away whether the review panel shows up on its own, for
     /// Ficha Dev's debug menu.
     let checkAppearance: () -> AppearanceCheck?
@@ -40,6 +42,22 @@ struct MenuContent: View {
                     Image(systemName: "exclamationmark.triangle")
                 }
             }
+        }
+        if model.sync?.saysICloudIsFull == true {
+            Button(action: openSyncSettings) {
+                Label {
+                    Text(
+                        "iCloud is full",
+                        comment: """
+                            A menu item while iCloud is full, which opens Settings' Sync tab, where it says changes wait \
+                            until there's room.
+                            """)
+                } icon: {
+                    Image(systemName: "exclamationmark.icloud")
+                }
+            }
+        }
+        if model.backups.lastBackupFailed || model.sync?.saysICloudIsFull == true {
             Divider()
         }
         Button("Capture…", action: openCapture)

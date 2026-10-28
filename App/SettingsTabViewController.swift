@@ -9,6 +9,7 @@ enum SettingsTab: String {
     case reviewPanel
     case ladder
     case backups
+    case sync
     case about
 
     /// The tab `item` shows, if it's one of these.
@@ -25,6 +26,7 @@ enum SettingsTab: String {
         case .reviewPanel: String(localized: "Review panel", comment: "A tab of the Settings window.")
         case .ladder: String(localized: "Ladder", comment: "A tab of the Settings window.")
         case .backups: String(localized: "Backups", comment: "A tab of the Settings window.")
+        case .sync: String(localized: "Sync", comment: "A tab of the Settings window: sync through iCloud.")
         case .about: String(localized: "About", comment: "A tab of the Settings window.")
         }
     }
@@ -37,6 +39,7 @@ enum SettingsTab: String {
         case .reviewPanel: "macwindow"
         case .ladder: "stairs"
         case .backups: "clock.arrow.circlepath"
+        case .sync: "icloud"
         case .about: "info.circle"
         }
     }
@@ -50,8 +53,9 @@ enum SettingsTab: String {
 final class SettingsTabViewController: NSTabViewController {
     /// The tabs of every default Lucas can change in `model`, and of the
     /// capture shortcut, `captureShortcut`, then the Backups tab, which closes
-    /// the review panel with `closeReviewPanel` before a restore, and the
-    /// About tab. It opens on `tab`, or on the tab Lucas left it on last.
+    /// the review panel with `closeReviewPanel` before a restore, the Sync
+    /// tab, in an app that syncs, and the About tab. It opens on `tab`, or on
+    /// the tab Lucas left it on last, when the window has it.
     convenience init(
         model: AppModel, captureShortcut: CaptureShortcutRegistration, closeReviewPanel: @escaping () -> Void,
         openingOn tab: SettingsTab? = nil
@@ -70,6 +74,9 @@ final class SettingsTabViewController: NSTabViewController {
             content: ProgressSettingsForm(
                 model: model, settings: LadderSettings(ladder: Bindable(model).settings.ladder)))
         add(.backups, content: BackupsTab(model: model, closeReviewPanel: closeReviewPanel))
+        if model.sync != nil {
+            add(.sync, content: SyncTab(model: model))
+        }
         add(.about, content: AboutTab())
         select(firstTab)
     }

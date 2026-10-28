@@ -66,6 +66,9 @@
     "%@, back first" : {
       "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
     },
+    "%@'s data was deleted from iCloud. Turning sync on sends all your cards again." : {
+      "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off. The name is the app's."
+    },
     "%lld · %@" : {
       "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
       "localizations" : {
@@ -909,6 +912,9 @@
     "Cards…" : {
       "comment" : "A menu item that opens the Cards window, where Lucas sees all his cards."
     },
+    "Checking your iCloud account…" : {
+      "comment" : "Settings, under Sync: the app is asking whether this Mac is signed into iCloud."
+    },
     "Choose Another File…" : {
       "comment" : "The Import sheet's button that opens another text file of cards instead."
     },
@@ -1155,6 +1161,12 @@
     },
     "Couldn't turn on the capture shortcut" : {
 
+    },
+    "Couldn't turn sync off" : {
+      "comment" : "An alert's title in Settings' Sync tab."
+    },
+    "Couldn't turn sync on" : {
+      "comment" : "An alert's title in Settings' Sync tab."
     },
     "Couldn't unbury %lld cards" : {
       "comment" : "An alert's title in the Cards window.",
@@ -1476,6 +1488,12 @@
     "Holds back appearances while this Focus is on. Review now still works." : {
       "comment" : "What the app's filter in a Focus does, in System Settings."
     },
+    "iCloud is full" : {
+      "comment" : "A menu item while iCloud is full, which opens Settings' Sync tab, where it says changes wait until there's room."
+    },
+    "iCloud is full: your changes wait until you free up space" : {
+      "comment" : "Settings, under Sync: iCloud refused what this Mac sent, for lack of room."
+    },
     "Idle for" : {
       "comment" : "Settings, under Review panel: how long Lucas must be idle before the panel takes the keyboard, in the \"Once you're idle\" focus mode."
     },
@@ -1601,6 +1619,9 @@
     },
     "Last seen" : {
       "comment" : "A column of the Cards window: when Lucas last saw the card, in a first view or a review.\nIn the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+    },
+    "Last synced %@" : {
+      "comment" : "Settings, under Sync: when this Mac last synced, with the date and time."
     },
     "Latest appearances" : {
 
@@ -1790,6 +1811,9 @@
     "No flagged cards" : {
       "comment" : "In the Cards window: no card is flagged."
     },
+    "No iCloud account" : {
+      "comment" : "Settings, under Sync: this Mac isn't signed into iCloud."
+    },
     "No learned cards" : {
       "comment" : "In the Cards window: no card is learned yet."
     },
@@ -1834,6 +1858,9 @@
     },
     "Not Now" : {
       "comment" : "A button of the alert at the app's first launch."
+    },
+    "Not synced yet" : {
+      "comment" : "Settings, under Sync: sync is on, and this Mac never synced yet."
     },
     "Note" : {
       "comment" : "In the Cards window's detail: what Lucas noted with a capture.\nIn the Cards window, the label of a capture's note, while Lucas edits it."
@@ -2107,6 +2134,12 @@
     "Stop Sound (r)" : {
       "comment" : "The tooltip of the review panel's button that stops the sound of a card's side as it plays, with its key."
     },
+    "Sync" : {
+      "comment" : "A tab of the Settings window: sync through iCloud."
+    },
+    "Sync with iCloud" : {
+      "comment" : "Settings, under Sync: the switch that turns sync on and off."
+    },
     "Tag" : {
       "comment" : "The Import sheet's field for a tag the imported cards get."
     },
@@ -2148,6 +2181,9 @@
     },
     "The front has an image" : {
       "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's front has one."
+    },
+    "Their images and sounds weigh %@, and go up to your iCloud." : {
+      "comment" : "In the Import sheet's preview while sync is on: what the images and sounds the import brings, which go up to the user's iCloud, weigh, said from 100 MB."
     },
     "Their review logs go too, and you can't bring them back." : {
       "comment" : "Under the title of the Cards window's question before it deletes several cards."
@@ -2193,6 +2229,9 @@
     },
     "Turn On Both Ways (⌘B)" : {
       "comment" : "The tooltip of the Cards window's button that turns Both ways on for the cards."
+    },
+    "Turning it on sends %@ of images and sounds to your iCloud." : {
+      "comment" : "Settings, under Sync, while sync is off: what the images and sounds turning sync on sends weigh, said from 100 MB."
     },
     "Type" : {
       "comment" : "A column of the Cards window: the card's type.\nIn the Cards window's card form, the label of the card's type.\nIn the Cards window, the label of a card's type, while Lucas edits it."
@@ -2273,6 +2312,9 @@
     },
     "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
+    },
+    "Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
+      "comment" : "Settings, under Sync, below the switch: what sync does."
     }
   },
   "version" : "1.0"

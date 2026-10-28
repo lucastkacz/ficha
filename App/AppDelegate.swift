@@ -111,6 +111,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openSettings(on: .backups)
     }
 
+    /// Opens the Settings window on its Sync tab, as "iCloud is full" in the
+    /// menu does. When it's open, it comes forward on that tab.
+    func openSyncSettings() {
+        openSettings(on: .sync)
+    }
+
     /// Opens the Settings window on `tab`, or on the tab Lucas left it on
     /// last. When it's open, it comes forward, on `tab` if there's one.
     private func openSettings(on tab: SettingsTab?) {
