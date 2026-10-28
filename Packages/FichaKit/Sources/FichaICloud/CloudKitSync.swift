@@ -19,7 +19,9 @@ let iCloudLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 /// it on and off through `Engine.turnSyncOn()` and `Engine.turnSyncOff()`,
 /// and a purge of Ficha's data turns it off. Turned off, the device lets its
 /// engine go, as `fetchNow()` does, without cancelling it; turned on, it
-/// starts one again. It also keeps whether the device is signed into iCloud,
+/// starts one again. An off and an on it hears as one change still end the
+/// engine that saw the off, which `Sync` no longer heeds, and start another
+/// (`SyncStretch`). It also keeps whether the device is signed into iCloud,
 /// as CloudKit says at launch and whenever the account changes, for the Sync
 /// tab, whether sync is on or not.
 ///
@@ -61,10 +63,11 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     private var workAfterSending: (@Sendable () async -> Void)?
     /// Whether iCloud took a change since the engine last finished sending.
     private var sentSomething = false
-    /// Whether Settings' switch was on when the device last looked.
-    private var switchWasOn = false
-    /// What hears of the iCloud account's changes, once it runs.
-    private var accountObserver: (any NSObjectProtocol)?
+    /// The stretch of sync being on that its engines run in, or nil while
+    /// sync is off, as far as the device knows.
+    private var stretch: SyncStretch?
+    /// Whether it runs, so that it runs once.
+    private var isRunning = false
 
     /// The sync of the device whose database `engine` opens, named `device`
     /// in the log.
@@ -74,46 +77,54 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         self.device = device
     }
 
-    /// Syncs while the app runs: it notes whether the device is signed into
-    /// iCloud, and does again whenever the account changes; it starts, if
-    /// sync is on; and then, each time the device's database changes, it
-    /// follows the switch, and hands the engine the changes that wait.
+    /// Syncs while the app runs, until its task is cancelled: it keeps
+    /// whether the device is signed into iCloud, now and whenever the account
+    /// changes; it starts, if sync is on; and then, each time the device's
+    /// database changes, it follows the switch, and hands the engine the
+    /// changes that wait. A second call returns at once.
     public func run() async {
-        accountObserver = NotificationCenter.default.addObserver(
-            forName: .CKAccountChanged, object: nil, queue: nil
-        ) { _ in
-            Task { await self.noteAccount() }
-        }
-        await noteAccount()
+        guard !isRunning else { return }
+        isRunning = true
+        async let followingTheAccount: Void = followTheAccount()
         await followTheSwitch()
         for await _ in changes {
             await followTheSwitch()
+        }
+        await followingTheAccount
+    }
+
+    /// Keeps whether the device is signed into iCloud, now and each time the
+    /// account changes, until the task that runs it is cancelled.
+    private func followTheAccount() async {
+        let accountChanges = NotificationCenter.default.notifications(named: .CKAccountChanged).map { _ in }
+        await noteAccount()
+        for await _ in accountChanges {
+            await noteAccount()
         }
     }
 
     /// Starts or stops syncing as Settings' switch turned on or off since the
     /// device last looked, or hands the engine the changes that wait while
-    /// it stays on.
+    /// it stays on. An off and an on since it last looked, however brief,
+    /// stop the engine that saw them and start another.
     private func followTheSwitch() async {
-        let isOn: Bool
+        let now: SyncStretch?
         do {
-            isOn = try sync.isOn()
+            now = try sync.stretchNow()
         } catch {
             return iCloudLogger.fault(
                 "\(self.device, privacy: .public) can't tell whether sync is on: \(String(describing: error), privacy: .public)"
             )
         }
-        switch (switchWasOn, isOn) {
-        case (false, true):
-            switchWasOn = true
-            await start()
-        case (true, false):
-            switchWasOn = false
+        guard now != stretch else {
+            return sendWhatChanged()
+        }
+        if stretch != nil {
             stop()
-        case (true, true):
-            sendWhatChanged()
-        case (false, false):
-            break
+        }
+        stretch = now
+        if now != nil {
+            await start()
         }
     }
 
@@ -122,7 +133,7 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// `CKSyncEngine.cancelOperations()` stops the app, as #316 found. They
     /// send no more records, and what they tell is left aside.
     private func stop() {
-        iCloudLogger.notice("\(self.device, privacy: .public) stops syncing: sync is off")
+        iCloudLogger.notice("\(self.device, privacy: .public) stops syncing: sync went off")
         syncEngine = nil
         catchUpEngine = nil
         isSending = false
@@ -168,36 +179,42 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         }
     }
 
-    /// Starts syncing, while sync is on. On a device that synced before, it
-    /// catches up on what changed in iCloud since, and then starts CloudKit's
-    /// engine from the state the device saved last, and hands it every change
-    /// that waits; on one that never did, the engine fetches everything as it
-    /// starts. A saved state it can't read leaves sync stopped, and the log
-    /// says why: starting from none would fetch everything again as a new
-    /// device. Sync turned off while it caught up leaves it stopped too. A
-    /// fetch now asked for meanwhile comes once it started.
+    /// Starts syncing, in the stretch sync is on in. On a device that synced
+    /// before, it catches up on what changed in iCloud since, and then starts
+    /// CloudKit's engine from the state the device saved last, and hands it
+    /// every change that waits; on one that never did, the engine fetches
+    /// everything as it starts. A saved state it can't read leaves sync
+    /// stopped, and the log says why: starting from none would fetch
+    /// everything again as a new device. Sync turned off while it caught up
+    /// leaves it stopped too, and turned off and on again starts it over, in
+    /// the new stretch, since `Sync` left aside what it caught up on. A fetch
+    /// now asked for meanwhile comes once it started.
     private func start() async {
         guard syncEngine == nil, !isStarting else { return }
         isStarting = true
-        do {
-            if let saved = try sync.savedState(), try sync.isOn() {
-                await catchUp(from: try CKSyncEngine.State.Serialization(saved: saved))
+        while let stretch, syncEngine == nil {
+            do {
+                if let saved = try sync.savedState() {
+                    await catchUp(from: try CKSyncEngine.State.Serialization(saved: saved))
+                    let now = try sync.stretchNow()
+                    guard now == stretch else {
+                        self.stretch = now
+                        continue
+                    }
+                }
+                let state = try sync.savedState().map { try CKSyncEngine.State.Serialization(saved: $0) }
+                let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: true)
+                syncEngine = engine
+                iCloudLogger.notice(
+                    "\(self.device, privacy: .public) starts syncing, \(state == nil ? "for the first time" : "from its saved state", privacy: .public)"
+                )
+                try sync.start(with: CloudKitSyncEngine(engine: engine, device: self))
+            } catch {
+                iCloudLogger.fault(
+                    "\(self.device, privacy: .public) can't start syncing: \(String(describing: error), privacy: .public)"
+                )
+                break
             }
-            guard try sync.isOn() else {
-                isStarting = false
-                fetchWaits = false
-                return
-            }
-            let state = try sync.savedState().map { try CKSyncEngine.State.Serialization(saved: $0) }
-            let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: true)
-            syncEngine = engine
-            iCloudLogger.notice(
-                "\(self.device, privacy: .public) starts syncing, \(state == nil ? "for the first time" : "from its saved state", privacy: .public)"
-            )
-            try sync.start(with: CloudKitSyncEngine(engine: engine, device: self))
-        } catch {
-            iCloudLogger.fault(
-                "\(self.device, privacy: .public) can't start syncing: \(String(describing: error), privacy: .public)")
         }
         isStarting = false
         if fetchWaits {
@@ -345,9 +362,10 @@ public actor CloudKitSync: CKSyncEngineDelegate {
             return iCloudLogger.fault(
                 "\(self.device, privacy: .public) can't read an event of iCloud's engine: \(error, privacy: .public)")
         }
-        guard let converted else { return }
+        // Every engine that runs started in the stretch the device knows of.
+        guard let converted, let stretch else { return }
         do {
-            try sync.handle(converted, from: CloudKitSyncEngine(engine: syncEngine, device: self))
+            try sync.handle(converted, from: CloudKitSyncEngine(engine: syncEngine, device: self), startedIn: stretch)
         } catch {
             iCloudLogger.error(
                 "\(self.device, privacy: .public) couldn't handle an event of iCloud's engine: \(String(describing: error), privacy: .public)"
@@ -427,11 +445,12 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         iCloudLogger.info(
             "\(self.device, privacy: .public) asked iCloud again for \(records.count) records: \(modifications.count) came, \(deletions.count) are gone"
         )
+        guard let stretch else { return }
         do {
             try sync.handle(
                 .fetchedRecordZoneChanges(
                     ICloudEvent.FetchedRecordZoneChanges(modifications: modifications, deletions: deletions)),
-                from: iCloud)
+                from: iCloud, startedIn: stretch)
         } catch {
             iCloudLogger.error(
                 "\(self.device, privacy: .public) couldn't take the records it asked for: \(String(describing: error), privacy: .public)"

@@ -338,6 +338,10 @@ extension FakeICloud.Database {
 /// the end of a fetch can't say the device synced.
 final class FakeSyncEngine: ICloudSyncEngine {
     private let delegate: Sync
+    /// The stretch of sync being on it started in, as the app notes it for
+    /// each engine it starts, or nil when it started while sync was off,
+    /// which the app never does: the device then takes nothing it tells.
+    private let stretch: SyncStretch?
     private let state: Mutex<State>
     /// The account the device is signed into now, or nil while it's signed
     /// out.
@@ -376,9 +380,10 @@ final class FakeSyncEngine: ICloudSyncEngine {
 
     /// The engine of a device signed into `account`, or signed out when it's
     /// nil, telling `delegate` of each event, from the state it saved last,
-    /// or from nothing.
+    /// or from nothing, in the stretch of sync being on now.
     init(account: FakeICloud?, delegate: Sync, stateSerialization: Data?) throws {
         self.delegate = delegate
+        stretch = try delegate.stretchNow()
         self.account = Mutex(account)
         var state = try stateSerialization.map { try JSONDecoder().decode(State.self, from: $0) } ?? State()
         if state.account == nil {
@@ -447,8 +452,14 @@ final class FakeSyncEngine: ICloudSyncEngine {
         guard let change else { return }
         ownSaves.withLock { $0 = [:] }
         asked.withLock { $0 = [] }
-        try delegate.handle(.accountChange(change), from: self)
-        try delegate.handle(.stateUpdate(serialization()), from: self)
+        try tell(.accountChange(change))
+        try tell(.stateUpdate(serialization()))
+    }
+
+    /// Tells the device of `event`, as `CKSyncEngine` tells its delegate.
+    private func tell(_ event: ICloudEvent) throws {
+        guard let stretch else { return }
+        try delegate.handle(event, from: self, startedIn: stretch)
     }
 
     func add(pendingRecordZoneChanges changes: [ICloudPendingRecordZoneChange]) {
@@ -495,8 +506,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
             }
             if !zones.isEmpty {
                 let failed = account.modify(zones)
-                try delegate.handle(
-                    .sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: failed)), from: self)
+                try tell(.sentDatabaseChanges(ICloudEvent.SentDatabaseChanges(failedZoneSaves: failed)))
             }
             var toSave: [ICloudRecord] = []
             var toDelete: [ICloudRecordID] = []
@@ -513,7 +523,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
                 state.withLock { $0.pendingRecordZoneChanges.removeAll { $0 == change } }
             }
             guard !zones.isEmpty || !toSave.isEmpty || !toDelete.isEmpty else {
-                return try delegate.handle(.stateUpdate(serialization()), from: self)
+                return try tell(.stateUpdate(serialization()))
             }
             if !toSave.isEmpty || !toDelete.isEmpty {
                 let sent = account.modify(saving: toSave, deleting: toDelete)
@@ -526,7 +536,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
                     defer { work = nil }
                     return work
                 }?()
-                try delegate.handle(.sentRecordZoneChanges(sent), from: self)
+                try tell(.sentRecordZoneChanges(sent))
             }
         }
         Issue.record("The device kept sending: each answer left changes waiting.")
@@ -556,15 +566,14 @@ final class FakeSyncEngine: ICloudSyncEngine {
     /// thing.
     func fetchChanges(in zones: Set<ICloudZone>?) async throws {
         guard !isOffline else {
-            try delegate.handle(.didFetchChanges, from: self)
+            try tell(.didFetchChanges)
             throw FakeICloudError.offline
         }
         try tellAccountChange()
         guard let account = account.withLock({ $0 }) else { return }
         let (deletions, zonesUpTo) = account.zoneDeletions(since: state.withLock(\.fetchedZonesUpTo))
         if !deletions.isEmpty {
-            try delegate.handle(
-                .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: deletions)), from: self)
+            try tell(.fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(deletions: deletions)))
         }
         state.withLock { state in
             state.fetchedZonesUpTo = zonesUpTo
@@ -574,7 +583,7 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
         let fetchedUpTo = state.withLock(\.fetchedUpTo)
         for (zone, changes, upTo) in account.changes(since: fetchedUpTo, in: zones) {
-            try delegate.handle(.fetchedRecordZoneChanges(losingFiles(withoutItsOwnSaves(changes))), from: self)
+            try tell(.fetchedRecordZoneChanges(losingFiles(withoutItsOwnSaves(changes))))
             state.withLock { $0.fetchedUpTo[zone.name] = upTo }
         }
         let asked = asked.withLock { asked in
@@ -582,10 +591,10 @@ final class FakeSyncEngine: ICloudSyncEngine {
             return asked
         }
         if !asked.isEmpty {
-            try delegate.handle(.fetchedRecordZoneChanges(losingFiles(account.records(asked))), from: self)
+            try tell(.fetchedRecordZoneChanges(losingFiles(account.records(asked))))
         }
-        try delegate.handle(.didFetchChanges, from: self)
-        try delegate.handle(.stateUpdate(serialization()), from: self)
+        try tell(.didFetchChanges)
+        try tell(.stateUpdate(serialization()))
     }
 
     /// `changes` without the records it saved itself, as they are until

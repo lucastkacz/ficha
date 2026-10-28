@@ -6,8 +6,8 @@ internal import GRDB
 // menu read it: the switch, and why it's off; whether the device is signed
 // into iCloud; whether iCloud is full; and when the device last synced. The
 // device keeps it in its database, which never syncs it (`Schema`'s "v24 how
-// sync stands"), so it holds across launches, and the CLI's restore can turn
-// sync off. A change to the switch, the account or a full iCloud tells every
+// sync stands"), so it holds across launches, and this file is the one that
+// writes it. A change to the switch, the account or a full iCloud tells every
 // engine on the database, as a change to the cards does, so the app's sync
 // and the menu follow it; when the device last synced doesn't, since it
 // changes at every sync.
@@ -45,7 +45,30 @@ public enum SyncOffReason: String, Sendable, Equatable {
     case purge
 }
 
+/// A stretch of time with sync on, from when Settings' switch turns on until
+/// it next turns off, however briefly. The app's engine of iCloud's runs in
+/// the stretch it started in, and stops at its end: it may have told of
+/// changes while sync was off, which `Sync` left aside, so what it tells
+/// after would skip them. `Sync` leaves aside what an engine of a stretch
+/// that ended tells (`Sync.handle(_:from:startedIn:)`), and the next engine
+/// starts from the state saved before the off, fetching them again.
+public struct SyncStretch: Sendable, Equatable {
+    /// How many times sync turned off before the stretch began.
+    let offsBefore: Int
+}
+
 extension Engine {
+    /// The stretch of time sync is on now, or nil while it's off.
+    func syncStretch() throws(EngineError) -> SyncStretch? {
+        try read { db in
+            guard let device = try Row.fetchOne(db, sql: "SELECT isOn, timesTurnedOff FROM syncDevice") else {
+                throw unreadable("The database doesn't say whether sync is on")
+            }
+            let isOn: Bool = try device.decode(forColumn: "isOn")
+            return isOn ? SyncStretch(offsBefore: try device.decode(forColumn: "timesTurnedOff")) : nil
+        }
+    }
+
     /// How sync stands on this device now.
     public func syncStatus() throws(EngineError) -> SyncStatus {
         try read { db in
@@ -67,12 +90,12 @@ extension Engine {
     /// Keeps whether the device is signed into iCloud, as the app asks iCloud
     /// at launch and whenever the account changes, whether sync is on or not.
     func noteICloudAccount(signedIn: Bool) throws(EngineError) {
-        try updateSyncDevice("hasICloudAccount", to: signedIn)
+        try note(.hasICloudAccount, signedIn)
     }
 
     /// Keeps whether iCloud is full, as what the device sent last says.
     func noteICloudIsFull(_ isFull: Bool) throws(EngineError) {
-        try updateSyncDevice("iCloudIsFull", to: isFull)
+        try note(.iCloudIsFull, isFull)
     }
 
     /// Whether the device knows iCloud is full.
@@ -89,21 +112,35 @@ extension Engine {
         }
     }
 
-    /// Sets `column` of what the device keeps of sync to `value`, telling the
-    /// other engines only when it changed, so that a sync that says what it
-    /// said before changes nothing else.
-    private func updateSyncDevice(_ column: String, to value: Bool) throws(EngineError) {
-        let changed = try writeWithoutTelling { db in
-            guard try Bool.fetchOne(db, sql: "SELECT \(column) FROM syncDevice") != value else {
-                return false
-            }
-            try db.execute(sql: "UPDATE syncDevice SET \(column) = ?", arguments: [value])
-            return true
-        }
-        if changed {
+    /// Sets `flag` to `value`, telling the other engines only when it
+    /// changed, so that a sync that says what it said before changes nothing
+    /// else.
+    private func note(_ flag: SyncDeviceFlag, _ value: Bool) throws(EngineError) {
+        if try writeWithoutTelling({ db in try FichaData.note(flag, value, in: db) }) {
             databaseChanges.post()
         }
     }
+}
+
+/// What the device keeps of how sync stands that sync notes as yes or no,
+/// each by its column.
+private enum SyncDeviceFlag: String {
+    case hasICloudAccount
+    case iCloudIsFull
+}
+
+/// Keeps whether iCloud is full, in a write that tells the other engines.
+func noteICloudIsFull(_ isFull: Bool, in db: Database) throws {
+    _ = try note(.iCloudIsFull, isFull, in: db)
+}
+
+/// Sets `flag` to `value`, and returns whether it changed.
+private func note(_ flag: SyncDeviceFlag, _ value: Bool, in db: Database) throws -> Bool {
+    guard try Bool.fetchOne(db, sql: "SELECT \(flag.rawValue) FROM syncDevice") != value else {
+        return false
+    }
+    try db.execute(sql: "UPDATE syncDevice SET \(flag.rawValue) = ?", arguments: [value])
+    return true
 }
 
 /// Whether the device knows iCloud is full.
@@ -114,12 +151,18 @@ func iCloudIsFull(in db: Database) throws -> Bool {
     return isFull
 }
 
-/// Turns sync off, because of `reason`, unless it's off already: nothing
-/// waits to be sent but the deletions, which turning it on sends with every
-/// row as it is then.
+/// Turns sync on: a stretch of it begins (`SyncStretch`).
+func switchSyncOn(in db: Database) throws {
+    try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
+}
+
+/// Turns sync off, because of `reason`, unless it's off already, which ends
+/// the stretch of it (`SyncStretch`): nothing waits to be sent but the
+/// deletions, which turning it on sends with every row as it is then.
 func switchSyncOff(because reason: SyncOffReason, in db: Database) throws {
     try db.execute(
-        sql: "UPDATE syncDevice SET isOn = 0, offBecause = ? WHERE isOn", arguments: [reason.rawValue])
+        sql: "UPDATE syncDevice SET isOn = 0, offBecause = ?, timesTurnedOff = timesTurnedOff + 1 WHERE isOn",
+        arguments: [reason.rawValue])
     try db.execute(sql: "DELETE FROM syncPending WHERE NOT isDeletion")
 }
 

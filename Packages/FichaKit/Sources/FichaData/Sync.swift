@@ -30,7 +30,8 @@ let syncLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "sync")
 /// on, then `sendWhatChanged(to:)` whenever the database changes, and passes
 /// it each event and request of `CKSyncEngine`'s delegate. While sync is off,
 /// it hands iCloud's engine nothing and takes nothing from it: the app lets
-/// its engine go, and starts one again once sync is on.
+/// its engine go, and starts one again once sync is on. An off, however
+/// brief, ends the engine that saw it (`SyncStretch`).
 public struct Sync: Sendable {
     let engine: Engine
 
@@ -45,10 +46,11 @@ public struct Sync: Sendable {
         try engine.savedSyncEngineState()
     }
 
-    /// Whether sync is on, as Settings' switch says, which the app's engine
-    /// follows: it runs only while it is.
-    public func isOn() throws(EngineError) -> Bool {
-        try engine.syncIsOn()
+    /// The stretch of time sync is on now, as Settings' switch says, or nil
+    /// while it's off, which the app's engine follows: it runs only while
+    /// sync is on, in the stretch it started in.
+    public func stretchNow() throws(EngineError) -> SyncStretch? {
+        try engine.syncStretch()
     }
 
     /// Keeps whether the device is signed into iCloud, which the app asks
@@ -119,14 +121,18 @@ public struct Sync: Sendable {
         return record
     }
 
-    /// Handles an event of iCloud's engine, as `CKSyncEngine`'s delegate's
-    /// `handleEvent(_:syncEngine:)` does, while sync is on. While it's off,
-    /// an event, such as one an engine the app let go of still tells, is
-    /// left aside: the next engine starts from the state saved before, and
-    /// fetches again what it brought.
-    public func handle(_ event: ICloudEvent, from iCloud: some ICloudSyncEngine) throws(EngineError) {
-        guard try engine.syncIsOn() else {
-            return syncLogger.debug("Sync is off: an event of iCloud's engine is left aside")
+    /// Handles an event of iCloud's engine, which started in `stretch`, as
+    /// `CKSyncEngine`'s delegate's `handleEvent(_:syncEngine:)` does, while
+    /// sync is on in that stretch. Once sync is off, an event, such as one an
+    /// engine the app let go of still tells, is left aside, and so is every
+    /// event of that engine after, even once sync is on again: the next
+    /// engine starts from the state saved before the off, and fetches again
+    /// what it brought.
+    public func handle(_ event: ICloudEvent, from iCloud: some ICloudSyncEngine, startedIn stretch: SyncStretch)
+        throws(EngineError)
+    {
+        guard try engine.syncStretch() == stretch else {
+            return syncLogger.debug("Sync went off since iCloud's engine started: its event is left aside")
         }
         // A record or a deletion refused because the user deleted Ficha's
         // data in iCloud's settings is a purge, which the device may hear of
@@ -247,7 +253,7 @@ public struct Sync: Sendable {
         let forgotten = try engine.write { db in
             try switchSyncOff(because: .purge, in: db)
             try db.execute(sql: "DELETE FROM syncPending")
-            try db.execute(sql: "UPDATE syncDevice SET iCloudIsFull = 0")
+            try noteICloudIsFull(false, in: db)
             try saveSyncEngineState(nil, in: db)
             return try forgetWhatICloudSaid(in: db)
         }

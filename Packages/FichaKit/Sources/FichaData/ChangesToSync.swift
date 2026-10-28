@@ -144,8 +144,10 @@ struct ChangeToSend: Sendable, Equatable {
 
 extension Engine {
     /// What waits to be sent to iCloud, oldest first: a change to each row
-    /// that syncs that changed since its last change was sent, recorded
-    /// while sync was on.
+    /// that syncs that changed since its last change was sent. A save is
+    /// recorded only while sync is on, and a deletion whether it's on or not,
+    /// so that turning it on deletes from iCloud what the device deleted
+    /// meanwhile (`Schema`'s "v24 how sync stands").
     func changesToSend() throws(EngineError) -> [ChangeToSend] {
         try read { db in
             try Row.fetchAll(db, sql: "SELECT * FROM syncPending ORDER BY id").map { pending in
@@ -197,7 +199,7 @@ extension Engine {
     public func turnSyncOn() throws(EngineError) {
         try write { db in
             guard try !isSyncOn(in: db) else { return }
-            try db.execute(sql: "UPDATE syncDevice SET isOn = 1, offBecause = NULL")
+            try switchSyncOn(in: db)
             try recordEverythingToSend(in: db)
         }
     }

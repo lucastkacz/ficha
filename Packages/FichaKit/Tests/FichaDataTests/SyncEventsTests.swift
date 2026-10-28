@@ -220,6 +220,26 @@ final class SyncEventsTests {
         #expect(try mac.engine.syncStatus().offBecause == nil)
     }
 
+    // The user turns sync off and on again before the app hears of either:
+    // the engine running fetches while sync is off, which is left aside, and
+    // tells its state once it's on again. The app then starts a new engine.
+    @Test(
+        "an engine that saw sync go off, however briefly, is left aside, and the next one fetches what came meanwhile")
+    func aBriefOffEndsTheEngineThatSawIt() async throws {
+        try await mac.syncNow()
+        try iPhone.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+        try await iPhone.syncNow()
+
+        try mac.engine.turnSyncOff()
+        try await mac.iCloud.fetchChanges()
+        try mac.engine.turnSyncOn()
+        try await mac.iCloud.sendChanges()
+        try mac.relaunch()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front) == ["saudade"])
+    }
+
     // The Mac's card lets go of the image before it sends that change, so
     // the Mac kept the image only because iCloud holds it. The iPhone later
     // puts it on a card of its own.

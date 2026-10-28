@@ -539,7 +539,8 @@ enum Schema {
             // so a change sent is forgotten by its id, and one made while it
             // was being sent stays. It survives an iCloud account change,
             // which empties CKSyncEngine's own queue. While sync is off,
-            // nothing waits: turning it on sends everything.
+            // nothing waits: turning it on sends everything. Since "v24 how
+            // sync stands", a deletion waits while it's off too.
             try db.create(table: "syncPending") { table in
                 table.autoIncrementedPrimaryKey("id")
                 table.column("recordType", .text).notNull()
@@ -757,14 +758,17 @@ enum Schema {
             // deleted Ficha's data in iCloud's settings, or NULL while it's
             // on; whether the device is signed into iCloud, NULL until the
             // app first asks; whether iCloud was full when the device last
-            // sent something; and when the device last synced, NULL before
-            // it first did. Adding columns keeps the triggers that read
+            // sent something; when the device last synced, NULL before it
+            // first did; and how many times sync turned off, which tells the
+            // app's engine that saw an off, however brief, to stop
+            // (`SyncStretch`). Adding columns keeps the triggers that read
             // whether sync is on.
             try db.alter(table: "syncDevice") { table in
                 table.add(column: "offBecause", .text)
                 table.add(column: "hasICloudAccount", .boolean)
                 table.add(column: "iCloudIsFull", .boolean).notNull().defaults(to: false)
                 table.add(column: "lastSyncedAt", .datetime)
+                table.add(column: "timesTurnedOff", .integer).notNull().defaults(to: 0)
             }
             try db.execute(sql: "UPDATE syncDevice SET offBecause = 'user' WHERE NOT isOn")
             // A deletion now waits to be sent while sync is off too, so that
