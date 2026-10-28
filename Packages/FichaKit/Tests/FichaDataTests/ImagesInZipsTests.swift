@@ -1,5 +1,6 @@
 import FichaCore
 import FichaData
+import FichaSVG
 import Foundation
 import Testing
 import ZIPFoundation
@@ -21,7 +22,8 @@ final class ImagesInZipsTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 23, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(
+            location: .inMemory, time: time, calendar: calendar, drawingSVGsWith: { InProcessSVGDrawer() })
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 

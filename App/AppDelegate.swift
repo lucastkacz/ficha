@@ -1,6 +1,7 @@
 import AppKit
 import FichaCore
 import FichaData
+import FichaSVG
 
 /// Opens the database in this app's own data folder when the app launches,
 /// and starts the appearances. When it can't open it, the app says why and
@@ -12,8 +13,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let opening = Result { () throws -> AppModel in
         let variant = AppVariant.current
         guard variant.hasDebugMenu else {
-            // The real Ficha always runs on the system's time.
-            return try AppModel(engine: try Engine(location: .folder(try variant.dataFolder), time: SystemTimeSource()))
+            // The real Ficha always runs on the system's time. Its imports
+            // draw SVGs through its SVG drawer, as Ficha Dev's do.
+            return try AppModel(
+                engine: try Engine(
+                    location: .folder(try variant.dataFolder), time: SystemTimeSource(),
+                    drawingSVGsWith: { ServiceSVGDrawer() }))
         }
         // Ficha Dev's engine runs on the time its debug menu moves forward.
         return try AppModel(debugTools: try DebugTools(dataFolder: try variant.dataFolder))
