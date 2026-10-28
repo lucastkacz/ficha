@@ -58,6 +58,14 @@ public struct Sync: Sendable {
         try engine.noteICloudAccount(signedIn: signedIn)
     }
 
+    /// Keeps that the device synced now, as a fetch the app asked iCloud's
+    /// engine for ended without an error, while sync is on: iCloud answered,
+    /// even with nothing new.
+    public func noteFetchEnded() throws(EngineError) {
+        guard try engine.syncIsOn() else { return }
+        try engine.noteSynced()
+    }
+
     /// Starts syncing through `iCloud`, while sync is on: on a device whose
     /// engine never saved a state, it asks iCloud for the cards' zone and the
     /// files', and it hands `iCloud` every change that waits, those made
@@ -384,15 +392,21 @@ extension ICloudEvent {
         }
     }
 
-    /// Whether the device synced as it happened: a fetch of what the other
-    /// devices changed ended, or iCloud took records or deletions it sent.
+    /// Whether it shows iCloud answered the device as it happened: it
+    /// brought zones that left or records, or iCloud took records or
+    /// deletions the device sent. The end of a fetch doesn't, since
+    /// `CKSyncEngine`'s documentation doesn't say it comes only after a fetch
+    /// that didn't fail: a fetch the app sees end without an error says so
+    /// (`noteFetchEnded()`).
     fileprivate var saysTheDeviceSynced: Bool {
         switch self {
-        case .didFetchChanges:
-            true
+        case .fetchedDatabaseChanges(let changes):
+            !changes.deletions.isEmpty
+        case .fetchedRecordZoneChanges(let changes):
+            !changes.modifications.isEmpty || !changes.deletions.isEmpty
         case .sentRecordZoneChanges(let sent):
             !sent.savedRecords.isEmpty || !sent.deletedRecordIDs.isEmpty
-        case .stateUpdate, .accountChange, .fetchedDatabaseChanges, .fetchedRecordZoneChanges, .sentDatabaseChanges:
+        case .stateUpdate, .accountChange, .sentDatabaseChanges, .didFetchChanges:
             false
         }
     }

@@ -249,15 +249,21 @@ final class SyncEventsTests {
         #expect(try mac.engine.image(bird) == iPhone.engine.image(bird))
     }
 
+    // Nothing changed to send or fetch at first: the fetch that ends without
+    // an error is what says the device synced. Offline, the fetch's end
+    // comes all the same, which says nothing.
     @Test("the status says when the device last synced, which stays while it can't reach iCloud")
     func theStatusSaysWhenTheDeviceLastSynced() async throws {
         #expect(try mac.engine.syncStatus().lastSynced == nil)
         let synced = time.now
         try await mac.syncNow()
+        #expect(try mac.engine.syncStatus().lastSynced == synced)
+
         time.advance(by: minutes(5))
         mac.iCloud.isOffline = true
         try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        await #expect(throws: FakeICloudError.self) { try await self.mac.syncNow() }
+        await #expect(throws: FakeICloudError.self) { try await self.mac.send() }
+        await #expect(throws: FakeICloudError.self) { try await self.mac.iCloud.fetchChanges() }
 
         #expect(try mac.engine.syncStatus().lastSynced == synced)
     }

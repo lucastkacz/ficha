@@ -214,12 +214,18 @@ public actor CloudKitSync: CKSyncEngineDelegate {
     /// moment: a state told later is left aside, which only costs fetching
     /// those changes again, and so are the changes `Sync` handed this engine,
     /// which `Sync` hands the next one again: what waits to go up as it
-    /// starts, and the files to delete or ask for again as a fetch ends.
+    /// starts, and the files to delete or ask for again as a fetch ends. A
+    /// fetch that ends without an error says the device synced, which the
+    /// engine's own end of a fetch doesn't, since it may come after one that
+    /// failed.
     private func catchUp(from state: CKSyncEngine.State.Serialization) async {
         let engine = Self.engine(from: state, delegate: self, syncingOnItsOwn: false)
         catchUpEngine = engine
         do {
             try await engine.fetchChanges()
+            if engine === catchUpEngine {
+                noteFetchEnded()
+            }
         } catch {
             iCloudLogger.error(
                 "\(self.device, privacy: .public) couldn't catch up on what changed in iCloud: \(error.localizedDescription, privacy: .public)"
@@ -227,6 +233,17 @@ public actor CloudKitSync: CKSyncEngineDelegate {
         }
         try? await Task.sleep(for: .milliseconds(500))
         catchUpEngine = nil
+    }
+
+    /// Keeps that a fetch the device asked for ended without an error.
+    private func noteFetchEnded() {
+        do {
+            try sync.noteFetchEnded()
+        } catch {
+            iCloudLogger.error(
+                "\(self.device, privacy: .public) couldn't keep that it synced: \(String(describing: error), privacy: .public)"
+            )
+        }
     }
 
     /// CloudKit's engine on the user's private database in Ficha's container,

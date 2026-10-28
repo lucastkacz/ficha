@@ -22,8 +22,10 @@ public struct SyncStatus: Sendable, Equatable {
     /// Whether iCloud was full when the device last sent something: the
     /// changes that didn't fit wait until it isn't.
     public let iCloudIsFull: Bool
-    /// When the device last synced: a fetch of what the other devices changed
-    /// ended, or iCloud took what the device sent. Nil before it first did.
+    /// When the device last synced, as iCloud answered it: a fetch the app
+    /// asked for ended without an error, a fetch brought what the other
+    /// devices changed, or iCloud took what the device sent. Nil before it
+    /// first did.
     public let lastSynced: Date?
 
     /// Whether Settings' switch is on.

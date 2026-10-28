@@ -333,7 +333,9 @@ extension FakeICloud.Database {
 /// says it may, keeping what waits. Where it differs from CloudKit: an
 /// engine with no saved state tells of no account change, where CloudKit's
 /// may tell of a sign-in, since its documentation doesn't say, so Ficha's
-/// first sync can't depend on one.
+/// first sync can't depend on one; and a fetch that fails offline says it
+/// ended, where CloudKit's may not, since its documentation doesn't say, so
+/// the end of a fetch can't say the device synced.
 final class FakeSyncEngine: ICloudSyncEngine {
     private let delegate: Sync
     private let state: Mutex<State>
@@ -547,9 +549,16 @@ final class FakeSyncEngine: ICloudSyncEngine {
     /// fetched each; then what changed in each of `zones` since it last did,
     /// or in every zone when it's nil, as `CKSyncEngine.fetchChanges(_:)`
     /// does with a scope of zones; then the records the device asked for;
-    /// says it fetched it all, and saves how far it fetched.
+    /// says it fetched it all, and saves how far it fetched. Offline, it
+    /// says the fetch ended all the same, and throws: `CKSyncEngine`'s
+    /// documentation pairs each fetch's end with its start, without saying
+    /// whether one that fails ends so, and the fake does the less forgiving
+    /// thing.
     func fetchChanges(in zones: Set<ICloudZone>?) async throws {
-        try checkOnline()
+        guard !isOffline else {
+            try delegate.handle(.didFetchChanges, from: self)
+            throw FakeICloudError.offline
+        }
         try tellAccountChange()
         guard let account = account.withLock({ $0 }) else { return }
         let (deletions, zonesUpTo) = account.zoneDeletions(since: state.withLock(\.fetchedZonesUpTo))
@@ -676,11 +685,13 @@ final class Device {
 
     /// Syncs as the app does once it hears the database changed and iCloud
     /// tells it of other devices' changes: hands iCloud's engine the changes
-    /// waiting, sends them, and fetches what changed.
+    /// waiting, sends them, and fetches what changed, noting the fetch ended
+    /// once it did without an error.
     func syncNow() async throws {
         try sync.sendWhatChanged(to: iCloud)
         try await iCloud.sendChanges()
         try await iCloud.fetchChanges()
+        try sync.noteFetchEnded()
     }
 
     /// Sends what waits, without fetching, as the app's engine does on its
