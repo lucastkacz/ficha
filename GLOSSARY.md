@@ -11,7 +11,7 @@ One small thing the user wants to remember, with a front and a back. Each side h
 _Avoid_: flashcard, note, item
 
 **Card type**:
-What a card holds, if it has one, one at most: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice.
+What a card holds, if it has one: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice.
 _Avoid_: kind, category, note type
 
 **Front**:
@@ -34,7 +34,7 @@ What the user hears on one side of a card, from a file they added or imported, s
 _Avoid_: audio, clip, recording
 
 **Tag**:
-A subject a card belongs to, like "historia" or "filosofía". A card can have several. A tag can sit inside another, its parent, for a finer subject under a broad one, as "Argentina" does in "economía › Argentina".
+A subject a card belongs to, like "historia" or "filosofía"; a card can have several. A tag can sit inside another, its parent, for a finer subject under a broad one, as "Argentina" does in "economía › Argentina".
 _Avoid_: topic, category, deck, subtag, nested tag
 
 **Priority tag**:
@@ -43,7 +43,7 @@ _Avoid_: focus, exam mode, filter
 
 **Set aside**:
 Taking every card with a tag, or with a tag inside it, out of the user's reviews for now, also those that get one later, as when they're done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
-_Avoid_: pause, suspend, archive, hide
+_Avoid_: pause, suspend, archive, hide, inactive
 
 **Source**:
 Where the user came across what a capture or a card holds, like a book or a podcast.
@@ -86,7 +86,7 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless one of its tags is set aside.
+Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless one of its tags, or a tag one of them sits inside, is set aside.
 _Avoid_: correct
 
 **Content guide**:
@@ -144,7 +144,7 @@ Taking a card the user no longer wants out of reviews for good, and out of the i
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with one of its tags; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with one of its tags, or a tag one of them sits inside; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
