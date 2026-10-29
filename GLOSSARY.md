@@ -120,7 +120,7 @@ The first time the user sees a card, before it's on the ladder: whole, or back f
 _Avoid_: introduction, first review, learning step
 
 **Review log**:
-Every first view and review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, and how long they took, except from a card notification; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it.
+Every first view and review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, how long they took, except from a card notification, and for a review, the wait of the step it was on; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
@@ -186,6 +186,10 @@ _Avoid_: schedule, intervals, boxes
 **Ladder step**:
 A card's place on the ladder, which sets how long it waits before it's due again.
 _Avoid_: box, level, interval
+
+**Step statistics**:
+How the user answered the reviews of cards on a ladder step while it had the wait it has now, reviews ahead left out: how many there were, and how many were "Know it", "Sort of" and "Don't know".
+_Avoid_: retention, success rate, stats
 
 **Settings that decide progress**:
 The ladder, how many new cards a day the user meets, and after how many "Don't know" a card is forgotten often. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
