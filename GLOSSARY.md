@@ -11,8 +11,8 @@ One small thing the user wants to remember, with a front and a back. Each side h
 _Avoid_: flashcard, note, item
 
 **Card type**:
-What a card holds, if it has one: a word, a concept, a quote or a question.
-_Avoid_: kind, category
+What a card holds, if it has one, one at most: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice.
+_Avoid_: kind, category, note type
 
 **Front**:
 The side of a card the user sees first, except back first.
@@ -34,15 +34,15 @@ What the user hears on one side of a card, from a file they added or imported, s
 _Avoid_: audio, clip, recording
 
 **Tag**:
-A subject a card belongs to, like "historia" or "filosofía". A card can have several.
-_Avoid_: topic, category, deck
+A subject a card belongs to, like "historia" or "filosofía". A card can have several. A tag can sit inside another, its parent, for a finer subject under a broad one, as "Argentina" does in "economía › Argentina".
+_Avoid_: topic, category, deck, subtag, nested tag
 
 **Priority tag**:
-A tag the user chose so that its cards come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.
+A tag the user chose so that its cards, and those of every tag inside it, come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.
 _Avoid_: focus, exam mode, filter
 
 **Set aside**:
-Taking every card with a tag out of the user's reviews for now, also those that get the tag later, as when they're done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
+Taking every card with a tag, or with a tag inside it, out of the user's reviews for now, also those that get one later, as when they're done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
 _Avoid_: pause, suspend, archive, hide
 
 **Source**:
@@ -266,5 +266,5 @@ Keeping the user's cards and their progress, every card or those with the tags t
 _Avoid_: cloud, mirror, upload
 
 **Selective sync**:
-Syncing only the cards with a tag the user chose, instead of all of them, so the rest never go up to iCloud. Which tags sync is one choice for all their devices, and changing it deletes no card: one that stops syncing leaves iCloud, and each device keeps its copy.
+Syncing only the cards with a tag the user chose, or a tag inside one, instead of all of them, so the rest never go up to iCloud. Which tags sync is one choice for all their devices, and changing it deletes no card: one that stops syncing leaves iCloud, and each device keeps its copy.
 _Avoid_: partial sync, local cards, offline tags
