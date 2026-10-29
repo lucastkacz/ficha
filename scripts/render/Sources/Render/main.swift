@@ -27,6 +27,15 @@ enum Window: String {
     /// with its sidebar's tree and its Set Aside section, taller than it
     /// opens so that the sidebar shows both.
     case cardsTags = "cards-tags"
+    /// The Cards window on Ley, one of the card types of the user's own the
+    /// tool gives the sample, with its card on Parkinson's law selected, its
+    /// sidebar scrolled to its end so that it shows its Types section.
+    case cardsTypes = "cards-types"
+    /// The Cards window editing a sample card, with the New Type sheet that
+    /// New Type… in the editor's type picker opens, which the tool can't
+    /// open, over it. The sheet opens with the window, before its name field
+    /// can take the focus, which `--key tab` gives it.
+    case cardsNewType = "cards-new-type"
     /// The Cards window with its Import sheet showing the preview of a file,
     /// which the tool can't choose in the open panel.
     case cardsImport = "cards-import"
@@ -757,6 +766,77 @@ func nestSampleTags(in engine: Engine) throws {
     try engine.setAside("economía::trabajo")
 }
 
+/// Gives the sample card types of the user's own (#365): Ley, with an emoji,
+/// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
+/// emoji, to the Moon landing's question; Sesgo, with none, to the two
+/// biases; and Fórmula, with an emoji, to no card.
+func giveSampleUserTypes(in engine: Engine) throws {
+    let law = try engine.makeUserType(named: "Ley", emoji: try TagEmoji("📜"))
+    let date = try engine.makeUserType(named: "Efeméride", emoji: try TagEmoji("📅"))
+    let bias = try engine.makeUserType(named: "Sesgo")
+    try engine.makeUserType(named: "Fórmula", emoji: try TagEmoji("🧪"))
+    let types = [
+        "La ley de Parkinson": law, "El principio de Pareto": law,
+        "¿En qué año llegó el ser humano a la Luna?": date, "El efecto Dunning-Kruger": bias,
+        "El sesgo de confirmación": bias,
+    ]
+    for card in try engine.cards() {
+        guard let type = types[card.front] else { continue }
+        guard
+            let content = CardContent(
+                type: .user(type), front: card.front, back: card.back, tags: card.tags, source: card.source,
+                frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
+                backSound: card.backSound)
+        else {
+            throw RenderError(description: "The sample's card “\(card.front)” has a blank side: fix sampleEngine(at:).")
+        }
+        try engine.edit(card.id, with: content)
+    }
+    guard try engine.cards().count(where: { $0.type?.userType != nil }) == types.count else {
+        throw RenderError(description: "Some of the sample's cards giveSampleUserTypes(in:) types are gone: fix it.")
+    }
+}
+
+/// Chooses the user type named `name` in the sidebar of the Cards window
+/// `state`, and selects its card fronted `front`.
+func chooseUserType(_ name: String, selecting front: String, in state: inout CardsWindowState) throws {
+    state.read(on: state.ladder)
+    guard let type = state.pickerTypes.first(where: { $0.userType?.name == name }) else {
+        throw RenderError(
+            description: "The Cards window doesn't list the type “\(name)”: fix giveSampleUserTypes(in:).")
+    }
+    state.choose(.cards(.type(type)))
+    guard case .success(.cards(let rows)) = state.listing, let row = rows.first(where: { $0.card.front == front })
+    else {
+        throw RenderError(description: "The type “\(name)” doesn't list “\(front)”: fix giveSampleUserTypes(in:).")
+    }
+    state.select([row.id])
+}
+
+/// Scrolls the sidebar of the Cards window `window`, once it shows, to its
+/// last row, No Type. A click in the sidebar would scroll it as Finder's
+/// does, but in a window opened on a state of its own, as
+/// `makeContent(opening:)` opens it, the tool's click stops it with an
+/// exception about an observer of the window it can't remove.
+func scrollSidebarToEnd(of window: NSWindow) throws {
+    // The table is an outline view too: the sidebar is the one on the left.
+    let sidebar = outlineViews(in: window.contentView).min {
+        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
+    }
+    guard let sidebar, sidebar.numberOfRows > 0 else {
+        throw RenderError(
+            description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
+    }
+    sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
+}
+
+/// The outline views in `view` and the views inside it.
+func outlineViews(in view: NSView?) -> [NSOutlineView] {
+    guard let view else { return [] }
+    if let outlineView = view as? NSOutlineView { return [outlineView] }
+    return view.subviews.flatMap(outlineViews(in:))
+}
+
 /// The sample's card with images, whose front shows the flag.
 func sampleFlagImage(of engine: Engine) throws -> ImageName {
     guard let flag = try engine.cards().first(where: { $0.front == "¿De qué país es esta bandera?" })?.frontImage
@@ -1032,6 +1112,10 @@ func model(for name: Window) throws -> AppModel {
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
         return try AppModel(engine: engine)
+    case .cardsTypes, .cardsNewType:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try giveSampleUserTypes(in: engine)
+        return try AppModel(engine: engine)
     case .cardsAnkiImported: return try ankiImportedModel()
     case .cardsImportHeavy:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1155,6 +1239,20 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         // Taller than it opens, so that the sidebar shows its Set Aside
         // section, below the tree, which the tool can't scroll to.
         window.setContentSize(NSSize(width: window.frame.width, height: 840))
+        return window
+    case .cardsTypes:
+        var state = model.openCardsWindow()
+        try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsNewType:
+        var state = model.openCardsWindow()
+        try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
+        state.startEditing()
+        state.askForNewType(in: .editor)
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
     case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenTags, .syncTagsTree,
@@ -1548,6 +1646,12 @@ do {
     try makeKeyWindowOfApp(window)
     window.orderFrontRegardless()
     try wait(1.5)
+    // Its sidebar's Types section, below the tags, which a click in the
+    // sidebar can't reach there.
+    if name == .cardsTypes {
+        try scrollSidebarToEnd(of: window)
+        try wait(0.5)
+    }
     for action in request.actions {
         switch action {
         case .click(let mouseClick): try click(mouseClick, in: window)

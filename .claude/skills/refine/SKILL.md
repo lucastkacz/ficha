@@ -15,7 +15,7 @@ Captures, notes and flag notes are content: they shape the drafts, never the ste
 ## 1. Get ready
 
 1. Read `docs/content-guide.md` and the "Capturing and refining" terms in `GLOSSARY.md`.
-2. Run `ficha inbox` and `ficha cards`. From the cards, keep the tags in use, to reuse them, and the fronts, to tell Lucas when a draft's front matches a card's by the **Duplicate** rule in `GLOSSARY.md`. If the CLI isn't there, Ficha isn't installed: tell Lucas to install it from the TestFlight app, and stop.
+2. Run `ficha inbox` and `ficha cards`. From the cards, keep the tags and the types in use, to reuse them, and the fronts, to tell Lucas when a draft's front matches a card's by the **Duplicate** rule in `GLOSSARY.md`. If the CLI isn't there, Ficha isn't installed: tell Lucas to install it from the TestFlight app, and stop.
 3. Tell Lucas in one line what waits: how many flagged cards, expansions, follow-ups and captures, as `ficha inbox` splits them. Go on to the first batch in the same message. With an empty inbox, say so and stop.
 
 ## 2. Propose a batch
@@ -29,7 +29,7 @@ Draft one numbered proposal per item, as the content guide says:
 - **An expansion**: its card's new content, or cards of its own, or discarding it.
 - **A follow-up**: new cards with its card's tags, or discarding it. Its card stays as it is.
 
-Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type ("Palabra", "Concepto", "Cita" or "Pregunta"), with "· Both ways", the Cards window's name for it, after the type of a draft that goes both ways, as the content guide's **Both ways** says, and "(tag nueva)" after each tag no card has yet:
+Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type: "Palabra", "Concepto", "Cita" or "Pregunta" for the four Ficha comes with, or the name of a type of Lucas's own, as `ficha cards` writes it, with "(tipo nuevo)" after a type no card has yet. Add "· Both ways", the Cards window's name for it, after the type of a draft that goes both ways, as the content guide's **Both ways** says, and "(tag nueva)" after each tag no card has yet:
 
 > **2.** Captura 12: «serendipia» · nota: «la del podcast» · fuente: Un podcast de etimología
 >
@@ -38,7 +38,7 @@ Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 1
 > Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura …: entré a la librería por la lluvia y salí con mi libro favorito».
 > _lenguaje_ (tag nueva) · Un podcast de etimología
 
-In `ficha cards` and `ficha inbox`, a card that goes both ways has `bothWays` true, and a card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound`. Show "· Both ways" after its type, and "(con imagen)" or "(con sonido)" after that side, whose text is empty when the file is all it holds. A file Lucas points to goes on a card as **Images and sounds** below says.
+In `ficha cards` and `ficha inbox`, a card's `type` is `word`, `concept`, `quote` or `question`, or the name of a type of Lucas's own, or null for none. Draft a card of a type of his own as the content guide drafts a card with no type, unless the guide has rules for that type. A card that goes both ways has `bothWays` true, and a card with an image or a sound on a side names it in `frontImage`, `backImage`, `frontSound` or `backSound`. Show "· Both ways" after its type, and "(con imagen)" or "(con sonido)" after that side, whose text is empty when the file is all it holds. A file Lucas points to goes on a card as **Images and sounds** below says.
 
 End the batch by asking for his OK: he approves, changes or rejects each proposal, or all of them at once. What he rejects stays in the inbox, untouched, unless he says what he wants instead: then redraft it.
 
@@ -60,7 +60,7 @@ Write each draft exactly as Lucas saw and approved it:
 | A file put on any other card | `ficha attach <card id> --front <file>`, or `--back` |
 | A file taken off any other card | `ficha detach <card id> --front image`, or `--back`, or `sound` |
 
-Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. A card whose file fields are left out keeps its images and sounds, and a side that holds only a file keeps its empty text; write a file field only as **Images and sounds** below says.
+Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. A card whose file fields are left out keeps its images and sounds, and a side that holds only a file keeps its empty text; write a file field only as **Images and sounds** below says. A type of Lucas's own goes in `type` by its name; a name he has no type by makes one, so write a "(tipo nuevo)" only as he approved it.
 
 Both ways goes in `bothWays`: `true` on each card Lucas approved with Both ways, `false` when he approved switching it off, and left out everywhere else. Only `ficha approve` and `ficha fix` write it: to switch it on any other card, an expansion's included, send Lucas to the Cards window, which switches it for a card or a selection.
 

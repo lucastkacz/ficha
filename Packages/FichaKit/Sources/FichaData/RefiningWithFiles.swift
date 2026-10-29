@@ -7,8 +7,11 @@ internal import GRDB
 /// whether it goes both ways. The engine checks it as `CardContent` does once
 /// its files are in.
 public struct CardDraft: Sendable, Equatable {
-    /// Its type, or nil when it has none.
-    public let type: CardType?
+    /// Its type, as the refine session names it: one of the four Ficha comes
+    /// with, by its raw value, or a user type, by its name, which the engine
+    /// finds, ignoring case and accents, or makes, with no emoji, as an
+    /// import does; or nil when it has none.
+    public let type: String?
     public let front: String
     public let back: String
     public let tags: [String]
@@ -23,7 +26,7 @@ public struct CardDraft: Sendable, Equatable {
     public let bothWays: Bool?
 
     public init(
-        type: CardType?,
+        type: String?,
         front: String,
         back: String,
         tags: [String],
@@ -96,18 +99,23 @@ extension Engine {
     /// does, with the images and sounds they put on their sides: files come
     /// in shrunk or converted, as from the Cards window's form. A side whose
     /// image or sound is left out or removed has none. Each card goes both
-    /// ways when its draft says so, and one way otherwise.
+    /// ways when its draft says so, and one way otherwise. A user type a
+    /// draft names that the user doesn't have comes in with its cards.
     @discardableResult
     public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
         var held = FilesComingIn()
+        var types = try read { db in try CardTypesByName(in: db) }
         var cards: [(content: CardContent, bothWays: Bool)] = []
         for (position, draft) in drafts.enumerated() {
             let files = try await held.bringIn(draft, with: self)
             let content = try draft.content(
-                with: files.applied(to: nil), orIfBlank: .blankSideOnNewCard(position: position))
+                of: draft.type.flatMap { types.type(named: $0) }, with: files.applied(to: nil),
+                orIfBlank: .blankSideOnNewCard(position: position))
             cards.append((content, draft.bothWays ?? false))
         }
-        return try keeping(held.files) { () throws(EngineError) in try approve(captureID, into: cards) }
+        return try keeping(held.files) { () throws(EngineError) in
+            try approve(captureID, into: cards, making: types.made)
+        }
     }
 
     /// Fixes a flagged card with `draft`, as `fix(_:with:)` does with a
@@ -116,14 +124,17 @@ extension Engine {
     /// window's form, and a side whose image or sound is left out keeps its
     /// own. One the card no longer has goes, unless another card uses it.
     /// The card goes both ways or one way as the draft says, and keeps its
-    /// own when the draft leaves it out.
+    /// own when the draft leaves it out. A user type the draft names that the
+    /// user doesn't have comes in with the fix.
     @discardableResult
     public func fix(_ cardID: Int64, with draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
+        var types = try read { db in try CardTypesByName(in: db) }
+        let type = draft.type.flatMap { types.type(named: $0) }
         let (before, fixed) = try keeping(held.files) { () throws(EngineError) in
-            try fix(cardID, bothWays: draft.bothWays) { card throws(EngineError) in
-                try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
+            try fix(cardID, bothWays: draft.bothWays, making: types.made) { card throws(EngineError) in
+                try draft.content(of: type, with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
             }
         }
         removeFilesNoCardUses(before: before, after: fixed)
@@ -132,15 +143,17 @@ extension Engine {
 
     /// Approves an expansion with `draft`, as `approveExpansion(_:into:)`
     /// does with a card's content, with the images and sounds it puts on its
-    /// card's sides or takes off, as `fix(_:with:)` does with a draft. The
-    /// card keeps its Both ways, whatever the draft says.
+    /// card's sides or takes off, as `fix(_:with:)` does with a draft, and
+    /// its type. The card keeps its Both ways, whatever the draft says.
     @discardableResult
     public func approveExpansion(_ captureID: Int64, into draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
+        var types = try read { db in try CardTypesByName(in: db) }
+        let type = draft.type.flatMap { types.type(named: $0) }
         let (before, approved) = try keeping(held.files) { () throws(EngineError) in
-            try approveExpansion(captureID) { card throws(EngineError) in
-                try draft.content(with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
+            try approveExpansion(captureID, making: types.made) { card throws(EngineError) in
+                try draft.content(of: type, with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
             }
         }
         removeFilesNoCardUses(before: before, after: approved)
@@ -217,9 +230,12 @@ extension Card {
 }
 
 extension CardDraft {
-    /// What the draft holds with `files` on its sides, or the error `blank`
-    /// when a side is left with neither text, an image nor a sound.
-    fileprivate func content(with files: SideFiles, orIfBlank blank: EngineError) throws(EngineError) -> CardContent {
+    /// What the draft holds as a card of `type`, the one its name stands for,
+    /// with `files` on its sides, or the error `blank` when a side is left
+    /// with neither text, an image nor a sound.
+    fileprivate func content(of type: CardType?, with files: SideFiles, orIfBlank blank: EngineError)
+        throws(EngineError) -> CardContent
+    {
         guard
             let content = CardContent(
                 type: type, front: front, back: back, tags: tags, source: source, frontImage: files.frontImage,

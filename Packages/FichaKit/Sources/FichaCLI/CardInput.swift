@@ -8,10 +8,11 @@ import Foundation
 /// help and their errors list them. The types are listed the British way,
 /// with no comma before "or", like the rest of the text.
 let cardFields = """
-    type (\(CardType.allCases.map(\.rawValue).formatted(.list(type: .or).locale(Locale(identifier: "en_GB")))), \
-    or null when there's none), front, back, tags (a list, which can be empty) and source (null when there's \
-    none), and can have frontImage, backImage, frontSound and backSound (a file's path or name, or null), and \
-    bothWays (true or false)
+    type (\(CardType.builtIn.map(\.writtenName).formatted(.list(type: .or).locale(Locale(identifier: "en_GB")))), \
+    the name of a type of your own, which Ficha makes when you have none by that name, or null when there's \
+    none), front, back, tags (a list, which can be empty) and source (null when there's none), and can have \
+    frontImage, backImage, frontSound and backSound (a file's path or name, or null), and bothWays (true or \
+    false)
     """
 
 /// What a card's frontImage, backImage, frontSound and backSound hold, as the
@@ -106,7 +107,8 @@ func standardInput() throws -> Data {
 /// own, and `bothWays`, which a card leaves out to go one way or keep its
 /// own. Other fields, such as those `ficha cards` prints, are ignored.
 private struct CardInput: Decodable {
-    let type: CardType?
+    /// The type's name, as `CardDraft` takes it.
+    let type: String?
     let front: String
     let back: String
     let tags: [String]
@@ -120,7 +122,7 @@ private struct CardInput: Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        type = try container.decode(CardType?.self, forKey: .type)
+        type = try container.decode(String?.self, forKey: .type)
         front = try container.decode(String.self, forKey: .front)
         back = try container.decode(String.self, forKey: .back)
         tags = try container.decode([String].self, forKey: .tags)

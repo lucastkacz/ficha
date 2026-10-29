@@ -67,8 +67,8 @@ public enum EngineError: Error, Equatable {
     /// of them is set aside. Everything else treats it as a card in Lucas's
     /// reviews.
     case cardSetAside(Int64, tags: [String])
-    /// What Lucas gave a tag as its emoji isn't one emoji: a word, two
-    /// emoji, a letter or nothing.
+    /// What Lucas gave a tag or a user type as its emoji isn't one emoji: a
+    /// word, two emoji, a letter or nothing.
     case notOneEmoji
     /// The tag with this name was to be renamed, or moved, inside itself or
     /// inside a tag inside it, which would make the tree loop (ADR 0021), so
@@ -77,6 +77,19 @@ public enum EngineError: Error, Equatable {
     /// A tag was to be renamed to a name with no level, blank or only `::`,
     /// so nothing changed.
     case blankTagName
+    /// A user type was to be made or renamed with a blank name, so nothing
+    /// changed.
+    case blankTypeName
+    /// A user type was to be made or renamed with this name, which one of
+    /// the four types Ficha comes with goes by, its raw value or its name in
+    /// the Mac's language, so nothing changed.
+    case builtInTypeName(String)
+    /// A user type was to be made or renamed with the name of another, this
+    /// one, ignoring case and accents, so nothing changed.
+    case typeNameTaken(String)
+    /// A user type was to be renamed, given an emoji or given to a card, and
+    /// it was deleted meanwhile, as on another device, so nothing changed.
+    case userTypeNotFound
     /// The card with this id changed outside the review panel, as a refine
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
@@ -274,7 +287,7 @@ extension EngineError: LocalizedError {
                     """
             )
         case .notOneEmoji:
-            String(localized: "A tag's emoji is one emoji. Pick just one, or leave the field empty for none.")
+            String(localized: "That isn't one emoji. Pick just one, or leave the field empty for none.")
         case .tagInsideItself(let tag):
             String(
                 localized: """
@@ -287,6 +300,29 @@ extension EngineError: LocalizedError {
                 localized: """
                     A tag needs a name, so nothing changed. Write one, with “::” between a tag and a tag inside it, \
                     as in “economía::Argentina”.
+                    """
+            )
+        case .blankTypeName:
+            String(localized: "A type needs a name, so nothing changed. Write one.")
+        case .builtInTypeName(let name):
+            String(
+                localized: """
+                    “\(name)” is one of the types Ficha comes with, so nothing changed. Pick that type, or write \
+                    another name.
+                    """
+            )
+        case .typeNameTaken(let name):
+            String(
+                localized: """
+                    You already have a type named “\(name)”, so nothing changed. Pick that type, or write another \
+                    name.
+                    """
+            )
+        case .userTypeNotFound:
+            String(
+                localized: """
+                    That type was deleted meanwhile, maybe on another of your devices, so nothing changed. Pick \
+                    another type.
                     """
             )
         case .cannotUndo(let id):

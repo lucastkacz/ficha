@@ -96,11 +96,13 @@ extension Engine {
 /// Saves `content` as a new card, created at `time` from the capture with the
 /// id `captureID`, or from none when it's nil, going both ways when
 /// `bothWays` says so, and returns the card's id. Every card comes in through
-/// here, with content `CardContent` checked.
+/// here, with content `CardContent` checked. A user type deleted meanwhile is
+/// refused.
 @discardableResult
 func insertCard(
     _ content: CardContent, bothWays: Bool = false, capturedAs captureID: Int64?, at time: Date, in db: Database
 ) throws -> Int64 {
+    try checkExists(content.type, in: db)
     try db.execute(
         sql: """
             INSERT INTO card (
@@ -109,7 +111,7 @@ func insertCard(
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
-            content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
+            content.type?.column, content.front, content.back, content.frontImage?.rawValue,
             content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
             try tagsJSON(content.tags), content.source, time, captureID, bothWays,
         ]

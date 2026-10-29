@@ -41,12 +41,16 @@ extension Engine {
 
     /// Approves an expansion in the inbox, as `approveExpansion(_:into:)`
     /// does, with the content `newContent` makes of its card as it is, or
-    /// nothing when it throws. Returns the card before and after.
+    /// nothing when it throws. `newTypes`, the user types the content names
+    /// that the user doesn't have yet, come in the same write. Returns the
+    /// card before and after.
     func approveExpansion(
-        _ captureID: Int64, changingContentWith newContent: (Card) throws(EngineError) -> CardContent
+        _ captureID: Int64, making newTypes: [UserType] = [],
+        changingContentWith newContent: (Card) throws(EngineError) -> CardContent
     ) throws(EngineError) -> (before: Card, approved: Card) {
         let refinedAt = time.now
         return try write { db in
+            try save(madeTypes: newTypes, in: db)
             guard let cardID = try takeOutOfInbox(captureID, at: refinedAt, in: db).expandsCardID else {
                 throw EngineError.notAnExpansion(captureID)
             }

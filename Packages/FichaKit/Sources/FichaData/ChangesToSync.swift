@@ -12,10 +12,10 @@ internal import GRDB
 // the rows that start or stop syncing as selective sync decides
 // (`SelectiveSync.swift`).
 
-/// A row that syncs, as iCloud names its record: a card, a capture or an
-/// entry of the review log by its ID unique across devices, a tag by its
-/// name, or the settings that decide progress or the choice of what syncs,
-/// of each of which there's one. Images and sounds are named by their
+/// A row that syncs, as iCloud names its record: a card, a capture, an entry
+/// of the review log or a user type by its ID unique across devices, a tag by
+/// its name, or the settings that decide progress or the choice of what
+/// syncs, of each of which there's one. Images and sounds are named by their
 /// content, as `ImageName` and `SoundName` say.
 enum SyncedRow: Sendable, Hashable {
     case card(UUID)
@@ -25,6 +25,8 @@ enum SyncedRow: Sendable, Hashable {
     case progressSettings
     /// Whether only the cards with a tag the user chose sync (ADR 0020).
     case syncChoice
+    /// A card type the user made.
+    case userType(UUID)
 
     /// What kind of row it is, as the database names it.
     enum RecordType: String, Sendable {
@@ -34,6 +36,7 @@ enum SyncedRow: Sendable, Hashable {
         case tag
         case progressSettings
         case syncChoice
+        case userType
     }
 
     var recordType: RecordType {
@@ -44,6 +47,7 @@ enum SyncedRow: Sendable, Hashable {
         case .tag: .tag
         case .progressSettings: .progressSettings
         case .syncChoice: .syncChoice
+        case .userType: .userType
         }
     }
 
@@ -52,7 +56,7 @@ enum SyncedRow: Sendable, Hashable {
     /// a row there's one of, which names it.
     var recordName: String {
         switch self {
-        case .card(let id), .capture(let id), .reviewLogEntry(let id): id.uuidString
+        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id): id.uuidString
         case .tag(let name): name
         case .progressSettings: RecordType.progressSettings.rawValue
         case .syncChoice: RecordType.syncChoice.rawValue
@@ -70,6 +74,7 @@ enum SyncedRow: Sendable, Hashable {
         case .card: self = .card(try uuid(named: recordName, of: type))
         case .capture: self = .capture(try uuid(named: recordName, of: type))
         case .reviewLogEntry: self = .reviewLogEntry(try uuid(named: recordName, of: type))
+        case .userType: self = .userType(try uuid(named: recordName, of: type))
         case .tag: self = .tag(recordName)
         case .progressSettings:
             guard recordName == SyncedRow.progressSettings.recordName else {
@@ -123,7 +128,7 @@ enum SyncedField: String, Sendable, CaseIterable {
     /// The card it follows up.
     case followedUpCard
     // A tag's: the switch it has on, priority or set aside, since it has one
-    // at most, its color and its emoji.
+    // at most, its color and its emoji, which a user type has too.
     case switchedOn
     case color
     case emoji
@@ -135,6 +140,8 @@ enum SyncedField: String, Sendable, CaseIterable {
     case forgottenOftenAfter
     /// Whether only the cards with a tag the user chose sync.
     case onlyChosenTags
+    // A user type's, besides its emoji.
+    case name
 }
 
 /// A change to a row that syncs, which waits to be sent to iCloud.
@@ -310,9 +317,10 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
 /// that the other devices take that it has nothing. The deletions that wait
 /// still do.
 func recordEverythingToSend(in db: Database) throws {
-    let (card, capture, entry, tag) = (
+    let (card, capture, entry, tag, userType) = (
         SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue,
-        SyncedRow.RecordType.reviewLogEntry.rawValue, SyncedRow.RecordType.tag.rawValue
+        SyncedRow.RecordType.reviewLogEntry.rawValue, SyncedRow.RecordType.tag.rawValue,
+        SyncedRow.RecordType.userType.rawValue
     )
     try db.execute(
         sql: """
@@ -332,5 +340,7 @@ func recordEverythingToSend(in db: Database) throws {
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT 'syncChoice', 'syncChoice', 0 FROM syncChoice
             WHERE EXISTS (SELECT 1 FROM syncFieldTime WHERE recordType = 'syncChoice');
+            INSERT INTO syncPending (recordType, recordName, isDeletion)
+            SELECT '\(userType)', uuid, 0 FROM userType ORDER BY id;
             """)
 }

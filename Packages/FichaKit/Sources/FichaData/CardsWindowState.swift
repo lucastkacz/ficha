@@ -14,8 +14,9 @@ import Foundation
 /// cards at once, as it sets a tag aside or gives it a color
 /// from the tag's context menu, it asks which emoji the tag gets and which
 /// name, and moves a tag Lucas drags onto another or onto the Tags section's
-/// title (`CardsWindowTags.swift`), and it records what couldn't be saved,
-/// for the window to say. It also holds the
+/// title (`CardsWindowTags.swift`), it makes, renames, gives an emoji to and
+/// deletes card types of the user's own (`CardsWindowTypes.swift`), and it
+/// records what couldn't be saved, for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
 /// runs the Import sheet, from a file's preview to what the import did, and
 /// the Export sheet, from what it offers to export to the file it writes.
@@ -121,6 +122,19 @@ public struct CardsWindowState: Sendable {
         /// Which name this tag gets, in the rename sheet, whose field starts
         /// with its whole name, written with `::`: `CardsWindowTags.swift`.
         case rename(CardTag)
+        /// A new type's name and emoji, in the New Type sheet, for the type
+        /// picker New Type… was chosen in, which takes it:
+        /// `CardsWindowTypes.swift`.
+        case newType(TypePicker)
+        /// Which name this user type gets, in the rename sheet, whose field
+        /// starts with its name.
+        case renameType(UserType)
+        /// Which emoji this user type gets, in the emoji sheet, whose field
+        /// starts with the one it has.
+        case typeEmoji(UserType)
+        /// Whether to delete this user type, which this many cards have,
+        /// buried ones too.
+        case deleteType(UserType, cardCount: Int)
     }
 
     /// What OK in the emoji sheet makes of what its field holds.
@@ -187,6 +201,16 @@ public struct CardsWindowState: Sendable {
         /// He dragged this tag onto another, or onto the Tags section's
         /// title, to move it.
         case move(tag: String)
+        /// He made a type, in the New Type sheet.
+        case makeType
+        /// He renamed the user type with this name, in the rename sheet.
+        case renameType(name: String)
+        /// He gave the user type with this name an emoji, or took its emoji
+        /// away, in the emoji sheet.
+        case setTypeEmoji(name: String)
+        /// He deleted the user type with this name, or chose Delete… on it,
+        /// which counts its cards first.
+        case deleteType(name: String)
         /// He exported cards, which couldn't be read or saved to the file.
         case export
     }
@@ -223,9 +247,11 @@ public struct CardsWindowState: Sendable {
     /// The sidebar's Set Aside section, below Tags: each set-aside tag with
     /// every tag inside it, as a tree: `CardsWindowTags.swift`.
     public private(set) var setAsideSection: [SidebarTag] = []
-    /// The type groups the sidebar offers: one for each card type, and No
-    /// Type after them while a card that isn't buried has no type.
-    public private(set) var typeGroups = CardType.allCases.map(CardGroup.type)
+    /// The type groups the sidebar offers: one for each of the four types
+    /// Ficha comes with, then one for each of the user's types, in
+    /// alphabetical order, and No Type after them while a card that isn't
+    /// buried has no type.
+    public private(set) var typeGroups = CardType.builtIn.map(CardGroup.type)
     /// The engine's time when the cards were read, which the Due and
     /// Back-first due columns count from.
     public private(set) var now: Date
@@ -262,6 +288,10 @@ public struct CardsWindowState: Sendable {
     /// Whether the card the user edits goes both ways, as Save would set it,
     /// while they edit one: the card's own until they switch it.
     public private(set) var editedBothWays = false
+    /// The type of the card the user edits, as Save would give it, while they
+    /// edit one: the card's own until they pick another, or make one with New
+    /// Type… (`CardsWindowTypes.swift`).
+    public internal(set) var editedType: CardType?
     /// The sound that plays, while one does, which the app's player plays:
     /// `CardsWindowSounds.swift`.
     public internal(set) var playingSound: PlayingSound?
@@ -448,6 +478,7 @@ public struct CardsWindowState: Sendable {
             editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
             editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
             editedBothWays = row.card.bothWays
+            editedType = row.card.type
             // The editor takes the detail's place, and its sound's.
             showFiles()
         }
@@ -511,6 +542,7 @@ public struct CardsWindowState: Sendable {
         editedSounds = SideSounds()
         editedSoundsComingIn = [:]
         editedBothWays = false
+        editedType = nil
     }
 
     /// Asks what needs fixing in the card the detail shows, to flag it, while
@@ -666,24 +698,29 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Chooses OK in the emoji sheet, whose field holds `text`: gives the tag
-    /// the window asks about that emoji, or takes its emoji away when the
-    /// field is empty, and reads the cards again, or records why it couldn't
-    /// and goes on asking. While OK refuses `text`, it does nothing, and the
-    /// sheet says why.
+    /// or the user type the window asks about that emoji, or takes its emoji
+    /// away when the field is empty, and reads the cards again, or records
+    /// why it couldn't and goes on asking. While OK refuses `text`, it does
+    /// nothing, and the sheet says why.
     public mutating func chooseEmoji(_ text: String) {
-        guard case .emoji(let tag) = question else { return }
-        let emoji: TagEmoji?
-        switch emojiEntry(text) {
-        case .emoji(let entered): emoji = entered
-        case .removal: emoji = nil
-        case .refused: return
-        }
-        let done = perform(.setEmoji(tag: tag.name)) { engine throws(EngineError) in
-            try engine.setEmoji(emoji, of: tag.name)
+        let entry = emojiEntry(text)
+        guard !entry.isRefused else { return }
+        let done: Bool
+        switch question {
+        case .emoji(let tag):
+            done = perform(.setEmoji(tag: tag.name)) { engine throws(EngineError) in
+                try engine.setEmoji(entry.emoji, of: tag.name)
+            }
+            if done {
+                read(on: ladder)
+            }
+        case .typeEmoji(let type):
+            done = setEmoji(entry.emoji, of: type)
+        default:
+            return
         }
         if done {
             question = nil
-            read(on: ladder)
         }
     }
 
@@ -722,7 +759,8 @@ public struct CardsWindowState: Sendable {
     /// When the chosen tag is gone, because its last card was buried, edited
     /// or deleted while it isn't set aside, the sidebar goes back to All
     /// cards, and so it does when No Type is gone, once every card that
-    /// isn't buried has a type.
+    /// isn't buried has a type, and when the chosen user type is deleted. A
+    /// user type renamed, or given another emoji, stays chosen.
     public mutating func read(on ladder: Ladder) {
         self.ladder = ladder
         now = engine.now
@@ -730,6 +768,7 @@ public struct CardsWindowState: Sendable {
             tags = try engine.sidebarTags()
             (tagsSection, setAsideSection) = Self.sections(of: tags)
             typeGroups = try engine.sidebarTypeGroups()
+            followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = .cards(.all)
             }
@@ -747,12 +786,14 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Whether the sidebar offers `group`, as last read: a tag while it lists
-    /// it, No Type while some card has none, and every other group always.
+    /// it, No Type while some card has none, a user type while it lists it,
+    /// and every other group always.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .tag(let tag): tags.contains { $0.name == tag }
         case .noType: typeGroups.contains(.noType)
-        case .all, .new, .due, .learned, .flagged, .buried, .type: true
+        case .type(let type): offersType(type)
+        case .all, .new, .due, .learned, .flagged, .buried: true
         }
     }
 

@@ -27,10 +27,12 @@ extension CardsWindowState {
 
     /// What OK in the rename sheet makes of what its field holds.
     public enum RenameEntry: Sendable, Equatable {
-        /// The tag's new whole name, its levels cleaned up.
+        /// The tag's new whole name, its levels cleaned up, or the type's
+        /// name, without the spaces around it.
         case name(String)
         /// A name OK refuses, and why, for the sheet to say: a blank one, or
-        /// one inside the tag itself.
+        /// one inside the tag itself; or a type's name of one of the four
+        /// Ficha comes with, or another user type's.
         case refused(EngineError)
     }
 
@@ -64,28 +66,42 @@ extension CardsWindowState {
         question = .rename(tag)
     }
 
-    /// What OK in the rename sheet makes of `text`, what its field holds,
-    /// for the tag the window asks about: the tag's new whole name, or a
-    /// refusal of a blank name or one inside the tag itself, as the engine
-    /// refuses them; or nil while the window asks about no tag's name.
+    /// What OK in the rename sheet makes of `text`, what its field holds: for
+    /// the tag the window asks about, the tag's new whole name, or a refusal
+    /// of a blank name or one inside the tag itself; for the user type it
+    /// asks about, the type's name, or a refusal of a blank name, a name of
+    /// one of the four Ficha comes with, or another user type's; each as the
+    /// engine refuses them. Nil while the window asks about no name.
     public func renameEntry(_ text: String) -> RenameEntry? {
-        guard case .rename(let tag) = question else { return nil }
-        do throws(EngineError) {
-            return .name(try checkedName(renaming: tag.name, to: text))
-        } catch {
-            return .refused(error)
+        switch question {
+        case .rename(let tag):
+            do throws(EngineError) {
+                return .name(try checkedName(renaming: tag.name, to: text))
+            } catch {
+                return .refused(error)
+            }
+        case .renameType(let type):
+            return typeNameEntry(text, renaming: type.id)
+        default:
+            return nil
         }
     }
 
     /// Chooses OK in the rename sheet, whose field holds `text`: renames the
     /// tag the window asks about, and every tag inside it, as
-    /// `Engine.renameTag(_:to:)` does, and reads the cards again, the sidebar
-    /// following the tag it chose to its new name; or records why it couldn't
-    /// and goes on asking. While OK refuses `text`, it does nothing, and the
-    /// sheet says why.
+    /// `Engine.renameTag(_:to:)` does, or the user type it asks about, and
+    /// reads the cards again, the sidebar following the tag or the type it
+    /// chose to its new name; or records why it couldn't and goes on asking.
+    /// While OK refuses `text`, it does nothing, and the sheet says why.
     public mutating func chooseNewName(_ text: String) {
-        guard case .rename(let tag) = question, case .name(let name)? = renameEntry(text) else { return }
-        if rename(tag.name, to: name, as: .rename(tag: tag.name)) {
+        guard case .name(let name)? = renameEntry(text) else { return }
+        let done: Bool
+        switch question {
+        case .rename(let tag): done = rename(tag.name, to: name, as: .rename(tag: tag.name))
+        case .renameType(let type): done = renameType(type, to: name)
+        default: return
+        }
+        if done {
             question = nil
         }
     }

@@ -313,6 +313,35 @@
         }
       }
     },
+    "%lld cards have this type. They keep everything else, with no type." : {
+      "comment" : "Under the title of the Cards window's question before it deletes a card type of the user's own, with how many cards have it, buried ones too.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 card has this type. It keeps everything else, with no type."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards have this type. They keep everything else, with no type."
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No card has this type."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld cards learned · %lld in the inbox" : {
       "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait in the inbox.",
       "localizations" : {
@@ -1007,6 +1036,9 @@
     "Couldn't change the emoji of “%@”" : {
       "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the tag."
     },
+    "Couldn't change the emoji of the type “%@”" : {
+      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with a card type's name."
+    },
     "Couldn't change the priority tags" : {
 
     },
@@ -1048,6 +1080,9 @@
         }
       }
     },
+    "Couldn't delete the type “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Delete… in a card type's menu, with its name."
+    },
     "Couldn't discard the capture" : {
       "comment" : "An alert's title in the Cards window."
     },
@@ -1068,6 +1103,9 @@
     },
     "Couldn't look for more cards" : {
 
+    },
+    "Couldn't make the type" : {
+      "comment" : "An alert's title in the Cards window's New Type sheet, after OK."
     },
     "Couldn't move “%@”" : {
       "comment" : "An alert's title in the Cards window, after dragging a tag onto another or onto the Tags section's title, with the tag's whole name."
@@ -1103,6 +1141,9 @@
     },
     "Couldn't rename “%@”" : {
       "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
+    },
+    "Couldn't rename the type “%@”" : {
+      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with a card type's name."
     },
     "Couldn't restore the copy" : {
       "comment" : "An alert's title in Settings' Backups tab."
@@ -1219,7 +1260,7 @@
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
     "Delete" : {
-      "comment" : "The button that deletes the cards the Cards window asks about."
+      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about."
     },
     "Delete “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a card, with its front."
@@ -1247,8 +1288,11 @@
         }
       }
     },
+    "Delete the type “%@”?" : {
+      "comment" : "The title of the Cards window's question before it deletes a card type of the user's own, with its name."
+    },
     "Delete…" : {
-      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
       "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards."
@@ -1305,7 +1349,7 @@
       "comment" : "A column of the Cards window: when the card's front or back last changed."
     },
     "Emoji" : {
-      "comment" : "The field of the sheet that gives a tag an emoji."
+      "comment" : "The field of the sheet that gives a tag or a card type an emoji."
     },
     "Emoji & Symbols" : {
       "comment" : "A button beside the emoji field: it opens the Mac's emoji picker."
@@ -1316,8 +1360,11 @@
     "Emoji for “%@”" : {
       "comment" : "The title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
     },
+    "Emoji for the type “%@”" : {
+      "comment" : "The title of the Cards window's sheet that gives a card type of the user's own an emoji, with the type's name."
+    },
     "Emoji…" : {
-      "comment" : "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's emoji."
+      "comment" : "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its emoji."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -1614,11 +1661,20 @@
     "It shows before the tag's name. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a tag an emoji."
     },
+    "It shows before the type's name. Leave the field empty for none." : {
+      "comment" : "Under the title of the Cards window's sheet that gives a card type of the user's own an emoji."
+    },
     "It syncs with the ticked tag it sits inside." : {
       "comment" : "Settings, under Sync: the tooltip of a tag's checkbox, ticked and waiting, inside a ticked tag."
     },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
+    },
+    "Its cards keep it, with its new name." : {
+      "comment" : "Under the title of the Cards window's sheet that renames a card type of the user's own."
+    },
+    "Its emoji shows before its name. Leave the emoji empty for none." : {
+      "comment" : "Under the title of the Cards window's sheet that makes a card type of the user's own."
     },
     "Its review log goes too, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it deletes a card."
@@ -1715,17 +1771,6 @@
     "Line %lld has one column: a front with no back after it." : {
       "comment" : "In the Import sheet, a line the file can't read."
     },
-    "Line %lld has the type “%@”, which isn't word, concept, quote or question." : {
-      "comment" : "In the Import sheet, a line the file can't read, with the type it has.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has the type “%2$@”, which isn't word, concept, quote or question."
-          }
-        }
-      }
-    },
     "Line %lld opens a quote that nothing closes." : {
       "comment" : "In the Import sheet, a line the file can't read."
     },
@@ -1791,7 +1836,7 @@
       "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
     },
     "Name" : {
-      "comment" : "The field of the sheet that renames a tag: its whole name."
+      "comment" : "The field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag, its whole name, or a card type of the user's own."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -1807,6 +1852,12 @@
     },
     "New cards per day" : {
 
+    },
+    "New Type" : {
+      "comment" : "The title of the Cards window's sheet that makes a card type of the user's own."
+    },
+    "New Type…" : {
+      "comment" : "The last item of a card's type picker in the Cards window: it asks for a new type's name."
     },
     "No appearance yet." : {
 
@@ -1825,6 +1876,9 @@
     },
     "No cards due" : {
       "comment" : "In the Cards window: no card is due now."
+    },
+    "No cards of the type %@" : {
+      "comment" : "In the Cards window: no card that isn't buried has this type of the user's own, with its name."
     },
     "No cards tagged %@" : {
       "comment" : "In the Cards window: no card that isn't buried has this tag, or a tag inside it, anymore, with the tag's whole name, like “economía › Argentina”."
@@ -1869,7 +1923,7 @@
       "comment" : "In the Cards window: no word card that isn't buried."
     },
     "None" : {
-      "comment" : "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.\nThe empty field of the sheet that gives a tag an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
+      "comment" : "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.\nThe empty field of the sheet that gives a tag or a card type an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
     },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
@@ -2035,8 +2089,11 @@
     "Rename “%@”" : {
       "comment" : "The title of the Cards window's sheet that renames a tag, with the tag's whole name."
     },
+    "Rename the type “%@”" : {
+      "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
+    },
     "Rename…" : {
-      "comment" : "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's new name."
+      "comment" : "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its new name."
     },
     "Repeated cards" : {
       "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."

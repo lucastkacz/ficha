@@ -9,7 +9,9 @@ internal import GRDB
 /// capture, flag, burial or set-aside tags it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
-    /// Its type, or nil when it has none.
+    /// Its type, or nil when it has none, as when its user type was deleted,
+    /// or hasn't come from another device yet. The CLI prints its name as a
+    /// text file writes it (`CardType.writtenName`).
     public let type: CardType?
     /// The front's text, or empty when the front holds only an image or a
     /// sound.
@@ -63,17 +65,13 @@ public struct Card: Sendable, Equatable, Encodable {
 
 extension Card {
     /// A card read from a row of the `card` table, whose tags are a JSON
-    /// array, when the tags in `setAsideTags` are set aside.
-    init(row: Row, setAsideTags: Set<String>) throws {
+    /// array, when the tags in `setAsideTags` are set aside, and the user's
+    /// types are `userTypes`.
+    init(row: Row, setAsideTags: Set<String>, userTypes: UserTypes) throws {
         let id: Int64 = try row.decode(forColumn: "id")
         self.id = id
-        let typeName: String? = try row.decode(forColumn: "type")
-        type = try typeName.map { typeName in
-            guard let type = CardType(rawValue: typeName) else {
-                throw unreadable("Card \(id) has an unknown type")
-            }
-            return type
-        }
+        let typeColumn: String? = try row.decode(forColumn: "type")
+        type = try typeColumn.flatMap { try CardType(column: $0, among: userTypes) }
         front = try row.decode(forColumn: "front")
         back = try row.decode(forColumn: "back")
         frontImage = try fileName(in: row, column: ImageName.columns.front, ofCard: id)
@@ -219,7 +217,8 @@ extension CardContent {
 /// which of its tags are set aside.
 func cards(in rows: [Row], in db: Database) throws -> [Card] {
     let setAside = try setAsideTags(in: db)
-    return try rows.map { try Card(row: $0, setAsideTags: setAside) }
+    let userTypes = try UserTypes(in: db)
+    return try rows.map { try Card(row: $0, setAsideTags: setAside, userTypes: userTypes) }
 }
 
 /// Every card, in the order Lucas approved them.
@@ -232,7 +231,7 @@ func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
     guard let row = try Table("card").filter(Column("id") == cardID).fetchOne(db) else {
         throw EngineError.cardNotFound(cardID)
     }
-    return try Card(row: row, setAsideTags: setAsideTags(in: db))
+    return try Card(row: row, setAsideTags: setAsideTags(in: db), userTypes: UserTypes(in: db))
 }
 
 /// Sets some of a card's columns, as `assignments` say, to `values` in
@@ -255,8 +254,9 @@ func updateCard(
 /// to a card's content goes through here, with content `CardContent` checked,
 /// as every new card goes through `insertCard`. An image or a sound the card
 /// no longer refers to stays where Ficha keeps it: the engine removes it once
-/// no card uses it.
+/// no card uses it. A user type deleted meanwhile is refused.
 func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
+    try checkExists(content.type, in: db)
     let before = try existingCard(cardID, in: db)
     return try updateCard(
         cardID,
@@ -265,7 +265,7 @@ func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, i
             source = ?, editedAt = ?
             """,
         to: [
-            content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
+            content.type?.column, content.front, content.back, content.frontImage?.rawValue,
             content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
             try tagsJSON(content.tags), content.source, before.hasSides(of: content) ? before.editedAt : now,
         ],

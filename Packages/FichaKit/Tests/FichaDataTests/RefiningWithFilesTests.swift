@@ -425,7 +425,7 @@ final class RefiningWithFilesTests {
 /// A card for a test to approve, fix or expand from a refine session: it
 /// always has a front and a back, and no tags or source unless the test gives
 /// them, and changes no side's image or sound, nor Both ways, unless the test
-/// says so.
+/// says so. Its type is named as a refine session names it.
 func draft(
     _ type: CardType?,
     front: String,
@@ -439,6 +439,6 @@ func draft(
     bothWays: Bool? = nil
 ) -> CardDraft {
     CardDraft(
-        type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
+        type: type?.writtenName, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
         backImage: backImage, frontSound: frontSound, backSound: backSound, bothWays: bothWays)
 }

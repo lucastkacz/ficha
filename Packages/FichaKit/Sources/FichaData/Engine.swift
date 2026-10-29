@@ -201,16 +201,18 @@ public struct Engine: Sendable {
     }
 
     /// Approves a capture into one or more cards, as `approve(_:into:)` does,
-    /// each going both ways when it says so.
-    func approve(_ captureID: Int64, into cards: [(content: CardContent, bothWays: Bool)]) throws(EngineError)
-        -> [Card]
-    {
+    /// each going both ways when it says so, making `newTypes`, the user
+    /// types they name that the user doesn't have yet, in the same write.
+    func approve(
+        _ captureID: Int64, into cards: [(content: CardContent, bothWays: Bool)], making newTypes: [UserType] = []
+    ) throws(EngineError) -> [Card] {
         guard !cards.isEmpty else {
             throw .noCards
         }
         let createdAt = time.now
         return try write { db in
             try takeOutOfInbox(captureID, at: createdAt, in: db)
+            try save(madeTypes: newTypes, in: db)
             for card in cards {
                 try insertCard(card.content, bothWays: card.bothWays, capturedAs: captureID, at: createdAt, in: db)
             }

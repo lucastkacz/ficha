@@ -1049,6 +1049,64 @@ enum Schema {
                         """)
             }
         }
+        migrator.registerMigration("v28 card types of the user's own") { db in
+            // The card types the user makes, beside the four Ficha comes
+            // with (`UserType`): each with its ID unique across devices, as
+            // Foundation writes a UUID, which the engine gives it as it makes
+            // it, so that renaming it changes no card; its name, which the
+            // engine keeps unique, ignoring case and accents, as a type made
+            // offline on two devices may not be; and its emoji, or NULL for
+            // none. A card's type column, "type", keeps a type Ficha comes
+            // with by its raw value, as before, and a user type by its ID,
+            // which no raw value is, so every card keeps its type, and the
+            // card table, with its triggers, stays as it was. A card whose
+            // column names a user type this device doesn't hold, one that
+            // hasn't come from another device yet, or one deleted, has no
+            // type.
+            try db.create(table: "userType") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique()
+                table.column("name", .text).notNull().check(sql: "trim(name) <> ''")
+                table.column("emoji", .text)
+            }
+            // A user type syncs as a record of its own, "userType", as
+            // `SyncedRow` names it, whatever selective sync chooses, since it
+            // isn't a card (ADR 0020), each of its fields, "name" and "emoji"
+            // as `SyncedField` names them, keeping its latest change. Its
+            // triggers are a capture's written out: those of "v21 changes
+            // recorded to sync" as it comes in and changes, and that of "v24
+            // how sync stands" as it's deleted, which waits to be sent whether
+            // sync is on or not.
+            let changed = """
+                SELECT 'name' AS field WHERE OLD.name IS NOT NEW.name
+                UNION ALL SELECT 'emoji' AS field WHERE OLD.emoji IS NOT NEW.emoji
+                """
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            let isOn = "(SELECT isOn FROM syncDevice)"
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_userType_inserted AFTER INSERT ON userType WHEN \(recording) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'userType' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'userType', NEW.uuid, 0 WHERE \(isOn);
+                    END;
+                    CREATE TRIGGER sync_userType_updated AFTER UPDATE ON userType
+                    WHEN \(recording) AND (OLD.name IS NOT NEW.name OR OLD.emoji IS NOT NEW.emoji) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'userType', NEW.uuid, field, (SELECT at FROM syncWrite) FROM (\(changed)) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'userType' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'userType', NEW.uuid, 0 WHERE \(isOn);
+                    END;
+                    CREATE TRIGGER sync_userType_deleted AFTER DELETE ON userType BEGIN
+                    DELETE FROM syncFieldTime WHERE recordType = 'userType' AND recordName = OLD.uuid;
+                    DELETE FROM syncPending WHERE recordType = 'userType' AND recordName = OLD.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'userType', OLD.uuid, 1 WHERE \(recording);
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

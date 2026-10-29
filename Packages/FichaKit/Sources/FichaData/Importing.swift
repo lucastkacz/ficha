@@ -339,7 +339,9 @@ extension Engine {
     /// when the file says nothing of it. Every card that comes in or is
     /// updated gets the tags it proposes, as the user named them, and its
     /// tags that repeat each other as duplicates are compared, such as
-    /// “banderas” and “Banderas”, come in as one.
+    /// “banderas” and “Banderas”, come in as one. A card's type is the one
+    /// its name stands for, one of the four or a user type, which the import
+    /// makes, with no emoji, when the user has none by that name.
     /// Which cards repeat the user's is worked out again as their cards are
     /// now. Before it changes anything, it saves a copy before an import,
     /// which restoring undoes the import; an import that changes nothing
@@ -371,11 +373,13 @@ extension Engine {
             try write { db in
                 var (added, updated, skipped) = (0, 0, 0)
                 var letGo = (images: Set<ImageName>(), sounds: Set<SoundName>())
+                var types = try CardTypesByName(in: db)
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
+                        let type = try types.type(of: card, savingIn: db)
                         let cardID = try insertCard(
-                            try card.content(adding: addedTags(card)),
+                            try card.content(as: type, adding: addedTags(card)),
                             bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
                             at: importedAt, in: db)
                         if case .brought(let ladder) = choices.progress {
@@ -383,8 +387,9 @@ extension Engine {
                         }
                         added += 1
                     case (let repeated?, .update):
+                        let type = try types.type(of: card, savingIn: db)
                         let updatedCard = try replaceContent(
-                            of: repeated.id, with: try card.update(of: repeated, adding: addedTags(card)),
+                            of: repeated.id, with: try card.update(of: repeated, as: type, adding: addedTags(card)),
                             at: importedAt, in: db)
                         if card.fields.contains(.bothWays) {
                             _ = try setBothWays(card.bothWays, of: repeated.id, in: db)
@@ -445,12 +450,13 @@ extension ImportedCard {
         return bothWays && progress?.isSuspended == true
     }
 
-    /// The card as it comes in, as new, with its images, its sounds and
-    /// `tags` added to its own, as `importedTags` joins them.
-    fileprivate func content(adding tags: [String]) throws -> CardContent {
+    /// The card as it comes in, as new, of `type`, the one its type's name
+    /// stands for, with its images, its sounds and `tags` added to its own,
+    /// as `importedTags` joins them.
+    fileprivate func content(as type: CardType?, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
-                type: content.type, front: content.front, back: content.back,
+                type: type, front: content.front, back: content.back,
                 tags: tagsOnceImported(keeping: nil, adding: tags),
                 source: content.source, frontImage: content.frontImage, backImage: content.backImage,
                 frontSound: content.frontSound, backSound: content.backSound))
@@ -458,14 +464,15 @@ extension ImportedCard {
 
     /// What `card`, the user's card it repeats, holds once it's updated: its
     /// own front, with its image and its sound, the back and every field the
-    /// file gives, the back's image and sound among them, its own fields that
-    /// the file doesn't, and `tags` added to its tags, as `importedTags` joins
-    /// them, spelled as the card has them. Both ways isn't what a card holds:
-    /// the import sets it apart.
-    fileprivate func update(of card: Card, adding tags: [String]) throws -> CardContent {
+    /// file gives, the back's image and sound among them, and `type`, the one
+    /// its type's name stands for, when the file gives a type; its own fields
+    /// that the file doesn't, and `tags` added to its tags, as `importedTags`
+    /// joins them, spelled as the card has them. Both ways isn't what a card
+    /// holds: the import sets it apart.
+    fileprivate func update(of card: Card, as type: CardType?, adding tags: [String]) throws -> CardContent {
         try checked(
             CardContent(
-                type: fields.contains(.type) ? content.type : card.type,
+                type: fields.contains(.type) ? type : card.type,
                 front: card.front,
                 back: content.back,
                 tags: tagsOnceImported(keeping: card.tags, adding: tags),
@@ -501,11 +508,22 @@ extension ImportedCard {
 /// a card that comes in new, those it holds, and one that repeats the
 /// user's card at its place in `repeated`, those it takes as it updates it,
 /// as an update gives it its back's image and sound when the file gives
-/// them.
+/// them. A card's type brings none.
 private func filesBrought(by cards: [ImportedCard], repeating repeated: [Card?]) throws -> [Set<SyncedFile>] {
     try zip(cards, repeated).map { card, repeated in
-        let content = try repeated.map { try card.update(of: $0, adding: []) } ?? card.content
+        let content = try repeated.map { try card.update(of: $0, as: nil, adding: []) } ?? card.content
         return Set(content.images.map(SyncedFile.init)).union(content.sounds.map(SyncedFile.init))
+    }
+}
+
+extension CardTypesByName {
+    /// The type `card`'s type's name stands for, or nil when it names none,
+    /// with a user type made for it saved in the write `db`, before the card
+    /// that has it.
+    fileprivate mutating func type(of card: ImportedCard, savingIn db: Database) throws -> CardType? {
+        let named = card.typeName.flatMap { self.type(named: $0) }
+        try saveMade(in: db)
+        return named
     }
 }
 
@@ -536,7 +554,8 @@ extension ImportReading {
         ImportReading(
             cards: cards.map { card in
                 ImportedCard(
-                    content: card.content, bothWays: card.bothWays, fields: card.fields, line: card.line,
+                    content: card.content, typeName: card.typeName, bothWays: card.bothWays, fields: card.fields,
+                    line: card.line,
                     proposedTags: (card.proposedTags + tags).uniqued(), progress: card.progress,
                     backFirstProgress: card.backFirstProgress, hasImagesDropped: card.hasImagesDropped,
                     hasSoundsDropped: card.hasSoundsDropped, hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut

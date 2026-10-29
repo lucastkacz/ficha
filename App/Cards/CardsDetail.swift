@@ -304,7 +304,7 @@ private struct TypeAndTags: View {
     var body: some View {
         HStack(spacing: 8) {
             if let type = card.type {
-                Chip(text: type.name)
+                Chip(text: type.title)
             }
             if !card.tags.isEmpty {
                 Label(card.tags.map(TagPath.shown).formatted(.list(type: .and, width: .narrow)), systemImage: "tag")

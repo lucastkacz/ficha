@@ -310,7 +310,7 @@ extension ImportedCard {
     /// for the back-first way.
     fileprivate func goingBothWays(with reversed: ImportedCard) -> ImportedCard {
         ImportedCard(
-            content: content, bothWays: true, fields: fields, line: line,
+            content: content, typeName: typeName, bothWays: true, fields: fields, line: line,
             proposedTags: (proposedTags + reversed.proposedTags).uniqued(), progress: progress,
             backFirstProgress: reversed.progress, hasImagesDropped: hasImagesDropped,
             hasSoundsDropped: hasSoundsDropped,

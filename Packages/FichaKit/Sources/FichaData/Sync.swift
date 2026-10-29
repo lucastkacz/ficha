@@ -730,13 +730,13 @@ extension ChangeToSend {
 
 extension ICloudRecord {
     /// Its place among the records of a fetch as they're applied: tags, the
-    /// settings that decide progress, the choice of what syncs and captures
-    /// first, then cards, then the review log, so that what a record refers
-    /// to comes before it. A type this version doesn't know comes last, to
-    /// wait.
+    /// settings that decide progress, the choice of what syncs and the user's
+    /// card types, then captures, then cards, then the review log, so that
+    /// what a record refers to comes before it. A type this version doesn't
+    /// know comes last, to wait.
     fileprivate var applyingRank: Int {
         switch SyncedRow.RecordType(rawValue: type) {
-        case .tag, .progressSettings, .syncChoice: 0
+        case .tag, .progressSettings, .syncChoice, .userType: 0
         case .capture: 1
         case .card: 2
         case .reviewLogEntry: 3

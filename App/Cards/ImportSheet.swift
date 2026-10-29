@@ -610,10 +610,6 @@ struct ImportSheet: View {
         case .blankBack:
             String(
                 localized: "Line \(number) has no back.", comment: "In the Import sheet, a line the file can't read.")
-        case .unknownType(let type):
-            String(
-                localized: "Line \(number) has the type “\(type)”, which isn't word, concept, quote or question.",
-                comment: "In the Import sheet, a line the file can't read, with the type it has.")
         case .unclosedQuote:
             String(
                 localized: "Line \(number) opens a quote that nothing closes.",
@@ -682,8 +678,8 @@ struct ImportSheet: View {
             String(
                 localized: "\(count) cards have a template with a mistake, so Anki shows an error for them too.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
-        case .oneColumn, .blankFront, .blankBack, .unknownType, .unclosedQuote, .strayQuote, .missingImage,
-            .notAnImage, .missingSound, .notASound:
+        case .oneColumn, .blankFront, .blankBack, .unclosedQuote, .strayQuote, .missingImage, .notAnImage,
+            .missingSound, .notASound:
             nil
         }
     }

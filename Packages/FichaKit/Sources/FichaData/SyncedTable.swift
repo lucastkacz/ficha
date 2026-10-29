@@ -3,10 +3,10 @@ import Foundation
 internal import GRDB
 
 /// A table whose rows sync each as a record named by its ID unique across
-/// devices (ADR 0017): the cards, the captures and the review log. It says
-/// which of its columns the record holds, each under which key and how, and
-/// which of them make up each field that keeps when it last changed, of which
-/// the latest change wins.
+/// devices (ADR 0017): the cards, the captures, the review log and the user's
+/// card types. It says which of its columns the record holds, each under
+/// which key and how, and which of them make up each field that keeps when it
+/// last changed, of which the latest change wins.
 struct SyncedTable: Sendable {
     /// The table's name.
     let name: String
@@ -44,7 +44,7 @@ struct SyncedTable: Sendable {
     }
 
     /// Every table whose rows sync named by their ID.
-    static let all = [cards, captures, reviewLog]
+    static let all = [cards, captures, reviewLog, userTypes]
 
     /// A card's parts, as "What other devices changed" in #298 lists them.
     static let cards = SyncedTable(
@@ -122,6 +122,20 @@ struct SyncedTable: Sendable {
         ],
         marksRowsFromAnotherDevice: true,
         check: { id, db in _ = try ReviewLogEntry(row: try tableRow(id, of: "reviewLog", in: db)) })
+
+    /// A card type the user made, whose name and emoji change apart. A card
+    /// names it by its ID in its type column, which syncs as text, so a card
+    /// can come before its type, or after the type's deletion, and has no
+    /// type then (`UserTypes.swift`).
+    static let userTypes = SyncedTable(
+        name: "userType", syncedRow: { .userType($0) },
+        fields: [
+            Field(.name, SyncedColumn("name", .text)),
+            Field(.emoji, SyncedColumn("emoji", .text)),
+        ],
+        fixedColumns: [],
+        marksRowsFromAnotherDevice: false,
+        check: { id, db in _ = try UserType(row: try tableRow(id, of: "userType", in: db)) })
 
     /// Whether the table has a row with this ID unique across devices.
     func holdsRow(with uuid: UUID, in db: Database) throws -> Bool {

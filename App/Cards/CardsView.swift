@@ -12,6 +12,10 @@ import SwiftUI
 /// which the sidebar and the table's Tags column show, and renames it, in the
 /// rename sheet (`RenameSheet.swift`); and Lucas drags a tag onto another to
 /// move it inside, or onto the Tags section's title to take it to the top.
+/// Its Types section lists the four types Ficha comes with, then the user's,
+/// each with its emoji, whose context menu renames it, gives it an emoji, in
+/// the same sheets, and deletes it, asking first; New Type… in a card's type
+/// picker makes one, in the New Type sheet (`NewTypeSheet.swift`).
 /// The cards' table opens with the columns
 /// and the order Lucas left it with, which he changes in its headers. He
 /// edits a card or a capture right there, in fields that take the detail's
@@ -64,6 +68,87 @@ struct CardsView: View {
     }
 
     var body: some View {
+        askingAboutTypes(panes)
+            .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
+            .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
+                FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
+                    state.flag(note: note)
+                }
+            }
+            // Each button acts on what its dialog presents, which SwiftUI
+            // hands it: closing the dialog may drop the state's question
+            // before the button acts.
+            .confirmationDialog(
+                captureToDiscard.map {
+                    Text(
+                        "Discard “\($0.text)”?",
+                        comment: "The title of the Cards window's question before it discards a capture, with its text."
+                    )
+                } ?? Text(verbatim: ""),
+                isPresented: Binding(get: { captureToDiscard != nil }, set: { if !$0 { state.cancelQuestion() } }),
+                titleVisibility: .visible,
+                presenting: captureToDiscard
+            ) { capture in
+                Button(role: .destructive) {
+                    state.discard(capture)
+                } label: {
+                    Text("Discard", comment: "The button that discards the capture the Cards window asks about.")
+                }
+            } message: { _ in
+                Text(
+                    "It leaves the inbox without becoming cards, and you can't bring it back.",
+                    comment: "Under the title of the Cards window's question before it discards a capture.")
+            }
+            .confirmationDialog(
+                cardsToDelete.map { deletionTitle(for: $0) } ?? Text(verbatim: ""),
+                isPresented: Binding(get: { cardsToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
+                titleVisibility: .visible,
+                presenting: cardsToDelete
+            ) { rows in
+                Button(role: .destructive) {
+                    state.delete(rows)
+                } label: {
+                    Text("Delete", comment: "The button that deletes the cards the Cards window asks about.")
+                }
+            } message: { rows in
+                deletionMessage(for: rows)
+            }
+            .failureAlert(failure(overSheet: false))
+            .task {
+                // Listening before reading, so no change falls in between.
+                let changes = model.changes()
+                readCards()
+                for await _ in changes {
+                    readCards()
+                }
+            }
+            .task {
+                while !Task.isCancelled {
+                    do {
+                        try await Task.sleep(for: .seconds(60))
+                    } catch {
+                        return
+                    }
+                    readCards()
+                }
+            }
+            .onChange(of: model.settings.ladder) {
+                readCards()
+            }
+            .onChange(of: model.debugTools?.timeShift) {
+                readCards()
+            }
+            .onChange(of: state.playingSound) {
+                play(state.playingSound)
+            }
+            .onDisappear {
+                player.stop()
+            }
+    }
+
+    /// The window's three panes, with the toolbar's search field, Import…
+    /// and Export…, and ⌘F.
+    private var panes: some View {
         NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
@@ -93,80 +178,49 @@ struct CardsView: View {
             .keyboardShortcut("f")
             .hidden()
         }
-        .creatingCards($state, failure: failure(overSheet: true))
-        .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
-            FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
-                state.flag(note: note)
-            }
-        }
-        // Each button acts on what its dialog presents, which SwiftUI hands
-        // it: closing the dialog may drop the state's question before the
-        // button acts.
-        .confirmationDialog(
-            captureToDiscard.map {
-                Text(
-                    "Discard “\($0.text)”?",
-                    comment: "The title of the Cards window's question before it discards a capture, with its text.")
-            } ?? Text(verbatim: ""),
-            isPresented: Binding(get: { captureToDiscard != nil }, set: { if !$0 { state.cancelQuestion() } }),
-            titleVisibility: .visible,
-            presenting: captureToDiscard
-        ) { capture in
-            Button(role: .destructive) {
-                state.discard(capture)
-            } label: {
-                Text("Discard", comment: "The button that discards the capture the Cards window asks about.")
-            }
-        } message: { _ in
-            Text(
-                "It leaves the inbox without becoming cards, and you can't bring it back.",
-                comment: "Under the title of the Cards window's question before it discards a capture.")
-        }
-        .confirmationDialog(
-            cardsToDelete.map { deletionTitle(for: $0) } ?? Text(verbatim: ""),
-            isPresented: Binding(get: { cardsToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
-            titleVisibility: .visible,
-            presenting: cardsToDelete
-        ) { rows in
-            Button(role: .destructive) {
-                state.delete(rows)
-            } label: {
-                Text("Delete", comment: "The button that deletes the cards the Cards window asks about.")
-            }
-        } message: { rows in
-            deletionMessage(for: rows)
-        }
-        .failureAlert(failure(overSheet: false))
-        .task {
-            // Listening before reading, so no change falls in between.
-            let changes = model.changes()
-            readCards()
-            for await _ in changes {
-                readCards()
-            }
-        }
-        .task {
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(for: .seconds(60))
-                } catch {
-                    return
+    }
+
+    /// `content` with the window's questions about card types of the user's
+    /// own: the New Type sheet that New Type… in the editor's type picker
+    /// opens, the card form's opening its own over the form, and the
+    /// question Delete… on a user type asks, with how many cards have it.
+    private func askingAboutTypes(_ content: some View) -> some View {
+        content
+            .sheet(
+                isPresented: Binding(
+                    get: { state.question == .newType(.editor) }, set: { if !$0 { state.cancelQuestion() } })
+            ) {
+                NewTypeSheet(failure: failure(over: .newTypeSheet)) { name, emoji in
+                    state.newTypeEntry(name: name, emoji: emoji)
+                } choose: { name, emoji in
+                    state.chooseNewType(name: name, emoji: emoji)
                 }
-                readCards()
             }
-        }
-        .onChange(of: model.settings.ladder) {
-            readCards()
-        }
-        .onChange(of: model.debugTools?.timeShift) {
-            readCards()
-        }
-        .onChange(of: state.playingSound) {
-            play(state.playingSound)
-        }
-        .onDisappear {
-            player.stop()
-        }
+            .confirmationDialog(
+                typeToDelete.map {
+                    Text(
+                        "Delete the type “\($0.type.name)”?",
+                        comment:
+                            "The title of the Cards window's question before it deletes a card type of the user's own, with its name."
+                    )
+                } ?? Text(verbatim: ""),
+                isPresented: Binding(get: { typeToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
+                titleVisibility: .visible,
+                presenting: typeToDelete
+            ) { deleted in
+                Button(role: .destructive) {
+                    state.deleteType(deleted.type)
+                } label: {
+                    Text("Delete", comment: "The button that deletes the card type the Cards window asks about.")
+                }
+            } message: { deleted in
+                Text(
+                    "\(deleted.cardCount) cards have this type. They keep everything else, with no type.",
+                    comment: """
+                        Under the title of the Cards window's question before it deletes a card type of the user's own, \
+                        with how many cards have it, buried ones too.
+                        """)
+            }
     }
 
     /// Reads Lucas's cards, as they are now, on the ladder he set in
@@ -194,18 +248,31 @@ struct CardsView: View {
         return row
     }
 
-    /// The tag the window asks which emoji to give, while the emoji sheet
-    /// asks.
-    private var tagForEmoji: CardTag? {
-        guard case .emoji(let tag) = state.question else { return nil }
-        return tag
+    /// The tag or the user type the window asks which emoji to give, while
+    /// the emoji sheet asks.
+    private var emojiSubject: SheetSubject? {
+        switch state.question {
+        case .emoji(let tag): .tag(tag)
+        case .typeEmoji(let type): .type(type)
+        default: nil
+        }
     }
 
-    /// The tag the window asks which name to give, while the rename sheet
-    /// asks.
-    private var tagToRename: CardTag? {
-        guard case .rename(let tag) = state.question else { return nil }
-        return tag
+    /// The tag or the user type the window asks which name to give, while
+    /// the rename sheet asks.
+    private var renameSubject: SheetSubject? {
+        switch state.question {
+        case .rename(let tag): .tag(tag)
+        case .renameType(let type): .type(type)
+        default: nil
+        }
+    }
+
+    /// The user type the window asks whether to delete, with how many cards
+    /// have it, while it asks.
+    private var typeToDelete: (type: UserType, cardCount: Int)? {
+        guard case .deleteType(let type, let cardCount) = state.question else { return nil }
+        return (type, cardCount)
     }
 
     /// The capture the window asks whether to discard, while it asks.
@@ -220,17 +287,40 @@ struct CardsView: View {
         return rows
     }
 
+    /// Where an alert says what failed: over the window, over one of its
+    /// sheets, or over the New Type sheet, which opens over the card form.
+    private enum AlertPlace {
+        case window
+        case sheet
+        case newTypeSheet
+    }
+
+    /// Where the alert shows now: over the New Type sheet while it's open;
+    /// over the flag sheet, the emoji sheet, the rename sheet, the card form
+    /// or the Export sheet while one is open, since the window's own alert
+    /// can't show over its sheet; and over the window otherwise.
+    private var alertPlace: AlertPlace {
+        if case .newType = state.question {
+            return .newTypeSheet
+        }
+        let isSheetOpen =
+            cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.cardForm != nil
+            || state.exporting != nil
+        return isSheetOpen ? .sheet : .window
+    }
+
     /// What Lucas did that couldn't be saved, as an alert says it, which
-    /// closing it clears: over the flag sheet, the emoji sheet, the rename
-    /// sheet, the card form or the Export sheet while one is open, since the
-    /// window's own alert can't show over its sheet, and over the window
-    /// otherwise. `overSheet` says which of the two alerts this is for.
+    /// closing it clears, for the alert over a sheet, or over the window, as
+    /// `overSheet` says.
     private func failure(overSheet: Bool) -> Binding<Failure?> {
+        failure(over: overSheet ? .sheet : .window)
+    }
+
+    /// What Lucas did that couldn't be saved, as the alert at `place` says
+    /// it while the alert shows there, which closing it clears.
+    private func failure(over place: AlertPlace) -> Binding<Failure?> {
         Binding {
-            let isSheetOpen =
-                cardToFlag != nil || tagForEmoji != nil || tagToRename != nil || state.cardForm != nil
-                || state.exporting != nil
-            guard overSheet == isSheetOpen else { return nil }
+            guard place == alertPlace else { return nil }
             return state.failure.map(alert(for:))
         } set: {
             if $0 == nil {
@@ -396,13 +486,39 @@ struct CardsView: View {
                     "Couldn't export the cards",
                     comment: "An alert's title in the Cards window, after Export… or over its Export sheet."),
                 error: error)
+        case .makeType:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't make the type",
+                    comment: "An alert's title in the Cards window's New Type sheet, after OK."),
+                error: error)
+        case .renameType(let name):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't rename the type “\(name)”",
+                    comment: "An alert's title in the Cards window's rename sheet, after OK, with a card type's name."),
+                error: error)
+        case .setTypeEmoji(let name):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the emoji of the type “\(name)”",
+                    comment: "An alert's title in the Cards window's emoji sheet, after OK, with a card type's name."),
+                error: error)
+        case .deleteType(let name):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't delete the type “\(name)”",
+                    comment: "An alert's title in the Cards window, after Delete… in a card type's menu, with its name."
+                ),
+                error: error)
         }
     }
 
     /// What Lucas chooses from: the cards by where they stand, then the
     /// inbox, with how many things wait in it, as the menu counts them, then
-    /// the cards by tag, then by type, with No Type while the state offers
-    /// it. One is chosen at a time, always.
+    /// the cards by tag, then by type, the user's types with their context
+    /// menu, with No Type while the state offers it. One is chosen at a time,
+    /// always.
     private var sidebar: some View {
         List(selection: chosenItem) {
             Section {
@@ -446,29 +562,70 @@ struct CardsView: View {
             }
             Section {
                 ForEach(state.typeGroups, id: \.self) { group in
-                    Label(group.title, systemImage: group.symbol)
+                    TypeRow(group: group)
                         .tag(SidebarItem.cards(group))
+                        .contextMenu {
+                            typeMenu(for: group)
+                        }
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
             }
         }
-        .sheet(isPresented: Binding(get: { tagForEmoji != nil }, set: { if !$0 { state.cancelQuestion() } })) {
-            if let tag = tagForEmoji {
-                EmojiSheet(tag: tag, failure: failure(overSheet: true)) { text in
+        .sheet(isPresented: Binding(get: { emojiSubject != nil }, set: { if !$0 { state.cancelQuestion() } })) {
+            if let subject = emojiSubject {
+                EmojiSheet(subject: subject, failure: failure(overSheet: true)) { text in
                     state.emojiEntry(text)
                 } choose: { text in
                     state.chooseEmoji(text)
                 }
             }
         }
-        .sheet(isPresented: Binding(get: { tagToRename != nil }, set: { if !$0 { state.cancelQuestion() } })) {
-            if let tag = tagToRename {
-                RenameSheet(tag: tag, failure: failure(overSheet: true)) { text in
+        .sheet(isPresented: Binding(get: { renameSubject != nil }, set: { if !$0 { state.cancelQuestion() } })) {
+            if let subject = renameSubject {
+                RenameSheet(subject: subject, failure: failure(overSheet: true)) { text in
                     state.renameEntry(text)
                 } choose: { text in
                     state.chooseNewName(text)
                 }
+            }
+        }
+    }
+
+    /// The context menu of the sidebar's type group `group`, as the state
+    /// offers it, a user type's: Rename…, which opens the rename sheet;
+    /// Emoji…, which opens the emoji sheet; and Delete…, which asks first,
+    /// with how many cards have the type.
+    @ViewBuilder
+    private func typeMenu(for group: CardGroup) -> some View {
+        if let type = state.typeMenu(for: group) {
+            Button {
+                state.askToRenameType(type.id)
+            } label: {
+                Text(
+                    "Rename…",
+                    comment:
+                        "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its new name."
+                )
+            }
+            Button {
+                state.askForTypeEmoji(type.id)
+            } label: {
+                Text(
+                    "Emoji…",
+                    comment:
+                        "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its emoji."
+                )
+            }
+            Divider()
+            Button {
+                state.askToDeleteType(type.id)
+            } label: {
+                Text(
+                    "Delete…",
+                    comment:
+                        "An item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type."
+                )
             }
         }
     }
@@ -528,14 +685,18 @@ struct CardsView: View {
             } label: {
                 Text(
                     "Emoji…",
-                    comment: "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's emoji.")
+                    comment:
+                        "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its emoji."
+                )
             }
             Button {
                 state.askToRename(tag)
             } label: {
                 Text(
                     "Rename…",
-                    comment: "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's new name.")
+                    comment:
+                        "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its new name."
+                )
             }
         }
     }
@@ -691,7 +852,7 @@ struct CardsView: View {
                 sortUsing: CardRowOrder(.type)
             ) { row in
                 // Blank for a card with no type.
-                Text(row.card.type?.name ?? "")
+                Text(row.card.type?.title ?? "")
             }
             .width(min: 60, ideal: 76, max: 110)
             .customizationID(CardRowOrder.Column.type.rawValue)
@@ -843,7 +1004,8 @@ struct CardsView: View {
         case .card(let card):
             CardEditor(
                 card: card, images: state.editedImages, shownImages: state.images, sounds: state.editedSounds,
-                bothWays: state.editedBothWays, canSave: state.canSaveCard, isSearching: isSearchFocused
+                bothWays: state.editedBothWays, type: state.editedType, types: state.pickerTypes,
+                canSave: state.canSaveCard, isSearching: isSearchFocused
             ) { dropped, side in
                 state.putImageInEditor(dropped, on: side)
             } removeImage: { side in
@@ -861,6 +1023,10 @@ struct CardsView: View {
                 }
             } setBothWays: { bothWays in
                 state.setBothWaysInEditor(bothWays)
+            } setType: { type in
+                state.setTypeInEditor(type)
+            } newType: {
+                state.askForNewType(in: .editor)
             } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()
@@ -1211,6 +1377,24 @@ private struct TagTreeRow<MenuItems: View>: View {
                 closedTags.remove(tag.id)
             } else {
                 closedTags.insert(tag.id)
+            }
+        }
+    }
+}
+
+/// A type's row in the sidebar: its name, after a user type's emoji, when it
+/// has one, or else the type's symbol.
+private struct TypeRow: View {
+    let group: CardGroup
+
+    var body: some View {
+        Label {
+            Text(verbatim: group.title)
+        } icon: {
+            if case .type(.user(let type)) = group, let emoji = type.emoji {
+                Text(verbatim: emoji)
+            } else {
+                Image(systemName: group.symbol)
             }
         }
     }
