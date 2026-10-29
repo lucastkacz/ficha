@@ -31,12 +31,12 @@ risky_paths=(
   'docs/agents/'
   # The content guide, which every card Claude drafts follows.
   'docs/content-guide\.md'
-  # CI and the build, with their configuration files, such as the one Ficha
-  # Dev signs with (Signing.xcconfig), and what its sandboxes let the app,
-  # the CLI and the SVG drawer, the one on the network, reach: their
-  # entitlements, and the CLI's Info.plist, which gives it a sandbox of its
-  # own (ADR 0018). And how `make upload` sends the real Ficha to TestFlight,
-  # for whom (ExportOptions.plist).
+  # CI and the build, with their configuration files, such as the one both
+  # apps sign with (Signing.xcconfig), and what their sandboxes let each app,
+  # its CLI, its widget and its SVG drawer, the one on the network, reach:
+  # their entitlements, and the CLI's Info.plist, which gives it a sandbox of
+  # its own (ADR 0018). And how `make upload` sends the real Ficha to
+  # TestFlight, and for whom (ExportOptions.plist).
   '\.github/workflows/'
   '\.github/dependabot\.yml'
   'Makefile'

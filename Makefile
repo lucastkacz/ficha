@@ -68,8 +68,10 @@ project: ## Generate Ficha.xcodeproj from project.yml (never edit it by hand).
 # passed to xcodebuild as a build setting, which overrides project.yml's.
 # Both are expanded only by the targets that build, which stop without it.
 BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: git couldn't count this checkout's commits))
-XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
-	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
+XCODEBUILD_MAC = xcodebuild -project Ficha.xcodeproj -scheme Ficha -derivedDataPath $(DERIVED) -quiet \
+	CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
+# The builds for this Mac, for Apple silicon alone.
+XCODEBUILD = $(XCODEBUILD_MAC) -destination 'platform=macOS,arch=arm64'
 
 # Ficha Dev, and the real Ficha that `make upload` builds, sign with Lucas's
 # paid team, whose ID git ignores, in iPhone/Local.xcconfig, which
@@ -169,8 +171,8 @@ render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, i
 # has it, with nothing uncommitted: each build is then one of main's commits,
 # and its number, main's count of commits, grows with each merge, as App Store
 # Connect needs. That check is our own.
-.PHONY: main-check
-main-check: ## Fail unless this checkout is on main, with nothing uncommitted, as GitHub has it.
+.PHONY: on-main
+on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as GitHub has it.
 	@branch=$$(git branch --show-current); [ "$$branch" = main ] || { \
 		echo "make upload runs from main alone, and this checkout is on $${branch:-a detached HEAD}: run it from the main folder, on main, once the pull request merged." >&2; \
 		exit 1; }
@@ -182,7 +184,7 @@ main-check: ## Fail unless this checkout is on main, with nothing uncommitted, a
 		echo "make upload couldn't fetch main from GitHub to check that this checkout has all of it: check the connection, and try again." >&2; \
 		exit 1; }
 	@[ "$$(git rev-parse HEAD)" = "$$(git rev-parse FETCH_HEAD)" ] || { \
-		echo "This checkout's main isn't GitHub's: run git pull, and try again." >&2; \
+		echo "This checkout's main isn't GitHub's: run git pull --ff-only, and try again." >&2; \
 		exit 1; }
 
 # The real Ficha for TestFlight (#310): an archive for Intel and Apple
@@ -195,11 +197,10 @@ main-check: ## Fail unless this checkout is on main, with nothing uncommitted, a
 UPLOAD := .build/upload
 
 .PHONY: upload
-upload: main-check team project ## From main: archive the real Ficha and upload it to TestFlight, for its internal testers alone.
+upload: on-main team project ## From main: archive the real Ficha and upload it to TestFlight, for its internal testers alone.
 	rm -rf $(UPLOAD)
-	xcodebuild -project Ficha.xcodeproj -scheme Ficha -configuration Release -destination 'generic/platform=macOS' \
-		-derivedDataPath $(DERIVED) -archivePath $(UPLOAD)/Ficha.xcarchive -quiet \
-		CURRENT_PROJECT_VERSION=$(BUILD_NUMBER) $(SIGNING) archive
+	$(XCODEBUILD_MAC) -configuration Release -destination 'generic/platform=macOS' \
+		-archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
 	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
 		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
 		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \

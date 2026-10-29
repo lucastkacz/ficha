@@ -141,6 +141,9 @@ targets:
         # translated.
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Lucas Ariel Tkacz"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        # Ficha uses no encryption that needs a declaration, so App Store
+        # Connect asks nothing about it on each upload (#310).
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         # Xcode 26's defaults for app targets: main actor by default.
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         SWIFT_APPROACHABLE_CONCURRENCY: YES
