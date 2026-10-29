@@ -122,7 +122,7 @@ final class DatabaseFileTests {
         #expect(
             try engine.standing(of: 1, on: ReviewSettings.defaults.ladder)
                 == .onLadder(step: 0, due: time.now + hours(1)))
-        #expect(try engine.sidebarTags() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
+        #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
     }
 
     // The card table is made again for cards without a type or a capture.
@@ -337,13 +337,14 @@ final class DatabaseFileTests {
         let engine = try Engine(location: .folder(folder), time: time)
         var window = engine.openCardsWindow(on: ladder)
         window.read(on: ladder)
+        window.choose(.allTags)
 
         #expect(
-            try engine.sidebarTags().map(\.name) == [
+            try engine.allTags().map(\.name) == [
                 "::historia", "economía", "economía::mundial", "economía :: Argentina", "economía::",
             ])
         #expect(
-            window.tagsSection.flatMap { [$0.title] + $0.children.map { "  " + $0.title } } == [
+            window.allTagsListing?.tree.outline == [
                 "::historia", "economía", "  mundial", "economía :: Argentina", "economía::",
             ])
         #expect(try engine.cardRows(in: .tag("economía"), on: ladder).map(\.card.front) == ["economía::mundial"])
@@ -366,6 +367,31 @@ final class DatabaseFileTests {
         try engine.edit(1, with: card(.user(formula), front: "word", back: "Un tipo."))
         #expect(try engine.cards().map(\.type) == [.user(formula), .concept, .quote, .question, nil])
         #expect(try engine.changesToSend().map(\.row).contains(.userType(formula.id)))
+    }
+
+    // The migration makes the tag table again, as no column can join its
+    // check, and copies every row, which sends nothing.
+    @Test(
+        "a database from before pinned tags migrates with every tag row as it was and nothing pinned, and a pin then made syncs"
+    )
+    func aDatabaseFromBeforePinnedTagsKeepsEveryTagRow() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforePinnedTags(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(
+            try engine.allTags() == [
+                CardTag(name: "ciencia", switchedOn: .setAside, color: .blue),
+                CardTag(name: "historia", switchedOn: .priority, emoji: "📜", chosenToSync: true),
+                CardTag(name: "historia::Roma", inheritedEmoji: "📜"),
+                CardTag(name: "lenguaje", chosenToSync: true),
+            ])
+        #expect(try engine.pinnedTags().isEmpty)
+        #expect(try engine.changesToSend().isEmpty)
+        try engine.pin("lenguaje")
+        #expect(try engine.pinnedTags().map(\.name) == ["lenguaje"])
+        #expect(try engine.changesToSend().map(\.row) == [.tag("lenguaje")])
     }
 
     // Ficha Dev's sample cards, and an agent's scratch run, load into a new
@@ -541,6 +567,31 @@ func saveDatabaseBeforeUserTypes(at file: URL, at time: Date) throws {
                 sql: "INSERT INTO card (type, front, back, tags, createdAt) VALUES (?, ?, 'Un tipo.', '[]', ?)",
                 arguments: [type, type ?? "none", time])
         }
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before pinned tags, through
+/// the schema's migrations up to the one before them, with sync on and
+/// nothing waiting to be sent: a card tagged historia::Roma and lenguaje,
+/// made at `time`, and a row of the `tag` table for each kind of thing a tag
+/// had of its own, ciencia's for a tag no card carries.
+func saveDatabaseBeforePinnedTags(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v28 card types of the user's own")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO card (type, front, back, tags, createdAt)
+                VALUES ('word', 'Coliseo', 'Un anfiteatro.', '["historia::Roma","lenguaje"]', ?);
+                INSERT INTO tag (name, switchedOn, color, emoji, chosenToSync) VALUES
+                    ('ciencia', 'setAside', 'blue', NULL, 0),
+                    ('historia', 'priority', NULL, '📜', 1),
+                    ('lenguaje', NULL, NULL, NULL, 1);
+                """,
+            arguments: [time])
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()
 }
@@ -832,7 +883,7 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 flag: Flag(note: "Falta un ejemplo", flaggedAt: time + hours(4)), buriedAt: time + hours(5),
                 setAsideBy: nil, bothWays: true),
         ])
-    #expect(try engine.sidebarTags() == [CardTag(name: "lenguaje", color: .blue)])
+    #expect(try engine.allTags() == [CardTag(name: "lenguaje", color: .blue)])
     let inbox = try engine.inbox()
     #expect(inbox.captures.isEmpty)
     #expect(

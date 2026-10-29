@@ -767,6 +767,24 @@
     "All cards (%lld)" : {
       "comment" : "An item of the Export sheet's menu: every card, buried ones too, with how many."
     },
+    "All Tags" : {
+      "comment" : "In the Cards window's detail, beside All Tags."
+    },
+    "All Tags…" : {
+      "comment" : "The last item of the Tags section of the Cards window's sidebar: it lists every tag, pinned or not.\nThe last item of the menu's Prioritize submenu: it opens the Cards window on All Tags, which lists every tag."
+    },
+    "all-tags.set-aside-section" : {
+      "comment" : "A section of the Cards window's All Tags, below Tags: the tags set aside, whose cards are out of Lucas's reviews for now.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Set Aside"
+          }
+        }
+      }
+    },
     "Allow it in System Settings, in Login Items." : {
 
     },
@@ -972,7 +990,7 @@
       "comment" : "How an appearance closed, in Diagnostics."
     },
     "Color" : {
-      "comment" : "A submenu of a tag's menu in the Cards window's sidebar: the tag's color."
+      "comment" : "A submenu of a tag's menu in the Cards window's sidebar or its All Tags: the tag's color."
     },
     "Concept" : {
       "comment" : "A card type."
@@ -1108,7 +1126,10 @@
       "comment" : "An alert's title in the Cards window's New Type sheet, after OK."
     },
     "Couldn't move “%@”" : {
-      "comment" : "An alert's title in the Cards window, after dragging a tag onto another or onto the Tags section's title, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window, after dragging a tag in All Tags onto another or onto the Tags section's title, with the tag's whole name."
+    },
+    "Couldn't move “%@” in the sidebar" : {
+      "comment" : "An alert's title in the Cards window, after dragging a pinned tag to another place among the sidebar's pinned tags, with the tag's whole name."
     },
     "Couldn't move %lld copies to the Trash" : {
       "comment" : "An alert's title in Settings' Backups tab, with how many copies.",
@@ -1132,6 +1153,9 @@
           }
         }
       }
+    },
+    "Couldn't pin “%@” to the sidebar" : {
+      "comment" : "An alert's title in the Cards window, after Pin to Sidebar in a tag's menu or dragging a tag into the sidebar, with the tag's whole name."
     },
     "Couldn't read the file" : {
       "comment" : "An alert's title in the Cards window's Import sheet."
@@ -1253,6 +1277,9 @@
     "Couldn't undo" : {
 
     },
+    "Couldn't unpin “%@” from the sidebar" : {
+      "comment" : "An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu, with the tag's whole name."
+    },
     "Couldn't untick Set Aside on “%@”" : {
       "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
     },
@@ -1364,7 +1391,7 @@
       "comment" : "The title of the Cards window's sheet that gives a card type of the user's own an emoji, with the type's name."
     },
     "Emoji…" : {
-      "comment" : "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its emoji."
+      "comment" : "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -1927,6 +1954,9 @@
     "No tag" : {
       "comment" : "The Import sheet's tag field, empty: the cards get no tag of the file's."
     },
+    "No tags" : {
+      "comment" : "In the Cards window's All Tags, when no card has a tag."
+    },
     "No Type" : {
       "comment" : "An item of the Cards window's sidebar: the cards that have no type."
     },
@@ -2034,6 +2064,9 @@
     "Paste" : {
       "comment" : "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."
     },
+    "Pin to Sidebar" : {
+      "comment" : "An item of a tag's menu in the Cards window's All Tags, while the tag isn't pinned: it lists the tag in the sidebar, after the pinned ones."
+    },
     "Play or Stop Sound" : {
       "comment" : "A hidden button of the review panel: R, which plays the sound of the side that shows, or stops the one that plays."
     },
@@ -2104,7 +2137,7 @@
       "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
     },
     "Rename…" : {
-      "comment" : "An item of the menu of a tag or a card type in the Cards window's sidebar: it asks for its new name."
+      "comment" : "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
     },
     "Repeated cards" : {
       "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
@@ -2142,6 +2175,9 @@
     "Right now" : {
 
     },
+    "Right-click a tag to pin it to the sidebar, rename it, give it a color or an emoji, or set it aside. Drag it into the sidebar to pin it there, or onto another tag to move it inside." : {
+      "comment" : "In the Cards window's detail, beside All Tags: what Lucas does with a tag there."
+    },
     "Save" : {
 
     },
@@ -2170,7 +2206,7 @@
       "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags, or a tag one of them sits inside, is set aside. Lowercase, like “now”."
     },
     "Set Aside" : {
-      "comment" : "An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
+      "comment" : "An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
     },
     "Set aside with %@" : {
       "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags are set aside, its own or tags they sit inside, each by its whole name, like “Set aside with filosofía and economía › Argentina”."
@@ -2189,18 +2225,6 @@
     },
     "Show in Finder" : {
       "comment" : "Settings, under Backups: shows the Backups folder in Finder."
-    },
-    "sidebar.set-aside-section" : {
-      "comment" : "A section of the Cards window's sidebar, below Tags: the tags set aside, whose cards are out of Lucas's reviews for now.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Set Aside"
-          }
-        }
-      }
     },
     "Size" : {
       "comment" : "Settings, under Backups: the column of what each copy weighs."
@@ -2266,7 +2290,7 @@
       "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
     },
     "Tags" : {
-      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the cards' tags.\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
+      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's All Tags: every tag that isn't set aside, as a tree.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
     "Tags to sync" : {
       "comment" : "Settings, under Sync: the heading of the list of tags to choose."
@@ -2306,6 +2330,9 @@
     },
     "The front has an image" : {
       "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's front has one."
+    },
+    "The tags you write on your cards show up here." : {
+      "comment" : "In the Cards window's All Tags, when no card has a tag."
     },
     "Their images and sounds weigh %@, and go up to your iCloud." : {
       "comment" : "In the Import sheet's preview while sync is on: what the images and sounds the import brings, which go up to the user's iCloud, weigh, said from 100 MB."
@@ -2390,6 +2417,9 @@
     },
     "Unknown version" : {
       "comment" : "Settings' About tab, when the build doesn't say."
+    },
+    "Unpin from Sidebar" : {
+      "comment" : "An item of a tag's menu in the Cards window's sidebar or its All Tags, while the tag is pinned: it takes the tag out of the sidebar."
     },
     "Until you empty the Trash, you can put back what you move there." : {
       "comment" : "Under the title of the Backups tab's question before it moves copies to the Trash."

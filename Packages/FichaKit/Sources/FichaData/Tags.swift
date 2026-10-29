@@ -27,8 +27,9 @@ public enum TagColor: String, Sendable, CaseIterable {
 
 /// A tag of Lucas's cards, by its name, exactly as cards carry it, with the
 /// tags it sits inside (ADR 0021), with what it has of its own: the switch it
-/// has on, its color and its emoji, each optional, and whether the user chose
-/// it to sync. A tag with none of them is just a name. It carries the color
+/// has on, its color and its emoji, each optional, whether the user chose it
+/// to sync, and its place among the pinned tags, while it's pinned (ADR
+/// 0022). A tag with none of them is just a name. It carries the color
 /// and the emoji it takes from the tags it sits inside too, which it shows
 /// while it has none of its own.
 public struct CardTag: Sendable, Hashable {
@@ -45,6 +46,10 @@ public struct CardTag: Sendable, Hashable {
     /// switch of its own beside the other, so a priority tag or one set
     /// aside can be chosen too. A tag isn't, until the user ticks it.
     public var chosenToSync: Bool
+    /// Its place among the tags the user pinned to the Cards window's
+    /// sidebar, or nil while it isn't pinned. A tag isn't, until the user
+    /// pins it.
+    public var pin: PinPosition?
     /// The color of the nearest tag it sits inside that has one, or nil when
     /// none does: never its own, and never stored.
     public let inheritedColor: TagColor?
@@ -54,13 +59,15 @@ public struct CardTag: Sendable, Hashable {
 
     public init(
         name: String, switchedOn: TagSwitch? = nil, color: TagColor? = nil, emoji: String? = nil,
-        chosenToSync: Bool = false, inheritedColor: TagColor? = nil, inheritedEmoji: String? = nil
+        chosenToSync: Bool = false, pin: PinPosition? = nil, inheritedColor: TagColor? = nil,
+        inheritedEmoji: String? = nil
     ) {
         self.name = name
         self.switchedOn = switchedOn
         self.color = color
         self.emoji = emoji
         self.chosenToSync = chosenToSync
+        self.pin = pin
         self.inheritedColor = inheritedColor
         self.inheritedEmoji = inheritedEmoji
     }
@@ -69,6 +76,11 @@ public struct CardTag: Sendable, Hashable {
     /// inside it, is out of Lucas's reviews for now.
     public var isSetAside: Bool {
         switchedOn == .setAside
+    }
+
+    /// Whether the user pinned it to the Cards window's sidebar.
+    public var isPinned: Bool {
+        pin != nil
     }
 
     /// The color it shows: its own, or else the nearest tag's it sits inside
@@ -87,30 +99,31 @@ public struct CardTag: Sendable, Hashable {
     /// Whether it has nothing of its own, so the `tag` table has no row for
     /// it.
     var hasNothingOfItsOwn: Bool {
-        switchedOn == nil && color == nil && emoji == nil && !chosenToSync
+        switchedOn == nil && color == nil && emoji == nil && !chosenToSync && pin == nil
     }
 
     /// The tag named `name` with what this one has of its own, its switch,
-    /// color, emoji and choice to sync, and with `inheritedColor` and
+    /// color, emoji, choice to sync and pin, and with `inheritedColor` and
     /// `inheritedEmoji`, which it takes from the tags it sits inside there.
     func named(_ name: String, inheritedColor: TagColor? = nil, inheritedEmoji: String? = nil) -> CardTag {
         CardTag(
-            name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync,
+            name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync, pin: pin,
             inheritedColor: inheritedColor, inheritedEmoji: inheritedEmoji)
     }
 }
 
 extension Engine {
-    /// The tags the Cards window's sidebar lists, each with what it has of
-    /// its own and what it takes from the tags it sits inside, in the order a
-    /// tree lists them: every tag of the cards that aren't buried, with every
-    /// tag it sits inside, and every set-aside tag, which stays listed while
-    /// no card carries it, so that Lucas can undo it.
-    public func sidebarTags() throws(EngineError) -> [CardTag] {
+    /// Every tag, as All Tags lists it in the Cards window, each with what it
+    /// has of its own and what it takes from the tags it sits inside, in the
+    /// order a tree lists them: every tag of the cards that aren't buried,
+    /// with every tag it sits inside, and every set-aside tag and every pinned
+    /// tag, which stay listed while no card carries them, so that Lucas can
+    /// undo them.
+    public func allTags() throws(EngineError) -> [CardTag] {
         try read { db in
-            try OwnTags(in: db).listing(
-                TagPath.lineages(of: allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags)),
-                alongWithEvery: .setAside)
+            let own = try OwnTags(in: db)
+            let carried = TagPath.lineages(of: try allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags))
+            return own.listing(carried.union(own.pinned.map(\.name)), alongWithEvery: .setAside)
         }
     }
 
@@ -172,6 +185,14 @@ struct OwnTags: Sendable {
         byName.values.filter(\.chosenToSync)
     }
 
+    /// Every pinned tag, with what it has of its own, in the user's order:
+    /// by its place, and by its name between two tags in the same place, as
+    /// two devices can pin them.
+    var pinned: [CardTag] {
+        byName.values.compactMap { tag in tag.pin.map { (tag: tag, pin: $0) } }
+            .sorted { $0.pin != $1.pin ? $0.pin < $1.pin : $0.tag.name < $1.tag.name }.map(\.tag)
+    }
+
     /// The tags named in `names`, and every tag with `tagSwitch` on, which
     /// stays listed while no card carries it, each once, as `tag(_:)` reads
     /// it, in the order a tree lists them, so that children follow their
@@ -198,12 +219,14 @@ func save(_ tag: CardTag, in db: Database) throws {
     } else {
         try db.execute(
             sql: """
-                INSERT INTO tag (name, switchedOn, color, emoji, chosenToSync) VALUES (?, ?, ?, ?, ?)
+                INSERT INTO tag (name, switchedOn, color, emoji, chosenToSync, pin) VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT (name) DO UPDATE SET
                     switchedOn = excluded.switchedOn, color = excluded.color, emoji = excluded.emoji,
-                    chosenToSync = excluded.chosenToSync
+                    chosenToSync = excluded.chosenToSync, pin = excluded.pin
                 """,
-            arguments: [tag.name, tag.switchedOn?.rawValue, tag.color?.rawValue, tag.emoji, tag.chosenToSync])
+            arguments: [
+                tag.name, tag.switchedOn?.rawValue, tag.color?.rawValue, tag.emoji, tag.chosenToSync, tag.pin?.key,
+            ])
     }
 }
 
@@ -213,6 +236,7 @@ extension CardTag {
         let name: String = try row.decode(forColumn: "name")
         let switchName: String? = try row.decode(forColumn: "switchedOn")
         let colorName: String? = try row.decode(forColumn: "color")
+        let pinKey: String? = try row.decode(forColumn: "pin")
         self.name = name
         switchedOn = try switchName.map { switchName in
             guard let tagSwitch = TagSwitch(rawValue: switchName) else {
@@ -228,6 +252,12 @@ extension CardTag {
         }
         emoji = try row.decode(forColumn: "emoji")
         chosenToSync = try row.decode(forColumn: "chosenToSync")
+        pin = try pinKey.map { key in
+            guard let pin = PinPosition(key: key) else {
+                throw unreadable("A tag has a pin that isn't a place among the pinned tags")
+            }
+            return pin
+        }
         inheritedColor = nil
         inheritedEmoji = nil
     }

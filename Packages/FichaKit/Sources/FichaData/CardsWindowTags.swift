@@ -1,47 +1,67 @@
 import FichaCore
 import Foundation
 
-// The Cards window's tags, which sit inside tags (ADR 0021): the sidebar's
-// Tags section, a tree of the tags that aren't set aside, and its Set Aside
-// section, and renaming or moving a tag, with Rename… in its context menu or
-// by dragging it onto another tag or onto the Tags section's title. The
-// rename sheet that Rename… opens renames a card type of the user's own too,
-// so its entry and OK are with the emoji sheet's, in `CardsWindowState.swift`.
+// The Cards window's tags, which sit inside tags (ADR 0021) and which Lucas
+// pins to the sidebar (ADR 0022): the sidebar's Tags section, with the pinned
+// tags alone, in his order, which he pins and unpins from a tag's context
+// menu and reorders by dragging, pinning a tag he drags in from All Tags; All
+// Tags, a tree of every tag that isn't set aside and its Set Aside section,
+// which the menu bar's All Tags… opens too; and renaming or moving a tag, with Rename… in its context menu or by
+// dragging it, in All Tags, onto another tag or onto its Tags section's
+// title. The rename sheet that Rename… opens renames a card type of the
+// user's own too, so its entry and OK are with the emoji sheet's, in
+// `CardsWindowState.swift`.
 
 extension CardsWindowState {
-    /// A tag as the sidebar lists it, in its Tags section or its Set Aside
-    /// section, with the tags inside it, which a disclosure triangle shows.
-    public struct SidebarTag: Sendable, Equatable, Identifiable {
+    /// A tag as the window lists it: among the sidebar's pinned tags, or in
+    /// All Tags, in its tree or its Set Aside section, with the tags inside
+    /// it, which a disclosure triangle shows.
+    public struct ListedTag: Sendable, Equatable, Identifiable {
         /// The tag, with what it has of its own and takes from the tags it
         /// sits inside.
         public let tag: CardTag
-        /// What its row says, without its emoji: its last level, or, heading
-        /// the Set Aside section inside a tag that isn't set aside, its whole
-        /// name, written with " › ", as in "economía › Argentina".
+        /// What its row says, without its emoji: its whole name, written
+        /// with " › ", as in "economía › Argentina", among the pinned tags
+        /// and at the top of All Tags' tree or its Set Aside section, and its
+        /// last level under its parent.
         public let title: String
-        /// The tags right inside it, in the order a tree lists them.
-        public let children: [SidebarTag]
+        /// Whether its cards are out of Lucas's reviews, as it's set aside on
+        /// its own or sits inside a tag that is, which grays it among the
+        /// pinned tags.
+        public let isSetAside: Bool
+        /// The tags right inside it, in the order a tree lists them: none
+        /// among the pinned tags.
+        public let children: [ListedTag]
 
         public var id: String {
             tag.name
         }
     }
 
-    /// The sidebar's two sections out of `tags`, the tags it offers, in the
-    /// order a tree lists them: the Tags section, with the tags that aren't
-    /// set aside, on their own or inside a tag that is, and the Set Aside
+    /// The sidebar's rows of `pinned`, the pinned tags in Lucas's order, each
+    /// named by its whole path and grayed when it's set aside, on its own or
+    /// inside one of `tags`, every tag the window offers, that is.
+    static func pinnedRows(of pinned: [CardTag], among tags: [CardTag]) -> [ListedTag] {
+        let isSetAside = setAside(among: tags)
+        return pinned.map {
+            ListedTag(tag: $0, title: TagPath.shown($0.name), isSetAside: isSetAside($0.name), children: [])
+        }
+    }
+
+    /// All Tags' two parts out of `tags`, every tag the window offers, in the
+    /// order a tree lists them: the tree, with the tags that aren't set
+    /// aside, on their own or inside a tag that is, and the Set Aside
     /// section, with the others. Each row is named by the levels it has past
     /// the tag it's listed under, its last level under its parent, and its
     /// whole name at the top.
-    static func sections(of tags: [CardTag]) -> (tags: [SidebarTag], setAside: [SidebarTag]) {
+    static func allTagsTree(of tags: [CardTag]) -> (tree: [ListedTag], setAside: [ListedTag]) {
         let byName = Dictionary(tags.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
-        let setAside = Set(tags.filter(\.isSetAside).map(\.name))
-        let isSetAside = { (name: String) in TagPath.lineage(of: name).contains(where: setAside.contains) }
+        let isSetAside = setAside(among: tags)
         /// The row of the tag at the top of `tree`, listed under `parent`.
-        func row(_ tree: TagTree, under parent: String?) -> SidebarTag {
-            SidebarTag(
+        func row(_ tree: TagTree, under parent: String?) -> ListedTag {
+            ListedTag(
                 tag: byName[tree.name] ?? CardTag(name: tree.name), title: TagPath.shown(tree.name, under: parent),
-                children: tree.children.map { row($0, under: tree.name) })
+                isSetAside: isSetAside(tree.name), children: tree.children.map { row($0, under: tree.name) })
         }
         let names = tags.map(\.name)
         return (
@@ -50,8 +70,96 @@ extension CardsWindowState {
         )
     }
 
-    /// Asks which name the sidebar's tag named `tag` gets, in the rename
-    /// sheet, after Rename… in its context menu.
+    /// Whether the tag with a name is set aside, on its own or inside a tag
+    /// that is, among `tags`, which hold every set-aside tag.
+    private static func setAside(among tags: [CardTag]) -> (String) -> Bool {
+        let setAside = Set(tags.filter(\.isSetAside).map(\.name))
+        return { name in TagPath.lineage(of: name).contains(where: setAside.contains) }
+    }
+
+    /// Chooses All Tags, as All Tags… in the menu bar's Prioritize submenu
+    /// asks, unless Lucas is editing a card or a capture, while the sidebar
+    /// waits for him.
+    public mutating func showAllTags() {
+        guard editing == nil else { return }
+        choose(.allTags)
+    }
+
+    /// Chooses Pin to Sidebar in the context menu of the tag named `tag`, in
+    /// All Tags or the sidebar, which pins it after the pinned tags, or
+    /// Unpin from Sidebar while it's pinned, and reads the cards again, or
+    /// records why it couldn't.
+    public mutating func choosePin(on tag: String) {
+        guard let menu = menu(for: tag) else { return }
+        let done =
+            if menu.isPinned {
+                perform(.unpin(tag: tag)) { engine throws(EngineError) in try engine.unpin(tag) }
+            } else {
+                perform(.pin(tag: tag)) { engine throws(EngineError) in try engine.pin(tag) }
+            }
+        if done {
+            read(on: ladder)
+        }
+    }
+
+    /// Moves the sidebar's pinned tags at `offsets` to before the one at
+    /// `destination`, or after them all when it's past them, as Lucas drags
+    /// them, each offset and `destination` counted in the pinned tags as
+    /// they were, as SwiftUI's `onMove` gives them; then reads the cards
+    /// again, or records why it couldn't. The tags it moves keep their order.
+    public mutating func movePinnedTags(fromOffsets offsets: IndexSet, toOffset destination: Int) {
+        let pinned = pinnedTags.map(\.id)
+        let moving = offsets.filter(pinned.indices.contains).map { pinned[$0] }
+        place(moving, at: destination, as: FailedAction.reorderPinned)
+    }
+
+    /// Pins the tags named `names`, which Lucas dropped among the sidebar's
+    /// pinned tags before the one at `offset`, or after them all when it's
+    /// past them, as he drags them in from All Tags, in that order there; a
+    /// pinned one moves there. Then it reads the cards again. Whether it took
+    /// the drop: never when none of `names` is a tag the window offers, as a
+    /// word dragged from elsewhere, nor when the engine couldn't pin one,
+    /// which it records.
+    @discardableResult
+    public mutating func pinDroppedTags(_ names: [String], at offset: Int) -> Bool {
+        let dropped = names.filter { name in tags.contains { $0.name == name } }.uniqued()
+        guard !dropped.isEmpty else {
+            return false
+        }
+        return place(dropped, at: offset, as: FailedAction.pin)
+    }
+
+    /// Pins `moving`, tags the window offers, pinned or not, among the
+    /// sidebar's pinned tags before the one at `offset`, as they are, or
+    /// after them all when it's past them, in their order there, for
+    /// `action`, one at a time, each right after the one before it in the
+    /// order they make, so that each pin rewrites that tag's row alone. Then
+    /// it reads the cards again. Whether it did, or nothing needed to move;
+    /// it records why it couldn't.
+    @discardableResult
+    private mutating func place(_ moving: [String], at offset: Int, as action: (String) -> FailedAction) -> Bool {
+        let pinned = pinnedTags.map(\.id)
+        let place = min(max(offset, 0), pinned.count)
+        let order =
+            pinned[..<place].filter { !moving.contains($0) } + moving + pinned[place...].filter { !moving.contains($0) }
+        guard !moving.isEmpty, order != pinned else {
+            return true
+        }
+        var current = pinned
+        var done = true
+        for (position, tag) in order.enumerated() where moving.contains(tag) {
+            current.removeAll { $0 == tag }
+            let index = position > 0 ? (current.firstIndex(of: order[position - 1]) ?? current.count - 1) + 1 : 0
+            current.insert(tag, at: index)
+            done = perform(action(tag)) { engine throws(EngineError) in try engine.pin(tag, at: index) }
+            guard done else { break }
+        }
+        read(on: ladder)
+        return done
+    }
+
+    /// Asks which name the tag named `tag` gets, in the rename sheet, after
+    /// Rename… in its context menu.
     public mutating func askToRename(_ tag: String) {
         guard let tag = tags.first(where: { $0.name == tag }) else { return }
         question = .renameTag(tag)
@@ -69,13 +177,13 @@ extension CardsWindowState {
         }
     }
 
-    /// Drops the sidebar's tag named `tag` on its tag named `target`, as
-    /// Lucas drags it: moves it inside `target`, renaming it
+    /// Drops All Tags' tag named `tag` on its tag named `target`, as Lucas
+    /// drags it: moves it inside `target`, renaming it
     /// `<target>::<its last level>`, with every tag inside it, and reads the
-    /// cards again. Whether it took the drop: never when `tag` isn't a tag the
-    /// sidebar lists, as a word dragged from elsewhere, when `target` is the
-    /// tag itself or a tag inside it, or when `tag` already sits right inside
-    /// `target`; nor when the engine couldn't, which it records.
+    /// cards again. Whether it took the drop: never when `tag` isn't a tag
+    /// the window offers, as a word dragged from elsewhere, when `target` is
+    /// the tag itself or a tag inside it, or when `tag` already sits right
+    /// inside `target`; nor when the engine couldn't, which it records.
     public mutating func drop(_ tag: String, onto target: String) -> Bool {
         guard tags.contains(where: { $0.name == target }), !TagPath.isTag(target, within: tag) else {
             return false
@@ -83,18 +191,18 @@ extension CardsWindowState {
         return move(tag, to: target + TagPath.separator + TagPath.lastLevel(of: tag))
     }
 
-    /// Drops the sidebar's tag named `tag` on the Tags section's title, as
-    /// Lucas drags it: takes it to the top, renaming it its last level, with
-    /// every tag inside it, and reads the cards again. Whether it took the
-    /// drop: never when `tag` isn't a tag the sidebar lists or is at the top
+    /// Drops All Tags' tag named `tag` on its Tags section's title, as Lucas
+    /// drags it: takes it to the top, renaming it its last level, with every
+    /// tag inside it, and reads the cards again. Whether it took the drop:
+    /// never when `tag` isn't a tag the window offers or is at the top
     /// already, nor when the engine couldn't, which it records.
     public mutating func dropOnTagsTitle(_ tag: String) -> Bool {
         move(tag, to: TagPath.lastLevel(of: tag))
     }
 
-    /// Moves the sidebar's tag named `tag` to the new whole name `name`, as a
-    /// drop does: whether it did, which it never does to a tag the sidebar
-    /// doesn't list or to the name it has.
+    /// Moves the tag named `tag` to the new whole name `name`, as a drop
+    /// does: whether it did, which it never does to a tag the window doesn't
+    /// offer or to the name it has.
     private mutating func move(_ tag: String, to name: String) -> Bool {
         guard tags.contains(where: { $0.name == tag }), name != tag else {
             return false

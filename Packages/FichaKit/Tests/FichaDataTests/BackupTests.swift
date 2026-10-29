@@ -275,7 +275,7 @@ final class BackupTests {
                 .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
                 .buried(at: time.now, flag: nil),
             ])
-        #expect(try engine.sidebarTags().filter(\.isSetAside).isEmpty)
+        #expect(try engine.allTags().filter(\.isSetAside).isEmpty)
     }
 
     @Test("a copy from before cards without a type or a capture restores with every card as it was")

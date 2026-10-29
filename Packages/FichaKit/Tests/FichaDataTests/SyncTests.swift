@@ -266,8 +266,8 @@ final class SyncTests {
         #expect(try mac.logAsSeen().count == 3)
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
         let filosofia = CardTag(name: "filosofía", switchedOn: nil, color: .blue, emoji: "🦉")
-        #expect(try mac.engine.sidebarTags() == [filosofia])
-        #expect(try iPhone.engine.sidebarTags() == [filosofia])
+        #expect(try mac.engine.allTags() == [filosofia])
+        #expect(try iPhone.engine.allTags() == [filosofia])
     }
 
     // Ficha kept no time for a tag's color before it recorded changes to
@@ -290,8 +290,8 @@ final class SyncTests {
         try await iPhone.syncNow()
 
         let lenguaje = CardTag(name: "lenguaje", switchedOn: nil, color: .blue, emoji: "🗣️")
-        #expect(try macFromBefore.engine.sidebarTags().filter { $0.name == "lenguaje" } == [lenguaje])
-        #expect(try iPhone.engine.sidebarTags().filter { $0.name == "lenguaje" } == [lenguaje])
+        #expect(try macFromBefore.engine.allTags().filter { $0.name == "lenguaje" } == [lenguaje])
+        #expect(try iPhone.engine.allTags().filter { $0.name == "lenguaje" } == [lenguaje])
     }
 
     // The app hands iCloud's engine each change as the database changes, so
@@ -411,7 +411,7 @@ final class SyncTests {
 
         let historia = CardTag(name: "historia", switchedOn: .setAside, color: .red, emoji: "🏛️")
         for device in [mac, iPhone] {
-            #expect(try device.engine.sidebarTags() == [historia])
+            #expect(try device.engine.allTags() == [historia])
             #expect(try device.engine.cards().map(\.front).sorted() == ["¿Caseros?", "¿Waterloo?"])
             #expect(try device.engine.cards().allSatisfy { $0.setAsideBy == ["historia"] })
         }

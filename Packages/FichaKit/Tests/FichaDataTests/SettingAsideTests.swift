@@ -219,19 +219,19 @@ struct SettingAsideTests {
         #expect(expanded.standing == .setAside(by: ["filosofía"]))
     }
 
-    // A set-aside tag no card carries stays in the sidebar, so the table
+    // A set-aside tag no card carries stays in All Tags, so the table
     // keeps its row until Lucas undoes it.
     @Test("the tag table's row goes once the tag is no longer set aside and has nothing else")
     func theTagsRowGoesOnceItHasNothingLeft() throws {
         try approveCard("ubuntu", tags: ["lenguaje"])
         try engine.setAside("historia")
         #expect(
-            try engine.sidebarTags() == [CardTag(name: "historia", switchedOn: .setAside), CardTag(name: "lenguaje")])
+            try engine.allTags() == [CardTag(name: "historia", switchedOn: .setAside), CardTag(name: "lenguaje")])
 
         try engine.stopSettingAside("historia")
         try engine.stopSettingAside("historia")
 
-        #expect(try engine.sidebarTags() == [CardTag(name: "lenguaje")])
+        #expect(try engine.allTags() == [CardTag(name: "lenguaje")])
         let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
         #expect(mayo.standing == .inReviews)
     }

@@ -11,11 +11,14 @@ extension CardTag {
 }
 
 /// What the menu bar's Prioritize submenu offers, as the engine reads it:
-/// "None", and then each tag, which the menu draws.
+/// "None", then each tag, and then All Tags…, which the menu draws
+/// (ADR 0022).
 public struct PrioritizeMenu: Sendable, Equatable {
-    /// The tags it offers, each with what it has of its own, ticked while
-    /// it's a priority tag, in the order a tree lists them, so that each tag
-    /// inside another follows it.
+    /// The tags it offers, each with what it has of its own and takes from
+    /// the tags it sits inside, ticked while it's a priority tag: the pinned
+    /// tags, in their order, and then the priority tags that aren't pinned,
+    /// alphabetically by their whole names, each tag inside another right
+    /// after it.
     public let tags: [CardTag]
 
     /// Whether "None" is ticked: no tag is a priority tag.
@@ -31,16 +34,21 @@ public struct PrioritizeMenu: Sendable, Equatable {
 }
 
 extension Engine {
-    /// What the menu's Prioritize submenu offers: every tag of the cards in
-    /// Lucas's reviews, and every tag those sit inside, as the one way in to
-    /// the cards that show up reads them, and every priority tag, which stays
-    /// listed while no card in his reviews carries it, so that he can untick
-    /// it. A set-aside tag's cards are out of his reviews, and it's never a
-    /// priority tag, so it isn't offered.
+    /// What the menu's Prioritize submenu offers: the pinned tags, in their
+    /// order, and every priority tag that isn't pinned, which stays listed
+    /// while no card carries it, so that Lucas can untick it. A set-aside
+    /// tag's cards are out of his reviews, and so are those of a tag inside
+    /// it, so a pinned tag set aside, on its own or inside a tag that is,
+    /// isn't offered, unless it's a priority tag to untick.
     public func prioritizeMenu() throws(EngineError) -> PrioritizeMenu {
         try read { db in
-            PrioritizeMenu(
-                tags: try OwnTags(in: db).listing(cardsThatShowUp(in: db).inReviews.tags, alongWithEvery: .priority))
+            let own = try OwnTags(in: db)
+            let setAside = Set(own.tags(switchedOn: .setAside).map(\.name))
+            let pinned = own.pinned.filter { tag in
+                tag.isPriority || !TagPath.lineage(of: tag.name).contains(where: setAside.contains)
+            }
+            let others = TagPath.sortedAsTree(own.tags(switchedOn: .priority).filter { !$0.isPinned }.map(\.name))
+            return PrioritizeMenu(tags: (pinned.map(\.name) + others).map(own.tag))
         }
     }
 

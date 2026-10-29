@@ -224,8 +224,8 @@ struct WhatSyncs: Sendable, Equatable {
     /// in a database's SQL of every tag written as `TagPath.normalized(_:)`
     /// writes it, as every tag a card gets now is. A tag a card kept from
     /// before tags sat inside tags (ADR 0021) can differ: one with an empty
-    /// level, or with spaces around one, sits inside no tag here, as the
-    /// sidebar lists it, and in SQL inside the tag its name starts with
+    /// level, or with spaces around one, sits inside no tag here, as All
+    /// Tags lists it, and in SQL inside the tag its name starts with
     /// before a `::`; and one with an accent written apart from its letter
     /// is the same name as the accented letter's here, and another in SQL.
     func cardSyncs(tagged tags: [String]) -> Bool {

@@ -30,7 +30,7 @@ struct TagColorAndEmojiTests {
         let ciencia = CardTag(name: "ciencia", color: .green)
         let historia = CardTag(name: "historia", color: .blue, emoji: "📜")
         let lenguaje = CardTag(name: "lenguaje")
-        #expect(try engine.sidebarTags() == [argentina, ciencia, historia, lenguaje])
+        #expect(try engine.allTags() == [argentina, ciencia, historia, lenguaje])
         #expect(
             try engine.cardRows(in: .all, on: ladder).map(\.tags) == [[historia, argentina], [ciencia, lenguaje]])
     }
@@ -38,17 +38,18 @@ struct TagColorAndEmojiTests {
     // The menu's Prioritize submenu puts each tag's emoji before its name.
     @Test("the Prioritize submenu's read carries each tag's emoji and color, also a priority tag's")
     func thePrioritizeSubmenusReadCarriesEachTagsEmoji() throws {
-        try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
+        try approveCard("Revolución de Mayo", tags: ["historia", "argentina::Mayo"])
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
+        try engine.pin("argentina::Mayo")
         try engine.togglePriority(of: "historia")
         try engine.setColor(.blue, of: "historia")
         try engine.setEmoji(Emoji("📜"), of: "historia")
 
-        #expect(
-            try engine.prioritizeMenu().tags == [
-                CardTag(name: "argentina", emoji: "🇦🇷"),
-                CardTag(name: "historia", switchedOn: .priority, color: .blue, emoji: "📜"),
-            ])
+        let tags = try engine.prioritizeMenu().tags
+        #expect(tags.map(\.name) == ["argentina::Mayo", "historia"])
+        #expect(tags.map(\.shownEmoji) == ["🇦🇷", "📜"])
+        #expect(tags.map(\.shownColor) == [nil, .blue])
+        #expect(tags.map(\.isPriority) == [false, true])
     }
 
     // The `tag` table refuses a row with nothing in it, so removing both
@@ -60,11 +61,11 @@ struct TagColorAndEmojiTests {
         try engine.setEmoji(Emoji("🔬"), of: "ciencia")
 
         try engine.setColor(nil, of: "ciencia")
-        #expect(try engine.sidebarTags() == [CardTag(name: "ciencia", emoji: "🔬")])
+        #expect(try engine.allTags() == [CardTag(name: "ciencia", emoji: "🔬")])
         try engine.setEmoji(nil, of: "ciencia")
-        #expect(try engine.sidebarTags() == [CardTag(name: "ciencia")])
+        #expect(try engine.allTags() == [CardTag(name: "ciencia")])
         try engine.setEmoji(nil, of: "ciencia")
-        #expect(try engine.sidebarTags() == [CardTag(name: "ciencia")])
+        #expect(try engine.allTags() == [CardTag(name: "ciencia")])
     }
 
     @Test(
@@ -77,7 +78,7 @@ struct TagColorAndEmojiTests {
         #expect(throws: EngineError.notOneEmoji) {
             try engine.setEmoji(Emoji(emoji), of: "argentina")
         }
-        #expect(try engine.sidebarTags() == [CardTag(name: "argentina", emoji: "🇦🇷")])
+        #expect(try engine.allTags() == [CardTag(name: "argentina", emoji: "🇦🇷")])
     }
 
     // A flag, a skin tone with a profession, joined by U+200D, an emoji asked
@@ -95,7 +96,7 @@ struct TagColorAndEmojiTests {
 
         try engine.setEmoji(Emoji(emoji), of: "argentina")
 
-        #expect(try engine.sidebarTags() == [CardTag(name: "argentina", emoji: stored)])
+        #expect(try engine.allTags() == [CardTag(name: "argentina", emoji: stored)])
     }
 
     @Test(
@@ -108,11 +109,11 @@ struct TagColorAndEmojiTests {
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
 
         try engine.bury(mayo.id)
-        #expect(try engine.sidebarTags() == [])
+        #expect(try engine.allTags() == [])
 
         let martin = try approveCard("San Martín", tags: ["argentina"])
         let argentina = CardTag(name: "argentina", color: .blue, emoji: "🇦🇷")
-        #expect(try engine.sidebarTags() == [argentina])
+        #expect(try engine.allTags() == [argentina])
         #expect(try engine.cardRows(in: .tag("argentina"), on: ladder).map(\.tags) == [[argentina]])
         #expect(try engine.cardRows(in: .tag("argentina"), on: ladder).map(\.id) == [martin.id])
     }

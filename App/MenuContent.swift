@@ -15,6 +15,8 @@ struct MenuContent: View {
     let openReviewPanel: () -> Void
     /// Opens the Cards window.
     let openCards: () -> Void
+    /// Opens the Cards window on All Tags.
+    let openAllTags: () -> Void
     /// Opens the Diagnostics window.
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
@@ -100,11 +102,12 @@ struct MenuContent: View {
     }
 
     /// The Prioritize submenu, as the engine offers it: "None", ticked while
-    /// no tag is a priority tag, which clears them, and then each tag, its
-    /// emoji before its whole name, as in "economía › Argentina", each tag
-    /// inside another after it, ticked while it's a priority tag, which
-    /// toggles it. A change applies from the next appearance, review now or
-    /// "See more" on.
+    /// no tag is a priority tag, which clears them; then each tag, the pinned
+    /// ones in their order and then the other priority tags, its emoji before
+    /// its whole name, as in "economía › Argentina", ticked while it's a
+    /// priority tag, which toggles it; and then All Tags…, which opens the
+    /// Cards window on All Tags, for every other tag (ADR 0022). A change
+    /// applies from the next appearance, review now or "See more" on.
     private var prioritizeSubmenu: some View {
         Menu(prioritizeTitle) {
             if let menu = model.prioritizeMenu {
@@ -133,6 +136,15 @@ struct MenuContent: View {
                 }
             } else {
                 Text("Couldn't read your tags")
+            }
+            Divider()
+            Button(action: openAllTags) {
+                Text(
+                    "All Tags…",
+                    comment: """
+                        The last item of the menu's Prioritize submenu: it opens the Cards window on All Tags, which \
+                        lists every tag.
+                        """)
             }
         }
     }

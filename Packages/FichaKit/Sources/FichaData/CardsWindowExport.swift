@@ -6,8 +6,8 @@ extension CardsWindowState {
     /// export, each with how many cards it takes, and what the user chose.
     public struct Exporting: Sendable, Equatable {
         /// What the sheet offers, in its menu's order: the selected cards
-        /// while the table lists some, all cards, and then each tag the
-        /// sidebar lists that a card has, in its order.
+        /// while the table lists some, all cards, and then each tag All Tags
+        /// lists that a card has, in its order.
         public let choices: [ExportChoice]
         /// What Export writes to the file the user picks.
         public fileprivate(set) var chosen: CardsToExport

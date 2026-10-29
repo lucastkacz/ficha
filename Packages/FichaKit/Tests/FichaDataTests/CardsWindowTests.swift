@@ -220,7 +220,7 @@ struct CardsWindowTests {
         try engine.bury(mercantilismo.id)
         try approveCard("serendipia", in: engine)
 
-        #expect(try engine.sidebarTags().map(\.name) == ["ética", "filosofía", "lenguaje"])
+        #expect(try engine.allTags().map(\.name) == ["ética", "filosofía", "lenguaje"])
     }
 
     @Test("searching \"fertil\" finds a card whose back says \"fértil\", ignoring case and accents")

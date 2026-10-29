@@ -208,7 +208,7 @@ final class ChangesToSyncTests {
                     row: .tag("historia"), kind: .saved,
                     fieldTimes: [.color: cleared, .emoji: cleared, .switchedOn: cleared])
             ])
-        #expect(try engine.sidebarTags() == [CardTag(name: "historia")])
+        #expect(try engine.allTags() == [CardTag(name: "historia")])
     }
 
     @Test("capturing, editing, discarding, expanding and approving record the captures' changes and the cards'")

@@ -11,28 +11,34 @@ import Foundation
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, and turns Both ways on or off for several
-/// cards at once, as it sets a tag aside or gives it a color
-/// from the tag's context menu, it asks which emoji the tag gets and which
-/// name, and moves a tag Lucas drags onto another or onto the Tags section's
-/// title (`CardsWindowTags.swift`), it makes, renames, gives an emoji to and
+/// cards at once, as it pins a tag to the sidebar, sets it aside or gives it
+/// a color from the tag's context menu, it asks which emoji the tag gets and
+/// which name, puts the sidebar's pinned tags in the order Lucas drags them
+/// into, pinning a tag he drags in from All Tags, and in All Tags moves a tag
+/// he drags onto another or onto its Tags section's title
+/// (`CardsWindowTags.swift`), it makes, renames, gives an emoji to and
 /// deletes card types of the user's own (`CardsWindowTypes.swift`), and it
 /// records what couldn't be saved, for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
 /// runs the Import sheet, from a file's preview to what the import did, and
 /// the Export sheet, from what it offers to export to the file it writes.
 public struct CardsWindowState: Sendable {
-    /// What the sidebar offers, one at a time: a group of cards, or the
-    /// inbox.
+    /// What the sidebar offers, one at a time: a group of cards, the inbox,
+    /// or All Tags.
     public enum SidebarItem: Sendable, Hashable {
         case cards(CardGroup)
         case inbox
+        /// Every tag, pinned or not (ADR 0022).
+        case allTags
     }
 
-    /// What the table lists: the cards of a group, or what waits in the
-    /// inbox.
+    /// What the table lists: the cards of a group, what waits in the inbox,
+    /// or All Tags' every tag, as a tree of those that aren't set aside and
+    /// its Set Aside section (`CardsWindowTags.swift`).
     public enum Listing: Sendable, Equatable {
         case cards([CardRow])
         case inbox([InboxRow])
+        case allTags(tree: [ListedTag], setAside: [ListedTag])
     }
 
     /// What the detail shows.
@@ -56,6 +62,9 @@ public struct CardsWindowState: Sendable {
         case nothingSelectedInInbox
         /// That no card is selected.
         case noCardSelected
+        /// That the window lists All Tags, whose tags show no detail: they
+        /// act from their rows.
+        case allTags
     }
 
     /// What Lucas can do with what the detail shows.
@@ -88,8 +97,11 @@ public struct CardsWindowState: Sendable {
         case capture(Capture)
     }
 
-    /// What the context menu of a tag in the sidebar offers.
+    /// What the context menu of a tag offers, in the sidebar or in All Tags.
     public struct TagMenu: Sendable, Equatable {
+        /// Whether the tag is pinned to the sidebar, so the menu offers Unpin
+        /// from Sidebar, and Pin to Sidebar otherwise.
+        public let isPinned: Bool
         /// Whether Set Aside is ticked: the tag is set aside, and choosing it
         /// again undoes it.
         public let isSetAsideTicked: Bool
@@ -212,9 +224,17 @@ public struct CardsWindowState: Sendable {
         case setEmoji(tag: String)
         /// He renamed this tag, in the rename sheet.
         case rename(tag: String)
-        /// He dragged this tag onto another, or onto the Tags section's
-        /// title, to move it.
+        /// He dragged this tag, in All Tags, onto another, or onto the Tags
+        /// section's title, to move it.
         case move(tag: String)
+        /// He pinned this tag to the sidebar, from its menu or by dragging it
+        /// there.
+        case pin(tag: String)
+        /// He unpinned this tag from the sidebar.
+        case unpin(tag: String)
+        /// He dragged this pinned tag to another place among the sidebar's
+        /// pinned tags.
+        case reorderPinned(tag: String)
         /// He made a type, in the New Type sheet.
         case makeType
         /// He renamed the user type with this name, in the rename sheet.
@@ -229,8 +249,8 @@ public struct CardsWindowState: Sendable {
         case export
     }
 
-    /// What the sidebar chose: All cards, until Lucas picks another group or
-    /// the inbox.
+    /// What the sidebar chose: All cards, until Lucas picks another group,
+    /// the inbox or All Tags.
     public internal(set) var sidebarItem = SidebarItem.cards(.all)
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public private(set) var search = ""
@@ -249,18 +269,14 @@ public struct CardsWindowState: Sendable {
     /// What the table lists, or why it couldn't be read: nil until the window
     /// first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
-    /// The tags the sidebar offers, with what each has of its own and takes
-    /// from the tags it sits inside: those of the cards that aren't buried,
-    /// with every tag they sit inside, and the set-aside ones, in the order a
-    /// tree lists them, in either section.
+    /// Every tag the window offers, with what each has of its own and takes
+    /// from the tags it sits inside, as All Tags lists them: those of the
+    /// cards that aren't buried, with every tag they sit inside, and the
+    /// set-aside and the pinned ones, in the order a tree lists them.
     public private(set) var tags: [CardTag] = []
-    /// The sidebar's Tags section: the tags it offers that aren't set aside,
-    /// neither on their own nor inside a tag that is, as a tree:
-    /// `CardsWindowTags.swift`.
-    public private(set) var tagsSection: [SidebarTag] = []
-    /// The sidebar's Set Aside section, below Tags: each set-aside tag with
-    /// every tag inside it, as a tree: `CardsWindowTags.swift`.
-    public private(set) var setAsideSection: [SidebarTag] = []
+    /// The sidebar's Tags section: the pinned tags, in Lucas's order, each
+    /// named by its whole path, before All Tags: `CardsWindowTags.swift`.
+    public private(set) var pinnedTags: [ListedTag] = []
     /// The type groups the sidebar offers: one for each of the four types
     /// Ficha comes with, then one for each of the user's types, in
     /// alphabetical order, and No Type after them while a card that isn't
@@ -343,7 +359,7 @@ public struct CardsWindowState: Sendable {
             rows.filter { selection.contains($0.id) }
         case .success(.inbox):
             selectedInboxRow?.flaggedCard.map { [$0] } ?? []
-        case .failure, nil:
+        case .success(.allTags), .failure, nil:
             []
         }
     }
@@ -366,7 +382,7 @@ public struct CardsWindowState: Sendable {
             expansion.capture
         case .followUp(let followUp):
             followUp.capture
-        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+        case .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
             nil
         }
     }
@@ -378,8 +394,8 @@ public struct CardsWindowState: Sendable {
     }
 
     /// What the detail shows: the capture, the expansion or the follow-up
-    /// selected in the inbox, the selected cards the table lists, or that
-    /// nothing is selected.
+    /// selected in the inbox, the selected cards the table lists, that
+    /// nothing is selected, or that it lists All Tags.
     public var detail: Detail {
         switch selectedInboxRow?.item {
         case .capture(let capture):
@@ -398,10 +414,11 @@ public struct CardsWindowState: Sendable {
         } else if let row = shownCard {
             // Never another card's review log.
             return .card(row, reviewLog: reviewLog?.cardID == row.id ? reviewLog?.rows : nil)
-        } else if case .inbox = sidebarItem {
-            return .nothingSelectedInInbox
-        } else {
-            return .noCardSelected
+        }
+        switch sidebarItem {
+        case .inbox: return .nothingSelectedInInbox
+        case .allTags: return .allTags
+        case .cards: return .noCardSelected
         }
     }
 
@@ -421,7 +438,7 @@ public struct CardsWindowState: Sendable {
             return Self.actions(for: row.cardStanding).union([.edit, .delete])
         case .cards(let rows):
             return buryOrUnbury(rows).union([Self.bothWaysAction(for: rows), .delete])
-        case .nothingSelectedInInbox, .noCardSelected:
+        case .nothingSelectedInInbox, .noCardSelected, .allTags:
             return []
         }
     }
@@ -653,19 +670,19 @@ public struct CardsWindowState: Sendable {
         perform(.discard) { engine throws(EngineError) in try engine.discard(capture.id) }
     }
 
-    /// What the context menu of the sidebar's tag named `tag` offers, or nil
-    /// when the sidebar doesn't list it.
+    /// What the context menu of the tag named `tag` offers, in the sidebar
+    /// or in All Tags, or nil when the window doesn't list it.
     public func menu(for tag: String) -> TagMenu? {
         tags.first { $0.name == tag }.map { tag in
             TagMenu(
-                isSetAsideTicked: tag.isSetAside,
+                isPinned: tag.isPinned, isSetAsideTicked: tag.isSetAside,
                 colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: $0 == tag.color) })
         }
     }
 
-    /// Chooses Set Aside in the context menu of the sidebar's tag named
-    /// `tag`: sets it aside, or undoes it while it's ticked, and reads the
-    /// cards again, or records why it couldn't.
+    /// Chooses Set Aside in the context menu of the tag named `tag`: sets it
+    /// aside, or undoes it while it's ticked, and reads the cards again, or
+    /// records why it couldn't.
     public mutating func chooseSetAside(on tag: String) {
         guard let menu = menu(for: tag) else { return }
         let done =
@@ -679,9 +696,9 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Chooses `color` in the Color submenu of the sidebar's tag named `tag`,
-    /// or None when it's nil: gives the tag that color, or takes its color
-    /// away, and reads the cards again, or records why it couldn't.
+    /// Chooses `color` in the Color submenu of the tag named `tag`, or None
+    /// when it's nil: gives the tag that color, or takes its color away, and
+    /// reads the cards again, or records why it couldn't.
     public mutating func chooseColor(_ color: TagColor?, on tag: String) {
         guard menu(for: tag) != nil else { return }
         let done = perform(.setColor(tag: tag)) { engine throws(EngineError) in try engine.setColor(color, of: tag) }
@@ -690,8 +707,8 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Asks which emoji the sidebar's tag named `tag` gets, in the emoji
-    /// sheet, after Emoji… in its context menu.
+    /// Asks which emoji the tag named `tag` gets, in the emoji sheet, after
+    /// Emoji… in its context menu.
     public mutating func askForEmoji(on tag: String) {
         guard let tag = tags.first(where: { $0.name == tag }) else { return }
         question = .emoji(tag)
@@ -809,16 +826,16 @@ public struct CardsWindowState: Sendable {
     /// `ladder`, the one Lucas set in Settings, which he may have changed
     /// since the last read, and the review log of the card the detail shows.
     /// When the chosen tag is gone, because its last card was buried, edited
-    /// or deleted while it isn't set aside, the sidebar goes back to All
-    /// cards, and so it does when No Type is gone, once every card that
-    /// isn't buried has a type, and when the chosen user type is deleted. A
-    /// user type renamed, or given another emoji, stays chosen.
+    /// or deleted while it's neither set aside nor pinned, the sidebar goes
+    /// back to All cards, and so it does when No Type is gone, once every
+    /// card that isn't buried has a type, and when the chosen user type is
+    /// deleted. A user type renamed, or given another emoji, stays chosen.
     public mutating func read(on ladder: Ladder) {
         self.ladder = ladder
         now = engine.now
         do throws(EngineError) {
-            tags = try engine.sidebarTags()
-            (tagsSection, setAsideSection) = Self.sections(of: tags)
+            tags = try engine.allTags()
+            pinnedTags = Self.pinnedRows(of: try engine.pinnedTags(), among: tags)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
@@ -829,6 +846,9 @@ public struct CardsWindowState: Sendable {
                 listing = .success(.cards(try engine.cardRows(in: group, matching: search, on: ladder)))
             case .inbox:
                 listing = .success(.inbox(try engine.inboxRows(matching: search, on: ladder)))
+            case .allTags:
+                let (tree, setAside) = Self.allTagsTree(of: tags)
+                listing = .success(.allTags(tree: tree, setAside: setAside))
             }
         } catch {
             listing = .failure(error)
@@ -837,9 +857,9 @@ public struct CardsWindowState: Sendable {
         readReviewLog()
     }
 
-    /// Whether the sidebar offers `group`, as last read: a tag while it lists
-    /// it, No Type while some card has none, a user type while it lists it,
-    /// and every other group always.
+    /// Whether the sidebar offers `group`, as last read: a tag while All Tags
+    /// lists it, pinned or not, No Type while some card has none, a user
+    /// type while it lists it, and every other group always.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .tag(let tag): tags.contains { $0.name == tag }

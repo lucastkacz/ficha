@@ -134,6 +134,8 @@ enum SyncedField: String, Sendable, CaseIterable {
     case emoji
     /// Whether the user chose the tag to sync, beside its other switch.
     case chosenToSync
+    /// The tag's place among the pinned tags, while it's pinned.
+    case pin
     // The settings that decide progress, each on its own.
     case ladder
     case newCardsPerDay

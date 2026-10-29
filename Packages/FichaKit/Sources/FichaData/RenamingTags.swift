@@ -15,12 +15,14 @@ extension Engine {
     /// in one write, so the `ficha` CLI never reads a tree half renamed: each
     /// card that carries one carries the new name, and each row of the `tag`
     /// table moves to the new name with what it has of its own, its switch,
-    /// color, emoji and choice to sync. Onto a name that exists, as a tag
-    /// row has it, a card carries it or a tag inside it exists, the two
-    /// join, as in Anki: a card that carried both carries the name once, and
-    /// the tag already there keeps exactly what it had of its own, which may
-    /// be nothing, since the moved tag's row is dropped; and so for each tag
-    /// inside the renamed one. Returns the tag's new name; renaming it to its
+    /// color, emoji, choice to sync and pin, which keeps its place among the
+    /// pinned tags. Onto a name that exists, as a tag row has it, a card
+    /// carries it or a tag inside it exists, the two join, as in Anki: a card
+    /// that carried both carries the name once, and the tag already there
+    /// keeps exactly what it had of its own, which may be nothing, since the
+    /// moved tag's row is dropped, but for its pin, which it takes from the
+    /// moved tag, with its place, when it had none (ADR 0022); and so for
+    /// each tag inside the renamed one. Returns the tag's new name; renaming it to its
     /// own name changes nothing. Refuses a blank name, and moving the tag
     /// inside itself or inside a tag inside it.
     @discardableResult
@@ -79,9 +81,10 @@ private func moveCards(tagged tag: String, to name: String, in db: Database) thr
 /// new name `name`, in the write `db`: each old row goes, and a new one comes
 /// with what it had of its own, unless its new name is among `existing`, the
 /// tags that existed apart from the ones that move, which then keeps what it
-/// had of its own. The rows that move all go first, so that a row that moves
-/// onto the old name of another, as moving a tag onto the tag it sits inside
-/// can, never meets it.
+/// had of its own, and takes the moved tag's pin when it had none, so that a
+/// merge never unpins a tag (ADR 0022). The rows that move all go first, so
+/// that a row that moves onto the old name of another, as moving a tag onto
+/// the tag it sits inside can, never meets it.
 private func moveRows(of tag: String, to name: String, joining existing: Set<String>, in db: Database) throws {
     let moving = try String.fetchAll(db, sql: "SELECT name FROM tag").filter { TagPath.isTag($0, within: tag) }
         .map { try ownTag($0, in: db) }
@@ -89,9 +92,17 @@ private func moveRows(of tag: String, to name: String, joining existing: Set<Str
         try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [own.name])
     }
     for own in moving {
-        guard let newName = TagPath.renaming(own.name, from: tag, to: name), !existing.contains(newName) else {
+        guard let newName = TagPath.renaming(own.name, from: tag, to: name) else {
             continue
         }
-        try save(own.named(newName), in: db)
+        guard existing.contains(newName) else {
+            try save(own.named(newName), in: db)
+            continue
+        }
+        var there = try ownTag(newName, in: db)
+        if !there.isPinned, let pin = own.pin {
+            there.pin = pin
+            try save(there, in: db)
+        }
     }
 }
