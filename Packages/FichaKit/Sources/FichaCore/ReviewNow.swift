@@ -1,7 +1,8 @@
 import Foundation
 
 /// The cards the review panel brings, each by id and the way it shows: ways
-/// to review, then ways to review ahead, then a new way to meet.
+/// to review, then ways to review ahead, then a new way to meet, unless one
+/// of them comes before all the others.
 public struct PanelCardIDs: Sendable, Equatable {
     /// The ways to review, in this order.
     public let reviews: [CardWay]
@@ -9,17 +10,38 @@ public struct PanelCardIDs: Sendable, Equatable {
     public let reviewsAhead: [CardWay]
     /// A new way, to meet in its first view after them, if any.
     public let firstView: CardWay?
+    /// The way that comes before all the others, one of them, or nil when
+    /// they come in the order above: the card a click on the widget showed.
+    public let shownFirst: CardWay?
+
+    init(reviews: [CardWay], reviewsAhead: [CardWay], firstView: CardWay?, shownFirst: CardWay? = nil) {
+        self.reviews = reviews
+        self.reviewsAhead = reviewsAhead
+        self.firstView = firstView
+        self.shownFirst = shownFirst
+    }
 }
 
 extension ReviewSettings {
     /// The ways review now brings at `now`, out of `cards`: the due ways, and
-    /// a new way, as `pickCards` picks them.
+    /// a new way, as `pickCards` picks them. A click on the widget asks it to
+    /// start with `first`, the card the widget showed, the way it showed it:
+    /// then `first` comes first, when review now brings it, and the others
+    /// follow in their order. When it no longer brings it, as when Lucas
+    /// reviewed it meanwhile, review now brings its ways as usual.
     public func reviewNowCards(
         cards: CardsInReviews,
         now: Date,
-        calendar: Calendar
+        calendar: Calendar,
+        startingWith first: CardWay? = nil
     ) throws(UnexpectedReviewLog) -> PanelCardIDs {
-        pickCards(after: try cards.standings(on: ladder), of: cards, dueBy: now, now: now, calendar: calendar)
+        let picked = pickCards(
+            after: try cards.standings(on: ladder), of: cards, dueBy: now, now: now, calendar: calendar)
+        guard let first, picked.reviews.contains(first) || picked.firstView == first else {
+            return picked
+        }
+        return PanelCardIDs(
+            reviews: picked.reviews, reviewsAhead: picked.reviewsAhead, firstView: picked.firstView, shownFirst: first)
     }
 
     /// The ways the review panel brings at `now`, out of `cards`, standing on

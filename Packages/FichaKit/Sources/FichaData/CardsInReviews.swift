@@ -28,12 +28,15 @@ struct CardsThatShowUp {
 
     /// The cards the review panel brings, each the way a planner picked it, in
     /// the order it shows them: the ways to review, the ways to review ahead,
-    /// and then the new way.
+    /// and then the new way, but for the one the planner said comes first.
     func panelCards(_ picked: PanelCardIDs) throws -> [PanelCard] {
         var panelCards = try picked.reviews.map { PanelCard.review(try card($0.cardID), $0.way) }
         panelCards += try picked.reviewsAhead.map { PanelCard.reviewAhead(try card($0.cardID), $0.way) }
         if let firstView = picked.firstView {
             panelCards.append(.firstView(try card(firstView.cardID), firstView.way))
+        }
+        if let shownFirst = picked.shownFirst, let index = panelCards.firstIndex(where: { $0.cardWay == shownFirst }) {
+            panelCards.insert(panelCards.remove(at: index), at: 0)
         }
         return panelCards
     }

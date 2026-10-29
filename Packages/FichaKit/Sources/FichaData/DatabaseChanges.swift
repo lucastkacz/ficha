@@ -7,7 +7,8 @@ import os
 /// named after the database. SQLite doesn't tell one process about another's
 /// writes, and GRDB's guide to sharing a database suggests this instead.
 struct DatabaseChanges: Sendable {
-    private let name: String
+    /// The notifications' name.
+    let name: String
 
     /// The notifications for `database`: its file's path, or a name of its own
     /// for an in-memory database.

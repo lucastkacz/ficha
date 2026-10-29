@@ -31,10 +31,10 @@ extension Engine {
     /// dropped, since it may refer to any of them.
     func dropFilesNoCopyUses() {
         guard let backupsFolder else { return }
-        var referred = FilesReferred()
+        var referred = FileNames()
         do throws(EngineError) {
             for copy in try copies() {
-                referred.formUnion(try FilesReferred(byCopyIn: backupsFolder.appending(path: copy.name)))
+                referred.formUnion(try FileNames(referredByCopyIn: backupsFolder.appending(path: copy.name)))
             }
         } catch {
             logger.error(
@@ -86,36 +86,16 @@ extension Engine {
     }
 }
 
-/// The files the cards in a database refer to, of every kind, on either
-/// side, as `namesReferred(_:in:)` reads them.
-struct FilesReferred: Sendable, Equatable {
-    var images: Set<ImageName> = []
-    var sounds: Set<SoundName> = []
-
-    /// No file.
-    init() {}
-
-    /// The files the cards in `db` refer to.
-    init(in db: Database) throws {
-        images = try namesReferred(ImageName.self, in: db)
-        sounds = try namesReferred(SoundName.self, in: db)
-    }
-
+extension FileNames {
     /// The files the cards in the copy saved in `file` refer to, which it
     /// reads without changing it.
-    init(byCopyIn file: URL) throws(EngineError) {
+    init(referredByCopyIn file: URL) throws(EngineError) {
         self = try reportingStorageErrors {
             var configuration = Configuration()
             configuration.readonly = true
             return try DatabaseQueue(path: file.path(percentEncoded: false), configuration: configuration)
-                .read(FilesReferred.init(in:))
+                .read(FileNames.init(referredIn:))
         }
-    }
-
-    /// Adds the files `other` refers to.
-    mutating func formUnion(_ other: FilesReferred) {
-        images.formUnion(other.images)
-        sounds.formUnion(other.sounds)
     }
 }
 
@@ -133,7 +113,7 @@ func folderOfShared<Name: NameOfFileOnCard>(_: Name.Type, in backups: URL) -> UR
 /// until either changes, and a file on a card never does. A file the data
 /// folder lacks too is left out, and the log says so: the copy keeps the
 /// cards all the same, as the database had them.
-func shareFiles(_ files: FilesReferred, from data: URL, into backups: URL) throws(EngineError) {
+func shareFiles(_ files: FileNames, from data: URL, into backups: URL) throws(EngineError) {
     try share(files.images, from: data, into: backups)
     try share(files.sounds, from: data, into: backups)
 }
@@ -143,7 +123,7 @@ func shareFiles(_ files: FilesReferred, from data: URL, into backups: URL) throw
 /// before the cards show up. A file the copies lack too, which a copy saved
 /// before copies kept files of its kind can refer to, is left out, and the
 /// log says so: its card shows without it.
-func bringBackFiles(_ files: FilesReferred, from backups: URL, into data: URL) throws(EngineError) {
+func bringBackFiles(_ files: FileNames, from backups: URL, into data: URL) throws(EngineError) {
     try bringBack(files.images, from: backups, into: data)
     try bringBack(files.sounds, from: backups, into: data)
 }

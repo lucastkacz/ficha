@@ -6,12 +6,16 @@ extension Engine {
     /// The cards review now brings, each the way it shows, in the order the
     /// review panel shows them: the due ways, lowest step first and then the
     /// longest overdue, and then a new way, when there's room and Lucas
-    /// hasn't met the day's new cards yet.
-    public func reviewNow(_ settings: ReviewSettings) throws(EngineError) -> [PanelCard] {
+    /// hasn't met the day's new cards yet. A click on the widget starts it
+    /// with `first`, the card the widget showed, while review now brings it.
+    public func reviewNow(_ settings: ReviewSettings, startingWith first: CardWay? = nil) throws(EngineError)
+        -> [PanelCard]
+    {
         let now = time.now
         return try read { db in
             let cards = try cardsThatShowUp(in: db)
-            let picked = try settings.reviewNowCards(cards: cards.inReviews, now: now, calendar: calendar)
+            let picked = try settings.reviewNowCards(
+                cards: cards.inReviews, now: now, calendar: calendar, startingWith: first)
             return try cards.panelCards(picked)
         }
     }

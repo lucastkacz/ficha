@@ -217,6 +217,16 @@ public struct ReviewPanelState: Sendable {
         current == nil && !moreCards.isEmpty
     }
 
+    /// Whether a click on the widget, on `first`, the card it showed, starts
+    /// a review now in the open panel's place: once Lucas went through the
+    /// panel's cards, at its end, where "See more" brings no new card, so the
+    /// widget's new card would wait otherwise. While the panel has cards to
+    /// go, or when the widget showed none, the click brings it forward
+    /// instead, with its cards (Lucas, 2026-10-28, #308's P15).
+    public func givesWay(toAReviewNowStartingWith first: CardWay?) -> Bool {
+        first != nil && current == nil && outcome == nil
+    }
+
     /// The note Lucas is writing to flag the card he's on, while he writes it.
     public var note: String? {
         flagging?.note

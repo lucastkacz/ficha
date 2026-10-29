@@ -13,7 +13,7 @@ extension Engine {
     /// them: Ficha's, until they're saved or moved in, or come from another
     /// device.
     public func progressSettings() throws(EngineError) -> ProgressSettings {
-        try read { db in try storedProgressSettings(in: db) ?? ReviewSettings.defaults.progress }
+        try read(FichaData.progressSettings(in:))
     }
 
     /// Keeps those of `settings` that the user changed in Settings from
@@ -89,7 +89,7 @@ func applyProgressSettings(_ record: ICloudRecord, in db: Database) throws -> Bo
         ladder: try record.text(SyncedField.ladder.rawValue),
         newCardsPerDay: try record.integer(SyncedField.newCardsPerDay.rawValue),
         forgottenOftenAfter: try record.optionalInteger(SyncedField.forgottenOftenAfter.rawValue))
-    let ours = try storedProgressSettings(in: db) ?? ReviewSettings.defaults.progress
+    let ours = try progressSettings(in: db)
     try takeLatestChanges(
         of: progressFields, in: record, over: try recordHolding(ours, in: db), to: .progressSettings, in: db
     ) { won in
@@ -119,6 +119,12 @@ private func recordHolding(_ settings: ProgressSettings, in db: Database) throws
             SyncedField.forgottenOftenAfter.rawValue: settings.forgottenOftenAfter.map { .int(Int64($0)) },
         ],
         andTimesOf: progressFields, in: db)
+}
+
+/// The settings that decide a card's progress, as `db` holds them: Ficha's,
+/// until they're saved or moved in, or come from another device.
+func progressSettings(in db: Database) throws -> ProgressSettings {
+    try storedProgressSettings(in: db) ?? ReviewSettings.defaults.progress
 }
 
 /// The settings that decide a card's progress, as the database holds them,

@@ -8,6 +8,10 @@ final class ReviewPanel {
     private let mac: SystemMacSignals
     /// The panel's window, from the last time it showed.
     private var window: ReviewPanelWindow?
+    /// What to do as a panel opens, and once it closed, however it closes:
+    /// the widget's reloads wait for it.
+    var whenOpened: () -> Void = {}
+    var whenClosed: () -> Void = {}
 
     init(model: AppModel, mac: SystemMacSignals) {
         self.model = model
@@ -19,17 +23,22 @@ final class ReviewPanel {
         window?.isVisible == true
     }
 
-    /// Opens the panel with the cards a review now brings, or, when it's
-    /// already open, brings it forward, so Lucas goes on with its cards.
-    /// Either way it takes the keyboard.
-    func openReviewNow() {
+    /// Opens the panel with the cards a review now brings, starting with
+    /// `first`, the card the widget showed, while review now still brings it.
+    /// When it's already open, it comes forward, so Lucas goes on with its
+    /// cards, unless he went through them and the widget showed a card: then
+    /// the review now opens in its place. Either way it takes the keyboard.
+    func openReviewNow(startingWith first: CardWay? = nil) {
         if let window, window.isVisible {
-            window.bringForward()
-            return
+            guard window.givesWay(toAReviewNowStartingWith: first) else {
+                window.bringForward()
+                return
+            }
+            window.close(.byLucas)
         }
-        let window = ReviewPanelWindow(model: model.startReviewNow())
+        let window = ReviewPanelWindow(model: model.startReviewNow(startingWith: first))
         window.show()
-        self.window = window
+        opened(window)
     }
 
     /// Shows the panel on its own with these cards, an appearance, or why it
@@ -54,6 +63,14 @@ final class ReviewPanel {
     private func showOnItsOwn(_ content: Result<ReviewPanelModel, EngineError>) {
         let window = ReviewPanelWindow(model: content)
         window.showOnItsOwn(mac: mac)
+        opened(window)
+    }
+
+    /// Keeps `window`, which just showed, as the panel's, and says so, and
+    /// once it closed.
+    private func opened(_ window: ReviewPanelWindow) {
+        window.whenClosed = { [weak self] in self?.whenClosed() }
         self.window = window
+        whenOpened()
     }
 }

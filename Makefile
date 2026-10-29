@@ -37,7 +37,7 @@ xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-v
 		exit 1; }
 
 # The render tool's own files: its `Sources/Render/App` is a link to `App/`.
-SWIFT_SOURCES := App CLI SVGDrawer iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
+SWIFT_SOURCES := App CLI SVGDrawer Widget iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
 	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift
 # The shell scripts, for shellcheck. actionlint finds the workflows on its own,
 # in .github/workflows, and runs shellcheck on each step's `run:` script too.
@@ -104,8 +104,8 @@ CHECKS += build-iphone
 build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI does; warnings are errors.
 	$(XCODEBUILD_IPHONE) -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 
-# The String Catalogs, one for each app, which the builds compile but never
-# fill. Xcode's export fills them all from the code: it adds the UI's new
+# The String Catalogs, one for each app and one for the Mac's widget, which the
+# builds compile but never fill. Xcode's export fills them all from the code: it adds the UI's new
 # texts, and drops the ones the code no longer has, or marks them stale when
 # they have plural variations. Whatever the scheme, it builds both apps on the
 # way, the iPhone's for an iPhone and unsigned, so it takes the build's derived
@@ -113,7 +113,7 @@ build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI
 # scratch folder. It builds the Mac's for Intel too, and Xcode then processes
 # Ficha Dev's CLI's Info.plist for Apple silicon alone, so its link for Intel
 # can't find it: the export, which only reads the code, leaves it out.
-CATALOGS := App/Localizable.xcstrings iPhone/Localizable.xcstrings
+CATALOGS := App/Localizable.xcstrings Widget/Localizable.xcstrings iPhone/Localizable.xcstrings
 STRINGS := .build/strings
 EXPORT_STRINGS = $(XCODEBUILD) -exportLocalizations -localizationPath $(STRINGS) -exportLanguage en \
 	$(SIGNING) CREATE_INFOPLIST_SECTION_IN_BINARY=NO

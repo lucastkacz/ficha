@@ -46,17 +46,25 @@ settings:
     # which Xcode puts before it (ADR 0018).
     # It syncs in the Development environment of Ficha's iCloud container,
     # apart from Lucas's cards, which sync in Production (ADR 0017).
+    # `FICHA_URL_SCHEME` is the scheme of the links that open each app, as a
+    # click on its widget does, which its Info.plist claims, and which the
+    # app and the widget read from their Info.plists (`WidgetHandover`).
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
       FICHA_ICLOUD_ENVIRONMENT: Development
       FICHA_PUSH_ENVIRONMENT: development
-    # The real Ficha: `make install` puts it in /Applications. It and its CLI
-    # share its App Group's folder, where its last build without the sandbox
-    # moves Lucas's data (#309).
+      FICHA_URL_SCHEME: ficha-dev
+    # The real Ficha: `make install` puts it in /Applications. Its app and its
+    # CLI sign with the team and share its App Group's folder, where its last
+    # build without the sandbox moves Lucas's data (#309), and run there
+    # without the sandbox until #310. Its widget signs to run locally until
+    # then, without the team's ID, which Xcode leaves out of the widget's
+    # group's name, so it isn't in the app's group.
     Release:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha
+      FICHA_URL_SCHEME: ficha
 
 packages:
   FichaKit:
@@ -83,6 +91,9 @@ targets:
     platform: macOS
     sources:
       - path: App
+        # Its Info.plist goes in through its settings.
+        excludes:
+          - Info.plist
       # The instructions for an AI, which the Import sheet copies: the app
       # bundles the repo's own page, so the two are always the same.
       - path: docs/instructions-for-an-ai.md
@@ -97,6 +108,9 @@ targets:
       # The SVG drawer's XPC service, in the app's Contents/XPCServices,
       # where macOS finds it.
       - target: SVGDrawer
+      # The widget's extension, in the app's Contents/PlugIns, where macOS
+      # finds it.
+      - target: Widget
       # Sync through iCloud, the only part that loads CloudKit, which the app
       # alone links (ADR 0017).
       - package: FichaKit
@@ -118,7 +132,10 @@ targets:
       base:
         # One module name for both apps below, so the code behaves the same in each.
         PRODUCT_MODULE_NAME: Ficha
+        # Xcode's Info.plist, with App/Info.plist's link scheme, which the
+        # widget's links open the app with.
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: App/Info.plist
         # Menu bar only: no Dock icon and no main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
@@ -171,7 +188,8 @@ targets:
   # only picks whose cards they open, and, in its sandbox, takes files from
   # Downloads alone. It's built with each app, in the same configuration, and
   # compiles `AppVariant` too, so the CLI inside Ficha Dev opens Ficha Dev's
-  # cards, and the one inside the real Ficha opens Lucas's.
+  # cards, and the one inside the real Ficha opens Lucas's; `AppVariant`
+  # reads a scratch run's name with FichaData.
   CLI:
     type: tool
     platform: macOS
@@ -185,6 +203,8 @@ targets:
     dependencies:
       - package: FichaKit
         product: FichaCLI
+      - package: FichaKit
+        product: FichaData
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
@@ -256,6 +276,55 @@ targets:
           ENABLE_HARDENED_RUNTIME: YES
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.svg-drawer
+
+  # The widget with the next card to review (#171): a WidgetKit extension
+  # inside each app, which macOS runs in its sandbox, in an App Group, where
+  # it reads the cards alone, beside the app and the CLI, which write them.
+  # It compiles `AppVariant` too, for its app's name, data folder and group's
+  # defaults, and `WidgetHandover`, for what the app hands it there, its link
+  # scheme and its log. Its bundle identifier is its app's with `.widget`. Its
+  # Info.plist holds the link scheme, as the app's does. Ficha Dev's signs as
+  # its CLI does, with Apple Development and no provisioning profile, which a
+  # group named after the team needs none of on the Mac, and shares its app's
+  # group. The real Ficha's signs to run locally until #310, unlike its app
+  # since #309, so its group, named without the team's ID, isn't the app's,
+  # and it reads none of Lucas's cards.
+  Widget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Widget
+        # Its Info.plist and entitlements go in through its settings.
+        excludes:
+          - Info.plist
+          - "*.entitlements"
+      - path: App/AppVariant.swift
+      - path: App/WidgetHandover.swift
+    dependencies:
+      - package: FichaKit
+        product: FichaCore
+      - package: FichaKit
+        product: FichaData
+    configFiles:
+      Debug: Signing.xcconfig
+    settings:
+      groups: [zstd]
+      base:
+        PRODUCT_NAME: FichaWidget
+        # Xcode's Info.plist, with Widget/Info.plist's extension point.
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widget/Widget.entitlements
+        ENABLE_APP_SANDBOX: YES
+        # Built into the app, never installed on its own.
+        SKIP_INSTALL: YES
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev.widget
+          CODE_SIGN_IDENTITY: Apple Development
+          ENABLE_HARDENED_RUNTIME: YES
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.widget
 
   # Ficha on the iPhone (#97), with files of its own in iPhone/. Stage 1
   # builds it only as Ficha Dev, in the Debug configuration, which its code

@@ -246,6 +246,53 @@ final class DatabaseFileTests {
         #expect(try engine.recorded { try engine.unbury(2) }.map(\.row) == [waiting[1].row])
     }
 
+    @Test(
+        "a database from before how sync stands migrates with sync off as the user turned it off, and nothing known of iCloud yet"
+    )
+    func aDatabaseFromBeforeHowSyncStandsMigratesWithSyncOffByTheUser() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeHowSyncStands(at: folder.appending(path: "Ficha.sqlite"), syncIsOn: false, synced: false)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(
+            try engine.syncStatus()
+                == SyncStatus(offBecause: .user, hasICloudAccount: nil, iCloudIsFull: false, lastSynced: nil))
+    }
+
+    @Test(
+        "a database from before the cards' zones migrates with a device that synced going on in “Cards”, sync on or off",
+        arguments: [true, false])
+    func aDatabaseFromBeforeTheCardsZonesGoesOnInCards(syncIsOn: Bool) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeHowSyncStands(
+            at: folder.appending(path: "Ficha.sqlite"), syncIsOn: syncIsOn, synced: true)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let standing = try engine.read(CardsZoneStanding.init(in:))
+        #expect(standing.zone == .first)
+        #expect(!standing.chooses)
+        #expect(standing.left == nil)
+        #expect(standing.user == nil)
+        #expect(try engine.syncStatus().isOn == syncIsOn)
+    }
+
+    @Test("a database from before the cards' zones migrates with a device that never synced choosing its zone")
+    func aDatabaseFromBeforeTheCardsZonesChoosesWhenItNeverSynced() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeHowSyncStands(at: folder.appending(path: "Ficha.sqlite"), syncIsOn: true, synced: false)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let standing = try engine.read(CardsZoneStanding.init(in:))
+        #expect(standing.zone == nil)
+        #expect(standing.chooses)
+        #expect(standing.left == nil)
+        #expect(standing.user == nil)
+        #expect(try engine.syncStatus().isOn)
+    }
+
     // Ficha opens its database every time it starts, and the CLI on every
     // command: copying it each time would fill the data folder.
     @Test("a new database, or one already up to date, isn't copied")
@@ -328,6 +375,22 @@ final class DatabaseFileTests {
         }
         try database.close()
     }
+}
+
+/// Saves a database at `file` as Ficha left it before it kept how sync
+/// stands, through the schema's migrations up to the last one before it,
+/// main's last as #298's first stage began: with sync on or off, as
+/// `syncIsOn` says, and with a state CKSyncEngine saved, as on a device that
+/// synced, when `synced` says so.
+func saveDatabaseBeforeHowSyncStands(at file: URL, syncIsOn: Bool, synced: Bool) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v23 the settings that decide progress")
+    try database.write { db in
+        try db.execute(
+            sql: "UPDATE syncDevice SET isOn = ?, engineState = ?",
+            arguments: [syncIsOn, synced ? Data("a state CKSyncEngine saved".utf8) : nil])
+    }
+    try database.close()
 }
 
 /// Saves a database at `file` as Ficha left it before tags had anything of
