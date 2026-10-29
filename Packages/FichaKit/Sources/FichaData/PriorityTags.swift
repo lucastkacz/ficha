@@ -68,21 +68,35 @@ extension Engine {
         }
     }
 
-    /// Toggles `tag`'s priority: a priority tag is no longer one, and a tag
-    /// that's neither a priority tag nor set aside becomes one, so its cards
-    /// come first from the next appearance, review now or "See more" on. A
-    /// set-aside tag stays set aside, since a tag is never both (ADR 0011):
-    /// the Prioritize submenu doesn't offer it.
+    /// Toggles `tag`'s priority, as the Prioritize submenu does: a priority
+    /// tag is no longer one, and any other becomes one, as `setPriority(_:of:)`
+    /// says.
     public func togglePriority(of tag: String) throws(EngineError) {
         try write { db in
-            var own = try ownTag(tag, in: db)
-            switch own.switchedOn {
-            case .priority: own.switchedOn = nil
-            case nil: own.switchedOn = .priority
-            case .setAside: return
-            }
-            try save(own, in: db)
+            try setPriority(try !ownTag(tag, in: db).isPriority, of: tag, in: db)
         }
+    }
+
+    /// Makes `tag` a priority tag, so its cards come first from the next
+    /// appearance, review now or "See more" on, or no longer one, whatever
+    /// it was. A set-aside tag can't become one, since a tag is never both
+    /// (ADR 0011), so the Prioritize submenu doesn't offer it, and the engine
+    /// refuses it, as when another device set it aside meanwhile.
+    public func setPriority(_ isPriority: Bool, of tag: String) throws(EngineError) {
+        try write { db in try setPriority(isPriority, of: tag, in: db) }
+    }
+
+    /// Makes `tag` a priority tag, or no longer one, in the write `db`, as
+    /// `setPriority(_:of:)` says.
+    private func setPriority(_ isPriority: Bool, of tag: String, in db: Database) throws {
+        var own = try ownTag(tag, in: db)
+        switch (own.switchedOn, isPriority) {
+        case (.setAside, true): throw EngineError.tagSetAside(tag)
+        case (.setAside, false), (.priority, true), (nil, false): return
+        case (.priority, false): own.switchedOn = nil
+        case (nil, true): own.switchedOn = .priority
+        }
+        try save(own, in: db)
     }
 
     /// Makes every priority tag no longer one, as the Prioritize submenu's

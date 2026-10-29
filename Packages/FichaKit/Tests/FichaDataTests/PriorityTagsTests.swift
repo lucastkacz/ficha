@@ -269,7 +269,7 @@ struct PriorityTagsTests {
 
     // A tag is a priority tag, set aside, or neither (ADR 0011).
     @Test(
-        "setting aside a priority tag drops its priority, the submenu leaves set-aside tags out, and toggling one's priority leaves it set aside"
+        "setting aside a priority tag drops its priority, the submenu leaves set-aside tags out, and toggling one's priority is refused"
     )
     func settingAsideAPriorityTagDropsItsPriority() throws {
         let ubuntu = try approveCard("ubuntu", tags: ["filosofía"])
@@ -281,12 +281,33 @@ struct PriorityTagsTests {
         try engine.setAside("filosofía")
 
         #expect(try engine.prioritizeMenu().tags.map(\.name) == ["historia"])
-        try engine.togglePriority(of: "filosofía")
+        #expect(throws: EngineError.tagSetAside("filosofía")) { try engine.togglePriority(of: "filosofía") }
         #expect(try engine.allTags().first?.switchedOn == .setAside)
         #expect(try engine.prioritizeMenu().tags.map(\.name) == ["historia"])
         try engine.stopSettingAside("filosofía")
         #expect(try engine.prioritizeMenu().tags.map(\.name) == ["filosofía", "historia"])
         #expect(try engine.cards().first == ubuntu)
+    }
+
+    // filosofía is set aside, and historia isn't.
+    @Test(
+        "setting a tag's priority makes it a priority tag or no longer one, whatever it was, and is refused on a set-aside tag"
+    )
+    func settingATagsPriority() throws {
+        try approveCard("ubuntu", tags: ["filosofía"])
+        try approveCard("Revolución de Mayo", tags: ["historia"])
+        try engine.setAside("filosofía")
+
+        try engine.setPriority(true, of: "historia")
+        try engine.setPriority(true, of: "historia")
+        #expect(try engine.prioritizeMenu().priorityTagNames == ["historia"])
+        try engine.setPriority(false, of: "historia")
+        try engine.setPriority(false, of: "historia")
+        #expect(try engine.prioritizeMenu().priorityTagNames.isEmpty)
+
+        #expect(throws: EngineError.tagSetAside("filosofía")) { try engine.setPriority(true, of: "filosofía") }
+        try engine.setPriority(false, of: "filosofía")
+        #expect(try engine.allTags().first?.switchedOn == .setAside)
     }
 
     // The Mac's preferences are the app's, whichever database it opens, so a

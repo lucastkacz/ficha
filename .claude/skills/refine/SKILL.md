@@ -77,7 +77,7 @@ When Lucas asks to bring back a buried card, find it among `ficha cards`' buried
 
 When Lucas asks to change a tag or a type of his own, or a draft would read better with an existing tag renamed, merged or deleted, at any point in the session:
 
-1. Propose each change on its own, numbered after the batch's: the tag by its whole name, or the type by its name, what changes, and what it reaches, from `ficha tags` or `ficha types`: how many cards carry the tag, or have the type. A rename or a deletion reaches every card on every device, and a deletion takes the tags inside the tag too. Wait for his OK on each.
+1. Propose each change on its own, numbered after the batch's: the tag by its whole name, or the type by its name, what changes, and the cards it reaches. A type's are its `cards` in `ficha types`, buried ones included. A tag's `cards` in `ficha tags` leaves buried cards out, while a rename or a deletion reaches them too, on every device: give that number with "sin contar las enterradas". A deletion takes the tags inside the tag too. Wait for his OK on each.
 2. Write each change he approved, one command each, and check what it prints:
 
 | Approved | Command |
@@ -87,8 +87,6 @@ When Lucas asks to change a tag or a type of his own, or a draft would read bett
 | Pinning, unpinning or reordering the sidebar's tags | `ficha tag pin`, `unpin` or `move-pinned` |
 | A tag's switch, color, emoji or choice to sync | `ficha tag set-aside`, `prioritize`, `color`, `emoji` or `choose-to-sync` |
 | Making, renaming, giving an emoji to or deleting a type of his own | `ficha type make`, `rename`, `emoji` or `delete` |
-
-`ficha tag <command> --help` and `ficha type <command> --help` say what each takes. A command that fails goes to Lucas, with what the CLI said.
 
 ## Images and sounds
 

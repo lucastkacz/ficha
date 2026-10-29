@@ -36,10 +36,7 @@ extension Engine {
         guard name != tag else {
             return name
         }
-        try write { db in
-            try make(.rename(tag, to: name), in: db)
-            try recordTagChange(.rename(tag, to: name), in: db)
-        }
+        try write { db in try makeTagEdit(.rename(tag, to: name), in: db) }
         return name
     }
 }
@@ -57,23 +54,35 @@ func checkedTagName(renaming tag: String, to newName: String) throws(EngineError
     return name
 }
 
-/// Makes `edit` on this device, in the write `db`, as the device that makes
-/// it: every card that carries the tag, or a tag inside it, carries their
-/// new names, or loses them for a deletion, and records an edit to its tags;
-/// and the rows of the `tag` table of the tag and the tags inside it move to
-/// their new names, joining those that exist (`moveRows`), or go.
-func make(_ edit: TagEdit, in db: Database) throws {
+/// Makes `edit`, which the user made on this device, in the write `db`: the
+/// tag's rows and its cards change (`editRows`, `editCards`), each card
+/// recording an edit to its tags, and the edit is recorded as a change to
+/// the tag, which reaches the user's other devices (`TagChanges.swift`).
+func makeTagEdit(_ edit: TagEdit, in db: Database) throws {
+    try editRows(edit, in: db)
+    try editCards(edit, in: db)
+    try recordTagChange(edit, in: db)
+}
+
+/// Makes `edit` to the rows of the `tag` table, in the write `db`, before
+/// the cards carry it: the rows of the tag and the tags inside it move to
+/// their new names, joining the tags that exist apart from them
+/// (`moveRows`), or go.
+func editRows(_ edit: TagEdit, in db: Database) throws {
     switch edit {
     case .rename(let tag, let name):
-        let existing = try tagsThatExist(apartFrom: tag, in: db)
-        _ = try editCards(edit, in: db)
-        try moveRows(of: tag, to: name, joining: existing, in: db)
+        try moveRows(of: tag, to: name, joining: tagsThatExist(apartFrom: tag, in: db), in: db)
     case .deletion:
-        _ = try editCards(edit, in: db)
         for name in try String.fetchAll(db, sql: "SELECT name FROM tag") where edit.changes(name) {
-            try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [name])
+            try deleteRow(ofTag: name, in: db)
         }
     }
+}
+
+/// Deletes the row of the `tag` table of the tag `name`, with everything it
+/// had of its own, in the write `db`.
+func deleteRow(ofTag name: String, in db: Database) throws {
+    try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [name])
 }
 
 /// The tags that exist apart from `tag` and the tags inside it, in `db`: each
@@ -86,28 +95,35 @@ func tagsThatExist(apartFrom tag: String, in db: Database) throws -> Set<String>
     return TagPath.lineages(of: (rows + carried).filter { !TagPath.isTag($0, within: tag) })
 }
 
+/// A card whose tags a change to a tag edited: its id, and the row it syncs
+/// as.
+struct EditedCard {
+    let id: Int64
+    let row: SyncedRow
+}
+
 /// Gives every card that carries the tag `edit` changes, or a tag inside it,
 /// its tags after `edit`, in the write `db`, of those among `cards`, or of
-/// every card when it's nil, for which `takes` holds, given the card's ID
-/// unique across devices and when it came in; and returns the ids of those
-/// it changed.
-func editCards(
-    _ edit: TagEdit, among cards: Set<Int64>? = nil, in db: Database,
-    takingIt takes: (_ uuid: String, _ createdAt: Date) throws -> Bool = { _, _ in true }
-) throws -> Set<Int64> {
-    var edited: Set<Int64> = []
-    for row in try Row.fetchAll(db, sql: "SELECT id, uuid, tags, createdAt FROM card ORDER BY id") {
+/// every card when it's nil; and returns those it changed.
+@discardableResult
+func editCards(_ edit: TagEdit, among cards: Set<Int64>? = nil, in db: Database) throws -> [EditedCard] {
+    var edited: [EditedCard] = []
+    for row in try Row.fetchAll(db, sql: "SELECT id, uuid, tags FROM card ORDER BY id") {
         let id: Int64 = try row.decode(forColumn: "id")
         guard cards?.contains(id) ?? true else {
             continue
         }
         let tags = try tagsFromJSON(try row.decode(forColumn: "tags"))
         let after = edit.tags(after: tags)
-        guard after != tags, try takes(row.decode(forColumn: "uuid"), row.decode(forColumn: "createdAt")) else {
+        guard after != tags else {
             continue
         }
         try db.execute(sql: "UPDATE card SET tags = ? WHERE id = ?", arguments: [try tagsJSON(after), id])
-        edited.insert(id)
+        edited.append(
+            EditedCard(
+                id: id,
+                row: try SyncedRow(
+                    recordType: SyncedRow.RecordType.card.rawValue, recordName: row.decode(forColumn: "uuid"))))
     }
     return edited
 }
@@ -124,7 +140,7 @@ func moveRows(of tag: String, to name: String, joining existing: Set<String>, in
     let moving = try String.fetchAll(db, sql: "SELECT name FROM tag").filter { TagPath.isTag($0, within: tag) }
         .map { try ownTag($0, in: db) }
     for own in moving {
-        try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [own.name])
+        try deleteRow(ofTag: own.name, in: db)
     }
     for own in moving {
         guard let newName = TagPath.renaming(own.name, from: tag, to: name) else {

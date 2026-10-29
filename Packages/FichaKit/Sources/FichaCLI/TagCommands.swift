@@ -241,16 +241,9 @@ struct PrioritizeTagCommand: EngineCommand {
     var off = false
 
     func run(on engine: Engine) throws -> any Encodable {
-        let listing = try PrintedTags(of: engine)
-        let current = try listing.tag(listing.existing(tag))
-        if !off && current.setAside {
-            throw SetAsideTagError(tag: current.name)
-        }
-        // Toggling switches it only when it isn't as asked already.
-        if current.priority == off {
-            try engine.togglePriority(of: current.name)
-        }
-        return try PrintedTags(of: engine).tag(current.name)
+        let tag = try PrintedTags(of: engine).existing(tag)
+        try engine.setPriority(!off, of: tag)
+        return try PrintedTags(of: engine).tag(tag)
     }
 }
 
@@ -356,28 +349,44 @@ struct PrintedTag: Encodable, Equatable {
     let chosenToSync: Bool
 }
 
+extension PrintedTag {
+    /// The tag `name` with nothing of its own and no card, as a change can
+    /// leave it, which `ficha tags` no longer lists.
+    init(withNothingNamed name: String) {
+        self.init(
+            name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, setAside: false, priority: false, color: nil,
+            emoji: nil, chosenToSync: false)
+    }
+}
+
 /// Every tag as `ficha tags` prints it, read from the engine at once.
 struct PrintedTags {
     /// Every tag, in the order a tree lists them.
     let tags: [PrintedTag]
+    /// The pinned tags, in their order.
+    let pinned: [PrintedTag]
 
     /// The tags `engine` holds now, each with its counts on the engine's
-    /// ladder.
+    /// ladder; or an error when they changed between the engine's reads.
     init(of engine: Engine) throws {
         let counts = try engine.tagCounts(on: engine.progressSettings().ladder)
-        let pinned = try engine.pinnedTags().map(\.name)
-        tags = try engine.allTags().map { tag in
-            PrintedTag(
-                name: tag.name, cards: counts[tag.name]?.cards ?? 0, due: counts[tag.name]?.due ?? 0,
-                pinned: tag.isPinned, pinPlace: pinned.firstIndex(of: tag.name), setAside: tag.isSetAside,
-                priority: tag.isPriority, color: tag.color?.rawValue, emoji: tag.emoji,
-                chosenToSync: tag.chosenToSync)
+        let pinnedNames = try engine.pinnedTags().map(\.name)
+        let tags = try engine.allTags().map { tag in
+            guard let count = counts[tag.name], tag.isPinned == pinnedNames.contains(tag.name) else {
+                throw TagsChangedMeanwhileError()
+            }
+            return PrintedTag(
+                name: tag.name, cards: count.cards, due: count.due, pinned: tag.isPinned,
+                pinPlace: pinnedNames.firstIndex(of: tag.name), setAside: tag.isSetAside, priority: tag.isPriority,
+                color: tag.color?.rawValue, emoji: tag.emoji, chosenToSync: tag.chosenToSync)
         }
-    }
-
-    /// The pinned tags, in their order.
-    var pinned: [PrintedTag] {
-        tags.filter(\.pinned).sorted { ($0.pinPlace ?? 0) < ($1.pinPlace ?? 0) }
+        self.tags = tags
+        pinned = try pinnedNames.map { name in
+            guard let tag = tags.first(where: { $0.name == name }) else {
+                throw TagsChangedMeanwhileError()
+            }
+            return tag
+        }
     }
 
     /// The tag `name` names, its levels cleaned up as a card's are, or an
@@ -392,12 +401,10 @@ struct PrintedTags {
         return normalized
     }
 
-    /// The tag named `name`, which exists.
-    func tag(_ name: String) throws -> PrintedTag {
-        guard let tag = tags.first(where: { $0.name == name }) else {
-            throw UnknownTagError(tag: name)
-        }
-        return tag
+    /// The tag named `name` as it stands now: as `ficha tags` lists it, or
+    /// with nothing of its own and no card, when a change left it so.
+    func tag(_ name: String) -> PrintedTag {
+        tags.first { $0.name == name } ?? PrintedTag(withNothingNamed: name)
     }
 }
 
@@ -422,16 +429,13 @@ struct UnknownTagError: LocalizedError {
     }
 }
 
-/// A set-aside tag `ficha tag prioritize` was asked to make a priority tag,
-/// which a tag never is while it's set aside (ADR 0011).
-struct SetAsideTagError: LocalizedError {
-    /// The tag's whole name.
-    let tag: String
-
+/// The tags changed while the CLI read them, in several reads of the
+/// engine, as when the app or sync changes them meanwhile.
+struct TagsChangedMeanwhileError: LocalizedError {
     var errorDescription: String? {
         """
-        “\(tag)” is set aside, and a tag is never both set aside and a priority tag, so nothing changed. Stop \
-        setting it aside first, with `ficha tag set-aside \(tag) --off`.
+        Your tags changed while ficha read them, in the app or through sync. Run `ficha tags` to see them as they \
+        are now.
         """
     }
 }

@@ -5,9 +5,10 @@ import Testing
 
 /// Tests on deleting tags (ADR 0022): a tag deleted, with every tag inside
 /// it, comes off every card that carries it, and its rows go, while every
-/// card stays; what Delete…'s question counts first; and Clear Unused Tags,
-/// which deletes the tags no card carries. They start at 9 in the morning in
-/// Buenos Aires, with the default settings.
+/// card stays; what Delete…'s question counts first; Clear Unused Tags,
+/// which deletes the tags no card carries; and each tag's counts, which All
+/// Tags shows beside them (`TagCounts.swift`). They start at 9 in the morning
+/// in Buenos Aires, with the default settings.
 struct DeletingTagsTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -68,6 +69,24 @@ struct DeletingTagsTests {
         #expect(deletion.cardsBackInReviews == 2)
         #expect(deletion.cardsThatStopSyncing == 1)
         #expect(try engine.deleteTags(["literatura"]) == deletion)
+    }
+
+    // literatura is set aside; Martín Fierro carries only a tag inside it,
+    // and Ficciones carries literatura too.
+    @Test(
+        "deleting a tag inside a set-aside tag brings back to the reviews a card it alone set aside, as Delete… counts first"
+    )
+    func deletingATagInsideASetAsideTag() throws {
+        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
+        try approveCard("Ficciones", tags: ["literatura::poesía", "literatura"])
+        try engine.setAside("literatura")
+
+        #expect(try engine.deletion(of: ["literatura::poesía"]).cardsBackInReviews == 1)
+
+        try engine.deleteTags(["literatura::poesía"])
+
+        #expect(try engine.card(fronted: "Martín Fierro").standing == .inReviews)
+        #expect(try engine.card(fronted: "Ficciones").standing == .setAside(by: ["literatura"]))
     }
 
     @Test("Delete… counts no card that stops syncing while every card syncs, or while sync is off")

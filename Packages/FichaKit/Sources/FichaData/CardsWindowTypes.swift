@@ -140,7 +140,7 @@ extension CardsWindowState {
         guard let type = listedUserType(id) else { return }
         var count = 0
         let counted = perform(.deleteType(name: type.name)) { engine throws(EngineError) in
-            count = try engine.cardCount(ofUserType: id)
+            count = try engine.cardCount(of: .user(type))
         }
         if counted {
             question = .deleteType(type, cardCount: count)

@@ -81,6 +81,10 @@ public enum EngineError: Error, Equatable {
     /// isn't pinned, as when another device unpinned it meanwhile, so nothing
     /// moved.
     case tagNotPinned(String)
+    /// The tag with this name was to be made a priority tag, and it's set
+    /// aside, which a priority tag never is (ADR 0011), as when another
+    /// device set it aside meanwhile, so nothing changed.
+    case tagSetAside(String)
     /// A user type was to be made or renamed with a blank name, so nothing
     /// changed.
     case blankTypeName
@@ -311,6 +315,13 @@ extension EngineError: LocalizedError {
                 localized: """
                     “\(TagPath.shown(tag))” isn't pinned to the sidebar, maybe since another of your devices unpinned \
                     it, so nothing moved. Pin it first.
+                    """
+            )
+        case .tagSetAside(let tag):
+            String(
+                localized: """
+                    “\(TagPath.shown(tag))” is set aside, and a tag is never both set aside and a priority tag, so \
+                    nothing changed. Stop setting it aside first.
                     """
             )
         case .blankTypeName:

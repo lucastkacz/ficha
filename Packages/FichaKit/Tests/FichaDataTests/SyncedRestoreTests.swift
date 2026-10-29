@@ -442,6 +442,40 @@ final class SyncedRestoreTests {
         #expect(try iPhone.engine.card(fronted: "inflación").tags == ["economía"])
     }
 
+    // Only filosofía syncs, so cepo stays on the iPhone. The Mac renames
+    // economía, cepo with it, and the iPhone then gives cepo economía again;
+    // the Mac's backup holds the rename, which the restore's zone brings.
+    @Test(
+        "a device that takes a restore's cards applies no change to a tag it heard of before, to the cards it keeps that don't sync"
+    )
+    func aRestoreAppliesNoChangeTwice() async throws {
+        try mac.engine.syncOnlyChosenTags(true)
+        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try iPhone.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["economía"]))
+        time.advance(by: minutes(1))
+        try mac.engine.renameTag("economía", to: "economics")
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        time.advance(by: minutes(1))
+        let cepo = try iPhone.engine.card(fronted: "cepo")
+        try iPhone.engine.edit(
+            cepo.id, with: card(.concept, front: "cepo", back: "Un límite.", tags: ["economics", "economía"]))
+        let backup = try mac.engine.backUpNow(.defaults)
+
+        try mac.engine.restore(backup.name)
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try iPhone.engine.cards().map(\.front).sorted() == ["cepo", "ubuntu"])
+        #expect(try iPhone.engine.card(fronted: "cepo").tags == ["economics", "economía"])
+    }
+
     // The iPad's clock is an hour ahead of the Mac's, and the iPad made the
     // zone the devices sync in, named after its own clock.
     @Test("a restore's zone is newer than the zone it leaves, even when the Mac's clock is behind that zone's time")

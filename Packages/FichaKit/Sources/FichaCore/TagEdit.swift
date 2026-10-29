@@ -16,6 +16,14 @@ public enum TagEdit: Sendable, Hashable {
         }
     }
 
+    /// The name it renames the tag to, or nil for a deletion.
+    public var newName: String? {
+        switch self {
+        case .rename(_, let newName): newName
+        case .deletion: nil
+        }
+    }
+
     /// Whether it changes the tag `name`: it's the tag, or a tag inside it.
     public func changes(_ name: String) -> Bool {
         TagPath.isTag(name, within: tag)

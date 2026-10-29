@@ -1198,14 +1198,21 @@ enum Schema {
             // or NULL for a deletion; and when it was made, by the engine's
             // time on the device that made it. A device keeps a row for each
             // change it made or heard of, which it has applied, and never
-            // changes or deletes one, so a change whose row it holds is never
-            // applied again. Every database starts with none.
+            // changes one, so a change whose row it holds is never applied
+            // again. A device that takes a restore's cards drops them, with
+            // every row that syncs, and keeps their IDs in
+            // `tagChangeAppliedBeforeARestore`, so that it never applies again
+            // one the restore's copy brings back. Every database starts with
+            // none of either.
             try db.create(table: "tagChange") { table in
                 table.autoIncrementedPrimaryKey("id")
                 table.column("uuid", .text).notNull().unique()
                 table.column("tag", .text).notNull().check(sql: "tag <> ''")
                 table.column("newName", .text).check(sql: "newName <> ''")
                 table.column("madeAt", .datetime).notNull()
+            }
+            try db.create(table: "tagChangeAppliedBeforeARestore") { table in
+                table.primaryKey("uuid", .text)
             }
             // A change syncs as a record of its own, "tagChange", as
             // `SyncedRow` names it, whatever selective sync chooses, as a

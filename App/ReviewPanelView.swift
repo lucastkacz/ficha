@@ -843,7 +843,7 @@ extension EngineError {
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
             .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
-            .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .blankTypeName,
+            .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .tagSetAside, .blankTypeName,
             .builtInTypeName, .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog,
             .storage,
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,

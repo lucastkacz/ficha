@@ -71,11 +71,17 @@ extension Engine {
         }
     }
 
-    /// How many cards have the user type with this ID, buried ones too, as
-    /// the Cards window asks before it deletes the type.
-    public func cardCount(ofUserType id: UUID) throws(EngineError) -> Int {
+    /// How many cards have `type`, buried ones too, as the Cards window asks
+    /// before it deletes a user type, and `ficha types` prints for each.
+    public func cardCount(of type: CardType) throws(EngineError) -> Int {
         try read { db in
-            try Int.fetchOne(db, sql: "SELECT count(*) FROM card WHERE type = ?", arguments: [id.uuidString]) ?? 0
+            guard
+                let count = try Int.fetchOne(
+                    db, sql: "SELECT count(*) FROM card WHERE type = ?", arguments: [type.column])
+            else {
+                throw unreadable("The database didn't count the cards of a type")
+            }
+            return count
         }
     }
 }
@@ -259,7 +265,7 @@ extension CardType {
     /// Whether it's `other`, whatever their names and emoji now: one of the
     /// four is itself, and a user type the one with its ID, also once
     /// renamed.
-    public func isSameType(as other: CardType) -> Bool {
+    func isSameType(as other: CardType) -> Bool {
         switch (self, other) {
         case (.user(let type), .user(let otherType)): type.id == otherType.id
         default: self == other

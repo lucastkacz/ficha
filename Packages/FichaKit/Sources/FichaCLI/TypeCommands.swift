@@ -23,10 +23,8 @@ struct TypesCommand: EngineCommand {
     )
 
     func run(on engine: Engine) throws -> any Encodable {
-        let cards = try engine.cards()
-        let types = try CardType.builtIn + engine.userTypes().map(CardType.user)
-        return types.map { type in
-            PrintedType(type, cards: cards.count { $0.type?.isSameType(as: type) == true })
+        try (CardType.builtIn + engine.userTypes().map(CardType.user)).map { type in
+            try PrintedType(type, in: engine)
         }
     }
 }
@@ -66,7 +64,7 @@ struct MakeTypeCommand: EngineCommand {
 
     func run(on engine: Engine) throws -> any Encodable {
         let type = try engine.makeUserType(named: name, emoji: try emoji.flatMap(chosenEmoji))
-        return PrintedType(.user(type), cards: 0)
+        return try PrintedType(.user(type), in: engine)
     }
 }
 
@@ -86,7 +84,7 @@ struct RenameTypeCommand: EngineCommand {
 
     func run(on engine: Engine) throws -> any Encodable {
         let type = try engine.renameUserType(try userType(named: name, in: engine).id, to: newName)
-        return try PrintedType(.user(type), cards: engine.cardCount(ofUserType: type.id))
+        return try PrintedType(.user(type), in: engine)
     }
 }
 
@@ -106,7 +104,7 @@ struct TypeEmojiCommand: EngineCommand {
 
     func run(on engine: Engine) throws -> any Encodable {
         let type = try engine.setEmoji(try chosenEmoji(emoji), ofUserType: try userType(named: name, in: engine).id)
-        return try PrintedType(.user(type), cards: engine.cardCount(ofUserType: type.id))
+        return try PrintedType(.user(type), in: engine)
     }
 }
 
@@ -123,7 +121,7 @@ struct DeleteTypeCommand: EngineCommand {
 
     func run(on engine: Engine) throws -> any Encodable {
         let type = try userType(named: name, in: engine)
-        let printed = PrintedType(.user(type), cards: try engine.cardCount(ofUserType: type.id))
+        let printed = try PrintedType(.user(type), in: engine)
         try engine.deleteUserType(type.id)
         return printed
     }
@@ -136,12 +134,12 @@ struct PrintedType: Encodable, Equatable {
     let emoji: String?
     let cards: Int
 
-    /// `type`, with `cards` cards.
-    init(_ type: CardType, cards: Int) {
+    /// `type`, with as many cards as `engine` counts it has now.
+    init(_ type: CardType, in engine: Engine) throws {
         name = type.writtenName
         builtIn = type.userType == nil
         emoji = type.userType?.emoji
-        self.cards = cards
+        cards = try engine.cardCount(of: type)
     }
 }
 
@@ -177,7 +175,8 @@ struct BuiltInTypeError: LocalizedError {
     var errorDescription: String? {
         """
         “\(type)” is one of the four types Ficha comes with, which can't be renamed, given an emoji or deleted, so \
-        nothing changed.
+        nothing changed. To change a type, make one of your own with `ficha type make`, or pick one `ficha types` \
+        lists as yours.
         """
     }
 }

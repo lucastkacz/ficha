@@ -187,7 +187,9 @@ struct TagAndTypeCommandsTests {
         try approveCard("Martín Fierro", tags: ["literatura"])
         try engine.setAside("literatura")
 
-        await #expect(throws: SetAsideTagError.self) { try await ficha("tag", "prioritize", "literatura") }
+        await #expect(throws: EngineError.tagSetAside("literatura")) {
+            try await ficha("tag", "prioritize", "literatura")
+        }
         #expect(try engine.allTags().first?.switchedOn == .setAside)
     }
 
@@ -210,6 +212,34 @@ struct TagAndTypeCommandsTests {
         #expect(uncolored.color == nil)
         #expect(withoutEmoji.emoji == nil)
         #expect(!unchosen.chosenToSync)
+    }
+
+    // Each tag has no card and one thing of its own, which the command takes
+    // away, and with it the tag's row.
+    @Test("a tag command that leaves a tag with nothing of its own and no card prints it with everything off")
+    func takingAwayATagsLastOwnThing() async throws {
+        try engine.setColor(.blue, of: "música")
+        try engine.setEmoji(Emoji("🎬"), of: "cine")
+        try engine.setAside("teatro")
+        try engine.togglePriority(of: "danza")
+        try engine.chooseToSync("ópera", true)
+
+        let printed = [
+            try await tag(from: ficha("tag", "color", "música", "none")),
+            try await tag(from: ficha("tag", "emoji", "cine", "none")),
+            try await tag(from: ficha("tag", "set-aside", "teatro", "--off")),
+            try await tag(from: ficha("tag", "prioritize", "danza", "--off")),
+            try await tag(from: ficha("tag", "choose-to-sync", "ópera", "--off")),
+        ]
+
+        #expect(
+            printed
+                == ["música", "cine", "teatro", "danza", "ópera"].map { name in
+                    TagAsPrinted(
+                        name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, setAside: false, priority: false,
+                        color: nil, emoji: nil, chosenToSync: false)
+                })
+        #expect(try engine.allTags().isEmpty)
     }
 
     @Test("a color a tag can't have, or text that isn't one emoji, is refused, and nothing changes")
@@ -343,7 +373,7 @@ struct TagAndTypeCommandsTests {
 
 /// A tag as the CLI prints it, read back by the keys `ficha tags`' help
 /// names: one missing, or of another kind, fails the test.
-private struct TagAsPrinted: Decodable {
+private struct TagAsPrinted: Decodable, Equatable {
     let name: String
     let cards: Int
     let due: Int

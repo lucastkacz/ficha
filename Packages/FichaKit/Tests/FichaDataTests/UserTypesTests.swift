@@ -88,11 +88,11 @@ final class UserTypesTests {
         let gravity = try engine.create(card(.user(law), front: "gravedad", back: "Todo cae."))
         try engine.bury(salt.id)
 
-        #expect(try engine.cardCount(ofUserType: formula.id) == 2)
+        #expect(try engine.cardCount(of: .user(formula)) == 2)
         try engine.deleteUserType(formula.id)
 
         #expect(try engine.userTypes() == [law])
-        #expect(try engine.cardCount(ofUserType: formula.id) == 0)
+        #expect(try engine.cardCount(of: .user(formula)) == 0)
         let cards = try engine.cards()
         #expect(cards.map(\.type) == [nil, nil, .user(law)])
         #expect(cards.map(\.tags) == [["química"], [], []])
