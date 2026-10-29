@@ -55,7 +55,7 @@
       "comment" : "The widget's description in the widget gallery."
     },
     "This build isn't signed with its App Group, whose folder holds its cards. Build Ficha Dev with make run, or Ficha with make install, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says." : {
-      "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. The widget shows it too, under that it can't read the cards, as the real Ficha's does while it's signed without the team. make run and make install are commands, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
+      "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. The widget shows it too, under that it can't read the cards. make run and make install are commands, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
     }
   },
   "version" : "1.0"
