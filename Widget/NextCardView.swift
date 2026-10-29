@@ -14,9 +14,8 @@ struct NextCardEntry: TimelineEntry {
         /// the card's side, made small, when it has one and it could be read.
         case content(WidgetContent, image: Data?)
         /// There's no database to read yet, or it waits for the app to
-        /// migrate it, or the app hasn't handed over this Mac's settings yet:
-        /// it hasn't run since it was installed or updated, or it's the real
-        /// Ficha, which hands over nothing until #310
+        /// migrate it, or the app hasn't handed over this Mac's settings yet,
+        /// since it hasn't run since it was installed or updated
         /// (`AppVariant.groupDefaults`).
         case notReady
         /// The cards couldn't be read, for this reason, which the log details.

@@ -68,10 +68,12 @@ project: ## Generate Ficha.xcodeproj from project.yml (never edit it by hand).
 # passed to xcodebuild as a build setting, which overrides project.yml's.
 # Both are expanded only by the targets that build, which stop without it.
 BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: git couldn't count this checkout's commits))
-XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'platform=macOS,arch=arm64' \
-	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
+XCODEBUILD_MAC = xcodebuild -project Ficha.xcodeproj -scheme Ficha -derivedDataPath $(DERIVED) -quiet \
+	CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
+# The builds for this Mac, for Apple silicon alone.
+XCODEBUILD = $(XCODEBUILD_MAC) -destination 'platform=macOS,arch=arm64'
 
-# Ficha Dev, and the real Ficha that `make install` builds, sign with Lucas's
+# Ficha Dev, and the real Ficha that `make upload` builds, sign with Lucas's
 # paid team, whose ID git ignores, in iPhone/Local.xcconfig, which
 # Signing.xcconfig includes. Ficha Dev's iCloud and push entitlements need a
 # provisioning profile, which Xcode makes and keeps through the account in its
@@ -79,7 +81,7 @@ XCODEBUILD = xcodebuild -project Ficha.xcodeproj -scheme Ficha -destination 'pla
 # team's ID, as in CI and in a new worktree, Ficha Dev's builds go unsigned:
 # they check the code, but don't run in their sandbox or sync. Building
 # unsigned without it is our own. The real Ficha needs it, to reach its App
-# Group's folder, so `make install` stops without it.
+# Group's folder, so `make upload` stops without it.
 TEAM := $(shell grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig && echo yes)
 SIGNING := $(if $(TEAM),-allowProvisioningUpdates -allowProvisioningDeviceRegistration,CODE_SIGNING_ALLOWED=NO)
 
@@ -165,12 +167,44 @@ render: ## Draw an app window as a PNG, offscreen: make render ARGS="cards --dar
 render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, in a simulator of its own: make render-iphone ARGS="--out <path>".
 	scripts/render-iphone.sh "$(DERIVED)/Build/Products/Debug-iphonesimulator/Ficha Dev.app" $(ARGS)
 
-.PHONY: install
-install: team project ## Build the real Ficha, signed with your team, into /Applications, replacing the running one.
-	$(XCODEBUILD) -configuration Release build $(SIGNING)
-	@pkill -x Ficha || true
-	rm -rf /Applications/Ficha.app
-	cp -R $(DERIVED)/Build/Products/Release/Ficha.app /Applications/
+# `make upload` sends the real Ficha to TestFlight from main alone, as GitHub
+# has it, with nothing uncommitted: each build is then one of main's commits,
+# and its number, main's count of commits, grows with each merge, as App Store
+# Connect needs. That check is our own.
+.PHONY: on-main
+on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as GitHub has it.
+	@branch=$$(git branch --show-current); [ "$$branch" = main ] || { \
+		echo "make upload runs from main alone, and this checkout is on $${branch:-a detached HEAD}: run it from the main folder, on main, once the pull request merged." >&2; \
+		exit 1; }
+	@[ -z "$$(git status --porcelain)" ] || { \
+		git status --short >&2; \
+		echo "make upload builds main's last commit alone, and this checkout has the changes above: commit them through a pull request, or remove them, and try again." >&2; \
+		exit 1; }
+	@git fetch --quiet origin main || { \
+		echo "make upload couldn't fetch main from GitHub to check that this checkout has all of it: check the connection, and try again." >&2; \
+		exit 1; }
+	@[ "$$(git rev-parse HEAD)" = "$$(git rev-parse FETCH_HEAD)" ] || { \
+		echo "This checkout's main isn't GitHub's: run git pull --ff-only, and try again." >&2; \
+		exit 1; }
+
+# The real Ficha for TestFlight (#310): an archive for Intel and Apple
+# silicon, signed with Apple Development as the other builds are, which the
+# export signs again with Apple Distribution and uploads to App Store Connect,
+# as Xcode's Organizer does, through the account in Xcode's settings, so
+# neither the repo nor CI holds a secret. ExportOptions.plist keeps the build
+# to TestFlight's internal testers, and its number as the Makefile sets it.
+# Archiving and exporting with xcodebuild is Apple's documented way.
+UPLOAD := .build/upload
+
+.PHONY: upload
+upload: on-main team project ## From main: archive the real Ficha and upload it to TestFlight, for its internal testers alone.
+	rm -rf $(UPLOAD)
+	$(XCODEBUILD_MAC) -configuration Release -destination 'generic/platform=macOS' \
+		-archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
+	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
+		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
+		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \
+		exit 1; }
 
 # The iPhones paired with the Mac, the connected ones first, as devicectl lists
 # them: a JSON file is the only output it supports for scripts. A paired iPhone
