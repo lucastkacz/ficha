@@ -69,6 +69,9 @@
     "%@'s data was deleted from iCloud. Turning sync on sends all your cards again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off. The name is the app's."
     },
+    "%@'s data was deleted from iCloud. Turning sync on sends the cards with the tags you choose again." : {
+      "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards with ticked tags sync. The name is the app's."
+    },
     "%lld · %@" : {
       "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
       "localizations" : {
