@@ -262,5 +262,9 @@ _Avoid_: revert, roll back
 ### Sync
 
 **Sync**:
-Keeping the user's cards, their progress, the inbox and the settings that decide progress the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since a deletion reaches every device.
+Keeping the user's cards, or those with the tags they choose, their progress, the inbox and the settings that decide progress the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since a deletion reaches every device.
 _Avoid_: cloud, mirror, upload
+
+**Selective sync**:
+Syncing only the cards with a tag the user chose, instead of all of them, so the rest stay off iCloud and off their other devices. Which tags sync is one choice for all their devices, and changing it never deletes a card from any of them.
+_Avoid_: partial sync, local cards, offline tags
