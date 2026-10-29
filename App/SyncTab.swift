@@ -3,8 +3,10 @@ import SwiftUI
 
 /// The Sync tab of Settings, in an app that syncs (ADR 0017): "Sync with
 /// iCloud", and under it the status line, how sync stands and, while it's
-/// off, what turning it on does. What the switch shows and the line says,
-/// the model's `SyncTabState` decides.
+/// off, what turning it on does; then which cards sync, every one or only
+/// those with the tags the user ticks in a list, each with what its images
+/// and sounds weigh (ADR 0020). What the switch shows, the line says and the
+/// list holds, the model's `SyncTabState` decides.
 struct SyncTab: View {
     @Bindable var model: AppModel
 
@@ -18,6 +20,22 @@ struct SyncTab: View {
                         statusLine(sync.status)
                     }
                     .disabled(!sync.canTurnSwitch)
+                    Picker(
+                        selection: Binding(
+                            get: { sync.onlyChosenTags }, set: { model.sync?.syncOnlyChosenTags($0) })
+                    ) {
+                        Text("Every card", comment: "Settings, under Sync: the choice that syncs every card.")
+                            .tag(false)
+                        Text(
+                            "Only cards with the tags you choose",
+                            comment: "Settings, under Sync: the choice that syncs only the cards with ticked tags."
+                        )
+                        .tag(true)
+                    } label: {
+                        Text("Cards to sync", comment: "Settings, under Sync: the choice of which cards sync.")
+                    }
+                    .pickerStyle(.radioGroup)
+                    .disabled(!sync.canChoose)
                 } footer: {
                     Text(
                         """
@@ -25,6 +43,9 @@ struct SyncTab: View {
                         your own iCloud. Each device keeps its own backups.
                         """,
                         comment: "Settings, under Sync, below the switch: what sync does.")
+                }
+                if sync.onlyChosenTags {
+                    tagsSection(sync)
                 }
             }
         }
@@ -77,16 +98,66 @@ struct SyncTab: View {
         }
     }
 
+    /// The list of tags to choose from, each with a checkbox and what the
+    /// images and sounds of its cards weigh, when they weigh anything.
+    private func tagsSection(_ sync: SyncTabState) -> some View {
+        Section {
+            if sync.tags.isEmpty {
+                Text(
+                    "Your cards have no tags yet.",
+                    comment: "Settings, under Sync: the list of tags to choose is empty, as no card has a tag."
+                )
+                .foregroundStyle(.secondary)
+            }
+            ForEach(sync.tags) { tag in
+                // In a stack, the checkbox comes before the name, as macOS lists
+                // them; a form's label would put it after.
+                HStack {
+                    Toggle(isOn: Binding(get: { tag.isChosen }, set: { model.sync?.choose(tag.name, $0) })) {
+                        Text(verbatim: tag.name)
+                    }
+                    .toggleStyle(.checkbox)
+                    Spacer()
+                    if let weight = tag.weight {
+                        Text(weight.formatted(.byteCount(style: .file)))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(!sync.canChoose)
+            }
+        } header: {
+            Text("Tags to sync", comment: "Settings, under Sync: the heading of the list of tags to choose.")
+        } footer: {
+            Text(
+                """
+                Only the cards with a ticked tag go up to iCloud, with their images and sounds. Unticking a tag \
+                deletes nothing: its cards stay on each of your devices.
+                """,
+                comment: "Settings, under Sync, below the list of tags: what ticking and unticking a tag does.")
+        }
+    }
+
     /// What turning the switch on does beyond syncing again, as the state
     /// says.
     private func turningOnLine(_ turningOn: SyncTabState.TurningOn) -> Text {
         switch turningOn {
-        case .sendsAllCardsAgain:
+        case .sendsCardsAgain(onlyChosenTags: false):
             Text(
                 "\(AppVariant.current.name)'s data was deleted from iCloud. Turning sync on sends all your cards again.",
                 comment: """
                     Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned \
                     sync off. The name is the app's.
+                    """)
+        case .sendsCardsAgain(onlyChosenTags: true):
+            Text(
+                """
+                \(AppVariant.current.name)'s data was deleted from iCloud. Turning sync on sends the cards with the \
+                tags you choose again.
+                """,
+                comment: """
+                    Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned \
+                    sync off, while only the cards with ticked tags sync. The name is the app's.
                     """)
         case .replacesICloudsCopy:
             Text(
@@ -95,21 +166,48 @@ struct SyncTab: View {
                     Settings, under Sync, after the user restored a backup, which turned sync off: turning it on \
                     replaces the cards in iCloud, and on the user's other devices, with this Mac's.
                     """)
+        case .sendsCardsForTheFirstTime(onlyChosenTags: true):
+            Text(
+                """
+                This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards \
+                with the tags you choose to your iCloud.
+                """,
+                comment: """
+                    Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: \
+                    turning it on sends the cards with ticked tags.
+                    """)
+        case .sendsCardsForTheFirstTime(onlyChosenTags: false):
+            Text(
+                """
+                This Mac had cards before it ever synced, so sync waits for you. Turning it on sends all your \
+                cards to your iCloud.
+                """,
+                comment: """
+                    Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: \
+                    turning it on sends every card.
+                    """)
         }
     }
 
-    /// Why turning the switch failed, as an alert says it, which closing it
-    /// clears.
+    /// The title of the alert that says why `action` failed.
+    private func title(_ action: SyncTabState.Failure.Action) -> LocalizedStringResource {
+        switch action {
+        case .turningOn:
+            LocalizedStringResource("Couldn't turn sync on", comment: "An alert's title in Settings' Sync tab.")
+        case .turningOff:
+            LocalizedStringResource("Couldn't turn sync off", comment: "An alert's title in Settings' Sync tab.")
+        case .choosing:
+            LocalizedStringResource(
+                "Couldn't change which cards sync", comment: "An alert's title in Settings' Sync tab.")
+        }
+    }
+
+    /// Why turning the switch, or choosing which cards sync, failed, as an
+    /// alert says it, which closing it clears.
     private var failure: Binding<Failure?> {
         Binding {
             model.sync?.failure.map { failure in
-                Failure(
-                    title: failure.turningOn
-                        ? LocalizedStringResource(
-                            "Couldn't turn sync on", comment: "An alert's title in Settings' Sync tab.")
-                        : LocalizedStringResource(
-                            "Couldn't turn sync off", comment: "An alert's title in Settings' Sync tab."),
-                    error: failure.error)
+                Failure(title: title(failure.action), error: failure.error)
             }
         } set: {
             if $0 == nil {

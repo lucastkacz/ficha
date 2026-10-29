@@ -912,6 +912,9 @@
     "Cards per appearance" : {
 
     },
+    "Cards to sync" : {
+      "comment" : "Settings, under Sync: the choice of which cards sync."
+    },
     "Cards…" : {
       "comment" : "A menu item that opens the Cards window, where Lucas sees all his cards."
     },
@@ -1006,6 +1009,9 @@
     },
     "Couldn't change whether %@ starts at login" : {
 
+    },
+    "Couldn't change which cards sync" : {
+      "comment" : "An alert's title in Settings' Sync tab."
     },
     "Couldn't check whether another card has this front. %@" : {
       "comment" : "In the Cards window's card form, under the front, with why it couldn't be checked."
@@ -1312,6 +1318,9 @@
     },
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
+    },
+    "Every card" : {
+      "comment" : "Settings, under Sync: the choice that syncs every card."
     },
     "Every day" : {
       "comment" : "Settings, under Backups: Ficha backs up once a day."
@@ -1921,6 +1930,12 @@
         }
       }
     },
+    "Only cards with the tags you choose" : {
+      "comment" : "Settings, under Sync: the choice that syncs only the cards with ticked tags."
+    },
+    "Only the cards with a ticked tag go up to iCloud, with their images and sounds. Unticking a tag deletes nothing: its cards stay on each of your devices." : {
+      "comment" : "Settings, under Sync, below the list of tags: what ticking and unticking a tag does."
+    },
     "Open %@ when you log in?" : {
       "comment" : "An alert at the app's first launch. The name is the app's."
     },
@@ -2155,6 +2170,9 @@
     "Tags" : {
       "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the cards' tags.\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
+    "Tags to sync" : {
+      "comment" : "Settings, under Sync: the heading of the list of tags to choose."
+    },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
     },
@@ -2217,6 +2235,12 @@
     },
     "This is already in the inbox" : {
 
+    },
+    "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends all your cards to your iCloud." : {
+      "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends every card."
+    },
+    "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards with the tags you choose to your iCloud." : {
+      "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends the cards with ticked tags."
     },
     "This repeats a card" : {
 
@@ -2324,6 +2348,9 @@
     },
     "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
+    },
+    "Your cards have no tags yet." : {
+      "comment" : "Settings, under Sync: the list of tags to choose is empty, as no card has a tag."
     },
     "Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
       "comment" : "Settings, under Sync, below the switch: what sync does."

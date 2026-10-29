@@ -3,7 +3,8 @@ import Foundation
 internal import GRDB
 
 // How a tag syncs (ADR 0017): by its name, with what it has of its own, its
-// switch, its color and its emoji, each of which keeps its latest change. A
+// switch, its color, its emoji and whether the user chose it to sync (ADR
+// 0020), each of which keeps its latest change. A
 // tag that two devices made with the same name is one tag, since its record
 // is named after its name.
 
@@ -15,10 +16,11 @@ enum TagKey {
     static let switchedOn = SyncedField.switchedOn.rawValue
     static let color = SyncedField.color.rawValue
     static let emoji = SyncedField.emoji.rawValue
+    static let chosenToSync = SyncedField.chosenToSync.rawValue
 }
 
 /// The fields of a tag that keep when they last changed.
-private let tagFields: [SyncedField] = [.switchedOn, .color, .emoji]
+private let tagFields: [SyncedField] = [.switchedOn, .color, .emoji, .chosenToSync]
 
 /// The record of the tag named `name`, as it is now, without what iCloud
 /// said of it: what it has of its own, which may be nothing, and when each
@@ -32,13 +34,15 @@ func tagRecord(_ name: String, in db: Database) throws -> ICloudRecord {
             TagKey.switchedOn: tag.switchedOn.map { .string($0.rawValue) },
             TagKey.color: tag.color.map { .string($0.rawValue) },
             TagKey.emoji: tag.emoji.map(ICloudValue.string),
+            // Chosen, or nothing, as a tag that isn't holds nothing of it.
+            TagKey.chosenToSync: tag.chosenToSync ? .int(1) : nil,
         ],
         andTimesOf: tagFields, in: db)
 }
 
 /// Applies `record`, from iCloud, to the tag named `name`: it takes each of
-/// its switch, color and emoji whose change in the record is the latest. A
-/// tag left with nothing of its own is just a name.
+/// its switch, color, emoji and choice to sync whose change in the record is
+/// the latest. A tag left with nothing of its own is just a name.
 func applyTag(_ record: ICloudRecord, named name: String, in db: Database) throws -> Bool {
     try takeLatestChanges(of: tagFields, in: record, over: try tagRecord(name, in: db), to: .tag(name), in: db) {
         won in
@@ -61,6 +65,13 @@ func applyTag(_ record: ICloudRecord, named name: String, in db: Database) throw
         }
         if won.contains(.emoji) {
             tag.emoji = try record.optionalText(TagKey.emoji)
+        }
+        if won.contains(.chosenToSync) {
+            switch try record.optionalInteger(TagKey.chosenToSync) {
+            case nil: tag.chosenToSync = false
+            case 1?: tag.chosenToSync = true
+            case _?: throw unreadable("A tag from iCloud says something else than whether it's chosen to sync")
+            }
         }
         try save(tag, in: db)
     }

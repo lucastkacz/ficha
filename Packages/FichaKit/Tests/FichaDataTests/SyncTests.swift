@@ -272,13 +272,15 @@ final class SyncTests {
 
     // Ficha kept no time for a tag's color before it recorded changes to
     // sync, so neither device has one for this color: the iPhone's tag never
-    // had one, and the Mac's had it from before.
+    // had one, and the Mac's had it from before. The Mac held cards and never
+    // synced, so the user turns sync on (#355).
     @Test("a first sync keeps a tag's color from before Ficha recorded its changes, against a tag that never had one")
     func aFirstSyncKeepsATagsColorFromBefore() async throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforeIDs(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
         let macFromBefore = try Device(
             Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
+        try macFromBefore.turnSyncOn()
         time.advance(by: minutes(1))
         try iPhone.engine.create(card(.word, front: "palabra", back: "Lo que se dice.", tags: ["lenguaje"]))
         try iPhone.engine.setEmoji(TagEmoji("🗣️"), of: "lenguaje")

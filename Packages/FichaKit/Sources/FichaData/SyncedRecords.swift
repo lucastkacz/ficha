@@ -8,15 +8,17 @@ internal import GRDB
 // changes the row. Of each field that keeps when it last changed, the latest
 // change wins, and the rest merges; a row new to the device comes in whole.
 // Cards, captures and the review log are described by `SyncedTable`, tags by
-// `SyncedTags.swift`, and the settings that decide progress by
-// `SyncedProgressSettings.swift`.
+// `SyncedTags.swift`, the settings that decide progress by
+// `SyncedProgressSettings.swift`, and the choice of what syncs by
+// `SelectiveSync.swift`, which also says how a row that stops syncing leaves
+// iCloud.
 
 extension SyncedRow {
     /// The ID of the record iCloud keeps the row as, in the cards' zone:
     /// named by the row's ID unique across devices, a tag by its name's
     /// SHA-256 after "tag-", since a record's name is ASCII, up to 255
-    /// characters, and a tag's name can be anything, and the settings that
-    /// decide progress by their type.
+    /// characters, and a tag's name can be anything, and a row there's one
+    /// of by its type.
     var recordID: ICloudRecordID {
         switch self {
         case .card(let id), .capture(let id), .reviewLogEntry(let id):
@@ -25,7 +27,7 @@ extension SyncedRow {
             ICloudRecordID(
                 name: "tag-" + SHA256.hash(data: Data(name.utf8)).map { String(format: "%02x", $0) }.joined(),
                 zone: .cards)
-        case .progressSettings:
+        case .progressSettings, .syncChoice:
             ICloudRecordID(name: recordName, zone: .cards)
         }
     }
@@ -44,7 +46,7 @@ extension SyncedRow {
 
 /// The row that syncs as the record with this ID, as the device holds it
 /// now, or nil when it holds none: a card, a capture or an entry of the
-/// review log by its ID, the settings that decide progress, or a tag, which
+/// review log by its ID, a row there's one of by its type, or a tag, which
 /// needn't have a row of its own, by the name whose record it is, among
 /// those that wait to be sent or that have something of their own or had.
 func syncedRow(named id: ICloudRecordID, in db: Database) throws -> SyncedRow? {
@@ -54,8 +56,8 @@ func syncedRow(named id: ICloudRecordID, in db: Database) throws -> SyncedRow? {
     if let uuid = UUID(uuidString: id.name) {
         return try SyncedTable.all.first { try $0.holdsRow(with: uuid, in: db) }.map { $0.syncedRow(uuid) }
     }
-    if id == SyncedRow.progressSettings.recordID {
-        return .progressSettings
+    if let row = [SyncedRow.progressSettings, .syncChoice].first(where: { $0.recordID == id }) {
+        return row
     }
     let tags = try String.fetchAll(
         db,
@@ -68,7 +70,9 @@ func syncedRow(named id: ICloudRecordID, in db: Database) throws -> SyncedRow? {
 }
 
 /// The record `row` syncs as, as it is now, with what iCloud said of it last,
-/// or nil when the device no longer holds it.
+/// or nil when the device no longer holds it: a card, a capture or an entry
+/// of the review log that doesn't sync as one that left
+/// (`syncedOrLeft(_:of:in:)`).
 func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
     let record: ICloudRecord? =
         switch row {
@@ -77,8 +81,10 @@ func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
         case .reviewLogEntry(let id): try SyncedTable.reviewLog.record(ofRowWith: id, in: db)
         case .tag(let name): try tagRecord(name, in: db)
         case .progressSettings: try progressSettingsRecord(in: db)
+        case .syncChoice: try syncChoiceRecord(in: db)
         }
-    return try record?.with(systemFields: systemFields(of: row.recordID, in: db))
+    return try record.map { try syncedOrLeft($0, of: row, in: db) }?
+        .with(systemFields: systemFields(of: row.recordID, in: db))
 }
 
 /// Applies `record`, from iCloud, to `row`, the row it holds: the row takes
@@ -92,6 +98,7 @@ private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) t
     case .reviewLogEntry(let id): try SyncedTable.reviewLog.apply(record, toRowWith: id, in: db)
     case .tag(let name): try applyTag(record, named: name, in: db)
     case .progressSettings: try applyProgressSettings(record, in: db)
+    case .syncChoice: try applySyncChoice(record, in: db)
     }
 }
 
@@ -108,12 +115,14 @@ enum Received: Equatable {
 }
 
 /// Applies `record`, from iCloud, as `apply(_:to:in:)` says, in a write that
-/// records no change to send, and keeps what iCloud says of it. A record
-/// that refers to a row the device doesn't hold yet waits, and so does one
-/// this version of Ficha can't read, which the log says: each is tried again
-/// whenever records come, until it's applied or a later version of it
-/// replaces it. A record of a row the device deleted, whose deletion waits to
-/// be sent, is dropped. A failure of the database itself throws.
+/// records no change to send, and keeps what iCloud says of it. A record of
+/// a row that left iCloud is taken as `takeWhatLeft(_:of:in:)` says, which
+/// never deletes or makes a row. A record that refers to a row the device
+/// doesn't hold yet waits, and so does one this version of Ficha can't read,
+/// which the log says: each is tried again whenever records come, until it's
+/// applied or a later version of it replaces it. A record of a row the
+/// device deleted, whose deletion waits to be sent, is dropped. A failure of
+/// the database itself throws.
 func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
     if try pendingDeletion(of: record.id, in: db) != nil {
         try dropWaitingRecord(of: record.id, in: db)
@@ -124,7 +133,12 @@ func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
     do {
         row = try SyncedRow(of: record)
         try db.inSavepoint {
-            applied = try apply(record, to: row, in: db)
+            if record.hasLeft {
+                try takeWhatLeft(record, of: row, in: db)
+                applied = true
+            } else {
+                applied = try apply(record, to: row, in: db)
+            }
             return applied ? .commit : .rollback
         }
     } catch let error where isUnreadable(error) {
@@ -136,7 +150,7 @@ func receive(_ record: ICloudRecord, in db: Database) throws -> Received {
     guard applied else {
         return try keepWaiting(record, in: db)
     }
-    try keep(record.systemFields, of: record.id, in: db)
+    try keep(record.systemFields, of: record.id, hasLeft: record.hasLeft, in: db)
     try forgetPendingSave(of: row, whenICloudHolds: record, in: db)
     try dropWaitingRecord(of: record.id, in: db)
     return .applied
@@ -213,18 +227,19 @@ func systemFields(of id: ICloudRecordID, in db: Database) throws -> Data? {
 }
 
 /// Keeps `systemFields` as what iCloud said last of the record with this ID,
-/// or forgets what it said when it's nil.
-func keep(_ systemFields: Data?, of id: ICloudRecordID, in db: Database) throws {
+/// with whether it holds it as one whose row left iCloud, or forgets what it
+/// said when it's nil.
+func keep(_ systemFields: Data?, of id: ICloudRecordID, hasLeft: Bool = false, in db: Database) throws {
     guard let systemFields else {
         try db.execute(sql: "DELETE FROM syncRecord WHERE zone = ? AND name = ?", arguments: [id.zone.name, id.name])
         return
     }
     try db.execute(
         sql: """
-            INSERT INTO syncRecord (zone, name, systemFields) VALUES (?, ?, ?)
-            ON CONFLICT (zone, name) DO UPDATE SET systemFields = excluded.systemFields
+            INSERT INTO syncRecord (zone, name, systemFields, hasLeft) VALUES (?, ?, ?, ?)
+            ON CONFLICT (zone, name) DO UPDATE SET systemFields = excluded.systemFields, hasLeft = excluded.hasLeft
             """,
-        arguments: [id.zone.name, id.name, systemFields])
+        arguments: [id.zone.name, id.name, systemFields, hasLeft])
 }
 
 /// The record `row` syncs as, without what iCloud said of it: `values`, and

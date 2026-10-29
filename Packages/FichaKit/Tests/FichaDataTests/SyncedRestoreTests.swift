@@ -64,6 +64,42 @@ final class SyncedRestoreTests {
         #expect(iCloud.saves == saves)
     }
 
+    // Only filosofía syncs (#355): petricor never went up, nor did the
+    // iPhone's saudade, which stays; efímero, made after the backup, goes.
+    @Test(
+        "after a restore, turning sync on sends only the cards that sync, and the other device replaces only its own that sync, keeping the rest"
+    )
+    func aRestoreReplacesOnlyTheCardsThatSync() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia.", tags: ["lenguaje"]))
+        try mac.engine.syncOnlyChosenTags(true)
+        try mac.engine.chooseToSync("filosofía", true)
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try iPhone.engine.create(
+            card(.word, front: "saudade", back: "Nostalgia de lo que se fue.", tags: ["lenguaje"]))
+        try await iPhone.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        time.advance(by: minutes(1))
+        try mac.engine.create(card(.word, front: "efímero", back: "Que dura poco.", tags: ["filosofía"]))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try iPhone.engine.cards().map(\.front).sorted() == ["efímero", "saudade", "ubuntu"])
+
+        try mac.engine.restore(backup.name)
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cards().map(\.front).sorted() == ["petricor", "ubuntu"])
+        #expect(try iPhone.engine.cards().map(\.front).sorted() == ["saudade", "ubuntu"])
+        #expect(try iPhone.engine.card(fronted: "ubuntu").asSeen == mac.engine.card(fronted: "ubuntu").asSeen)
+        #expect(iCloud.records.filter { $0.type == SyncedRow.RecordType.card.rawValue }.count == 1)
+        #expect(cardsZonesInICloud().count == 1)
+    }
+
     // The iPhone was offline while the Mac restored and turned sync on: it
     // sends what it changed meanwhile before it fetches, as iCloud's engine
     // may.

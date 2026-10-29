@@ -86,6 +86,58 @@ final class ImportWeightTests {
         #expect(preview.weightGoingUpToICloud(choosing: .skip) == nil)
     }
 
+    // Only geografía syncs (#355): the map, on a card tagged geografía, goes
+    // up; the anthem, on a card the file proposes "Himnos" for, only once
+    // the user names that tag geografía.
+    @Test(
+        "the line counts only the files of the cards that sync once they come in, with the tags as the user names them")
+    func theLineCountsOnlyTheCardsThatSync() throws {
+        try engine.syncOnlyChosenTags(true)
+        try engine.chooseToSync("geografía", true)
+        let map = try incomingImage(weighing: 100_000_000, named: "a")
+        let anthem = try incomingSound(weighing: 100_000_000, named: "b")
+        let read = [
+            ImportedCard(
+                content: try card(
+                    nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía"], frontImage: map.name),
+                fields: [], line: 1),
+            ImportedCard(
+                content: try card(nil, front: "¿Qué himno es?", back: "El de la Argentina.", backSound: anthem.name),
+                fields: [], line: 2, proposedTags: ["Himnos"]),
+        ]
+
+        let preview = try engine.preview(
+            ImportReading(cards: read, leftOut: []), of: "Himnos.txt", kind: .cardsFile, images: [map.name: map],
+            sounds: [anthem.name: anthem])
+
+        #expect(preview.weightGoingUpToICloud(choosing: .update) == 100_000_000)
+        #expect(preview.weightGoingUpToICloud(choosing: .update, naming: ["Himnos": "geografía"]) == 200_000_000)
+    }
+
+    // Only geografía syncs: the Mac holds the map on a card of historia
+    // alone, so iCloud lacks it, and the file's card of geografía takes it
+    // up. The file's copy of it weighs a byte.
+    @Test("a file Ficha holds counts when no card that syncs uses it, at the size Ficha keeps it")
+    func aHeldFileNoCardThatSyncsUsesCounts() throws {
+        try engine.syncOnlyChosenTags(true)
+        try engine.chooseToSync("geografía", true)
+        let map = try heavyImage(weighing: 100_000_000, named: "a", in: engine)
+        try engine.create(card(nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["historia"], frontImage: map))
+        let read = [
+            ImportedCard(
+                content: try card(
+                    nil, front: "¿De qué país es este mapa?", back: "De la Argentina.", tags: ["geografía"],
+                    frontImage: map),
+                fields: [], line: 1)
+        ]
+
+        let preview = try engine.preview(
+            ImportReading(cards: read, leftOut: []), of: "Mapas.txt", kind: .cardsFile,
+            images: [map: CardImage(name: map, data: Data(count: 1))], sounds: [:])
+
+        #expect(preview.weightGoingUpToICloud(choosing: .update) == 100_000_000)
+    }
+
     @Test("with sync off, or no iCloud account, the import says nothing of iCloud")
     func noLineWithoutSync() throws {
         let map = try incomingImage(weighing: 120_000_000, named: "a")
