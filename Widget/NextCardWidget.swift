@@ -7,9 +7,8 @@ import UniformTypeIdentifiers
 import WidgetKit
 
 /// The widget with the next card to review (#171), on the desktop or in
-/// Notification Center, in each app, for its cards, the real Ficha's from
-/// #310 (`AppVariant.groupDefaults`): the card a review now would start
-/// with, or when the next one comes. A click on it opens a review now that
+/// Notification Center, in each app, for its cards: the card a review now
+/// would start with, or when the next one comes. A click on it opens a review now that
 /// starts with that card, through a link the app handles.
 @main
 struct NextCardWidget: Widget {
@@ -70,8 +69,8 @@ private func readTimeline(for family: WidgetFamily) -> Timeline<NextCardEntry> {
     widgetLogger.info(
         "Building a timeline for \(variant.name, privacy: .public)'s \(family.description, privacy: .public) widget")
     // Picks with this Mac's settings, as review now does, once the app
-    // handed them over, and opens the cards only then: the real Ficha hands
-    // nothing over until #310 (`AppVariant.groupDefaults`).
+    // handed them over, and opens the cards only then
+    // (`AppVariant.groupDefaults`).
     guard let settings = WidgetHandover.handedOver() else {
         widgetLogger.info("The app hasn't handed over this Mac's settings yet")
         return single(.notReady, at: now)
