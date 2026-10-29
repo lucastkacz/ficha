@@ -15,7 +15,7 @@ Ficha doesn't collect, share or sell any data about you or your cards. It has no
 
 Your cards, with their images and sounds, your reviews, the inbox and your settings, stay on your devices.
 
-When you turn on sync, your cards also go to your private iCloud, in your own Apple Account, so each of your devices has the same ones. Apple's iCloud keeps them under Apple's privacy policy, and the developer can't see them. Ficha's backups stay on the device that saved them.
+When you turn on sync, your cards, or only those with the tags you choose, also go to your private iCloud, in your own Apple Account, so each of your devices has the same ones. A card you stop syncing leaves iCloud, all but its tags, which tell your other devices why it left, and stays on each device that has it. Apple's iCloud keeps them under Apple's privacy policy, and the developer can't see them. Ficha's backups stay on the device that saved them.
 
 ## The network
 
@@ -27,7 +27,7 @@ If you share analytics with app developers in your Mac's or iPhone's settings, A
 
 ## Deleting your data
 
-Delete cards in Ficha whenever you like: with sync on, they go from iCloud and your other devices too. To delete everything Ficha keeps in your iCloud, open iCloud's settings on any of your devices, manage its storage, and delete Ficha's data there.
+Delete cards in Ficha whenever you like: with sync on, a card that syncs goes from iCloud and your other devices too, and one that doesn't goes from that device alone, while iCloud keeps its tags if it synced before. To delete everything Ficha keeps in your iCloud, open iCloud's settings on any of your devices, manage its storage, and delete Ficha's data there.
 
 ## Changes and questions
 

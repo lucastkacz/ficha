@@ -11,11 +11,13 @@ internal import GRDB
 // the copy held. Of what the device knows iCloud holds, it keeps the images
 // and sounds alone, which a restore leaves alone in iCloud (`SyncedFiles.swift`),
 // so that turning sync on sends only those iCloud lacks. Turning it on then
-// replaces the cards iCloud holds with this device's: the device sends them
-// into a cards' zone it makes, named for the restore, and deletes the one it
-// leaves; each other device that last synced in an older zone takes them in
-// place of its own (`Sync`), saving a copy of its cards first, and dropping
-// every row that syncs, as `dropEverythingThatSyncs(in:)` says.
+// replaces the cards iCloud holds with this device's that sync
+// (`SelectiveSync.swift`): the device sends them into a cards' zone it makes,
+// named for the restore, and deletes the one it leaves; each other device
+// that last synced in an older zone takes them in place of its own that sync
+// (`Sync`), saving a copy of its cards first, and dropping every row that
+// syncs, as `dropEverythingThatSyncs(in:)` says. The cards that don't sync,
+// on either side, stay where they are.
 
 /// What a device keeps of its sync through a restore, in place of the
 /// restored copy's: how sync stands, with the switch turned off, and what it
@@ -51,24 +53,41 @@ struct SyncKeptThroughARestore {
 }
 
 /// Drops every row that syncs, in a write that records nothing to send, as a
-/// device takes a restore's cards in place of its own: the cards, their
-/// review log, the captures and the tags, with what waited to be sent and
-/// when each field last changed. The settings that decide progress stay, as
-/// their row is never deleted, but with no time of change, so that the
-/// restore's take their place as they come. Returns the images and sounds
-/// the rows used, for the device to remove those iCloud doesn't hold: those
-/// it holds stay, for the restore's cards that use them.
+/// device takes a restore's cards in place of its own: the cards that sync
+/// (`SelectiveSync.swift`), their review log, the captures that sync and the
+/// tags, with what waited to be sent and when each field of them last
+/// changed. The cards that don't sync stay, with their review log, the
+/// captures tied to them and those they were approved from, none of which
+/// the restore's copy brings. The settings that decide progress and the
+/// choice of what syncs stay, as their rows are never deleted, but with no
+/// time of change, so that the restore's take their place as they come.
+/// Returns the images and sounds the cards dropped used, for the device to
+/// remove those iCloud doesn't hold: those it holds stay, for the restore's
+/// cards that use them.
 func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
-    let referred = try FileNames(referredIn: db)
+    var used = FileNames()
+    used.images = try namesSynced(ImageName.self, in: db)
+    used.sounds = try namesSynced(SoundName.self, in: db)
+    let (card, capture) = (SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue)
+    let syncing = "SELECT id FROM card WHERE \(cardSyncs(tags: "card.tags"))"
+    let untied = """
+        SELECT id FROM capture WHERE expandsCardId IS NULL AND followsUpCardId IS NULL
+            AND id NOT IN (SELECT captureId FROM card WHERE captureId IS NOT NULL)
+        """
     try db.execute(
         sql: """
-            DELETE FROM reviewLog;
-            UPDATE capture SET expandsCardId = NULL, followsUpCardId = NULL;
-            DELETE FROM card;
-            DELETE FROM capture;
+            DELETE FROM reviewLog WHERE cardId IN (\(syncing));
+            UPDATE capture SET expandsCardId = NULL WHERE expandsCardId IN (\(syncing));
+            UPDATE capture SET followsUpCardId = NULL WHERE followsUpCardId IN (\(syncing));
+            DELETE FROM syncFieldTime
+            WHERE recordType = '\(card)' AND recordName IN (SELECT uuid FROM card WHERE id IN (\(syncing)));
+            DELETE FROM card WHERE id IN (\(syncing));
+            DELETE FROM syncFieldTime
+            WHERE recordType = '\(capture)' AND recordName IN (SELECT uuid FROM capture WHERE id IN (\(untied)));
+            DELETE FROM capture WHERE id IN (\(untied));
             DELETE FROM tag;
-            DELETE FROM syncFieldTime;
+            DELETE FROM syncFieldTime WHERE recordType NOT IN ('\(card)', '\(capture)');
             DELETE FROM syncPending;
             """)
-    return referred
+    return used
 }

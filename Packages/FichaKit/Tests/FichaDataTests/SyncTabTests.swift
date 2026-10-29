@@ -129,10 +129,13 @@ final class SyncTabTests {
     }
 
     // Turned off by the user, the switch says all there is: turning it on
-    // syncs again. After a purge, it sends all the cards again, which the
-    // line says; and the sync from before the purge, of what iCloud no longer
-    // holds, isn't one, so the line says none until the Mac syncs again.
-    @Test("after a purge, the line says turning sync on sends all the cards again, and then no sync from before it")
+    // syncs again. After a purge, it sends the cards that sync again, which
+    // the line says; and the sync from before the purge, of what iCloud no
+    // longer holds, isn't one, so the line says none until the Mac syncs
+    // again.
+    @Test(
+        "after a purge, the line says turning sync on sends the cards again, every one or those with chosen tags, and then no sync from before it"
+    )
     func afterAPurge() async throws {
         try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         try await mac.syncNow()
@@ -142,10 +145,15 @@ final class SyncTabTests {
         try await mac.syncNow()
         var tab = mac.engine.openSyncTab()
 
-        #expect(tab.status == .off(turningOn: .sendsAllCardsAgain, sending: nil))
+        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenTags: false), sending: nil))
         #expect(!tab.switchIsOn)
         #expect(tab.canTurnSwitch)
 
+        tab.syncOnlyChosenTags(true)
+
+        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenTags: true), sending: nil))
+
+        tab.syncOnlyChosenTags(false)
         tab.turnSync(on: true)
 
         #expect(tab.status == .on(lastSynced: nil))
@@ -181,11 +189,88 @@ final class SyncTabTests {
         try await mac.syncNow()
         tab.read()
 
-        #expect(tab.status == .off(turningOn: .sendsAllCardsAgain, sending: 100_000_000))
+        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenTags: false), sending: 100_000_000))
     }
 
     // The app asks iCloud at launch, which a database only the CLI opened
     // never heard: the switch shows as it was left, and the user can turn it.
+    // The map is on two of geografía's cards, and counts once; lenguaje's
+    // card has no file; historia is chosen while no card carries it.
+    @Test(
+        "while only the cards with chosen tags sync, the tab lists every tag, a new one not chosen, with what its cards' files weigh, and none while every card syncs"
+    )
+    func theTabListsTheTagsToChoose() throws {
+        let map = try heavyImage(weighing: 1_500_000, named: "a", in: mac.engine)
+        try mac.engine.create(
+            card(nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía"], frontImage: map))
+        try mac.engine.create(
+            card(
+                nil, front: "¿De qué país es?", back: "De la Argentina.", tags: ["geografía", "mapas"], frontImage: map)
+        )
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia.", tags: ["lenguaje"]))
+        var tab = mac.engine.openSyncTab()
+
+        #expect(!tab.onlyChosenTags)
+        #expect(tab.tags.isEmpty)
+        #expect(tab.canChoose)
+
+        tab.syncOnlyChosenTags(true)
+        tab.choose("historia", true)
+
+        #expect(tab.onlyChosenTags)
+        #expect(
+            tab.tags == [
+                TagToChoose(name: "geografía", isChosen: false, weight: 1_500_000),
+                TagToChoose(name: "historia", isChosen: true, weight: nil),
+                TagToChoose(name: "lenguaje", isChosen: false, weight: nil),
+                TagToChoose(name: "mapas", isChosen: false, weight: 1_500_000),
+            ])
+        #expect(tab.failure == nil)
+    }
+
+    @Test("while sync is off, the line counts only the files of the cards that sync")
+    func theOffLineCountsOnlyTheCardsThatSync() throws {
+        var tab = mac.engine.openSyncTab()
+        tab.turnSync(on: false)
+        let map = try heavyImage(weighing: 100_000_000, named: "a", in: mac.engine)
+        try mac.engine.create(
+            card(nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía"], frontImage: map))
+        tab.syncOnlyChosenTags(true)
+
+        #expect(tab.status == .off(turningOn: nil, sending: nil))
+
+        tab.choose("geografía", true)
+
+        #expect(tab.status == .off(turningOn: nil, sending: 100_000_000))
+    }
+
+    // As Lucas's Mac migrates: it held cards, and never synced (#355).
+    @Test(
+        "on a Mac that held cards before it ever synced, the off line says turning sync on sends its cards, every one or those with chosen tags"
+    )
+    func theFirstSyncLine() throws {
+        let folder = URL.temporaryDirectory.appending(
+            path: "FichaSyncTabTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeSelectiveSync(
+            at: folder.appending(path: "Ficha.sqlite"), holdsCards: true, synced: false, at: time.now)
+        let macFromBefore = try Device(
+            Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
+        var tab = macFromBefore.engine.openSyncTab()
+
+        #expect(tab.status == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: false), sending: nil))
+        #expect(!tab.switchIsOn)
+
+        tab.syncOnlyChosenTags(true)
+
+        #expect(tab.status == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: true), sending: nil))
+
+        tab.turnSync(on: true)
+
+        #expect(tab.status == .on(lastSynced: nil))
+    }
+
     @Test("until the app knows whether the Mac has an iCloud account, the line says it's checking")
     func checkingTheAccount() throws {
         let opened = try Engine(location: .inMemory, time: time, calendar: calendar)

@@ -61,11 +61,14 @@ func folder<Name: NameOfFileOnCard>(of _: Name.Type, in folder: URL) -> URL {
     folder.appending(path: Name.folderName, directoryHint: .isDirectory)
 }
 
-/// Every file named by `Name` the cards in `db` refer to, on either side:
-/// none for a database from before such files on cards, such as an old
-/// backup, or from before cards. A name that isn't one of `Name` fails, as a
-/// card the engine never saved.
-func namesReferred<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws -> Set<Name> {
+/// Every file named by `Name` the cards in `db` refer to, on either side, of
+/// those `condition` picks, an SQL expression on `card`'s columns, or of
+/// every card: none for a database from before such files on cards, such as
+/// an old backup, or from before cards. A name that isn't one of `Name`
+/// fails, as a card the engine never saved.
+func namesReferred<Name: NameOfFileOnCard>(_: Name.Type, onCardsWhere condition: String = "1", in db: Database)
+    throws -> Set<Name>
+{
     guard try db.tableExists("card") else {
         return []
     }
@@ -77,8 +80,8 @@ func namesReferred<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws
     let names = try String.fetchAll(
         db,
         sql: """
-            SELECT \(front) FROM card WHERE \(front) IS NOT NULL
-            UNION SELECT \(back) FROM card WHERE \(back) IS NOT NULL
+            SELECT \(front) FROM card WHERE \(front) IS NOT NULL AND \(condition)
+            UNION SELECT \(back) FROM card WHERE \(back) IS NOT NULL AND \(condition)
             """)
     return try Set(
         names.map { rawName in

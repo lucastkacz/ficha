@@ -66,6 +66,11 @@ public enum SyncOffReason: String, Sendable, Equatable {
     /// undid: turning it on replaces the cards iCloud holds with this
     /// device's, which the other devices then take in place of theirs.
     case restore
+    /// The device held cards and had never synced when Ficha came to choose
+    /// which of them sync (`Schema`'s "v26 selective sync"), so that none goes
+    /// up before the user sees what turning it on sends: the cards that sync,
+    /// every one until the user chooses tags.
+    case firstSync
 }
 
 /// A stretch of time with sync on, from when Settings' switch turns on until
@@ -193,7 +198,7 @@ func switchSyncOn(in db: Database) throws {
         return
     }
     switch reason {
-    case .user:
+    case .user, .firstSync:
         break
     case .purge, .restore:
         try db.execute(sql: "UPDATE syncDevice SET lastSyncedAt = NULL")

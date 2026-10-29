@@ -113,10 +113,17 @@ extension CardsWindowState {
         /// What the images and sounds the import brings weigh, in bytes, as
         /// the preview's line says it while they go up to the user's iCloud,
         /// with the files of the repeated cards while the user chooses to
-        /// update them; nil while the sheet says nothing of it, as
-        /// `ImportPreview.weightGoingUpToICloud(choosing:)` says.
+        /// update them, of the cards that sync with the tags as the fields
+        /// name them; nil while the sheet says nothing of it, as
+        /// `ImportPreview.weightGoingUpToICloud(choosing:naming:)` says.
         public var weightGoingUpToICloud: Int64? {
-            preview?.weightGoingUpToICloud(choosing: repeatedCards)
+            preview?.weightGoingUpToICloud(choosing: repeatedCards, naming: tagNames)
+        }
+
+        /// The names the user gave the tags the preview proposes, by the tag
+        /// proposed, as the fields hold them.
+        private var tagNames: [String: String] {
+            Dictionary(tagFields.map { ($0.proposed, $0.name) }) { first, _ in first }
         }
 
         /// What the user chose, for the import, with the cards' progress
@@ -124,7 +131,7 @@ extension CardsWindowState {
         /// it's ticked.
         fileprivate func choices(on ladder: Ladder) -> ImportChoices {
             ImportChoices(
-                tagNames: Dictionary(tagFields.map { ($0.proposed, $0.name) }) { first, _ in first },
+                tagNames: tagNames,
                 repeatedCards: repeatedCards,
                 progress: importBringsProgress ? .brought(onto: ladder) : .leftOut)
         }

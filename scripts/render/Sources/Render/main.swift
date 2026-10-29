@@ -63,6 +63,12 @@ enum Window: String {
     /// Settings, on its Sync tab, once the user restored a copy, which
     /// turned sync off.
     case syncRestored = "sync-restored"
+    /// Settings, on its Sync tab, once the Mac synced only the cards with the
+    /// tags the user chose, filosofía and lenguaje, in the list of every tag.
+    case syncChosenTags = "sync-chosen-tags"
+    /// Settings, on its Sync tab, off since the Mac held cards before it ever
+    /// synced, as the update that brought selective sync leaves Lucas's.
+    case syncFirst = "sync-first"
     /// The menu under Ficha's icon while iCloud is full, its content drawn in
     /// a window, since the tool can't open the menu offscreen.
     case menuICloudFull = "menu-icloud-full"
@@ -318,7 +324,8 @@ let usage = """
                  or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
                  (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
                  full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
-                 in iCloud), menu-icloud-full (the menu's content while iCloud is full, in a window), about
+                 in iCloud), sync-restored (off after a restore), sync-chosen-tags (syncing only the cards with
+                 two ticked tags), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
                  (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
                  or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
@@ -852,7 +859,7 @@ func writeSampleAnkiPackage(to file: URL) throws {
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: folder) }
     let collection = folder.appending(path: "collection.anki21")
-    try runSQLite(try sampleAnkiCollectionSQL(), in: collection)
+    try runSQLite(try sampleAnkiCollectionSQL(), in: collection, writing: "the sample Anki package")
     let meta = folder.appending(path: "meta")
     try Data([0x08, 0x02]).write(to: meta)
     let flag = folder.appending(path: "0")
@@ -864,15 +871,19 @@ func writeSampleAnkiPackage(to file: URL) throws {
     try zipFiles([meta, collection, flag, sun, media], into: file, describing: "the sample Anki package")
 }
 
-/// Runs `sql` on the SQLite database at `file`, which it makes.
-func runSQLite(_ sql: String, in file: URL) throws {
+/// Runs `sql` on the SQLite database at `file`, which it makes if it isn't
+/// there, to write `what`, as its failure says.
+func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
     var database: OpaquePointer?
     defer { sqlite3_close(database) }
     guard sqlite3_open(file.path(percentEncoded: false), &database) == SQLITE_OK,
         sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK
     else {
         throw RenderError(
-            description: "SQLite couldn't write the sample Anki package: \(String(cString: sqlite3_errmsg(database)))")
+            description: """
+                SQLite couldn't write \(what): \(String(cString: sqlite3_errmsg(database))). The tool's SQL for it \
+                no longer fits that database: fix it as SQLite's error says.
+                """)
     }
 }
 
@@ -1029,13 +1040,33 @@ func model(for name: Window) throws -> AppModel {
                 .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(modifications: [], deletions: [purge])),
                 to: sync)
         } isShown: {
-            if case .off(turningOn: .sendsAllCardsAgain?, _) = $0 { true } else { false }
+            if case .off(turningOn: .sendsCardsAgain(onlyChosenTags: false)?, _) = $0 { true } else { false }
         }
     case .syncRestored:
         return try syncModel(showing: "that a restore turned sync off") { engine, _ in
             try engine.restore(try engine.backUpNow(.defaults).name)
         } isShown: {
             if case .off(turningOn: .replacesICloudsCopy?, _) = $0 { true } else { false }
+        }
+    case .syncChosenTags:
+        return try syncModel(showing: "when the Mac last synced, syncing only the cards with chosen tags") {
+            engine, sync in
+            try engine.syncOnlyChosenTags(true)
+            try engine.chooseToSync("filosofía", true)
+            try engine.chooseToSync("lenguaje", true)
+            try sync.finishAFetchWithoutAnError(with: RenderICloud())
+        } isShown: {
+            if case .on(_?) = $0 { true } else { false }
+        }
+    case .syncFirst:
+        // As `Schema`'s "v26 selective sync" leaves a Mac that held cards and
+        // never synced, which the sample's new database never is.
+        return try syncModel(showing: "that the Mac held cards before it ever synced") { _, _ in
+            try runSQLite(
+                "UPDATE syncDevice SET isOn = 0, offBecause = 'firstSync', timesTurnedOff = timesTurnedOff + 1",
+                in: renderDataFolder.appending(path: "Ficha.sqlite"), writing: "how sync stands on the sample's Mac")
+        } isShown: {
+            $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: false), sending: nil)
         }
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
@@ -1076,7 +1107,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: try heavyImportingState(of: model))
         return window
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
-    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored:
+    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenTags, .syncFirst:
         return settingsTabWindow(model: model, openingOn: .sync)
     case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)

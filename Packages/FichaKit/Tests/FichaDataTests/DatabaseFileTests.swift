@@ -220,9 +220,10 @@ final class DatabaseFileTests {
     }
 
     // The card, capture and review log tables are made again for the IDs'
-    // defaults.
+    // defaults. The device holds cards and never synced, so sync starts off
+    // until the user turns it on (#355).
     @Test(
-        "a database from before IDs unique across devices migrates with every row as it was, each with an ID of its own waiting to be sent"
+        "a database from before IDs unique across devices migrates with every row as it was, each with an ID of its own sent once sync is turned on"
     )
     func aDatabaseFromBeforeIDsMigratesWithAnIDForEveryRow() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -230,6 +231,9 @@ final class DatabaseFileTests {
 
         let engine = try Engine(location: .folder(folder), time: time)
 
+        #expect(try engine.syncStatus().offBecause == .firstSync)
+        #expect(try engine.changesToSend().isEmpty)
+        try engine.turnSyncOn()
         let waiting = try engine.changesToSend()
         try expectEveryRowWithAnIDAsBeforeIDs(in: engine, at: time.now)
         #expect(
@@ -291,6 +295,42 @@ final class DatabaseFileTests {
         #expect(standing.left == nil)
         #expect(standing.user == nil)
         #expect(try engine.syncStatus().isOn)
+    }
+
+    // Lucas's database has had sync on since "v24 how sync stands", and never
+    // synced: its cards wait for him to say what goes up. One that synced
+    // goes on, and so does one with no card yet, as a new install's.
+    @Test(
+        "a database from before selective sync migrates with sync off when it holds cards and never synced, as it was otherwise, and every card syncing",
+        arguments: [(true, false), (true, true), (false, false)])
+    func aDatabaseFromBeforeSelectiveSync(holdsCards: Bool, synced: Bool) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeSelectiveSync(
+            at: folder.appending(path: "Ficha.sqlite"), holdsCards: holdsCards, synced: synced, at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let waits = holdsCards && !synced
+        #expect(try engine.syncStatus().offBecause == (waits ? .firstSync : nil))
+        #expect(try !engine.syncsOnlyChosenTags())
+        if waits {
+            #expect(try engine.changesToSend().isEmpty)
+            try engine.turnSyncOn()
+            #expect(try engine.changesToSend().map(\.row.recordType) == [.card])
+        }
+    }
+
+    // Ficha Dev's sample cards, and an agent's scratch run, load into a new
+    // database, which then syncs them.
+    @Test("a new database starts with sync on and every card syncing, the sample cards loaded into it too")
+    func aNewDatabaseStartsWithSyncOn() throws {
+        let engine = try Engine(location: .folder(folder), time: time)
+        try SampleCards.load(into: engine)
+        let reopened = try Engine(location: .folder(folder), time: time)
+
+        #expect(try reopened.syncStatus().isOn)
+        #expect(try !reopened.syncsOnlyChosenTags())
+        #expect(try reopened.changesToSend().count(where: { $0.row.recordType == .card }) == 50)
     }
 
     // Ficha opens its database every time it starts, and the CLI on every
@@ -389,6 +429,32 @@ func saveDatabaseBeforeHowSyncStands(at file: URL, syncIsOn: Bool, synced: Bool)
         try db.execute(
             sql: "UPDATE syncDevice SET isOn = ?, engineState = ?",
             arguments: [syncIsOn, synced ? Data("a state CKSyncEngine saved".utf8) : nil])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before selective sync,
+/// through the schema's migrations up to the one before it, with sync on, as
+/// "v24 how sync stands" left it: with a card made at `time`, written as a
+/// change not to send, when `holdsCards` says so, and with a state
+/// CKSyncEngine saved, as on a device that synced, when `synced` says so.
+func saveDatabaseBeforeSelectiveSync(at file: URL, holdsCards: Bool, synced: Bool, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v25 the cards' zone in iCloud")
+    try database.write { db in
+        if holdsCards {
+            try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+            try db.execute(
+                sql: """
+                    INSERT INTO card (type, front, back, tags, createdAt)
+                    VALUES ('word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?)
+                    """,
+                arguments: [time])
+            try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+        }
+        try db.execute(
+            sql: "UPDATE syncDevice SET isOn = 1, engineState = ?",
+            arguments: [synced ? Data("a state CKSyncEngine saved".utf8) : nil])
     }
     try database.close()
 }

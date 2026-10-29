@@ -5,14 +5,16 @@ internal import GRDB
 // How the images and sounds on cards sync (ADR 0017): each as a record of its
 // own in the files' zone, apart from the cards', named by the file's name,
 // which is its content's, and holding the file as an asset, so that sending
-// one again is harmless. A device sends a file a card of its own uses while
-// iCloud lacks it, as far as the device knows, which also sends again one
-// that left iCloud. It keeps every file that comes, as a file the user added
-// is kept, and keeps a file iCloud holds even once no card uses it, removing
-// it only once it left iCloud, so a card that comes later finds it. When a
-// card uses a file iCloud holds and the device lacks anyway, the device asks
-// iCloud for it again. It deletes from iCloud the files no card uses only
-// once a fetch ends with the device in sync, as Anki does with media. What
+// one again is harmless. A device sends a file a card of its own that syncs
+// uses (`SelectiveSync.swift`) while iCloud lacks it, as far as the device
+// knows, which also sends again one that left iCloud. It keeps every file
+// that comes, as a file the user added is kept, and keeps a file iCloud holds
+// even once no card uses it, removing it only once it left iCloud, so a card
+// that comes later finds it. When a card uses a file iCloud holds and the
+// device lacks anyway, the device asks iCloud for it again. It deletes from
+// iCloud the files no card that syncs uses only once a fetch ends with the
+// device in sync, as Anki does with media, so a file only cards that stopped
+// syncing use leaves iCloud, and stays on every device that has them. What
 // the device knows iCloud holds is what iCloud said last of each file's
 // record (`syncRecord`).
 
@@ -65,9 +67,9 @@ extension NameOfSyncedFile {
         try Self.files(of: engine).keep(copyOf: file, as: self)
     }
 
-    /// Whether a card in `db` uses the file, on either side.
-    func isUsed(in db: Database) throws -> Bool {
-        try namesReferred(Self.self, in: db).contains(self)
+    /// Whether a card in `db` that syncs uses the file, on either side.
+    func isSynced(in db: Database) throws -> Bool {
+        try namesSynced(Self.self, in: db).contains(self)
     }
 }
 
@@ -141,29 +143,38 @@ extension FileNames {
     }
 }
 
+/// The names of the files of `Name`'s kind that the cards in `db` that sync
+/// use, on either side, as `namesReferred(_:onCardsWhere:in:)` reads them.
+func namesSynced<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws -> Set<Name> {
+    try namesReferred(Name.self, onCardsWhere: cardSyncs(tags: "card.tags"), in: db)
+}
+
 /// What a device knows of the images and sounds that sync: those its cards
-/// use, and those iCloud holds, as far as it knows. A file of a kind this
-/// version of Ficha doesn't know is neither: it never sends, fetches or
-/// deletes one.
+/// use, those its cards that sync use, and those iCloud holds, as far as it
+/// knows. A file of a kind this version of Ficha doesn't know is none of
+/// them: it never sends, fetches or deletes one.
 private struct FilesKnown {
     let used: Set<SyncedFile>
+    let synced: Set<SyncedFile>
     let inICloud: Set<SyncedFile>
 
     init(in db: Database) throws {
         used = Set(try namesReferred(ImageName.self, in: db).map(SyncedFile.init))
             .union(try namesReferred(SoundName.self, in: db).map(SyncedFile.init))
+        synced = Set(try namesSynced(ImageName.self, in: db).map(SyncedFile.init))
+            .union(try namesSynced(SoundName.self, in: db).map(SyncedFile.init))
         inICloud = Set(try namesInICloud(ImageName.self, in: db).map(SyncedFile.init))
             .union(try namesInICloud(SoundName.self, in: db).map(SyncedFile.init))
     }
 }
 
 extension Engine {
-    /// The images and sounds sync sends: each one a card on the device uses,
-    /// which the device keeps and iCloud lacks, as far as the device knows.
-    /// The same file on two cards is one.
+    /// The images and sounds sync sends: each one a card on the device that
+    /// syncs uses, which the device keeps and iCloud lacks, as far as the
+    /// device knows. The same file on two cards is one.
     func filesICloudLacks() throws(EngineError) -> Set<SyncedFile> {
         let known = try read(FilesKnown.init(in:))
-        return known.used.subtracting(known.inICloud).filter { $0.name.isKept(by: self) }
+        return known.synced.subtracting(known.inICloud).filter { $0.name.isKept(by: self) }
     }
 
     /// What the images and sounds sync sends weigh, in bytes, as the device
@@ -179,16 +190,17 @@ extension Engine {
 
 extension Sync {
     /// Hands `iCloud` the images and sounds to send: each one a card on the
-    /// device uses, which the device keeps and iCloud lacks, as far as the
-    /// device knows. The same file on two cards is sent once.
+    /// device that syncs uses, which the device keeps and iCloud lacks, as
+    /// far as the device knows. The same file on two cards is sent once.
     func sendFiles(to iCloud: some ICloudSyncEngine) throws(EngineError) {
         let lacking = try engine.filesICloudLacks()
         iCloud.add(pendingRecordZoneChanges: lacking.map(\.recordID).sorted(by: byName).map { .saveRecord($0) })
     }
 
     /// The record iCloud's engine saves for the file `id` names, as it sends
-    /// it: the file, while a card on the device uses it, the device keeps it
-    /// and iCloud lacks it, as far as the device knows; otherwise nil, which
+    /// it: the file, while a card on the device that syncs uses it, the
+    /// device keeps it and iCloud lacks it, as far as the device knows;
+    /// otherwise nil, which
     /// stops it from waiting, as for a kind of file this version of Ficha
     /// doesn't know, which it never sends.
     func fileRecordToSave(_ id: ICloudRecordID) throws(EngineError) -> ICloudRecord? {
@@ -196,7 +208,7 @@ extension Sync {
             return nil
         }
         let isLacking = try engine.read { db in
-            try file.name.isUsed(in: db) && systemFields(of: id, in: db) == nil
+            try file.name.isSynced(in: db) && systemFields(of: id, in: db) == nil
         }
         guard isLacking, file.name.isKept(by: engine) else {
             return nil
@@ -227,11 +239,13 @@ extension Sync {
     /// uses that iCloud holds and the device lacks, which no fetch would
     /// bring again: one the device couldn't keep as it came, or let go of
     /// before it heard iCloud held it. With the device in sync, it deletes
-    /// from iCloud the files no card uses: nothing waits to go up, neither a
-    /// row's change nor a file a card uses that iCloud lacks, and nothing
-    /// waits to come down, neither a record waiting for the row it refers to
-    /// nor a file asked for again. Another device whose card uses one of
-    /// them, in a change it hadn't sent, sends it again once it hears it left.
+    /// from iCloud the files no card that syncs uses: nothing waits to go up,
+    /// neither a row's change nor a file a card that syncs uses that iCloud
+    /// lacks, and nothing waits to come down, neither a record waiting for
+    /// the row it refers to nor a file asked for again. Another device whose
+    /// card that syncs uses one of them, in a change it hadn't sent, or
+    /// before it heard the card stopped syncing, sends it again once it
+    /// hears it left.
     func finishFetchingFiles(with iCloud: some ICloudSyncEngine) throws(EngineError) {
         let (known, isWaiting) = try engine.read { db in
             (
@@ -245,12 +259,12 @@ extension Sync {
             return iCloud.fetchRecords(
                 askedAgain.sorted { byName($0.recordID, $1.recordID) }.map { ($0.recordID, $0.recordType.rawValue) })
         }
-        guard !isWaiting, known.used.allSatisfy({ $0.name.isKept(by: engine) == known.inICloud.contains($0) })
+        guard !isWaiting, known.synced.allSatisfy({ $0.name.isKept(by: engine) == known.inICloud.contains($0) })
         else {
             return
         }
         iCloud.add(
-            pendingRecordZoneChanges: known.inICloud.subtracting(known.used).map(\.recordID).sorted(by: byName)
+            pendingRecordZoneChanges: known.inICloud.subtracting(known.synced).map(\.recordID).sorted(by: byName)
                 .map { .deleteRecord($0) })
     }
 
@@ -258,7 +272,8 @@ extension Sync {
     /// or by this one, and those that left it, `left`: the device keeps a
     /// copy of each file that came, unless it keeps it already, and knows
     /// iCloud holds each one, whether it could keep it or not. Of those that
-    /// left, it removes those no card uses, and sends again those one does.
+    /// left, it removes those no card uses, and sends again those a card
+    /// that syncs uses.
     private func receiveFiles(
         _ records: [ICloudRecord], leaving left: [ICloudRecordID], with iCloud: some ICloudSyncEngine
     ) throws(EngineError) {
@@ -345,7 +360,7 @@ extension Sync {
 
     /// Lets go of the files whose records left iCloud, `left`: removes from
     /// the device those no card uses, as a change that lets go of a file
-    /// does, and sends again those one uses.
+    /// does, and sends again those a card that syncs uses.
     private func letGo(of left: [ICloudRecordID], with iCloud: some ICloudSyncEngine) throws(EngineError) {
         guard !left.isEmpty else {
             return

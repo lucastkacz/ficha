@@ -109,7 +109,10 @@ public struct Sync: Sendable {
     /// Finishes a fetch the app asked iCloud for that ended without an error,
     /// while sync is on, handing what it asks for to `iCloud`, the engine
     /// that runs: iCloud answered, so the device keeps that it synced now,
-    /// even with nothing new. A device that chooses its cards' zone still,
+    /// even with nothing new, and notes what syncs, now that it heard every
+    /// change to the choice and to the cards' tags (`noteWhatSyncs(in:)`),
+    /// handing over the rows that start or stop syncing. A device that
+    /// chooses its cards' zone still,
     /// which a fetch that listed one would have moved there, learns that
     /// iCloud holds none: it makes one, and sends every card into it, the
     /// zones first. In a full iCloud, the device hands `iCloud` again what
@@ -136,10 +139,10 @@ public struct Sync: Sendable {
                 "iCloud holds no cards' zone: the cards go into a new one, \(zones.cards(zone).name, privacy: .public)")
             iCloud = iCloud.movedTo(zone)
         } else if try !engine.iCloudIsFull() {
-            return
+            return try handOverWhatWaits(to: iCloud, notingWhatSyncs: true)
         }
         iCloud.askForBothZones()
-        try handOverWhatWaits(to: iCloud)
+        try handOverWhatWaits(to: iCloud, notingWhatSyncs: true)
     }
 
     /// Starts syncing through `iCloud`, while sync is on, as
@@ -154,7 +157,8 @@ public struct Sync: Sendable {
     /// engine that never saved a state, it asks iCloud for the cards' zone
     /// and the files'; it deletes the zone a restore's turn-on left, if
     /// any; and it hands `iCloud` every change that waits, those made while
-    /// the app didn't run, by the CLI or offline, included.
+    /// the app didn't run, by the CLI or offline, included, once it noted
+    /// what syncs.
     private func startSyncing(through iCloud: ICloudInItsZones) throws(EngineError) {
         guard iCloud.cardsZone != nil else { return }
         if try engine.savedSyncEngineState() == nil {
@@ -163,7 +167,7 @@ public struct Sync: Sendable {
         if let left = try engine.writeWithoutTelling(CardsZoneStanding.takeTheZoneLeft(in:)) {
             iCloud.delete([left])
         }
-        try handOverWhatWaits(to: iCloud)
+        try handOverWhatWaits(to: iCloud, notingWhatSyncs: true)
     }
 
     /// Hands `iCloud` every change that waits to be sent, as the database
@@ -174,14 +178,25 @@ public struct Sync: Sendable {
     }
 
     /// Hands `iCloud` every change that waits to be sent, and then the images
-    /// and sounds its cards use that iCloud lacks, while sync is on and the
-    /// device doesn't choose its cards' zone. One it already holds stays as
-    /// one. In a full iCloud, what didn't fit goes again with them, but never
-    /// a zone that didn't: only the end of a fetch without an error asks for
-    /// the zones again (`finishAFetchWithoutAnError(with:)`).
-    private func handOverWhatWaits(to iCloud: ICloudInItsZones) throws(EngineError) {
+    /// and sounds its cards that sync use that iCloud lacks, while sync is on
+    /// and the device doesn't choose its cards' zone. One it already holds
+    /// stays as one. First it notes what syncs, as
+    /// `Engine.noteWhatSyncs(everything:)` says, of every row when
+    /// `everything` says so, as a fetch ends; and while a change to the
+    /// choice waits, the rows that leave iCloud wait for it
+    /// (`Engine.leavingWhileTheChoiceChanges()`). In a full iCloud, what
+    /// didn't fit goes again with them, but never a zone that didn't: only
+    /// the end of a fetch without an error asks for the zones again
+    /// (`finishAFetchWithoutAnError(with:)`).
+    private func handOverWhatWaits(to iCloud: ICloudInItsZones, notingWhatSyncs everything: Bool = false)
+        throws(EngineError)
+    {
         guard iCloud.cardsZone != nil, try engine.syncIsOn() else { return }
-        iCloud.add(pendingRecordZoneChanges: try engine.changesToSend().map(\.pendingRecordZoneChange))
+        try engine.noteWhatSyncs(everything: everything)
+        let waiting = try engine.leavingWhileTheChoiceChanges()
+        iCloud.add(
+            pendingRecordZoneChanges: try engine.changesToSend().filter { !waiting.contains($0.sequence) }
+                .map(\.pendingRecordZoneChange))
         try sendFiles(to: iCloud)
     }
 
@@ -190,9 +205,12 @@ public struct Sync: Sendable {
     /// whose save then stops waiting in `iCloud`, as Apple's sample does: the
     /// record provider of
     /// `CKSyncEngine.RecordZoneChangeBatch(pendingChanges:recordProvider:)`.
-    /// A file's record is as `fileRecordToSave(_:)` says. While sync is off,
-    /// it's nil for every record, and so it is for a record of a zone the
-    /// device no longer syncs in, whose save waited as the device moved.
+    /// A file's record is as `fileRecordToSave(_:)` says, and that of a row
+    /// that doesn't sync, as one that left, only while iCloud holds it in
+    /// full, as far as the device knows (`SelectiveSync.swift`). While sync
+    /// is off, it's nil for every record, and so it is for a record of a
+    /// zone the device no longer syncs in, whose save waited as the device
+    /// moved.
     public func recordToSave(_ id: ICloudRecordID, from iCloud: some ICloudSyncEngine) throws(EngineError)
         -> ICloudRecord?
     {
@@ -205,7 +223,13 @@ public struct Sync: Sendable {
                 record = try fileRecordToSave(inside)
             } else {
                 record = try engine.read { db in
-                    try syncedRow(named: inside, in: db).flatMap { try FichaData.record(of: $0, in: db) }
+                    guard let row = try syncedRow(named: inside, in: db),
+                        let record = try FichaData.record(of: row, in: db),
+                        try !record.hasLeft || iCloudHoldsInFull(inside, in: db)
+                    else {
+                        return nil
+                    }
+                    return record
                 }
             }
         } else {
@@ -269,14 +293,16 @@ public struct Sync: Sendable {
         case .accountChange(let change):
             try takeAccountChange(change, in: iCloud)
         case .didFetchChanges:
-            // The records that didn't fit go again, while iCloud is full, but
-            // not the zones: this fetch may have ended with an error, and the
-            // end of one that didn't asks for them
+            // What syncs is noted again, now that the device heard what the
+            // other devices changed of the choice and the cards' tags, before
+            // the files it lets go of in sync, and the rows that start or
+            // stop syncing go. The records that didn't fit go again, while
+            // iCloud is full, but not the zones: this fetch may have ended
+            // with an error, and the end of one that didn't asks for them
             // (`finishAFetchWithoutAnError(with:)`).
+            try engine.noteWhatSyncs(everything: true)
             try finishFetchingFiles(with: iCloud)
-            if try engine.iCloudIsFull() {
-                try handOverWhatWaits(to: iCloud)
-            }
+            try handOverWhatWaits(to: iCloud)
         }
     }
 
@@ -380,13 +406,14 @@ public struct Sync: Sendable {
     /// a copy before taking iCloud's copy first, so that the cards the
     /// restore removed can still be found, which is our own guard, and none
     /// for an engine in memory; then it drops every row that syncs, with its
-    /// changes not yet sent, and takes the zone's records as they come. Any other joins the zone, as at an account change: one that
-    /// never synced in this account, or one whose zone a restore didn't make,
-    /// which never deletes a card. One that chose the zone it last synced in
-    /// goes on in it. A device that moves forgets which images and sounds
-    /// iCloud holds, and keeps them, so that it never deletes one from iCloud
-    /// because the cards it has of the zone are only some of them still: it
-    /// sends again each one its cards use, which iCloud turns down when it
+    /// changes not yet sent, and takes the zone's records as they come. Any
+    /// other joins the zone, as at an account change: one that never synced
+    /// in this account, or one whose zone a restore didn't make, which never
+    /// deletes a card. One that chose the zone it last synced in goes on in
+    /// it. A device that moves forgets which images and sounds iCloud holds,
+    /// and keeps them, so that it never deletes one from iCloud because the
+    /// cards it has of the zone are only some of them still: it sends again
+    /// each one its cards that sync use, which iCloud turns down when it
     /// holds it (#316), and the files no card uses leave as another device
     /// deletes them. `afterAPurge` says the device also heard of the purge
     /// before it: it forgets what iCloud said of each record, as `takePurge()`
@@ -515,7 +542,7 @@ public struct Sync: Sendable {
     {
         try engine.writeWithoutTelling { db in
             for record in sent.savedRecords {
-                try keep(record.systemFields, of: record.id, in: db)
+                try keep(record.systemFields, of: record.id, hasLeft: record.hasLeft, in: db)
                 try forgetPendingSave(of: try SyncedRow(of: record), whenICloudHolds: record, in: db)
             }
         }
@@ -703,12 +730,13 @@ extension ChangeToSend {
 
 extension ICloudRecord {
     /// Its place among the records of a fetch as they're applied: tags, the
-    /// settings that decide progress and captures first, then cards, then
-    /// the review log, so that what a record refers to comes before it. A
-    /// type this version doesn't know comes last, to wait.
+    /// settings that decide progress, the choice of what syncs and captures
+    /// first, then cards, then the review log, so that what a record refers
+    /// to comes before it. A type this version doesn't know comes last, to
+    /// wait.
     fileprivate var applyingRank: Int {
         switch SyncedRow.RecordType(rawValue: type) {
-        case .tag, .progressSettings: 0
+        case .tag, .progressSettings, .syncChoice: 0
         case .capture: 1
         case .card: 2
         case .reviewLogEntry: 3

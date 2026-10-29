@@ -27,7 +27,8 @@ public enum TagColor: String, Sendable, CaseIterable {
 
 /// A tag of Lucas's cards, by its name, exactly as cards carry it, with what
 /// it has of its own: the switch it has on, its color and its emoji, each
-/// optional. A tag with none of them is just a name.
+/// optional, and whether the user chose it to sync. A tag with none of them
+/// is just a name.
 public struct CardTag: Sendable, Hashable {
     public let name: String
     /// The switch it has on, or nil when it's neither a priority tag nor set
@@ -37,12 +38,20 @@ public struct CardTag: Sendable, Hashable {
     public var color: TagColor?
     /// Its emoji, or nil for none.
     public var emoji: String?
+    /// Whether the user chose it to sync, for selective sync (ADR 0020): a
+    /// switch of its own beside the other, so a priority tag or one set
+    /// aside can be chosen too. A tag isn't, until the user ticks it.
+    public var chosenToSync: Bool
 
-    public init(name: String, switchedOn: TagSwitch? = nil, color: TagColor? = nil, emoji: String? = nil) {
+    public init(
+        name: String, switchedOn: TagSwitch? = nil, color: TagColor? = nil, emoji: String? = nil,
+        chosenToSync: Bool = false
+    ) {
         self.name = name
         self.switchedOn = switchedOn
         self.color = color
         self.emoji = emoji
+        self.chosenToSync = chosenToSync
     }
 
     /// Whether it's set aside: every card with it is out of Lucas's reviews
@@ -54,7 +63,7 @@ public struct CardTag: Sendable, Hashable {
     /// Whether it has nothing of its own, so the `tag` table has no row for
     /// it.
     var hasNothingOfItsOwn: Bool {
-        switchedOn == nil && color == nil && emoji == nil
+        switchedOn == nil && color == nil && emoji == nil && !chosenToSync
     }
 }
 
@@ -119,6 +128,11 @@ struct OwnTags: Sendable {
         byName.values.filter { $0.switchedOn == tagSwitch }
     }
 
+    /// Every tag the user chose to sync.
+    var chosenToSync: [CardTag] {
+        byName.values.filter(\.chosenToSync)
+    }
+
     /// The tags named in `names`, and every tag with `tagSwitch` on, which
     /// stays listed while no card carries it, each once, with what it has of
     /// its own, in alphabetical order as the Mac sorts text.
@@ -144,11 +158,12 @@ func save(_ tag: CardTag, in db: Database) throws {
     } else {
         try db.execute(
             sql: """
-                INSERT INTO tag (name, switchedOn, color, emoji) VALUES (?, ?, ?, ?)
+                INSERT INTO tag (name, switchedOn, color, emoji, chosenToSync) VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT (name) DO UPDATE SET
-                    switchedOn = excluded.switchedOn, color = excluded.color, emoji = excluded.emoji
+                    switchedOn = excluded.switchedOn, color = excluded.color, emoji = excluded.emoji,
+                    chosenToSync = excluded.chosenToSync
                 """,
-            arguments: [tag.name, tag.switchedOn?.rawValue, tag.color?.rawValue, tag.emoji])
+            arguments: [tag.name, tag.switchedOn?.rawValue, tag.color?.rawValue, tag.emoji, tag.chosenToSync])
     }
 }
 
@@ -172,5 +187,6 @@ extension CardTag {
             return color
         }
         emoji = try row.decode(forColumn: "emoji")
+        chosenToSync = try row.decode(forColumn: "chosenToSync")
     }
 }

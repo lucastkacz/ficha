@@ -7,19 +7,24 @@ internal import GRDB
 // for itself. Triggers in the database record every change, whoever writes
 // it, the CLI too (`Schema`'s "v21 changes recorded to sync"); this file
 // reads what they recorded, and is the one way to write without recording.
-// The one change recorded by hand is what a device changes as it takes
-// another device's deletion, in such a write (`SyncedDeletions.swift`).
+// Two changes are recorded by hand: what a device changes as it takes
+// another device's deletion, in such a write (`SyncedDeletions.swift`), and
+// the rows that start or stop syncing as selective sync decides
+// (`SelectiveSync.swift`).
 
 /// A row that syncs, as iCloud names its record: a card, a capture or an
 /// entry of the review log by its ID unique across devices, a tag by its
-/// name, or the settings that decide progress, of which there's one. Images
-/// and sounds are named by their content, as `ImageName` and `SoundName` say.
+/// name, or the settings that decide progress or the choice of what syncs,
+/// of each of which there's one. Images and sounds are named by their
+/// content, as `ImageName` and `SoundName` say.
 enum SyncedRow: Sendable, Hashable {
     case card(UUID)
     case capture(UUID)
     case reviewLogEntry(UUID)
     case tag(String)
     case progressSettings
+    /// Whether only the cards with a tag the user chose sync (ADR 0020).
+    case syncChoice
 
     /// What kind of row it is, as the database names it.
     enum RecordType: String, Sendable {
@@ -28,6 +33,7 @@ enum SyncedRow: Sendable, Hashable {
         case reviewLogEntry
         case tag
         case progressSettings
+        case syncChoice
     }
 
     var recordType: RecordType {
@@ -37,17 +43,19 @@ enum SyncedRow: Sendable, Hashable {
         case .reviewLogEntry: .reviewLogEntry
         case .tag: .tag
         case .progressSettings: .progressSettings
+        case .syncChoice: .syncChoice
         }
     }
 
     /// Its name, as the database keeps it: its ID, in capitals as Foundation
-    /// writes it, the tag's name, exactly as cards carry it, or the settings'
-    /// type, which names the one row.
+    /// writes it, the tag's name, exactly as cards carry it, or the type of
+    /// a row there's one of, which names it.
     var recordName: String {
         switch self {
         case .card(let id), .capture(let id), .reviewLogEntry(let id): id.uuidString
         case .tag(let name): name
         case .progressSettings: RecordType.progressSettings.rawValue
+        case .syncChoice: RecordType.syncChoice.rawValue
         }
     }
 
@@ -68,6 +76,11 @@ enum SyncedRow: Sendable, Hashable {
                 throw unreadable("The settings that decide progress sync under a name this version doesn't know")
             }
             self = .progressSettings
+        case .syncChoice:
+            guard recordName == SyncedRow.syncChoice.recordName else {
+                throw unreadable("The choice of what syncs syncs under a name this version doesn't know")
+            }
+            self = .syncChoice
         }
     }
 }
@@ -114,10 +127,14 @@ enum SyncedField: String, Sendable, CaseIterable {
     case switchedOn
     case color
     case emoji
+    /// Whether the user chose the tag to sync, beside its other switch.
+    case chosenToSync
     // The settings that decide progress, each on its own.
     case ladder
     case newCardsPerDay
     case forgottenOftenAfter
+    /// Whether only the cards with a tag the user chose sync.
+    case onlyChosenTags
 }
 
 /// A change to a row that syncs, which waits to be sent to iCloud.
@@ -312,5 +329,8 @@ func recordEverythingToSend(in db: Database) throws {
             ORDER BY name;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT 'progressSettings', 'progressSettings', 0 FROM progressSettings;
+            INSERT INTO syncPending (recordType, recordName, isDeletion)
+            SELECT 'syncChoice', 'syncChoice', 0 FROM syncChoice
+            WHERE EXISTS (SELECT 1 FROM syncFieldTime WHERE recordType = 'syncChoice');
             """)
 }

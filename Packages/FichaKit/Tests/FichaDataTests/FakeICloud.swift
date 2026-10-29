@@ -11,9 +11,15 @@ import notify
 /// One iCloud account's private database, in memory, which a test's devices
 /// signed into it share, each through a `FakeSyncEngine` of its own (ADR
 /// 0017). It keeps records as iCloud does: by zone and name, each version
-/// with a change tag of its own, in its system fields. It saves a record only
-/// for a device that heard of its latest version, and otherwise answers with
-/// the record as it is (`serverRecordChanged`), refuses a record in a zone it
+/// with a change tag of its own, in its system fields. It saves the fields a
+/// record names over those the record held, as a `CKRecord` sends only the
+/// keys set on it (`changedKeys()`): a field named with nothing clears it,
+/// and one not named keeps what it held, so a device that forgets to clear a
+/// field leaves it in iCloud, the less forgiving reading where CloudKit's
+/// documentation doesn't say which keys a save policy sends. It saves a
+/// record only for a device that heard of its latest version, and otherwise
+/// answers with the record as it is (`serverRecordChanged`), refuses a
+/// record in a zone it
 /// doesn't have (`zoneNotFound`) and one a device heard of that it no longer
 /// has (`unknownItem`). It hands each device what changed since that device
 /// last fetched: the zones that came, changed or left, as
@@ -297,9 +303,11 @@ final class FakeICloud: Sendable {
 extension FakeICloud.Database {
     /// Saves `record`, when the device that sends it heard of its latest
     /// version or of none, and it fits, and returns it as saved, with the
-    /// system fields of a new version, or why it isn't. A record saved with
-    /// none after it was deleted is a new one, as in CloudKit: a device that
-    /// fetches from before the deletion gets it, and not the deletion.
+    /// system fields of a new version, or why it isn't: the fields it names
+    /// over those the record held, those named with nothing cleared. A
+    /// record saved with none after it was deleted is a new one, as in
+    /// CloudKit: a device that fetches from before the deletion gets it, and
+    /// not the deletion.
     fileprivate mutating func save(_ record: ICloudRecord) -> Result<ICloudRecord, ICloudError> {
         guard let zone = zones[record.id.zone] else {
             return .failure(zoneDeletions[record.id.zone]?.reason == .purged ? .userDeletedZone : .zoneNotFound)
@@ -313,18 +321,23 @@ extension FakeICloud.Database {
         default:
             // A file it can't read or copy fails the save, as CloudKit fails
             // an asset whose file it can't find.
+            var fields = stored?.record.fields ?? [:]
             let size: Int
             do {
-                size = try record.fields.values.reduce(0) { try $0 + bytes(of: $1) }
+                for (key, value) in record.fields {
+                    fields[key] = value == nil ? nil : .some(value)
+                }
+                size = try fields.values.reduce(0) { try $0 + bytes(of: $1) }
             } catch {
                 return .failure(.other("assetFileNotFound"))
             }
             if let room, used - (stored?.size ?? 0) + size > room {
                 return .failure(.quotaExceeded)
             }
-            let fields: [String: ICloudValue?]
             do {
-                fields = try record.fields.mapValues(keepingAssets)
+                for (key, value) in record.fields where value != nil {
+                    fields[key] = .some(try keepingAssets(value))
+                }
             } catch {
                 return .failure(.other("assetFileNotFound"))
             }

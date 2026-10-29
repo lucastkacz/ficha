@@ -826,6 +826,175 @@ enum Schema {
                     UPDATE syncDevice SET choosesCardsZone = 0 WHERE engineState IS NOT NULL;
                     """)
         }
+        migrator.registerMigration("v26 selective sync") { db in
+            // Selective sync (ADR 0020): sync can carry only the cards with a
+            // tag the user chose. Whether it does is one choice for all the
+            // user's devices, which syncs: one row, which syncs as one record
+            // named by its type, "syncChoice", as `SyncedRow` names it, and
+            // keeps its latest change, as a tag's color does. It starts with
+            // every card syncing, and its coming in is no change.
+            try db.create(table: "syncChoice") { table in
+                table.column("id", .integer).primaryKey().check(sql: "id = 1")
+                table.column("onlyChosenTags", .boolean).notNull()
+            }
+            try db.execute(sql: "INSERT INTO syncChoice (id, onlyChosenTags) VALUES (1, 0)")
+            // Its trigger is the settings' that decide progress, in "v23 the
+            // settings that decide progress", written out.
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_syncChoice_updated AFTER UPDATE ON syncChoice
+                    WHEN (SELECT recordsChanges FROM syncWrite) AND OLD.onlyChosenTags IS NOT NEW.onlyChosenTags BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    VALUES ('syncChoice', 'syncChoice', 'onlyChosenTags', (SELECT at FROM syncWrite))
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'syncChoice' AND recordName = 'syncChoice';
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'syncChoice', 'syncChoice', 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    """)
+
+            // Whether the user chose a tag to sync, a switch of its own beside
+            // priority and set aside, so a tag can be both. A tag that's only
+            // chosen has a row too, so the table is made again, with the
+            // check that a row holds something counting it, and so are its
+            // triggers, from "v21 changes recorded to sync", which dropping
+            // the table drops, with the new field, `chosenToSync` as
+            // `SyncedField` names it. A tag isn't chosen until the user ticks
+            // it.
+            try db.create(table: "newTag") { table in
+                table.primaryKey("name", .text)
+                table.column("switchedOn", .text)
+                    .check(sql: "switchedOn IN ('priority', 'setAside')")
+                table.column("color", .text)
+                    .check(sql: "color IN ('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray')")
+                table.column("emoji", .text)
+                table.column("chosenToSync", .boolean).notNull().defaults(to: false)
+                table.check(
+                    sql: "switchedOn IS NOT NULL OR color IS NOT NULL OR emoji IS NOT NULL OR chosenToSync")
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO newTag (name, switchedOn, color, emoji) SELECT name, switchedOn, color, emoji FROM tag;
+                    DROP TABLE tag;
+                    ALTER TABLE newTag RENAME TO tag;
+                    """)
+            // A field changed as a row comes in or goes when it held
+            // something; as it changes, when it holds something else.
+            let tagFields = [
+                ("switchedOn", "IS NOT NULL"), ("color", "IS NOT NULL"), ("emoji", "IS NOT NULL"),
+                ("chosenToSync", ""),
+            ]
+            /// The fields of the tag `row`, NEW or OLD, that hold something,
+            /// as a query of one column, `field`.
+            func fieldsHoldingSomething(of row: String) -> String {
+                tagFields.map { field, holds in "SELECT '\(field)' AS field WHERE \(row).\(field) \(holds)" }
+                    .joined(separator: " UNION ALL ")
+            }
+            let changedFields = tagFields.map { field, _ in
+                "SELECT '\(field)' AS field WHERE OLD.\(field) IS NOT NEW.\(field)"
+            }.joined(separator: " UNION ALL ")
+            let anyChanged = tagFields.map { field, _ in "OLD.\(field) IS NOT NEW.\(field)" }
+                .joined(separator: " OR ")
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// tag named `name`, changed as the write happens, and leaves the
+            /// tag waiting to be sent, in place of its change before, while
+            /// sync is on.
+            func stampAndWait(_ fields: String, named name: String) -> String {
+                """
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                SELECT 'tag', \(name), field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
+                ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                DELETE FROM syncPending WHERE recordType = 'tag' AND recordName = \(name);
+                INSERT INTO syncPending (recordType, recordName, isDeletion)
+                SELECT 'tag', \(name), 0 WHERE (SELECT isOn FROM syncDevice);
+                """
+            }
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_tag_inserted AFTER INSERT ON tag WHEN \(recording) BEGIN
+                    \(stampAndWait(fieldsHoldingSomething(of: "NEW"), named: "NEW.name"))
+                    END;
+                    CREATE TRIGGER sync_tag_updated AFTER UPDATE ON tag WHEN \(recording) AND (\(anyChanged)) BEGIN
+                    \(stampAndWait(changedFields, named: "NEW.name"))
+                    END;
+                    CREATE TRIGGER sync_tag_deleted AFTER DELETE ON tag WHEN \(recording) BEGIN
+                    \(stampAndWait(fieldsHoldingSomething(of: "OLD"), named: "OLD.name"))
+                    END;
+                    """)
+
+            // Whether iCloud holds a record only as one that left: a card, an
+            // entry of the review log or a capture that stopped syncing, whose
+            // record keeps its ID and says it left, with nothing of its own
+            // but, for a card, its tags, so that the other devices tell it
+            // from one deleted. Adding a column keeps the table as it is.
+            try db.alter(table: "syncRecord") { table in
+                table.add(column: "hasLeft", .boolean).notNull().defaults(to: false)
+            }
+
+            // A deletion waits to be sent only when its row synced as it was
+            // deleted: a card deleted while it doesn't sync is deleted on this
+            // device alone. A card syncs when every card does, or one of its
+            // tags is chosen; an entry of the review log with its card; and a
+            // capture unless it expands or follows up a card that doesn't.
+            // The triggers of "v24 how sync stands" that record a deletion,
+            // made again. A card's deletion deletes its entries first, so
+            // theirs still find it.
+            /// Whether the card whose tags are the JSON array `tags` syncs.
+            func cardSyncs(tags: String) -> String {
+                """
+                (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
+                    SELECT 1 FROM json_each(\(tags)) AS cardTag JOIN tag ON tag.name = cardTag.value
+                    WHERE tag.chosenToSync))
+                """
+            }
+            let synced = [
+                ("card", "card", cardSyncs(tags: "OLD.tags")),
+                (
+                    "reviewLog", "reviewLogEntry",
+                    "EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(tags: "card.tags")))"
+                ),
+                (
+                    "capture", "capture",
+                    """
+                    NOT EXISTS (
+                        SELECT 1 FROM card WHERE card.id IN (OLD.expandsCardId, OLD.followsUpCardId)
+                        AND NOT \(cardSyncs(tags: "card.tags")))
+                    """
+                ),
+            ]
+            for (table, type, rowSynced) in synced {
+                let forgetsFieldTimes =
+                    table == "reviewLog"
+                    ? "" : "DELETE FROM syncFieldTime WHERE recordType = '\(type)' AND recordName = OLD.uuid;"
+                try db.execute(
+                    sql: """
+                        DROP TRIGGER sync_\(table)_deleted;
+                        CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
+                        \(forgetsFieldTimes)
+                        DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = OLD.uuid;
+                        INSERT INTO syncPending (recordType, recordName, isDeletion)
+                        SELECT '\(type)', OLD.uuid, 1 WHERE (SELECT recordsChanges FROM syncWrite) AND \(rowSynced);
+                        END;
+                        """)
+            }
+
+            // A device that holds cards and never synced starts with the
+            // switch off, "firstSync" among the reasons why, so that the user
+            // chooses what syncs before anything goes up, as Lucas does on
+            // his Mac, whose database "v21 changes recorded to sync" left
+            // with the switch on. Nothing waits to be sent then but the
+            // deletions, as when the user turns it off. A database that
+            // migrates with no cards, as a new install's, starts on, whatever
+            // cards it gets after.
+            try db.execute(
+                sql: """
+                    UPDATE syncDevice SET isOn = 0, offBecause = 'firstSync', timesTurnedOff = timesTurnedOff + 1
+                    WHERE isOn AND engineState IS NULL AND lastSyncedAt IS NULL AND cardsZone IS NULL
+                        AND EXISTS (SELECT 1 FROM card);
+                    DELETE FROM syncPending WHERE NOT isDeletion AND NOT (SELECT isOn FROM syncDevice);
+                    """)
+        }
         return migrator
     }()
 }
