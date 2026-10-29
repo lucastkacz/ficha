@@ -256,15 +256,15 @@ A copy of everything as it was just before an import, so restoring it undoes the
 A copy of everything as it was just before a device took the cards another device restored, in place of its own, as sync does, so the cards the restore removed can still be found. Ficha never deletes it on its own.
 
 **Restore**:
-Bringing back a backup, or another copy Ficha saved, in place of everything as it is now. On a device that syncs, it turns sync off, and once the user turns it on again, the restored copy replaces what their other devices hold.
+Bringing back a backup, or another copy Ficha saved, in place of everything as it is now. On a device that syncs, it turns sync off, and once the user turns it on again, the restored copy replaces what syncs on their other devices.
 _Avoid_: revert, roll back
 
 ### Sync
 
 **Sync**:
-Keeping the user's cards, or those with the tags they choose, their progress, the inbox and the settings that decide progress the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since a deletion reaches every device.
+Keeping the user's cards and their progress, every card or those with the tags they choose, along with the inbox and the settings that decide progress, the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since deleting a card that syncs deletes it on every device.
 _Avoid_: cloud, mirror, upload
 
 **Selective sync**:
-Syncing only the cards with a tag the user chose, instead of all of them, so the rest stay off iCloud and off their other devices. Which tags sync is one choice for all their devices, and changing it never deletes a card from any of them.
+Syncing only the cards with a tag the user chose, instead of all of them, so the rest never go up to iCloud. Which tags sync is one choice for all their devices, and changing it deletes no card: one that stops syncing leaves iCloud, and each device keeps its copy.
 _Avoid_: partial sync, local cards, offline tags
