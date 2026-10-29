@@ -9,7 +9,12 @@ let moveLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "data move"
 /// Lucas's data move (ADR 0018, #309): the last build of the real Ficha
 /// without its sandbox copies his data folder from Application Support's
 /// into its App Group's folder, which the sandboxed app and its CLI share,
-/// and leaves the old one as it was.
+/// and leaves the old one as it was. SQLite's online backup and its
+/// integrity check are SQLite's documented ways to copy a database in use
+/// and to check it. The rest is our own: the hidden folder renamed into
+/// place, the comparison of rows and files, `PRAGMA data_version` read to
+/// catch another process's write, and the preferences carried in a plist
+/// that's read in once (`PreferencesFile`).
 public struct DataMove: Sendable, Equatable {
     /// The data folder the data moves from, as Application Support's.
     public let source: URL
@@ -51,11 +56,11 @@ public struct DataMove: Sendable, Equatable {
             result = Result { () throws(DataMoveError) in try stage().finish() }
         }
         guard let result else {
+            // The file coordinator says why it didn't run the move, as Apple
+            // documents: one that doesn't say fails too, and says so.
+            let reason = coordinationError.map { "\($0)" } ?? "the file coordinator didn't run it, nor say why"
             let error = DataMoveError.fileSystem(
-                """
-                Couldn't wait for other processes to move into the new data folder: \
-                \(String(describing: coordinationError))
-                """)
+                "Couldn't wait for other processes to move into the new data folder: \(reason)")
             moveLogger.error("Couldn't move the data folder: \(error.description, privacy: .public)")
             throw error
         }
@@ -144,7 +149,7 @@ struct StagedDataMove {
     /// wrote to it since, as SQLite documents.
     let original: DatabaseQueue
     /// The old database's `PRAGMA data_version` when it was copied.
-    let originalVersion: Int?
+    let originalVersion: Int
     /// What the new folder holds.
     let moved: MovedData
 
@@ -155,7 +160,7 @@ struct StagedDataMove {
     func finish() throws(DataMoveError) -> MovedData {
         do throws(DataMoveError) {
             do {
-                let version = try original.read { db in try Int.fetchOne(db, sql: "PRAGMA data_version") }
+                let version = try original.read(dataVersion(of:))
                 try original.close()
                 guard version == originalVersion else {
                     throw DataMoveError.sourceChanged(move.source)
@@ -204,7 +209,7 @@ public struct MovedData: Sendable, Equatable, CustomStringConvertible {
 /// got, even while another process writes.
 private func stageDatabase(
     from source: URL, in staging: URL
-) throws(DataMoveError) -> (original: DatabaseQueue, version: Int?, rows: [String: Int]) {
+) throws(DataMoveError) -> (original: DatabaseQueue, version: Int, rows: [String: Int]) {
     let sourceFile = databaseFile(in: source)
     guard FileManager.default.fileExists(atPath: sourceFile.path(percentEncoded: false)) else {
         throw .noDatabase(source)
@@ -215,7 +220,7 @@ private func stageDatabase(
         let original = try DatabaseQueue(path: sourceFile.path(percentEncoded: false), configuration: configuration)
         let staged = try DatabaseQueue(path: databaseFile(in: staging).path(percentEncoded: false))
         let (version, rows) = try original.read { db in
-            let version = try Int.fetchOne(db, sql: "PRAGMA data_version")
+            let version = try dataVersion(of: db)
             let rows = try rowsByTable(in: db)
             try staged.writeWithoutTransaction { try db.backup(to: $0) }
             return (version, rows)
@@ -235,6 +240,16 @@ private func stageDatabase(
     } catch {
         throw .database("\(error)")
     }
+}
+
+/// The database's `PRAGMA data_version`, which changes once another
+/// connection wrote to it, as SQLite documents. A version SQLite doesn't
+/// give fails, so the move never takes two missing ones for the same.
+private func dataVersion(of db: Database) throws -> Int {
+    guard let version = try Int.fetchOne(db, sql: "PRAGMA data_version") else {
+        throw DataMoveError.database("PRAGMA data_version gave no version")
+    }
+    return version
 }
 
 /// How many rows each table of the database holds, by its name.
@@ -258,8 +273,8 @@ private func stageFiles(from source: URL, in staging: URL) throws(DataMoveError)
     } catch {
         throw .fileSystem("Couldn't copy the files beside the database: \(error)")
     }
-    let files = filesBesideDatabase(in: source)
-    let staged = filesBesideDatabase(in: staging)
+    let files = try filesBesideDatabase(in: source)
+    let staged = try filesBesideDatabase(in: staging)
     guard files == staged else {
         throw .files(files.symmetricDifference(staged))
     }
@@ -275,9 +290,12 @@ private func stageFiles(from source: URL, in staging: URL) throws(DataMoveError)
 }
 
 /// The paths of the files in the data folder `folder`, in its folders too,
-/// but the database's own.
-private func filesBesideDatabase(in folder: URL) -> Set<String> {
-    let paths = FileManager.default.subpaths(atPath: folder.path(percentEncoded: false)) ?? []
+/// but the database's own. A folder that can't be listed fails, so the
+/// move's check never compares no files at all.
+func filesBesideDatabase(in folder: URL) throws(DataMoveError) -> Set<String> {
+    guard let paths = FileManager.default.subpaths(atPath: folder.path(percentEncoded: false)) else {
+        throw .fileSystem("Couldn't list the files in \(folder.path(percentEncoded: false))")
+    }
     return Set(
         paths.filter { path in
             var isFolder: ObjCBool = false

@@ -30,8 +30,8 @@ settings:
     # each build; this one is only for a build outside it.
     CURRENT_PROJECT_VERSION: "1"
     # Signed to run locally, not notarized, unless a target's settings say
-    # otherwise: Ficha Dev, and the real Ficha's app and CLI, sign with
-    # Lucas's paid team, as their targets' settings say.
+    # otherwise, as each target's do: both apps, and everything inside
+    # them, sign with Lucas's paid team.
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
@@ -58,9 +58,9 @@ settings:
     # The real Ficha: `make install` puts it in /Applications. Its app and its
     # CLI sign with the team and share its App Group's folder, where its last
     # build without the sandbox moves Lucas's data (#309), and run there
-    # without the sandbox until #310. Its widget signs to run locally until
-    # then, without the team's ID, which Xcode leaves out of the widget's
-    # group's name, so it isn't in the app's group.
+    # without the sandbox until #310. Its widget is in that group too, but
+    # reads none of Lucas's cards until #310, as `AppVariant.groupDefaults`
+    # says.
     Release:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha
@@ -248,8 +248,10 @@ targets:
   # entitlement in the sandbox. It's the only part of Ficha that holds it,
   # and it blocks every load. It runs in its sandbox in both apps, the real
   # Ficha's included, which has none of its own until #310, so that both
-  # draw the same way. Its bundle identifier is its app's with
-  # `.svg-drawer`, which is how the app finds it.
+  # draw the same way. It signs with the team in both, as its app does:
+  # Xcode stops a build whose app embeds a binary signed with another
+  # certificate. Its bundle identifier is its app's with `.svg-drawer`,
+  # which is how the app finds it.
   SVGDrawer:
     type: xpc-service
     platform: macOS
@@ -264,20 +266,21 @@ targets:
         product: FichaSVG
     configFiles:
       Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       base:
         # Xcode's Info.plist, with SVGDrawer/Info.plist's XPCService keys.
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: SVGDrawer/Info.plist
         CODE_SIGN_ENTITLEMENTS: SVGDrawer/SVGDrawer.entitlements
+        CODE_SIGN_IDENTITY: Apple Development
         ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
         # Built into the app, never installed on its own.
         SKIP_INSTALL: YES
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev.svg-drawer
-          CODE_SIGN_IDENTITY: Apple Development
-          ENABLE_HARDENED_RUNTIME: YES
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.svg-drawer
 
@@ -287,12 +290,11 @@ targets:
   # It compiles `AppVariant` too, for its app's name, data folder and group's
   # defaults, and `WidgetHandover`, for what the app hands it there, its link
   # scheme and its log. Its bundle identifier is its app's with `.widget`. Its
-  # Info.plist holds the link scheme, as the app's does. Ficha Dev's signs as
-  # its CLI does, with Apple Development and no provisioning profile, which a
-  # group named after the team needs none of on the Mac, and shares its app's
-  # group. The real Ficha's signs to run locally until #310, unlike its app
-  # since #309, so its group, named without the team's ID, isn't the app's,
-  # and it reads none of Lucas's cards.
+  # Info.plist holds the link scheme, as the app's does. Each signs as its
+  # app's CLI does, with Apple Development and no provisioning profile, which
+  # a group named after the team needs none of on the Mac, and shares its
+  # app's group. The real Ficha's reads none of Lucas's cards until #310, as
+  # `AppVariant.groupDefaults` says.
   Widget:
     type: app-extension
     platform: macOS
@@ -311,6 +313,7 @@ targets:
         product: FichaData
     configFiles:
       Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       groups: [zstd]
       base:
@@ -319,14 +322,14 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Widget/Info.plist
         CODE_SIGN_ENTITLEMENTS: Widget/Widget.entitlements
+        CODE_SIGN_IDENTITY: Apple Development
         ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
         # Built into the app, never installed on its own.
         SKIP_INSTALL: YES
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev.widget
-          CODE_SIGN_IDENTITY: Apple Development
-          ENABLE_HARDENED_RUNTIME: YES
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.widget
 

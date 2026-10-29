@@ -10,8 +10,9 @@ import Foundation
 /// configuration in `project.yml` names its app, gives it its own bundle
 /// identifier (and so its own preferences) and sets the flag `current` reads.
 /// The `ficha` CLI compiles this file too, so the CLI built with each app
-/// opens that app's cards, and so do the widget's extension, which reads
-/// them, and the iPhone app, which is only Ficha Dev for now.
+/// opens that app's cards, and so do the iPhone app, which is only Ficha Dev
+/// for now, and the widget's extension, which reads its app's cards, the
+/// real Ficha's only from #310 (`groupDefaults`).
 enum AppVariant {
     /// Ficha Dev, which `make run` builds and opens.
     case dev
@@ -119,9 +120,8 @@ enum AppVariant {
     /// there once it holds the database, and in Application Support while
     /// Lucas's data waits there to move (`dataMove`), so a move that failed
     /// leaves him on his cards, never on an empty Ficha. The real Ficha's
-    /// widget, signed without the team's ID until #310, isn't in its app's
-    /// group, so it finds no data folder (`notSignedWithItsGroup`). On the
-    /// iPhone, it's in the app's own Application Support.
+    /// widget doesn't open it until #310 (`groupDefaults`). On the iPhone,
+    /// it's in the app's own Application Support.
     var dataFolder: URL {
         get throws(DataFolderError) {
             #if os(macOS)
@@ -156,12 +156,13 @@ enum AppVariant {
     }
 
     #if os(macOS)
-        /// The defaults of the app's App Group, which the app and its widget
-        /// share, or nil where they don't: in a build not signed with it, and
-        /// in the real Ficha, whose widget signs without the team's ID until
-        /// #310, which leaves it out of the group its app moved into (#309),
-        /// so nothing the app handed it there would reach it. So the real
-        /// Ficha writes nothing in its group's defaults meanwhile.
+        /// The defaults of the app's App Group, where the app hands its widget
+        /// what it needs (`WidgetHandover`), or nil where it hands it nothing:
+        /// in a build not signed with the group, and in the real Ficha until
+        /// #310. The real Ficha's widget is in the group its app moved into
+        /// (#309), but turning it on comes with the sandboxed real Ficha,
+        /// #310, and until then it stays as #308 made it: its app hands it
+        /// nothing, and it says to open Ficha, without opening Lucas's cards.
         var groupDefaults: UserDefaults? {
             switch self {
             case .dev: signedGroup(named: groupName).flatMap(UserDefaults.init(suiteName:))
@@ -237,10 +238,9 @@ enum DataFolderError: Error {
                         docs/development.md says.
                         """,
                     comment: """
-                        An alert at launch, which only a build made by hand without the developer's team shows. The \
-                        widget shows it too, under that it can't read the cards. make run and make install are \
-                        commands, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay \
-                        as they are.
+                        An alert at launch, which only a build made by hand without the developer's team shows. make \
+                        run and make install are commands, iPhone/Local.xcconfig a file and docs/development.md a \
+                        document, whose names stay as they are.
                         """)
             case .noGroupFolder(let group):
                 String(

@@ -63,7 +63,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 - `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards. `FichaICloud`, the only part that loads CloudKit, is linked by the Mac app alone.
 - `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
-- `iPhone/`: the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, signs with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
+- `iPhone/`: the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, and the real Ficha on the Mac sign with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, the plugin and the `/refine` skill. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.

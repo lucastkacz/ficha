@@ -131,14 +131,18 @@ struct BackupsTab: View {
     }
 
     /// The user's own home folder, `/Users/<name>`, which the folder's path
-    /// starts with a tilde for, rather than Foundation's, for the reason
-    /// `path(abbreviatingHome:)` gives. Reading it from the user database,
-    /// `getpwuid(getuid())`, isn't in Apple's documentation: it's Apple
+    /// starts with a tilde for. In the app's sandbox, Foundation's isn't, as
+    /// `path(abbreviatingHome:)` says, so it's read from the user database,
+    /// `getpwuid(getuid())`, which isn't in Apple's documentation: it's Apple
     /// staff's advice, from Quinn, of Apple's developer support (Apple's
-    /// developer forums, threads 107593 and 666634). Foundation's, as before,
-    /// when the user database doesn't say.
+    /// developer forums, threads 107593 and 666634). Out of the sandbox, and
+    /// when the user database doesn't say, it's Foundation's, which
+    /// `CFFIXED_USER_HOME` moves, as `make render`'s scratch home does, and
+    /// the user database doesn't.
     private static var homeFolder: URL {
-        guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else {
+        guard signedEntitlement("com.apple.security.app-sandbox") as? Bool == true,
+            let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir
+        else {
             return .homeDirectory
         }
         return URL(fileURLWithFileSystemRepresentation: directory, isDirectory: true, relativeTo: nil)

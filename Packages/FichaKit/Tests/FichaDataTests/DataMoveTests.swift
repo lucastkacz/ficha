@@ -131,6 +131,14 @@ final class DataMoveTests {
         #expect(try filesAsTheyAre(in: source) == before)
     }
 
+    // Both folders' listings failing would compare no files at all.
+    @Test("a data folder whose files can't be listed fails the move's check, rather than compare none")
+    func anUnlistedFolderFailsTheCheck() {
+        #expect(throws: DataMoveError.self) {
+            try filesBesideDatabase(in: scratch.appending(path: "Nowhere", directoryHint: .isDirectory))
+        }
+    }
+
     @Test("a move first removes the hidden folder that a move the app was killed in left")
     func aMoveRemovesWhatAKilledOneLeft() throws {
         let engine = try Engine(location: .folder(source), time: time)
