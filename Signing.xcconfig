@@ -1,7 +1,9 @@
 // Ficha Dev signs with Lucas's paid team: on the Mac with Apple Development,
-// in its sandbox (#304), and on the iPhone automatically (#97). The team's ID
-// stays out of the repo, in iPhone/Local.xcconfig, which git ignores: a line
-// like `DEVELOPMENT_TEAM = ABCDE12345`, as docs/development.md explains.
-// Without it, as in CI, the Makefile builds Ficha Dev unsigned, and the
-// iPhone app still builds for the simulator, but not for an iPhone.
+// in its sandbox (#304), and on the iPhone automatically (#97). So does the
+// real Ficha that make install builds, to reach its App Group's folder
+// (#309). The team's ID stays out of the repo, in iPhone/Local.xcconfig, which
+// git ignores: a line like `DEVELOPMENT_TEAM = ABCDE12345`, as
+// docs/development.md explains. Without it, as in CI, the Makefile builds
+// Ficha Dev unsigned, and the iPhone app still builds for the simulator, but
+// not for an iPhone, and make install stops.
 #include? "iPhone/Local.xcconfig"

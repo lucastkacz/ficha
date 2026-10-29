@@ -90,6 +90,9 @@ enum DetectorReading: Equatable {
 
 /// The video devices CoreMediaIO lists that run in some process
 /// (`kCMIODevicePropertyDeviceIsRunningSomewhere`), which needs no permission.
+/// In the sandbox, it needs the camera entitlement, which never asks either:
+/// without it, the sandbox hides a running camera, and the reading says none
+/// is in use, with no error to tell (#305's probes).
 private func runningCameras() -> DetectorReading {
     guard let devices = cmioObjects(CMIOObjectID(kCMIOObjectSystemObject), kCMIOHardwarePropertyDevices) else {
         return .unknown

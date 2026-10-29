@@ -13,6 +13,9 @@
     "Image that couldn't be shown" : {
       "comment" : "In the widget, in place of an image on a card's side that couldn't be read."
     },
+    "macOS gave no folder for the App Group %@, which holds your cards. Quit the app and open it again, and if it keeps happening, report it." : {
+      "comment" : "An alert at launch, and in the widget, under that it can't read the cards. The value is the App Group's identifier, such as ABCDE12345.com.lucastkacz.ficha, which stays as it is."
+    },
     "New" : {
       "comment" : "A badge on the card the widget shows, when it's new."
     },
@@ -50,6 +53,9 @@
     },
     "The next card to review, or when it comes. Click it to review it." : {
       "comment" : "The widget's description in the widget gallery."
+    },
+    "This build isn't signed with its App Group, whose folder holds its cards. Build Ficha Dev with make run, or Ficha with make install, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says." : {
+      "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. make run and make install are commands, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
     }
   },
   "version" : "1.0"

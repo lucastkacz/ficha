@@ -23,13 +23,14 @@ enum WidgetHandover {
     /// Hands the widget `settings`, what it needs of this Mac's settings, which
     /// the app keeps in its own preferences, where the widget can't read
     /// them: in the defaults of the app's App Group, Apple's documented way
-    /// to share data with an extension, where the app runs in its group.
+    /// to share data with an extension, where the app and its widget share
+    /// the group (`AppVariant.groupDefaults`).
     static func handOver(_ settings: WidgetSettings) {
         AppVariant.current.groupDefaults?.set(settings.cardsPerAppearance, forKey: cardsPerAppearanceKey)
     }
 
-    /// What the app handed the widget, or nil before it did, where it doesn't
-    /// run in its group, or when what's there isn't what the app writes,
+    /// What the app handed the widget, or nil before it did, where the two
+    /// don't share a group, or when what's there isn't what the app writes,
     /// which the log says.
     static func handedOver() -> WidgetSettings? {
         guard let stored = AppVariant.current.groupDefaults?.object(forKey: cardsPerAppearanceKey) else {

@@ -63,7 +63,7 @@ public struct Engine: Sendable {
     ) throws(EngineError) {
         switch location {
         case .folder(let folder):
-            let file = folder.appending(path: "Ficha.sqlite")
+            let file = databaseFile(in: folder)
             let pool = try whileNoOtherProcessOpens(file) { () throws(EngineError) in
                 let pool = try reportingStorageErrors {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -107,7 +107,7 @@ public struct Engine: Sendable {
         time: any TimeSource,
         calendar: Calendar = .autoupdatingCurrent
     ) throws(EngineError) {
-        let file = folder.appending(path: "Ficha.sqlite")
+        let file = databaseFile(in: folder)
         guard
             let pool = try whileNoOtherProcessOpens(file, to: .read, { () throws(EngineError) in try openToRead(file) })
         else {
@@ -130,8 +130,7 @@ public struct Engine: Sendable {
     ) {
         self.database = database
         if let folder {
-            databaseChanges = DatabaseChanges(
-                database: folder.appending(path: "Ficha.sqlite").path(percentEncoded: false))
+            databaseChanges = DatabaseChanges(database: databaseFile(in: folder).path(percentEncoded: false))
             dataFolder = folder
             images = .folder(folderOfImages(in: folder))
             sounds = .folder(FichaData.folder(of: SoundName.self, in: folder))
@@ -267,6 +266,14 @@ public struct Engine: Sendable {
             }
         }
     }
+}
+
+/// The name of the database's file in a data folder.
+let databaseFileName = "Ficha.sqlite"
+
+/// The database's file in the data folder `folder`.
+func databaseFile(in folder: URL) -> URL {
+    folder.appending(path: databaseFileName)
 }
 
 /// What a process opens the database for.

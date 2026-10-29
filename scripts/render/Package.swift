@@ -29,7 +29,7 @@ let package = Package(
             exclude: [
                 "App/main.swift", "App/FichaApp.swift", "App/AppDelegate.swift", "App/SecondDevice.swift",
                 "App/AppIcon.icon", "App/AppIcon-Dev.icon", "App/Localizable.xcstrings", "App/Info.plist",
-                "App/Ficha.entitlements",
+                "App/Ficha.entitlements", "App/GroupWithoutSandbox.entitlements",
             ],
             swiftSettings: [.define("FICHA_DEV"), .defaultIsolation(MainActor.self)]
         )
