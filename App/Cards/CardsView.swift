@@ -545,21 +545,52 @@ struct CardsView: View {
         }
     }
 
-    /// What Lucas chooses from: the cards by where they stand, then the
-    /// inbox, with how many things wait in it, as the menu counts them, then
-    /// the cards of each pinned tag, in his order, each with its context
-    /// menu, which he drags into another order, or a tag from All Tags in
-    /// among them to pin it, then All Tags…, then the cards by type, the
-    /// user's types with their context menu, with No Type while the state
-    /// offers it. One is chosen at a time, always.
+    /// What Lucas chooses from, in the sections the state lists, in its
+    /// order. One is chosen at a time, always.
     private var sidebar: some View {
         List(selection: chosenItem) {
+            ForEach(state.sidebarSections) { section in
+                sidebarSection(section)
+            }
+        }
+        .sheet(isPresented: Binding(get: { emojiSubject != nil }, set: { if !$0 { state.cancelQuestion() } })) {
+            if let subject = emojiSubject {
+                EmojiSheet(subject: subject, failure: failure(overSheet: true)) { text in
+                    state.emojiEntry(text)
+                } choose: { text in
+                    state.chooseEmoji(text)
+                }
+            }
+        }
+        .sheet(isPresented: Binding(get: { renameSubject != nil }, set: { if !$0 { state.cancelQuestion() } })) {
+            if let subject = renameSubject {
+                RenameSheet(subject: subject, failure: failure(overSheet: true)) { text in
+                    state.renameEntry(text)
+                } choose: { text in
+                    state.chooseNewName(text)
+                }
+            }
+        }
+    }
+
+    /// The sidebar's section `section`: the cards by where they stand; the
+    /// inbox, with how many things wait in it, as the menu counts them; the
+    /// cards of each pinned tag, in Lucas's order, each with its context
+    /// menu, which he drags into another order, or a tag from All Tags in
+    /// among them to pin it, then All Tags…, which pins a tag dropped on it
+    /// after them, the one place to drop one while none is pinned; or the
+    /// cards by type, the user's types with their context menu.
+    @ViewBuilder
+    private func sidebarSection(_ section: CardsWindowState.SidebarSection) -> some View {
+        switch section {
+        case .cardGroups(let groups):
             Section {
-                ForEach([CardGroup.all, .new, .due, .learned, .flagged, .buried], id: \.self) { group in
+                ForEach(groups, id: \.self) { group in
                     Label(group.title, systemImage: group.symbol)
                         .tag(SidebarItem.cards(group))
                 }
             }
+        case .inbox:
             Section {
                 Label(
                     String(
@@ -569,9 +600,10 @@ struct CardsView: View {
                 .badge(model.progress?.inInbox ?? 0)
                 .tag(SidebarItem.inbox)
             }
+        case .tags(let pinned):
             Section {
-                ForEach(state.pinnedTags) { tag in
-                    TagRow(tag: tag, isGrayed: tag.isSetAside)
+                ForEach(pinned) { tag in
+                    TagRow(tag: tag)
                         .tag(SidebarItem.cards(.tag(tag.id)))
                         .contextMenu {
                             tagMenu(for: tag.id)
@@ -595,14 +627,16 @@ struct CardsView: View {
                 } icon: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .takingDroppedTags { state.dropOnAllTags($0) }
                 .tag(SidebarItem.allTags)
             } header: {
                 Text(
                     "Tags",
                     comment: "A section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….")
             }
+        case .types(let groups):
             Section {
-                ForEach(state.typeGroups, id: \.self) { group in
+                ForEach(groups, id: \.self) { group in
                     TypeRow(group: group)
                         .tag(SidebarItem.cards(group))
                         .contextMenu {
@@ -611,24 +645,6 @@ struct CardsView: View {
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
-            }
-        }
-        .sheet(isPresented: Binding(get: { emojiSubject != nil }, set: { if !$0 { state.cancelQuestion() } })) {
-            if let subject = emojiSubject {
-                EmojiSheet(subject: subject, failure: failure(overSheet: true)) { text in
-                    state.emojiEntry(text)
-                } choose: { text in
-                    state.chooseEmoji(text)
-                }
-            }
-        }
-        .sheet(isPresented: Binding(get: { renameSubject != nil }, set: { if !$0 { state.cancelQuestion() } })) {
-            if let subject = renameSubject {
-                RenameSheet(subject: subject, failure: failure(overSheet: true)) { text in
-                    state.renameEntry(text)
-                } choose: { text in
-                    state.chooseNewName(text)
-                }
             }
         }
     }
@@ -1485,7 +1501,7 @@ private struct TagTreeRow<MenuItems: View>: View {
     }
 
     private var row: some View {
-        TagRow(tag: tag, isGrayed: false)
+        TagRow(tag: tag)
             .takingDroppedTags { dragged in
                 drop(TagDrop(dragged: dragged, target: tag.id))
             }
@@ -1539,11 +1555,10 @@ private struct TagDrop {
 /// its own or else the tags' it sits inside, before its title, its whole name
 /// among the pinned tags and at the top of All Tags' sections and its last
 /// level in their trees, and the tag symbol, filled with its color, found the
-/// same way, when it has one. Its tooltip says its whole name.
+/// same way, when it has one, grayed when the state says so. Its tooltip says
+/// its whole name.
 private struct TagRow: View {
     let tag: CardsWindowState.ListedTag
-    /// Whether it's grayed, as a set-aside tag among the pinned tags is.
-    let isGrayed: Bool
 
     var body: some View {
         Label {
@@ -1556,15 +1571,15 @@ private struct TagRow: View {
                 Image(systemName: "tag")
             }
         }
-        .opacity(isGrayed ? 0.5 : 1)
+        .opacity(tag.isGrayed ? 0.5 : 1)
         // Its whole name, which a narrow sidebar may cut short.
         .help(Text(verbatim: tag.tag.title))
     }
 }
 
-/// Where Lucas drops a tag he drags in All Tags, a tag's row or the Tags
-/// section's title: as wide as All Tags, highlighted while he holds a tag
-/// over it.
+/// Where Lucas drops a tag he drags from All Tags: in All Tags, a tag's row
+/// or the Tags section's title, and in the sidebar, All Tags…; as wide as
+/// its list, highlighted while he holds a tag over it.
 private struct DroppedTags: ViewModifier {
     /// Takes the dropped tag's name, and says whether it took the drop.
     let drop: (String) -> Bool
@@ -1595,7 +1610,7 @@ extension KeyEquivalent {
 }
 
 extension View {
-    /// The view as a place in All Tags where Lucas drops a tag he drags,
+    /// The view as a place where Lucas drops a tag he drags from All Tags,
     /// which `drop` takes by its name, saying whether it took the drop.
     fileprivate func takingDroppedTags(_ drop: @escaping (String) -> Bool) -> some View {
         modifier(DroppedTags(drop: drop))

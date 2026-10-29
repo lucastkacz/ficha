@@ -16,7 +16,7 @@ struct TagColorAndEmojiTests {
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 14, in: calendar)), calendar: calendar)
     }
 
-    @Test("a tag's color and emoji are stored and read back with the sidebar's tags and the table's rows")
+    @Test("a tag's color and emoji are stored and read back with All Tags' tags and the table's rows")
     func aTagsColorAndEmojiAreStoredAndReadBack() throws {
         try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
         try approveCard("fotosíntesis", tags: ["ciencia", "lenguaje"])
@@ -100,20 +100,19 @@ struct TagColorAndEmojiTests {
     }
 
     @Test(
-        "a colored tag that loses its last card leaves the sidebar's read, and comes back with its color and emoji when a card gets it again"
+        "a colored tag that loses its last card stays in All Tags with its color and emoji, which a card that gets it again shows"
     )
-    func aColoredTagThatLosesItsLastCardComesBackWithItsColorAndEmoji() throws {
+    func aColoredTagThatLosesItsLastCardKeepsItsColorAndEmoji() throws {
         let mayo = try approveCard("Revolución de Mayo", tags: ["argentina"])
         try approveCard("serendipia", tags: [])
         try engine.setColor(.blue, of: "argentina")
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
+        let argentina = CardTag(name: "argentina", color: .blue, emoji: "🇦🇷")
 
-        try engine.bury(mayo.id)
-        #expect(try engine.allTags() == [])
+        try engine.delete([mayo.id])
+        #expect(try engine.allTags() == [argentina])
 
         let martin = try approveCard("San Martín", tags: ["argentina"])
-        let argentina = CardTag(name: "argentina", color: .blue, emoji: "🇦🇷")
-        #expect(try engine.allTags() == [argentina])
         #expect(try engine.cardRows(in: .tag("argentina"), on: ladder).map(\.tags) == [[argentina]])
         #expect(try engine.cardRows(in: .tag("argentina"), on: ladder).map(\.id) == [martin.id])
     }

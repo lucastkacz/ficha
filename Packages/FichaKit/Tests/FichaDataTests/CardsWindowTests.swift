@@ -210,8 +210,8 @@ struct CardsWindowTests {
         #expect(try engine.cardRows(in: .type(.word), on: ladder).map(\.card.id) == [ubuntu.id, serendipia.id])
     }
 
-    @Test("the sidebar's tags are every tag of the cards that aren't buried, once each, alphabetically")
-    func theSidebarsTagsAreThoseOfTheCardsThatArentBuried() throws {
+    @Test("All Tags lists every tag of the cards, buried ones too, once each, alphabetically")
+    func allTagsListsEveryTagOfTheCards() throws {
         try approve(card(.word, front: "Ubuntu", back: "Humanidad.", tags: ["lenguaje", "filosofía"]), in: engine)
         try approve(card(.concept, front: "Eudaimonía", back: "Vida plena.", tags: ["ética", "filosofía"]), in: engine)
         let mercantilismo = try approve(
@@ -220,7 +220,7 @@ struct CardsWindowTests {
         try engine.bury(mercantilismo.id)
         try approveCard("serendipia", in: engine)
 
-        #expect(try engine.allTags().map(\.name) == ["ética", "filosofía", "lenguaje"])
+        #expect(try engine.allTags().map(\.name) == ["economía", "ética", "filosofía", "historia", "lenguaje"])
     }
 
     @Test("searching \"fertil\" finds a card whose back says \"fértil\", ignoring case and accents")

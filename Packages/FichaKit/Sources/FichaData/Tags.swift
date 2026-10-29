@@ -115,15 +115,14 @@ public struct CardTag: Sendable, Hashable {
 extension Engine {
     /// Every tag, as All Tags lists it in the Cards window, each with what it
     /// has of its own and what it takes from the tags it sits inside, in the
-    /// order a tree lists them: every tag of the cards that aren't buried,
-    /// with every tag it sits inside, and every set-aside tag and every pinned
-    /// tag, which stay listed while no card carries them, so that Lucas can
-    /// undo them.
+    /// order a tree lists them: every tag a card carries, buried cards too,
+    /// every tag with something of its own, which stays listed while no card
+    /// carries it, so that Lucas can undo it, and every tag those sit inside.
     public func allTags() throws(EngineError) -> [CardTag] {
         try read { db in
             let own = try OwnTags(in: db)
-            let carried = TagPath.lineages(of: try allCards(in: db).filter(\.standing.isInAllCards).flatMap(\.tags))
-            return own.listing(carried.union(own.pinned.map(\.name)), alongWithEvery: .setAside)
+            let names = try allCards(in: db).flatMap(\.tags) + own.names
+            return TagPath.sortedAsTree(TagPath.lineages(of: names)).map(own.tag)
         }
     }
 
@@ -193,12 +192,9 @@ struct OwnTags: Sendable {
             .sorted { $0.pin != $1.pin ? $0.pin < $1.pin : $0.tag.name < $1.tag.name }.map(\.tag)
     }
 
-    /// The tags named in `names`, and every tag with `tagSwitch` on, which
-    /// stays listed while no card carries it, each once, as `tag(_:)` reads
-    /// it, in the order a tree lists them, so that children follow their
-    /// parent.
-    func listing(_ names: some Sequence<String>, alongWithEvery tagSwitch: TagSwitch) -> [CardTag] {
-        TagPath.sortedAsTree(Set(names).union(tags(switchedOn: tagSwitch).map(\.name))).map(tag)
+    /// The name of every tag the `tag` table has a row for.
+    var names: [String] {
+        Array(byName.keys)
     }
 }
 

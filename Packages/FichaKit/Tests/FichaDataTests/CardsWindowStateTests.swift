@@ -35,7 +35,7 @@ struct CardsWindowStateTests {
         window.choose(.cards(.tag("historia")))
         #expect(window.listedCardIDs == [mayo.id])
 
-        try engine.bury(mayo.id)
+        try engine.delete([mayo.id])
         window.read(on: ladder)
 
         #expect(window.sidebarItem == .cards(.all))

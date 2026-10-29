@@ -37,8 +37,28 @@ struct CardsWindowTagsTests {
 
         #expect(before.isEmpty)
         #expect(window.pinnedTags.map(\.title) == ["lenguaje", "economía › Argentina", "historia › Roma", "ciencia"])
-        #expect(window.pinnedTags.map(\.isSetAside) == [false, false, true, true])
+        #expect(window.pinnedTags.grayed == ["historia › Roma", "ciencia"])
         #expect(window.pinnedTags.map(\.children) == [[], [], [], []])
+    }
+
+    // Every card has a type, so the Types section has no No Type.
+    @Test(
+        "the sidebar lists the card groups, then Inbox, then the pinned tags in their order and All Tags, then the card types"
+    )
+    func theSidebarsItemsInOrder() throws {
+        try approveCard("deuda", tags: ["economía::Argentina", "lenguaje"])
+        try engine.pin("lenguaje")
+        try engine.pin("economía::Argentina")
+
+        let window = openWindow()
+
+        #expect(
+            window.sidebarSections.map(\.items) == [
+                [.cards(.all), .cards(.new), .cards(.due), .cards(.learned), .cards(.flagged), .cards(.buried)],
+                [.inbox],
+                [.cards(.tag("lenguaje")), .cards(.tag("economía::Argentina")), .allTags],
+                [.cards(.type(.word)), .cards(.type(.concept)), .cards(.type(.quote)), .cards(.type(.question))],
+            ])
     }
 
     @Test("Pin to Sidebar in a tag's menu pins it after the others, and Unpin from Sidebar unpins it")
@@ -103,29 +123,76 @@ struct CardsWindowTagsTests {
         #expect(try engine.pinnedTags().map(\.name) == ["biología", "derecho", "arte", "ciencia"])
     }
 
-    // ciencia is set aside with no card, and stays listed so that Lucas can
-    // undo it; historia is pinned with no card.
+    // With nothing pinned, the pinned tags have no row to drop between.
     @Test(
-        "All Tags lists every tag as a tree, pinned ones too, and the set-aside ones in its Set Aside section, one inside a tag that isn't by its whole path"
+        "a tag dropped on All Tags… in the sidebar is pinned after the pinned tags, also when none is, but a word that isn't a tag is refused"
+    )
+    func droppingOnAllTags() throws {
+        try approveCard("arte", tags: ["arte", "biología"])
+        var window = openWindow()
+
+        let pinnedFirst = window.dropOnAllTags("biología")
+        let pinnedAfter = window.dropOnAllTags("arte")
+        let refused = window.dropOnAllTags("una palabra")
+
+        #expect(pinnedFirst)
+        #expect(pinnedAfter)
+        #expect(!refused)
+        #expect(window.pinnedTags.map(\.id) == ["biología", "arte"])
+    }
+
+    // Another device unpinned arte after the window read the pinned tags.
+    @Test("dragging a pinned tag that was unpinned meanwhile moves nothing, and the window says why")
+    func draggingATagUnpinnedMeanwhile() throws {
+        for tag in ["arte", "biología", "ciencia"] {
+            try engine.pin(tag)
+        }
+        var window = openWindow()
+        try engine.unpin("arte")
+
+        window.movePinnedTags(fromOffsets: [0], toOffset: 3)
+
+        #expect(window.failure?.action == .reorderPinned(tag: "arte"))
+        #expect(window.failure?.error == .tagNotPinned("arte"))
+        #expect(try engine.pinnedTags().map(\.name) == ["biología", "ciencia"])
+    }
+
+    // No card carries ciencia, historia, arte › barroco, filosofía, geografía
+    // or música, each listed for what it has of its own, and only a buried
+    // card carries política. The Set Aside section holds the set-aside tags,
+    // so none is grayed.
+    @Test(
+        "All Tags lists every tag as a tree, those of buried cards and those no card carries too, and the set-aside ones in its Set Aside section, ungrayed, one inside a tag that isn't by its whole path"
     )
     func allTagsListsEveryTag() throws {
         try approveCard("deuda", tags: ["economía::Argentina::deuda", "lenguaje"])
         try approveCard("arancel", tags: ["economía::mundial"])
         try approveCard("Coliseo", tags: ["literatura::Roma"])
+        try engine.bury(try approveCard("Cabildo abierto", tags: ["política"]).id)
         try engine.setAside("economía::Argentina")
         try engine.setAside("literatura")
         try engine.setAside("ciencia")
         try engine.pin("historia")
         try engine.pin("economía::mundial")
+        try engine.setColor(.blue, of: "arte::barroco")
+        try engine.togglePriority(of: "filosofía")
+        try engine.chooseToSync("geografía", true)
+        try engine.setEmoji(Emoji("🎵"), of: "música")
         var window = openWindow()
 
         window.choose(.allTags)
 
         let allTags = try #require(window.allTagsListing)
-        #expect(allTags.tree.outline == ["economía", "  mundial", "historia", "lenguaje"])
+        #expect(
+            allTags.tree.outline == [
+                "arte", "  barroco", "economía", "  mundial", "filosofía", "geografía", "historia", "lenguaje",
+                "música",
+                "política",
+            ])
         #expect(
             allTags.setAside.outline == ["ciencia", "economía › Argentina", "  deuda", "literatura", "  Roma"])
         #expect(allTags.setAside[1].children.map(\.tag.name) == ["economía::Argentina::deuda"])
+        #expect(allTags.tree.grayed + allTags.setAside.grayed == [])
         #expect(window.sidebarItem == .allTags)
         #expect(window.detail == .allTags)
         #expect(window.actions.isEmpty)
@@ -245,6 +312,12 @@ extension [CardsWindowState.ListedTag] {
     /// them open: each its title, two spaces in for each level it's in.
     var outline: [String] {
         flatMap { tag in [tag.title] + tag.children.outline.map { "  " + $0 } }
+    }
+
+    /// The titles of the grayed rows among these tags and the tags inside
+    /// them, in the order they're listed.
+    var grayed: [String] {
+        flatMap { tag in (tag.isGrayed ? [tag.title] : []) + tag.children.grayed }
     }
 }
 

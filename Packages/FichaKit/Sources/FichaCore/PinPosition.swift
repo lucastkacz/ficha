@@ -54,7 +54,10 @@ public struct PinPosition: Sendable, Hashable, Comparable {
     /// after `before`.
     public static func between(_ before: PinPosition?, _ after: PinPosition?) -> PinPosition {
         let low = before?.values ?? []
-        let high = after.flatMap { after in before.map { after > $0 } ?? true ? after.values : nil }
+        var high = after?.values
+        if let before, let after, after <= before {
+            high = nil
+        }
         return PinPosition(values: midpoint(low, high))
     }
 

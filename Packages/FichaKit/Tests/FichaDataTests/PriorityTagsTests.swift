@@ -202,7 +202,7 @@ struct PriorityTagsTests {
     // tag: toggling either's priority wouldn't bring a card. historia is a
     // priority tag no card carries any longer, and stays to be unticked.
     @Test(
-        "the Prioritize submenu lists the pinned tags in their order, then the priority tags that aren't pinned alphabetically, and ticks the priority tags, but no set-aside one"
+        "the Prioritize submenu lists None, the pinned tags in their order, then the priority tags that aren't pinned alphabetically, then All Tags…, and ticks the priority tags, but no set-aside one"
     )
     func theSubmenuListsAndTicksTheTags() throws {
         try approveCard("ubuntu", tags: ["lenguaje", "filosofía"])
@@ -222,11 +222,14 @@ struct PriorityTagsTests {
         try engine.edit(
             mayo.id, with: card(.word, front: "Revolución de Mayo", back: "Mayo de 1810.", tags: ["argentina"]))
 
-        let tags = try engine.prioritizeMenu().tags
+        let menu = try engine.prioritizeMenu()
         #expect(before.isEmpty)
-        #expect(tags.map(\.name) == ["lenguaje", "historia", "argentina", "ética", "filosofía"])
-        #expect(tags.map(\.isPriority) == [false, true, false, true, true])
-        #expect(tags.map(\.isPinned) == [true, true, true, false, false])
+        #expect(
+            menu.items.map(\.label) == [
+                "None", "lenguaje", "historia", "argentina", "ética", "filosofía", "All Tags…",
+            ])
+        #expect(menu.tags.map(\.isPriority) == [false, true, false, true, true])
+        #expect(menu.tags.map(\.isPinned) == [true, true, true, false, false])
     }
 
     @Test(
@@ -330,5 +333,17 @@ struct PriorityTagsTests {
     @discardableResult
     private func approveCard(_ front: String, tags: [String]) throws -> Card {
         try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
+    }
+}
+
+extension PrioritizeMenu.Item {
+    /// What the item says in the submenu, a tag by its whole name, written
+    /// with `::`.
+    fileprivate var label: String {
+        switch self {
+        case .noPriorityTag: "None"
+        case .tag(let tag): tag.name
+        case .allTags: "All Tags…"
+        }
     }
 }

@@ -32,6 +32,47 @@ public struct CardsWindowState: Sendable {
         case allTags
     }
 
+    /// A section of the sidebar, as `sidebarSections` lists them, with what
+    /// it offers.
+    public enum SidebarSection: Sendable, Equatable, Identifiable {
+        /// The cards by where they stand: All cards, New, Due, Learned,
+        /// Flagged and Buried.
+        case cardGroups([CardGroup])
+        /// The inbox.
+        case inbox
+        /// The Tags section: the pinned tags, as `pinnedTags` lists them,
+        /// then All Tags….
+        case tags(pinned: [ListedTag])
+        /// The Types section: the type groups, as `typeGroups` lists them.
+        case types([CardGroup])
+
+        /// Which section it is, whatever it lists.
+        public enum ID: Sendable, Hashable {
+            case cardGroups
+            case inbox
+            case tags
+            case types
+        }
+
+        public var id: ID {
+            switch self {
+            case .cardGroups: .cardGroups
+            case .inbox: .inbox
+            case .tags: .tags
+            case .types: .types
+            }
+        }
+
+        /// What it offers, in its order.
+        public var items: [SidebarItem] {
+            switch self {
+            case .cardGroups(let groups), .types(let groups): groups.map(SidebarItem.cards)
+            case .inbox: [.inbox]
+            case .tags(let pinned): pinned.map { .cards(.tag($0.id)) } + [.allTags]
+            }
+        }
+    }
+
     /// What the table lists: the cards of a group, what waits in the inbox,
     /// or All Tags' every tag, as a tree of those that aren't set aside and
     /// its Set Aside section (`CardsWindowTags.swift`).
@@ -228,12 +269,12 @@ public struct CardsWindowState: Sendable {
         /// section's title, to move it.
         case move(tag: String)
         /// He pinned this tag to the sidebar, from its menu or by dragging it
-        /// there.
+        /// there, with any tags he dragged along after it.
         case pin(tag: String)
         /// He unpinned this tag from the sidebar.
         case unpin(tag: String)
         /// He dragged this pinned tag to another place among the sidebar's
-        /// pinned tags.
+        /// pinned tags, with any he dragged along after it.
         case reorderPinned(tag: String)
         /// He made a type, in the New Type sheet.
         case makeType
@@ -271,8 +312,8 @@ public struct CardsWindowState: Sendable {
     public private(set) var listing: Result<Listing, EngineError>?
     /// Every tag the window offers, with what each has of its own and takes
     /// from the tags it sits inside, as All Tags lists them: those of the
-    /// cards that aren't buried, with every tag they sit inside, and the
-    /// set-aside and the pinned ones, in the order a tree lists them.
+    /// cards, buried ones too, those with something of their own, and every
+    /// tag they sit inside, in the order a tree lists them.
     public private(set) var tags: [CardTag] = []
     /// The sidebar's Tags section: the pinned tags, in Lucas's order, each
     /// named by its whole path, before All Tags: `CardsWindowTags.swift`.
@@ -342,6 +383,16 @@ public struct CardsWindowState: Sendable {
         self.engine = engine
         self.ladder = ladder
         now = engine.now
+    }
+
+    /// The sidebar's sections, in its order: the cards by where they stand,
+    /// the inbox, the pinned tags with All Tags… after them, and the type
+    /// groups.
+    public var sidebarSections: [SidebarSection] {
+        [
+            .cardGroups([.all, .new, .due, .learned, .flagged, .buried]), .inbox, .tags(pinned: pinnedTags),
+            .types(typeGroups),
+        ]
     }
 
     /// Whether Lucas is looking for something, which narrows the table: a
@@ -825,11 +876,11 @@ public struct CardsWindowState: Sendable {
     /// Reads the tags and what the sidebar chose, as they are now, on
     /// `ladder`, the one Lucas set in Settings, which he may have changed
     /// since the last read, and the review log of the card the detail shows.
-    /// When the chosen tag is gone, because its last card was buried, edited
-    /// or deleted while it's neither set aside nor pinned, the sidebar goes
-    /// back to All cards, and so it does when No Type is gone, once every
-    /// card that isn't buried has a type, and when the chosen user type is
-    /// deleted. A user type renamed, or given another emoji, stays chosen.
+    /// When the chosen tag is gone, because its last card was edited or
+    /// deleted while it has nothing of its own, the sidebar goes back to All
+    /// cards, and so it does when No Type is gone, once every card that isn't
+    /// buried has a type, and when the chosen user type is deleted. A user
+    /// type renamed, or given another emoji, stays chosen.
     public mutating func read(on ladder: Ladder) {
         self.ladder = ladder
         now = engine.now

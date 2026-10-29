@@ -883,7 +883,7 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 flag: Flag(note: "Falta un ejemplo", flaggedAt: time + hours(4)), buriedAt: time + hours(5),
                 setAsideBy: nil, bothWays: true),
         ])
-    #expect(try engine.allTags() == [CardTag(name: "lenguaje", color: .blue)])
+    #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje", color: .blue)])
     let inbox = try engine.inbox()
     #expect(inbox.captures.isEmpty)
     #expect(

@@ -112,9 +112,9 @@ struct TagsInsideTagsTests {
         let deuda = CardTag(name: "economía::Argentina::deuda", inheritedColor: .green, inheritedEmoji: "🇦🇷")
         #expect(try engine.allTags() == [economia, argentina, deuda, CardTag(name: "lenguaje")])
         #expect(try engine.cardRows(in: .all, on: settings.ladder).map(\.tags) == [[deuda, CardTag(name: "lenguaje")]])
-        let sidebar = try engine.allTags()
-        #expect(sidebar.map(\.shownColor) == [.green, .green, .green, nil])
-        #expect(sidebar.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])
+        let allTags = try engine.allTags()
+        #expect(allTags.map(\.shownColor) == [.green, .green, .green, nil])
+        #expect(allTags.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])
     }
 
     @Test(
@@ -246,7 +246,9 @@ struct TagsInsideTagsTests {
         try engine.renameTag("historia", to: "ciencias sociales::historia")
 
         #expect(
-            try engine.allTags() == [CardTag(name: "ciencias sociales::historia", switchedOn: .setAside)])
+            try engine.allTags() == [
+                CardTag(name: "ciencias sociales"), CardTag(name: "ciencias sociales::historia", switchedOn: .setAside),
+            ])
     }
 
     /// Approves a capture into one word card with this front and these tags

@@ -59,6 +59,43 @@ struct PinnedTagsTests {
         #expect(try engine.pinnedTags().map(\.name) == ["ciencia", "derecho", "biología", "arte", "economía"])
     }
 
+    // economía, ciencia and arte keep the order they're given in; ciencia
+    // and arte were pinned, and filosofía joins the end without an index,
+    // where the pinned biología stays put.
+    @Test(
+        "pinning several tags at an index puts them there in their order, the pinned ones moving with them, and without an index after the others"
+    )
+    func pinningSeveralTags() throws {
+        for tag in ["arte", "biología", "ciencia"] {
+            try engine.pin(tag)
+        }
+
+        try engine.pin(["economía", "ciencia", "arte"], at: 1)
+        let afterPinningAtAnIndex = try engine.pinnedTags().map(\.name)
+        try engine.pin(["filosofía", "biología"])
+
+        #expect(afterPinningAtAnIndex == ["biología", "economía", "ciencia", "arte"])
+        #expect(try engine.pinnedTags().map(\.name) == ["biología", "economía", "ciencia", "arte", "filosofía"])
+    }
+
+    @Test(
+        "moving pinned tags puts them at an index in their order, and a tag that isn't pinned is refused, moving none of them"
+    )
+    func movingPinnedTags() throws {
+        for tag in ["arte", "biología", "ciencia", "derecho"] {
+            try engine.pin(tag)
+        }
+
+        try engine.movePinnedTags(["derecho", "arte"], to: 1)
+        let afterMoving = try engine.pinnedTags().map(\.name)
+
+        #expect(afterMoving == ["biología", "derecho", "arte", "ciencia"])
+        #expect(throws: EngineError.tagNotPinned("economía")) {
+            try engine.movePinnedTags(["ciencia", "economía"], to: 0)
+        }
+        #expect(try engine.pinnedTags().map(\.name) == afterMoving)
+    }
+
     // historia has nothing else of its own, and no card: it's listed only
     // while it's pinned.
     @Test("unpinning a tag takes it out of the pinned tags, and a pinned tag no card carries stays listed until then")

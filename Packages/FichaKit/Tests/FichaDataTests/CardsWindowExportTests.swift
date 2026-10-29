@@ -51,7 +51,7 @@ final class CardsWindowExportTests {
         let cabildo = try approveCard("Cabildo abierto", tags: ["historia"])
         try engine.bury(cabildo.id)
         let guernica = try approveCard("Guernica", tags: ["arte"])
-        // The sidebar still lists a set-aside tag with no cards.
+        // All Tags still lists a set-aside tag with no cards.
         try engine.setAside("arte")
         try engine.delete([guernica.id])
         var unselected = openWindow()

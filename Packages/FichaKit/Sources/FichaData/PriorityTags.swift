@@ -11,15 +11,31 @@ extension CardTag {
 }
 
 /// What the menu bar's Prioritize submenu offers, as the engine reads it:
-/// "None", then each tag, and then All Tags…, which the menu draws
-/// (ADR 0022).
+/// "None", then each tag, and then All Tags… (ADR 0022).
 public struct PrioritizeMenu: Sendable, Equatable {
+    /// An item of the submenu.
+    public enum Item: Sendable, Hashable {
+        /// "None", ticked while no tag is a priority tag, which clears them.
+        case noPriorityTag
+        /// A tag, ticked while it's a priority tag, which toggles it.
+        case tag(CardTag)
+        /// All Tags…, which opens the Cards window on All Tags, for every
+        /// other tag.
+        case allTags
+    }
+
     /// The tags it offers, each with what it has of its own and takes from
     /// the tags it sits inside, ticked while it's a priority tag: the pinned
     /// tags, in their order, and then the priority tags that aren't pinned,
     /// alphabetically by their whole names, each tag inside another right
     /// after it.
     public let tags: [CardTag]
+
+    /// What it offers, in its order: "None", each of `tags`, and last All
+    /// Tags….
+    public var items: [Item] {
+        [.noPriorityTag] + tags.map(Item.tag) + [.allTags]
+    }
 
     /// Whether "None" is ticked: no tag is a priority tag.
     public var isNoneTicked: Bool {
@@ -45,7 +61,7 @@ extension Engine {
             let own = try OwnTags(in: db)
             let setAside = Set(own.tags(switchedOn: .setAside).map(\.name))
             let pinned = own.pinned.filter { tag in
-                tag.isPriority || !TagPath.lineage(of: tag.name).contains(where: setAside.contains)
+                tag.isPriority || CardStanding.setAsideTags(of: [tag.name], among: setAside).isEmpty
             }
             let others = TagPath.sortedAsTree(own.tags(switchedOn: .priority).filter { !$0.isPinned }.map(\.name))
             return PrioritizeMenu(tags: (pinned.map(\.name) + others).map(own.tag))
