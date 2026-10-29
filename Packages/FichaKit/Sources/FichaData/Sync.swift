@@ -732,15 +732,18 @@ extension ICloudRecord {
     /// Its place among the records of a fetch as they're applied: tags, the
     /// settings that decide progress, the choice of what syncs and the user's
     /// card types, then captures, then cards, then the review log, so that
-    /// what a record refers to comes before it. A type this version doesn't
-    /// know comes last, to wait.
-    fileprivate var applyingRank: Int {
+    /// what a record refers to comes before it, and then the changes to tags,
+    /// in the order they were made, so that each applies to the cards and the
+    /// tags as the fetch left them. A type this version doesn't know comes
+    /// last, to wait.
+    fileprivate var applyingRank: (Int, Int64) {
         switch SyncedRow.RecordType(rawValue: type) {
-        case .tag, .progressSettings, .syncChoice, .userType: 0
-        case .capture: 1
-        case .card: 2
-        case .reviewLogEntry: 3
-        case nil: 4
+        case .tag, .progressSettings, .syncChoice, .userType: (0, 0)
+        case .capture: (1, 0)
+        case .card: (2, 0)
+        case .reviewLogEntry: (3, 0)
+        case .tagChange: (4, (try? time("madeAt"))?.wholeMilliseconds ?? 0)
+        case nil: (5, 0)
         }
     }
 }

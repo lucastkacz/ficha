@@ -411,6 +411,37 @@ final class SyncedRestoreTests {
         #expect(try otherMac.engine.cards() == before)
     }
 
+    // The Mac renames economía after its backup, and restores it. The
+    // iPhone, which heard of the rename, takes the restore's cards, and then
+    // turns sync off and on, which sends again everything it holds.
+    @Test("a rename a restore undid stays undone on every device, also once one sends everything again")
+    func aRenameARestoreUndidStaysUndone() async throws {
+        try mac.engine.create(card(.concept, front: "inflación", back: "Suben los precios.", tags: ["economía"]))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+        time.advance(by: minutes(1))
+        try mac.engine.renameTag("economía", to: "economics")
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        #expect(try iPhone.engine.card(fronted: "inflación").tags == ["economics"])
+
+        try mac.engine.restore(backup.name)
+        time.advance(by: minutes(1))
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try iPhone.engine.turnSyncOff()
+        try iPhone.turnSyncOn()
+        for _ in 0..<3 {
+            try await iPhone.syncNow()
+            try await mac.syncNow()
+        }
+
+        #expect(try mac.engine.card(fronted: "inflación").tags == ["economía"])
+        #expect(try iPhone.engine.card(fronted: "inflación").tags == ["economía"])
+    }
+
     // The iPad's clock is an hour ahead of the Mac's, and the iPad made the
     // zone the devices sync in, named after its own clock.
     @Test("a restore's zone is newer than the zone it leaves, even when the Mac's clock is behind that zone's time")

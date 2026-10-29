@@ -7,16 +7,16 @@ internal import GRDB
 // for itself. Triggers in the database record every change, whoever writes
 // it, the CLI too (`Schema`'s "v21 changes recorded to sync"); this file
 // reads what they recorded, and is the one way to write without recording.
-// Two changes are recorded by hand: what a device changes as it takes
-// another device's deletion, in such a write (`SyncedDeletions.swift`), and
-// the rows that start or stop syncing as selective sync decides
-// (`SelectiveSync.swift`).
+// Three changes are recorded by hand: what a device changes as it takes
+// another device's deletion, in such a write (`SyncedDeletions.swift`), or
+// another device's change to a tag (`TagChanges.swift`), and the rows that
+// start or stop syncing as selective sync decides (`SelectiveSync.swift`).
 
 /// A row that syncs, as iCloud names its record: a card, a capture, an entry
-/// of the review log or a user type by its ID unique across devices, a tag by
-/// its name, or the settings that decide progress or the choice of what
-/// syncs, of each of which there's one. Images and sounds are named by their
-/// content, as `ImageName` and `SoundName` say.
+/// of the review log, a user type or a change to a tag by its ID unique
+/// across devices, a tag by its name, or the settings that decide progress or
+/// the choice of what syncs, of each of which there's one. Images and sounds
+/// are named by their content, as `ImageName` and `SoundName` say.
 enum SyncedRow: Sendable, Hashable {
     case card(UUID)
     case capture(UUID)
@@ -27,6 +27,8 @@ enum SyncedRow: Sendable, Hashable {
     case syncChoice
     /// A card type the user made.
     case userType(UUID)
+    /// A rename or a deletion of a tag (`TagChanges.swift`).
+    case tagChange(UUID)
 
     /// What kind of row it is, as the database names it.
     enum RecordType: String, Sendable {
@@ -37,6 +39,7 @@ enum SyncedRow: Sendable, Hashable {
         case progressSettings
         case syncChoice
         case userType
+        case tagChange
     }
 
     var recordType: RecordType {
@@ -48,6 +51,7 @@ enum SyncedRow: Sendable, Hashable {
         case .progressSettings: .progressSettings
         case .syncChoice: .syncChoice
         case .userType: .userType
+        case .tagChange: .tagChange
         }
     }
 
@@ -56,7 +60,8 @@ enum SyncedRow: Sendable, Hashable {
     /// a row there's one of, which names it.
     var recordName: String {
         switch self {
-        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id): id.uuidString
+        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id):
+            id.uuidString
         case .tag(let name): name
         case .progressSettings: RecordType.progressSettings.rawValue
         case .syncChoice: RecordType.syncChoice.rawValue
@@ -75,6 +80,7 @@ enum SyncedRow: Sendable, Hashable {
         case .capture: self = .capture(try uuid(named: recordName, of: type))
         case .reviewLogEntry: self = .reviewLogEntry(try uuid(named: recordName, of: type))
         case .userType: self = .userType(try uuid(named: recordName, of: type))
+        case .tagChange: self = .tagChange(try uuid(named: recordName, of: type))
         case .tag: self = .tag(recordName)
         case .progressSettings:
             guard recordName == SyncedRow.progressSettings.recordName else {
@@ -316,15 +322,18 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
 /// Leaves every row that syncs waiting to be sent, as it is now, in place of
 /// its change before: as sync is turned on, or meets another iCloud account.
 /// A tag that had something of its own, and has nothing now, is sent too, so
-/// that the other devices take that it has nothing. The deletions that wait
+/// that the other devices take that it has nothing. Every change to a tag the
+/// device made or heard of goes too, so that one made while sync was off
+/// reaches the cards the other devices hold that don't sync, and a device
+/// that heard of one already never applies it again. The deletions that wait
 /// still do. The user's card types go first: iCloud's engine sends in
 /// batches, and a device that fetches a card before its type reads it as one
 /// with no type, which an edit there would then keep.
 func recordEverythingToSend(in db: Database) throws {
-    let (card, capture, entry, tag, userType) = (
+    let (card, capture, entry, tag, userType, tagChange) = (
         SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue,
         SyncedRow.RecordType.reviewLogEntry.rawValue, SyncedRow.RecordType.tag.rawValue,
-        SyncedRow.RecordType.userType.rawValue
+        SyncedRow.RecordType.userType.rawValue, SyncedRow.RecordType.tagChange.rawValue
     )
     try db.execute(
         sql: """
@@ -346,5 +355,7 @@ func recordEverythingToSend(in db: Database) throws {
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT 'syncChoice', 'syncChoice', 0 FROM syncChoice
             WHERE EXISTS (SELECT 1 FROM syncFieldTime WHERE recordType = 'syncChoice');
+            INSERT INTO syncPending (recordType, recordName, isDeletion)
+            SELECT '\(tagChange)', uuid, 0 FROM tagChange ORDER BY id;
             """)
 }

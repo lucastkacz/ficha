@@ -220,6 +220,17 @@ struct WhatSyncs: Sendable, Equatable {
         chosenTags = Set(try String.fetchAll(db, sql: "SELECT name FROM tag WHERE chosenToSync"))
     }
 
+    private init(onlyChosenTags: Bool, chosenTags: Set<String>) {
+        self.onlyChosenTags = onlyChosenTags
+        self.chosenTags = chosenTags
+    }
+
+    /// What would decide which cards sync with only `chosenTags` chosen, as
+    /// after some of them are deleted.
+    func choosing(_ chosenTags: Set<String>) -> WhatSyncs {
+        WhatSyncs(onlyChosenTags: onlyChosenTags, chosenTags: chosenTags)
+    }
+
     /// Whether a card with the tags `tags` syncs, as `cardSyncs(tags:)` says
     /// in a database's SQL of every tag written as `TagPath.normalized(_:)`
     /// writes it, as every tag a card gets now is. A tag a card kept from

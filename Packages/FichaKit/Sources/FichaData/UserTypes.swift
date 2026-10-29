@@ -201,9 +201,9 @@ extension CardType {
     /// The type Ficha comes with that `name` names, by its raw value or its
     /// name in the Mac's language (`builtInNames`), as
     /// `UserType.isSameName(_:as:)` compares them, or nil when none does:
-    /// the one lookup of the four by name, as a file, a refine session or a
-    /// new user type's name gives it.
-    init?(builtInNamed name: String) {
+    /// the one lookup of the four by name, as a file, a refine session, a
+    /// new user type's name or the `ficha` CLI's type commands give it.
+    public init?(builtInNamed name: String) {
         guard
             let type = CardType.builtIn.first(where: {
                 $0.builtInNames.contains { UserType.isSameName(name, as: $0) }
@@ -259,7 +259,7 @@ extension CardType {
     /// Whether it's `other`, whatever their names and emoji now: one of the
     /// four is itself, and a user type the one with its ID, also once
     /// renamed.
-    func isSameType(as other: CardType) -> Bool {
+    public func isSameType(as other: CardType) -> Bool {
         switch (self, other) {
         case (.user(let type), .user(let otherType)): type.id == otherType.id
         default: self == other

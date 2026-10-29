@@ -3,11 +3,14 @@ import Foundation
 internal import GRDB
 
 // Renaming a tag (ADR 0021), which moves it too, as its name carries the tags
-// it sits inside: the Cards window's Rename… and its drops. A tag's name is
-// how cards carry it and the `tag` table's key, so renaming one changes every
-// card that carries it or a tag inside it, and moves their rows: an old row
-// is deleted and a new one written, which sync as a tag's rows do, and each
-// card records an edit to its tags, whose latest change wins (ADR 0017).
+// it sits inside: the Cards window's Rename… and its drops, and the `ficha`
+// CLI. A tag's name is how cards carry it and the `tag` table's key, so
+// renaming one changes every card that carries it or a tag inside it, and
+// moves their rows: an old row is deleted and a new one written, which sync
+// as a tag's rows do, and each card records an edit to its tags, whose latest
+// change wins (ADR 0017). The rename is also recorded as a change to the tag,
+// which reaches the cards the user's other devices hold that don't sync
+// (`TagChanges.swift`), as a deletion is (`DeletingTags.swift`).
 
 extension Engine {
     /// Renames the tag `tag` to `newName`, its levels cleaned up as a card's
@@ -22,9 +25,11 @@ extension Engine {
     /// keeps exactly what it had of its own, which may be nothing, since the
     /// moved tag's row is dropped, but for its pin, which it takes from the
     /// moved tag, with its place, when it had none (ADR 0022); and so for
-    /// each tag inside the renamed one. Returns the tag's new name; renaming it to its
-    /// own name changes nothing. Refuses a blank name, and moving the tag
-    /// inside itself or inside a tag inside it.
+    /// each tag inside the renamed one. The rename reaches every card on the
+    /// user's other devices, those that don't sync too, as a change to the
+    /// tag. Returns the tag's new name; renaming it to its own name changes
+    /// nothing. Refuses a blank name, and moving the tag inside itself or
+    /// inside a tag inside it.
     @discardableResult
     public func renameTag(_ tag: String, to newName: String) throws(EngineError) -> String {
         let name = try checkedTagName(renaming: tag, to: newName)
@@ -32,9 +37,8 @@ extension Engine {
             return name
         }
         try write { db in
-            let existing = try tagsThatExist(apartFrom: tag, in: db)
-            try moveCards(tagged: tag, to: name, in: db)
-            try moveRows(of: tag, to: name, joining: existing, in: db)
+            try make(.rename(tag, to: name), in: db)
+            try recordTagChange(.rename(tag, to: name), in: db)
         }
         return name
     }
@@ -53,28 +57,59 @@ func checkedTagName(renaming tag: String, to newName: String) throws(EngineError
     return name
 }
 
+/// Makes `edit` on this device, in the write `db`, as the device that makes
+/// it: every card that carries the tag, or a tag inside it, carries their
+/// new names, or loses them for a deletion, and records an edit to its tags;
+/// and the rows of the `tag` table of the tag and the tags inside it move to
+/// their new names, joining those that exist (`moveRows`), or go.
+func make(_ edit: TagEdit, in db: Database) throws {
+    switch edit {
+    case .rename(let tag, let name):
+        let existing = try tagsThatExist(apartFrom: tag, in: db)
+        _ = try editCards(edit, in: db)
+        try moveRows(of: tag, to: name, joining: existing, in: db)
+    case .deletion:
+        _ = try editCards(edit, in: db)
+        for name in try String.fetchAll(db, sql: "SELECT name FROM tag") where edit.changes(name) {
+            try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [name])
+        }
+    }
+}
+
 /// The tags that exist apart from `tag` and the tags inside it, in `db`: each
 /// that a row of the `tag` table has, each that a card carries, and each
 /// that one of those sits inside, as a parent exists through the tags inside
 /// it.
-private func tagsThatExist(apartFrom tag: String, in db: Database) throws -> Set<String> {
+func tagsThatExist(apartFrom tag: String, in db: Database) throws -> Set<String> {
     let rows = try String.fetchAll(db, sql: "SELECT name FROM tag")
     let carried = try String.fetchAll(db, sql: "SELECT tags FROM card").flatMap(tagsFromJSON)
     return TagPath.lineages(of: (rows + carried).filter { !TagPath.isTag($0, within: tag) })
 }
 
-/// Gives every card that carries `tag`, or a tag inside it, the new name
-/// `name`, each tag inside it moved along, in the write `db`: a card left
-/// with a tag twice carries it once, in the place of the first.
-private func moveCards(tagged tag: String, to name: String, in db: Database) throws {
-    for row in try Row.fetchAll(db, sql: "SELECT id, tags FROM card ORDER BY id") {
+/// Gives every card that carries the tag `edit` changes, or a tag inside it,
+/// its tags after `edit`, in the write `db`, of those among `cards`, or of
+/// every card when it's nil, for which `takes` holds, given the card's ID
+/// unique across devices and when it came in; and returns the ids of those
+/// it changed.
+func editCards(
+    _ edit: TagEdit, among cards: Set<Int64>? = nil, in db: Database,
+    takingIt takes: (_ uuid: String, _ createdAt: Date) throws -> Bool = { _, _ in true }
+) throws -> Set<Int64> {
+    var edited: Set<Int64> = []
+    for row in try Row.fetchAll(db, sql: "SELECT id, uuid, tags, createdAt FROM card ORDER BY id") {
         let id: Int64 = try row.decode(forColumn: "id")
-        let tags = try tagsFromJSON(try row.decode(forColumn: "tags"))
-        let renamed = tags.map { TagPath.renaming($0, from: tag, to: name) ?? $0 }.uniqued()
-        if renamed != tags {
-            try db.execute(sql: "UPDATE card SET tags = ? WHERE id = ?", arguments: [try tagsJSON(renamed), id])
+        guard cards?.contains(id) ?? true else {
+            continue
         }
+        let tags = try tagsFromJSON(try row.decode(forColumn: "tags"))
+        let after = edit.tags(after: tags)
+        guard after != tags, try takes(row.decode(forColumn: "uuid"), row.decode(forColumn: "createdAt")) else {
+            continue
+        }
+        try db.execute(sql: "UPDATE card SET tags = ? WHERE id = ?", arguments: [try tagsJSON(after), id])
+        edited.insert(id)
     }
+    return edited
 }
 
 /// Moves the rows of the `tag` table of `tag` and the tags inside it to the
@@ -85,7 +120,7 @@ private func moveCards(tagged tag: String, to name: String, in db: Database) thr
 /// merge never unpins a tag (ADR 0022). The rows that move all go first, so
 /// that a row that moves onto the old name of another, as moving a tag onto
 /// the tag it sits inside can, never meets it.
-private func moveRows(of tag: String, to name: String, joining existing: Set<String>, in db: Database) throws {
+func moveRows(of tag: String, to name: String, joining existing: Set<String>, in db: Database) throws {
     let moving = try String.fetchAll(db, sql: "SELECT name FROM tag").filter { TagPath.isTag($0, within: tag) }
         .map { try ownTag($0, in: db) }
     for own in moving {

@@ -14,7 +14,8 @@ public struct FichaCommand: ParsableCommand {
         subcommands: [
             CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
             DiscardCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, BuryCommand.self,
-            UnburyCommand.self, CardsCommand.self, RestoreCommand.self,
+            UnburyCommand.self, CardsCommand.self, TagsCommand.self, TagCommand.self, TypesCommand.self,
+            TypeCommand.self, RestoreCommand.self,
         ]
     )
 
@@ -69,7 +70,7 @@ protocol EngineCommand: ParsableCommand {
 
 /// `value` as the CLI prints it: indented JSON, with its keys in order and its
 /// dates in ISO 8601, in UTC.
-private func json(_ value: any Encodable) throws -> String {
+func json(_ value: any Encodable) throws -> String {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
     encoder.dateEncodingStrategy = .iso8601

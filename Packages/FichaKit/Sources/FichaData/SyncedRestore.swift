@@ -55,9 +55,13 @@ struct SyncKeptThroughARestore {
 /// Drops every row that syncs, in a write that records nothing to send, as a
 /// device takes a restore's cards in place of its own: the cards that sync
 /// (`SelectiveSync.swift`), their review log, the captures that sync, the
-/// tags and the user's card types, with what waited to be sent and when each
-/// field of them last changed. A card that stays keeps its type's ID, and has
-/// its type again once the restore's copy brings it. The cards that don't sync stay, with their review log, the
+/// tags, the user's card types and the changes to tags, with what waited to
+/// be sent and when each field of them last changed. A card that stays keeps
+/// its type's ID, and has its type again once the restore's copy brings it.
+/// The changes to tags the copy holds come again, and change nothing on the
+/// cards that come with them; one it lacks, which the restore undid, goes
+/// for good, so that the device never sends it again. The cards that don't
+/// sync stay, with their review log, the
 /// captures tied to them and those they were approved from, none of which
 /// the restore's copy brings. The settings that decide progress and the
 /// choice of what syncs stay, as their rows are never deleted, but with no
@@ -88,6 +92,7 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
             DELETE FROM capture WHERE id IN (\(untied));
             DELETE FROM tag;
             DELETE FROM userType;
+            DELETE FROM tagChange;
             DELETE FROM syncFieldTime WHERE recordType NOT IN ('\(card)', '\(capture)');
             DELETE FROM syncPending;
             """)

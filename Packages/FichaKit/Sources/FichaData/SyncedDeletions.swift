@@ -14,8 +14,11 @@ internal import GRDB
 // as it changed its row, was deleted on another device: the row goes here
 // too. A user type deleted on one device leaves its cards with no type on
 // the others, as on that one, and a card another device gave it before it
-// heard of the deletion has none either (`UserTypes.swift`). A tag is never
-// deleted: one with nothing of its own is just a name.
+// heard of the deletion has none either (`UserTypes.swift`). A tag's record
+// is never deleted: a tag the user deletes, or whose row goes otherwise,
+// syncs as one with nothing of its own, which is just a name, and the
+// deletion reaches the cards as a change to the tag, whose record stays in
+// iCloud for good (`TagChanges.swift`).
 
 extension Sync {
     /// Takes `deletions`, which other devices made, in one write that records
@@ -102,7 +105,8 @@ extension SyncedRow.RecordType {
     /// takes at once: what refers to a row before the row, so that the device
     /// sends again only what the deleting device didn't delete. Nil for a row
     /// that's never deleted for good, which goes again when iCloud lacks its
-    /// record: a tag is just a name once it has nothing of its own.
+    /// record: a tag is just a name once it has nothing of its own, and a
+    /// change to a tag stays for the devices that haven't heard of it.
     fileprivate var deletionRank: Int? {
         switch self {
         case .reviewLogEntry: 0
@@ -217,10 +221,11 @@ private func rows(
 
 /// Leaves `row` waiting to be sent, as `kind` says, in place of its change
 /// before, while sync is on: for a change this device makes as it takes
-/// another device's deletion, in a write that doesn't record its changes. The
-/// database's triggers do the same in a write that does (`wait` in `Schema`'s
-/// v21), whose SQL a migration keeps as it was, so it can't be shared.
-private func waitToBeSent(_ row: SyncedRow, as kind: ChangeToSend.Kind, in db: Database) throws {
+/// another device's deletion, or its change to a tag (`TagChanges.swift`), in
+/// a write that doesn't record its changes. The database's triggers do the
+/// same in a write that does (`wait` in `Schema`'s v21), whose SQL a
+/// migration keeps as it was, so it can't be shared.
+func waitToBeSent(_ row: SyncedRow, as kind: ChangeToSend.Kind, in db: Database) throws {
     try db.execute(
         sql: "DELETE FROM syncPending WHERE recordType = ? AND recordName = ?",
         arguments: [row.recordType.rawValue, row.recordName])

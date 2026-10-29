@@ -1189,6 +1189,39 @@ enum Schema {
                     END;
                     """)
         }
+        migrator.registerMigration("v30 changes to tags") { db in
+            // A rename or a deletion of a tag, recorded as a change to the
+            // tag (ADR 0022), so that it reaches every card on every device,
+            // those that don't sync included (`TagChanges.swift`): each with
+            // its ID unique across devices, as Foundation writes a UUID; the
+            // tag it changes, by its whole name; the name it's renamed to,
+            // or NULL for a deletion; and when it was made, by the engine's
+            // time on the device that made it. A device keeps a row for each
+            // change it made or heard of, which it has applied, and never
+            // changes or deletes one, so a change whose row it holds is never
+            // applied again. Every database starts with none.
+            try db.create(table: "tagChange") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique()
+                table.column("tag", .text).notNull().check(sql: "tag <> ''")
+                table.column("newName", .text).check(sql: "newName <> ''")
+                table.column("madeAt", .datetime).notNull()
+            }
+            // A change syncs as a record of its own, "tagChange", as
+            // `SyncedRow` names it, whatever selective sync chooses, as a
+            // tag's row does (ADR 0020). It only ever comes in: its trigger
+            // is an entry of the review log's, from "v21 changes recorded to
+            // sync", written out.
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_tagChange_inserted AFTER INSERT ON tagChange
+                    WHEN (SELECT recordsChanges FROM syncWrite) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'tagChange' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'tagChange', NEW.uuid, 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    """)
+        }
         return migrator
     }()
 }
