@@ -45,7 +45,7 @@ public struct CardsWindowState: Sendable {
         case inbox
         /// The Tags section: the pinned tags, as `pinnedTags` lists them,
         /// then All Tags….
-        case tags(pinned: [ListedTag])
+        case tags(pinned: [PinnedTagRow])
         /// The Types section: the type groups, as `typeGroups` lists them.
         case types([CardGroup])
 
@@ -157,8 +157,10 @@ public struct CardsWindowState: Sendable {
         /// Whether Prioritize is ticked: every one is a priority tag, and
         /// choosing it again undoes it.
         public let isPriorityTicked: Bool
-        /// Whether Prioritize is on: none is set aside on its own, since a
-        /// tag is never both (ADR 0011).
+        /// Whether Prioritize is on: none is set aside, on its own or inside
+        /// a tag that is, since a tag is never both (ADR 0011) and the menu
+        /// bar's Prioritize submenu leaves those out, but for a priority tag,
+        /// which it unticks.
         public let canPrioritize: Bool
         /// The Color submenu's items: None, then Finder's seven colors in
         /// Finder's order, with the one every tag has of its own ticked, or
@@ -381,7 +383,7 @@ public struct CardsWindowState: Sendable {
     public private(set) var tags: [CardTag] = []
     /// The sidebar's Tags section: the pinned tags, in Lucas's order, each
     /// named by its whole path, before All Tags: `CardsWindowTags.swift`.
-    public private(set) var pinnedTags: [ListedTag] = []
+    public private(set) var pinnedTags: [PinnedTagRow] = []
     /// The type groups the sidebar offers: one for each of the four types
     /// Ficha comes with, then one for each of the user's types, in
     /// alphabetical order, and No Type after them while a card that isn't

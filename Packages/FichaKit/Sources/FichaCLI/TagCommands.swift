@@ -369,10 +369,11 @@ struct PrintedTags {
     /// The tags `engine` holds now, each with its counts on the engine's
     /// ladder; or an error when they changed between the engine's reads.
     init(of engine: Engine) throws {
-        let counts = try engine.tagCounts(on: engine.progressSettings().ladder)
+        let counted = try engine.countedTags(on: engine.progressSettings().ladder)
         let pinnedNames = try engine.pinnedTags().map(\.name)
-        let tags = try engine.allTags().map { tag in
-            guard let count = counts[tag.name], tag.isPinned == pinnedNames.contains(tag.name) else {
+        let tags = try counted.map { counted in
+            let (tag, count) = (counted.tag, counted.counts)
+            guard tag.isPinned == pinnedNames.contains(tag.name) else {
                 throw TagsChangedMeanwhileError()
             }
             return PrintedTag(

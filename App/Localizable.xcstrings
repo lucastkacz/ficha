@@ -789,7 +789,27 @@
       }
     },
     "%lld tags selected" : {
-      "comment" : "In the Cards window's detail, when Lucas selected several tags in All Tags."
+      "comment" : "In the Cards window's detail, when Lucas selected several tags in All Tags.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld tag selected"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld tags selected"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "+%lld" : {
       "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
@@ -1444,7 +1464,27 @@
       }
     },
     "Delete %lld tags?" : {
-      "comment" : "The title of the Cards window's question before it deletes several tags, with how many."
+      "comment" : "The title of the Cards window's question before it deletes several tags, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld tag?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld tags?"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Delete %lld unused tags?" : {
       "comment" : "The title of the Cards window's question before Clear Unused Tags… deletes the tags no card carries, with how many.",
@@ -2463,6 +2503,18 @@
     },
     "Tag every card with" : {
       "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
+    },
+    "tag-deletion.next-sentence" : {
+      "comment" : "Joins two sentences of the Cards window's question before it deletes tags: what it says so far, then the next sentence, as the language writes one sentence after another.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
     },
     "Tags" : {
       "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."

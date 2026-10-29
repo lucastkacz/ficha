@@ -8,15 +8,19 @@ import SwiftUI
 /// neither onto one row nor between two, and an outline view draws its
 /// insertion line at the level a drop goes to, as Finder's and Mail's do.
 /// Its columns are the tag, Cards, Due, and the Pinned, Priority and Set Aside
-/// checkboxes, Priority off on a set-aside tag; a click on a column's title
+/// checkboxes, Priority off on a tag set aside, on its own or inside one,
+/// unless it's a priority tag, to untick; a click on a column's title
 /// sorts each level by it, and a second click turns the order around. A
 /// set-aside tag's row is grayed, and so are the rows inside it. Lucas
 /// selects several tags with ⌘ and ⇧, opens the context menu `menu` makes
 /// for the tags it acts on, double-clicks a tag to list its cards, and drags
 /// tags onto another, between two rows, or into the sidebar, which takes
-/// their names as text. The state decides all of it, what the tree lists,
-/// which parents are open, what's selected, how it sorts and which drops it
-/// takes, and the outline view draws it and tells the state what Lucas did.
+/// their names as text. The state decides what the tree lists, which parents
+/// are open, what's selected, how it sorts, and which of the tags dropped
+/// it takes where; the outline view draws it, tells the state what Lucas
+/// did, and takes a drop only of its own rows, since the state can't see
+/// where a drag comes from, so that a word dragged from elsewhere never
+/// moves a tag of that name.
 struct AllTagsOutline: NSViewRepresentable {
     let rows: [CardsWindowState.AllTagsRow]
     @Binding var state: CardsWindowState
@@ -181,19 +185,11 @@ struct AllTagsOutline: NSViewRepresentable {
                 cell.identifier = identifier
                 cell.show(node.row)
                 return cell
-            case .cards, .due:
-                let cell =
-                    outlineView.makeView(withIdentifier: identifier, owner: nil) as? NumberCellView ?? NumberCellView()
-                cell.identifier = identifier
-                cell.show(column == .cards ? node.row.counts.cards : node.row.counts.due, grayed: node.row.isGrayed)
-                return cell
-            case .pinned, .priority, .setAside:
-                let checkbox: CardsWindowState.AllTagsCheckbox =
-                    switch column {
-                    case .pinned: .pinned
-                    case .priority: .priority
-                    default: .setAside
-                    }
+            case .cards:
+                return numberCell(identifier, in: outlineView, showing: node.row.counts.cards, of: node.row)
+            case .due:
+                return numberCell(identifier, in: outlineView, showing: node.row.counts.due, of: node.row)
+            case .checkbox(let checkbox):
                 let cell =
                     outlineView.makeView(withIdentifier: identifier, owner: nil) as? CheckboxCellView
                     ?? CheckboxCellView(checkbox, title: column.title, target: self, action: #selector(tick(_:)))
@@ -201,6 +197,19 @@ struct AllTagsOutline: NSViewRepresentable {
                 cell.show(node.row)
                 return cell
             }
+        }
+
+        /// The cell of the column `identifier`, Cards or Due, showing
+        /// `number` for `row`.
+        private func numberCell(
+            _ identifier: NSUserInterfaceItemIdentifier, in outlineView: NSOutlineView, showing number: Int,
+            of row: CardsWindowState.AllTagsRow
+        ) -> NumberCellView {
+            let cell =
+                outlineView.makeView(withIdentifier: identifier, owner: nil) as? NumberCellView ?? NumberCellView()
+            cell.identifier = identifier
+            cell.show(number, grayed: row.isGrayed)
+            return cell
         }
 
         func outlineViewSelectionDidChange(_ notification: Notification) {
@@ -296,9 +305,9 @@ extension CardsWindowState.AllTagsColumn {
         case .tag: "tag"
         case .cards: "cards"
         case .due: "due"
-        case .pinned: "pinned"
-        case .priority: "priority"
-        case .setAside: "setAside"
+        case .checkbox(.pinned): "pinned"
+        case .checkbox(.priority): "priority"
+        case .checkbox(.setAside): "setAside"
         }
     }
 
@@ -320,17 +329,17 @@ extension CardsWindowState.AllTagsColumn {
             String(
                 localized: "Due",
                 comment: "A column of the Cards window's All Tags: how many of the tag's cards are due now.")
-        case .pinned:
+        case .checkbox(.pinned):
             String(
                 localized: "Pinned",
                 comment:
                     "A column of the Cards window's All Tags: a checkbox, ticked while the tag is pinned to the sidebar."
             )
-        case .priority:
+        case .checkbox(.priority):
             String(
                 localized: "Priority",
                 comment: "A column of the Cards window's All Tags: a checkbox, ticked while the tag is a priority tag.")
-        case .setAside:
+        case .checkbox(.setAside):
             // A key of its own, since a tag's menu says "Set Aside" too, as a
             // verb, which a translation may word apart.
             String(
@@ -463,15 +472,9 @@ private final class CheckboxCellView: NSTableCellView {
     }
 
     /// Shows whether `row`'s tag has it ticked, of its own, and Priority
-    /// off while the tag is set aside.
+    /// off while the row says so.
     func show(_ row: CardsWindowState.AllTagsRow) {
-        let isTicked =
-            switch checkbox {
-            case .pinned: row.tag.isPinned
-            case .priority: row.tag.isPriority
-            case .setAside: row.tag.isSetAside
-            }
-        button.state = isTicked ? .on : .off
+        button.state = row.isTicked(checkbox) ? .on : .off
         button.isEnabled = checkbox != .priority || row.canPrioritize
     }
 }

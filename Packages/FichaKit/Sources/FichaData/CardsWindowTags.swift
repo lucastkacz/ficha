@@ -16,7 +16,7 @@ import Foundation
 
 extension CardsWindowState {
     /// A tag as the sidebar lists it among the pinned tags.
-    public struct ListedTag: Sendable, Equatable, Identifiable {
+    public struct PinnedTagRow: Sendable, Equatable, Identifiable {
         /// The tag, with what it has of its own and takes from the tags it
         /// sits inside.
         public let tag: CardTag
@@ -36,22 +36,28 @@ extension CardsWindowState {
     /// The sidebar's rows of `pinned`, the pinned tags in Lucas's order, each
     /// named by its whole path and grayed when it's set aside, on its own or
     /// inside one of `tags`, every tag the window offers, that is.
-    static func pinnedRows(of pinned: [CardTag], among tags: [CardTag]) -> [ListedTag] {
+    static func pinnedRows(of pinned: [CardTag], among tags: [CardTag]) -> [PinnedTagRow] {
         let isSetAside = setAside(among: tags)
-        return pinned.map { ListedTag(tag: $0, title: TagPath.shown($0.name), isGrayed: isSetAside($0.name)) }
+        return pinned.map { PinnedTagRow(tag: $0, title: TagPath.shown($0.name), isGrayed: isSetAside($0.name)) }
     }
 
     /// Whether the tag with a name is set aside, on its own or inside a tag
     /// that is, among `tags`, which hold every set-aside tag, as
     /// `CardStanding` picks a card's set-aside tags.
     static func setAside(among tags: [CardTag]) -> (String) -> Bool {
-        let setAside = Set(tags.filter(\.isSetAside).map(\.name))
+        let setAside = setAsideNames(among: tags)
         return { name in !CardStanding.setAsideTags(of: [name], among: setAside).isEmpty }
     }
 
-    /// The tags named `names` that the window offers, each once, in the order
-    /// a tree lists them.
-    func listedTags(_ names: [String]) -> [CardTag] {
+    /// The names of the tags among `tags` set aside on their own.
+    static func setAsideNames(among tags: [CardTag]) -> Set<String> {
+        Set(tags.filter(\.isSetAside).map(\.name))
+    }
+
+    /// The tags named `names` that the window offers, those it read last,
+    /// whether All Tags lists them or its search leaves them out, each once,
+    /// in the order a tree lists them.
+    func offeredTags(_ names: [String]) -> [CardTag] {
         let names = Set(names)
         return tags.filter { names.contains($0.name) }
     }
@@ -65,19 +71,22 @@ extension CardsWindowState {
     }
 
     /// What the context menu offers for the tags named `tags`, those of them
-    /// the window lists, in the sidebar or in All Tags, as
-    /// `tagsActedOn(clicking:)` says which; or nil when it lists none of
-    /// them.
+    /// the window offers, in the sidebar or in All Tags, as
+    /// `tagsActedOn(clicking:)` says which; or nil when it offers none of
+    /// them. Prioritize is off while one of them is set aside, on its own or
+    /// inside a tag that is, as the menu bar's Prioritize submenu leaves it
+    /// out, unless it's a priority tag, to untick.
     public func menu(for tags: [String]) -> TagMenu? {
-        let listed = listedTags(tags)
-        guard !listed.isEmpty else {
+        let offered = offeredTags(tags)
+        guard !offered.isEmpty else {
             return nil
         }
-        let colors = Set(listed.map(\.color))
+        let colors = Set(offered.map(\.color))
+        let setAside = Self.setAsideNames(among: self.tags)
         return TagMenu(
-            tags: listed.map(\.name), isPinned: listed.allSatisfy(\.isPinned),
-            isSetAsideTicked: listed.allSatisfy(\.isSetAside), isPriorityTicked: listed.allSatisfy(\.isPriority),
-            canPrioritize: !listed.contains(where: \.isSetAside),
+            tags: offered.map(\.name), isPinned: offered.allSatisfy(\.isPinned),
+            isSetAsideTicked: offered.allSatisfy(\.isSetAside), isPriorityTicked: offered.allSatisfy(\.isPriority),
+            canPrioritize: offered.allSatisfy { $0.canBePrioritized(amongSetAside: setAside) },
             colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: colors == [$0]) })
     }
 
@@ -110,12 +119,9 @@ extension CardsWindowState {
     /// gives them that color, or takes their colors away, and reads the
     /// cards again, or records why it couldn't.
     public mutating func chooseColor(_ color: TagColor?, on tags: [String]) {
-        guard let menu = menu(for: tags), let first = menu.tags.first else { return }
-        let done = perform(.setColor(tag: first)) { engine throws(EngineError) in
+        guard let menu = menu(for: tags) else { return }
+        change(menu.tags, as: FailedAction.setColor(tag:)) { engine throws(EngineError) in
             try engine.setColor(color, of: menu.tags)
-        }
-        if done {
-            read(on: ladder)
         }
     }
 
@@ -126,38 +132,36 @@ extension CardsWindowState {
     /// with the tag selected there and its parents open, so that the sidebar
     /// shows All Tags…, where the tag is now, and Back goes to it.
     mutating func setPinned(_ isPinned: Bool, of tags: [String]) {
-        guard let first = tags.first else { return }
-        let done =
-            if isPinned {
-                perform(.pin(tag: first)) { engine throws(EngineError) in try engine.pin(tags) }
-            } else {
-                perform(.unpin(tag: first)) { engine throws(EngineError) in try engine.unpin(tags) }
-            }
-        guard done else { return }
-        if !isPinned, case .cards(.tag(let chosen)) = sidebarItem, tags.contains(chosen) {
-            sidebarItem = .allTags
-            tagShownFromAllTags = chosen
-            allTagsSearch = ""
-            selectedTags = [chosen]
-            openTags.formUnion(TagPath.ancestors(of: chosen))
+        if isPinned {
+            change(tags, as: FailedAction.pin(tag:)) { engine throws(EngineError) in try engine.pin(tags) }
+            return
         }
-        read(on: ladder)
+        change(
+            tags, as: FailedAction.unpin(tag:), followedBy: { $0.showUnpinnedChosenTag(among: tags) },
+            { engine throws(EngineError) in try engine.unpin(tags) })
+    }
+
+    /// Lists the cards of the tag the sidebar chose, when it's one of
+    /// `unpinned`, in All Tags' place, with the tag selected there and its
+    /// parents open, as `setPinned(_:of:)` says.
+    private mutating func showUnpinnedChosenTag(among unpinned: [String]) {
+        guard case .cards(.tag(let chosen)) = sidebarItem, unpinned.contains(chosen) else { return }
+        sidebarItem = .allTags
+        tagShownFromAllTags = chosen
+        allTagsSearch = ""
+        selectedTags = [chosen]
+        openTags.formUnion(TagPath.ancestors(of: chosen))
     }
 
     /// Sets `tags` aside, or stops setting them aside when `isSetAside` is
     /// false, and reads the cards again, or records why it couldn't.
     mutating func setSetAside(_ isSetAside: Bool, of tags: [String]) {
-        guard let first = tags.first else { return }
-        let done =
-            if isSetAside {
-                perform(.setAside(tag: first)) { engine throws(EngineError) in try engine.setAside(tags) }
-            } else {
-                perform(.stopSettingAside(tag: first)) { engine throws(EngineError) in
-                    try engine.stopSettingAside(tags)
-                }
+        if isSetAside {
+            change(tags, as: FailedAction.setAside(tag:)) { engine throws(EngineError) in try engine.setAside(tags) }
+        } else {
+            change(tags, as: FailedAction.stopSettingAside(tag:)) { engine throws(EngineError) in
+                try engine.stopSettingAside(tags)
             }
-        if done {
-            read(on: ladder)
         }
     }
 
@@ -165,12 +169,26 @@ extension CardsWindowState {
     /// and reads the cards again, or records why it couldn't, as when one of
     /// them was set aside meanwhile.
     mutating func setPriority(_ isPriority: Bool, of tags: [String]) {
-        guard let first = tags.first else { return }
-        let action: FailedAction = isPriority ? .prioritize(tag: first) : .stopPrioritizing(tag: first)
-        let done = perform(action) { engine throws(EngineError) in try engine.setPriority(isPriority, of: tags) }
-        if done {
-            read(on: ladder)
+        change(tags, as: isPriority ? FailedAction.prioritize(tag:) : FailedAction.stopPrioritizing(tag:)) {
+            engine throws(EngineError) in try engine.setPriority(isPriority, of: tags)
         }
+    }
+
+    /// Does `work`, the engine's part of an action on the tags named `tags`,
+    /// then `followUp`, and reads the cards again; or records why it
+    /// couldn't, as `action` names the action after the first of them.
+    /// Whether it did: never when `tags` is empty.
+    @discardableResult
+    mutating func change(
+        _ tags: [String], as action: (String) -> FailedAction, followedBy followUp: (inout Self) -> Void = { _ in },
+        _ work: (Engine) throws(EngineError) -> Void
+    ) -> Bool {
+        guard let first = tags.first, perform(action(first), work) else {
+            return false
+        }
+        followUp(&self)
+        read(on: ladder)
+        return true
     }
 
     /// Asks which emoji the tag named `tag` gets, in the emoji sheet, after
@@ -184,13 +202,9 @@ extension CardsWindowState {
     /// emoji away when it's nil, and reads the cards again; or records why it
     /// couldn't. Whether it did.
     mutating func setEmoji(_ emoji: Emoji?, of tag: CardTag) -> Bool {
-        let done = perform(.setEmoji(tag: tag.name)) { engine throws(EngineError) in
+        change([tag.name], as: FailedAction.setEmoji(tag:)) { engine throws(EngineError) in
             try engine.setEmoji(emoji, of: tag.name)
         }
-        if done {
-            read(on: ladder)
-        }
-        return done
     }
 
     /// Moves the sidebar's pinned tags at `offsets` to before the one at
@@ -202,13 +216,9 @@ extension CardsWindowState {
     public mutating func movePinnedTags(fromOffsets offsets: IndexSet, toOffset destination: Int) {
         let pinned = pinnedTags.map(\.id)
         let moving = offsets.filter(pinned.indices.contains).map { pinned[$0] }
-        guard let first = moving.first else { return }
         let index = Self.index(of: destination, in: pinned, apartFrom: moving)
-        let done = perform(.reorderPinned(tag: first)) { engine throws(EngineError) in
+        change(moving, as: FailedAction.reorderPinned(tag:)) { engine throws(EngineError) in
             try engine.movePinnedTags(moving, to: index)
-        }
-        if done {
-            read(on: ladder)
         }
     }
 
@@ -222,15 +232,10 @@ extension CardsWindowState {
     @discardableResult
     public mutating func pinDroppedTags(_ names: [String], at offset: Int) -> Bool {
         let dropped = names.filter { name in tags.contains { $0.name == name } }.uniqued()
-        guard let first = dropped.first else {
-            return false
-        }
         let index = Self.index(of: offset, in: pinnedTags.map(\.id), apartFrom: dropped)
-        let done = perform(.pin(tag: first)) { engine throws(EngineError) in try engine.pin(dropped, at: index) }
-        if done {
-            read(on: ladder)
+        return change(dropped, as: FailedAction.pin(tag:)) { engine throws(EngineError) in
+            try engine.pin(dropped, at: index)
         }
-        return done
     }
 
     /// Drops the tags named `names`, which Lucas drags in from All Tags, on

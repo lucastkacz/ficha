@@ -62,7 +62,7 @@ struct CardsWindowAllTagsTests {
                 "mundial 1/1", "filosofía 0/0", "geografía 0/0", "historia 0/0", "lenguaje 1/0", "literatura 1/0",
                 "Roma 1/0", "música 0/0", "política 0/0",
             ])
-        #expect(rows.flattened.filter { !$0.canPrioritize }.map(\.title) == ["ciencia", "deuda", "literatura"])
+        #expect(rows.flattened.filter { !$0.canPrioritize }.map(\.title) == ["ciencia", "deuda", "literatura", "Roma"])
         #expect(window.sidebarItem == .allTags)
         #expect(window.detail == .allTags(selected: []))
         #expect(window.actions.isEmpty)
@@ -111,7 +111,7 @@ struct CardsWindowAllTagsTests {
         let mostDueFirst = window.allTagsRows?.counted
         window.sortAllTags(by: .cards, ascending: true)
         let fewestCardsFirst = window.allTagsRows?.counted
-        window.sortAllTags(by: .pinned, ascending: false)
+        window.sortAllTags(by: .checkbox(.pinned), ascending: false)
         let pinnedFirst = window.allTagsRows?.outline
         window.sortAllTags(by: .tag, ascending: false)
 
@@ -278,6 +278,35 @@ struct CardsWindowAllTagsTests {
         #expect(refused == nil)
         #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "historia", switchedOn: .setAside)])
         #expect(window.allTagsRows?.flattened.map(\.canPrioritize) == [true, false])
+    }
+
+    // literatura::Roma was a priority tag before literatura was set aside;
+    // literatura::poesía never was.
+    @Test(
+        "Prioritize is off on a tag inside a set-aside tag, in its menu and its checkbox, as the menu bar's submenu leaves it out, but on for a priority tag there, to untick it"
+    )
+    func prioritizingInsideASetAsideTag() throws {
+        try approveCard("Coliseo", tags: ["literatura::Roma"])
+        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
+        try engine.setPriority(true, of: "literatura::Roma")
+        try engine.setAside("literatura")
+        var window = openWindow()
+        window.choose(.allTags)
+
+        let poesia = try #require(window.menu(for: ["literatura::poesía"]))
+        let roma = try #require(window.menu(for: ["literatura::Roma"]))
+        let both = try #require(window.menu(for: ["literatura::poesía", "literatura::Roma"]))
+        let checkboxes = window.allTagsRows?.flattened.map { "\($0.title) \($0.canPrioritize)" }
+        window.tick(.priority, true, on: "literatura::poesía")
+        window.choosePriority(on: ["literatura::poesía"])
+        let afterPoesia = try engine.allTags().filter(\.isPriority).map(\.name)
+        window.tick(.priority, false, on: "literatura::Roma")
+
+        #expect(!poesia.canPrioritize && roma.canPrioritize && !both.canPrioritize)
+        #expect(checkboxes == ["literatura false", "poesía false", "Roma true"])
+        #expect(afterPoesia == ["literatura::Roma"])
+        #expect(try engine.allTags().filter(\.isPriority).isEmpty)
+        #expect(window.failure == nil)
     }
 
     // historia's priority went when it was set aside, so unticking Priority

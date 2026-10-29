@@ -68,12 +68,7 @@ extension Engine {
     /// Unpins each of `tags`, as `unpin(_:)` does one, in one write.
     public func unpin(_ tags: [String]) throws(EngineError) {
         try write { db in
-            for tag in tags {
-                var own = try ownTag(tag, in: db)
-                guard own.isPinned else { continue }
-                own.pin = nil
-                try save(own, in: db)
-            }
+            try changeOwnTags(tags, in: db) { $0.pin = nil }
         }
     }
 }

@@ -310,6 +310,30 @@ struct PriorityTagsTests {
         #expect(try engine.allTags().first?.switchedOn == .setAside)
     }
 
+    // literatura::Roma was a priority tag before literatura was set aside,
+    // and literatura::poesía::gauchesca never was; historia isn't set aside.
+    @Test(
+        "a tag inside a set-aside tag can't become a priority tag, as the submenu leaves it out, but one that is stops being one"
+    )
+    func prioritizingATagInsideASetAsideTag() throws {
+        try approveCard("Coliseo", tags: ["literatura::Roma"])
+        try approveCard("Martín Fierro", tags: ["literatura::poesía::gauchesca", "historia"])
+        try engine.setPriority(true, of: "literatura::Roma")
+        try engine.setAside("literatura")
+
+        #expect(throws: EngineError.tagSetAside("literatura")) {
+            try engine.togglePriority(of: "literatura::poesía::gauchesca")
+        }
+        #expect(throws: EngineError.tagSetAside("literatura")) {
+            try engine.setPriority(true, of: ["historia", "literatura::poesía::gauchesca"])
+        }
+        #expect(try engine.prioritizeMenu().priorityTagNames == ["literatura::Roma"])
+        try engine.setPriority(true, of: ["historia", "literatura::Roma"])
+        #expect(try engine.prioritizeMenu().priorityTagNames == ["historia", "literatura::Roma"])
+        try engine.togglePriority(of: "literatura::Roma")
+        #expect(try engine.prioritizeMenu().priorityTagNames == ["historia"])
+    }
+
     // The Mac's preferences are the app's, whichever database it opens, so a
     // priority tag kept there would show in another database too.
     @Test(

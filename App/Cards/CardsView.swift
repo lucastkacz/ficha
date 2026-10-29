@@ -11,7 +11,7 @@ import SwiftUI
 /// Tags…, which lists every tag where the table was, as a tree with columns
 /// and checkboxes (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
 /// its place, with Back. A tag's context menu, in either place, and the
-/// detail's Action menu beside All Tags, act on the tags selected there:
+/// detail's Actions menu beside All Tags, act on the tags selected there:
 /// they pin them to the sidebar or unpin them, set them aside, prioritize
 /// them, give them a color and an emoji, which the sidebar and the table's
 /// Tags column show, rename one, in the rename sheet (`RenameSheet.swift`),
@@ -161,7 +161,13 @@ struct CardsView: View {
 
     /// The window's three panes, with the toolbar's search field, Import…
     /// and Export…, and ⌘F; and, while the table lists a tag's cards in All
-    /// Tags' place, the tag's name as the window's title, and Back.
+    /// Tags' place, the tag's name as the window's title, and Back. While the
+    /// table's pane lists All Tags' tree, it's at least wide enough for its
+    /// six columns to leave the tag's some room, and the detail beside it,
+    /// a few buttons, can be narrower to give it: a minimum the split view
+    /// keeps whenever it changes, where an ideal width counts only as the
+    /// window first opens. The panes' least widths add up to the window's
+    /// either way.
     private var panes: some View {
         NavigationSplitView {
             sidebar
@@ -169,11 +175,11 @@ struct CardsView: View {
                 .waiting(while: state.editing != nil)
         } content: {
             table
-                .navigationSplitViewColumnWidth(min: 380, ideal: 440)
+                .navigationSplitViewColumnWidth(min: listsAllTagsTree ? 500 : 380, ideal: 440)
                 .waiting(while: state.editing != nil)
         } detail: {
             detail
-                .navigationSplitViewColumnWidth(min: 300, ideal: 380)
+                .navigationSplitViewColumnWidth(min: listsAllTagsTree ? 220 : 300, ideal: 380)
         }
         .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
@@ -318,7 +324,8 @@ struct CardsView: View {
     /// under its title, a sentence for each thing it does: the tags inside
     /// them that go too, the cards that lose them, which stay, those of them
     /// that come back to his reviews, and, under selective sync, those that
-    /// stop syncing; and that it can't be undone.
+    /// stop syncing; and that it can't be undone. The sentences follow one
+    /// another as the Mac's language joins them, with a space in English.
     private func tagDeletionMessage(for deletion: TagDeletion) -> String {
         let isOne = deletion.tags.count == 1
         var sentences: [String] = []
@@ -364,7 +371,17 @@ struct CardsView: View {
             String(
                 localized: "You can't undo this.",
                 comment: "The last sentence of the Cards window's question before it deletes tags."))
-        return sentences.joined(separator: " ")
+        return sentences.reduce(into: "") { text, sentence in
+            text =
+                text.isEmpty
+                ? sentence
+                : String(
+                    localized: "tag-deletion.next-sentence", defaultValue: "\(text) \(sentence)",
+                    comment: """
+                        Joins two sentences of the Cards window's question before it deletes tags: what it says so \
+                        far, then the next sentence, as the language writes one sentence after another.
+                        """)
+        }
     }
 
     /// Back, which lists All Tags again in place of a tag's cards, as Lucas
@@ -907,14 +924,15 @@ struct CardsView: View {
     }
 
     /// The context menu of the tags named `tags`, one in the sidebar, one or
-    /// several in All Tags, as the state offers it, which the detail's Action
-    /// menu beside All Tags offers too: Pin to Sidebar, or Unpin from Sidebar
-    /// while all are pinned; Rename…, which opens the rename sheet, for one
-    /// tag; Color, with None and Finder's seven colors, each with a swatch,
-    /// the one they all have ticked; Emoji…, which opens the emoji sheet, for
-    /// one tag; Set Aside, ticked while all are set aside on their own;
-    /// Prioritize, ticked while all are priority tags, and off while one is
-    /// set aside; and Delete…, which asks first.
+    /// several in All Tags, as the state offers it, which the detail's
+    /// Actions menu beside All Tags offers too: Pin to Sidebar, or Unpin from
+    /// Sidebar while all are pinned; Rename…, which opens the rename sheet,
+    /// for one tag; Color, with None and Finder's seven colors, each with a
+    /// swatch, the one they all have ticked; Emoji…, which opens the emoji
+    /// sheet, for one tag; Set Aside, ticked while all are set aside on their
+    /// own; Prioritize, ticked while all are priority tags, and off as the
+    /// state says, while one is set aside, on its own or inside a tag that
+    /// is; and Delete…, which asks first.
     @ViewBuilder
     private func tagMenu(for tags: [String]) -> some View {
         if let menu = state.menu(for: tags) {
@@ -939,7 +957,9 @@ struct CardsView: View {
             }
             Divider()
             Button {
-                state.askToRename(menu.tags[0])
+                if let tag = menu.tags.first {
+                    state.askToRename(tag)
+                }
             } label: {
                 Text(
                     "Rename…",
@@ -972,7 +992,9 @@ struct CardsView: View {
                 )
             }
             Button {
-                state.askForEmoji(on: menu.tags[0])
+                if let tag = menu.tags.first {
+                    state.askForEmoji(on: tag)
+                }
             } label: {
                 Text(
                     "Emoji…",
@@ -1068,6 +1090,12 @@ struct CardsView: View {
                     "What you capture, and the cards you flag, wait here to be refined.",
                     comment: "In the Cards window, when the inbox is empty."))
         }
+    }
+
+    /// Whether the table's pane lists All Tags' tree, whose six columns want
+    /// more room than the cards' table.
+    private var listsAllTagsTree: Bool {
+        if case .success(.allTags) = state.listing { true } else { false }
     }
 
     @ViewBuilder
@@ -1454,7 +1482,18 @@ struct CardsView: View {
                             systemImage: "tag")
                     }
                 } actions: {
-                    tagButtons(for: selected)
+                    // Side by side, or one above another while the pane is
+                    // too narrow for that, as beside All Tags in the
+                    // window's least width.
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            tagButtons(for: selected)
+                        }
+                        VStack {
+                            tagButtons(for: selected)
+                        }
+                        .fixedSize()
+                    }
                 }
             }
         }
@@ -1806,7 +1845,7 @@ private struct TypeRow: View {
 /// color, found the same way, when it has one, grayed when the state says
 /// so. Its tooltip says its whole name.
 private struct TagRow: View {
-    let tag: CardsWindowState.ListedTag
+    let tag: CardsWindowState.PinnedTagRow
 
     var body: some View {
         Label {

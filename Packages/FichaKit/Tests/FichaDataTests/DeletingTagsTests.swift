@@ -165,16 +165,13 @@ struct DeletingTagsTests {
         try engine.setColor(.blue, of: "música")
         time.advance(by: hours(2))
 
-        let counts = try engine.tagCounts(on: ladder)
+        let counted = try engine.countedTags(on: ladder)
 
+        #expect(counted.map(\.tag) == (try engine.allTags()))
         #expect(
-            counts == [
-                "literatura": TagCounts(cards: 2, due: 1),
-                "literatura::poesía": TagCounts(cards: 1, due: 1),
-                "historia": TagCounts(cards: 2, due: 2),
-                "historia::argentina": TagCounts(cards: 1, due: 1),
-                "cine": TagCounts(cards: 1, due: 0),
-                "música": TagCounts(cards: 0, due: 0),
+            counted.map { "\($0.tag.name) \($0.counts.cards)/\($0.counts.due)" } == [
+                "cine 1/0", "historia 2/2", "historia::argentina 1/1", "literatura 2/1", "literatura::poesía 1/1",
+                "música 0/0",
             ])
     }
 

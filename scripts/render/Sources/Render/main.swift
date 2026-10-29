@@ -788,12 +788,14 @@ func pinSampleTags(in engine: Engine) throws {
     }
 }
 
-/// Makes historia a priority tag, and gives pendientes, a tag no card
-/// carries, the color red, so that All Tags ticks a Priority checkbox and
-/// offers Clear Unused Tags….
+/// Makes historia a priority tag, gives pendientes, a tag no card carries,
+/// the color red, and sets ciencia aside, a parent, so that All Tags ticks a
+/// Priority checkbox, offers Clear Unused Tags…, and grays a set-aside branch:
+/// ciencia with the tags inside it.
 func prioritizeAndLeaveUnusedSampleTags(in engine: Engine) throws {
     try engine.setPriority(true, of: "historia")
     try engine.setColor(.red, of: "pendientes")
+    try engine.setAside("ciencia")
 }
 
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,

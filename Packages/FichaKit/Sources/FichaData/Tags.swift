@@ -138,11 +138,7 @@ extension Engine {
     /// as the Cards window's All Tags does for several tags at once.
     public func setAside(_ tags: [String]) throws(EngineError) {
         try write { db in
-            for tag in tags {
-                var own = try ownTag(tag, in: db)
-                own.switchedOn = .setAside
-                try save(own, in: db)
-            }
+            try changeOwnTags(tags, in: db) { $0.switchedOn = .setAside }
         }
     }
 
@@ -157,11 +153,10 @@ extension Engine {
     /// for one, in one write.
     public func stopSettingAside(_ tags: [String]) throws(EngineError) {
         try write { db in
-            for tag in tags {
-                var own = try ownTag(tag, in: db)
-                guard own.isSetAside else { continue }
-                own.switchedOn = nil
-                try save(own, in: db)
+            try changeOwnTags(tags, in: db) { own in
+                if own.isSetAside {
+                    own.switchedOn = nil
+                }
             }
         }
     }
@@ -195,6 +190,11 @@ struct OwnTags: Sendable {
         byName.values.filter { $0.switchedOn == tagSwitch }
     }
 
+    /// The name of every tag set aside on its own.
+    var setAsideNames: Set<String> {
+        Set(tags(switchedOn: .setAside).map(\.name))
+    }
+
     /// Every tag the user chose to sync.
     var chosenToSync: [CardTag] {
         byName.values.filter(\.chosenToSync)
@@ -221,6 +221,20 @@ func ownTag(_ name: String, in db: Database) throws -> CardTag {
         return CardTag(name: name)
     }
     return try CardTag(row: row)
+}
+
+/// Changes what each of `tags` has of its own with `change`, in the write
+/// `db`, and saves it as `save(_:in:)` does, one after the other: the loop
+/// behind every change the engine makes to several tags at once, in one
+/// write, which an error `change` throws undoes whole. A tag `change` leaves
+/// as it was stays as it is, since the sync triggers record only what
+/// changed.
+func changeOwnTags(_ tags: [String], in db: Database, _ change: (inout CardTag) throws -> Void) throws {
+    for tag in tags {
+        var own = try ownTag(tag, in: db)
+        try change(&own)
+        try save(own, in: db)
+    }
 }
 
 /// Saves what `tag` has of its own in the `tag` table, or deletes its row

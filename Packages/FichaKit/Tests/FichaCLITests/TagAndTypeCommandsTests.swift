@@ -182,15 +182,20 @@ struct TagAndTypeCommandsTests {
         #expect(!unprioritized.priority)
     }
 
-    @Test("`ficha tag prioritize` refuses a set-aside tag, which a tag never is with a priority")
+    @Test(
+        "`ficha tag prioritize` refuses a set-aside tag, which a tag never is with a priority, and a tag inside one"
+    )
     func prioritizingASetAsideTag() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
+        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
         try engine.setAside("literatura")
 
         await #expect(throws: EngineError.tagSetAside("literatura")) {
             try await ficha("tag", "prioritize", "literatura")
         }
-        #expect(try engine.allTags().first?.switchedOn == .setAside)
+        await #expect(throws: EngineError.tagSetAside("literatura")) {
+            try await ficha("tag", "prioritize", "literatura::poesía")
+        }
+        #expect(try engine.allTags().map(\.switchedOn) == [.setAside, nil])
     }
 
     @Test(

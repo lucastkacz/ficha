@@ -218,7 +218,7 @@ struct CardsWindowTagsTests {
     }
 }
 
-extension [CardsWindowState.ListedTag] {
+extension [CardsWindowState.PinnedTagRow] {
     /// The titles of the grayed rows among these tags, in the order they're
     /// listed.
     var grayed: [String] {

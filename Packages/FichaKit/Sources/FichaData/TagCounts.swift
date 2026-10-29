@@ -20,13 +20,29 @@ public struct TagCounts: Sendable, Equatable {
     }
 }
 
+/// A tag with its counts, read together, so that every tag has its own.
+public struct CountedTag: Sendable, Equatable {
+    /// The tag, with what it has of its own and takes from the tags it sits
+    /// inside.
+    public let tag: CardTag
+    /// How many cards it lists, and how many of those are due.
+    public let counts: TagCounts
+
+    public init(tag: CardTag, counts: TagCounts) {
+        self.tag = tag
+        self.counts = counts
+    }
+}
+
 extension Engine {
-    /// Each tag's counts, as All Tags shows them, for every tag `allTags()`
-    /// lists, each card standing on `ladder` now.
-    public func tagCounts(on ladder: Ladder) throws(EngineError) -> [String: TagCounts] {
+    /// Every tag `allTags()` lists, in its order, each with its counts, as
+    /// All Tags shows them, each card standing on `ladder` now: a tag no card
+    /// lists counts none.
+    public func countedTags(on ladder: Ladder) throws(EngineError) -> [CountedTag] {
+        let tags = try allTags()
         let rows = try cardRows(in: .all, on: ladder)
         let now = time.now
-        var counts = Dictionary(uniqueKeysWithValues: try allTags().map { ($0.name, (cards: 0, due: 0)) })
+        var counts: [String: (cards: Int, due: Int)] = [:]
         for row in rows {
             let isDue = row.isDue(at: now)
             for tag in TagPath.lineages(of: row.card.tags) {
@@ -34,6 +50,9 @@ extension Engine {
                 counts[tag, default: (0, 0)].due += isDue ? 1 : 0
             }
         }
-        return counts.mapValues { TagCounts(cards: $0.cards, due: $0.due) }
+        return tags.map { tag in
+            let count = counts[tag.name, default: (0, 0)]
+            return CountedTag(tag: tag, counts: TagCounts(cards: count.cards, due: count.due))
+        }
     }
 }

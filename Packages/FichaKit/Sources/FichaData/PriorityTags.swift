@@ -8,6 +8,25 @@ extension CardTag {
     public var isPriority: Bool {
         switchedOn == .priority
     }
+
+    /// The tag that keeps it from becoming a priority tag while the tags
+    /// named `setAside` are set aside: itself, when it's set aside on its
+    /// own, or else the nearest tag it sits inside that is, since its cards
+    /// are out of Lucas's reviews and a tag is never both (ADR 0011). Nil
+    /// while none is, and while it's a priority tag already, so that Lucas
+    /// can untick it. The one rule for the Prioritize submenu, the Cards
+    /// window and the engine.
+    func tagKeepingItFromPriority(amongSetAside setAside: Set<String>) -> String? {
+        guard !isPriority else { return nil }
+        return TagPath.lineage(of: name).first(where: setAside.contains)
+    }
+
+    /// Whether Prioritize is on for it while the tags named `setAside` are
+    /// set aside: unless one keeps it from becoming a priority tag, as
+    /// `tagKeepingItFromPriority(amongSetAside:)` says.
+    func canBePrioritized(amongSetAside setAside: Set<String>) -> Bool {
+        tagKeepingItFromPriority(amongSetAside: setAside) == nil
+    }
 }
 
 /// What the menu bar's Prioritize submenu offers, as the engine reads it:
@@ -59,10 +78,8 @@ extension Engine {
     public func prioritizeMenu() throws(EngineError) -> PrioritizeMenu {
         try read { db in
             let own = try OwnTags(in: db)
-            let setAside = Set(own.tags(switchedOn: .setAside).map(\.name))
-            let pinned = own.pinned.filter { tag in
-                tag.isPriority || CardStanding.setAsideTags(of: [tag.name], among: setAside).isEmpty
-            }
+            let setAside = own.setAsideNames
+            let pinned = own.pinned.filter { $0.canBePrioritized(amongSetAside: setAside) }
             let others = TagPath.sortedAsTree(own.tags(switchedOn: .priority).filter { !$0.isPinned }.map(\.name))
             return PrioritizeMenu(tags: (pinned.map(\.name) + others).map(own.tag))
         }
@@ -73,41 +90,45 @@ extension Engine {
     /// says.
     public func togglePriority(of tag: String) throws(EngineError) {
         try write { db in
-            try setPriority(try !ownTag(tag, in: db).isPriority, of: tag, in: db)
+            try setPriority(try !ownTag(tag, in: db).isPriority, of: [tag], in: db)
         }
     }
 
     /// Makes `tag` a priority tag, so its cards come first from the next
     /// appearance, review now or "See more" on, or no longer one, whatever
-    /// it was. A set-aside tag can't become one, since a tag is never both
-    /// (ADR 0011), so the Prioritize submenu doesn't offer it, and the engine
-    /// refuses it, as when another device set it aside meanwhile.
+    /// it was. A tag set aside, on its own or inside a tag that is, can't
+    /// become one, since its cards are out of the reviews and a tag is never
+    /// both (ADR 0011), so the Prioritize submenu doesn't offer it, and the
+    /// engine refuses it, naming the set-aside tag, as when another device
+    /// set it aside meanwhile.
     public func setPriority(_ isPriority: Bool, of tag: String) throws(EngineError) {
         try setPriority(isPriority, of: [tag])
     }
 
     /// Makes each of `tags` a priority tag, or no longer one, as
-    /// `setPriority(_:of:)` does for one, in one write: when one of them is
-    /// set aside, it refuses them all.
+    /// `setPriority(_:of:)` does for one, in one write: when one of them
+    /// can't become one, it refuses them all.
     public func setPriority(_ isPriority: Bool, of tags: [String]) throws(EngineError) {
         try write { db in
-            for tag in tags {
-                try setPriority(isPriority, of: tag, in: db)
-            }
+            try setPriority(isPriority, of: tags, in: db)
         }
     }
 
-    /// Makes `tag` a priority tag, or no longer one, in the write `db`, as
-    /// `setPriority(_:of:)` says.
-    private func setPriority(_ isPriority: Bool, of tag: String, in db: Database) throws {
-        var own = try ownTag(tag, in: db)
-        switch (own.switchedOn, isPriority) {
-        case (.setAside, true): throw EngineError.tagSetAside(tag)
-        case (.setAside, false), (.priority, true), (nil, false): return
-        case (.priority, false): own.switchedOn = nil
-        case (nil, true): own.switchedOn = .priority
+    /// Makes each of `tags` a priority tag, or no longer one, in the write
+    /// `db`, as `setPriority(_:of:)` says.
+    private func setPriority(_ isPriority: Bool, of tags: [String], in db: Database) throws {
+        let setAside = try OwnTags(in: db).setAsideNames
+        try changeOwnTags(tags, in: db) { own in
+            switch (own.switchedOn, isPriority) {
+            case (.setAside, false), (.priority, true), (nil, false): return
+            case (.priority, false): own.switchedOn = nil
+            case (.setAside, true), (nil, true):
+                if let setAsideTag = own.tagKeepingItFromPriority(amongSetAside: setAside) {
+                    throw EngineError.tagSetAside(setAsideTag)
+                }
+                own.switchedOn = .priority
+            }
         }
-        try save(own, in: db)
     }
 
     /// Makes every priority tag no longer one, as the Prioritize submenu's
