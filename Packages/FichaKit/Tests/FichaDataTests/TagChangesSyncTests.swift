@@ -194,17 +194,17 @@ final class TagChangesSyncTests {
         try mac.engine.renameTag("economía", to: "economics")
         try await mac.syncNow()
         time.advance(by: minutes(1))
-        let iPhonesInflación = try iPhone.engine.card(fronted: "inflación")
+        let iPhonesInflation = try iPhone.engine.card(fronted: "inflación")
         try iPhone.engine.edit(
-            iPhonesInflación.id,
+            iPhonesInflation.id,
             with: card(.concept, front: "inflación", back: "Suben los precios.", tags: ["economía", "zulú"]))
         iPhone.iCloud.isOffline = false
         try await syncBoth()
 
         for device in [mac, iPhone] {
-            let inflación = try device.engine.card(fronted: "inflación")
-            #expect(inflación.tags == ["economics", "zulú"])
-            #expect(inflación.standing == .setAside(by: ["economics"]))
+            let inflation = try device.engine.card(fronted: "inflación")
+            #expect(inflation.tags == ["economics", "zulú"])
+            #expect(inflation.standing == .setAside(by: ["economics"]))
             #expect(try device.engine.changesToSend().isEmpty)
         }
     }
