@@ -162,7 +162,7 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Tags", text: $tagsText)
                     Text(
-                        "Separate tags with commas.",
+                        "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”.",
                         comment: "In the Cards window, under a card's tags, while Lucas edits it."
                     )
                     .font(.caption)

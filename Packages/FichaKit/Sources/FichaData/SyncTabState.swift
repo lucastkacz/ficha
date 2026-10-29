@@ -78,9 +78,9 @@ public struct SyncTabState: Sendable {
     /// Whether only the cards with a tag the user chose sync, rather than
     /// every card, as the choice under the switch shows it.
     public private(set) var onlyChosenTags: Bool
-    /// The tags the user can choose to sync, as the list under the choice
-    /// shows them while only the cards with a chosen tag sync, and none
-    /// otherwise: as `Engine.tagsToChooseFrom()` says.
+    /// The tags the user can choose to sync, as a tree, as the list under
+    /// the choice shows them while only the cards with a chosen tag sync, and
+    /// none otherwise: as `Engine.tagsToChooseFrom()` says.
     public private(set) var tags: [TagToChoose]
     /// Why turning the switch, or choosing, failed, while the tab says so.
     public private(set) var failure: Failure?
@@ -184,11 +184,26 @@ public struct SyncTabState: Sendable {
 
     /// Chooses the tag named `tag` to sync, or stops choosing it, as
     /// `chosen` says, as the user ticks or unticks it in the list, while they
-    /// can, or keeps why it couldn't.
+    /// can, or keeps why it couldn't. A tag inside a chosen tag syncs with it,
+    /// and its checkbox changes nothing meanwhile.
     public mutating func choose(_ tag: String, _ chosen: Bool) {
-        guard canChoose else { return }
+        guard canChoose, Self.tag(named: tag, in: tags)?.canChoose != false else { return }
         let engine = engine
         change(.choosing) { () throws(EngineError) in try engine.chooseToSync(tag, chosen) }
+    }
+
+    /// The tag named `name` in `trees`, at any depth, or nil when they don't
+    /// list it.
+    private static func tag(named name: String, in trees: [TagToChoose]) -> TagToChoose? {
+        for tree in trees {
+            if tree.name == name {
+                return tree
+            }
+            if let tag = tag(named: name, in: tree.children) {
+                return tag
+            }
+        }
+        return nil
     }
 
     /// Makes the change `make` makes, for `action`, or keeps why it failed,

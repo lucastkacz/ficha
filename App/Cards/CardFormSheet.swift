@@ -237,9 +237,12 @@ private struct CardFormSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Tags", text: draft(\.tags))
                         .cardFormPart(.tags)
-                    Text("Separate tags with commas.", comment: "In the Cards window's card form, under the tags.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”.",
+                        comment: "In the Cards window's card form, under the tags."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             GridRow {

@@ -23,6 +23,10 @@ import SwiftUI
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
     case cards
+    /// The Cards window on ciencia, once the sample's tags sit inside tags,
+    /// with its sidebar's tree and its Set Aside section, taller than it
+    /// opens so that the sidebar shows both.
+    case cardsTags = "cards-tags"
     /// The Cards window with its Import sheet showing the preview of a file,
     /// which the tool can't choose in the open panel.
     case cardsImport = "cards-import"
@@ -66,6 +70,10 @@ enum Window: String {
     /// Settings, on its Sync tab, once the Mac synced only the cards with the
     /// tags the user chose, filosofía and lenguaje, in the list of every tag.
     case syncChosenTags = "sync-chosen-tags"
+    /// Settings, on its Sync tab, syncing only the cards with chosen tags,
+    /// once the sample's tags sit inside tags, with ciencia ticked, and so
+    /// the tags inside it, and lenguaje.
+    case syncTagsTree = "sync-tags-tree"
     /// Settings, on its Sync tab, off since the Mac held cards before it ever
     /// synced, as the update that brought selective sync leaves Lucas's.
     case syncFirst = "sync-first"
@@ -731,6 +739,24 @@ func syncModel(
     return model
 }
 
+/// Moves some of the sample's tags inside others, as Rename… in the Cards
+/// window does (ADR 0021): estadística and psicología inside ciencia, which
+/// is blue, argentina inside historia, which has an emoji, and trabajo inside
+/// economía. Then it sets literatura aside, and economía › trabajo alone.
+func nestSampleTags(in engine: Engine) throws {
+    let moves = [
+        ("estadística", "ciencia::estadística"), ("psicología", "ciencia::psicología"),
+        ("argentina", "historia::argentina"), ("trabajo", "economía::trabajo"),
+    ]
+    for (tag, name) in moves {
+        try engine.renameTag(tag, to: name)
+    }
+    try engine.setColor(.blue, of: "ciencia")
+    try engine.setEmoji(try TagEmoji("🏛️"), of: "historia")
+    try engine.setAside("literatura")
+    try engine.setAside("economía::trabajo")
+}
+
 /// The sample's card with images, whose front shows the flag.
 func sampleFlagImage(of engine: Engine) throws -> ImageName {
     guard let flag = try engine.cards().first(where: { $0.front == "¿De qué país es esta bandera?" })?.frontImage
@@ -1002,6 +1028,10 @@ func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsTags:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try nestSampleTags(in: engine)
+        return try AppModel(engine: engine)
     case .cardsAnkiImported: return try ankiImportedModel()
     case .cardsImportHeavy:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1058,6 +1088,17 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             if case .on(_?) = $0 { true } else { false }
         }
+    case .syncTagsTree:
+        return try syncModel(showing: "when the Mac last synced, syncing only the cards with chosen tags") {
+            engine, sync in
+            try nestSampleTags(in: engine)
+            try engine.syncOnlyChosenTags(true)
+            try engine.chooseToSync("ciencia", true)
+            try engine.chooseToSync("lenguaje", true)
+            try sync.finishAFetchWithoutAnError(with: RenderICloud())
+        } isShown: {
+            if case .on(_?) = $0 { true } else { false }
+        }
     case .syncFirst:
         // As `Schema`'s "v26 selective sync" leaves a Mac that held cards and
         // never synced, which the sample's new database never is.
@@ -1106,8 +1147,18 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try heavyImportingState(of: model))
         return window
+    case .cardsTags:
+        var state = model.openCardsWindow()
+        state.choose(.cards(.tag("ciencia")))
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        // Taller than it opens, so that the sidebar shows its Set Aside
+        // section, below the tree, which the tool can't scroll to.
+        window.setContentSize(NSSize(width: window.frame.width, height: 840))
+        return window
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
-    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenTags, .syncFirst:
+    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenTags, .syncTagsTree,
+        .syncFirst:
         return settingsTabWindow(model: model, openingOn: .sync)
     case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)

@@ -11,19 +11,21 @@ public struct CardsInReviews: Sendable, Equatable {
     /// each card's front-first way, and then its back-first way, when it has
     /// one.
     let ways: [CardWay]
-    /// The cards in Lucas's reviews with any of the priority tags, by id,
-    /// whose ways come first when cards show up (ADR 0011).
+    /// The cards in Lucas's reviews with any of the priority tags, or a tag
+    /// inside one, by id, whose ways come first when cards show up (ADR 0011,
+    /// ADR 0021).
     let priorityIDs: Set<Int64>
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]
-    /// The tags of the cards in Lucas's reviews, which the menu's Prioritize
-    /// submenu offers.
+    /// The tags of the cards in Lucas's reviews, and the tags those sit
+    /// inside, which the menu's Prioritize submenu offers.
     public let tags: Set<String>
 
     /// The cards in Lucas's reviews out of `cards`, every card by id with
     /// where it stands, its tags and whether it goes both ways, in the order
-    /// he approved them, those with any of `priorityTags` as priority cards,
-    /// along with `log`, the whole review log, in the order it was written.
+    /// he approved them, those with any of `priorityTags`, or a tag inside
+    /// one, as priority cards, along with `log`, the whole review log, in the
+    /// order it was written.
     /// Each card in his reviews brings its front-first way, and, when it goes
     /// both ways, its back-first way, once its front-first way had its first
     /// view or a placement (ADR 0016): the card's standing is both ways'.
@@ -41,9 +43,10 @@ public struct CardsInReviews: Sendable, Equatable {
             }
             return [frontFirst, CardWay(cardID: card.id, way: .backFirst)]
         }
-        priorityIDs = Set(inReviews.filter { !priorityTags.isDisjoint(with: $0.tags) }.map(\.id))
+        priorityIDs = Set(
+            inReviews.filter { !priorityTags.isDisjoint(with: TagPath.lineages(of: $0.tags)) }.map(\.id))
         self.log = log
-        tags = Set(inReviews.flatMap(\.tags))
+        tags = TagPath.lineages(of: inReviews.flatMap(\.tags))
     }
 
     /// These ways in Lucas's reviews, these cards as priority cards, this

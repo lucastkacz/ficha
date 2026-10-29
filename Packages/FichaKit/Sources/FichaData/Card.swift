@@ -52,7 +52,8 @@ public struct Card: Sendable, Equatable, Encodable {
     public let bothWays: Bool
 
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, buried, or set aside with one of its tags.
+    /// fixed, buried, or set aside with one of its tags, or a tag one of them
+    /// sits inside.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }

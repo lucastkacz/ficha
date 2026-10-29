@@ -1,4 +1,5 @@
 import AppKit
+import FichaCore
 import FichaData
 import SwiftUI
 
@@ -100,9 +101,10 @@ struct MenuContent: View {
 
     /// The Prioritize submenu, as the engine offers it: "None", ticked while
     /// no tag is a priority tag, which clears them, and then each tag, its
-    /// emoji before its name, ticked while it's a priority tag, which toggles
-    /// it. A change applies from the next appearance, review now or "See
-    /// more" on.
+    /// emoji before its whole name, as in "economía › Argentina", each tag
+    /// inside another after it, ticked while it's a priority tag, which
+    /// toggles it. A change applies from the next appearance, review now or
+    /// "See more" on.
     private var prioritizeSubmenu: some View {
         Menu(prioritizeTitle) {
             if let menu = model.prioritizeMenu {
@@ -138,7 +140,7 @@ struct MenuContent: View {
     /// "Prioritize", naming the priority tags while there are some, so Lucas
     /// sees that priority is on without opening the submenu.
     private var prioritizeTitle: String {
-        let names = model.prioritizeMenu?.priorityTagNames ?? []
+        let names = (model.prioritizeMenu?.priorityTagNames ?? []).map(TagPath.shown)
         guard !names.isEmpty else {
             return String(
                 localized: "Prioritize",

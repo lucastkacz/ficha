@@ -153,7 +153,8 @@ public enum CardGroup: Sendable, Hashable {
     case flagged
     /// Every buried card, flagged or not.
     case buried
-    /// The cards with this tag that aren't buried, set-aside ones too.
+    /// The cards with this tag, or a tag inside it, that aren't buried,
+    /// set-aside ones too.
     case tag(String)
     /// The cards of this type that aren't buried.
     case type(CardType)
@@ -359,7 +360,7 @@ extension CardGroup {
             case .buried: true
             case .inReviews, .inInbox, .setAside: false
             }
-        case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
+        case .tag(let tag): row.card.tags.contains { TagPath.isWithin($0, tag) } && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
         case .noType: row.card.type == nil && row.cardStanding.isInAllCards
         }

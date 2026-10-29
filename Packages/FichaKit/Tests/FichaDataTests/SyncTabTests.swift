@@ -228,6 +228,43 @@ final class SyncTabTests {
         #expect(tab.failure == nil)
     }
 
+    // The map is on Argentina's card and on banderas', and counts once in
+    // geografía; Argentina is ticked, then América, which it sits inside, so
+    // unticking Argentina changes nothing while América is.
+    @Test(
+        "the tab lists the tags as a tree, a tag inside a chosen one as syncing, which can't be unticked, and a parent's weight counts the tags inside it"
+    )
+    func theTabListsTheTagsAsATree() throws {
+        let map = try heavyImage(weighing: 1_500_000, named: "a", in: mac.engine)
+        let flag = try heavyImage(weighing: 500_000, named: "b", in: mac.engine)
+        try mac.engine.create(
+            card(
+                nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía::América::Argentina"],
+                frontImage: map))
+        try mac.engine.create(
+            card(
+                nil, front: "¿De qué país es?", back: "De la Argentina.", tags: ["geografía::banderas"],
+                frontImage: flag, backImage: map))
+        var tab = mac.engine.openSyncTab()
+        tab.syncOnlyChosenTags(true)
+
+        tab.choose("geografía::América::Argentina", true)
+        tab.choose("geografía::América", true)
+        tab.choose("geografía::América::Argentina", false)
+
+        let argentina = TagToChoose(
+            name: "geografía::América::Argentina", isChosen: true, isInsideChosen: true, weight: 1_500_000)
+        let america = TagToChoose(name: "geografía::América", isChosen: true, weight: 1_500_000, children: [argentina])
+        let banderas = TagToChoose(name: "geografía::banderas", isChosen: false, weight: 2_000_000)
+        #expect(
+            tab.tags == [
+                TagToChoose(name: "geografía", isChosen: false, weight: 2_000_000, children: [america, banderas])
+            ])
+        #expect(argentina.isTicked)
+        #expect(try mac.engine.cards().map(\.tags) == [["geografía::América::Argentina"], ["geografía::banderas"]])
+        #expect(tab.failure == nil)
+    }
+
     @Test("while sync is off, the line counts only the files of the cards that sync")
     func theOffLineCountsOnlyTheCardsThatSync() throws {
         var tab = mac.engine.openSyncTab()

@@ -307,7 +307,7 @@ private struct TypeAndTags: View {
                 Chip(text: type.name)
             }
             if !card.tags.isEmpty {
-                Label(card.tags.formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
+                Label(card.tags.map(TagPath.shown).formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -469,7 +469,7 @@ struct FlagAndBurial: View {
     private func setAside(by tags: [String]) -> some View {
         Label {
             Text(
-                "Set aside with \(tags.formatted(.list(type: .and)))",
+                "Set aside with \(tags.map(TagPath.shown).formatted(.list(type: .and)))",
                 comment: """
                     In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it \
                     are set aside, like “Set aside with filosofía and historia”.

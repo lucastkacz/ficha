@@ -62,13 +62,21 @@ public enum EngineError: Error, Equatable {
     case cardBuried(Int64)
     /// The card with this id isn't buried, so it can't be unburied.
     case cardNotBuried(Int64)
-    /// The card with this id is set aside by these tags of it, in
-    /// alphabetical order, so it can't be answered until none of them is set
-    /// aside. Everything else treats it as a card in Lucas's reviews.
+    /// The card with this id is set aside by these tags, its own or tags they
+    /// sit inside, in alphabetical order, so it can't be answered until none
+    /// of them is set aside. Everything else treats it as a card in Lucas's
+    /// reviews.
     case cardSetAside(Int64, tags: [String])
     /// What Lucas gave a tag as its emoji isn't one emoji: a word, two
     /// emoji, a letter or nothing.
     case notOneEmoji
+    /// The tag with this name was to be renamed, or moved, inside itself or
+    /// inside a tag inside it, which would make the tree loop (ADR 0021), so
+    /// nothing changed.
+    case tagInsideItself(String)
+    /// A tag was to be renamed to a name with no level, blank or only `::`,
+    /// so nothing changed.
+    case blankTagName
     /// The card with this id changed outside the review panel, as a refine
     /// session can change it, so ⌘Z can't undo what Lucas did with it.
     case cannotUndo(Int64)
@@ -254,19 +262,33 @@ extension EngineError: LocalizedError {
         case .cardSetAside(let id, let tags) where tags.count == 1:
             String(
                 localized: """
-                    Card \(id) is set aside with its tag “\(tags[0])”. To bring it back, untick Set Aside on that \
-                    tag in the Cards window.
+                    Card \(id) is set aside with the tag “\(TagPath.shown(tags[0]))”. To bring it back, untick Set \
+                    Aside on that tag in the Cards window.
                     """
             )
         case .cardSetAside(let id, let tags):
             String(
                 localized: """
-                    Card \(id) is set aside with its tags \(quotedList(tags)). To bring it back, untick Set Aside \
-                    on each of them in the Cards window.
+                    Card \(id) is set aside with the tags \(quotedList(tags.map(TagPath.shown))). To bring it back, \
+                    untick Set Aside on each of them in the Cards window.
                     """
             )
         case .notOneEmoji:
             String(localized: "A tag's emoji is one emoji. Pick just one, or leave the field empty for none.")
+        case .tagInsideItself(let tag):
+            String(
+                localized: """
+                    “\(TagPath.shown(tag))” can't go inside itself, or inside a tag inside it, so nothing changed. \
+                    Pick a tag outside it.
+                    """
+            )
+        case .blankTagName:
+            String(
+                localized: """
+                    A tag needs a name, so nothing changed. Write one, with “::” between a tag and a tag inside it, \
+                    as in “economía::Argentina”.
+                    """
+            )
         case .cannotUndo(let id):
             String(
                 localized: "Card \(id) changed outside the review panel, so ⌘Z can't undo it. \(reopenReviewNow)")

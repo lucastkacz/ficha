@@ -126,8 +126,9 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// 0016), how many come in with the first of several images or sounds on a
 /// side, and how many without a sound Ficha can't read, and the tags the
 /// cards get: for a text file, one named after the file, for every card;
-/// for an Anki package, one for each level of its decks and each of its
-/// tags. The user renames each, or clears it to leave it out. An Anki
+/// for an Anki package, one for each of its decks, with all its levels, and
+/// each of its tags. The user renames each, or clears it to leave it out. An
+/// Anki
 /// package's cards come in where Anki had them while Bring progress is
 /// ticked (ADR 0013), and how many of them land on a step goes in the line
 /// under the title. Import imports them. While it reads the file or

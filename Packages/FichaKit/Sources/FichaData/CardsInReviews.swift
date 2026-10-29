@@ -58,8 +58,8 @@ func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
         try allCards(in: db), priorityTags: try tags(switchedOn: .priority, in: db), log: try logEntries(in: db))
 }
 
-/// The tags that are set aside: every card with one of them is set aside,
-/// unless it's buried or flagged, as its standing says.
+/// The tags that are set aside: every card with one of them, or a tag inside
+/// one, is set aside, unless it's buried or flagged, as its standing says.
 func setAsideTags(in db: Database) throws -> Set<String> {
     try tags(switchedOn: .setAside, in: db)
 }

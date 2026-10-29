@@ -14,7 +14,8 @@ extension CardTag {
 /// "None", and then each tag, which the menu draws.
 public struct PrioritizeMenu: Sendable, Equatable {
     /// The tags it offers, each with what it has of its own, ticked while
-    /// it's a priority tag, in alphabetical order as the Mac sorts text.
+    /// it's a priority tag, in the order a tree lists them, so that each tag
+    /// inside another follows it.
     public let tags: [CardTag]
 
     /// Whether "None" is ticked: no tag is a priority tag.
@@ -31,11 +32,11 @@ public struct PrioritizeMenu: Sendable, Equatable {
 
 extension Engine {
     /// What the menu's Prioritize submenu offers: every tag of the cards in
-    /// Lucas's reviews, as the one way in to the cards that show up reads
-    /// them, and every priority tag, which stays listed while no card in his
-    /// reviews carries it, so that he can untick it. A set-aside tag's cards
-    /// are out of his reviews, and it's never a priority tag, so it isn't
-    /// offered.
+    /// Lucas's reviews, and every tag those sit inside, as the one way in to
+    /// the cards that show up reads them, and every priority tag, which stays
+    /// listed while no card in his reviews carries it, so that he can untick
+    /// it. A set-aside tag's cards are out of his reviews, and it's never a
+    /// priority tag, so it isn't offered.
     public func prioritizeMenu() throws(EngineError) -> PrioritizeMenu {
         try read { db in
             PrioritizeMenu(

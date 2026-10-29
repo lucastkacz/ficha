@@ -165,13 +165,16 @@ final class CardsWindowImportTests {
         await window.previewImportAndWait(of: file)
         let tagFields = window.importing?.tagFields
 
-        window.nameImportTag("Anatomía", as: "anatomía humana")
+        window.nameImportTag("Medicina::Anatomía", as: "Medicina::anatomía humana")
         window.removeImportTag("repaso")
         await window.importCardsAndWait()
 
         #expect(
-            tagFields == ["Medicina", "Anatomía", "repaso"].map { CardsWindowState.TagField(proposed: $0, name: $0) })
-        #expect(try engine.cards().map(\.tags) == [["Medicina", "anatomía humana"], ["Medicina"]])
+            tagFields
+                == ["Medicina::Anatomía", "repaso", "Medicina"].map {
+                    CardsWindowState.TagField(proposed: $0, name: $0)
+                })
+        #expect(try engine.cards().map(\.tags) == [["Medicina::anatomía humana"], ["Medicina"]])
     }
 
     @Test("the preview of an Anki package counts the cards that stay out by why, in the order each reason first comes")

@@ -1,4 +1,5 @@
 import AppKit
+import FichaCore
 import FichaData
 import SwiftUI
 
@@ -36,7 +37,7 @@ struct EmojiSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(
-                    "Emoji for “\(tag.name)”",
+                    "Emoji for “\(TagPath.shown(tag.name))”",
                     comment: "The title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
                 )
                 .font(.headline)

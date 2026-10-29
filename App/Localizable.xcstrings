@@ -1069,6 +1069,9 @@
     "Couldn't look for more cards" : {
 
     },
+    "Couldn't move “%@”" : {
+      "comment" : "An alert's title in the Cards window, after dragging a tag onto another or onto the Tags section's title, with the tag's whole name."
+    },
     "Couldn't move %lld copies to the Trash" : {
       "comment" : "An alert's title in Settings' Backups tab, with how many copies.",
       "localizations" : {
@@ -1097,6 +1100,9 @@
     },
     "Couldn't read your tags" : {
 
+    },
+    "Couldn't rename “%@”" : {
+      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
     },
     "Couldn't restore the copy" : {
       "comment" : "An alert's title in Settings' Backups tab."
@@ -1608,6 +1614,9 @@
     "It shows before the tag's name. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a tag an emoji."
     },
+    "It syncs with the ticked tag it sits inside." : {
+      "comment" : "Settings, under Sync: the tooltip of a tag's checkbox, ticked and waiting, inside a ticked tag."
+    },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
     },
@@ -1780,6 +1789,9 @@
     },
     "Move to Trash" : {
       "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
+    },
+    "Name" : {
+      "comment" : "The field of the sheet that renames a tag: its whole name."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -2020,6 +2032,12 @@
     "Remove Step %lld" : {
       "comment" : "Settings: removes a step of the ladder."
     },
+    "Rename “%@”" : {
+      "comment" : "The title of the Cards window's sheet that renames a tag, with the tag's whole name."
+    },
+    "Rename…" : {
+      "comment" : "An item of a tag's menu in the Cards window's sidebar: it asks for the tag's new name."
+    },
     "Repeated cards" : {
       "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
     },
@@ -2077,17 +2095,14 @@
     "Selected cards (%lld)" : {
       "comment" : "An item of the Export sheet's menu: the cards selected in the table, with how many."
     },
-    "Separate tags with commas." : {
+    "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”." : {
       "comment" : "In the Cards window's card form, under the tags.\nIn the Cards window, under a card's tags, while Lucas edits it."
     },
     "set aside" : {
       "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags is set aside. Lowercase, like “now”."
     },
-    "Set aside" : {
-      "comment" : "What VoiceOver says of a set-aside tag in the Cards window's sidebar, after its name."
-    },
     "Set Aside" : {
-      "comment" : "An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
+      "comment" : "A section of the Cards window's sidebar, below Tags: the tags set aside, whose cards are out of Lucas's reviews for now.\nAn item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
     },
     "Set aside with %@" : {
       "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it are set aside, like “Set aside with filosofía and historia”."
@@ -2339,6 +2354,9 @@
     },
     "Words" : {
       "comment" : "An item of the Cards window's sidebar: the word cards."
+    },
+    "Write “::” between a tag and a tag inside it, as in “economía::Argentina”. The tags inside this one move with it, and a name another tag has joins the two." : {
+      "comment" : "Under the title of the Cards window's sheet that renames a tag."
     },
     "Yellow" : {
       "comment" : "One of Finder's tag colors, which a tag can have."

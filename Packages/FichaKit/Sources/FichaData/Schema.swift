@@ -166,8 +166,8 @@ enum Schema {
             // What a tag has of its own (ADR 0011), one row per tag that has
             // something: a tag with nothing of its own has no row, and the
             // engine deletes a row once it has nothing left. Cards keep their
-            // tags in their own JSON column, and a tag is never renamed, so
-            // its name is the key.
+            // tags in their own JSON column, and a tag's name is the key: a
+            // rename moves its row ("v27 tags inside tags").
             try db.create(table: "tag") { table in
                 // Exactly as cards carry it.
                 table.primaryKey("name", .text)
@@ -994,6 +994,60 @@ enum Schema {
                         AND EXISTS (SELECT 1 FROM card);
                     DELETE FROM syncPending WHERE NOT isDeletion AND NOT (SELECT isOn FROM syncDevice);
                     """)
+        }
+        migrator.registerMigration("v27 tags inside tags") { db in
+            // A tag can sit inside another (ADR 0021): its name carries the
+            // tags it sits inside, `economía::Argentina`, as cards carry it,
+            // so the `tag` table keeps a row by that whole name. A tag can be
+            // renamed now, which moves it and the tags inside it: the engine
+            // deletes their rows and writes them again under their new names,
+            // which sync as a tag's rows do, and changes every card that
+            // carries them. Its name is still the key.
+            //
+            // A card syncs when every card does, or one of its tags, or a tag
+            // one of them sits inside, is chosen. The deletion triggers of
+            // "v26 selective sync", made again with that rule: a tag sits
+            // inside a chosen one when its name starts with the chosen one's
+            // and `::`, compared character by character, as `cardSyncs(tags:)`
+            // in `SelectiveSync.swift` does.
+            /// Whether the card whose tags are the JSON array `tags` syncs.
+            func cardSyncs(tags: String) -> String {
+                """
+                (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
+                    SELECT 1 FROM json_each(\(tags)) AS cardTag JOIN tag ON tag.chosenToSync AND (
+                        tag.name = cardTag.value OR substr(cardTag.value, 1, length(tag.name) + 2) = tag.name || '::')))
+                """
+            }
+            let synced = [
+                ("card", "card", cardSyncs(tags: "OLD.tags")),
+                (
+                    "reviewLog", "reviewLogEntry",
+                    "EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(tags: "card.tags")))"
+                ),
+                (
+                    "capture", "capture",
+                    """
+                    NOT EXISTS (
+                        SELECT 1 FROM card WHERE card.id IN (OLD.expandsCardId, OLD.followsUpCardId)
+                        AND NOT \(cardSyncs(tags: "card.tags")))
+                    """
+                ),
+            ]
+            for (table, type, rowSynced) in synced {
+                let forgetsFieldTimes =
+                    table == "reviewLog"
+                    ? "" : "DELETE FROM syncFieldTime WHERE recordType = '\(type)' AND recordName = OLD.uuid;"
+                try db.execute(
+                    sql: """
+                        DROP TRIGGER sync_\(table)_deleted;
+                        CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
+                        \(forgetsFieldTimes)
+                        DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = OLD.uuid;
+                        INSERT INTO syncPending (recordType, recordName, isDeletion)
+                        SELECT '\(type)', OLD.uuid, 1 WHERE (SELECT recordsChanges FROM syncWrite) AND \(rowSynced);
+                        END;
+                        """)
+            }
         }
         return migrator
     }()

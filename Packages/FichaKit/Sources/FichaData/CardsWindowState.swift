@@ -12,8 +12,10 @@ import Foundation
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, and turns Both ways on or off for several
 /// cards at once, as it sets a tag aside or gives it a color
-/// from the tag's context menu, it asks which emoji the tag gets, and it
-/// records what couldn't be saved, for the window to say. It also holds the
+/// from the tag's context menu, it asks which emoji the tag gets and which
+/// name, and moves a tag Lucas drags onto another or onto the Tags section's
+/// title (`CardsWindowTags.swift`), and it records what couldn't be saved,
+/// for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
 /// runs the Import sheet, from a file's preview to what the import did, and
 /// the Export sheet, from what it offers to export to the file it writes.
@@ -116,6 +118,9 @@ public struct CardsWindowState: Sendable {
         /// Which emoji this tag gets, in the emoji sheet, whose field starts
         /// with the one it has.
         case emoji(CardTag)
+        /// Which name this tag gets, in the rename sheet, whose field starts
+        /// with its whole name, written with `::`: `CardsWindowTags.swift`.
+        case rename(CardTag)
     }
 
     /// What OK in the emoji sheet makes of what its field holds.
@@ -177,13 +182,18 @@ public struct CardsWindowState: Sendable {
         case setColor(tag: String)
         /// He gave this tag an emoji, or took its emoji away.
         case setEmoji(tag: String)
+        /// He renamed this tag, in the rename sheet.
+        case rename(tag: String)
+        /// He dragged this tag onto another, or onto the Tags section's
+        /// title, to move it.
+        case move(tag: String)
         /// He exported cards, which couldn't be read or saved to the file.
         case export
     }
 
     /// What the sidebar chose: All cards, until Lucas picks another group or
     /// the inbox.
-    public private(set) var sidebarItem = SidebarItem.cards(.all)
+    public internal(set) var sidebarItem = SidebarItem.cards(.all)
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public private(set) var search = ""
     /// The cards Lucas selected, which can include cards the table no longer
@@ -201,9 +211,18 @@ public struct CardsWindowState: Sendable {
     /// What the table lists, or why it couldn't be read: nil until the window
     /// first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
-    /// The tags the sidebar offers, with what each has of its own: those of
-    /// the cards that aren't buried, and the set-aside ones.
+    /// The tags the sidebar offers, with what each has of its own and takes
+    /// from the tags it sits inside: those of the cards that aren't buried,
+    /// with every tag they sit inside, and the set-aside ones, in the order a
+    /// tree lists them, in either section.
     public private(set) var tags: [CardTag] = []
+    /// The sidebar's Tags section: the tags it offers that aren't set aside,
+    /// neither on their own nor inside a tag that is, as a tree:
+    /// `CardsWindowTags.swift`.
+    public private(set) var tagsSection: [SidebarTag] = []
+    /// The sidebar's Set Aside section, below Tags: each set-aside tag with
+    /// every tag inside it, as a tree: `CardsWindowTags.swift`.
+    public private(set) var setAsideSection: [SidebarTag] = []
     /// The type groups the sidebar offers: one for each card type, and No
     /// Type after them while a card that isn't buried has no type.
     public private(set) var typeGroups = CardType.allCases.map(CardGroup.type)
@@ -247,7 +266,7 @@ public struct CardsWindowState: Sendable {
     /// `CardsWindowSounds.swift`.
     public internal(set) var playingSound: PlayingSound?
     /// What the window asks before it acts, while it asks.
-    public private(set) var question: Question?
+    public internal(set) var question: Question?
     /// What Lucas did that couldn't be saved, while the window says so.
     public private(set) var failure: Failure?
     /// The Import sheet, while it's open, which `CardsWindowImport.swift`
@@ -709,6 +728,7 @@ public struct CardsWindowState: Sendable {
         now = engine.now
         do throws(EngineError) {
             tags = try engine.sidebarTags()
+            (tagsSection, setAsideSection) = Self.sections(of: tags)
             typeGroups = try engine.sidebarTypeGroups()
             if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = .cards(.all)
