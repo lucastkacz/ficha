@@ -238,9 +238,9 @@ enum DataFolderError: Error {
                         """,
                     comment: """
                         An alert at launch, which only a build made by hand without the developer's team shows. The \
-                        widget shows it too, under that it can't read the cards, as the real Ficha's does while it's \
-                        signed without the team. make run and make install are commands, iPhone/Local.xcconfig a \
-                        file and docs/development.md a document, whose names stay as they are.
+                        widget shows it too, under that it can't read the cards. make run and make install are \
+                        commands, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay \
+                        as they are.
                         """)
             case .noGroupFolder(let group):
                 String(

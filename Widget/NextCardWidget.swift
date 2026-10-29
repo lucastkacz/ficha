@@ -69,6 +69,14 @@ private func readTimeline(for family: WidgetFamily) -> Timeline<NextCardEntry> {
     let now = SystemTimeSource().now
     widgetLogger.info(
         "Building a timeline for \(variant.name, privacy: .public)'s \(family.description, privacy: .public) widget")
+    // Picks with this Mac's settings, as review now does, once the app
+    // handed them over, and opens the cards only then: the real Ficha hands
+    // nothing over until its widget shares its group (#310), and its data
+    // folder, in that group, is out of the widget's reach meanwhile.
+    guard let settings = WidgetHandover.handedOver() else {
+        widgetLogger.info("The app hasn't handed over this Mac's settings yet")
+        return single(.notReady, at: now)
+    }
     let folder: URL
     let debugTime: DebugTimeSource?
     let engine: Engine
@@ -87,12 +95,6 @@ private func readTimeline(for family: WidgetFamily) -> Timeline<NextCardEntry> {
         return single(.unreadable(error.localizedDescription), at: now)
     }
     widgetLogger.info("Opened the database in \(folder.path(percentEncoded: false), privacy: .public) to read it")
-    // Picks with this Mac's settings, as review now does, once the app
-    // handed them over.
-    guard let settings = WidgetHandover.handedOver() else {
-        widgetLogger.info("The app hasn't handed over this Mac's settings yet")
-        return single(.notReady, at: now)
-    }
 
     let timeline: WidgetTimeline
     do {
