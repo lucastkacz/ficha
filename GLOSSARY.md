@@ -45,6 +45,10 @@ _Avoid_: focus, exam mode, filter
 Taking every card with a tag, or with a tag inside it, out of the user's reviews for now, also those that get one later, as when they're done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
 _Avoid_: pause, suspend, archive, hide, inactive
 
+**Pinned tag**:
+A tag the user chose to keep in the Cards window's sidebar, in an order of their own, so the subjects they use most are always at hand. Which tags are pinned, and in what order, is one choice for all their devices.
+_Avoid_: favorite tag, starred tag, sidebar tag
+
 **Source**:
 Where the user came across what a capture or a card holds, like a book or a podcast.
 _Avoid_: origin, reference, citation
@@ -153,12 +157,16 @@ _Avoid_: status, state
 The window where the user sees all their cards and everything in the inbox, creates cards, and acts on them.
 _Avoid_: browser, card list
 
+**All Tags**:
+The place in the Cards window that holds every tag, pinned or not, as a tree.
+_Avoid_: tags page, tag manager, tag browser
+
 **Edit**:
 Changing the content of a card or a capture. A card keeps its step and its review log.
 _Avoid_: modify, update
 
 **Delete**:
-Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture.
+Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a tag, or a card type, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
 _Avoid_: remove, erase
 
 **Import**:
