@@ -7,9 +7,12 @@ extension View {
     /// ⌘N, which open the card form on a new card, and the form itself, a
     /// sheet over the window while `state` has it open, from New Card or from
     /// Convert to Card on a capture or a follow-up. `failure` is the alert
-    /// over the sheet.
-    func creatingCards(_ state: Binding<CardsWindowState>, failure: Binding<Failure?>) -> some View {
-        modifier(CreatingCards(state: state, failure: failure))
+    /// over the sheet, and `newTypeFailure` the one over the New Type sheet,
+    /// which New Type… in the form's type picker opens over it.
+    func creatingCards(
+        _ state: Binding<CardsWindowState>, failure: Binding<Failure?>, newTypeFailure: Binding<Failure?>
+    ) -> some View {
+        modifier(CreatingCards(state: state, failure: failure, newTypeFailure: newTypeFailure))
     }
 }
 
@@ -17,6 +20,7 @@ extension View {
 private struct CreatingCards: ViewModifier {
     @Binding var state: CardsWindowState
     let failure: Binding<Failure?>
+    let newTypeFailure: Binding<Failure?>
 
     func body(content: Content) -> some View {
         content
@@ -51,7 +55,8 @@ private struct CreatingCards: ViewModifier {
             .sheetWithinWindow(
                 isPresented: Binding(get: { state.cardForm != nil }, set: { if !$0 { state.closeCardForm() } })
             ) { maximumHeight in
-                CardFormSheet(state: $state, maximumHeight: maximumHeight, failure: failure)
+                CardFormSheet(
+                    state: $state, maximumHeight: maximumHeight, failure: failure, newTypeFailure: newTypeFailure)
             }
     }
 }
@@ -101,6 +106,8 @@ private struct CardFormSheet: View {
     let maximumHeight: CGFloat
     /// What couldn't be saved, as the alert over the sheet says it.
     let failure: Binding<Failure?>
+    /// What couldn't be saved, as the alert over the New Type sheet says it.
+    let newTypeFailure: Binding<Failure?>
     @FocusState private var isFrontFocused: Bool
     /// The part of the form that has the focus, which it scrolls to.
     @FocusedValue(\.cardFormPart) private var focusedPart
@@ -156,6 +163,7 @@ private struct CardFormSheet: View {
                 isFrontFocused = true
             }
             .failureAlert(failure)
+            .newTypeSheet(for: .form, $state, failure: newTypeFailure)
         }
     }
 
@@ -197,8 +205,12 @@ private struct CardFormSheet: View {
             GridRow {
                 let label = Text("Type", comment: "In the Cards window's card form, the label of the card's type.")
                 gridLabel(label)
-                CardTypePicker(type: draft(\.type), label: label)
-                    .cardFormPart(.type)
+                CardTypePicker(type: form.draft.type, types: state.pickerTypes, label: label) { type in
+                    draft(\.type).wrappedValue = type
+                } newType: {
+                    state.askForNewType(in: .form)
+                }
+                .cardFormPart(.type)
             }
             GridRow {
                 gridLabel(Text("Front", comment: "In the Cards window's card form, the label of the card's front."))
@@ -237,9 +249,12 @@ private struct CardFormSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Tags", text: draft(\.tags))
                         .cardFormPart(.tags)
-                    Text("Separate tags with commas.", comment: "In the Cards window's card form, under the tags.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”.",
+                        comment: "In the Cards window's card form, under the tags."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             GridRow {

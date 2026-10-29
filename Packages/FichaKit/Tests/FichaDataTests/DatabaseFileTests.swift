@@ -320,6 +320,54 @@ final class DatabaseFileTests {
         }
     }
 
+    // Before tags sat inside tags, a card's tags lost only the spaces around
+    // the whole name (ADR 0021). Nothing rewrites them: a name with an empty
+    // level, or with spaces around one, is a tag at the top of its own, as
+    // it was, written whole, until Lucas renames it.
+    @Test(
+        "a database from before tags inside tags lists a tag with an empty level, or with spaces around one, whole, at the top"
+    )
+    func aDatabaseFromBeforeTagsInsideTagsListsUncleanTagsWhole() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeTagsInsideTags(
+            at: folder.appending(path: "Ficha.sqlite"),
+            tagging: [["::historia"], ["economía::"], ["economía :: Argentina"], ["economía::mundial"]], at: time.now)
+        let ladder = ReviewSettings.defaults.ladder
+
+        let engine = try Engine(location: .folder(folder), time: time)
+        var window = engine.openCardsWindow(on: ladder)
+        window.read(on: ladder)
+
+        #expect(
+            try engine.sidebarTags().map(\.name) == [
+                "::historia", "economía", "economía::mundial", "economía :: Argentina", "economía::",
+            ])
+        #expect(
+            window.tagsSection.flatMap { [$0.title] + $0.children.map { "  " + $0.title } } == [
+                "::historia", "economía", "  mundial", "economía :: Argentina", "economía::",
+            ])
+        #expect(try engine.cardRows(in: .tag("economía"), on: ladder).map(\.card.front) == ["economía::mundial"])
+    }
+
+    // A card's type column kept the four's raw values; a user type's ID goes
+    // in it beside them, so nothing rewrites it.
+    @Test(
+        "a database from before card types of the user's own migrates with every card's type as it was, and a user type then made syncs"
+    )
+    func aDatabaseFromBeforeUserTypesKeepsEveryCardsType() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeUserTypes(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(try engine.cards().map(\.type) == [.word, .concept, .quote, .question, nil])
+        #expect(try engine.userTypes().isEmpty)
+        let formula = try engine.makeUserType(named: "Fórmula")
+        try engine.edit(1, with: card(.user(formula), front: "word", back: "Un tipo."))
+        #expect(try engine.cards().map(\.type) == [.user(formula), .concept, .quote, .question, nil])
+        #expect(try engine.changesToSend().map(\.row).contains(.userType(formula.id)))
+    }
+
     // Ficha Dev's sample cards, and an agent's scratch run, load into a new
     // database, which then syncs them.
     @Test("a new database starts with sync on and every card syncing, the sample cards loaded into it too")
@@ -455,6 +503,44 @@ func saveDatabaseBeforeSelectiveSync(at file: URL, holdsCards: Bool, synced: Boo
         try db.execute(
             sql: "UPDATE syncDevice SET isOn = 1, engineState = ?",
             arguments: [synced ? Data("a state CKSyncEngine saved".utf8) : nil])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before tags sat inside tags,
+/// through the schema's migrations up to the one before them, with a card
+/// for each list of tags in `tags`, made at `time`, each tag as it's written
+/// there, and each card's front its tags, joined by commas.
+func saveDatabaseBeforeTagsInsideTags(at file: URL, tagging tags: [[String]], at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v26 selective sync")
+    try database.write { db in
+        for cardTags in tags {
+            try db.execute(
+                sql: "INSERT INTO card (type, front, back, tags, createdAt) VALUES ('word', ?, 'Un tema.', ?, ?)",
+                arguments: [
+                    cardTags.joined(separator: ", "),
+                    String(decoding: try JSONEncoder().encode(cardTags), as: UTF8.self),
+                    time,
+                ])
+        }
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before card types of the
+/// user's own, through the schema's migrations up to the one before them,
+/// with sync on, and a card of each of the four types and one with none,
+/// made at `time`, each card's front its type, or "none".
+func saveDatabaseBeforeUserTypes(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v27 tags inside tags")
+    try database.write { db in
+        for type in ["word", "concept", "quote", "question", nil] {
+            try db.execute(
+                sql: "INSERT INTO card (type, front, back, tags, createdAt) VALUES (?, ?, 'Un tipo.', '[]', ?)",
+                arguments: [type, type ?? "none", time])
+        }
     }
     try database.close()
 }

@@ -1,4 +1,5 @@
 import AppKit
+import FichaCore
 import FichaData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -160,12 +161,14 @@ struct ExportSheet: View {
                 comment: "An item of the Export sheet's menu: every card, buried ones too, with how many.")
         case .tag(let name):
             String(
-                localized: "\(tags.first { $0.name == name }?.title ?? name) (\(count))",
+                localized: "\(tags.first { $0.name == name }?.title ?? TagPath.shown(name)) (\(count))",
                 comment: "An item of the Export sheet's menu: the cards with a tag, with the tag and how many.")
         }
     }
 
-    /// The name the save panel proposes for the file, as the state chose it.
+    /// The name the save panel proposes for the file, as the state chose it:
+    /// for a tag's cards, the tag's whole name, written with " › ", as in
+    /// "economía › Argentina", since a Mac's file name can't hold a colon.
     private var fileName: String {
         switch exporting.fileName {
         case .selectedCards:
@@ -177,7 +180,7 @@ struct ExportSheet: View {
                 localized: "All cards",
                 comment: "The name the Export sheet's save panel proposes for the file of all cards.")
         case .tag(let name):
-            name
+            TagPath.shown(name)
         }
     }
 

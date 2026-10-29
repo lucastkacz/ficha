@@ -173,7 +173,7 @@ final class ChangesToSyncTests {
         time.move(to: colored)
         let afterColor = try engine.recorded {
             try engine.setColor(.red, of: "historia")
-            try engine.setEmoji(TagEmoji("🏛️"), of: "historia")
+            try engine.setEmoji(Emoji("🏛️"), of: "historia")
         }
         time.move(to: prioritized)
         let afterPriority = try engine.recorded { try engine.togglePriority(of: "historia") }
@@ -396,7 +396,7 @@ final class ChangesToSyncTests {
 
         #expect(try engine.changesToSend().isEmpty)
         #expect(try engine.cards().map(\.front) == ["petricor"])
-        try engine.setEmoji(TagEmoji("🗣️"), of: "lenguaje")
+        try engine.setEmoji(Emoji("🗣️"), of: "lenguaje")
         #expect(try engine.waiting() == [Waiting(row: .tag("lenguaje"), kind: .saved, fieldTimes: [.emoji: now])])
     }
 

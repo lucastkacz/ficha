@@ -104,5 +104,13 @@ let package = Package(
             cSettings: zstdConfigurationMacros,
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
+        // What the `ficha` CLI reads from a refine session, as the engine then
+        // takes it.
+        .testTarget(
+            name: "FichaCLITests",
+            dependencies: ["FichaCLI", "FichaCore", "FichaData"],
+            cSettings: zstdConfigurationMacros,
+            swiftSettings: [.treatAllWarnings(as: .error)]
+        ),
     ]
 )

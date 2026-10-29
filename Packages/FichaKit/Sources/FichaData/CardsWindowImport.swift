@@ -120,6 +120,15 @@ extension CardsWindowState {
             preview?.weightGoingUpToICloud(choosing: repeatedCards, naming: tagNames)
         }
 
+        /// The names of the user types the import makes, as the preview's
+        /// line says them, with those of the repeated cards while the user
+        /// chooses to update them, as
+        /// `ImportPreview.typesMade(choosing:)` says; none while the sheet
+        /// shows no preview.
+        public var typesMade: [String] {
+            preview?.typesMade(choosing: repeatedCards) ?? []
+        }
+
         /// The names the user gave the tags the preview proposes, by the tag
         /// proposed, as the fields hold them.
         private var tagNames: [String: String] {

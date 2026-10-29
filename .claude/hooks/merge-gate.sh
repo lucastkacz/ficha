@@ -61,6 +61,10 @@ risky_paths=(
   # its tags are, and keeps the cards in his reviews for the planners to pick
   # from.
   'Packages/FichaKit/Sources/FichaCore/Scheduler/'
+  # Which tags a tag sits inside (ADR 0021), which the scheduler reads to say
+  # a card is set aside by a tag its tags sit inside, and to tell which cards
+  # have a priority tag.
+  'Packages/FichaKit/Sources/FichaCore/TagsInsideTags\.swift'
   # Which cards review now brings, when the review panel shows up on its own
   # and with which cards, the settings' defaults, and the trigger's names,
   # which the review log stores.

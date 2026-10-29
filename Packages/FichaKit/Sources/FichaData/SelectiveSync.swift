@@ -6,7 +6,8 @@ internal import GRDB
 // a tag the user chose. Which it is, and which tags are chosen, is one choice
 // for all the user's devices, which syncs as a tag's color does (the
 // `syncChoice` row, and each tag's `chosenToSync`). A card syncs when every
-// card does, or one of its tags is chosen; a card's review log entries go
+// card does, or one of its tags, or a tag one of them sits inside, is chosen
+// (ADR 0021); a card's review log entries go
 // with it, and so do the captures that expand it or follow it up. Every
 // other row syncs whatever the choice: captures, tags, the settings that
 // decide progress and the choice itself.
@@ -44,8 +45,9 @@ extension Engine {
 
     /// Chooses `tag` to sync, or stops choosing it, as `chosen` says, for all
     /// the user's devices: while only the cards with a chosen tag sync, its
-    /// cards start or stop syncing, unless another of their tags is chosen.
-    /// When it's so already, nothing changes.
+    /// cards, and those of the tags inside it, also tags made later, start or
+    /// stop syncing, unless another of their tags, or a tag one of them sits
+    /// inside, is chosen. When it's so already, nothing changes.
     public func chooseToSync(_ tag: String, _ chosen: Bool) throws(EngineError) {
         try write { db in
             var own = try ownTag(tag, in: db)
@@ -55,17 +57,18 @@ extension Engine {
         }
     }
 
-    /// Every tag the user can choose to sync: those of every card, and those
-    /// chosen, which stay listed while no card carries them, so the user can
-    /// untick them. Each comes with whether it's chosen, and what the images
-    /// and sounds of its cards weigh, each file once, at the size Ficha keeps
-    /// them, or nil when its cards have neither; in alphabetical order as the
-    /// Mac sorts text.
+    /// Every tag the user can choose to sync, as a tree (ADR 0021): those of
+    /// every card, with every tag they sit inside, and those chosen, which
+    /// stay listed while no card carries them, so the user can untick them.
+    /// Each comes with whether it's chosen, whether a tag it sits inside is,
+    /// and what the images and sounds of its cards and of the cards of the
+    /// tags inside it weigh, each file once, at the size Ficha keeps them, or
+    /// nil when those cards have neither; in the order a tree lists them.
     func tagsToChooseFrom() throws(EngineError) -> [TagToChoose] {
         let (cards, own) = try read { db in (try allCards(in: db), try OwnTags(in: db)) }
         var filesByTag: [String: FileNames] = [:]
         for card in cards {
-            for tag in card.tags {
+            for tag in TagPath.lineages(of: card.tags) {
                 filesByTag[tag, default: FileNames()].images.formUnion(card.images)
                 filesByTag[tag, default: FileNames()].sounds.formUnion(card.sounds)
             }
@@ -82,9 +85,9 @@ extension Engine {
             sizes[file] = size
             return size
         }
-        let names = Set(filesByTag.keys).union(own.chosenToSync.map(\.name))
-        return try names.sortedAlphabetically().map { name throws(EngineError) in
-            let files = filesByTag[name] ?? FileNames()
+        /// The tag at the top of `tree`, with the tags inside it, to choose.
+        func toChoose(_ tree: TagTree) throws(EngineError) -> TagToChoose {
+            let files = filesByTag[tree.name] ?? FileNames()
             var weight: Int64 = 0
             for image in files.images {
                 weight += try size(of: image)
@@ -92,8 +95,21 @@ extension Engine {
             for sound in files.sounds {
                 weight += try size(of: sound)
             }
-            return TagToChoose(name: name, isChosen: own.tag(name).chosenToSync, weight: weight > 0 ? weight : nil)
+            var children: [TagToChoose] = []
+            for child in tree.children {
+                children.append(try toChoose(child))
+            }
+            return TagToChoose(
+                name: tree.name, isChosen: own.tag(tree.name).chosenToSync,
+                isInsideChosen: TagPath.ancestors(of: tree.name).contains { own.tag($0).chosenToSync },
+                weight: weight > 0 ? weight : nil, children: children)
         }
+        let names = Set(filesByTag.keys).union(own.chosenToSync.map(\.name))
+        var trees: [TagToChoose] = []
+        for tree in TagTree.forest(of: names) {
+            trees.append(try toChoose(tree))
+        }
+        return trees
     }
 
     /// Notes what syncs in the database's write `db`, as `noteWhatSyncs(in:)`
@@ -139,18 +155,47 @@ extension Engine {
     }
 }
 
-/// A tag the user can choose to sync, as the Sync tab lists it.
+/// A tag the user can choose to sync, as the Sync tab lists it, in a tree
+/// with the tags inside it.
 public struct TagToChoose: Sendable, Equatable, Identifiable {
-    /// Its name, exactly as cards carry it.
+    /// Its whole name, exactly as cards carry it.
     public let name: String
     /// Whether the user chose it.
     public let isChosen: Bool
-    /// What the images and sounds of its cards weigh, in bytes, each file
-    /// once, or nil when they have neither.
+    /// Whether the user chose a tag it sits inside, so it syncs whatever its
+    /// own tick, which can't be unticked meanwhile (ADR 0021).
+    public let isInsideChosen: Bool
+    /// What the images and sounds of its cards, and of the cards of the tags
+    /// inside it, weigh, in bytes, each file once, or nil when they have
+    /// neither.
     public let weight: Int64?
+    /// The tags right inside it, in the order a tree lists them.
+    public let children: [TagToChoose]
+
+    init(
+        name: String, isChosen: Bool, isInsideChosen: Bool = false, weight: Int64?, children: [TagToChoose] = []
+    ) {
+        self.name = name
+        self.isChosen = isChosen
+        self.isInsideChosen = isInsideChosen
+        self.weight = weight
+        self.children = children
+    }
 
     public var id: String {
         name
+    }
+
+    /// Whether its checkbox shows ticked, as its cards sync: it's chosen, or
+    /// a tag it sits inside is.
+    public var isTicked: Bool {
+        isChosen || isInsideChosen
+    }
+
+    /// Whether the user can tick or untick it: unless a tag it sits inside
+    /// is chosen.
+    public var canChoose: Bool {
+        !isInsideChosen
     }
 }
 
@@ -176,20 +221,31 @@ struct WhatSyncs: Sendable, Equatable {
     }
 
     /// Whether a card with the tags `tags` syncs, as `cardSyncs(tags:)` says
-    /// in a database's SQL.
+    /// in a database's SQL of every tag written as `TagPath.normalized(_:)`
+    /// writes it, as every tag a card gets now is. A tag a card kept from
+    /// before tags sat inside tags (ADR 0021) can differ: one with an empty
+    /// level, or with spaces around one, sits inside no tag here, as the
+    /// sidebar lists it, and in SQL inside the tag its name starts with
+    /// before a `::`; and one with an accent written apart from its letter
+    /// is the same name as the accented letter's here, and another in SQL.
     func cardSyncs(tagged tags: [String]) -> Bool {
-        !onlyChosenTags || tags.contains(where: chosenTags.contains)
+        !onlyChosenTags || !chosenTags.isDisjoint(with: TagPath.lineages(of: tags))
     }
 }
 
 /// SQL that holds when the card whose tags are the JSON array `tags` syncs:
-/// every card does, or one of its tags is chosen. The deletion triggers of
-/// `Schema`'s "v26 selective sync" hold a copy, which a migration keeps as it
-/// was.
+/// every card does, or one of its tags, or a tag one of them sits inside, is
+/// chosen (ADR 0021). A tag sits inside a chosen one when its name starts with
+/// the chosen one's and `::`, compared character by character: never with
+/// LIKE, whose `_` and `%` match other characters and which ignores the case
+/// of ASCII letters. Swift's twin, `WhatSyncs.cardSyncs(tagged:)`, says where
+/// the two differ. The deletion triggers of `Schema`'s "v27 tags inside
+/// tags" hold a copy, which a migration keeps as it was.
 func cardSyncs(tags: String) -> String {
     """
     (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
-        SELECT 1 FROM json_each(\(tags)) AS cardTag JOIN tag ON tag.name = cardTag.value WHERE tag.chosenToSync))
+        SELECT 1 FROM json_each(\(tags)) AS cardTag JOIN tag ON tag.chosenToSync AND (tag.name = cardTag.value
+            OR substr(cardTag.value, 1, length(tag.name) + 2) = tag.name || '::')))
     """
 }
 
@@ -289,7 +345,8 @@ func noteWhatSyncs(in db: Database) throws {
 /// Forgets, in the write `db`, the saves that wait to be sent of the rows that
 /// neither sync nor are in iCloud in full, as far as the device knows: they
 /// stay on the device. Their deletions waited only if they synced as they
-/// were deleted (`Schema`'s "v26 selective sync").
+/// were deleted (`Schema`'s "v26 selective sync", and "v27 tags inside tags"
+/// since).
 private func forgetChangesThatStayHere(in db: Database) throws {
     for table in SyncingTable.all {
         try db.execute(

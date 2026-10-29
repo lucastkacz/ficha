@@ -166,8 +166,8 @@ enum Schema {
             // What a tag has of its own (ADR 0011), one row per tag that has
             // something: a tag with nothing of its own has no row, and the
             // engine deletes a row once it has nothing left. Cards keep their
-            // tags in their own JSON column, and a tag is never renamed, so
-            // its name is the key.
+            // tags in their own JSON column, and a tag's name is the key: a
+            // rename moves its row ("v27 tags inside tags").
             try db.create(table: "tag") { table in
                 // Exactly as cards carry it.
                 table.primaryKey("name", .text)
@@ -993,6 +993,118 @@ enum Schema {
                     WHERE isOn AND engineState IS NULL AND lastSyncedAt IS NULL AND cardsZone IS NULL
                         AND EXISTS (SELECT 1 FROM card);
                     DELETE FROM syncPending WHERE NOT isDeletion AND NOT (SELECT isOn FROM syncDevice);
+                    """)
+        }
+        migrator.registerMigration("v27 tags inside tags") { db in
+            // A tag can sit inside another (ADR 0021): its name carries the
+            // tags it sits inside, `economía::Argentina`, as cards carry it,
+            // so the `tag` table keeps a row by that whole name. A tag can be
+            // renamed now, which moves it and the tags inside it: the engine
+            // deletes their rows and writes them again under their new names,
+            // which sync as a tag's rows do, and changes every card that
+            // carries them. Its name is still the key.
+            //
+            // A card syncs when every card does, or one of its tags, or a tag
+            // one of them sits inside, is chosen. The deletion triggers of
+            // "v26 selective sync", made again with that rule: a tag sits
+            // inside a chosen one when its name starts with the chosen one's
+            // and `::`, compared character by character, as `cardSyncs(tags:)`
+            // in `SelectiveSync.swift` does.
+            /// Whether the card whose tags are the JSON array `tags` syncs.
+            func cardSyncs(tags: String) -> String {
+                """
+                (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
+                    SELECT 1 FROM json_each(\(tags)) AS cardTag JOIN tag ON tag.chosenToSync AND (
+                        tag.name = cardTag.value OR substr(cardTag.value, 1, length(tag.name) + 2) = tag.name || '::')))
+                """
+            }
+            let synced = [
+                ("card", "card", cardSyncs(tags: "OLD.tags")),
+                (
+                    "reviewLog", "reviewLogEntry",
+                    "EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(tags: "card.tags")))"
+                ),
+                (
+                    "capture", "capture",
+                    """
+                    NOT EXISTS (
+                        SELECT 1 FROM card WHERE card.id IN (OLD.expandsCardId, OLD.followsUpCardId)
+                        AND NOT \(cardSyncs(tags: "card.tags")))
+                    """
+                ),
+            ]
+            for (table, type, rowSynced) in synced {
+                let forgetsFieldTimes =
+                    table == "reviewLog"
+                    ? "" : "DELETE FROM syncFieldTime WHERE recordType = '\(type)' AND recordName = OLD.uuid;"
+                try db.execute(
+                    sql: """
+                        DROP TRIGGER sync_\(table)_deleted;
+                        CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
+                        \(forgetsFieldTimes)
+                        DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = OLD.uuid;
+                        INSERT INTO syncPending (recordType, recordName, isDeletion)
+                        SELECT '\(type)', OLD.uuid, 1 WHERE (SELECT recordsChanges FROM syncWrite) AND \(rowSynced);
+                        END;
+                        """)
+            }
+        }
+        migrator.registerMigration("v28 card types of the user's own") { db in
+            // The card types the user makes, beside the four Ficha comes
+            // with (`UserType`): each with its ID unique across devices, as
+            // Foundation writes a UUID, which the engine gives it as it makes
+            // it, so that renaming it changes no card; its name, which the
+            // engine keeps unique, ignoring case and accents, as a type made
+            // offline on two devices may not be; and its emoji, or NULL for
+            // none. A card's type column, "type", keeps a type Ficha comes
+            // with by its raw value, as before, and a user type by its ID,
+            // which no raw value is, so every card keeps its type, and the
+            // card table, with its triggers, stays as it was. A card whose
+            // column names a user type this device doesn't hold, one that
+            // hasn't come from another device yet, or one deleted, has no
+            // type.
+            try db.create(table: "userType") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique()
+                table.column("name", .text).notNull().check(sql: "trim(name) <> ''")
+                table.column("emoji", .text)
+            }
+            // A user type syncs as a record of its own, "userType", as
+            // `SyncedRow` names it, whatever selective sync chooses, since it
+            // isn't a card (ADR 0020), each of its fields, "name" and "emoji"
+            // as `SyncedField` names them, keeping its latest change. Its
+            // triggers are a capture's written out: those of "v21 changes
+            // recorded to sync" as it comes in and changes, and that of "v24
+            // how sync stands" as it's deleted, which waits to be sent whether
+            // sync is on or not.
+            let changed = """
+                SELECT 'name' AS field WHERE OLD.name IS NOT NEW.name
+                UNION ALL SELECT 'emoji' AS field WHERE OLD.emoji IS NOT NEW.emoji
+                """
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            let isOn = "(SELECT isOn FROM syncDevice)"
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_userType_inserted AFTER INSERT ON userType WHEN \(recording) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'userType' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'userType', NEW.uuid, 0 WHERE \(isOn);
+                    END;
+                    CREATE TRIGGER sync_userType_updated AFTER UPDATE ON userType
+                    WHEN \(recording) AND (OLD.name IS NOT NEW.name OR OLD.emoji IS NOT NEW.emoji) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'userType', NEW.uuid, field, (SELECT at FROM syncWrite) FROM (\(changed)) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'userType' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'userType', NEW.uuid, 0 WHERE \(isOn);
+                    END;
+                    CREATE TRIGGER sync_userType_deleted AFTER DELETE ON userType BEGIN
+                    DELETE FROM syncFieldTime WHERE recordType = 'userType' AND recordName = OLD.uuid;
+                    DELETE FROM syncPending WHERE recordType = 'userType' AND recordName = OLD.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'userType', OLD.uuid, 1 WHERE \(recording);
+                    END;
                     """)
         }
         return migrator

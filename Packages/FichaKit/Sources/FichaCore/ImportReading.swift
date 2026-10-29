@@ -10,17 +10,33 @@ public struct ImportReading: Sendable, Equatable {
     public let cards: [ImportedCard]
     /// The lines that make no card, in the file's order.
     public let leftOut: [LeftOutLine]
+    /// Whether the file's `#columns` header names its Type column, as
+    /// Ficha's Export writes it, so that the column surely holds types: a
+    /// card's type by a name the user has no type of makes one then.
+    /// Without it, the column in the type's place may hold another field, as
+    /// Anki's Notes in Plain Text puts an Add Reverse field's "y" or an
+    /// Extra field's sentence there, so the import leaves such a card's line
+    /// out instead, saying why (`LeftOutLine.Reason.unknownType`).
+    public let typeColumnIsNamed: Bool
 
-    public init(cards: [ImportedCard], leftOut: [LeftOutLine]) {
+    public init(cards: [ImportedCard], leftOut: [LeftOutLine], typeColumnIsNamed: Bool = false) {
         self.cards = cards
         self.leftOut = leftOut
+        self.typeColumnIsNamed = typeColumnIsNamed
     }
 }
 
 /// A card a file holds, as its reader read it.
 public struct ImportedCard: Sendable, Equatable {
-    /// What the card holds, checked as every card is.
+    /// What the card holds, checked as every card is, with no type: the
+    /// type the file gives it is `typeName`.
     public let content: CardContent
+    /// The type the file gives the card, as it names it, which the import
+    /// finds among the four Ficha comes with, by its raw value, and the
+    /// user's types, by its name, or makes, in a file that names its Type
+    /// column (`ImportReading.typeColumnIsNamed`); or nil for none, as an
+    /// Anki card's, whose note type never becomes one.
+    public let typeName: String?
     /// Whether it goes both ways: a card that comes in new comes in so, but
     /// one way when an import that brings progress finds its back-first way
     /// alone suspended (`backFirstProgress`); and a card of the user's it
@@ -64,11 +80,13 @@ public struct ImportedCard: Sendable, Equatable {
     public let hasUnreadableSoundsLeftOut: Bool
 
     public init(
-        content: CardContent, bothWays: Bool = false, fields: Set<CardField>, line: Int, proposedTags: [String] = [],
+        content: CardContent, typeName: String? = nil, bothWays: Bool = false, fields: Set<CardField>, line: Int,
+        proposedTags: [String] = [],
         progress: ImportedProgress? = nil, backFirstProgress: ImportedProgress? = nil, hasImagesDropped: Bool = false,
         hasSoundsDropped: Bool = false, hasUnreadableSoundsLeftOut: Bool = false
     ) {
         self.content = content
+        self.typeName = typeName
         self.bothWays = bothWays
         self.fields = fields
         self.line = line
@@ -156,7 +174,10 @@ public struct LeftOutLine: Sendable, Equatable {
         case blankFront
         /// Its back is blank.
         case blankBack
-        /// Its type column holds this, which isn't a card type.
+        /// Its type column holds this, which names neither one of the four
+        /// types Ficha comes with nor a user type the user has, in a file
+        /// that doesn't name its Type column, which makes no type
+        /// (`ImportReading.typeColumnIsNamed`).
         case unknownType(String)
         /// A field it opens with a quote is never closed by another.
         case unclosedQuote

@@ -39,13 +39,15 @@ final class ExportingTests {
         return other
     }
 
+    // A tag inside another goes with `::`, as Anki writes it (ADR 0021).
     @Test(
-        "exported cards import back as the same cards, with their types, tags and sources, a tag with a space included")
+        "exported cards import back as the same cards, with their types, tags and sources, a tag with a space and one inside another included"
+    )
     func exportedCardsImportBackAsTheSameCards() async throws {
         let contents = [
             try card(
                 .word, front: "serendipia", back: "Un hallazgo valioso que se da por casualidad.",
-                tags: ["vocabulario", "ética africana"], source: "Un libro de Horace Walpole"),
+                tags: ["vocabulario", "filosofía::ética africana"], source: "Un libro de Horace Walpole"),
             try card(
                 .quote, front: "\"Pienso, luego existo.\"", back: "Descartes,\nen el Discurso del método.",
                 tags: ["filosofía"]),
@@ -183,6 +185,20 @@ final class ExportingTests {
             try await anotherFicha(importing: everything).cards().map(\.front) == [
                 "Revolución de Mayo", "Sócrates", "ubuntu", "Cabildo abierto", "Independencia",
             ])
+    }
+
+    // As the sidebar lists a parent's cards (ADR 0021).
+    @Test("exporting a tag's cards holds those of the tags inside it, with their whole names")
+    func exportingATagsCardsHoldsThoseOfTheTagsInsideIt() async throws {
+        try approveCard("inflación", tags: ["economía"])
+        try approveCard("cepo", tags: ["economía::Argentina"])
+        try approveCard("economista", tags: ["economíaX"])
+        let file = folder.appending(path: "economía.txt")
+
+        let count = try engine.export(.tag("economía"), to: file)
+
+        #expect(count == 2)
+        #expect(try await anotherFicha(importing: file).cards().map(\.tags) == [["economía"], ["economía::Argentina"]])
     }
 
     /// Approves a capture into one word card with this front and `tags`, and

@@ -228,6 +228,46 @@ final class SyncTabTests {
         #expect(tab.failure == nil)
     }
 
+    // The map is on Argentina's card and on banderas', and counts once in
+    // geografía. Argentina is ticked, then América, which it sits inside, so
+    // unticking Argentina changes nothing while América is, nor does Chile,
+    // never ticked, which syncs with América. historia::Roma is chosen while
+    // no card carries it, and historia isn't listed.
+    @Test(
+        "the tab lists the tags as a tree, a tag inside a chosen one as syncing, which can't be unticked, a parent's weight counting the tags inside it, and a tag whose parent isn't listed by its whole name"
+    )
+    func theTabListsTheTagsAsATree() throws {
+        let map = try heavyImage(weighing: 1_500_000, named: "a", in: mac.engine)
+        let flag = try heavyImage(weighing: 500_000, named: "b", in: mac.engine)
+        try mac.engine.create(
+            card(
+                nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía::América::Argentina"],
+                frontImage: map))
+        try mac.engine.create(
+            card(nil, front: "¿Cuál es su capital?", back: "Santiago.", tags: ["geografía::América::Chile"]))
+        try mac.engine.create(
+            card(
+                nil, front: "¿De qué país es?", back: "De la Argentina.", tags: ["geografía::banderas"],
+                frontImage: flag, backImage: map))
+        var tab = mac.engine.openSyncTab()
+        tab.syncOnlyChosenTags(true)
+
+        tab.choose("geografía::América::Argentina", true)
+        tab.choose("geografía::América", true)
+        tab.choose("historia::Roma", true)
+        tab.choose("geografía::América::Argentina", false)
+        tab.choose("geografía::América::Chile", false)
+
+        #expect(
+            tab.tagRows.map(\.title) == ["geografía", "América", "Argentina", "Chile", "banderas", "historia › Roma"])
+        #expect(tab.tagRows.map(\.level) == [0, 1, 2, 2, 1, 0])
+        #expect(tab.tagRows.map(\.tag.isTicked) == [false, true, true, true, false, true])
+        #expect(tab.tagRows.map(\.tag.canChoose) == [true, true, false, false, true, true])
+        #expect(tab.tagRows.map(\.tag.isChosen) == [false, true, true, false, false, true])
+        #expect(tab.tagRows.map(\.tag.weight) == [2_000_000, 1_500_000, 1_500_000, nil, 2_000_000, nil])
+        #expect(tab.failure == nil)
+    }
+
     @Test("while sync is off, the line counts only the files of the cards that sync")
     func theOffLineCountsOnlyTheCardsThatSync() throws {
         var tab = mac.engine.openSyncTab()

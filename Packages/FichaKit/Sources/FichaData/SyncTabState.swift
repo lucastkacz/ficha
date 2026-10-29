@@ -52,6 +52,24 @@ public struct SyncTabState: Sendable {
         case sendsCardsForTheFirstTime(onlyChosenTags: Bool)
     }
 
+    /// A row of the list of tags to choose from, as the tab shows it, in a
+    /// tree of tags inside tags (ADR 0021).
+    public struct TagRow: Sendable, Equatable, Identifiable {
+        /// The tag, with whether it's chosen, whether a tag it sits inside
+        /// is, and what its files weigh.
+        public let tag: TagToChoose
+        /// How many of the listed tags it sits inside, which indent it.
+        public let level: Int
+        /// What the row says: its last level, under its parent, or its whole
+        /// name, written with " › ", at the top, as in "historia › Roma" for
+        /// a chosen tag no card carries, whose parent isn't listed.
+        public let title: String
+
+        public var id: String {
+            tag.name
+        }
+    }
+
     /// Why turning the switch, or choosing which cards sync, failed, which
     /// the tab says until the user closes it.
     public struct Failure: Sendable, Equatable {
@@ -78,9 +96,9 @@ public struct SyncTabState: Sendable {
     /// Whether only the cards with a tag the user chose sync, rather than
     /// every card, as the choice under the switch shows it.
     public private(set) var onlyChosenTags: Bool
-    /// The tags the user can choose to sync, as the list under the choice
-    /// shows them while only the cards with a chosen tag sync, and none
-    /// otherwise: as `Engine.tagsToChooseFrom()` says.
+    /// The tags the user can choose to sync, as a tree, which the list under
+    /// the choice shows, in `tagRows`, while only the cards with a chosen tag
+    /// sync, and none otherwise: as `Engine.tagsToChooseFrom()` says.
     public private(set) var tags: [TagToChoose]
     /// Why turning the switch, or choosing, failed, while the tab says so.
     public private(set) var failure: Failure?
@@ -109,6 +127,22 @@ public struct SyncTabState: Sendable {
     /// switch.
     public var canChoose: Bool {
         canTurnSwitch
+    }
+
+    /// The rows of the list of tags to choose from, as the tab shows them:
+    /// each tag of `tags`, followed by the tags inside it, in the order the
+    /// tree lists them.
+    public var tagRows: [TagRow] {
+        Self.rows(of: tags, under: nil, level: 0)
+    }
+
+    /// The rows of `tags`, listed under the tag named `parent`, or at the
+    /// top when it's nil, each `level` tags in, and of the tags inside them.
+    private static func rows(of tags: [TagToChoose], under parent: String?, level: Int) -> [TagRow] {
+        tags.flatMap { tag in
+            [TagRow(tag: tag, level: level, title: TagPath.shown(tag.name, under: parent))]
+                + rows(of: tag.children, under: tag.name, level: level + 1)
+        }
     }
 
     /// Whether the menu says iCloud is full, with a line that opens the tab.
@@ -184,9 +218,10 @@ public struct SyncTabState: Sendable {
 
     /// Chooses the tag named `tag` to sync, or stops choosing it, as
     /// `chosen` says, as the user ticks or unticks it in the list, while they
-    /// can, or keeps why it couldn't.
+    /// can, or keeps why it couldn't. A tag inside a chosen tag syncs with it,
+    /// and its checkbox changes nothing meanwhile.
     public mutating func choose(_ tag: String, _ chosen: Bool) {
-        guard canChoose else { return }
+        guard canChoose, tagRows.first(where: { $0.id == tag })?.tag.canChoose != false else { return }
         let engine = engine
         change(.choosing) { () throws(EngineError) in try engine.chooseToSync(tag, chosen) }
     }

@@ -9,7 +9,9 @@ internal import GRDB
 /// capture, flag, burial or set-aside tags it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
-    /// Its type, or nil when it has none.
+    /// Its type, or nil when it has none, as when its user type was deleted,
+    /// or hasn't come from another device yet. The CLI prints its name as a
+    /// text file writes it (`CardType.writtenName`).
     public let type: CardType?
     /// The front's text, or empty when the front holds only an image or a
     /// sound.
@@ -42,9 +44,11 @@ public struct Card: Sendable, Equatable, Encodable {
     /// When Lucas buried it, while it's buried. Where the card stands is read
     /// from `standing`, never from this.
     public let buriedAt: Date?
-    /// Its tags that are set aside, in alphabetical order, flagged or buried
-    /// or not, or nil when none is. Where the card stands is read from
-    /// `standing`, never from this.
+    /// The set-aside tags it's set aside by, its own and the tags they sit
+    /// inside, as the user set them aside, economía and not
+    /// economía::Argentina, in alphabetical order, flagged or buried or not,
+    /// or nil when none is. Where the card stands is read from `standing`,
+    /// never from this.
     public let setAsideBy: [String]?
     /// Whether the user also reviews it back first, its back and then its
     /// front, as well as front first (ADR 0016). How it's reviewed, not what
@@ -52,7 +56,8 @@ public struct Card: Sendable, Equatable, Encodable {
     public let bothWays: Bool
 
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, buried, or set aside with one of its tags.
+    /// fixed, buried, or set aside with one of its tags, or a tag one of them
+    /// sits inside.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }
@@ -60,25 +65,20 @@ public struct Card: Sendable, Equatable, Encodable {
 
 extension Card {
     /// A card read from a row of the `card` table, whose tags are a JSON
-    /// array, when the tags in `setAsideTags` are set aside.
-    init(row: Row, setAsideTags: Set<String>) throws {
+    /// array, when the tags in `setAsideTags` are set aside, and the user's
+    /// types are `userTypes`.
+    init(row: Row, setAsideTags: Set<String>, userTypes: UserTypes) throws {
         let id: Int64 = try row.decode(forColumn: "id")
         self.id = id
-        let typeName: String? = try row.decode(forColumn: "type")
-        type = try typeName.map { typeName in
-            guard let type = CardType(rawValue: typeName) else {
-                throw unreadable("Card \(id) has an unknown type")
-            }
-            return type
-        }
+        let typeColumn: String? = try row.decode(forColumn: "type")
+        type = try typeColumn.flatMap { try CardType(column: $0, ofCard: id, among: userTypes) }
         front = try row.decode(forColumn: "front")
         back = try row.decode(forColumn: "back")
         frontImage = try fileName(in: row, column: ImageName.columns.front, ofCard: id)
         backImage = try fileName(in: row, column: ImageName.columns.back, ofCard: id)
         frontSound = try fileName(in: row, column: SoundName.columns.front, ofCard: id)
         backSound = try fileName(in: row, column: SoundName.columns.back, ofCard: id)
-        let tagsColumn: String = try row.decode(forColumn: "tags")
-        tags = try JSONDecoder().decode([String].self, from: Data(tagsColumn.utf8))
+        tags = try tagsFromJSON(try row.decode(forColumn: "tags"))
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
         editedAt = try row.decode(forColumn: "editedAt")
@@ -95,6 +95,12 @@ extension Card {
         let setAside = CardStanding.setAsideTags(of: tags, among: setAsideTags)
         setAsideBy = setAside.isEmpty ? nil : setAside
         bothWays = try row.decode(forColumn: "bothWays")
+    }
+
+    /// Whether it carries the tag `tag`, or a tag inside it, as choosing the
+    /// tag in the Cards window's sidebar lists it.
+    func hasTag(within tag: String) -> Bool {
+        tags.contains { TagPath.isTag($0, within: tag) }
     }
 
     /// The images on its sides, each once.
@@ -210,7 +216,8 @@ extension CardContent {
 /// which of its tags are set aside.
 func cards(in rows: [Row], in db: Database) throws -> [Card] {
     let setAside = try setAsideTags(in: db)
-    return try rows.map { try Card(row: $0, setAsideTags: setAside) }
+    let userTypes = try UserTypes(in: db)
+    return try rows.map { try Card(row: $0, setAsideTags: setAside, userTypes: userTypes) }
 }
 
 /// Every card, in the order Lucas approved them.
@@ -223,7 +230,7 @@ func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
     guard let row = try Table("card").filter(Column("id") == cardID).fetchOne(db) else {
         throw EngineError.cardNotFound(cardID)
     }
-    return try Card(row: row, setAsideTags: setAsideTags(in: db))
+    return try Card(row: row, setAsideTags: setAsideTags(in: db), userTypes: UserTypes(in: db))
 }
 
 /// Sets some of a card's columns, as `assignments` say, to `values` in
@@ -243,11 +250,18 @@ func updateCard(
 /// when its front or back last changed when either differs from before, a
 /// side's image or sound included; a change to its type, tags or source alone
 /// leaves that time as it was. Returns the card as it is then. Every change
-/// to a card's content goes through here, with content `CardContent` checked,
-/// as every new card goes through `insertCard`. An image or a sound the card
-/// no longer refers to stays where Ficha keeps it: the engine removes it once
-/// no card uses it.
+/// to a card's content made on this device goes through here, with content
+/// `CardContent` checked, as every new card goes through `insertCard`, but
+/// two that write one column of many cards at once: renaming a tag writes
+/// their tags (`RenamingTags.swift`), and deleting a user type clears their
+/// type (`forgetType`). Neither can make a card `CardContent` refuses, and
+/// going through here would clean up each card's other fields as
+/// `CardContent` does, changing what the user didn't touch, such as a tag
+/// stored before tags sat inside tags. An image or a sound the card no
+/// longer refers to stays where Ficha keeps it: the engine removes it once
+/// no card uses it. A user type deleted meanwhile is refused.
 func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
+    try checkExists(content.type, in: db)
     let before = try existingCard(cardID, in: db)
     return try updateCard(
         cardID,
@@ -256,7 +270,7 @@ func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, i
             source = ?, editedAt = ?
             """,
         to: [
-            content.type?.rawValue, content.front, content.back, content.frontImage?.rawValue,
+            content.type?.column, content.front, content.back, content.frontImage?.rawValue,
             content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
             try tagsJSON(content.tags), content.source, before.hasSides(of: content) ? before.editedAt : now,
         ],
@@ -289,7 +303,13 @@ func flaggedCardsWaiting(in db: Database) throws -> [Card] {
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which
-/// `Card(row:)` reads back.
+/// `tagsFromJSON(_:)` reads back.
 func tagsJSON(_ tags: [String]) throws -> String {
     String(decoding: try JSONEncoder().encode(tags), as: UTF8.self)
+}
+
+/// The tags `column`, a card's `tags` column, holds, as `tagsJSON(_:)` writes
+/// them.
+func tagsFromJSON(_ column: String) throws -> [String] {
+    try JSONDecoder().decode([String].self, from: Data(column.utf8))
 }

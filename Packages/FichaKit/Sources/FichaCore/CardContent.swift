@@ -8,9 +8,10 @@ import Foundation
 /// the back, holds text, an image, a sound, or any of them together, one image
 /// and one sound at most: an image or a sound Ficha already holds, by its
 /// name. It cleans the content up the same way each time: its type, if it has
-/// one, its sides' text, and its tags and source, without surrounding spaces
-/// or line breaks. A tag or source left blank is no tag or source, and a
-/// side's text left blank is none.
+/// one, its sides' text, and its source, without surrounding spaces or line
+/// breaks, and its tags as `TagPath.normalized(_:)` writes them, each level
+/// so, without the empty ones. A tag or source left blank is no tag or
+/// source, and a side's text left blank is none.
 public struct CardContent: Sendable, Equatable {
     /// Its type, or nil when it has none.
     public let type: CardType?
@@ -53,7 +54,7 @@ public struct CardContent: Sendable, Equatable {
         self.type = type
         self.front = nonBlank(front) ?? ""
         self.back = nonBlank(back) ?? ""
-        self.tags = tags.compactMap(nonBlank)
+        self.tags = tags.compactMap(TagPath.normalized)
         self.source = nonBlank(source)
         self.frontImage = frontImage
         self.backImage = backImage

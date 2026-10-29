@@ -6,7 +6,7 @@ internal import GRDB
 public enum CardsToExport: Sendable, Hashable {
     /// The cards with these ids: those the user selected.
     case cards(Set<Int64>)
-    /// Every card with this tag.
+    /// Every card with this tag, or a tag inside it.
     case tag(String)
     /// Every card.
     case all
@@ -17,7 +17,7 @@ public enum CardsToExport: Sendable, Hashable {
     fileprivate func takes(_ card: Card) -> Bool {
         switch self {
         case .cards(let ids): ids.contains(card.id)
-        case .tag(let tag): card.tags.contains(tag)
+        case .tag(let tag): card.hasTag(within: tag)
         case .all: true
         }
     }

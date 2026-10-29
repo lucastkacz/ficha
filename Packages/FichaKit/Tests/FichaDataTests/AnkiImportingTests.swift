@@ -475,9 +475,9 @@ final class AnkiImportingTests {
     }
 
     // Default, which every package has, names no subject, so it gives no
-    // tag, not even to the decks below it.
+    // tag, not even a level to the decks below it (ADR 0021).
     @Test(
-        "subdecks become one tag per part, Anki tags come as they are, an underscore as a space, and renamed or removed tags apply",
+        "a deck with levels becomes one tag with them all, Anki tags come as they are, an underscore as a space, and renamed or removed tags apply",
         arguments: schemas)
     func decksAndAnkiTagsBecomeTags(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -497,15 +497,16 @@ final class AnkiImportingTests {
             ])
         let preview = try await engine.previewImport(of: file("Medicina.apkg", package))
 
-        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Medicina": "medicina", "repaso": " "]))
+        try engine.importCards(
+            preview, choosing: ImportChoices(tagNames: ["Medicina::Anatomía": "medicina:: anatomía", "repaso": " "]))
 
         #expect(
             preview.proposedTags == [
-                "Medicina", "Anatomía", "repaso", "hueso largo", "Fisiología", "Medicina::Cardio", "Viejas",
+                "Medicina::Anatomía", "repaso", "hueso largo", "Medicina::Fisiología", "Medicina::Cardio", "Viejas",
             ])
         #expect(
             try engine.cards().map(\.tags) == [
-                ["medicina", "Anatomía", "hueso largo"], ["medicina", "Fisiología"], ["Medicina::Cardio"], ["Viejas"],
+                ["medicina::anatomía", "hueso largo"], ["Medicina::Fisiología"], ["Medicina::Cardio"], ["Viejas"],
             ])
     }
 

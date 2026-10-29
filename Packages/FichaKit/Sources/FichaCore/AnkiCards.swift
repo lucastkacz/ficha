@@ -15,9 +15,10 @@ extension AnkiCollection {
     /// such as `[$]x^2[/$]`, comes in as the picture Anki drew of it, found
     /// by its name, after the SHA-1 digest `sha1` gives of a text as
     /// lowercase hex, and as its LaTeX when the package lacks it or Ficha
-    /// can't read it, as a formula among text does. Each proposes a tag for
-    /// each level of its home deck's name, but Default's, and its note's
-    /// tags, an underscore in them standing for a space, and brings where it
+    /// can't read it, as a formula among text does. Each proposes one tag
+    /// for its home deck, its levels but Default's joined by `::` as a tag
+    /// inside a tag (ADR 0021), and its note's tags, an underscore in them
+    /// standing for a space, and brings where it
     /// stands in Anki, its due days as dates in `calendar`, the user's, for
     /// an import that brings progress. But the two cards of a note whose note
     /// type makes a reversed card, when both come in, make one card that
@@ -197,17 +198,21 @@ extension AnkiCollection {
         return fields
     }
 
-    /// The tags a card of `note` in the deck `deckID` proposes: one for each
-    /// level of the deck's name, without Default's levels, whose id is 1,
-    /// whatever its name, then the note's own, with an underscore standing
-    /// for a space, as in a text file Anki exports. Each comes once.
+    /// The tags a card of `note` in the deck `deckID` proposes: one for the
+    /// deck, its levels joined by `::` as a tag inside a tag (ADR 0021),
+    /// without Default's levels, whose id is 1, whatever its name, then the
+    /// note's own, `::` included, with an underscore standing for a space, as
+    /// in a text file Anki exports. Each comes once, its levels cleaned up as
+    /// a card's tags are.
     private func tags(of note: AnkiNote, inDeck deckID: Int64) -> [String] {
         var levels = decks[deckID]?.name[...] ?? []
         if let defaultDeck = decks[1], levels.starts(with: defaultDeck.name) {
             levels = levels.dropFirst(defaultDeck.name.count)
         }
-        let tags = levels + note.tags.map { $0.replacingOccurrences(of: "_", with: " ") }
-        return tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.uniqued()
+        let tags =
+            [levels.joined(separator: TagPath.separator)]
+            + note.tags.map { $0.replacingOccurrences(of: "_", with: " ") }
+        return tags.compactMap(TagPath.normalized).uniqued()
     }
 }
 
@@ -305,7 +310,7 @@ extension ImportedCard {
     /// for the back-first way.
     fileprivate func goingBothWays(with reversed: ImportedCard) -> ImportedCard {
         ImportedCard(
-            content: content, bothWays: true, fields: fields, line: line,
+            content: content, typeName: typeName, bothWays: true, fields: fields, line: line,
             proposedTags: (proposedTags + reversed.proposedTags).uniqued(), progress: progress,
             backFirstProgress: reversed.progress, hasImagesDropped: hasImagesDropped,
             hasSoundsDropped: hasSoundsDropped,

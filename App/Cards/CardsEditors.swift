@@ -26,6 +26,11 @@ struct CardEditor: View {
     /// Whether it goes both ways as Save would set it, which the window
     /// holds.
     let bothWays: Bool
+    /// Its type as Save would give it to it, or nil for None, which the
+    /// window holds.
+    let type: CardType?
+    /// The types its type picker offers, as the window offers them.
+    let types: [CardType]
     /// Whether Save is on: not while a sound converts.
     let canSave: Bool
     /// Whether Lucas is in the window's search field, which then keeps Return
@@ -39,12 +44,14 @@ struct CardEditor: View {
     let soundWell: (CardSide) -> SoundWell
     /// Turns Both ways on or off, as Save will set it.
     let setBothWays: (Bool) -> Void
+    /// Picks its type, or None when it's nil, as Save will give it to it.
+    let setType: (CardType?) -> Void
+    /// New Type… in its type picker.
+    let newType: () -> Void
     /// Saves the card with `content`, which ends the edit once it's saved.
     let save: (CardContent) -> Void
     /// Ends the edit without saving it.
     let cancel: () -> Void
-    /// The card's type, or nil for None.
-    @State private var type: CardType?
     @State private var front: String
     @State private var back: String
     /// The card's tags as the Tags field holds them, separated by commas.
@@ -62,12 +69,16 @@ struct CardEditor: View {
         shownImages: ShownImages,
         sounds: SideSounds,
         bothWays: Bool,
+        type: CardType?,
+        types: [CardType],
         canSave: Bool,
         isSearching: Bool,
         putImage: @escaping (DroppedImage, CardSide) -> Void,
         removeImage: @escaping (CardSide) -> Void,
         soundWell: @escaping (CardSide) -> SoundWell,
         setBothWays: @escaping (Bool) -> Void,
+        setType: @escaping (CardType?) -> Void,
+        newType: @escaping () -> Void,
         save: @escaping (CardContent) -> Void,
         cancel: @escaping () -> Void
     ) {
@@ -76,15 +87,18 @@ struct CardEditor: View {
         self.shownImages = shownImages
         self.sounds = sounds
         self.bothWays = bothWays
+        self.type = type
+        self.types = types
         self.canSave = canSave
         self.isSearching = isSearching
         self.putImage = putImage
         self.removeImage = removeImage
         self.soundWell = soundWell
         self.setBothWays = setBothWays
+        self.setType = setType
+        self.newType = newType
         self.save = save
         self.cancel = cancel
-        _type = State(initialValue: card.type)
         _front = State(initialValue: card.front)
         _back = State(initialValue: card.back)
         _tagsText = State(initialValue: CardContent.tagsField(of: card.tags))
@@ -114,7 +128,7 @@ struct CardEditor: View {
                 let label = Text(
                     "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
                 gridLabel(label)
-                CardTypePicker(type: $type, label: label)
+                CardTypePicker(type: type, types: types, label: label, choose: setType, newType: newType)
             }
             GridRow {
                 gridLabel(
@@ -162,7 +176,7 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Tags", text: $tagsText)
                     Text(
-                        "Separate tags with commas.",
+                        "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”.",
                         comment: "In the Cards window, under a card's tags, while Lucas edits it."
                     )
                     .font(.caption)

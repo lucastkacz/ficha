@@ -4,9 +4,10 @@ import SwiftUI
 /// The Sync tab of Settings, in an app that syncs (ADR 0017): "Sync with
 /// iCloud", and under it the status line, how sync stands and, while it's
 /// off, what turning it on does; then which cards sync, every one or only
-/// those with the tags the user ticks in a list, each with what its images
-/// and sounds weigh (ADR 0020). What the switch shows, the line says and the
-/// list holds, the model's `SyncTabState` decides.
+/// those with the tags the user ticks in a list, a tree of tags inside tags
+/// (ADR 0021), each with what its images and sounds weigh (ADR 0020). What
+/// the switch shows, the line says and the list holds, the model's
+/// `SyncTabState` decides.
 struct SyncTab: View {
     @Bindable var model: AppModel
 
@@ -98,8 +99,11 @@ struct SyncTab: View {
         }
     }
 
-    /// The list of tags to choose from, each with a checkbox and what the
-    /// images and sounds of its cards weigh, when they weigh anything.
+    /// The list of tags to choose from, as a tree, each row named and
+    /// indented as the state says, with a checkbox and what the images and
+    /// sounds of its cards, and of the cards of the tags inside it, weigh,
+    /// when they weigh anything. A tag inside a ticked tag shows ticked, since
+    /// it syncs with it, and its checkbox waits.
     private func tagsSection(_ sync: SyncTabState) -> some View {
         Section {
             if sync.tags.isEmpty {
@@ -109,14 +113,25 @@ struct SyncTab: View {
                 )
                 .foregroundStyle(.secondary)
             }
-            ForEach(sync.tags) { tag in
+            ForEach(sync.tagRows) { row in
+                let tag = row.tag
                 // In a stack, the checkbox comes before the name, as macOS lists
                 // them; a form's label would put it after.
                 HStack {
-                    Toggle(isOn: Binding(get: { tag.isChosen }, set: { model.sync?.choose(tag.name, $0) })) {
-                        Text(verbatim: tag.name)
+                    Toggle(isOn: Binding(get: { tag.isTicked }, set: { model.sync?.choose(tag.name, $0) })) {
+                        Text(verbatim: row.title)
                     }
                     .toggleStyle(.checkbox)
+                    .disabled(!tag.canChoose)
+                    .help(
+                        tag.canChoose
+                            ? Text(verbatim: "")
+                            : Text(
+                                "It syncs with the ticked tag it sits inside.",
+                                comment: """
+                                    Settings, under Sync: the tooltip of a tag's checkbox, ticked and waiting, inside a \
+                                    ticked tag.
+                                    """))
                     Spacer()
                     if let weight = tag.weight {
                         Text(weight.formatted(.byteCount(style: .file)))
@@ -124,6 +139,7 @@ struct SyncTab: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .padding(.leading, CGFloat(row.level) * 20)
                 .disabled(!sync.canChoose)
             }
         } header: {

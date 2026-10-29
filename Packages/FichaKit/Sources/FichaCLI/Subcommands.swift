@@ -122,9 +122,11 @@ struct CardsCommand: EngineCommand {
         discussion: """
             Every card says in "bothWays" whether it goes both ways, coming back first too, its back on top, once \
             you've met it; `ficha approve` and `ficha fix` set it. A flagged card has your note on what to fix in \
-            "flag", a buried one says when you buried it in "buriedAt", and one with tags you set aside in the \
-            Cards window lists them in "setAsideBy". A card leaves out "type", "source" or "captureID" when it has \
-            no type, no source, or didn't come from a capture. A card with an image or a sound on its front or back \
+            "flag", a buried one says when you buried it in "buriedAt", and one set aside lists in "setAsideBy" the \
+            tags you set aside in the Cards window that it's set aside by: its own, or tags its tags sit inside. A \
+            card's "type" is word, concept, quote or question, or a type \
+            of your own, by its name. A card leaves out "type", "source" or "captureID" when it has no type, no \
+            source, or didn't come from a capture. A card with an image or a sound on its front or back \
             names it in "frontImage", "backImage", "frontSound" or "backSound", left out when that side has none; a \
             side with only an image or a sound has an empty text. `ficha attach` puts one on a side and `ficha \
             detach` takes one off, and `ficha approve`, `ficha approve-expansion` and `ficha fix` take them too. A \

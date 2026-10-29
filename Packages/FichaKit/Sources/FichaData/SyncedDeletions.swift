@@ -12,7 +12,10 @@ internal import GRDB
 // device keeps waiting for a row that's gone, and iCloud keeps no review of a
 // card that's gone. A record iCloud no longer holds, which the device sent
 // as it changed its row, was deleted on another device: the row goes here
-// too. A tag is never deleted: one with nothing of its own is just a name.
+// too. A user type deleted on one device leaves its cards with no type on
+// the others, as on that one, and a card another device gave it before it
+// heard of the deletion has none either (`UserTypes.swift`). A tag is never
+// deleted: one with nothing of its own is just a name.
 
 extension Sync {
     /// Takes `deletions`, which other devices made, in one write that records
@@ -105,6 +108,7 @@ extension SyncedRow.RecordType {
         case .reviewLogEntry: 0
         case .card: 1
         case .capture: 2
+        case .userType: 3
         default: nil
         }
     }
@@ -141,6 +145,10 @@ private func receiveDeletion(of id: ICloudRecordID, type: String, at time: Date,
         try deleteCapture(deletedOnAnotherDevice: uuid, in: db)
     case .reviewLogEntry(let uuid):
         try db.execute(sql: "DELETE FROM reviewLog WHERE uuid = ?", arguments: [uuid.uuidString])
+    case .userType(let uuid):
+        // Its cards' change isn't sent: the deleting device sent its own.
+        try db.execute(sql: "DELETE FROM userType WHERE uuid = ?", arguments: [uuid.uuidString])
+        try forgetType(uuid, in: db)
     default:
         // A row that's never deleted for good (`deletionRank`).
         break

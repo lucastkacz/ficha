@@ -1,9 +1,10 @@
 import Foundation
 
 /// Where a card stands: in Lucas's reviews, waiting in the inbox to be fixed,
-/// buried, or set aside with one of its tags. Out of his reviews, it keeps
-/// its `LadderStanding`, so it comes back on its step when it's fixed,
-/// unburied, or its tags are no longer set aside.
+/// buried, or set aside with one of its tags, or a tag one of them sits
+/// inside (ADR 0021). Out of his reviews, it keeps its `LadderStanding`, so
+/// it comes back on its step when it's fixed, unburied, or its tags are no
+/// longer set aside.
 public enum CardStanding: Sendable, Equatable {
     /// In Lucas's reviews: new, or on a ladder step until it's due.
     case inReviews
@@ -13,8 +14,9 @@ public enum CardStanding: Sendable, Equatable {
     /// inbox. With the flag it had, if any, since unburying it brings it back
     /// to the inbox.
     case buried(at: Date, flag: Flag?)
-    /// Set aside by these tags of the card, in alphabetical order: out of
-    /// Lucas's reviews for now, while one of them is set aside (ADR 0011).
+    /// Set aside by these tags, the card's or tags they sit inside, as the
+    /// user set them aside, in alphabetical order: out of Lucas's reviews for
+    /// now, while one of them is set aside (ADR 0011, ADR 0021).
     case setAside(by: [String])
 }
 
@@ -37,12 +39,13 @@ extension CardStanding {
         }
     }
 
-    /// Which of a card's `tags` are set aside while the tags in
-    /// `setAsideTags` are, in alphabetical order as the Mac sorts text,
-    /// whether the card is buried, flagged or neither: when it's neither,
-    /// they set it aside.
+    /// Which of a card's `tags`, and of the tags they sit inside, are set
+    /// aside while the tags in `setAsideTags` are, in alphabetical order as
+    /// the Mac sorts text, whether the card is buried, flagged or neither:
+    /// when it's neither, they set it aside. A parent set aside is named as
+    /// the user set it aside, economía, not economía::Argentina.
     public static func setAsideTags(of tags: [String], among setAsideTags: Set<String>) -> [String] {
-        tags.filter(setAsideTags.contains).sortedAlphabetically()
+        TagPath.lineages(of: tags).filter(setAsideTags.contains).sortedAlphabetically()
     }
 }
 

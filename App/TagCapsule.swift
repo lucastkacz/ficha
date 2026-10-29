@@ -1,13 +1,15 @@
 import AppKit
+import FichaCore
 import FichaData
 import SwiftUI
 
 /// A tag as a small capsule, like the review panel's "New" and "Ahead"
-/// badges: its emoji before its name, tinted with its color, or gray like
-/// "Ahead" when it has none. The name always shows, so neither the color nor
-/// the emoji is the only cue. The Cards window's Tags column draws a card's
-/// tags with it, in a row, and the review panel draws them the same way after
-/// its badge.
+/// badges: its emoji before its whole name, as in "economía › Argentina",
+/// tinted with its color, or gray like "Ahead" when it has none, its own or
+/// else the tags' it sits inside. The name always shows, so neither the color
+/// nor the emoji is the only cue. The Cards window's Tags column draws a
+/// card's tags with it, in a row, and the review panel draws them the same
+/// way after its badge.
 struct TagCapsule: View {
     let tag: CardTag
     @Environment(\.colorScheme) private var colorScheme
@@ -27,21 +29,29 @@ struct TagCapsule: View {
     /// light mode, the tag's is a third darker, so that yellow and green
     /// read on the faint capsule; in dark mode, they read as they are.
     private var tint: AnyShapeStyle {
-        tag.color.map { AnyShapeStyle($0.color.mix(with: .black, by: colorScheme == .light ? 1 / 3 : 0)) }
+        tag.shownColor.map { AnyShapeStyle($0.color.mix(with: .black, by: colorScheme == .light ? 1 / 3 : 0)) }
             ?? AnyShapeStyle(.secondary)
     }
 
     /// The capsule's: the text's, faint.
     private var background: AnyShapeStyle {
-        tag.color.map { AnyShapeStyle($0.color.opacity(0.15)) } ?? AnyShapeStyle(.secondary.opacity(0.15))
+        tag.shownColor.map { AnyShapeStyle($0.color.opacity(0.15)) } ?? AnyShapeStyle(.secondary.opacity(0.15))
     }
 }
 
 extension CardTag {
-    /// How the tag is named wherever it shows: its emoji, when it has one,
-    /// before its name.
+    /// How the tag is named where it stands alone, as in a capsule or a
+    /// menu: its emoji, its own or else the tags' it sits inside, when it has
+    /// one, before its whole name, written with " › ", as in "economía ›
+    /// Argentina".
     var title: String {
-        emoji.map { "\($0) \(name)" } ?? name
+        title(shown: TagPath.shown(name))
+    }
+
+    /// How the tag is named when `shown` names it, as in a tree, by its last
+    /// level: its emoji, when it shows one, before `shown`.
+    func title(shown: String) -> String {
+        shownEmoji.map { "\($0) \(shown)" } ?? shown
     }
 }
 

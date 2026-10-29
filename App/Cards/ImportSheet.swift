@@ -119,21 +119,22 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// what Ficha reads, Copy Instructions for an AI copies how to write such a
 /// file, and Choose File… opens a text file of cards, a zip with one and its
 /// cards' images and sounds, or an Anki package. Then it shows what
-/// importing the file would do: how many cards come in, how many repeat the
-/// user's cards, with Update or Skip for them, which lines stay out and why,
-/// or for an Anki package, how many of its cards and why, how many of its
+/// importing the file would do: how many cards come in, the types they bring
+/// that the user doesn't have, which the import makes, by their names, how
+/// many repeat the user's cards, with Update or Skip for them, which lines
+/// stay out and why, or for an Anki package, how many of its cards and why,
+/// how many of its
 /// notes with a reversed card come in as one card that goes both ways (ADR
 /// 0016), how many come in with the first of several images or sounds on a
 /// side, and how many without a sound Ficha can't read, and the tags the
 /// cards get: for a text file, one named after the file, for every card;
-/// for an Anki package, one for each level of its decks and each of its
-/// tags. The user renames each, or clears it to leave it out. An Anki
-/// package's cards come in where Anki had them while Bring progress is
+/// for an Anki package, one for each of its decks, with all its levels, and
+/// each of its tags. The user renames each, or clears it to leave it out. An
+/// Anki package's cards come in where Anki had them while Bring progress is
 /// ticked (ADR 0013), and how many of them land on a step goes in the line
 /// under the title. Import imports them. While it reads the file or
-/// imports, it says so beside a
-/// spinner. A preview taller than the window scrolls between the title and
-/// the buttons. Last, it says what the import did. `CardsWindowState` holds
+/// imports, it says so beside a spinner. A preview taller than the window
+/// scrolls between the title and the buttons. Last, it says what the import did. `CardsWindowState` holds
 /// the preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
@@ -324,6 +325,16 @@ struct ImportSheet: View {
                     "\(preview.cardsWithUnreadableSoundsLeftOut) cards have a sound Ficha can't read, such as a damaged file, and come in without it.",
                     comment:
                         "In the Import sheet's preview of an Anki package, with how many of its cards come in without a sound Ficha can't read, since their side holds something else."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            if !importing.typesMade.isEmpty {
+                Text(
+                    "The cards bring new types: \(importing.typesMade.formatted(.list(type: .and))).",
+                    comment: """
+                        In the Import sheet's preview of a text file, with the names of the card types of the user's \
+                        own the import makes, as a list, since the user has no type by those names.
+                        """
                 )
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -524,13 +535,19 @@ struct ImportSheet: View {
                             .disabled(field.isLeftOut)
                             .help(
                                 Text(
-                                    "Leave Out “\(field.proposed)”",
-                                    comment: "The tooltip of the Import sheet's button that leaves out a tag.")
+                                    "Leave Out “\(TagPath.shown(field.proposed))”",
+                                    comment: """
+                                        The tooltip of the Import sheet's button that leaves out a tag, with the tag's \
+                                        whole name, like “Medicina › Anatomía”.
+                                        """)
                             )
                             .accessibilityLabel(
                                 Text(
-                                    "Leave Out “\(field.proposed)”",
-                                    comment: "The Import sheet's button that leaves out a tag, which shows a minus."))
+                                    "Leave Out “\(TagPath.shown(field.proposed))”",
+                                    comment: """
+                                        The Import sheet's button that leaves out a tag, which shows a minus, with the \
+                                        tag's whole name, like “Medicina › Anatomía”.
+                                        """))
                         }
                     }
                 }
@@ -607,8 +624,12 @@ struct ImportSheet: View {
                 localized: "Line \(number) has no back.", comment: "In the Import sheet, a line the file can't read.")
         case .unknownType(let type):
             String(
-                localized: "Line \(number) has the type “\(type)”, which isn't word, concept, quote or question.",
-                comment: "In the Import sheet, a line the file can't read, with the type it has.")
+                localized:
+                    "Line \(number) has the type “\(type)”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types.",
+                comment: """
+                    In the Import sheet, a line the file can't read, with the type it has, which names no card type \
+                    the user has, in a file without a #columns header that names its Type column.
+                    """)
         case .unclosedQuote:
             String(
                 localized: "Line \(number) opens a quote that nothing closes.",

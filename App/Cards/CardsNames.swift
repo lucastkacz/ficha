@@ -21,7 +21,7 @@ extension CardGroup {
         case .buried:
             String(localized: "Buried", comment: "An item of the Cards window's sidebar: the buried cards.")
         case .tag(let tag):
-            tag
+            TagPath.shown(tag)
         case .type(let type):
             type.pluralName
         case .noType:
@@ -62,8 +62,11 @@ extension CardGroup {
             String(localized: "No buried cards", comment: "In the Cards window: no card is buried.")
         case .tag(let tag):
             String(
-                localized: "No cards tagged \(tag)",
-                comment: "In the Cards window: no card that isn't buried has this tag anymore.")
+                localized: "No cards tagged \(TagPath.shown(tag))",
+                comment: """
+                    In the Cards window: no card that isn't buried has this tag, or a tag inside it, anymore, with \
+                    the tag's whole name, like “economía › Argentina”.
+                    """)
         case .type(.word):
             String(localized: "No words", comment: "In the Cards window: no word card that isn't buried.")
         case .type(.concept):
@@ -72,6 +75,11 @@ extension CardGroup {
             String(localized: "No quotes", comment: "In the Cards window: no quote card that isn't buried.")
         case .type(.question):
             String(localized: "No questions", comment: "In the Cards window: no question card that isn't buried.")
+        case .type(.user(let type)):
+            String(
+                localized: "No cards of the type \(type.name)",
+                comment:
+                    "In the Cards window: no card that isn't buried has this type of the user's own, with its name.")
         case .noType:
             String(
                 localized: "No cards without a type",
@@ -111,17 +119,29 @@ extension InboxRow.Item {
 
 extension CardType {
     /// The type's name, as the Cards window shows it, and as its table sorts
-    /// by it.
+    /// by it: one of the four's in the Mac's language, as the engine also
+    /// knows it (`CardType.builtInNames`), and a user type's as the user
+    /// wrote it.
     nonisolated var name: String {
         switch self {
         case .word: String(localized: "Word", comment: "A card type.")
         case .concept: String(localized: "Concept", comment: "A card type.")
         case .quote: String(localized: "Quote", comment: "A card type.")
         case .question: String(localized: "Question", comment: "A card type.")
+        case .user(let type): type.name
         }
     }
 
-    /// The type's cards, as the Cards window's sidebar names them.
+    /// The type's name where it stands alone, as in the Type column, the
+    /// detail and the type picker: a user type's emoji, when it has one,
+    /// before its name.
+    nonisolated var title: String {
+        guard let emoji = userType?.emoji else { return name }
+        return "\(emoji) \(name)"
+    }
+
+    /// The type's cards, as the Cards window's sidebar names them: a user
+    /// type's by its name, as the user wrote it.
     var pluralName: String {
         switch self {
         case .word: String(localized: "Words", comment: "An item of the Cards window's sidebar: the word cards.")
@@ -130,16 +150,19 @@ extension CardType {
         case .quote: String(localized: "Quotes", comment: "An item of the Cards window's sidebar: the quote cards.")
         case .question:
             String(localized: "Questions", comment: "An item of the Cards window's sidebar: the question cards.")
+        case .user(let type): type.name
         }
     }
 
-    /// The type's icon, in the Cards window's sidebar.
+    /// The type's icon, in the Cards window's sidebar, where a user type with
+    /// an emoji shows the emoji instead, and one without a plain square.
     var symbol: String {
         switch self {
         case .word: "textformat"
         case .concept: "lightbulb"
         case .quote: "quote.opening"
         case .question: "questionmark.bubble"
+        case .user: "square"
         }
     }
 }

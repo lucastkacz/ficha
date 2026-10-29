@@ -153,9 +153,11 @@ public enum CardGroup: Sendable, Hashable {
     case flagged
     /// Every buried card, flagged or not.
     case buried
-    /// The cards with this tag that aren't buried, set-aside ones too.
+    /// The cards with this tag, or a tag inside it, that aren't buried,
+    /// set-aside ones too.
     case tag(String)
-    /// The cards of this type that aren't buried.
+    /// The cards of this type that aren't buried: a user type's by its ID,
+    /// whatever its name now.
     case type(CardType)
     /// The cards with no type that aren't buried, which the sidebar offers
     /// only while there are some.
@@ -267,15 +269,17 @@ extension Engine {
         }
     }
 
-    /// The type groups the Cards window's sidebar lists: one for each card
-    /// type, in `CardType`'s order, and No Type after them while a card that
-    /// isn't buried has no type.
+    /// The type groups the Cards window's sidebar lists: one for each of the
+    /// four types Ficha comes with, in their order, then one for each of the
+    /// user's types, in alphabetical order, also while no card has it, and No
+    /// Type after them while a card that isn't buried has no type.
     func sidebarTypeGroups() throws(EngineError) -> [CardGroup] {
         try read { db in
             let someCardHasNoType = try allCards(in: db).contains { card in
                 card.type == nil && card.standing.isInAllCards
             }
-            return CardType.allCases.map(CardGroup.type) + (someCardHasNoType ? [.noType] : [])
+            let userTypes = try UserTypes(in: db).sorted.map(CardType.user)
+            return (CardType.builtIn + userTypes).map(CardGroup.type) + (someCardHasNoType ? [.noType] : [])
         }
     }
 
@@ -359,8 +363,8 @@ extension CardGroup {
             case .buried: true
             case .inReviews, .inInbox, .setAside: false
             }
-        case .tag(let tag): row.card.tags.contains(tag) && row.cardStanding.isInAllCards
-        case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
+        case .tag(let tag): row.card.hasTag(within: tag) && row.cardStanding.isInAllCards
+        case .type(let type): row.card.type?.isSameType(as: type) == true && row.cardStanding.isInAllCards
         case .noType: row.card.type == nil && row.cardStanding.isInAllCards
         }
     }
