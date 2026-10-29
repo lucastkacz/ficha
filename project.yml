@@ -313,11 +313,16 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         # Built into the app, never installed on its own.
         SKIP_INSTALL: YES
+      # Each configuration gives the extension its app's name as its display
+      # name, which App Store Connect's validation asked of it on the first
+      # upload (#357).
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev.widget
+          INFOPLIST_KEY_CFBundleDisplayName: Ficha Dev
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.widget
+          INFOPLIST_KEY_CFBundleDisplayName: Ficha
 
   # Ficha on the iPhone (#97), with files of its own in iPhone/. Stage 1
   # builds it only as Ficha Dev, in the Debug configuration, which its code
