@@ -155,10 +155,14 @@ targets:
       configs:
         # Ficha Dev runs in the App Sandbox, in its App Group, with the
         # hardened runtime, as the real Ficha will in the Mac App Store (ADR
-        # 0018). It reads the files the user picks in an open panel, as the
-        # import's, which the sandbox won't show without it, and holds no
-        # network entitlement: the SVG drawer below does. It syncs through
-        # iCloud, whose entitlements, and push's, are restricted: they need a
+        # 0018). It reads and writes the files the user picks in an open or a
+        # save panel, as the import's and Export's, which the sandbox won't
+        # show without that entitlement. It holds the camera entitlement only
+        # to read whether some app runs a camera, as in a meeting: without
+        # it, the sandbox hides a running camera. That reading never asks for
+        # permission (docs/app-review-notes.md). It holds no network
+        # entitlement: the SVG drawer below does. It syncs through iCloud,
+        # whose entitlements, and push's, are restricted: they need a
         # provisioning profile, which Xcode makes and keeps through Lucas's
         # account in Xcode, as automatic signing does. The real Ficha, signed
         # with the team too, holds its App Group alone, and takes them once it

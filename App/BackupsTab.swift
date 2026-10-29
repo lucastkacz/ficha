@@ -119,7 +119,7 @@ struct BackupsTab: View {
         twoLineRow {
             Text("Folder", comment: "Settings, under Backups: the folder the copies are in.")
         } detail: {
-            Text(verbatim: (folder.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath)
+            Text(verbatim: folder.path(abbreviatingHome: Self.homeFolder))
                 .textSelection(.enabled)
         } control: {
             Button {
@@ -128,6 +128,20 @@ struct BackupsTab: View {
                 Text("Show in Finder", comment: "Settings, under Backups: shows the Backups folder in Finder.")
             }
         }
+    }
+
+    /// The user's own home folder, `/Users/<name>`, which the folder's path
+    /// starts with a tilde for, rather than Foundation's, for the reason
+    /// `path(abbreviatingHome:)` gives. Reading it from the user database,
+    /// `getpwuid(getuid())`, isn't in Apple's documentation: it's Apple
+    /// staff's advice, from Quinn, of Apple's developer support (Apple's
+    /// developer forums, threads 107593 and 666634). Foundation's, as before,
+    /// when the user database doesn't say.
+    private static var homeFolder: URL {
+        guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else {
+            return .homeDirectory
+        }
+        return URL(fileURLWithFileSystemRepresentation: directory, isDirectory: true, relativeTo: nil)
     }
 
     /// When the last backup was saved, or why the last attempt failed, with
