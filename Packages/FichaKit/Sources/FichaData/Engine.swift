@@ -197,22 +197,24 @@ public struct Engine: Sendable {
     /// inbox and returns the cards.
     @discardableResult
     public func approve(_ captureID: Int64, into cards: [CardContent]) throws(EngineError) -> [Card] {
-        try approve(captureID, into: cards.map { ($0, false) })
+        try approve(captureID) { _ in cards.map { ($0, false) } }
     }
 
     /// Approves a capture into one or more cards, as `approve(_:into:)` does,
-    /// each going both ways when it says so, making `newTypes`, the user
-    /// types they name that the user doesn't have yet, in the same write.
+    /// into those `newCards` makes in the write that saves them, each going
+    /// both ways when it says so, or into none when it throws: as a refine
+    /// session's drafts find or make the user types they name in that write
+    /// (`CardTypesByName`).
     func approve(
-        _ captureID: Int64, into cards: [(content: CardContent, bothWays: Bool)], making newTypes: [UserType] = []
+        _ captureID: Int64, into newCards: (Database) throws -> [(content: CardContent, bothWays: Bool)]
     ) throws(EngineError) -> [Card] {
-        guard !cards.isEmpty else {
-            throw .noCards
-        }
         let createdAt = time.now
         return try write { db in
+            let cards = try newCards(db)
+            guard !cards.isEmpty else {
+                throw EngineError.noCards
+            }
             try takeOutOfInbox(captureID, at: createdAt, in: db)
-            try save(madeTypes: newTypes, in: db)
             for card in cards {
                 try insertCard(card.content, bothWays: card.bothWays, capturedAs: captureID, at: createdAt, in: db)
             }

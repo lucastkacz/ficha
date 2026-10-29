@@ -19,15 +19,6 @@ public enum CardType: Sendable, Hashable {
     /// The four types Ficha comes with, in their order.
     public static let builtIn: [CardType] = [.word, .concept, .quote, .question]
 
-    /// The type Ficha comes with whose raw value is `name`, ignoring case, or
-    /// nil when none is.
-    public init?(builtInNamed name: String) {
-        guard let type = Self.builtIn.first(where: { $0.builtInName == name.lowercased() }) else {
-            return nil
-        }
-        self = type
-    }
-
     /// The type as a text file of cards and the `ficha` CLI write it: a type
     /// Ficha comes with by its raw value, which never changes, as the
     /// database names it too, and a user type by its name.

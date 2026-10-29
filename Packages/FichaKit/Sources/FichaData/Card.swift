@@ -71,7 +71,7 @@ extension Card {
         let id: Int64 = try row.decode(forColumn: "id")
         self.id = id
         let typeColumn: String? = try row.decode(forColumn: "type")
-        type = try typeColumn.flatMap { try CardType(column: $0, among: userTypes) }
+        type = try typeColumn.flatMap { try CardType(column: $0, ofCard: id, among: userTypes) }
         front = try row.decode(forColumn: "front")
         back = try row.decode(forColumn: "back")
         frontImage = try fileName(in: row, column: ImageName.columns.front, ofCard: id)

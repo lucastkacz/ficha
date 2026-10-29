@@ -36,21 +36,19 @@ extension Engine {
     /// keeps when it changed. Returns the card.
     @discardableResult
     public func approveExpansion(_ captureID: Int64, into content: CardContent) throws(EngineError) -> Card {
-        try approveExpansion(captureID) { card in content.keepingFiles(of: card) }.approved
+        try approveExpansion(captureID) { card, _ in content.keepingFiles(of: card) }.approved
     }
 
     /// Approves an expansion in the inbox, as `approveExpansion(_:into:)`
-    /// does, with the content `newContent` makes of its card as it is, or
-    /// nothing when it throws. `newTypes`, the user types the content names
-    /// that the user doesn't have yet, come in the same write. Returns the
-    /// card before and after.
+    /// does, with the content `newContent` makes of its card as it is, in the
+    /// write that saves it, or nothing when it throws: as a refine session's
+    /// draft finds or makes the user type it names in that write
+    /// (`CardTypesByName`). Returns the card before and after.
     func approveExpansion(
-        _ captureID: Int64, making newTypes: [UserType] = [],
-        changingContentWith newContent: (Card) throws(EngineError) -> CardContent
+        _ captureID: Int64, changingContentWith newContent: (Card, Database) throws -> CardContent
     ) throws(EngineError) -> (before: Card, approved: Card) {
         let refinedAt = time.now
         return try write { db in
-            try save(madeTypes: newTypes, in: db)
             guard let cardID = try takeOutOfInbox(captureID, at: refinedAt, in: db).expandsCardID else {
                 throw EngineError.notAnExpansion(captureID)
             }
@@ -59,7 +57,7 @@ extension Engine {
             case .inReviews, .inInbox, .setAside: break
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            return (card, try replaceContent(of: cardID, with: newContent(card), at: refinedAt, in: db))
+            return (card, try replaceContent(of: cardID, with: newContent(card, db), at: refinedAt, in: db))
         }
     }
 }

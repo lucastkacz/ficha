@@ -212,21 +212,34 @@ final class UserTypesTests {
         #expect(try engine.userTypes().count == 3)
     }
 
-    @Test("a refine session's draft that fails makes no type")
+    // The capture left the inbox, as when the app discards it while the
+    // refine session drafts its cards: the approval fails in the write that
+    // would save the type with them.
+    @Test("a refine session's draft whose approval fails makes no type")
     func aFailedDraftMakesNoType() async throws {
         let capture = try engine.newCapture("química")
+        try engine.discard(capture.id)
 
-        await #expect(throws: EngineError.self) {
-            try await self.engine.approve(
-                capture.id,
-                into: [
-                    namedDraft("Elemento", front: "oxígeno", back: "O"),
-                    namedDraft("Elemento", front: "hierro", back: " "),
-                ])
+        await #expect(throws: EngineError.captureNotInInbox(capture.id)) {
+            try await self.engine.approve(capture.id, into: [namedDraft("Elemento", front: "oxígeno", back: "O")])
         }
 
         #expect(try engine.userTypes().isEmpty)
         #expect(try engine.cards().isEmpty)
+    }
+
+    @Test("an approved expansion's draft can name a type the user doesn't have, which it makes")
+    func anExpansionMakesAType() async throws {
+        let water = try engine.create(card(nil, front: "agua", back: "H₂O"))
+        let expansion = try engine.expand(text: "agua", note: "Es una fórmula", source: nil)
+
+        let approved = try await engine.approveExpansion(
+            expansion.id, into: namedDraft("Fórmula", front: "agua", back: "H₂O, dos de hidrógeno y uno de oxígeno."))
+
+        let formula = try #require(try engine.userTypes().first)
+        #expect(try engine.userTypes() == [UserType(id: formula.id, name: "Fórmula", emoji: nil)])
+        #expect(approved.id == water.id)
+        #expect(approved.type == .user(formula))
     }
 }
 

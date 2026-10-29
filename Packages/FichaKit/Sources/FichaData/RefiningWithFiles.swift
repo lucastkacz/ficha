@@ -104,17 +104,19 @@ extension Engine {
     @discardableResult
     public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
         var held = FilesComingIn()
-        var types = try read { db in try CardTypesByName(in: db) }
-        var cards: [(content: CardContent, bothWays: Bool)] = []
-        for (position, draft) in drafts.enumerated() {
-            let files = try await held.bringIn(draft, with: self)
-            let content = try draft.content(
-                of: draft.type.flatMap { types.type(named: $0) }, with: files.applied(to: nil),
-                orIfBlank: .blankSideOnNewCard(position: position))
-            cards.append((content, draft.bothWays ?? false))
+        var files: [DraftFiles] = []
+        for draft in drafts {
+            files.append(try await held.bringIn(draft, with: self))
         }
         return try keeping(held.files) { () throws(EngineError) in
-            try approve(captureID, into: cards, making: types.made)
+            try approve(captureID) { db in
+                try drafts.indices.map { position in
+                    let content = try drafts[position].content(
+                        in: db, with: files[position].applied(to: nil),
+                        orIfBlank: .blankSideOnNewCard(position: position))
+                    return (content, drafts[position].bothWays ?? false)
+                }
+            }
         }
     }
 
@@ -130,11 +132,9 @@ extension Engine {
     public func fix(_ cardID: Int64, with draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
-        var types = try read { db in try CardTypesByName(in: db) }
-        let type = draft.type.flatMap { types.type(named: $0) }
         let (before, fixed) = try keeping(held.files) { () throws(EngineError) in
-            try fix(cardID, bothWays: draft.bothWays, making: types.made) { card throws(EngineError) in
-                try draft.content(of: type, with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
+            try fix(cardID, bothWays: draft.bothWays) { card, db in
+                try draft.content(in: db, with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
             }
         }
         removeFilesNoCardUses(before: before, after: fixed)
@@ -149,11 +149,9 @@ extension Engine {
     public func approveExpansion(_ captureID: Int64, into draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
-        var types = try read { db in try CardTypesByName(in: db) }
-        let type = draft.type.flatMap { types.type(named: $0) }
         let (before, approved) = try keeping(held.files) { () throws(EngineError) in
-            try approveExpansion(captureID, making: types.made) { card throws(EngineError) in
-                try draft.content(of: type, with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
+            try approveExpansion(captureID) { card, db in
+                try draft.content(in: db, with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
             }
         }
         removeFilesNoCardUses(before: before, after: approved)
@@ -230,16 +228,21 @@ extension Card {
 }
 
 extension CardDraft {
-    /// What the draft holds as a card of `type`, the one its name stands for,
-    /// with `files` on its sides, or the error `blank` when a side is left
-    /// with neither text, an image nor a sound.
-    fileprivate func content(of type: CardType?, with files: SideFiles, orIfBlank blank: EngineError)
-        throws(EngineError) -> CardContent
+    /// What the draft holds as a card of the type its name stands for, with
+    /// `files` on its sides, or the error `blank` when a side is left with
+    /// neither text, an image nor a sound. It finds the type among the
+    /// user's types in the write `db`, which saves the card, or makes it
+    /// there (`CardTypesByName`), so that the name is unique as that write
+    /// saves it.
+    fileprivate func content(in db: Database, with files: SideFiles, orIfBlank blank: EngineError) throws
+        -> CardContent
     {
+        var types = try CardTypesByName(in: db)
         guard
             let content = CardContent(
-                type: type, front: front, back: back, tags: tags, source: source, frontImage: files.frontImage,
-                backImage: files.backImage, frontSound: files.frontSound, backSound: files.backSound)
+                type: try types.type(named: type, savingIn: db), front: front, back: back, tags: tags,
+                source: source, frontImage: files.frontImage, backImage: files.backImage,
+                frontSound: files.frontSound, backSound: files.backSound)
         else {
             throw blank
         }

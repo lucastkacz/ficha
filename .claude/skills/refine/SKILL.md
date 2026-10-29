@@ -60,7 +60,7 @@ Write each draft exactly as Lucas saw and approved it:
 | A file put on any other card | `ficha attach <card id> --front <file>`, or `--back` |
 | A file taken off any other card | `ficha detach <card id> --front image`, or `--back`, or `sound` |
 
-Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. A card whose file fields are left out keeps its images and sounds, and a side that holds only a file keeps its empty text; write a file field only as **Images and sounds** below says. A type of Lucas's own goes in `type` by its name; a name he has no type by makes one, so write a "(tipo nuevo)" only as he approved it.
+Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. A card whose file fields are left out keeps its images and sounds, and a side that holds only a file keeps its empty text; write a file field only as **Images and sounds** below says. The four go in `type` by their raw values, `word`, `concept`, `quote` or `question`, whatever name Lucas saw them by. A type of Lucas's own goes in `type` by its name; a name he has no type by makes one, so write a "(tipo nuevo)" only as he approved it.
 
 Both ways goes in `bothWays`: `true` on each card Lucas approved with Both ways, `false` when he approved switching it off, and left out everywhere else. Only `ficha approve` and `ficha fix` write it: to switch it on any other card, an expansion's included, send Lucas to the Cards window, which switches it for a card or a selection.
 

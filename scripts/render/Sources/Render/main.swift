@@ -31,11 +31,14 @@ enum Window: String {
     /// tool gives the sample, with its card on Parkinson's law selected, its
     /// sidebar scrolled to its end so that it shows its Types section.
     case cardsTypes = "cards-types"
-    /// The Cards window editing a sample card, with the New Type sheet that
-    /// New Type… in the editor's type picker opens, which the tool can't
-    /// open, over it. The sheet opens with the window, before its name field
-    /// can take the focus, which `--key tab` gives it.
+    /// The Cards window with the card form on a new card, and the New Type
+    /// sheet that New Type… in the form's type picker opens, which the tool
+    /// can't open, over it, the focus in its name field.
     case cardsNewType = "cards-new-type"
+    /// The Cards window editing a sample card, with the New Type sheet that
+    /// New Type… in the editor's type picker opens over it, the focus in its
+    /// name field.
+    case cardsNewTypeEditor = "cards-new-type-editor"
     /// The Cards window with its Import sheet showing the preview of a file,
     /// which the tool can't choose in the open panel.
     case cardsImport = "cards-import"
@@ -1112,7 +1115,7 @@ func model(for name: Window) throws -> AppModel {
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
         return try AppModel(engine: engine)
-    case .cardsTypes, .cardsNewType:
+    case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
         let engine = try sampleEngine(at: .inMemory).engine
         try giveSampleUserTypes(in: engine)
         return try AppModel(engine: engine)
@@ -1247,6 +1250,14 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: state)
         return window
     case .cardsNewType:
+        var state = model.openCardsWindow()
+        state.read(on: state.ladder)
+        state.openNewCardForm()
+        state.askForNewType(in: .form)
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsNewTypeEditor:
         var state = model.openCardsWindow()
         try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
         state.startEditing()

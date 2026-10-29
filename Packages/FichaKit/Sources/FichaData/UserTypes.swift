@@ -27,7 +27,7 @@ extension Engine {
         try write { db in
             let type = UserType(
                 id: UUID(), name: try checkedTypeName(name, among: UserTypes(in: db)), emoji: emoji?.text)
-            try save(madeTypes: [type], in: db)
+            try save(madeType: type, in: db)
             return type
         }
     }
@@ -145,7 +145,7 @@ func checkedTypeName(_ name: String, renaming renamed: UUID? = nil, among types:
     guard !name.isEmpty else {
         throw .blankTypeName
     }
-    guard !CardType.builtIn.flatMap(\.builtInNames).contains(where: { UserType.isSameName(name, as: $0) }) else {
+    guard CardType(builtInNamed: name) == nil else {
         throw .builtInTypeName(name)
     }
     if let taken = types.sorted.first(where: { $0.id != renamed && UserType.isSameName(name, as: $0.name) }) {
@@ -154,64 +154,69 @@ func checkedTypeName(_ name: String, renaming renamed: UUID? = nil, among types:
     return name
 }
 
-/// Saves `madeTypes`, user types just made, in the write `db`, as they are.
-func save(madeTypes: [UserType], in db: Database) throws {
-    for type in madeTypes {
-        try db.execute(
-            sql: "INSERT INTO userType (uuid, name, emoji) VALUES (?, ?, ?)",
-            arguments: [type.id.uuidString, type.name, type.emoji])
-    }
+/// Saves `madeType`, a user type just made, in the write `db`, as it is.
+func save(madeType type: UserType, in db: Database) throws {
+    try db.execute(
+        sql: "INSERT INTO userType (uuid, name, emoji) VALUES (?, ?, ?)",
+        arguments: [type.id.uuidString, type.name, type.emoji])
 }
 
 /// The card types the names a text file of cards or a refine session gives
-/// stand for, as an import and the `ficha` CLI read them: one of the four
-/// Ficha comes with, by its raw value or its name in the Mac's language,
-/// ignoring case; or the user type with that name, ignoring case and
-/// accents; or else a new user type with that name and no emoji, which
-/// `made` holds, for the write that saves its cards to make too.
+/// stand for, as an import and the `ficha` CLI read them, in the write that
+/// saves their cards: one of the four Ficha comes with
+/// (`CardType.init(builtInNamed:)`); or the user type with that name,
+/// ignoring case and accents; or else a new user type with that name and no
+/// emoji, which it saves in that write as it makes it, so that no other
+/// write makes one of the same name meanwhile, as
+/// `Engine.makeUserType(named:emoji:)` checks its name in the write that
+/// saves it.
 struct CardTypesByName {
     /// The user's types, in alphabetical order, and those made, after them.
     private var userTypes: [UserType]
-    /// The user types made for names no type had, in the order they were
-    /// made.
-    private(set) var made: [UserType] = []
 
-    /// The types the user has in `db` now.
+    /// The types the user has in the write `db` now.
     init(in db: Database) throws {
         userTypes = try UserTypes(in: db).sorted
     }
 
-    /// The type `name` stands for, as the struct says, or nil for a blank
-    /// name, which is no type. The same name twice stands for the same type,
-    /// a new one too.
-    mutating func type(named name: String) -> CardType? {
-        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else {
+    /// The type `name` stands for, as the struct says, with a user type
+    /// made for it saved in the write `db`, the one it was read in; or nil
+    /// for no name, or a blank one, which is no type. The same name twice
+    /// stands for the same type, a new one too.
+    mutating func type(named name: String?, savingIn db: Database) throws -> CardType? {
+        guard let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
             return nil
         }
-        if let builtIn = CardType.builtIn.first(where: {
-            $0.builtInNames.contains { UserType.isSameName(name, as: $0) }
-        }) {
+        if let builtIn = CardType(builtInNamed: name) {
             return builtIn
         }
         if let type = userTypes.first(where: { UserType.isSameName(name, as: $0.name) }) {
             return .user(type)
         }
         let type = UserType(id: UUID(), name: name, emoji: nil)
+        try save(madeType: type, in: db)
         userTypes.append(type)
-        made.append(type)
         return .user(type)
-    }
-
-    /// Saves the user types made since it last saved, in the write `db`, as
-    /// an import does before each card that has one.
-    mutating func saveMade(in db: Database) throws {
-        try save(madeTypes: made, in: db)
-        made = []
     }
 }
 
 extension CardType {
+    /// The type Ficha comes with that `name` names, by its raw value or its
+    /// name in the Mac's language (`builtInNames`), as
+    /// `UserType.isSameName(_:as:)` compares them, or nil when none does:
+    /// the one lookup of the four by name, as a file, a refine session or a
+    /// new user type's name gives it.
+    init?(builtInNamed name: String) {
+        guard
+            let type = CardType.builtIn.first(where: {
+                $0.builtInNames.contains { UserType.isSameName(name, as: $0) }
+            })
+        else {
+            return nil
+        }
+        self = type
+    }
+
     /// The names a type Ficha comes with goes by: its raw value, and its name
     /// in the Mac's language, as the app's `CardType.name` writes it, whose
     /// keys of the app's String Catalog these are; none for a user type.
@@ -236,16 +241,17 @@ extension CardType {
         }
     }
 
-    /// The type a card's type column, `column`, keeps, among `userTypes`, or
-    /// nil for a user type the device doesn't hold, which is no type; or an
-    /// error for what's neither a raw value nor an ID.
-    init?(column: String, among userTypes: UserTypes) throws {
+    /// The type the type column of the card with the id `cardID`, `column`,
+    /// keeps, among `userTypes`, or nil for a user type the device doesn't
+    /// hold, which is no type; or an error for what's neither a raw value
+    /// nor an ID.
+    init?(column: String, ofCard cardID: Int64, among userTypes: UserTypes) throws {
         if let type = CardType.builtIn.first(where: { $0.builtInName == column }) {
             self = type
             return
         }
         guard let id = UUID(uuidString: column) else {
-            throw unreadable("A card has an unknown type")
+            throw unreadable("Card \(cardID) has an unknown type")
         }
         guard let type = userTypes.type(id) else {
             return nil

@@ -72,7 +72,10 @@ struct NewTypeSheet: View {
         }
         .padding(20)
         .frame(width: 340)
-        .onAppear {
+        // Once the sheet is up, after the update that showed it: a field of
+        // the window that takes the focus in that update, as the editor's
+        // does as it opens, would take it from the sheet otherwise.
+        .task {
             isNameFocused = true
         }
         .failureAlert(failure)

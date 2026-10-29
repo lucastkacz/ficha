@@ -110,6 +110,35 @@ final class UserTypesSyncTests {
         #expect(try mac.engine.changesToSend().isEmpty)
     }
 
+    // The Mac held its cards before it ever synced, and goes offline after
+    // its first batch, as iCloud's engine sends in batches; the iPhone
+    // fetches then, and edits the card it got before the rest comes.
+    @Test("a first sync sends the types before the cards, so a card the other device edits early keeps its type")
+    func aFirstSyncSendsTheTypesFirst() async throws {
+        try mac.turnSyncOff()
+        let formula = try mac.engine.makeUserType(named: "Fórmula")
+        try mac.engine.create(card(.user(formula), front: "agua", back: "H₂O"))
+        try mac.engine.create(card(.user(formula), front: "sal", back: "NaCl"))
+        try mac.turnSyncOn()
+        let macsICloud = mac.iCloud
+        macsICloud.recordsPerBatch = 2
+        macsICloud.onceSaved { macsICloud.isOffline = true }
+        await #expect(throws: FakeICloudError.offline) { try await self.mac.syncNow() }
+        try await iPhone.syncNow()
+        time.advance(by: minutes(1))
+        for early in try iPhone.engine.cards() {
+            try iPhone.engine.edit(
+                early.id, with: card(early.type, front: early.front, back: "\(early.back), en una fórmula"))
+        }
+        macsICloud.isOffline = false
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.cards().map(\.type) == [.user(formula), .user(formula)])
+            #expect(try device.engine.card(fronted: "agua").back == "H₂O, en una fórmula")
+        }
+    }
+
     // Ley, made after the backup, goes; Fórmula takes back its name.
     @Test("a restore brings back the types of its copy on both devices, and drops those made since")
     func aRestoreBringsBackTheTypesOfItsCopy() async throws {

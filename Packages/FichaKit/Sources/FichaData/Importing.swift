@@ -377,7 +377,7 @@ extension Engine {
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
-                        let type = try types.type(of: card, savingIn: db)
+                        let type = try types.type(named: card.typeName, savingIn: db)
                         let cardID = try insertCard(
                             try card.content(as: type, adding: addedTags(card)),
                             bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
@@ -387,7 +387,7 @@ extension Engine {
                         }
                         added += 1
                     case (let repeated?, .update):
-                        let type = try types.type(of: card, savingIn: db)
+                        let type = try types.type(named: card.typeName, savingIn: db)
                         let updatedCard = try replaceContent(
                             of: repeated.id, with: try card.update(of: repeated, as: type, adding: addedTags(card)),
                             at: importedAt, in: db)
@@ -513,17 +513,6 @@ private func filesBrought(by cards: [ImportedCard], repeating repeated: [Card?])
     try zip(cards, repeated).map { card, repeated in
         let content = try repeated.map { try card.update(of: $0, as: nil, adding: []) } ?? card.content
         return Set(content.images.map(SyncedFile.init)).union(content.sounds.map(SyncedFile.init))
-    }
-}
-
-extension CardTypesByName {
-    /// The type `card`'s type's name stands for, or nil when it names none,
-    /// with a user type made for it saved in the write `db`, before the card
-    /// that has it.
-    fileprivate mutating func type(of card: ImportedCard, savingIn db: Database) throws -> CardType? {
-        let named = card.typeName.flatMap { self.type(named: $0) }
-        try saveMade(in: db)
-        return named
     }
 }
 

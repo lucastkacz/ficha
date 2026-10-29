@@ -4,7 +4,11 @@ import Foundation
 // The Cards window's tags, which sit inside tags (ADR 0021): the sidebar's
 // Tags section, a tree of the tags that aren't set aside, and its Set Aside
 // section, and renaming or moving a tag, with Rename… in its context menu or
-// by dragging it onto another tag or onto the Tags section's title.
+// by dragging it onto another tag or onto the Tags section's title. The
+// rename sheet that Rename… opens, whose entry and OK are here
+// (`RenameEntry`, `renameEntry(_:)` and `chooseNewName(_:)`), renames a card
+// type of the user's own too, as its menu in the sidebar asks
+// (`CardsWindowTypes.swift`).
 
 extension CardsWindowState {
     /// A tag as the sidebar lists it, in its Tags section or its Set Aside

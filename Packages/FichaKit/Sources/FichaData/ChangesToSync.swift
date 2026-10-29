@@ -315,7 +315,9 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
 /// its change before: as sync is turned on, or meets another iCloud account.
 /// A tag that had something of its own, and has nothing now, is sent too, so
 /// that the other devices take that it has nothing. The deletions that wait
-/// still do.
+/// still do. The user's card types go first: iCloud's engine sends in
+/// batches, and a device that fetches a card before its type reads it as one
+/// with no type, which an edit there would then keep.
 func recordEverythingToSend(in db: Database) throws {
     let (card, capture, entry, tag, userType) = (
         SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue,
@@ -325,6 +327,8 @@ func recordEverythingToSend(in db: Database) throws {
     try db.execute(
         sql: """
             DELETE FROM syncPending WHERE NOT isDeletion;
+            INSERT INTO syncPending (recordType, recordName, isDeletion)
+            SELECT '\(userType)', uuid, 0 FROM userType ORDER BY id;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT '\(card)', uuid, 0 FROM card ORDER BY id;
             INSERT INTO syncPending (recordType, recordName, isDeletion)
@@ -340,7 +344,5 @@ func recordEverythingToSend(in db: Database) throws {
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT 'syncChoice', 'syncChoice', 0 FROM syncChoice
             WHERE EXISTS (SELECT 1 FROM syncFieldTime WHERE recordType = 'syncChoice');
-            INSERT INTO syncPending (recordType, recordName, isDeletion)
-            SELECT '\(userType)', uuid, 0 FROM userType ORDER BY id;
             """)
 }
