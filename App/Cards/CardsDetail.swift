@@ -464,15 +464,16 @@ struct FlagAndBurial: View {
         }
     }
 
-    /// Which of the card's tags are set aside, which keep it out of Lucas's
-    /// reviews.
+    /// Which set-aside tags, the card's own or tags they sit inside, keep it
+    /// out of Lucas's reviews, each by its whole name.
     private func setAside(by tags: [String]) -> some View {
         Label {
             Text(
                 "Set aside with \(tags.map(TagPath.shown).formatted(.list(type: .and)))",
                 comment: """
-                    In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it \
-                    are set aside, like “Set aside with filosofía and historia”.
+                    In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags are set \
+                    aside, its own or tags they sit inside, each by its whole name, like “Set aside with filosofía and \
+                    economía › Argentina”.
                     """
             )
             .fixedSize(horizontal: false, vertical: true)
@@ -566,8 +567,8 @@ func dueText(_ way: WayProgress, at now: Date) -> String {
         return String(
             localized: "set aside",
             comment: """
-                In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags \
-                is set aside. Lowercase, like “now”.
+                In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags, \
+                or a tag one of them sits inside, is set aside. Lowercase, like “now”.
                 """)
     case .nothing:
         return ""

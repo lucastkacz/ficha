@@ -27,8 +27,8 @@ extension Engine {
             return name
         }
         try write { db in
-            try FichaData.renameTag(tag, to: name, onCardsIn: db)
-            try FichaData.renameTag(tag, to: name, inTagTableOf: db)
+            try moveCards(tagged: tag, to: name, in: db)
+            try moveRows(of: tag, to: name, in: db)
         }
         return name
     }
@@ -41,7 +41,7 @@ func checkedName(renaming tag: String, to newName: String) throws(EngineError) -
     guard let name = TagPath.normalized(newName) else {
         throw .blankTagName
     }
-    guard name == tag || !TagPath.isWithin(name, tag) else {
+    guard name == tag || !TagPath.isTag(name, within: tag) else {
         throw .tagInsideItself(tag)
     }
     return name
@@ -50,7 +50,7 @@ func checkedName(renaming tag: String, to newName: String) throws(EngineError) -
 /// Gives every card that carries `tag`, or a tag inside it, the new name
 /// `name`, each tag inside it moved along, in the write `db`: a card left
 /// with a tag twice carries it once, in the place of the first.
-private func renameTag(_ tag: String, to name: String, onCardsIn db: Database) throws {
+private func moveCards(tagged tag: String, to name: String, in db: Database) throws {
     for row in try Row.fetchAll(db, sql: "SELECT id, tags FROM card ORDER BY id") {
         let id: Int64 = try row.decode(forColumn: "id")
         let column: String = try row.decode(forColumn: "tags")
@@ -68,10 +68,10 @@ private func renameTag(_ tag: String, to name: String, onCardsIn db: Database) t
 /// name, which then stays as it was. The rows that move all go first, so that
 /// a row that moves onto the old name of another, as moving a tag onto the
 /// tag it sits inside can, never takes it for one that stays.
-private func renameTag(_ tag: String, to name: String, inTagTableOf db: Database) throws {
+private func moveRows(of tag: String, to name: String, in db: Database) throws {
     let names = try String.fetchAll(db, sql: "SELECT name FROM tag")
-    let moving = try names.filter { TagPath.isWithin($0, tag) }.map { try ownTag($0, in: db) }
-    let staying = Set(names.filter { !TagPath.isWithin($0, tag) })
+    let moving = try names.filter { TagPath.isTag($0, within: tag) }.map { try ownTag($0, in: db) }
+    let staying = Set(names.filter { !TagPath.isTag($0, within: tag) })
     for own in moving {
         try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [own.name])
     }
@@ -79,10 +79,6 @@ private func renameTag(_ tag: String, to name: String, inTagTableOf db: Database
         guard let newName = TagPath.renaming(own.name, from: tag, to: name), !staying.contains(newName) else {
             continue
         }
-        try save(
-            CardTag(
-                name: newName, switchedOn: own.switchedOn, color: own.color, emoji: own.emoji,
-                chosenToSync: own.chosenToSync),
-            in: db)
+        try save(own.named(newName), in: db)
     }
 }

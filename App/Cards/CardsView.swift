@@ -424,21 +424,24 @@ struct CardsView: View {
                 Section {
                     tagRows(state.tagsSection)
                 } header: {
-                    TagsTitle {
-                        state.dropOnTagsTitle($0)
-                    }
+                    // It takes a tag Lucas drops on it to the top.
+                    Text("Tags", comment: "A section of the Cards window's sidebar: the cards' tags.")
+                        .takingDroppedTags { state.dropOnTagsTitle($0) }
                 }
             }
             if !state.setAsideSection.isEmpty {
                 Section {
                     tagRows(state.setAsideSection)
                 } header: {
+                    // A key of its own, since a tag's menu says "Set Aside"
+                    // too, as a verb, which a translation may word apart.
                     Text(
-                        "Set Aside",
-                        comment: """
-                            A section of the Cards window's sidebar, below Tags: the tags set aside, whose cards are \
-                            out of Lucas's reviews for now.
-                            """)
+                        String(
+                            localized: "sidebar.set-aside-section", defaultValue: "Set Aside",
+                            comment: """
+                                A section of the Cards window's sidebar, below Tags: the tags set aside, whose cards \
+                                are out of Lucas's reviews for now.
+                                """))
                 }
             }
             Section {
@@ -478,8 +481,8 @@ struct CardsView: View {
         ForEach(tags) { tag in
             TagTreeRow(tag: tag, closedTags: $closedTags) { name in
                 tagMenu(for: name)
-            } drop: { dragged, target in
-                state.drop(dragged, onto: target)
+            } drop: { drop in
+                state.drop(drop.dragged, onto: drop.target)
             }
         }
     }
@@ -1172,9 +1175,8 @@ private struct TagTreeRow<MenuItems: View>: View {
     @Binding var closedTags: Set<String>
     /// The context menu of the tag with this name.
     let menu: (String) -> MenuItems
-    /// Drops the tag named by the first name on the tag named by the second,
-    /// and says whether it took the drop.
-    let drop: (String, String) -> Bool
+    /// Drops one tag on another, and says whether it took the drop.
+    let drop: (TagDrop) -> Bool
 
     var body: some View {
         if tag.children.isEmpty {
@@ -1192,7 +1194,7 @@ private struct TagTreeRow<MenuItems: View>: View {
 
     private var row: some View {
         TagRow(tag: tag) { dragged in
-            drop(dragged, tag.id)
+            drop(TagDrop(dragged: dragged, target: tag.id))
         }
         .tag(SidebarItem.cards(.tag(tag.id)))
         .contextMenu {
@@ -1214,17 +1216,23 @@ private struct TagTreeRow<MenuItems: View>: View {
     }
 }
 
+/// A tag Lucas drops on another in the sidebar, each by its whole name.
+private struct TagDrop {
+    /// The tag he drags.
+    let dragged: String
+    /// The tag he drops it on.
+    let target: String
+}
+
 /// A tag's row in the sidebar: its emoji, its own or else the tags' it sits
 /// inside, before its title, its last level in the tree or its whole name at
 /// the top of Set Aside, and the tag symbol, filled with its color, found the
 /// same way, when it has one. Its tooltip says its whole name. Lucas drags
-/// the row by its tag's whole name, and drops another tag on it, which the
-/// row highlights while he holds the tag over it.
+/// the row by its tag's whole name, and drops another tag on it.
 private struct TagRow: View {
     let tag: CardsWindowState.SidebarTag
-    /// Takes the dropped name, and says whether it took the drop.
+    /// Takes the dropped tag's name, and says whether it took the drop.
     let drop: (String) -> Bool
-    @State private var isTargeted = false
 
     var body: some View {
         Label {
@@ -1237,32 +1245,23 @@ private struct TagRow: View {
                 Image(systemName: "tag")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(.rect)
-        .background(
-            isTargeted ? AnyShapeStyle(.tint.opacity(0.3)) : AnyShapeStyle(.clear),
-            in: .rect(cornerRadius: 4)
-        )
+        .takingDroppedTags(drop)
         // Its whole name, which a narrow sidebar may cut short.
         .help(Text(verbatim: tag.tag.title))
         .draggable(tag.tag.name)
-        .dropDestination(for: String.self) { names, _ in
-            names.first.map(drop) ?? false
-        } isTargeted: {
-            isTargeted = $0
-        }
     }
 }
 
-/// The title of the sidebar's Tags section, which takes a tag Lucas drops on
-/// it to the top, and highlights while he holds a tag over it.
-private struct TagsTitle: View {
-    /// Takes the dropped name, and says whether it took the drop.
+/// Where Lucas drops a tag he drags in the sidebar, a tag's row or the Tags
+/// section's title: as wide as the sidebar, highlighted while he holds a tag
+/// over it.
+private struct DroppedTags: ViewModifier {
+    /// Takes the dropped tag's name, and says whether it took the drop.
     let drop: (String) -> Bool
     @State private var isTargeted = false
 
-    var body: some View {
-        Text("Tags", comment: "A section of the Cards window's sidebar: the cards' tags.")
+    func body(content: Content) -> some View {
+        content
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
             .background(
@@ -1286,6 +1285,12 @@ extension KeyEquivalent {
 }
 
 extension View {
+    /// The view as a place in the sidebar where Lucas drops a tag he drags,
+    /// which `drop` takes by its name, saying whether it took the drop.
+    fileprivate func takingDroppedTags(_ drop: @escaping (String) -> Bool) -> some View {
+        modifier(DroppedTags(drop: drop))
+    }
+
     /// The view, dimmed and taking no clicks while `isWaiting`: the sidebar
     /// and the table, while Lucas edits a card or a capture.
     fileprivate func waiting(while isWaiting: Bool) -> some View {

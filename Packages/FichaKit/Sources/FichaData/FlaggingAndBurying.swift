@@ -56,8 +56,9 @@ extension Engine {
 
     /// Unflags a flagged card in the inbox: its flag goes and its content
     /// stays, and it goes back to Lucas's reviews, on the step its review log
-    /// puts it on, unless one of its tags is set aside. The review panel's ⌘Z
-    /// unflags a card Lucas flagged there. Returns the card.
+    /// puts it on, unless one of its tags, or a tag one of them sits inside,
+    /// is set aside. The review panel's ⌘Z unflags a card Lucas flagged
+    /// there. Returns the card.
     @discardableResult
     public func unflag(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in

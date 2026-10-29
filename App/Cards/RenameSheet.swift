@@ -13,8 +13,9 @@ struct RenameSheet: View {
     let tag: CardTag
     /// What couldn't be saved, as the alert over the sheet says it.
     let failure: Binding<Failure?>
-    /// What OK makes of what the field holds.
-    let entry: (String) -> CardsWindowState.RenameEntry
+    /// What OK makes of what the field holds, or nil while the window asks
+    /// about no tag's name.
+    let entry: (String) -> CardsWindowState.RenameEntry?
     /// OK, with what the field holds.
     let choose: (String) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -22,7 +23,7 @@ struct RenameSheet: View {
     @FocusState private var fieldIsFocused: Bool
 
     init(
-        tag: CardTag, failure: Binding<Failure?>, entry: @escaping (String) -> CardsWindowState.RenameEntry,
+        tag: CardTag, failure: Binding<Failure?>, entry: @escaping (String) -> CardsWindowState.RenameEntry?,
         choose: @escaping (String) -> Void
     ) {
         self.tag = tag
@@ -88,7 +89,7 @@ struct RenameSheet: View {
 
     /// Why OK refuses what the field holds, while it does.
     private var refusal: EngineError? {
-        guard case .refused(let error) = entry(name) else { return nil }
+        guard case .refused(let error)? = entry(name) else { return nil }
         return error
     }
 

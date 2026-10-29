@@ -360,7 +360,7 @@ extension CardGroup {
             case .buried: true
             case .inReviews, .inInbox, .setAside: false
             }
-        case .tag(let tag): row.card.tags.contains { TagPath.isWithin($0, tag) } && row.cardStanding.isInAllCards
+        case .tag(let tag): row.card.hasTag(within: tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type == type && row.cardStanding.isInAllCards
         case .noType: row.card.type == nil && row.cardStanding.isInAllCards
         }

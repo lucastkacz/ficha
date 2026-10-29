@@ -106,7 +106,9 @@ struct TagsInsideTagsTests {
         let deuda = CardTag(name: "economía::Argentina::deuda", inheritedColor: .green, inheritedEmoji: "🇦🇷")
         #expect(try engine.sidebarTags() == [economia, argentina, deuda, CardTag(name: "lenguaje")])
         #expect(try engine.cardRows(in: .all, on: settings.ladder).map(\.tags) == [[deuda, CardTag(name: "lenguaje")]])
-        #expect((deuda.shownColor, deuda.shownEmoji) == (.green, "🇦🇷"))
+        let sidebar = try engine.sidebarTags()
+        #expect(sidebar.map(\.shownColor) == [.green, .green, .green, nil])
+        #expect(sidebar.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])
     }
 
     @Test(

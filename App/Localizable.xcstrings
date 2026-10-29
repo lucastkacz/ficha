@@ -1654,7 +1654,7 @@
       "comment" : "An item of the Cards window's sidebar: the learned cards."
     },
     "Leave Out “%@”" : {
-      "comment" : "The Import sheet's button that leaves out a tag, which shows a minus.\nThe tooltip of the Import sheet's button that leaves out a tag."
+      "comment" : "The Import sheet's button that leaves out a tag, which shows a minus, with the tag's whole name, like “Medicina › Anatomía”.\nThe tooltip of the Import sheet's button that leaves out a tag, with the tag's whole name, like “Medicina › Anatomía”."
     },
     "Left out" : {
       "comment" : "The Import sheet's field for a tag of an Anki package, empty: the cards don't get it."
@@ -1827,7 +1827,7 @@
       "comment" : "In the Cards window: no card is due now."
     },
     "No cards tagged %@" : {
-      "comment" : "In the Cards window: no card that isn't buried has this tag anymore."
+      "comment" : "In the Cards window: no card that isn't buried has this tag, or a tag inside it, anymore, with the tag's whole name, like “economía › Argentina”."
     },
     "No cards to review right now." : {
 
@@ -2099,13 +2099,13 @@
       "comment" : "In the Cards window's card form, under the tags.\nIn the Cards window, under a card's tags, while Lucas edits it."
     },
     "set aside" : {
-      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags is set aside. Lowercase, like “now”."
+      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags, or a tag one of them sits inside, is set aside. Lowercase, like “now”."
     },
     "Set Aside" : {
-      "comment" : "A section of the Cards window's sidebar, below Tags: the tags set aside, whose cards are out of Lucas's reviews for now.\nAn item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
+      "comment" : "An item of a tag's menu in the Cards window's sidebar, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
     },
     "Set aside with %@" : {
-      "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags of it are set aside, like “Set aside with filosofía and historia”."
+      "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags are set aside, its own or tags they sit inside, each by its whole name, like “Set aside with filosofía and economía › Argentina”."
     },
     "Settings…" : {
 
@@ -2121,6 +2121,18 @@
     },
     "Show in Finder" : {
       "comment" : "Settings, under Backups: shows the Backups folder in Finder."
+    },
+    "sidebar.set-aside-section" : {
+      "comment" : "A section of the Cards window's sidebar, below Tags: the tags set aside, whose cards are out of Lucas's reviews for now.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Set Aside"
+          }
+        }
+      }
     },
     "Size" : {
       "comment" : "Settings, under Backups: the column of what each copy weighs."

@@ -88,6 +88,43 @@ final class TagsInsideTagsSyncTests {
         #expect(cards.count == 2)
     }
 
+    // The Mac's keyboard writes í as one character, and text from elsewhere
+    // can write it as an i and an accent, which Swift takes for the same
+    // name and the database's SQL doesn't.
+    @Test("while only chosen tags sync, a tag whose accent is written apart syncs with the chosen tag it sits inside")
+    func aTagWithItsAccentWrittenApartSyncs() async throws {
+        try mac.engine.create(
+            card(
+                .concept, front: "cepo", back: "Un límite a la compra de dólares.",
+                tags: ["economi\u{301}a::Argentina"]))
+        try mac.engine.syncOnlyChosenTags(true)
+        try mac.engine.chooseToSync("econom\u{ED}a", true)
+        try await syncBoth()
+
+        #expect(try iPhone.engine.cards().map(\.front) == ["cepo"])
+    }
+
+    // cepo's tag is moved into economía on the Mac once economía is chosen,
+    // as dragging it there does.
+    @Test("while only chosen tags sync, a tag moved into a chosen parent takes its cards up to iCloud")
+    func aTagMovedIntoAChosenParent() async throws {
+        try mac.engine.create(
+            card(.concept, front: "cepo", back: "Un límite a la compra de dólares.", tags: ["Argentina"]))
+        try mac.engine.create(card(.concept, front: "inflación", back: "Suben los precios.", tags: ["economía"]))
+        try mac.engine.syncOnlyChosenTags(true)
+        try mac.engine.chooseToSync("economía", true)
+        try await syncBoth()
+        #expect(try iPhone.engine.cards().map(\.front) == ["inflación"])
+
+        time.advance(by: minutes(1))
+        try mac.engine.renameTag("Argentina", to: "economía::Argentina")
+        try await syncBoth()
+
+        #expect(try iPhone.engine.cards().map(\.front).sorted() == ["cepo", "inflación"])
+        #expect(try iPhone.engine.card(fronted: "cepo").tags == ["economía::Argentina"])
+        #expect(try mac.engine.changesToSend().isEmpty)
+    }
+
     // The deletion is recorded as the card goes, by the database's triggers,
     // with what syncs then.
     @Test("while only chosen tags sync, deleting a card of a tag inside a chosen tag deletes it on every device")

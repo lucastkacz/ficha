@@ -128,13 +128,11 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// cards get: for a text file, one named after the file, for every card;
 /// for an Anki package, one for each of its decks, with all its levels, and
 /// each of its tags. The user renames each, or clears it to leave it out. An
-/// Anki
-/// package's cards come in where Anki had them while Bring progress is
+/// Anki package's cards come in where Anki had them while Bring progress is
 /// ticked (ADR 0013), and how many of them land on a step goes in the line
 /// under the title. Import imports them. While it reads the file or
-/// imports, it says so beside a
-/// spinner. A preview taller than the window scrolls between the title and
-/// the buttons. Last, it says what the import did. `CardsWindowState` holds
+/// imports, it says so beside a spinner. A preview taller than the window
+/// scrolls between the title and the buttons. Last, it says what the import did. `CardsWindowState` holds
 /// the preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
@@ -525,13 +523,19 @@ struct ImportSheet: View {
                             .disabled(field.isLeftOut)
                             .help(
                                 Text(
-                                    "Leave Out “\(field.proposed)”",
-                                    comment: "The tooltip of the Import sheet's button that leaves out a tag.")
+                                    "Leave Out “\(TagPath.shown(field.proposed))”",
+                                    comment: """
+                                        The tooltip of the Import sheet's button that leaves out a tag, with the tag's \
+                                        whole name, like “Medicina › Anatomía”.
+                                        """)
                             )
                             .accessibilityLabel(
                                 Text(
-                                    "Leave Out “\(field.proposed)”",
-                                    comment: "The Import sheet's button that leaves out a tag, which shows a minus."))
+                                    "Leave Out “\(TagPath.shown(field.proposed))”",
+                                    comment: """
+                                        The Import sheet's button that leaves out a tag, which shows a minus, with the \
+                                        tag's whole name, like “Medicina › Anatomía”.
+                                        """))
                         }
                     }
                 }

@@ -17,7 +17,7 @@ public enum CardsToExport: Sendable, Hashable {
     fileprivate func takes(_ card: Card) -> Bool {
         switch self {
         case .cards(let ids): ids.contains(card.id)
-        case .tag(let tag): card.tags.contains { TagPath.isWithin($0, tag) }
+        case .tag(let tag): card.hasTag(within: tag)
         case .all: true
         }
     }

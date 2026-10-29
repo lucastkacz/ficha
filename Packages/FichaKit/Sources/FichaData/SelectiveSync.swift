@@ -221,7 +221,13 @@ struct WhatSyncs: Sendable, Equatable {
     }
 
     /// Whether a card with the tags `tags` syncs, as `cardSyncs(tags:)` says
-    /// in a database's SQL.
+    /// in a database's SQL of every tag written as `TagPath.normalized(_:)`
+    /// writes it, as every tag a card gets now is. A tag a card kept from
+    /// before tags sat inside tags (ADR 0021) can differ: one with an empty
+    /// level, or with spaces around one, sits inside no tag here, as the
+    /// sidebar lists it, and in SQL inside the tag its name starts with
+    /// before a `::`; and one with an accent written apart from its letter
+    /// is the same name as the accented letter's here, and another in SQL.
     func cardSyncs(tagged tags: [String]) -> Bool {
         !onlyChosenTags || !chosenTags.isDisjoint(with: TagPath.lineages(of: tags))
     }
@@ -232,7 +238,8 @@ struct WhatSyncs: Sendable, Equatable {
 /// chosen (ADR 0021). A tag sits inside a chosen one when its name starts with
 /// the chosen one's and `::`, compared character by character: never with
 /// LIKE, whose `_` and `%` match other characters and which ignores the case
-/// of ASCII letters. The deletion triggers of `Schema`'s "v27 tags inside
+/// of ASCII letters. Swift's twin, `WhatSyncs.cardSyncs(tagged:)`, says where
+/// the two differ. The deletion triggers of `Schema`'s "v27 tags inside
 /// tags" hold a copy, which a migration keeps as it was.
 func cardSyncs(tags: String) -> String {
     """

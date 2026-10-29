@@ -21,7 +21,7 @@ extension CardGroup {
         case .buried:
             String(localized: "Buried", comment: "An item of the Cards window's sidebar: the buried cards.")
         case .tag(let tag):
-            tag
+            TagPath.shown(tag)
         case .type(let type):
             type.pluralName
         case .noType:
@@ -62,8 +62,11 @@ extension CardGroup {
             String(localized: "No buried cards", comment: "In the Cards window: no card is buried.")
         case .tag(let tag):
             String(
-                localized: "No cards tagged \(tag)",
-                comment: "In the Cards window: no card that isn't buried has this tag anymore.")
+                localized: "No cards tagged \(TagPath.shown(tag))",
+                comment: """
+                    In the Cards window: no card that isn't buried has this tag, or a tag inside it, anymore, with \
+                    the tag's whole name, like “economía › Argentina”.
+                    """)
         case .type(.word):
             String(localized: "No words", comment: "In the Cards window: no word card that isn't buried.")
         case .type(.concept):

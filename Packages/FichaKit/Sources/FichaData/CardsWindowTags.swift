@@ -67,12 +67,10 @@ extension CardsWindowState {
     /// What OK in the rename sheet makes of `text`, what its field holds,
     /// for the tag the window asks about: the tag's new whole name, or a
     /// refusal of a blank name or one inside the tag itself, as the engine
-    /// refuses them.
-    public func renameEntry(_ text: String) -> RenameEntry {
+    /// refuses them; or nil while the window asks about no tag's name.
+    public func renameEntry(_ text: String) -> RenameEntry? {
+        guard case .rename(let tag) = question else { return nil }
         do throws(EngineError) {
-            guard case .rename(let tag) = question else {
-                throw .blankTagName
-            }
             return .name(try checkedName(renaming: tag.name, to: text))
         } catch {
             return .refused(error)
@@ -86,7 +84,7 @@ extension CardsWindowState {
     /// and goes on asking. While OK refuses `text`, it does nothing, and the
     /// sheet says why.
     public mutating func chooseNewName(_ text: String) {
-        guard case .rename(let tag) = question, case .name(let name) = renameEntry(text) else { return }
+        guard case .rename(let tag) = question, case .name(let name)? = renameEntry(text) else { return }
         if rename(tag.name, to: name, as: .rename(tag: tag.name)) {
             question = nil
         }
@@ -100,7 +98,7 @@ extension CardsWindowState {
     /// tag itself or a tag inside it, or when `tag` already sits right inside
     /// `target`; nor when the engine couldn't, which it records.
     public mutating func drop(_ tag: String, onto target: String) -> Bool {
-        guard tags.contains(where: { $0.name == target }), !TagPath.isWithin(target, tag) else {
+        guard tags.contains(where: { $0.name == target }), !TagPath.isTag(target, within: tag) else {
             return false
         }
         return move(tag, to: target + TagPath.separator + TagPath.lastLevel(of: tag))

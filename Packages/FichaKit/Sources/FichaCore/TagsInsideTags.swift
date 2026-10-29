@@ -18,18 +18,28 @@ public enum TagPath {
 
     /// `name` as a tag's name: its levels without the spaces and line breaks
     /// around them, and without the empty ones, so `economía:: Argentina` and
-    /// `economía::::Argentina` are `economía::Argentina`; or nil when no level
-    /// is left, as for a blank name.
+    /// `economía::::Argentina` are `economía::Argentina`, with each accented
+    /// letter as one character (Unicode's NFC), as the database compares
+    /// names, character by character; or nil when no level is left, as for a
+    /// blank name.
     public static func normalized(_ name: String) -> String? {
-        let levels = name.components(separatedBy: separator)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        return levels.isEmpty ? nil : levels.joined(separator: separator)
+        let levels = cleaned(name.components(separatedBy: separator))
+        return levels.isEmpty ? nil : levels.joined(separator: separator).precomposedStringWithCanonicalMapping
     }
 
-    /// The levels of the tag `name`, the outermost first.
+    /// The levels of the tag `name`, the outermost first. A name stored
+    /// before tags sat inside tags, with an empty level or spaces around one,
+    /// which `normalized(_:)` would change, is one level, whole: a tag at the
+    /// top that nothing sits inside, until it's renamed.
     public static func levels(of name: String) -> [String] {
-        name.components(separatedBy: separator)
+        let levels = name.components(separatedBy: separator)
+        return cleaned(levels) == levels ? levels : [name]
+    }
+
+    /// `levels` without the spaces and line breaks around each, and without
+    /// the empty ones.
+    private static func cleaned(_ levels: [String]) -> [String] {
+        levels.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
     }
 
     /// Its last level, which names it in a tree under its parent: Argentina
@@ -63,15 +73,15 @@ public enum TagPath {
     }
 
     /// Whether the tag `name` is `other`, or sits inside it at any depth.
-    public static func isWithin(_ name: String, _ other: String) -> Bool {
-        name == other || name.hasPrefix(other + separator)
+    public static func isTag(_ name: String, within other: String) -> Bool {
+        name == other || (name.hasPrefix(other + separator) && ancestors(of: name).contains(other))
     }
 
     /// The name of the tag `name` once the tag `old`, which it is or sits
     /// inside, is renamed `new`, as the tags inside a tag move along with
     /// it; or nil when `name` is neither `old` nor inside it.
     public static func renaming(_ name: String, from old: String, to new: String) -> String? {
-        guard isWithin(name, old) else {
+        guard isTag(name, within: old) else {
             return nil
         }
         return new + name.dropFirst(old.count)
@@ -91,7 +101,7 @@ public enum TagPath {
     /// name, as `shown(_:)` writes it, when `ancestor` is nil or `name`
     /// doesn't sit inside it.
     public static func shown(_ name: String, under ancestor: String?) -> String {
-        guard let ancestor, name != ancestor, isWithin(name, ancestor) else {
+        guard let ancestor, name != ancestor, isTag(name, within: ancestor) else {
             return shown(name)
         }
         return levels(of: name).dropFirst(levels(of: ancestor).count).joined(separator: shownSeparator)
@@ -102,16 +112,15 @@ public enum TagPath {
     /// and the tags at each level in alphabetical order as the Mac sorts
     /// text, so that children follow their parent.
     public static func sortedAsTree(_ names: some Sequence<String>) -> [String] {
-        Set(names).sorted(by: comesBefore)
+        Set(names).map { (name: $0, levels: levels(of: $0)) }.sorted { comesBefore($0.levels, $1.levels) }.map(\.name)
     }
 
-    /// Whether the tag `name` comes before `other` in a tree: level by
-    /// level, in alphabetical order as the Mac sorts text, a parent before
-    /// what sits inside it. Two levels the Mac sorts as one, such as
-    /// "Economía" and "economía", are told apart by their characters, so that
-    /// each one's children follow it.
-    private static func comesBefore(_ name: String, _ other: String) -> Bool {
-        let (levels, otherLevels) = (levels(of: name), levels(of: other))
+    /// Whether the tag with the levels `levels` comes before the one with
+    /// `otherLevels` in a tree: level by level, in alphabetical order as the
+    /// Mac sorts text, a parent before what sits inside it. Two levels the
+    /// Mac sorts as one, such as "Economía" and "economía", are told apart by
+    /// their characters, so that each one's children follow it.
+    private static func comesBefore(_ levels: [String], _ otherLevels: [String]) -> Bool {
         for (level, otherLevel) in zip(levels, otherLevels) where level != otherLevel {
             switch level.localizedStandardCompare(otherLevel) {
             case .orderedAscending: return true

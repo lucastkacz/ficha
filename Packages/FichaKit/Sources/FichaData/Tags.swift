@@ -89,6 +89,15 @@ public struct CardTag: Sendable, Hashable {
     var hasNothingOfItsOwn: Bool {
         switchedOn == nil && color == nil && emoji == nil && !chosenToSync
     }
+
+    /// The tag named `name` with what this one has of its own, its switch,
+    /// color, emoji and choice to sync, and with `inheritedColor` and
+    /// `inheritedEmoji`, which it takes from the tags it sits inside there.
+    func named(_ name: String, inheritedColor: TagColor? = nil, inheritedEmoji: String? = nil) -> CardTag {
+        CardTag(
+            name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync,
+            inheritedColor: inheritedColor, inheritedEmoji: inheritedEmoji)
+    }
 }
 
 extension Engine {
@@ -147,18 +156,10 @@ struct OwnTags: Sendable {
     /// when the `tag` table has no row for it, and the color and the emoji of
     /// the nearest tags it sits inside that have one.
     func tag(_ name: String) -> CardTag {
-        let own = byName[name] ?? CardTag(name: name)
         let ancestors = TagPath.ancestors(of: name).compactMap { byName[$0] }
-        return CardTag(
-            name: name, switchedOn: own.switchedOn, color: own.color, emoji: own.emoji,
-            chosenToSync: own.chosenToSync, inheritedColor: ancestors.lazy.compactMap(\.color).first,
+        return (byName[name] ?? CardTag(name: name)).named(
+            name, inheritedColor: ancestors.lazy.compactMap(\.color).first,
             inheritedEmoji: ancestors.lazy.compactMap(\.emoji).first)
-    }
-
-    /// Whether the tag with this name is set aside, on its own or as it sits
-    /// inside a tag that is.
-    func isSetAside(_ name: String) -> Bool {
-        TagPath.lineage(of: name).contains { byName[$0]?.isSetAside == true }
     }
 
     /// Every tag with `tagSwitch` on.

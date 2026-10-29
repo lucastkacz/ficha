@@ -320,6 +320,35 @@ final class DatabaseFileTests {
         }
     }
 
+    // Before tags sat inside tags, a card's tags lost only the spaces around
+    // the whole name (ADR 0021). Nothing rewrites them: a name with an empty
+    // level, or with spaces around one, is a tag at the top of its own, as
+    // it was, written whole, until Lucas renames it.
+    @Test(
+        "a database from before tags inside tags lists a tag with an empty level, or with spaces around one, whole, at the top"
+    )
+    func aDatabaseFromBeforeTagsInsideTagsListsUncleanTagsWhole() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeTagsInsideTags(
+            at: folder.appending(path: "Ficha.sqlite"),
+            tagging: [["::historia"], ["economía::"], ["economía :: Argentina"], ["economía::mundial"]], at: time.now)
+        let ladder = ReviewSettings.defaults.ladder
+
+        let engine = try Engine(location: .folder(folder), time: time)
+        var window = engine.openCardsWindow(on: ladder)
+        window.read(on: ladder)
+
+        #expect(
+            try engine.sidebarTags().map(\.name) == [
+                "::historia", "economía", "economía::mundial", "economía :: Argentina", "economía::",
+            ])
+        #expect(
+            window.tagsSection.flatMap { [$0.title] + $0.children.map { "  " + $0.title } } == [
+                "::historia", "economía", "  mundial", "economía :: Argentina", "economía::",
+            ])
+        #expect(try engine.cardRows(in: .tag("economía"), on: ladder).map(\.card.front) == ["economía::mundial"])
+    }
+
     // Ficha Dev's sample cards, and an agent's scratch run, load into a new
     // database, which then syncs them.
     @Test("a new database starts with sync on and every card syncing, the sample cards loaded into it too")
@@ -455,6 +484,27 @@ func saveDatabaseBeforeSelectiveSync(at file: URL, holdsCards: Bool, synced: Boo
         try db.execute(
             sql: "UPDATE syncDevice SET isOn = 1, engineState = ?",
             arguments: [synced ? Data("a state CKSyncEngine saved".utf8) : nil])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before tags sat inside tags,
+/// through the schema's migrations up to the one before them, with a card
+/// for each list of tags in `tags`, made at `time`, each tag as it's written
+/// there, and each card's front its tags, joined by commas.
+func saveDatabaseBeforeTagsInsideTags(at file: URL, tagging tags: [[String]], at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v26 selective sync")
+    try database.write { db in
+        for cardTags in tags {
+            try db.execute(
+                sql: "INSERT INTO card (type, front, back, tags, createdAt) VALUES ('word', ?, 'Un tema.', ?, ?)",
+                arguments: [
+                    cardTags.joined(separator: ", "),
+                    String(decoding: try JSONEncoder().encode(cardTags), as: UTF8.self),
+                    time,
+                ])
+        }
     }
     try database.close()
 }

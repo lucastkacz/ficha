@@ -42,9 +42,11 @@ public struct Card: Sendable, Equatable, Encodable {
     /// When Lucas buried it, while it's buried. Where the card stands is read
     /// from `standing`, never from this.
     public let buriedAt: Date?
-    /// Its tags that are set aside, in alphabetical order, flagged or buried
-    /// or not, or nil when none is. Where the card stands is read from
-    /// `standing`, never from this.
+    /// The set-aside tags it's set aside by, its own and the tags they sit
+    /// inside, as the user set them aside, economía and not
+    /// economía::Argentina, in alphabetical order, flagged or buried or not,
+    /// or nil when none is. Where the card stands is read from `standing`,
+    /// never from this.
     public let setAsideBy: [String]?
     /// Whether the user also reviews it back first, its back and then its
     /// front, as well as front first (ADR 0016). How it's reviewed, not what
@@ -96,6 +98,12 @@ extension Card {
         let setAside = CardStanding.setAsideTags(of: tags, among: setAsideTags)
         setAsideBy = setAside.isEmpty ? nil : setAside
         bothWays = try row.decode(forColumn: "bothWays")
+    }
+
+    /// Whether it carries the tag `tag`, or a tag inside it, as choosing the
+    /// tag in the Cards window's sidebar lists it.
+    func hasTag(within tag: String) -> Bool {
+        tags.contains { TagPath.isTag($0, within: tag) }
     }
 
     /// The images on its sides, each once.
