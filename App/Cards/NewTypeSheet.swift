@@ -2,6 +2,27 @@ import FichaCore
 import FichaData
 import SwiftUI
 
+extension View {
+    /// The New Type sheet over the view while the window `state` runs asks
+    /// for a new type for `picker`, the card form's type picker or the
+    /// editor's, with `failure` as the alert over it.
+    func newTypeSheet(
+        for picker: CardsWindowState.TypePicker, _ state: Binding<CardsWindowState>, failure: Binding<Failure?>
+    ) -> some View {
+        sheet(
+            isPresented: Binding(
+                get: { state.wrappedValue.question == .newType(picker) },
+                set: { if !$0 { state.wrappedValue.cancelQuestion() } })
+        ) {
+            NewTypeSheet(failure: failure) { name, emoji in
+                state.wrappedValue.newTypeEntry(name: name, emoji: emoji)
+            } choose: { name, emoji in
+                state.wrappedValue.chooseNewType(name: name, emoji: emoji)
+            }
+        }
+    }
+}
+
 /// The sheet New Type… in a card's type picker opens, in the card form or
 /// the editor, with a field for the new type's name and one for its emoji,
 /// which can stay empty. OK makes the type, which the picker then shows. It

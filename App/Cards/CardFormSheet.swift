@@ -163,16 +163,7 @@ private struct CardFormSheet: View {
                 isFrontFocused = true
             }
             .failureAlert(failure)
-            .sheet(
-                isPresented: Binding(
-                    get: { state.question == .newType(.form) }, set: { if !$0 { state.cancelQuestion() } })
-            ) {
-                NewTypeSheet(failure: newTypeFailure) { name, emoji in
-                    state.newTypeEntry(name: name, emoji: emoji)
-                } choose: { name, emoji in
-                    state.chooseNewType(name: name, emoji: emoji)
-                }
-            }
+            .newTypeSheet(for: .form, $state, failure: newTypeFailure)
         }
     }
 

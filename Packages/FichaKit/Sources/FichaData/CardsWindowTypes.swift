@@ -24,7 +24,7 @@ extension CardsWindowState {
     public enum NewTypeEntry: Sendable, Equatable {
         /// A name, without the spaces around it, and an emoji, or none, which
         /// OK makes the type with.
-        case type(name: String, emoji: TagEmoji?)
+        case type(name: String, emoji: Emoji?)
         /// A blank name, as the sheet opens, which keeps OK off, and which
         /// the sheet doesn't call a mistake.
         case blankName
@@ -178,7 +178,7 @@ extension CardsWindowState {
     /// Gives `type`, the user type the window asks about, `emoji`, or takes
     /// its emoji away when it's nil, and reads the cards again; or records
     /// why it couldn't. Whether it did.
-    mutating func setEmoji(_ emoji: TagEmoji?, of type: UserType) -> Bool {
+    mutating func setEmoji(_ emoji: Emoji?, of type: UserType) -> Bool {
         let done = perform(.setTypeEmoji(name: type.name)) { engine throws(EngineError) in
             try engine.setEmoji(emoji, ofUserType: type.id)
         }
@@ -191,31 +191,41 @@ extension CardsWindowState {
     /// `name`, a type's name the rename sheet or the New Type sheet holds, as
     /// OK takes it, for the user type with the ID `renamed` or a new one:
     /// without the spaces around it, or a refusal of a blank name, a name of
-    /// one of the four, or another user type's, as the engine refuses them.
+    /// one of the four, or another user type's, as the engine refuses them,
+    /// among the user's types as the window last read them, as a tag's name
+    /// is checked; the engine checks it again as it saves it.
     func typeNameEntry(_ name: String, renaming renamed: UUID? = nil) -> RenameEntry {
         do throws(EngineError) {
-            return .name(try engine.checkedUserTypeName(name, renaming: renamed))
+            return .name(try checkedTypeName(name, renaming: renamed, among: pickerTypes.compactMap(\.userType)))
         } catch {
             return .refused(error)
         }
     }
 
     /// Points what the window holds of a user type, the group the sidebar
-    /// chose, the card form's type and the editor's, at the type as it was
-    /// last read, renamed or given another emoji since, while the sidebar
-    /// lists it. A type gone from the sidebar, deleted, stays in the form and
-    /// the editor, where Save says so, and the sidebar goes back to All cards
-    /// (`read(on:)`).
+    /// chose, the type of the card form and of the one Show Card set aside,
+    /// and the editor's, at the type as it was last read, renamed or given
+    /// another emoji since, while the sidebar lists it. A type gone from the
+    /// sidebar, deleted, stays in the forms and the editor, where Save says
+    /// so, and the sidebar goes back to All cards (`read(on:)`).
     mutating func followUserTypes() {
         if case .cards(.type(.user(let type))) = sidebarItem, let listed = listedUserType(type.id) {
             sidebarItem = .cards(.type(.user(listed)))
         }
-        if case .user(let type)? = cardForm?.draft.type, let listed = listedUserType(type.id) {
-            cardForm?.draft.type = .user(listed)
+        if let type = cardForm?.draft.type.map(followed) {
+            cardForm?.draft.type = type
         }
-        if case .user(let type)? = editedType, let listed = listedUserType(type.id) {
-            editedType = .user(listed)
+        if let type = setAsideCardForm?.draft.type.map(followed) {
+            setAsideCardForm?.draft.type = type
         }
+        editedType = editedType.map(followed)
+    }
+
+    /// `type` as it was last read, when it's a user type the sidebar lists,
+    /// renamed or given another emoji since; as it is otherwise.
+    private func followed(_ type: CardType) -> CardType {
+        guard case .user(let userType) = type, let listed = listedUserType(userType.id) else { return type }
+        return .user(listed)
     }
 
     /// Whether the sidebar offers the type group of `type`, as last read: one
@@ -229,7 +239,7 @@ extension CardsWindowState {
 extension CardsWindowState.EmojiEntry {
     /// The emoji OK gives, or nil for none: for a removal, and a refusal,
     /// which gives nothing.
-    var emoji: TagEmoji? {
+    var emoji: Emoji? {
         guard case .emoji(let emoji) = self else { return nil }
         return emoji
     }

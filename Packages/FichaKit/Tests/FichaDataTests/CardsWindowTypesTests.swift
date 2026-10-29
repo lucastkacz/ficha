@@ -23,7 +23,7 @@ struct CardsWindowTypesTests {
     )
     func theTypesSectionsOrder() throws {
         let law = try engine.makeUserType(named: "Ley")
-        let date = try engine.makeUserType(named: "Efeméride", emoji: TagEmoji("📅"))
+        let date = try engine.makeUserType(named: "Efeméride", emoji: Emoji("📅"))
         let formula = try engine.makeUserType(named: "fórmula")
         try engine.create(card(.user(law), front: "gravedad", back: "Todo cae."))
         try engine.create(card(.user(formula), front: "agua", back: "H₂O"))
@@ -93,6 +93,28 @@ struct CardsWindowTypesTests {
         #expect(try engine.cards().map(\.type) == [.user(law)])
     }
 
+    @Test("a user type renamed while Show Card sets the card form aside is renamed in the form that comes back")
+    func aTypeRenamedWhileTheFormIsSetAside() throws {
+        let formula = try engine.makeUserType(named: "Fórmula")
+        try engine.create(card(nil, front: "agua", back: "H₂O"))
+        var window = openWindow()
+        window.openNewCardForm()
+        guard var draft = window.cardForm?.draft else { return }
+        draft.type = .user(formula)
+        draft.front.text = "agua"
+        window.changeDraft(draft)
+
+        window.showRepeatedCard()
+        window.askToRenameType(formula.id)
+        window.chooseNewName("Fórmula química")
+        window.openNewCardForm()
+
+        let renamed = UserType(id: formula.id, name: "Fórmula química", emoji: nil)
+        #expect(window.failure == nil)
+        #expect(window.cardForm?.draft.front.text == "agua")
+        #expect(window.cardForm?.draft.type == .user(renamed))
+    }
+
     @Test("New Type… in the editor makes the type, which the editor takes, and Save gives the card")
     func newTypeInTheEditor() throws {
         let water = try engine.create(card(.word, front: "agua", back: "H₂O"))
@@ -117,7 +139,7 @@ struct CardsWindowTypesTests {
         "Rename… and Emoji… in a user type's menu ask with its name and its emoji, refuse what the engine refuses, and OK changes them"
     )
     func renameAndEmojiOnAUserType() throws {
-        let formula = try engine.makeUserType(named: "Fórmula", emoji: TagEmoji("🧪"))
+        let formula = try engine.makeUserType(named: "Fórmula", emoji: Emoji("🧪"))
         try engine.makeUserType(named: "Ley")
         var window = openWindow()
 

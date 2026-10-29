@@ -97,8 +97,8 @@ struct TagsInsideTagsTests {
     func aTagShowsItsNearestParentsColorAndEmoji() throws {
         try approveCard("deuda", tags: ["economía::Argentina::deuda", "lenguaje"])
         try engine.setColor(.green, of: "economía")
-        try engine.setEmoji(TagEmoji("📈"), of: "economía")
-        try engine.setEmoji(TagEmoji("🇦🇷"), of: "economía::Argentina")
+        try engine.setEmoji(Emoji("📈"), of: "economía")
+        try engine.setEmoji(Emoji("🇦🇷"), of: "economía::Argentina")
 
         let economia = CardTag(name: "economía", color: .green, emoji: "📈")
         let argentina = CardTag(
@@ -119,7 +119,7 @@ struct TagsInsideTagsTests {
         try approveCard("ahorro", tags: ["economía"])
         try approveCard("deuda", tags: ["economía::Argentina::deuda"])
         try engine.setColor(.green, of: "economía")
-        try engine.setEmoji(TagEmoji("📈"), of: "economía")
+        try engine.setEmoji(Emoji("📈"), of: "economía")
         try engine.togglePriority(of: "economía")
         try engine.setAside("economía::Argentina")
         try engine.chooseToSync("economía::Argentina", true)
@@ -168,6 +168,47 @@ struct TagsInsideTagsTests {
             try engine.sidebarTags() == [
                 CardTag(name: "Argentina", switchedOn: .priority, color: .blue),
                 CardTag(name: "Argentina::deuda", inheritedColor: .blue),
+            ])
+    }
+
+    @Test(
+        "joining a tag onto one only cards carry keeps that one as it was, with nothing of its own, and so for each tag inside them"
+    )
+    func joiningOntoATagOnlyCardsCarryKeepsIt() throws {
+        try approveCard("Revolución de Mayo", tags: ["historia::Argentina", "historia::Roma"])
+        try approveCard("inflación", tags: ["economía", "economía::Argentina"])
+        try engine.setAside("historia")
+        try engine.setColor(.red, of: "historia")
+        try engine.setEmoji(Emoji("📜"), of: "historia")
+        try engine.chooseToSync("historia", true)
+        try engine.setColor(.green, of: "historia::Argentina")
+        try engine.setColor(.purple, of: "historia::Roma")
+
+        try engine.renameTag("historia", to: "economía")
+
+        #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews])
+        #expect(
+            try engine.sidebarTags() == [
+                CardTag(name: "economía"),
+                CardTag(name: "economía::Argentina"),
+                CardTag(name: "economía::Roma", color: .purple),
+            ])
+    }
+
+    @Test("joining a tag onto one that exists only as the parent of tags inside it keeps that parent as it was")
+    func joiningOntoAParentKeepsIt() throws {
+        try approveCard("inflación", tags: ["economía::Argentina"])
+        try approveCard("Revolución de Mayo", tags: ["historia"])
+        try engine.setAside("historia")
+        try engine.setEmoji(Emoji("📜"), of: "historia")
+
+        try engine.renameTag("historia", to: "economía")
+
+        #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews])
+        #expect(
+            try engine.sidebarTags() == [
+                CardTag(name: "economía"),
+                CardTag(name: "economía::Argentina"),
             ])
     }
 

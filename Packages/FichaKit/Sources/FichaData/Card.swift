@@ -78,8 +78,7 @@ extension Card {
         backImage = try fileName(in: row, column: ImageName.columns.back, ofCard: id)
         frontSound = try fileName(in: row, column: SoundName.columns.front, ofCard: id)
         backSound = try fileName(in: row, column: SoundName.columns.back, ofCard: id)
-        let tagsColumn: String = try row.decode(forColumn: "tags")
-        tags = try JSONDecoder().decode([String].self, from: Data(tagsColumn.utf8))
+        tags = try tagsFromJSON(try row.decode(forColumn: "tags"))
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
         editedAt = try row.decode(forColumn: "editedAt")
@@ -251,9 +250,15 @@ func updateCard(
 /// when its front or back last changed when either differs from before, a
 /// side's image or sound included; a change to its type, tags or source alone
 /// leaves that time as it was. Returns the card as it is then. Every change
-/// to a card's content goes through here, with content `CardContent` checked,
-/// as every new card goes through `insertCard`. An image or a sound the card
-/// no longer refers to stays where Ficha keeps it: the engine removes it once
+/// to a card's content made on this device goes through here, with content
+/// `CardContent` checked, as every new card goes through `insertCard`, but
+/// two that write one column of many cards at once: renaming a tag writes
+/// their tags (`RenamingTags.swift`), and deleting a user type clears their
+/// type (`forgetType`). Neither can make a card `CardContent` refuses, and
+/// going through here would clean up each card's other fields as
+/// `CardContent` does, changing what the user didn't touch, such as a tag
+/// stored before tags sat inside tags. An image or a sound the card no
+/// longer refers to stays where Ficha keeps it: the engine removes it once
 /// no card uses it. A user type deleted meanwhile is refused.
 func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
     try checkExists(content.type, in: db)
@@ -298,7 +303,13 @@ func flaggedCardsWaiting(in db: Database) throws -> [Card] {
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which
-/// `Card(row:)` reads back.
+/// `tagsFromJSON(_:)` reads back.
 func tagsJSON(_ tags: [String]) throws -> String {
     String(decoding: try JSONEncoder().encode(tags), as: UTF8.self)
+}
+
+/// The tags `column`, a card's `tags` column, holds, as `tagsJSON(_:)` writes
+/// them.
+func tagsFromJSON(_ column: String) throws -> [String] {
+    try JSONDecoder().decode([String].self, from: Data(column.utf8))
 }

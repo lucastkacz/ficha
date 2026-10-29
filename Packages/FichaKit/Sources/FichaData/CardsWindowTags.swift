@@ -5,10 +5,8 @@ import Foundation
 // Tags section, a tree of the tags that aren't set aside, and its Set Aside
 // section, and renaming or moving a tag, with Rename… in its context menu or
 // by dragging it onto another tag or onto the Tags section's title. The
-// rename sheet that Rename… opens, whose entry and OK are here
-// (`RenameEntry`, `renameEntry(_:)` and `chooseNewName(_:)`), renames a card
-// type of the user's own too, as its menu in the sidebar asks
-// (`CardsWindowTypes.swift`).
+// rename sheet that Rename… opens renames a card type of the user's own too,
+// so its entry and OK are with the emoji sheet's, in `CardsWindowState.swift`.
 
 extension CardsWindowState {
     /// A tag as the sidebar lists it, in its Tags section or its Set Aside
@@ -27,17 +25,6 @@ extension CardsWindowState {
         public var id: String {
             tag.name
         }
-    }
-
-    /// What OK in the rename sheet makes of what its field holds.
-    public enum RenameEntry: Sendable, Equatable {
-        /// The tag's new whole name, its levels cleaned up, or the type's
-        /// name, without the spaces around it.
-        case name(String)
-        /// A name OK refuses, and why, for the sheet to say: a blank one, or
-        /// one inside the tag itself; or a type's name of one of the four
-        /// Ficha comes with, or another user type's.
-        case refused(EngineError)
     }
 
     /// The sidebar's two sections out of `tags`, the tags it offers, in the
@@ -67,46 +54,18 @@ extension CardsWindowState {
     /// sheet, after Rename… in its context menu.
     public mutating func askToRename(_ tag: String) {
         guard let tag = tags.first(where: { $0.name == tag }) else { return }
-        question = .rename(tag)
+        question = .renameTag(tag)
     }
 
-    /// What OK in the rename sheet makes of `text`, what its field holds: for
-    /// the tag the window asks about, the tag's new whole name, or a refusal
-    /// of a blank name or one inside the tag itself; for the user type it
-    /// asks about, the type's name, or a refusal of a blank name, a name of
-    /// one of the four Ficha comes with, or another user type's; each as the
-    /// engine refuses them. Nil while the window asks about no name.
-    public func renameEntry(_ text: String) -> RenameEntry? {
-        switch question {
-        case .rename(let tag):
-            do throws(EngineError) {
-                return .name(try checkedName(renaming: tag.name, to: text))
-            } catch {
-                return .refused(error)
-            }
-        case .renameType(let type):
-            return typeNameEntry(text, renaming: type.id)
-        default:
-            return nil
-        }
-    }
-
-    /// Chooses OK in the rename sheet, whose field holds `text`: renames the
-    /// tag the window asks about, and every tag inside it, as
-    /// `Engine.renameTag(_:to:)` does, or the user type it asks about, and
-    /// reads the cards again, the sidebar following the tag or the type it
-    /// chose to its new name; or records why it couldn't and goes on asking.
-    /// While OK refuses `text`, it does nothing, and the sheet says why.
-    public mutating func chooseNewName(_ text: String) {
-        guard case .name(let name)? = renameEntry(text) else { return }
-        let done: Bool
-        switch question {
-        case .rename(let tag): done = rename(tag.name, to: name, as: .rename(tag: tag.name))
-        case .renameType(let type): done = renameType(type, to: name)
-        default: return
-        }
-        if done {
-            question = nil
+    /// `text`, what the rename sheet's field holds for the tag `tag`, as OK
+    /// takes it: the tag's new whole name, its levels cleaned up, or a
+    /// refusal of a blank name or one inside the tag itself, as the engine
+    /// refuses them.
+    func tagNameEntry(_ text: String, renaming tag: String) -> RenameEntry {
+        do throws(EngineError) {
+            return .name(try checkedTagName(renaming: tag, to: text))
+        } catch {
+            return .refused(error)
         }
     }
 
@@ -140,14 +99,14 @@ extension CardsWindowState {
         guard tags.contains(where: { $0.name == tag }), name != tag else {
             return false
         }
-        return rename(tag, to: name, as: .move(tag: tag))
+        return renameTag(tag, to: name, as: .move(tag: tag))
     }
 
     /// Renames the tag `tag` to `name`, and every tag inside it, for
     /// `action`, and reads the cards again, the sidebar following the tag it
     /// chose, when it's `tag` or inside it, to its new name; or records why
     /// it couldn't. Whether it did.
-    private mutating func rename(_ tag: String, to name: String, as action: FailedAction) -> Bool {
+    mutating func renameTag(_ tag: String, to name: String, as action: FailedAction) -> Bool {
         var renamed = name
         let done = perform(action) { engine throws(EngineError) in
             renamed = try engine.renameTag(tag, to: name)

@@ -119,9 +119,11 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// what Ficha reads, Copy Instructions for an AI copies how to write such a
 /// file, and Choose File… opens a text file of cards, a zip with one and its
 /// cards' images and sounds, or an Anki package. Then it shows what
-/// importing the file would do: how many cards come in, how many repeat the
-/// user's cards, with Update or Skip for them, which lines stay out and why,
-/// or for an Anki package, how many of its cards and why, how many of its
+/// importing the file would do: how many cards come in, the types they bring
+/// that the user doesn't have, which the import makes, by their names, how
+/// many repeat the user's cards, with Update or Skip for them, which lines
+/// stay out and why, or for an Anki package, how many of its cards and why,
+/// how many of its
 /// notes with a reversed card come in as one card that goes both ways (ADR
 /// 0016), how many come in with the first of several images or sounds on a
 /// side, and how many without a sound Ficha can't read, and the tags the
@@ -323,6 +325,16 @@ struct ImportSheet: View {
                     "\(preview.cardsWithUnreadableSoundsLeftOut) cards have a sound Ficha can't read, such as a damaged file, and come in without it.",
                     comment:
                         "In the Import sheet's preview of an Anki package, with how many of its cards come in without a sound Ficha can't read, since their side holds something else."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            if !importing.typesMade.isEmpty {
+                Text(
+                    "The cards bring new types: \(importing.typesMade.formatted(.list(type: .and))).",
+                    comment: """
+                        In the Import sheet's preview of a text file, with the names of the card types of the user's \
+                        own the import makes, as a list, since the user has no type by those names.
+                        """
                 )
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -610,6 +622,14 @@ struct ImportSheet: View {
         case .blankBack:
             String(
                 localized: "Line \(number) has no back.", comment: "In the Import sheet, a line the file can't read.")
+        case .unknownType(let type):
+            String(
+                localized:
+                    "Line \(number) has the type “\(type)”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types.",
+                comment: """
+                    In the Import sheet, a line the file can't read, with the type it has, which names no card type \
+                    the user has, in a file without a #columns header that names its Type column.
+                    """)
         case .unclosedQuote:
             String(
                 localized: "Line \(number) opens a quote that nothing closes.",
@@ -678,8 +698,8 @@ struct ImportSheet: View {
             String(
                 localized: "\(count) cards have a template with a mistake, so Anki shows an error for them too.",
                 comment: "In the Import sheet, the cards of an Anki package that make none, with how many.")
-        case .oneColumn, .blankFront, .blankBack, .unclosedQuote, .strayQuote, .missingImage, .notAnImage,
-            .missingSound, .notASound:
+        case .oneColumn, .blankFront, .blankBack, .unknownType, .unclosedQuote, .strayQuote, .missingImage,
+            .notAnImage, .missingSound, .notASound:
             nil
         }
     }

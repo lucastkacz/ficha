@@ -22,9 +22,9 @@ struct TagColorAndEmojiTests {
         try approveCard("fotosíntesis", tags: ["ciencia", "lenguaje"])
 
         try engine.setColor(.green, of: "ciencia")
-        try engine.setEmoji(TagEmoji("🇦🇷"), of: "argentina")
+        try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
         try engine.setColor(.blue, of: "historia")
-        try engine.setEmoji(TagEmoji("📜"), of: "historia")
+        try engine.setEmoji(Emoji("📜"), of: "historia")
 
         let argentina = CardTag(name: "argentina", emoji: "🇦🇷")
         let ciencia = CardTag(name: "ciencia", color: .green)
@@ -39,10 +39,10 @@ struct TagColorAndEmojiTests {
     @Test("the Prioritize submenu's read carries each tag's emoji and color, also a priority tag's")
     func thePrioritizeSubmenusReadCarriesEachTagsEmoji() throws {
         try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
-        try engine.setEmoji(TagEmoji("🇦🇷"), of: "argentina")
+        try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
         try engine.togglePriority(of: "historia")
         try engine.setColor(.blue, of: "historia")
-        try engine.setEmoji(TagEmoji("📜"), of: "historia")
+        try engine.setEmoji(Emoji("📜"), of: "historia")
 
         #expect(
             try engine.prioritizeMenu().tags == [
@@ -57,7 +57,7 @@ struct TagColorAndEmojiTests {
     func removingBothFromATagWithNothingElseDeletesItsRow() throws {
         try approveCard("fotosíntesis", tags: ["ciencia"])
         try engine.setColor(.green, of: "ciencia")
-        try engine.setEmoji(TagEmoji("🔬"), of: "ciencia")
+        try engine.setEmoji(Emoji("🔬"), of: "ciencia")
 
         try engine.setColor(nil, of: "ciencia")
         #expect(try engine.sidebarTags() == [CardTag(name: "ciencia", emoji: "🔬")])
@@ -72,10 +72,10 @@ struct TagColorAndEmojiTests {
         arguments: ["argentina", "🇦🇷🇺🇾", "a", "7", "❤", "", " "])
     func anEmojiThatIsntOneEmojiIsRefused(_ emoji: String) throws {
         try approveCard("Revolución de Mayo", tags: ["argentina"])
-        try engine.setEmoji(TagEmoji("🇦🇷"), of: "argentina")
+        try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
 
         #expect(throws: EngineError.notOneEmoji) {
-            try engine.setEmoji(TagEmoji(emoji), of: "argentina")
+            try engine.setEmoji(Emoji(emoji), of: "argentina")
         }
         #expect(try engine.sidebarTags() == [CardTag(name: "argentina", emoji: "🇦🇷")])
     }
@@ -93,7 +93,7 @@ struct TagColorAndEmojiTests {
     func oneEmojiIsTakenHoweverManyScalarsItHas(_ emoji: String, _ stored: String) throws {
         try approveCard("Revolución de Mayo", tags: ["argentina"])
 
-        try engine.setEmoji(TagEmoji(emoji), of: "argentina")
+        try engine.setEmoji(Emoji(emoji), of: "argentina")
 
         #expect(try engine.sidebarTags() == [CardTag(name: "argentina", emoji: stored)])
     }
@@ -105,7 +105,7 @@ struct TagColorAndEmojiTests {
         let mayo = try approveCard("Revolución de Mayo", tags: ["argentina"])
         try approveCard("serendipia", tags: [])
         try engine.setColor(.blue, of: "argentina")
-        try engine.setEmoji(TagEmoji("🇦🇷"), of: "argentina")
+        try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
 
         try engine.bury(mayo.id)
         #expect(try engine.sidebarTags() == [])

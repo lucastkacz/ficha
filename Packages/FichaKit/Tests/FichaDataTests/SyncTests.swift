@@ -251,7 +251,7 @@ final class SyncTests {
         time.advance(by: minutes(1))
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo por azar.", tags: ["filosofía"]), in: iPhone.engine)
-        try iPhone.engine.setEmoji(TagEmoji("🦉"), of: "filosofía")
+        try iPhone.engine.setEmoji(Emoji("🦉"), of: "filosofía")
         try iPhone.engine.climb(serendipia, to: 1, movingForward: time)
         try iPhone.engine.newCapture("saudade", note: "De una canción")
 
@@ -283,7 +283,7 @@ final class SyncTests {
         try macFromBefore.turnSyncOn()
         time.advance(by: minutes(1))
         try iPhone.engine.create(card(.word, front: "palabra", back: "Lo que se dice.", tags: ["lenguaje"]))
-        try iPhone.engine.setEmoji(TagEmoji("🗣️"), of: "lenguaje")
+        try iPhone.engine.setEmoji(Emoji("🗣️"), of: "lenguaje")
 
         try await iPhone.syncNow()
         try await macFromBefore.syncNow()
@@ -402,7 +402,7 @@ final class SyncTests {
         try mac.engine.setColor(.red, of: "historia")
         time.advance(by: minutes(1))
         try iPhone.engine.create(card(.question, front: "¿Caseros?", back: "1852.", tags: ["historia"]))
-        try iPhone.engine.setEmoji(TagEmoji("🏛️"), of: "historia")
+        try iPhone.engine.setEmoji(Emoji("🏛️"), of: "historia")
         try iPhone.engine.setAside("historia")
 
         try await mac.syncNow()

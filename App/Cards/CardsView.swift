@@ -186,16 +186,7 @@ struct CardsView: View {
     /// question Delete… on a user type asks, with how many cards have it.
     private func askingAboutTypes(_ content: some View) -> some View {
         content
-            .sheet(
-                isPresented: Binding(
-                    get: { state.question == .newType(.editor) }, set: { if !$0 { state.cancelQuestion() } })
-            ) {
-                NewTypeSheet(failure: failure(over: .newTypeSheet)) { name, emoji in
-                    state.newTypeEntry(name: name, emoji: emoji)
-                } choose: { name, emoji in
-                    state.chooseNewType(name: name, emoji: emoji)
-                }
-            }
+            .newTypeSheet(for: .editor, $state, failure: failure(over: .newTypeSheet))
             .confirmationDialog(
                 typeToDelete.map {
                     Text(
@@ -262,7 +253,7 @@ struct CardsView: View {
     /// the rename sheet asks.
     private var renameSubject: SheetSubject? {
         switch state.question {
-        case .rename(let tag): .tag(tag)
+        case .renameTag(let tag): .tag(tag)
         case .renameType(let type): .type(type)
         default: nil
         }

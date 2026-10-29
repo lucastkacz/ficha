@@ -573,8 +573,9 @@ func backupsEngine() throws -> Engine {
 /// The Cards window's state partway through an import, as the Import sheet
 /// shows it once the user chose a file: the preview of a text file the tool
 /// writes in its scratch home, with words from other languages as someone
-/// might type them in a spreadsheet, two of which the sample cards have, and
-/// three lines that can't be read. The file goes once it's read.
+/// might type them in a spreadsheet, two of which the sample cards have, two
+/// lines that can't be read, and a type the sample cards don't have,
+/// "sustantivo", which the import makes. The file goes once it's read.
 func importingState(of model: AppModel) throws -> CardsWindowState {
     let file = URL.documentsDirectory.appending(path: "Palabras del mundo.txt")
     let lines = [
@@ -764,7 +765,7 @@ func nestSampleTags(in engine: Engine) throws {
         try engine.renameTag(tag, to: name)
     }
     try engine.setColor(.blue, of: "ciencia")
-    try engine.setEmoji(try TagEmoji("🏛️"), of: "historia")
+    try engine.setEmoji(try Emoji("🏛️"), of: "historia")
     try engine.setAside("literatura")
     try engine.setAside("economía::trabajo")
 }
@@ -774,10 +775,10 @@ func nestSampleTags(in engine: Engine) throws {
 /// emoji, to the Moon landing's question; Sesgo, with none, to the two
 /// biases; and Fórmula, with an emoji, to no card.
 func giveSampleUserTypes(in engine: Engine) throws {
-    let law = try engine.makeUserType(named: "Ley", emoji: try TagEmoji("📜"))
-    let date = try engine.makeUserType(named: "Efeméride", emoji: try TagEmoji("📅"))
+    let law = try engine.makeUserType(named: "Ley", emoji: try Emoji("📜"))
+    let date = try engine.makeUserType(named: "Efeméride", emoji: try Emoji("📅"))
     let bias = try engine.makeUserType(named: "Sesgo")
-    try engine.makeUserType(named: "Fórmula", emoji: try TagEmoji("🧪"))
+    try engine.makeUserType(named: "Fórmula", emoji: try Emoji("🧪"))
     let types = [
         "La ley de Parkinson": law, "El principio de Pareto": law,
         "¿En qué año llegó el ser humano a la Luna?": date, "El efecto Dunning-Kruger": bias,

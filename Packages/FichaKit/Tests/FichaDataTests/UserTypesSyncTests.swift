@@ -46,7 +46,7 @@ final class UserTypesSyncTests {
 
         time.advance(by: minutes(1))
         let renamed = try mac.engine.renameUserType(formula.id, to: "Fórmula química")
-        try iPhone.engine.setEmoji(TagEmoji("🧪"), ofUserType: formula.id)
+        try iPhone.engine.setEmoji(Emoji("🧪"), ofUserType: formula.id)
         try await syncBoth()
 
         let both = UserType(id: formula.id, name: renamed.name, emoji: "🧪")
@@ -98,7 +98,7 @@ final class UserTypesSyncTests {
     func typesSyncWhileOnlyChosenTagsDo() async throws {
         try mac.engine.syncOnlyChosenTags(true)
         try mac.engine.chooseToSync("química", true)
-        let formula = try mac.engine.makeUserType(named: "Fórmula", emoji: TagEmoji("🧪"))
+        let formula = try mac.engine.makeUserType(named: "Fórmula", emoji: Emoji("🧪"))
         let law = try mac.engine.makeUserType(named: "Ley")
         let word = try mac.engine.makeUserType(named: "Palabra nueva")
         try mac.engine.create(card(.user(formula), front: "agua", back: "H₂O", tags: ["química"]))

@@ -65,12 +65,12 @@ struct CardsWindowTagsTests {
         window.choose(.cards(.tag("economía::Argentina")))
 
         window.askToRename("economía")
-        #expect(window.question == .rename(CardTag(name: "economía")))
+        #expect(window.question == .renameTag(CardTag(name: "economía")))
         #expect(window.renameEntry("economía::Argentina::economía") == .refused(.tagInsideItself("economía")))
         #expect(window.renameEntry(" :: ") == .refused(.blankTagName))
         #expect(window.renameEntry(" economics ") == .name("economics"))
         window.chooseNewName("economía::otra")
-        #expect(window.question == .rename(CardTag(name: "economía")))
+        #expect(window.question == .renameTag(CardTag(name: "economía")))
         window.chooseNewName("economics")
 
         #expect(window.question == nil)

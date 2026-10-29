@@ -7,7 +7,8 @@ import SwiftUI
 /// which starts with the one it has: a tag's whole name, its levels joined by
 /// `::`, as in "economía::Argentina". OK renames the tag and every tag inside
 /// it, which also moves it inside another tag, or to the top, as the name's
-/// levels say, and joins it with a tag that already has the name; it refuses
+/// levels say, and joins it with a tag that already has the name, which
+/// keeps what it has of its own; it refuses
 /// a blank name, or one inside the tag itself. OK renames a type, whose cards
 /// keep it; it refuses a blank name, a name of one of the four types Ficha
 /// comes with, or another type's. The sheet says why under the field.

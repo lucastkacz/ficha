@@ -7,7 +7,9 @@ import Foundation
 /// columns are, in order, the card's front, back, tags, type and source, of
 /// which a line may leave out the last three. The type is one of the four
 /// Ficha comes with, by its raw value, or a user type, by its name, as
-/// `CardType.writtenName` writes it. A line starting with `#` is a
+/// `CardType.writtenName` writes it, which an import makes when the user has
+/// none by that name only in a file whose `#columns` header names the Type
+/// column (`ImportReading.typeColumnIsNamed`). A line starting with `#` is a
 /// comment, and so is a blank one. In a zip with the images and the sounds
 /// of its cards, a column for each side and each kind, which the `#columns`
 /// header names, names its image or its sound. A `Both ways` column, which
@@ -95,7 +97,7 @@ public enum CardsTextFile {
                 leftOut.append(line)
             }
         }
-        return ImportReading(cards: cards, leftOut: leftOut)
+        return ImportReading(cards: cards, leftOut: leftOut, typeColumnIsNamed: columns.namesType)
     }
 
     /// The tags a tags column holds: separated by spaces, as Anki separates
@@ -419,6 +421,12 @@ private struct ColumnMap {
             throw .missingColumn(needed)
         }
         self.named = named
+    }
+
+    /// Whether `#columns` names the Type column, so that a line's type is
+    /// read by name rather than by its place.
+    var namesType: Bool {
+        named?.contains(.type) == true
     }
 
     /// The column of the file a line's column at `index`, from 0, is, or nil

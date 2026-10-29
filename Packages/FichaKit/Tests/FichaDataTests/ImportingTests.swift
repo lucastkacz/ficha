@@ -262,14 +262,14 @@ final class ImportingTests {
                 LeftOutLine(line: 3, reason: .oneColumn),
                 LeftOutLine(line: 4, reason: .blankFront),
                 LeftOutLine(line: 5, reason: .blankBack),
+                LeftOutLine(line: 6, reason: .unknownType("adjective")),
                 LeftOutLine(line: 7, reason: .strayQuote),
                 LeftOutLine(line: 10, reason: .unclosedQuote),
             ])
-        #expect(preview.cardCount == 4)
+        #expect(preview.cardCount == 3)
         #expect(
             try engine.cards().map { [$0.front, $0.back] } == [
                 ["serendipia", "Un hallazgo por casualidad."],
-                ["ubicuo", "Que está en todas partes."],
                 ["resiliencia", "La capacidad de reponerse.\nY de adaptarse."],
                 ["inefable", "Que no se puede explicar con palabras."],
             ])

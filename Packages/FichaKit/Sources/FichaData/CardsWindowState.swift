@@ -121,7 +121,7 @@ public struct CardsWindowState: Sendable {
         case emoji(CardTag)
         /// Which name this tag gets, in the rename sheet, whose field starts
         /// with its whole name, written with `::`: `CardsWindowTags.swift`.
-        case rename(CardTag)
+        case renameTag(CardTag)
         /// A new type's name and emoji, in the New Type sheet, for the type
         /// picker New Type… was chosen in, which takes it:
         /// `CardsWindowTypes.swift`.
@@ -137,14 +137,28 @@ public struct CardsWindowState: Sendable {
         case deleteType(UserType, cardCount: Int)
     }
 
-    /// What OK in the emoji sheet makes of what its field holds.
+    /// What OK in the emoji sheet, or in the New Type sheet, makes of what an
+    /// emoji field holds.
     public enum EmojiEntry: Sendable, Equatable {
-        /// One emoji, which the tag gets.
-        case emoji(TagEmoji)
-        /// Nothing but spaces, if any, which takes the tag's emoji away.
+        /// One emoji, which the tag or the user type gets.
+        case emoji(Emoji)
+        /// Nothing but spaces, if any, which takes the tag's or the user
+        /// type's emoji away, or makes the type with none.
         case removal
         /// Something that isn't one emoji, which OK refuses, and why, for
         /// the sheet to say.
+        case refused(EngineError)
+    }
+
+    /// What OK in the rename sheet, or the New Type sheet's name, makes of
+    /// what the name field holds.
+    public enum RenameEntry: Sendable, Equatable {
+        /// The tag's new whole name, its levels cleaned up, or the type's
+        /// name, without the spaces around it.
+        case name(String)
+        /// A name OK refuses, and why, for the sheet to say: a blank one, or
+        /// one inside the tag itself; or a type's name of one of the four
+        /// Ficha comes with, or another user type's.
         case refused(EngineError)
     }
 
@@ -683,15 +697,28 @@ public struct CardsWindowState: Sendable {
         question = .emoji(tag)
     }
 
-    /// What OK in the emoji sheet makes of `text`, what its field holds: one
-    /// emoji for the tag, its emoji's removal when the field is empty, or a
-    /// refusal of anything else.
+    /// Gives `tag`, the tag the window asks about, `emoji`, or takes its
+    /// emoji away when it's nil, and reads the cards again; or records why it
+    /// couldn't. Whether it did.
+    private mutating func setEmoji(_ emoji: Emoji?, of tag: CardTag) -> Bool {
+        let done = perform(.setEmoji(tag: tag.name)) { engine throws(EngineError) in
+            try engine.setEmoji(emoji, of: tag.name)
+        }
+        if done {
+            read(on: ladder)
+        }
+        return done
+    }
+
+    /// What OK in the emoji sheet, or in the New Type sheet, makes of `text`,
+    /// what an emoji field holds: one emoji for the tag or the user type,
+    /// none when the field is empty, or a refusal of anything else.
     public func emojiEntry(_ text: String) -> EmojiEntry {
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .removal
         }
         do throws(EngineError) {
-            return .emoji(try TagEmoji(text))
+            return .emoji(try Emoji(text))
         } catch {
             return .refused(error)
         }
@@ -707,17 +734,42 @@ public struct CardsWindowState: Sendable {
         guard !entry.isRefused else { return }
         let done: Bool
         switch question {
-        case .emoji(let tag):
-            done = perform(.setEmoji(tag: tag.name)) { engine throws(EngineError) in
-                try engine.setEmoji(entry.emoji, of: tag.name)
-            }
-            if done {
-                read(on: ladder)
-            }
-        case .typeEmoji(let type):
-            done = setEmoji(entry.emoji, of: type)
-        default:
-            return
+        case .emoji(let tag): done = setEmoji(entry.emoji, of: tag)
+        case .typeEmoji(let type): done = setEmoji(entry.emoji, of: type)
+        default: return
+        }
+        if done {
+            question = nil
+        }
+    }
+
+    /// What OK in the rename sheet makes of `text`, what its field holds: for
+    /// the tag the window asks about, the tag's new whole name, or a refusal
+    /// of a blank name or one inside the tag itself; for the user type it
+    /// asks about, the type's name, or a refusal of a blank name, a name of
+    /// one of the four Ficha comes with, or another user type's; each as the
+    /// engine refuses them. Nil while the window asks about no name.
+    public func renameEntry(_ text: String) -> RenameEntry? {
+        switch question {
+        case .renameTag(let tag): tagNameEntry(text, renaming: tag.name)
+        case .renameType(let type): typeNameEntry(text, renaming: type.id)
+        default: nil
+        }
+    }
+
+    /// Chooses OK in the rename sheet, whose field holds `text`: renames the
+    /// tag the window asks about, and every tag inside it, as
+    /// `Engine.renameTag(_:to:)` does, or the user type it asks about, and
+    /// reads the cards again, the sidebar following the tag or the type it
+    /// chose to its new name; or records why it couldn't and goes on asking.
+    /// While OK refuses `text`, it does nothing, and the sheet says why.
+    public mutating func chooseNewName(_ text: String) {
+        guard case .name(let name)? = renameEntry(text) else { return }
+        let done: Bool
+        switch question {
+        case .renameTag(let tag): done = renameTag(tag.name, to: name, as: .rename(tag: tag.name))
+        case .renameType(let type): done = renameType(type, to: name)
+        default: return
         }
         if done {
             question = nil

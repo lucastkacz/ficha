@@ -5,7 +5,8 @@ internal import ZIPFoundation
 
 /// What importing a file would do, as the engine read it, before anything
 /// changes: the cards that come in, in the file's order, how many of them
-/// repeat the user's cards, the lines it left out, and the tags it proposes.
+/// repeat the user's cards, the lines it left out, the tags it proposes, and
+/// the user types it makes.
 public struct ImportPreview: Sendable, Equatable {
     /// What kind of file an import reads.
     public enum Kind: Sendable, Equatable {
@@ -58,6 +59,19 @@ public struct ImportPreview: Sendable, Equatable {
     /// Whether what the import brings goes up to the user's iCloud: sync was
     /// on as the file was read, its switch on and the device signed in.
     let goesUpToICloud: Bool
+    /// The file's cards whose type the user didn't have as the file was
+    /// read, which the import makes, in the file's order.
+    let cardsMakingTypes: [CardMakingType]
+
+    /// A card of the file whose type the user doesn't have, which the import
+    /// makes.
+    struct CardMakingType: Sendable, Equatable {
+        /// The type's name, as the card spells it.
+        let typeName: String
+        /// Whether the card repeats one of the user's, as the user's cards
+        /// were when the file was read, so that skipping it makes no type.
+        let repeats: Bool
+    }
 
     /// What an import's cards bring of the images and sounds iCloud lacks,
     /// as the file was read, and what decided then which cards sync
@@ -158,6 +172,16 @@ public struct ImportPreview: Sendable, Equatable {
             }
         }
         return weightWorthSaying(going.reduce(0) { $0 + (filesGoingUp.weights[$1] ?? 0) })
+    }
+
+    /// The names of the user types the import makes, for the Import sheet to
+    /// say before the user imports: those of the cards it brings as
+    /// `repeatedCards` chooses whose type is neither one of the four nor a
+    /// user type the user had as the file was read, each once, ignoring case
+    /// and accents, as the first of those cards spells it, in the file's
+    /// order.
+    public func typesMade(choosing repeatedCards: ImportChoices.RepeatedCards) -> [String] {
+        cardsMakingTypes.filter { !$0.repeats || repeatedCards == .update }.map(\.typeName).uniqued(on: duplicateKey)
     }
 }
 
@@ -280,20 +304,31 @@ extension Engine {
     }
 
     /// What importing `reading`, read from the file named `fileName`, would
-    /// do, whatever reader read it, with the tags each card proposes.
-    /// `images` and `sounds` are the files that came in with the file, of
-    /// which the preview holds those its cards refer to, until they're
-    /// imported.
+    /// do, whatever reader read it, with the tags each card proposes, and
+    /// the user types it makes: in a file that doesn't name its Type column,
+    /// a card whose type is neither one of the four nor a user type the user
+    /// has stays out instead (`ImportReading.typeColumnIsNamed`). `images`
+    /// and `sounds` are the files that came in with the file, of which the
+    /// preview holds those its cards refer to, until they're imported.
     func preview(
-        _ reading: ImportReading, of fileName: String, kind: ImportPreview.Kind, images: [ImageName: CardImage] = [:],
-        sounds: [SoundName: CardSound] = [:]
+        _ fileReading: ImportReading, of fileName: String, kind: ImportPreview.Kind,
+        images: [ImageName: CardImage] = [:], sounds: [SoundName: CardSound] = [:]
     ) throws(EngineError) -> ImportPreview {
-        let (repeated, brought, whatSyncs, synced) = try read { db in
+        let (reading, repeated, brought, whatSyncs, synced, cardsMakingTypes) = try read { db in
+            let types = try CardTypesByName(in: db)
+            let reading = fileReading.leavingOutUnknownTypes(knowing: types)
             let repeated = try repeatedCards(of: reading.cards, in: db)
+            let cardsMakingTypes = zip(reading.cards, repeated).compactMap { card, repeated in
+                card.typeName.flatMap { name in
+                    types.existingType(named: name) == nil
+                        ? ImportPreview.CardMakingType(typeName: name, repeats: repeated != nil) : nil
+                }
+            }
             return (
-                repeated, try filesBrought(by: reading.cards, repeating: repeated), try WhatSyncs(in: db),
+                reading, repeated, try filesBrought(by: reading.cards, repeating: repeated), try WhatSyncs(in: db),
                 Set(try namesSynced(ImageName.self, in: db).map(SyncedFile.init))
-                    .union(try namesSynced(SoundName.self, in: db).map(SyncedFile.init))
+                    .union(try namesSynced(SoundName.self, in: db).map(SyncedFile.init)),
+                cardsMakingTypes
             )
         }
         let referredImages = Set(reading.cards.flatMap(\.content.images))
@@ -328,7 +363,7 @@ extension Engine {
             reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) },
             filesGoingUp: ImportPreview.FilesGoingUp(
                 repeatedTags: repeated.map { $0?.tags }, brought: brought, weights: weights, whatSyncs: whatSyncs),
-            goesUpToICloud: try syncStatus().sendsToICloud)
+            goesUpToICloud: try syncStatus().sendsToICloud, cardsMakingTypes: cardsMakingTypes)
     }
 
     /// Imports the cards `preview` read, as the user chose: each card that
@@ -550,7 +585,27 @@ extension ImportReading {
                     hasSoundsDropped: card.hasSoundsDropped, hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut
                 )
             },
-            leftOut: leftOut)
+            leftOut: leftOut, typeColumnIsNamed: typeColumnIsNamed)
+    }
+
+    /// The reading with each card whose type names neither one of the four
+    /// nor a user type `types` knows left out, saying why, when the file
+    /// doesn't name its Type column (`typeColumnIsNamed`), its lines left
+    /// out in the file's order.
+    fileprivate func leavingOutUnknownTypes(knowing types: CardTypesByName) -> ImportReading {
+        guard !typeColumnIsNamed else {
+            return self
+        }
+        var kept: [ImportedCard] = []
+        var leftOut = leftOut
+        for card in cards {
+            if let name = card.typeName, types.existingType(named: name) == nil {
+                leftOut.append(LeftOutLine(line: card.line, reason: .unknownType(name)))
+            } else {
+                kept.append(card)
+            }
+        }
+        return ImportReading(cards: kept, leftOut: leftOut.sorted { $0.line < $1.line }, typeColumnIsNamed: false)
     }
 }
 

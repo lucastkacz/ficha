@@ -23,10 +23,10 @@ extension Engine {
     /// a name of one of the four Ficha comes with, and one another user type
     /// has, ignoring case and accents (`UserType.isSameName(_:as:)`).
     @discardableResult
-    public func makeUserType(named name: String, emoji: TagEmoji? = nil) throws(EngineError) -> UserType {
+    public func makeUserType(named name: String, emoji: Emoji? = nil) throws(EngineError) -> UserType {
         try write { db in
             let type = UserType(
-                id: UUID(), name: try checkedTypeName(name, among: UserTypes(in: db)), emoji: emoji?.text)
+                id: UUID(), name: try checkedTypeName(name, among: UserTypes(in: db).sorted), emoji: emoji?.text)
             try save(madeType: type, in: db)
             return type
         }
@@ -42,7 +42,7 @@ extension Engine {
             let types = try UserTypes(in: db)
             let type = try types.existing(id)
             let renamed = UserType(
-                id: id, name: try checkedTypeName(name, renaming: id, among: types), emoji: type.emoji)
+                id: id, name: try checkedTypeName(name, renaming: id, among: types.sorted), emoji: type.emoji)
             try db.execute(
                 sql: "UPDATE userType SET name = ? WHERE uuid = ?", arguments: [renamed.name, id.uuidString])
             return renamed
@@ -52,7 +52,7 @@ extension Engine {
     /// Gives the user type with this ID `emoji`, or takes its emoji away when
     /// it's nil, and returns it. Refuses a type that isn't there.
     @discardableResult
-    public func setEmoji(_ emoji: TagEmoji?, ofUserType id: UUID) throws(EngineError) -> UserType {
+    public func setEmoji(_ emoji: Emoji?, ofUserType id: UUID) throws(EngineError) -> UserType {
         try write { db in
             let type = try UserTypes(in: db).existing(id)
             try db.execute(
@@ -69,15 +69,6 @@ extension Engine {
             try db.execute(sql: "DELETE FROM userType WHERE uuid = ?", arguments: [id.uuidString])
             try forgetType(id, in: db)
         }
-    }
-
-    /// `name` as the name of a new user type, or of the one with the ID
-    /// `renamed`, as `makeUserType(named:emoji:)` and
-    /// `renameUserType(_:to:)` take it, without the spaces around it, or an
-    /// error when they refuse it, for the Cards window's sheets to say before
-    /// OK.
-    func checkedUserTypeName(_ name: String, renaming renamed: UUID?) throws(EngineError) -> String {
-        try read { db in try checkedTypeName(name, renaming: renamed, among: UserTypes(in: db)) }
     }
 
     /// How many cards have the user type with this ID, buried ones too, as
@@ -135,10 +126,12 @@ struct UserTypes: Sendable {
 }
 
 /// `name`, without the spaces around it, as the name of a user type among
-/// `types`, the one with the ID `renamed` aside, if any: or an error when
-/// it's blank, a name of one of the four Ficha comes with, or another user
-/// type's, ignoring case and accents (`UserType.isSameName(_:as:)`).
-func checkedTypeName(_ name: String, renaming renamed: UUID? = nil, among types: UserTypes) throws(EngineError)
+/// `types`, the user's in alphabetical order, the one with the ID `renamed`
+/// aside, if any: or an error when it's blank, a name of one of the four
+/// Ficha comes with, or another user type's, ignoring case and accents
+/// (`UserType.isSameName(_:as:)`). The engine checks it as it saves a type,
+/// and the Cards window's sheets before OK, among the types the window read.
+func checkedTypeName(_ name: String, renaming renamed: UUID? = nil, among types: [UserType]) throws(EngineError)
     -> String
 {
     let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -148,7 +141,7 @@ func checkedTypeName(_ name: String, renaming renamed: UUID? = nil, among types:
     guard CardType(builtInNamed: name) == nil else {
         throw .builtInTypeName(name)
     }
-    if let taken = types.sorted.first(where: { $0.id != renamed && UserType.isSameName(name, as: $0.name) }) {
+    if let taken = types.first(where: { $0.id != renamed && UserType.isSameName(name, as: $0.name) }) {
         throw .typeNameTaken(taken.name)
     }
     return name
@@ -187,16 +180,20 @@ struct CardTypesByName {
         guard let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
             return nil
         }
-        if let builtIn = CardType(builtInNamed: name) {
-            return builtIn
-        }
-        if let type = userTypes.first(where: { UserType.isSameName(name, as: $0.name) }) {
-            return .user(type)
+        if let type = existingType(named: name) {
+            return type
         }
         let type = UserType(id: UUID(), name: name, emoji: nil)
         try save(madeType: type, in: db)
         userTypes.append(type)
         return .user(type)
+    }
+
+    /// The type `name`, without the spaces around it, stands for among the
+    /// four and the user's types, as the struct says, or nil when it names
+    /// none of them, for which `type(named:savingIn:)` would make one.
+    func existingType(named name: String) -> CardType? {
+        CardType(builtInNamed: name) ?? userTypes.first { UserType.isSameName(name, as: $0.name) }.map(CardType.user)
     }
 }
 

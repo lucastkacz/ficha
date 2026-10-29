@@ -1771,6 +1771,17 @@
     "Line %lld has one column: a front with no back after it." : {
       "comment" : "In the Import sheet, a line the file can't read."
     },
+    "Line %lld has the type “%@”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types." : {
+      "comment" : "In the Import sheet, a line the file can't read, with the type it has, which names no card type the user has, in a file without a #columns header that names its Type column.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Line %1$lld has the type “%2$@”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types."
+          }
+        }
+      }
+    },
     "Line %lld opens a quote that nothing closes." : {
       "comment" : "In the Import sheet, a line the file can't read."
     },
@@ -2280,6 +2291,9 @@
     },
     "The capture this form was opened from left the inbox outside this window meanwhile, approved or discarded in a refine session, so the card wasn't added. To keep what you typed, copy it before you close the form." : {
       "comment" : "An alert's message over the Cards window's card form, when its capture already left the inbox."
+    },
+    "The cards bring new types: %@." : {
+      "comment" : "In the Import sheet's preview of a text file, with the names of the card types of the user's own the import makes, as a list, since the user has no type by those names."
     },
     "The cards get these tags, from Anki's decks and tags:" : {
       "comment" : "In the Import sheet's preview of an Anki package, above the tags its cards get."
