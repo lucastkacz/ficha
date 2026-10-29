@@ -3,6 +3,8 @@ import Foundation
 import Testing
 
 struct HomeFolderPathTests {
+    private let home = URL(filePath: "/Users/someone", directoryHint: .isDirectory)
+
     @Test("a folder in the home folder starts with a tilde, as the group's Backups folder does in the sandbox")
     func aFolderInTheHomeFolderStartsWithATilde() {
         let backups = URL(
@@ -10,7 +12,7 @@ struct HomeFolderPathTests {
             directoryHint: .isDirectory)
 
         #expect(
-            backups.path(abbreviatingHome: "/Users/someone")
+            backups.path(abbreviatingHome: home)
                 == "~/Library/Group Containers/ABCDE12345.com.lucastkacz.ficha.dev/Ficha Dev/Backups")
     }
 
@@ -18,6 +20,6 @@ struct HomeFolderPathTests {
     func aFolderOutsideTheHomeFolderKeepsItsWholePath() {
         let backups = URL(filePath: "/Users/someone else/Ficha/Backups/", directoryHint: .isDirectory)
 
-        #expect(backups.path(abbreviatingHome: "/Users/someone") == "/Users/someone else/Ficha/Backups")
+        #expect(backups.path(abbreviatingHome: home) == "/Users/someone else/Ficha/Backups")
     }
 }

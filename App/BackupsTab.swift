@@ -130,16 +130,18 @@ struct BackupsTab: View {
         }
     }
 
-    /// The user's own home folder, `/Users/<name>`, from the user database
-    /// (`getpwuid`), which the folder's path starts with a tilde for: in the
-    /// sandbox, Foundation's home folder is the app's container, which the
-    /// App Group's folder isn't in (#305). Foundation's, as before, when the
-    /// user database doesn't say.
-    private static var homeFolder: String {
+    /// The user's own home folder, `/Users/<name>`, which the folder's path
+    /// starts with a tilde for, rather than Foundation's, for the reason
+    /// `path(abbreviatingHome:)` gives. Reading it from the user database,
+    /// `getpwuid(getuid())`, isn't in Apple's documentation: it's Apple
+    /// staff's advice, from Quinn, of Apple's developer support (Apple's
+    /// developer forums, threads 107593 and 666634). Foundation's, as before,
+    /// when the user database doesn't say.
+    private static var homeFolder: URL {
         guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else {
-            return NSHomeDirectory()
+            return .homeDirectory
         }
-        return String(cString: directory)
+        return URL(fileURLWithFileSystemRepresentation: directory, isDirectory: true, relativeTo: nil)
     }
 
     /// When the last backup was saved, or why the last attempt failed, with
