@@ -28,8 +28,12 @@ enum Window: String {
     /// pinned tags, one inside another named by its whole path and a
     /// set-aside one grayed, and All Tags… after them.
     case cardsTags = "cards-tags"
-    /// The Cards window on All Tags, with the same tags: every tag that isn't
-    /// set aside as a tree, and the set-aside ones in its Set Aside section.
+    /// The Cards window on All Tags, with the same tags, historia a priority
+    /// tag too, and an unused one: every tag as a tree, with its counts and
+    /// its checkboxes, the set-aside ones grayed in their places, ciencia,
+    /// economía and historia open, each level sorted by Cards, the most
+    /// first, and economía selected, which `--key return` lists the cards
+    /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
     /// The Cards window on Ley, one of the card types of the user's own the
     /// tool gives the sample, with its card on Parkinson's law selected, its
@@ -784,6 +788,14 @@ func pinSampleTags(in engine: Engine) throws {
     }
 }
 
+/// Makes historia a priority tag, and gives pendientes, a tag no card
+/// carries, the color red, so that All Tags ticks a Priority checkbox and
+/// offers Clear Unused Tags….
+func prioritizeAndLeaveUnusedSampleTags(in engine: Engine) throws {
+    try engine.setPriority(true, of: "historia")
+    try engine.setColor(.red, of: "pendientes")
+}
+
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,
 /// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
 /// emoji, to the Moon landing's question; Sesgo, with none, to the two
@@ -1130,6 +1142,9 @@ func model(for name: Window) throws -> AppModel {
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
         try pinSampleTags(in: engine)
+        if name == .cardsAllTags {
+            try prioritizeAndLeaveUnusedSampleTags(in: engine)
+        }
         return try AppModel(engine: engine)
     case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1259,6 +1274,11 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .cardsAllTags:
         var state = model.openCardsWindow()
         state.choose(.allTags)
+        for tag in ["ciencia", "economía", "historia"] {
+            state.setOpen(true, tag)
+        }
+        state.sortAllTags(by: .cards, ascending: false)
+        state.selectTags(["economía"])
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window

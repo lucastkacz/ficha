@@ -39,6 +39,46 @@ extension Engine {
         try write { db in try makeTagEdit(.rename(tag, to: name), in: db) }
         return name
     }
+
+    /// Moves `tags` inside `parent`, or to the top when it's nil, as
+    /// dropping them in the Cards window's All Tags does, in one write: each
+    /// is renamed `<parent>::<its last level>`, or its last level at the top,
+    /// as `renameTag(_:to:)` renames it, with every tag inside it, joining a
+    /// tag of that name if there's one. A tag inside another of `tags` moves
+    /// along with it, and one already right inside `parent`, or at the top,
+    /// stays. Refuses moving a tag inside itself, as when `parent` is one of
+    /// `tags` or sits inside one, and then moves none. Returns the renames it
+    /// made, in the order of `tags`.
+    @discardableResult
+    public func moveTags(_ tags: [String], into parent: String?) throws(EngineError) -> [TagEdit] {
+        let moves = try tagMoves(of: tags, into: parent)
+        try write { db in
+            for move in moves {
+                try makeTagEdit(move, in: db)
+            }
+        }
+        return moves
+    }
+}
+
+/// The renames that move `tags` inside `parent`, or to the top when it's nil,
+/// as `Engine.moveTags(_:into:)` makes them, in the order of `tags`: none for
+/// a tag inside another of them, or one there already. Refuses moving a tag
+/// inside itself.
+func tagMoves(of tags: [String], into parent: String?) throws(EngineError) -> [TagEdit] {
+    let tags = tags.uniqued()
+    if let parent, let holding = tags.first(where: { TagPath.isTag(parent, within: $0) }) {
+        throw .tagInsideItself(holding)
+    }
+    var moves: [TagEdit] = []
+    for tag in tags where !tags.contains(where: { $0 != tag && TagPath.isTag(tag, within: $0) }) {
+        let level = TagPath.lastLevel(of: tag)
+        let name = try checkedTagName(renaming: tag, to: parent.map { $0 + TagPath.separator + level } ?? level)
+        if name != tag {
+            moves.append(.rename(tag, to: name))
+        }
+    }
+    return moves
 }
 
 /// The name the tag `tag` takes when it's renamed `newName`: `newName` with

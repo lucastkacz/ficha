@@ -62,11 +62,18 @@ extension Engine {
     /// Unpins `tag` from the Cards window's sidebar. A tag that isn't pinned
     /// stays as it is.
     public func unpin(_ tag: String) throws(EngineError) {
+        try unpin([tag])
+    }
+
+    /// Unpins each of `tags`, as `unpin(_:)` does one, in one write.
+    public func unpin(_ tags: [String]) throws(EngineError) {
         try write { db in
-            var own = try ownTag(tag, in: db)
-            guard own.isPinned else { return }
-            own.pin = nil
-            try save(own, in: db)
+            for tag in tags {
+                var own = try ownTag(tag, in: db)
+                guard own.isPinned else { continue }
+                own.pin = nil
+                try save(own, in: db)
+            }
         }
     }
 }

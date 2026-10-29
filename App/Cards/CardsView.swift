@@ -8,18 +8,20 @@ import SwiftUI
 /// narrowed by the toolbar's search field, and the selected row whole beside
 /// it, with what Lucas can do with it at its foot. The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
-/// Tags…, which lists every tag where the table was, as a tree, and the
-/// set-aside ones in its Set Aside section (ADR 0022). A tag's context menu,
-/// in either place, pins it to the sidebar or unpins it, sets it aside,
-/// gives it a color and an emoji, which the sidebar and the table's Tags
-/// column show, and renames it, in the rename sheet (`RenameSheet.swift`);
-/// and in All Tags Lucas drags a tag into the sidebar to pin it there, onto
-/// another to move it inside, or onto the Tags section's title to take it to
-/// the top. The sidebar's Types section lists the four types Ficha comes
-/// with, then the user's, each with its emoji, whose context menu renames it,
-/// gives it an emoji, in the same sheets, and deletes it, asking first; New
-/// Type… in a card's type picker makes one, in the New Type sheet
-/// (`NewTypeSheet.swift`).
+/// Tags…, which lists every tag where the table was, as a tree with columns
+/// and checkboxes (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
+/// its place, with Back. A tag's context menu, in either place, and the
+/// detail's Action menu beside All Tags, act on the tags selected there:
+/// they pin them to the sidebar or unpin them, set them aside, prioritize
+/// them, give them a color and an emoji, which the sidebar and the table's
+/// Tags column show, rename one, in the rename sheet (`RenameSheet.swift`),
+/// and delete them, asking first; and in All Tags Lucas drags tags into the
+/// sidebar to pin them there, onto another to move them inside, or between
+/// two rows to move them to that level. The sidebar's Types section lists
+/// the four types Ficha comes with, then the user's, each with its emoji,
+/// whose context menu renames it, gives it an emoji, in the same sheets, and
+/// deletes it, asking first; New Type… in a card's type picker makes one, in
+/// the New Type sheet (`NewTypeSheet.swift`).
 /// The cards' table opens with the columns
 /// and the order Lucas left it with, which he changes in its headers. He
 /// edits a card or a capture right there, in fields that take the detail's
@@ -59,9 +61,6 @@ struct CardsView: View {
     /// Plays the sound the window says plays, in the form, the editor or the
     /// detail.
     @State private var player = SoundPlayer()
-    /// All Tags' tags whose disclosure triangle Lucas closed. Every parent
-    /// starts open, and the window forgets them when it closes.
-    @State private var closedTags: Set<String> = []
     /// What the window is asked from outside it: All Tags, from the menu
     /// bar's All Tags….
     let requests: CardsWindowRequests
@@ -77,7 +76,7 @@ struct CardsView: View {
     }
 
     var body: some View {
-        askingAboutTypes(panes)
+        askingAboutTags(askingAboutTypes(panes))
             .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
                 FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
@@ -161,7 +160,8 @@ struct CardsView: View {
     }
 
     /// The window's three panes, with the toolbar's search field, Import…
-    /// and Export…, and ⌘F.
+    /// and Export…, and ⌘F; and, while the table lists a tag's cards in All
+    /// Tags' place, the tag's name as the window's title, and Back.
     private var panes: some View {
         NavigationSplitView {
             sidebar
@@ -177,6 +177,14 @@ struct CardsView: View {
         }
         .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
+        .navigationTitle(state.shownTag?.title ?? String(localized: "Cards", comment: "The Cards window's title."))
+        .toolbar {
+            if state.shownTag != nil {
+                ToolbarItem(placement: .navigation) {
+                    backButton
+                }
+            }
+        }
         // The toolbar lists the outer modifier's buttons first: New Card,
         // then Import…, then Export….
         .exportButtonAndSheet($state, failure: failure(overSheet: true))
@@ -226,6 +234,154 @@ struct CardsView: View {
                         with how many cards have it, buried ones too.
                         """)
             }
+    }
+
+    /// `content` with the window's questions about tags: Delete…'s, which
+    /// says what deleting the tags does, since the Cards window has no undo,
+    /// and Clear Unused Tags…'s, with how many tags it deletes. Each button
+    /// acts on what its dialog presents.
+    private func askingAboutTags(_ content: some View) -> some View {
+        content
+            .confirmationDialog(
+                tagsToDelete.map(tagDeletionTitle(for:)) ?? Text(verbatim: ""),
+                isPresented: Binding(get: { tagsToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
+                titleVisibility: .visible,
+                presenting: tagsToDelete
+            ) { deletion in
+                Button(role: .destructive) {
+                    state.deleteTags(deletion)
+                } label: {
+                    Text("Delete", comment: "The button that deletes the tags the Cards window asks about.")
+                }
+            } message: { deletion in
+                Text(verbatim: tagDeletionMessage(for: deletion))
+            }
+            .confirmationDialog(
+                unusedTagsToClear.map {
+                    Text(
+                        "Delete \($0.count) unused tags?",
+                        comment: """
+                            The title of the Cards window's question before Clear Unused Tags… deletes the tags no \
+                            card carries, with how many.
+                            """)
+                } ?? Text(verbatim: ""),
+                isPresented: Binding(get: { unusedTagsToClear != nil }, set: { if !$0 { state.cancelQuestion() } }),
+                titleVisibility: .visible,
+                presenting: unusedTagsToClear
+            ) { _ in
+                Button(role: .destructive) {
+                    state.clearUnusedTags()
+                } label: {
+                    Text(
+                        "Clear Unused Tags",
+                        comment: "The button that deletes the unused tags the Cards window asks about.")
+                }
+            } message: { _ in
+                Text(
+                    """
+                    No card carries them, so no card changes. What you gave them goes with them, a pin, a color or \
+                    an emoji, and you can't undo this.
+                    """,
+                    comment: "Under the title of the Cards window's question before Clear Unused Tags… deletes them.")
+            }
+    }
+
+    /// The tags the window asks whether to delete, with what that does,
+    /// while it asks.
+    private var tagsToDelete: TagDeletion? {
+        guard case .deleteTags(let deletion) = state.question else { return nil }
+        return deletion
+    }
+
+    /// The unused tags the window asks whether to delete, while it asks.
+    private var unusedTagsToClear: [String]? {
+        guard case .clearUnusedTags(let names) = state.question else { return nil }
+        return names
+    }
+
+    /// The title of the question before Lucas deletes the tags of
+    /// `deletion`: the tag's whole name when it's one, or how many when
+    /// they're several.
+    private func tagDeletionTitle(for deletion: TagDeletion) -> Text {
+        if deletion.tags.count == 1, let tag = deletion.tags.first {
+            Text(
+                "Delete the tag “\(TagPath.shown(tag))”?",
+                comment: "The title of the Cards window's question before it deletes a tag, with its whole name.")
+        } else {
+            Text(
+                "Delete \(deletion.tags.count) tags?",
+                comment: "The title of the Cards window's question before it deletes several tags, with how many.")
+        }
+    }
+
+    /// What the question before Lucas deletes the tags of `deletion` says
+    /// under its title, a sentence for each thing it does: the tags inside
+    /// them that go too, the cards that lose them, which stay, those of them
+    /// that come back to his reviews, and, under selective sync, those that
+    /// stop syncing; and that it can't be undone.
+    private func tagDeletionMessage(for deletion: TagDeletion) -> String {
+        let isOne = deletion.tags.count == 1
+        var sentences: [String] = []
+        if !deletion.tagsInside.isEmpty {
+            sentences.append(
+                isOne
+                    ? String(
+                        localized: "The \(deletion.tagsInside.count) tags inside it go with it.",
+                        comment: "In the Cards window's question before it deletes a tag: the tags inside it.")
+                    : String(
+                        localized: "The \(deletion.tagsInside.count) tags inside them go with them.",
+                        comment: "In the Cards window's question before it deletes several tags: the tags inside them."
+                    ))
+        }
+        sentences.append(
+            isOne
+                ? String(
+                    localized: "\(deletion.cards) cards lose it, and keep everything else.",
+                    comment: "In the Cards window's question before it deletes a tag: the cards that carry it.")
+                : String(
+                    localized: "\(deletion.cards) cards lose them, and keep everything else.",
+                    comment: "In the Cards window's question before it deletes several tags: the cards that carry them."
+                ))
+        if deletion.cardsBackInReviews > 0 {
+            sentences.append(
+                String(
+                    localized: "\(deletion.cardsBackInReviews) of those cards come back to your reviews.",
+                    comment: """
+                        In the Cards window's question before it deletes tags: the cards they set aside, which come \
+                        back to Lucas's reviews.
+                        """))
+        }
+        if let stopSyncing = deletion.cardsThatStopSyncing, stopSyncing > 0 {
+            sentences.append(
+                String(
+                    localized: "\(stopSyncing) of those cards stop syncing, left with no tag you chose to sync.",
+                    comment: """
+                        In the Cards window's question before it deletes tags, while only the cards with a tag Lucas \
+                        chose sync: the cards that stop syncing.
+                        """))
+        }
+        sentences.append(
+            String(
+                localized: "You can't undo this.",
+                comment: "The last sentence of the Cards window's question before it deletes tags."))
+        return sentences.joined(separator: " ")
+    }
+
+    /// Back, which lists All Tags again in place of a tag's cards, as Lucas
+    /// left it: ⌘[, as Back in Finder and Safari.
+    private var backButton: some View {
+        Button {
+            state.goBack()
+        } label: {
+            Label(
+                String(
+                    localized: "Back",
+                    comment: "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags."),
+                systemImage: "chevron.left")
+        }
+        .keyboardShortcut("[", modifiers: .command)
+        .disabled(!state.canGoBack)
+        .help(Text("Back to All Tags (⌘[)", comment: "The tooltip of the Cards window's Back button."))
     }
 
     /// Reads Lucas's cards, as they are now, on the ladder he set in
@@ -447,15 +603,52 @@ struct CardsView: View {
             return Failure(
                 title: LocalizedStringResource(
                     "Couldn't set “\(TagPath.shown(tag))” aside",
-                    comment: "An alert's title in the Cards window, after Set Aside in a tag's menu, with the tag."),
+                    comment: """
+                        An alert's title in the Cards window, after Set Aside in a tag's menu or its Set Aside \
+                        checkbox in All Tags, with the tag.
+                        """),
                 error: error)
         case .stopSettingAside(let tag):
             return Failure(
                 title: LocalizedStringResource(
                     "Couldn't untick Set Aside on “\(TagPath.shown(tag))”",
-                    comment:
-                        "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
-                ),
+                    comment: """
+                        An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu or \
+                        unticking its Set Aside checkbox in All Tags, with the tag.
+                        """),
+                error: error)
+        case .prioritize(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't make “\(TagPath.shown(tag))” a priority tag",
+                    comment: """
+                        An alert's title in the Cards window, after Prioritize in a tag's menu or its Priority \
+                        checkbox in All Tags, with the tag.
+                        """),
+                error: error)
+        case .stopPrioritizing(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't untick Prioritize on “\(TagPath.shown(tag))”",
+                    comment: """
+                        An alert's title in the Cards window, after choosing a ticked Prioritize in a tag's menu or \
+                        unticking its Priority checkbox in All Tags, with the tag.
+                        """),
+                error: error)
+        case .deleteTags(let tag):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't delete “\(TagPath.shown(tag))”",
+                    comment: """
+                        An alert's title in the Cards window, after Delete… in a tag's menu or its question, with \
+                        the tag's whole name, the first when Lucas deletes several.
+                        """),
+                error: error)
+        case .clearUnusedTags:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't clear the unused tags",
+                    comment: "An alert's title in the Cards window, after Clear Unused Tags… or its question."),
                 error: error)
         case .setColor(let tag):
             return Failure(
@@ -481,8 +674,8 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't move “\(TagPath.shown(tag))”",
                     comment: """
-                        An alert's title in the Cards window, after dragging a tag in All Tags onto another or onto \
-                        the Tags section's title, with the tag's whole name.
+                        An alert's title in the Cards window, after dragging a tag in All Tags onto another or \
+                        between two rows, with the tag's whole name, the first when Lucas drags several.
                         """),
                 error: error)
         case .pin(let tag):
@@ -490,17 +683,18 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't pin “\(TagPath.shown(tag))” to the sidebar",
                     comment: """
-                        An alert's title in the Cards window, after Pin to Sidebar in a tag's menu or dragging a tag \
-                        into the sidebar, with the tag's whole name.
+                        An alert's title in the Cards window, after Pin to Sidebar in a tag's menu, its Pinned \
+                        checkbox in All Tags or dragging a tag into the sidebar, with the tag's whole name.
                         """),
                 error: error)
         case .unpin(let tag):
             return Failure(
                 title: LocalizedStringResource(
                     "Couldn't unpin “\(TagPath.shown(tag))” from the sidebar",
-                    comment:
-                        "An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu, with the tag's whole name."
-                ),
+                    comment: """
+                        An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu or unticking \
+                        its Pinned checkbox in All Tags, with the tag's whole name.
+                        """),
                 error: error)
         case .reorderPinned(let tag):
             return Failure(
@@ -576,9 +770,9 @@ struct CardsView: View {
     /// The sidebar's section `section`: the cards by where they stand; the
     /// inbox, with how many things wait in it, as the menu counts them; the
     /// cards of each pinned tag, in Lucas's order, each with its context
-    /// menu, which he drags into another order, or a tag from All Tags in
-    /// among them to pin it, then All Tags…, which pins a tag dropped on it
-    /// after them, the one place to drop one while none is pinned; or the
+    /// menu, which he drags into another order, or tags from All Tags in
+    /// among them to pin them, then All Tags…, which pins tags dropped on it
+    /// after them, the one place to drop them while none is pinned; or the
     /// cards by type, the user's types with their context menu.
     @ViewBuilder
     private func sidebarSection(_ section: CardsWindowState.SidebarSection) -> some View {
@@ -606,7 +800,7 @@ struct CardsView: View {
                     TagRow(tag: tag)
                         .tag(SidebarItem.cards(.tag(tag.id)))
                         .contextMenu {
-                            tagMenu(for: tag.id)
+                            tagMenu(for: [tag.id])
                         }
                 }
                 // List's own move, with its insertion line, and its own
@@ -687,80 +881,45 @@ struct CardsView: View {
         }
     }
 
-    /// All Tags, where the table was: every tag that isn't set aside, as a
-    /// tree, in its Tags section, whose title takes a tag Lucas drops on it
-    /// to the top, and the set-aside ones in its Set Aside section; or what
-    /// it says while there's no tag.
-    @ViewBuilder
-    private func allTags(tree: [CardsWindowState.ListedTag], setAside: [CardsWindowState.ListedTag]) -> some View {
-        if tree.isEmpty && setAside.isEmpty {
-            ContentUnavailableView(
-                String(localized: "No tags", comment: "In the Cards window's All Tags, when no card has a tag."),
-                systemImage: "tag",
-                description: Text(
-                    "The tags you write on your cards show up here.",
-                    comment: "In the Cards window's All Tags, when no card has a tag."))
-        } else {
-            List {
-                Section {
-                    tagRows(tree)
-                } header: {
-                    Text(
-                        "Tags",
-                        comment: "A section of the Cards window's All Tags: every tag that isn't set aside, as a tree."
-                    )
-                    .takingDroppedTags { state.dropOnTagsTitle($0) }
-                }
-                if !setAside.isEmpty {
-                    Section {
-                        tagRows(setAside)
-                    } header: {
-                        // A key of its own, since a tag's menu says "Set
-                        // Aside" too, as a verb, which a translation may word
-                        // apart.
-                        Text(
-                            String(
-                                localized: "all-tags.set-aside-section", defaultValue: "Set Aside",
-                                comment: """
-                                    A section of the Cards window's All Tags, below Tags: the tags set aside, whose \
-                                    cards are out of Lucas's reviews for now.
-                                    """))
-                    }
-                }
-            }
-            // Drawn as the sidebar drew its tree before, so a tag's symbol
-            // takes no tint, and shows the tag's color alone, on the
-            // table's background.
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
+    /// All Tags, where the table was: every tag as a tree, with its columns
+    /// and checkboxes, each tag's context menu acting on the tags selected
+    /// with it; or what it says while there's no tag, or the search finds
+    /// none.
+    private func allTags(_ rows: [CardsWindowState.AllTagsRow]) -> some View {
+        AllTagsOutline(rows: rows, state: $state) { tags in
+            NSHostingMenu(rootView: tagMenu(for: tags))
         }
-    }
-
-    /// The rows of `tags`, in either of All Tags' sections, each with its
-    /// context menu, and with a disclosure triangle over the tags inside it,
-    /// open unless Lucas closed it. Lucas drags a row onto another to move
-    /// its tag inside that one, or into the sidebar to pin it.
-    private func tagRows(_ tags: [CardsWindowState.ListedTag]) -> some View {
-        ForEach(tags) { tag in
-            TagTreeRow(tag: tag, closedTags: $closedTags) { name in
-                tagMenu(for: name)
-            } drop: { drop in
-                state.drop(drop.dragged, onto: drop.target)
+        .overlay {
+            if rows.isEmpty {
+                if state.hasSearch {
+                    ContentUnavailableView.search(text: state.search)
+                } else {
+                    ContentUnavailableView(
+                        String(
+                            localized: "No tags", comment: "In the Cards window's All Tags, when no card has a tag."),
+                        systemImage: "tag",
+                        description: Text(
+                            "The tags you write on your cards show up here.",
+                            comment: "In the Cards window's All Tags, when no card has a tag."))
+                }
             }
         }
     }
 
-    /// The context menu of the tag named `tag`, in the sidebar or in All
-    /// Tags, as the state offers it: Pin to Sidebar, or Unpin from Sidebar
-    /// while the tag is pinned; Rename…, which opens the rename sheet; Color,
-    /// with None and Finder's seven colors, each with a swatch, the tag's own
-    /// ticked; Emoji…, which opens the emoji sheet; and Set Aside, ticked
-    /// while the tag is set aside on its own.
+    /// The context menu of the tags named `tags`, one in the sidebar, one or
+    /// several in All Tags, as the state offers it, which the detail's Action
+    /// menu beside All Tags offers too: Pin to Sidebar, or Unpin from Sidebar
+    /// while all are pinned; Rename…, which opens the rename sheet, for one
+    /// tag; Color, with None and Finder's seven colors, each with a swatch,
+    /// the one they all have ticked; Emoji…, which opens the emoji sheet, for
+    /// one tag; Set Aside, ticked while all are set aside on their own;
+    /// Prioritize, ticked while all are priority tags, and off while one is
+    /// set aside; and Delete…, which asks first.
     @ViewBuilder
-    private func tagMenu(for tag: String) -> some View {
-        if let menu = state.menu(for: tag) {
+    private func tagMenu(for tags: [String]) -> some View {
+        if let menu = state.menu(for: tags) {
             Button {
-                state.choosePin(on: tag)
+                state.choosePin(on: menu.tags)
             } label: {
                 if menu.isPinned {
                     Text(
@@ -780,7 +939,7 @@ struct CardsView: View {
             }
             Divider()
             Button {
-                state.askToRename(tag)
+                state.askToRename(menu.tags[0])
             } label: {
                 Text(
                     "Rename…",
@@ -788,10 +947,13 @@ struct CardsView: View {
                         "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
                 )
             }
+            .disabled(!menu.isForOneTag)
             Menu {
                 ForEach(menu.colorItems, id: \.color) { item in
-                    Toggle(isOn: Binding(get: { item.isTicked }, set: { _ in state.chooseColor(item.color, on: tag) }))
-                    {
+                    Toggle(
+                        isOn: Binding(
+                            get: { item.isTicked }, set: { _ in state.chooseColor(item.color, on: menu.tags) })
+                    ) {
                         if let color = item.color {
                             Label {
                                 Text(verbatim: color.name)
@@ -810,7 +972,7 @@ struct CardsView: View {
                 )
             }
             Button {
-                state.askForEmoji(on: tag)
+                state.askForEmoji(on: menu.tags[0])
             } label: {
                 Text(
                     "Emoji…",
@@ -818,14 +980,37 @@ struct CardsView: View {
                         "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
                 )
             }
+            .disabled(!menu.isForOneTag)
             Toggle(
-                isOn: Binding(get: { menu.isSetAsideTicked }, set: { _ in state.chooseSetAside(on: tag) })
+                isOn: Binding(get: { menu.isSetAsideTicked }, set: { _ in state.chooseSetAside(on: menu.tags) })
             ) {
                 Text(
                     "Set Aside",
                     comment: """
                         An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag \
                         is set aside: its cards are out of Lucas's reviews for now.
+                        """)
+            }
+            Toggle(
+                isOn: Binding(get: { menu.isPriorityTicked }, set: { _ in state.choosePriority(on: menu.tags) })
+            ) {
+                Text(
+                    "Prioritize",
+                    comment: """
+                        An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag \
+                        is a priority tag, and off while it's set aside.
+                        """)
+            }
+            .disabled(!menu.canPrioritize)
+            Divider()
+            Button {
+                state.askToDeleteTags(menu.tags)
+            } label: {
+                Text(
+                    "Delete…",
+                    comment: """
+                        An item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to \
+                        delete the tag, or the tags selected with it.
                         """)
             }
         }
@@ -892,8 +1077,8 @@ struct CardsView: View {
             cardTable(rows)
         case .success(.inbox(let rows)):
             inboxTable(rows)
-        case .success(.allTags(let tree, let setAside)):
-            allTags(tree: tree, setAside: setAside)
+        case .success(.allTags(let rows)):
+            allTags(rows)
         case .failure(let error):
             ContentUnavailableView {
                 Label("Couldn't load your cards", systemImage: "exclamationmark.triangle")
@@ -905,7 +1090,8 @@ struct CardsView: View {
         }
     }
 
-    /// The cards of the group the sidebar chose, one per row. A right click on
+    /// The cards of the group the sidebar chose, or of the tag Lucas opened
+    /// in All Tags, one per row. A right click on
     /// the headers shows SwiftUI's menu of the columns, as in Finder, which
     /// adds or removes all of them but Front.
     private func cardTable(_ rows: [CardRow]) -> some View {
@@ -1050,7 +1236,7 @@ struct CardsView: View {
         // The card Show Card selected, which may be far down the list.
         .revealingRow(state.cardToReveal) { state.cardRevealed() }
         .overlay {
-            if rows.isEmpty, case .cards(let group) = state.sidebarItem {
+            if rows.isEmpty, let group = state.listedGroup {
                 noCards(in: group)
             }
         }
@@ -1221,17 +1407,140 @@ struct CardsView: View {
                     systemImage: "tray")
             case .noCardSelected:
                 ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
-            case .allTags:
+            case .allTags(let selected):
+                tagsDetail(selected)
+            }
+        }
+    }
+
+    /// What the detail says beside All Tags about the tags Lucas selected
+    /// there: with none, what he can do with a tag; with one, its name, with
+    /// Show Cards, the Actions menu, which is the tag's context menu, and
+    /// Delete…; with several, how many, with the Actions menu and Delete…;
+    /// and Clear Unused Tags… at its foot, while some tag is unused.
+    private func tagsDetail(_ selected: [CardTag]) -> some View {
+        Group {
+            if selected.isEmpty {
                 ContentUnavailableView(
-                    String(localized: "All Tags", comment: "In the Cards window's detail, beside All Tags."),
+                    String(
+                        localized: "No tag selected",
+                        comment: "In the Cards window's detail, beside All Tags, when no tag is selected."),
                     systemImage: "tag",
                     description: Text(
                         """
-                        Right-click a tag to pin it to the sidebar, rename it, give it a color or an emoji, or set it \
-                        aside. Drag it into the sidebar to pin it there, or onto another tag to move it inside.
+                        Double-click a tag to see its cards, or right-click it for what you can do with it. Drag tags \
+                        onto another to move them inside, between two rows to move them to that level, or into the \
+                        sidebar to pin them.
                         """,
                         comment: "In the Cards window's detail, beside All Tags: what Lucas does with a tag there."))
+            } else {
+                ContentUnavailableView {
+                    if selected.count == 1, let tag = selected.first {
+                        Label {
+                            Text(verbatim: tag.title)
+                        } icon: {
+                            if let color = tag.shownColor {
+                                Image(systemName: "tag.fill")
+                                    .foregroundStyle(color.color)
+                            } else {
+                                Image(systemName: "tag")
+                            }
+                        }
+                    } else {
+                        Label(
+                            String(
+                                localized: "\(selected.count) tags selected",
+                                comment: "In the Cards window's detail, when Lucas selected several tags in All Tags."),
+                            systemImage: "tag")
+                    }
+                } actions: {
+                    tagButtons(for: selected)
+                }
             }
+        }
+        // The whole pane, so that the bar is at its foot.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if state.tagActions.contains(.clearUnused) {
+                ActionBar {
+                    clearUnusedTagsButton
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    /// A button for each thing Lucas can do with the tags `selected` in All
+    /// Tags, as the state offers them: Show Cards, for one; the Actions menu,
+    /// whose items are the tags' context menu's, so that each has a keyboard
+    /// path; and Delete…. Each calls the state, which reads the selection as
+    /// it is when Lucas acts.
+    @ViewBuilder
+    private func tagButtons(for selected: [CardTag]) -> some View {
+        let actions = state.tagActions
+        if actions.contains(.showCards) {
+            showCardsButton
+        }
+        Menu {
+            tagMenu(for: selected.map(\.name))
+        } label: {
+            Text(
+                "Actions",
+                comment: """
+                    A menu button of the Cards window, beside All Tags: the context menu of the tags selected there.
+                    """)
+        }
+        .fixedSize()
+        if actions.contains(.delete) {
+            deleteTagsButton
+        }
+    }
+
+    /// Show Cards, which lists the selected tag's cards in All Tags' place:
+    /// Return, as in Finder's list, but while Lucas is in the search field,
+    /// where Return is the field's.
+    private var showCardsButton: some View {
+        Button(
+            String(
+                localized: "Show Cards",
+                comment:
+                    "A button of the Cards window, beside All Tags, that lists the selected tag's cards in its place."
+            )
+        ) {
+            state.showCardsOfSelectedTag()
+        }
+        .keyboardShortcut(isSearchFocused ? nil : .defaultAction)
+        .help(Text("Show Cards (↩)", comment: "The tooltip of the Cards window's button that lists a tag's cards."))
+    }
+
+    /// Delete…, which asks whether to delete the tags selected in All Tags:
+    /// ⌘⌫, as Delete… for cards, since the two never show together, but
+    /// while Lucas is in the search field, where ⌘⌫ deletes what he typed.
+    private var deleteTagsButton: some View {
+        Button(
+            String(
+                localized: "Delete…",
+                comment: "A button of the Cards window, beside All Tags, that deletes the selected tags, asking first."
+            )
+        ) {
+            state.askToDeleteSelectedTags()
+        }
+        .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
+        .help(Text("Delete… (⌘⌫)", comment: "The tooltip of the Cards window's button that deletes the tags."))
+    }
+
+    /// Clear Unused Tags…, which asks whether to delete the tags no card
+    /// carries. It has no shortcut: given ⇧⌘⌫, as Empty Trash in Finder, it
+    /// took ⌘⌫ too, in `make render`, before Delete… did.
+    private var clearUnusedTagsButton: some View {
+        Button(
+            String(
+                localized: "Clear Unused Tags…",
+                comment:
+                    "A button of the Cards window, beside All Tags: it asks whether to delete the tags no card carries."
+            )
+        ) {
+            state.askToClearUnusedTags()
         }
     }
 
@@ -1474,57 +1783,6 @@ struct CardsView: View {
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
 
-/// A tag in All Tags, with the tags inside it under a disclosure triangle,
-/// open unless its name is in `closedTags`, each the same way. Its row, and
-/// each of theirs, has its context menu, and drags its name, which another
-/// row takes as a drop, and the sidebar's pinned tags too.
-private struct TagTreeRow<MenuItems: View>: View {
-    let tag: CardsWindowState.ListedTag
-    @Binding var closedTags: Set<String>
-    /// The context menu of the tag with this name.
-    let menu: (String) -> MenuItems
-    /// Drops one tag on another, and says whether it took the drop.
-    let drop: (TagDrop) -> Bool
-
-    var body: some View {
-        if tag.children.isEmpty {
-            row
-        } else {
-            DisclosureGroup(isExpanded: isOpen) {
-                ForEach(tag.children) { child in
-                    TagTreeRow(tag: child, closedTags: $closedTags, menu: menu, drop: drop)
-                }
-            } label: {
-                row
-            }
-        }
-    }
-
-    private var row: some View {
-        TagRow(tag: tag)
-            .takingDroppedTags { dragged in
-                drop(TagDrop(dragged: dragged, target: tag.id))
-            }
-            .draggable(tag.tag.name)
-            .contextMenu {
-                menu(tag.id)
-            }
-    }
-
-    /// Whether the disclosure triangle is open, which Lucas changes.
-    private var isOpen: Binding<Bool> {
-        Binding {
-            !closedTags.contains(tag.id)
-        } set: { isOpen in
-            if isOpen {
-                closedTags.remove(tag.id)
-            } else {
-                closedTags.insert(tag.id)
-            }
-        }
-    }
-}
-
 /// A type's row in the sidebar: its name, after a user type's emoji, when it
 /// has one, or else the type's symbol.
 private struct TypeRow: View {
@@ -1543,20 +1801,10 @@ private struct TypeRow: View {
     }
 }
 
-/// A tag Lucas drops on another in All Tags, each by its whole name.
-private struct TagDrop {
-    /// The tag he drags.
-    let dragged: String
-    /// The tag he drops it on.
-    let target: String
-}
-
-/// A tag's row, among the sidebar's pinned tags or in All Tags: its emoji,
-/// its own or else the tags' it sits inside, before its title, its whole name
-/// among the pinned tags and at the top of All Tags' sections and its last
-/// level in their trees, and the tag symbol, filled with its color, found the
-/// same way, when it has one, grayed when the state says so. Its tooltip says
-/// its whole name.
+/// A pinned tag's row in the sidebar: its emoji, its own or else the tags'
+/// it sits inside, before its whole name, and the tag symbol, filled with its
+/// color, found the same way, when it has one, grayed when the state says
+/// so. Its tooltip says its whole name.
 private struct TagRow: View {
     let tag: CardsWindowState.ListedTag
 
@@ -1577,12 +1825,11 @@ private struct TagRow: View {
     }
 }
 
-/// Where Lucas drops a tag he drags from All Tags: in All Tags, a tag's row
-/// or the Tags section's title, and in the sidebar, All Tags…; as wide as
-/// its list, highlighted while he holds a tag over it.
+/// Where Lucas drops tags he drags from All Tags in the sidebar's All
+/// Tags…, as wide as the list, highlighted while he holds them over it.
 private struct DroppedTags: ViewModifier {
-    /// Takes the dropped tag's name, and says whether it took the drop.
-    let drop: (String) -> Bool
+    /// Takes the dropped tags' names, and says whether it took the drop.
+    let drop: ([String]) -> Bool
     @State private var isTargeted = false
 
     func body(content: Content) -> some View {
@@ -1594,7 +1841,7 @@ private struct DroppedTags: ViewModifier {
                 in: .rect(cornerRadius: 4)
             )
             .dropDestination(for: String.self) { names, _ in
-                names.first.map(drop) ?? false
+                drop(names)
             } isTargeted: {
                 isTargeted = $0
             }
@@ -1610,9 +1857,9 @@ extension KeyEquivalent {
 }
 
 extension View {
-    /// The view as a place where Lucas drops a tag he drags from All Tags,
-    /// which `drop` takes by its name, saying whether it took the drop.
-    fileprivate func takingDroppedTags(_ drop: @escaping (String) -> Bool) -> some View {
+    /// The view as a place where Lucas drops tags he drags from All Tags,
+    /// which `drop` takes by their names, saying whether it took the drop.
+    fileprivate func takingDroppedTags(_ drop: @escaping ([String]) -> Bool) -> some View {
         modifier(DroppedTags(drop: drop))
     }
 

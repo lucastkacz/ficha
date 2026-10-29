@@ -344,7 +344,7 @@ final class DatabaseFileTests {
                 "::historia", "economía", "economía::mundial", "economía :: Argentina", "economía::",
             ])
         #expect(
-            window.allTagsListing?.tree.outline == [
+            window.allTagsRows?.outline == [
                 "::historia", "economía", "  mundial", "economía :: Argentina", "economía::",
             ])
         #expect(try engine.cardRows(in: .tag("economía"), on: ladder).map(\.card.front) == ["economía::mundial"])

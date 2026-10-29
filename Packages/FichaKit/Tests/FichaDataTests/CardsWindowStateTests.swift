@@ -51,7 +51,7 @@ struct CardsWindowStateTests {
             card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia"]), in: engine)
         try approveCard("serendipia", in: engine)
         var window = openWindow()
-        window.chooseSetAside(on: "historia")
+        window.chooseSetAside(on: ["historia"])
         window.choose(.cards(.tag("historia")))
 
         try engine.delete([mayo.id])
@@ -67,15 +67,15 @@ struct CardsWindowStateTests {
         let ubuntu = try approve(
             card(.word, front: "ubuntu", back: "Humanidad.", tags: ["filosofía", "lenguaje"]), in: engine)
         var window = openWindow()
-        #expect(window.menu(for: "filosofía")?.isSetAsideTicked == false)
+        #expect(window.menu(for: ["filosofía"])?.isSetAsideTicked == false)
 
-        window.chooseSetAside(on: "filosofía")
+        window.chooseSetAside(on: ["filosofía"])
 
-        #expect(window.menu(for: "filosofía")?.isSetAsideTicked == true)
-        #expect(window.menu(for: "lenguaje")?.isSetAsideTicked == false)
+        #expect(window.menu(for: ["filosofía"])?.isSetAsideTicked == true)
+        #expect(window.menu(for: ["lenguaje"])?.isSetAsideTicked == false)
         #expect(try engine.cards().map(\.standing) == [.setAside(by: ["filosofía"])])
-        window.chooseSetAside(on: "filosofía")
-        #expect(window.menu(for: "filosofía")?.isSetAsideTicked == false)
+        window.chooseSetAside(on: ["filosofía"])
+        #expect(window.menu(for: ["filosofía"])?.isSetAsideTicked == false)
         #expect(try engine.cards().map(\.standing) == [ubuntu.standing])
     }
 
@@ -84,15 +84,15 @@ struct CardsWindowStateTests {
         try approve(card(.word, front: "fotosíntesis", back: "Luz en azúcar.", tags: ["ciencia"]), in: engine)
         var window = openWindow()
         let colors: [TagColor?] = [nil, .red, .orange, .yellow, .green, .blue, .purple, .gray]
-        #expect(window.menu(for: "ciencia")?.colorItems.map(\.color) == colors)
-        #expect(window.menu(for: "ciencia")?.colorItems.filter(\.isTicked).map(\.color) == [nil])
+        #expect(window.menu(for: ["ciencia"])?.colorItems.map(\.color) == colors)
+        #expect(window.menu(for: ["ciencia"])?.colorItems.filter(\.isTicked).map(\.color) == [nil])
 
-        window.chooseColor(.green, on: "ciencia")
+        window.chooseColor(.green, on: ["ciencia"])
 
-        #expect(window.menu(for: "ciencia")?.colorItems.filter(\.isTicked).map(\.color) == [.green])
+        #expect(window.menu(for: ["ciencia"])?.colorItems.filter(\.isTicked).map(\.color) == [.green])
         #expect(window.tags == [CardTag(name: "ciencia", color: .green)])
-        window.chooseColor(nil, on: "ciencia")
-        #expect(window.menu(for: "ciencia")?.colorItems.filter(\.isTicked).map(\.color) == [nil])
+        window.chooseColor(nil, on: ["ciencia"])
+        #expect(window.menu(for: ["ciencia"])?.colorItems.filter(\.isTicked).map(\.color) == [nil])
         #expect(window.tags == [CardTag(name: "ciencia")])
     }
 
@@ -133,7 +133,7 @@ struct CardsWindowStateTests {
         try engine.climb(eudaimonia, to: 5, movingForward: time)
         time.advance(by: days(30))
         var window = openWindow()
-        window.chooseSetAside(on: "filosofía")
+        window.chooseSetAside(on: ["filosofía"])
 
         for group in [CardGroup.new, .due, .learned] {
             window.choose(.cards(group))
@@ -154,7 +154,7 @@ struct CardsWindowStateTests {
         try engine.meet(serendipia)
         var window = openWindow()
 
-        window.chooseSetAside(on: "filosofía")
+        window.chooseSetAside(on: ["filosofía"])
 
         let rows = try #require(window.listedCardRows)
         #expect(rows.map(\.frontFirst.dueColumn) == [.setAside, .due(time.now + hours(1))])

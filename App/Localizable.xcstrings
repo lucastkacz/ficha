@@ -407,6 +407,64 @@
         }
       }
     },
+    "%lld cards lose it, and keep everything else." : {
+      "comment" : "In the Cards window's question before it deletes a tag: the cards that carry it.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 card loses it, and keeps everything else."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards lose it, and keep everything else."
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No card carries it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards lose them, and keep everything else." : {
+      "comment" : "In the Cards window's question before it deletes several tags: the cards that carry them.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 card loses them, and keeps everything else."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards lose them, and keep everything else."
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No card carries them."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld cards repeat cards you have, by their front:" : {
       "comment" : "In the Import sheet, above Update and Skip, with how many cards of the file repeat.",
       "localizations" : {
@@ -684,6 +742,55 @@
         }
       }
     },
+    "%lld of those cards come back to your reviews." : {
+      "comment" : "In the Cards window's question before it deletes tags: the cards they set aside, which come back to Lucas's reviews.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 of those cards comes back to your reviews."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld of those cards come back to your reviews."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of those cards stop syncing, left with no tag you chose to sync." : {
+      "comment" : "In the Cards window's question before it deletes tags, while only the cards with a tag Lucas chose sync: the cards that stop syncing.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 of those cards stops syncing, left with no tag you chose to sync."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld of those cards stop syncing, left with no tag you chose to sync."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld tags selected" : {
+      "comment" : "In the Cards window's detail, when Lucas selected several tags in All Tags."
+    },
     "+%lld" : {
       "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
     },
@@ -719,6 +826,9 @@
     },
     "About" : {
       "comment" : "A tab of the Settings window."
+    },
+    "Actions" : {
+      "comment" : "A menu button of the Cards window, beside All Tags: the context menu of the tags selected there."
     },
     "Add" : {
       "comment" : "The button of the Cards window's card form that saves the card."
@@ -767,14 +877,11 @@
     "All cards (%lld)" : {
       "comment" : "An item of the Export sheet's menu: every card, buried ones too, with how many."
     },
-    "All Tags" : {
-      "comment" : "In the Cards window's detail, beside All Tags."
-    },
     "All Tags…" : {
       "comment" : "The last item of the Tags section of the Cards window's sidebar: it lists every tag, pinned or not.\nThe last item of the menu's Prioritize submenu: it opens the Cards window on All Tags, which lists every tag."
     },
-    "all-tags.set-aside-section" : {
-      "comment" : "A section of the Cards window's All Tags, below Tags: the tags set aside, whose cards are out of Lucas's reviews for now.",
+    "all-tags.set-aside-column" : {
+      "comment" : "A column of the Cards window's All Tags: a checkbox, ticked while the tag is set aside, its cards out of Lucas's reviews for now.",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -831,10 +938,13 @@
       "comment" : "Settings, under Appearances: the least time between two appearances."
     },
     "Back" : {
-      "comment" : "In the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
+      "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.\nIn the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
     },
     "Back first" : {
       "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a first view or review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
+    },
+    "Back to All Tags (⌘[)" : {
+      "comment" : "The tooltip of the Cards window's Back button."
     },
     "Back up" : {
       "comment" : "Settings, under Backups: how often Ficha backs up on its own."
@@ -954,7 +1064,7 @@
 
     },
     "Cards" : {
-      "comment" : "The Cards window's title."
+      "comment" : "A column of the Cards window's All Tags: how many cards carry the tag, or a tag inside it.\nThe Cards window's title."
     },
     "Cards Anki was learning or reviewing land on the step nearest their interval, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
       "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
@@ -976,6 +1086,12 @@
     },
     "Choose File…" : {
       "comment" : "The Import sheet's button that opens a text file of cards."
+    },
+    "Clear Unused Tags" : {
+      "comment" : "The button that deletes the unused tags the Cards window asks about."
+    },
+    "Clear Unused Tags…" : {
+      "comment" : "A button of the Cards window, beside All Tags: it asks whether to delete the tags no card carries."
     },
     "Close" : {
       "comment" : "The button that closes the Cards window's card form."
@@ -1069,11 +1185,17 @@
     "Couldn't check whether another card has this front. %@" : {
       "comment" : "In the Cards window's card form, under the front, with why it couldn't be checked."
     },
+    "Couldn't clear the unused tags" : {
+      "comment" : "An alert's title in the Cards window, after Clear Unused Tags… or its question."
+    },
     "Couldn't copy the instructions" : {
       "comment" : "An alert's title in the Import sheet, after Copy Instructions for an AI."
     },
     "Couldn't count your progress" : {
 
+    },
+    "Couldn't delete “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Delete… in a tag's menu or its question, with the tag's whole name, the first when Lucas deletes several."
     },
     "Couldn't delete %lld cards" : {
       "comment" : "An alert's title in the Cards window.",
@@ -1122,11 +1244,14 @@
     "Couldn't look for more cards" : {
 
     },
+    "Couldn't make “%@” a priority tag" : {
+      "comment" : "An alert's title in the Cards window, after Prioritize in a tag's menu or its Priority checkbox in All Tags, with the tag."
+    },
     "Couldn't make the type" : {
       "comment" : "An alert's title in the Cards window's New Type sheet, after OK."
     },
     "Couldn't move “%@”" : {
-      "comment" : "An alert's title in the Cards window, after dragging a tag in All Tags onto another or onto the Tags section's title, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window, after dragging a tag in All Tags onto another or between two rows, with the tag's whole name, the first when Lucas drags several."
     },
     "Couldn't move “%@” in the sidebar" : {
       "comment" : "An alert's title in the Cards window, after dragging a pinned tag to another place among the sidebar's pinned tags, with the tag's whole name."
@@ -1155,7 +1280,7 @@
       }
     },
     "Couldn't pin “%@” to the sidebar" : {
-      "comment" : "An alert's title in the Cards window, after Pin to Sidebar in a tag's menu or dragging a tag into the sidebar, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window, after Pin to Sidebar in a tag's menu, its Pinned checkbox in All Tags or dragging a tag into the sidebar, with the tag's whole name."
     },
     "Couldn't read the file" : {
       "comment" : "An alert's title in the Cards window's Import sheet."
@@ -1188,7 +1313,7 @@
 
     },
     "Couldn't set “%@” aside" : {
-      "comment" : "An alert's title in the Cards window, after Set Aside in a tag's menu, with the tag."
+      "comment" : "An alert's title in the Cards window, after Set Aside in a tag's menu or its Set Aside checkbox in All Tags, with the tag."
     },
     "Couldn't show this image." : {
       "comment" : "In place of an image on a card's side that can't be read."
@@ -1278,16 +1403,19 @@
 
     },
     "Couldn't unpin “%@” from the sidebar" : {
-      "comment" : "An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu or unticking its Pinned checkbox in All Tags, with the tag's whole name."
+    },
+    "Couldn't untick Prioritize on “%@”" : {
+      "comment" : "An alert's title in the Cards window, after choosing a ticked Prioritize in a tag's menu or unticking its Priority checkbox in All Tags, with the tag."
     },
     "Couldn't untick Set Aside on “%@”" : {
-      "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu, with the tag."
+      "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu or unticking its Set Aside checkbox in All Tags, with the tag."
     },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
     "Delete" : {
-      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about."
+      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about.\nThe button that deletes the tags the Cards window asks about."
     },
     "Delete “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a card, with its front."
@@ -1315,14 +1443,43 @@
         }
       }
     },
+    "Delete %lld tags?" : {
+      "comment" : "The title of the Cards window's question before it deletes several tags, with how many."
+    },
+    "Delete %lld unused tags?" : {
+      "comment" : "The title of the Cards window's question before Clear Unused Tags… deletes the tags no card carries, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete 1 unused tag?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld unused tags?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete the tag “%@”?" : {
+      "comment" : "The title of the Cards window's question before it deletes a tag, with its whole name."
+    },
     "Delete the type “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a card type of the user's own, with its name."
     },
     "Delete…" : {
-      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
-      "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards."
+      "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
@@ -1351,6 +1508,9 @@
     "Done" : {
       "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in."
     },
+    "Double-click a tag to see its cards, or right-click it for what you can do with it. Drag tags onto another to move them inside, between two rows to move them to that level, or into the sidebar to pin them." : {
+      "comment" : "In the Cards window's detail, beside All Tags: what Lucas does with a tag there."
+    },
     "Drop or paste a sound" : {
       "comment" : "In the empty place for the sound on a side of a card."
     },
@@ -1358,7 +1518,7 @@
       "comment" : "In the empty place for the image on a side of a card."
     },
     "Due" : {
-      "comment" : "A column of the Cards window: when the card is due.\nAn item of the Cards window's sidebar: the cards due now.\nIn the Cards window's detail: when the card is due."
+      "comment" : "A column of the Cards window's All Tags: how many of the tag's cards are due now.\nA column of the Cards window: when the card is due.\nAn item of the Cards window's sidebar: the cards due now.\nIn the Cards window's detail: when the card is due."
     },
     "Each “Don't know” counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
 
@@ -1903,6 +2063,9 @@
     "No buried cards" : {
       "comment" : "In the Cards window: no card is buried."
     },
+    "No card carries them, so no card changes. What you gave them goes with them, a pin, a color or an emoji, and you can't undo this." : {
+      "comment" : "Under the title of the Cards window's question before Clear Unused Tags… deletes them."
+    },
     "No card selected" : {
 
     },
@@ -1953,6 +2116,9 @@
     },
     "No tag" : {
       "comment" : "The Import sheet's tag field, empty: the cards get no tag of the file's."
+    },
+    "No tag selected" : {
+      "comment" : "In the Cards window's detail, beside All Tags, when no tag is selected."
     },
     "No tags" : {
       "comment" : "In the Cards window's All Tags, when no card has a tag."
@@ -2067,6 +2233,9 @@
     "Pin to Sidebar" : {
       "comment" : "An item of a tag's menu in the Cards window's All Tags, while the tag isn't pinned: it lists the tag in the sidebar, after the pinned ones."
     },
+    "Pinned" : {
+      "comment" : "A column of the Cards window's All Tags: a checkbox, ticked while the tag is pinned to the sidebar."
+    },
     "Play or Stop Sound" : {
       "comment" : "A hidden button of the review panel: R, which plays the sound of the side that shows, or stops the one that plays."
     },
@@ -2077,10 +2246,13 @@
       "comment" : "The tooltip of the review panel's button that plays the sound on a card's side, with its key."
     },
     "Prioritize" : {
-      "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked."
+      "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag is a priority tag, and off while it's set aside."
     },
     "Prioritize: %@" : {
       "comment" : "The Prioritize submenu's title while some tags are priority tags, which it lists by name."
+    },
+    "Priority" : {
+      "comment" : "A column of the Cards window's All Tags: a checkbox, ticked while the tag is a priority tag."
     },
     "Privacy Policy" : {
 
@@ -2175,9 +2347,6 @@
     "Right now" : {
 
     },
-    "Right-click a tag to pin it to the sidebar, rename it, give it a color or an emoji, or set it aside. Drag it into the sidebar to pin it there, or onto another tag to move it inside." : {
-      "comment" : "In the Cards window's detail, beside All Tags: what Lucas does with a tag there."
-    },
     "Save" : {
 
     },
@@ -2219,6 +2388,12 @@
     },
     "Show Card (⌘R)" : {
       "comment" : "The tooltip of the card form's button that shows the card the front repeats."
+    },
+    "Show Cards" : {
+      "comment" : "A button of the Cards window, beside All Tags, that lists the selected tag's cards in its place."
+    },
+    "Show Cards (↩)" : {
+      "comment" : "The tooltip of the Cards window's button that lists a tag's cards."
     },
     "Show how many cards are due in the menu bar" : {
 
@@ -2284,13 +2459,13 @@
       "comment" : "Settings, under Sync: the switch that turns sync on and off."
     },
     "Tag" : {
-      "comment" : "The Import sheet's field for a tag the imported cards get."
+      "comment" : "A column of the Cards window's All Tags: the tag.\nThe Import sheet's field for a tag the imported cards get."
     },
     "Tag every card with" : {
       "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
     },
     "Tags" : {
-      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's All Tags: every tag that isn't set aside, as a tree.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
+      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
     "Tags to sync" : {
       "comment" : "Settings, under Sync: the heading of the list of tags to choose."
@@ -2300,6 +2475,52 @@
     },
     "Text" : {
       "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
+    },
+    "The %lld tags inside it go with it." : {
+      "comment" : "In the Cards window's question before it deletes a tag: the tags inside it.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The tag inside it goes with it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %lld tags inside it go with it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The %lld tags inside them go with them." : {
+      "comment" : "In the Cards window's question before it deletes several tags: the tags inside them.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The tag inside them goes with them."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %lld tags inside them go with them."
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "The back has a sound" : {
       "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's back has one."
@@ -2473,6 +2694,9 @@
     },
     "Yellow" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "You can't undo this." : {
+      "comment" : "The last sentence of the Cards window's question before it deletes tags."
     },
     "You restored a copy of your cards. Turning sync on replaces iCloud's copy with this Mac's." : {
       "comment" : "Settings, under Sync, after the user restored a backup, which turned sync off: turning it on replaces the cards in iCloud, and on the user's other devices, with this Mac's."

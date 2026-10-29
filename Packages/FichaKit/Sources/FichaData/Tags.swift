@@ -131,10 +131,18 @@ extension Engine {
     /// priority tag is no longer one. Its cards keep their steps and their
     /// waits keep running.
     public func setAside(_ tag: String) throws(EngineError) {
+        try setAside([tag])
+    }
+
+    /// Sets each of `tags` aside, as `setAside(_:)` sets one, in one write,
+    /// as the Cards window's All Tags does for several tags at once.
+    public func setAside(_ tags: [String]) throws(EngineError) {
         try write { db in
-            var own = try ownTag(tag, in: db)
-            own.switchedOn = .setAside
-            try save(own, in: db)
+            for tag in tags {
+                var own = try ownTag(tag, in: db)
+                own.switchedOn = .setAside
+                try save(own, in: db)
+            }
         }
     }
 
@@ -142,11 +150,19 @@ extension Engine {
     /// they'd be without it, unless another of their tags is set aside. A tag
     /// that isn't set aside stays as it is.
     public func stopSettingAside(_ tag: String) throws(EngineError) {
+        try stopSettingAside([tag])
+    }
+
+    /// Stops setting each of `tags` aside, as `stopSettingAside(_:)` does
+    /// for one, in one write.
+    public func stopSettingAside(_ tags: [String]) throws(EngineError) {
         try write { db in
-            var own = try ownTag(tag, in: db)
-            guard own.isSetAside else { return }
-            own.switchedOn = nil
-            try save(own, in: db)
+            for tag in tags {
+                var own = try ownTag(tag, in: db)
+                guard own.isSetAside else { continue }
+                own.switchedOn = nil
+                try save(own, in: db)
+            }
         }
     }
 }

@@ -83,7 +83,18 @@ extension Engine {
     /// (ADR 0011), so the Prioritize submenu doesn't offer it, and the engine
     /// refuses it, as when another device set it aside meanwhile.
     public func setPriority(_ isPriority: Bool, of tag: String) throws(EngineError) {
-        try write { db in try setPriority(isPriority, of: tag, in: db) }
+        try setPriority(isPriority, of: [tag])
+    }
+
+    /// Makes each of `tags` a priority tag, or no longer one, as
+    /// `setPriority(_:of:)` does for one, in one write: when one of them is
+    /// set aside, it refuses them all.
+    public func setPriority(_ isPriority: Bool, of tags: [String]) throws(EngineError) {
+        try write { db in
+            for tag in tags {
+                try setPriority(isPriority, of: tag, in: db)
+            }
+        }
     }
 
     /// Makes `tag` a priority tag, or no longer one, in the write `db`, as

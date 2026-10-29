@@ -4,10 +4,9 @@ import Foundation
 import Testing
 
 /// Tests on the Cards window's tags (ADR 0021, ADR 0022): the sidebar's
-/// pinned tags, which Lucas pins, unpins and drags into his own order, All
-/// Tags, with every tag as a tree and the set-aside ones in its Set Aside
-/// section, what choosing a tag lists, and renaming and moving a tag with
-/// Rename… and the drops in All Tags, on the default ladder.
+/// pinned tags, which Lucas pins, unpins and drags into his own order, what
+/// choosing a tag lists, and renaming a tag with Rename…, on the default
+/// ladder. All Tags has tests of its own (`CardsWindowAllTagsTests`).
 struct CardsWindowTagsTests {
     let engine: Engine
     let ladder = ReviewSettings.defaults.ladder
@@ -38,7 +37,6 @@ struct CardsWindowTagsTests {
         #expect(before.isEmpty)
         #expect(window.pinnedTags.map(\.title) == ["lenguaje", "economía › Argentina", "historia › Roma", "ciencia"])
         #expect(window.pinnedTags.grayed == ["historia › Roma", "ciencia"])
-        #expect(window.pinnedTags.map(\.children) == [[], [], [], []])
     }
 
     // Every card has a type, so the Types section has no No Type.
@@ -66,12 +64,12 @@ struct CardsWindowTagsTests {
         try approveCard("deuda", tags: ["economía::Argentina", "lenguaje"])
         try engine.pin("lenguaje")
         var window = openWindow()
-        let menuBefore = window.menu(for: "economía::Argentina")
+        let menuBefore = window.menu(for: ["economía::Argentina"])
 
-        window.choosePin(on: "economía::Argentina")
+        window.choosePin(on: ["economía::Argentina"])
         let afterPinning = window.pinnedTags.map(\.id)
-        let menuAfter = window.menu(for: "economía::Argentina")
-        window.choosePin(on: "lenguaje")
+        let menuAfter = window.menu(for: ["economía::Argentina"])
+        window.choosePin(on: ["lenguaje"])
 
         #expect(menuBefore?.isPinned == false)
         #expect(afterPinning == ["lenguaje", "economía::Argentina"])
@@ -131,9 +129,9 @@ struct CardsWindowTagsTests {
         try approveCard("arte", tags: ["arte", "biología"])
         var window = openWindow()
 
-        let pinnedFirst = window.dropOnAllTags("biología")
-        let pinnedAfter = window.dropOnAllTags("arte")
-        let refused = window.dropOnAllTags("una palabra")
+        let pinnedFirst = window.dropOnAllTags(["biología"])
+        let pinnedAfter = window.dropOnAllTags(["arte"])
+        let refused = window.dropOnAllTags(["una palabra"])
 
         #expect(pinnedFirst)
         #expect(pinnedAfter)
@@ -155,64 +153,6 @@ struct CardsWindowTagsTests {
         #expect(window.failure?.action == .reorderPinned(tag: "arte"))
         #expect(window.failure?.error == .tagNotPinned("arte"))
         #expect(try engine.pinnedTags().map(\.name) == ["biología", "ciencia"])
-    }
-
-    // No card carries ciencia, historia, arte › barroco, filosofía, geografía
-    // or música, each listed for what it has of its own, and only a buried
-    // card carries política. The Set Aside section holds the set-aside tags,
-    // so none is grayed.
-    @Test(
-        "All Tags lists every tag as a tree, those of buried cards and those no card carries too, and the set-aside ones in its Set Aside section, ungrayed, one inside a tag that isn't by its whole path"
-    )
-    func allTagsListsEveryTag() throws {
-        try approveCard("deuda", tags: ["economía::Argentina::deuda", "lenguaje"])
-        try approveCard("arancel", tags: ["economía::mundial"])
-        try approveCard("Coliseo", tags: ["literatura::Roma"])
-        try engine.bury(try approveCard("Cabildo abierto", tags: ["política"]).id)
-        try engine.setAside("economía::Argentina")
-        try engine.setAside("literatura")
-        try engine.setAside("ciencia")
-        try engine.pin("historia")
-        try engine.pin("economía::mundial")
-        try engine.setColor(.blue, of: "arte::barroco")
-        try engine.togglePriority(of: "filosofía")
-        try engine.chooseToSync("geografía", true)
-        try engine.setEmoji(Emoji("🎵"), of: "música")
-        var window = openWindow()
-
-        window.choose(.allTags)
-
-        let allTags = try #require(window.allTagsListing)
-        #expect(
-            allTags.tree.outline == [
-                "arte", "  barroco", "economía", "  mundial", "filosofía", "geografía", "historia", "lenguaje",
-                "música",
-                "política",
-            ])
-        #expect(
-            allTags.setAside.outline == ["ciencia", "economía › Argentina", "  deuda", "literatura", "  Roma"])
-        #expect(allTags.setAside[1].children.map(\.tag.name) == ["economía::Argentina::deuda"])
-        #expect(allTags.tree.grayed + allTags.setAside.grayed == [])
-        #expect(window.sidebarItem == .allTags)
-        #expect(window.detail == .allTags)
-        #expect(window.actions.isEmpty)
-    }
-
-    @Test("All Tags… in the menu bar's Prioritize submenu chooses All Tags, but not while a card is edited")
-    func allTagsFromTheMenuBar() throws {
-        let cepo = try approveCard("cepo", tags: ["economía::Argentina"])
-        var window = openWindow()
-        window.select([cepo.id])
-        window.startEditing()
-
-        window.showAllTags()
-        let whileEditing = window.sidebarItem
-        window.cancelEditing()
-        window.showAllTags()
-
-        #expect(whileEditing == .cards(.all))
-        #expect(window.sidebarItem == .allTags)
-        #expect(window.allTagsListing?.tree.outline == ["economía", "  Argentina"])
     }
 
     @Test(
@@ -258,37 +198,8 @@ struct CardsWindowTagsTests {
         #expect(window.pinnedTags.map(\.title) == ["economics › Argentina"])
         #expect(window.sidebarItem == .cards(.tag("economics::Argentina")))
         window.choose(.allTags)
-        #expect(window.allTagsListing?.tree.outline == ["economics", "  Argentina"])
+        #expect(window.allTagsRows?.outline == ["economics", "  Argentina"])
         #expect(try engine.cards().map(\.tags) == [["economics::Argentina"]])
-    }
-
-    @Test(
-        "in All Tags, dropping a tag on another moves it inside, dropping it on the Tags title takes it to the top, and a drop inside itself is refused"
-    )
-    func allTagsDrops() throws {
-        try approveCard("tango", tags: ["Argentina"])
-        try approveCard("ahorro", tags: ["economía"])
-        try approveCard("arancel", tags: ["economía::mundial::comercio"])
-        var window = openWindow()
-        window.choose(.allTags)
-
-        let movedInside = window.drop("Argentina", onto: "economía")
-        let outlineAfterIt = window.allTagsListing?.tree.outline
-        let refused = [
-            window.drop("economía", onto: "economía::mundial"), window.drop("economía", onto: "economía"),
-            window.drop("economía::Argentina", onto: "economía"), window.drop("una palabra", onto: "economía"),
-        ]
-        let movedToTheTop = window.dropOnTagsTitle("economía::mundial")
-        let refusedAtTheTop = window.dropOnTagsTitle("economía")
-
-        #expect(movedInside)
-        #expect(outlineAfterIt == ["economía", "  Argentina", "  mundial", "    comercio"])
-        #expect(refused == [false, false, false, false])
-        #expect(movedToTheTop)
-        #expect(!refusedAtTheTop)
-        #expect(window.allTagsListing?.tree.outline == ["economía", "  Argentina", "mundial", "  comercio"])
-        #expect(window.failure == nil)
-        #expect(try engine.cards().map(\.tags) == [["economía::Argentina"], ["economía"], ["mundial::comercio"]])
     }
 
     /// Opens the Cards window and reads Lucas's cards, as the window does
@@ -308,16 +219,10 @@ struct CardsWindowTagsTests {
 }
 
 extension [CardsWindowState.ListedTag] {
-    /// The rows of these tags and the tags inside them, as All Tags shows
-    /// them open: each its title, two spaces in for each level it's in.
-    var outline: [String] {
-        flatMap { tag in [tag.title] + tag.children.outline.map { "  " + $0 } }
-    }
-
-    /// The titles of the grayed rows among these tags and the tags inside
-    /// them, in the order they're listed.
+    /// The titles of the grayed rows among these tags, in the order they're
+    /// listed.
     var grayed: [String] {
-        flatMap { tag in (tag.isGrayed ? [tag.title] : []) + tag.children.grayed }
+        filter(\.isGrayed).map(\.title)
     }
 }
 
@@ -329,14 +234,5 @@ extension CardsWindowState {
             return nil
         }
         return rows.map(\.id)
-    }
-
-    /// What All Tags lists, its tree and its Set Aside section, while the
-    /// window lists it.
-    var allTagsListing: (tree: [ListedTag], setAside: [ListedTag])? {
-        guard case .success(.allTags(let tree, let setAside)) = listing else {
-            return nil
-        }
-        return (tree, setAside)
     }
 }
