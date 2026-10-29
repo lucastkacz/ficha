@@ -9,10 +9,10 @@ Requires macOS 26 and the Xcode that [`.xcode-version`](../.xcode-version) names
 ```bash
 make bootstrap   # installs XcodeGen, shellcheck and actionlint
 make run         # builds and opens Ficha Dev, the development app
-make install     # installs Ficha in /Applications, signed with your team
+make upload      # from main: uploads the real Ficha to TestFlight, signed with your team
 ```
 
-The real Ficha that `make install` builds keeps its cards in its App Group's folder, which its `ficha` shares: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha/Ficha/`. It signs with your paid team, as Ficha Dev does, so macOS lets it into that folder, and `make install` stops without `iPhone/Local.xcconfig`. It doesn't run in the sandbox yet ([#310](https://github.com/lucastkacz/ficha/issues/310)). Its first launch moves Lucas's data there from `~/Library/Application Support/Ficha/` ([#309](https://github.com/lucastkacz/ficha/issues/309), [ADR 0018](adr/0018-the-app-and-the-cli-each-run-in-a-sandbox.md)):
+The real Ficha comes from TestFlight, as "Upload to TestFlight" below says, and runs in the App Sandbox, as in the Mac App Store ([ADR 0018](adr/0018-the-app-and-the-cli-each-run-in-a-sandbox.md)). It keeps its cards in its App Group's folder, which its `ficha` and its widget share: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha/Ficha/`. Its preferences are in its sandbox's own folder, `~/Library/Containers/com.lucastkacz.ficha/`. Its last build without the sandbox moved Lucas's data there from `~/Library/Application Support/Ficha/` ([#309](https://github.com/lucastkacz/ficha/issues/309)):
 
 - It copies the database through SQLite's online backup, and `Images/`, `Sounds/` and `Backups/` as files, into a hidden folder beside the new one. It checks what it copied (SQLite's integrity check, the same rows in every table, the same files), and only then gives it the folder's name, unless the old database changed meanwhile, as when a `ficha` command writes, which SQLite's `PRAGMA data_version` tells.
 - The old folder stays as it was. While the move fails, the app and its `ficha` work from the old folder, and the next launch tries again, first removing any hidden folder a move that was killed or crashed left.
@@ -26,7 +26,7 @@ The real Ficha that `make install` builds keeps its cards in its App Group's fol
 
 Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, so it runs next to Ficha without touching your cards.
 
-Ficha Dev runs in the App Sandbox, as the real Ficha will in the Mac App Store ([ADR 0018](adr/0018-the-app-and-the-cli-each-run-in-a-sandbox.md)), signed with Apple Development and your paid team, whose ID it takes from `iPhone/Local.xcconfig`, as [On the iPhone](#on-the-iphone) explains. Without that file, as in CI, `make build` builds Ficha Dev unsigned, which checks the code but can't run in the sandbox, and `make run` stops and says so. A new worktree hasn't the file either, since git ignores it: copy it there from the main folder.
+Ficha Dev runs in the App Sandbox too, signed with Apple Development and your paid team, whose ID it takes from `iPhone/Local.xcconfig`, as [On the iPhone](#on-the-iphone) explains. Without that file, as in CI, `make build` builds Ficha Dev unsigned, which checks the code but can't run in the sandbox, and `make run` stops and says so. A new worktree hasn't the file either, since git ignores it: copy it there from the main folder.
 
 Its cards are in its App Group's folder, which its `ficha` shares: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha.dev/Ficha Dev/`, with the database, `Images/`, `Sounds/` and `Backups/`, laid out as the real Ficha's. Its preferences are in its sandbox's own folder, `~/Library/Containers/com.lucastkacz.ficha.dev/`. Before its sandbox, Ficha Dev kept its cards in `~/Library/Application Support/Ficha Dev/`, which stays as it was: the sandboxed Ficha Dev started empty, and its debug menu loads the sample cards.
 
@@ -34,7 +34,7 @@ Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample c
 
 ### Sync through iCloud
 
-Ficha Dev syncs its cards through your iCloud, in the Development environment of Ficha's container, `iCloud.com.lucastkacz.ficha`, apart from the real Ficha's, which will sync in Production ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). iCloud and push are restricted entitlements, which need a provisioning profile: with your team's ID there, `make build` has Xcode make one through the account in Xcode › Settings › Accounts, and register the Mac with your team the first time. The real Ficha builds the same code with sync off, until it holds those entitlements ([#318](https://github.com/lucastkacz/ficha/issues/318)): signed with the team, it holds its App Group alone, and CloudKit stops an app that asks for a container without them.
+Ficha Dev syncs its cards through your iCloud, in the Development environment of Ficha's container, `iCloud.com.lucastkacz.ficha`, apart from the real Ficha's, which will sync in Production ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). iCloud and push are restricted entitlements, which need a provisioning profile: with your team's ID there, `make build` has Xcode make one through the account in Xcode › Settings › Accounts, and register the Mac with your team the first time. The real Ficha builds the same code with sync off, until it holds those entitlements ([#318](https://github.com/lucastkacz/ficha/issues/318)): signed with the team, it holds none of iCloud's, and CloudKit stops an app that asks for a container without them.
 
 It syncs while it runs: it catches up on what changed in iCloud as it starts, sends each change as it's made, by the app or by its `ficha`, and fetches what another device changed when iCloud pushes it. CloudKit's engine, asked to fetch, asks iCloud nothing unless a push came, so to fetch right away Ficha Dev starts its engine again, catching up first, which is our own. It syncs only while the Sync tab's switch is on, which deleting Ficha's data in System Settings › iCloud turns off too: the cards stay, and turning it on sends again all those that sync ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). A restore turns it off too, and turning it on replaces the cards that sync on the other devices with the restored ones. Under the switch, the Sync tab chooses every card or only those with the tags ticked in its list ([ADR 0020](adr/0020-selective-sync.md)): a card that stops syncing leaves iCloud as a record holding its tags alone, and stays on each device. A Mac that held cards before it ever synced starts with the switch off, as Lucas's real Ficha does after the update that brought it; a new install, Ficha Dev's sample cards and a `FICHA_DEV_SCRATCH` run start on a database with no cards, so they sync.
 
@@ -54,7 +54,7 @@ What iCloud holds is in [CloudKit Console](https://icloud.developer.apple.com/),
 
 ### The widget
 
-Each app has a widget, "Next Card" in the widget gallery, which shows the card a review now would start with, or when the next one comes ([#308](https://github.com/lucastkacz/ficha/issues/308)). Its files are in `Widget/`, a WidgetKit extension in the app's `Contents/PlugIns`, sandboxed in the app's App Group, where it reads the database alone. It picks the card as review now does, by this Mac's cards per appearance, which the app hands it in the group's defaults, so it says to open the app until the app has run once. A click on it opens the app through a link of its scheme, the build setting `FICHA_URL_SCHEME` in both Info.plists, `ficha-dev://review-now?card=<id>&way=<way>` for Ficha Dev's, which starts a review now with that card; while the review panel is open, it comes forward instead, unless it's showing See more. The real Ficha's widget, in the App Group its app moved into ([#309](https://github.com/lucastkacz/ficha/issues/309)), reads none of Lucas's cards until [#310](https://github.com/lucastkacz/ficha/issues/310): the app hands it nothing, and it says to open Ficha, without opening the cards, as `AppVariant.groupDefaults` says.
+Each app has a widget, "Next Card" in the widget gallery, which shows the card a review now would start with, or when the next one comes ([#308](https://github.com/lucastkacz/ficha/issues/308)). Its files are in `Widget/`, a WidgetKit extension in the app's `Contents/PlugIns`, sandboxed in the app's App Group, where it reads the database alone. It picks the card as review now does, by this Mac's cards per appearance, which the app hands it in the group's defaults, so it says to open the app until the app has run once. A click on it opens the app through a link of its scheme, the build setting `FICHA_URL_SCHEME` in both Info.plists, `ficha-dev://review-now?card=<id>&way=<way>` for Ficha Dev's, which starts a review now with that card; while the review panel is open, it comes forward instead, unless it's showing See more.
 
 It stays up to date as WidgetKit documents: its timeline has an entry at each time what it shows changes as time passes, such as the next card's due time, and the app asks WidgetKit to reload it, within the budget of reloads WidgetKit gives a widget a day, only when what it shows changed: as the app launches, 30 seconds after a burst of changes to the database ends, the CLI's included, once the review panel closes, which holds reloads back while it's open, when this Mac's settings change, and after Debug moves Ficha Dev's time. The extension runs only while WidgetKit asks it for a timeline, so it listens to nothing. Ficha Dev's widget runs on Ficha Dev's time too, and its entries go on the system's, which WidgetKit's timeline runs on.
 
@@ -63,6 +63,23 @@ It stays up to date as WidgetKit documents: its timeline has an entry at each ti
 ```bash
 /usr/bin/log stream --level info --predicate 'subsystem == "com.lucastkacz.ficha" AND category == "widget"'
 ```
+
+### Upload to TestFlight
+
+The real Ficha reaches your Mac through TestFlight, as the App Store build will ([#310](https://github.com/lucastkacz/ficha/issues/310)). Once a pull request merged, from the main folder, on `main`:
+
+```bash
+make upload
+```
+
+- It runs from `main` alone, with nothing uncommitted, and only when `main` is GitHub's, so each build is one of `main`'s commits. Anywhere else it stops and says why.
+- It archives the real Ficha for Intel and Apple silicon, signed with Apple Development, into `.build/upload/`. The export signs it again with Apple Distribution and uploads it to App Store Connect, through the account in Xcode › Settings › Accounts, as Xcode's Organizer does: neither the repo nor CI holds a secret, and CI never uploads. When the export says "No Accounts", `xcodebuild` can't reach that account until Xcode refreshes its sign-in: open Xcode › Settings › Accounts, sign in again if it asks, and run `make upload` again, as [Apple's developer forums](https://developer.apple.com/forums/thread/744834) report.
+- [`ExportOptions.plist`](../ExportOptions.plist) keeps each build to TestFlight's internal testers: such a build can't reach external testers or the App Store, so a version for the App Store will take an export of its own. It also keeps the build number as the Makefile sets it, `main`'s count of commits, which grows with each merge, as App Store Connect needs. The version, `MARKETING_VERSION` in `project.yml`, changes by hand.
+- The app's Info.plist says Ficha uses no encryption that needs a declaration (`ITSAppUsesNonExemptEncryption`), so App Store Connect asks nothing about it.
+- Once App Store Connect has processed the build, in some minutes, TestFlight's internal group gets it, and you install it from the TestFlight app. A build lasts 90 days.
+- To check what the sandbox lets each part reach, read the archive's entitlements: `codesign -d --entitlements - .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app`, and the same for its `Contents/Helpers/ficha`, `Contents/PlugIns/FichaWidget.appex` and `Contents/XPCServices/SVGDrawer.xpc`. Only the SVG drawer holds `com.apple.security.network.client`.
+
+Archiving and exporting with `xcodebuild`, and the keys of `ExportOptions.plist`, are Apple's documented way (`xcodebuild -help` lists them). The check that `make upload` runs from GitHub's `main`, and the build number from git, are our own.
 
 ## On the iPhone
 
@@ -115,7 +132,7 @@ When a text with plural variations changes, the export brings the new text in pl
 
 ## Refining
 
-What you capture waits in the inbox, with the cards you flag and the follow-ups: what you ask about a card in the review panel. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](content-guide.md), proposes cards for each capture, with Both ways on those whose back leads to their front, a fix or a burial for each flagged card, one you keep forgetting included, front first or back first, how to add each expansion to its card, and new cards with its card's tags for each follow-up. Point it to an image or a sound file on your Mac, and it proposes the card and the side it goes on. It writes only what you approve, through the installed Ficha's `ficha` command.
+What you capture waits in the inbox, with the cards you flag and the follow-ups: what you ask about a card in the review panel. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](content-guide.md), proposes cards for each capture, with Both ways on those whose back leads to their front, a fix or a burial for each flagged card, one you keep forgetting included, front first or back first, how to add each expansion to its card, and new cards with its card's tags for each follow-up. Point it to an image or a sound file on your Mac, and it proposes the card and the side it goes on, and copies the file into Downloads, the one folder the sandboxed `ficha` reads from. It writes only what you approve, through the installed Ficha's `ficha` command.
 
 ## The `ficha` command
 
@@ -131,7 +148,7 @@ Ficha ships with a command-line tool inside the app. Claude uses it to turn your
 alias ficha="/Applications/Ficha.app/Contents/Helpers/ficha"
 ```
 
-The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Build/Products/Debug/Ficha Dev.app/Contents/Helpers/`, works on Ficha Dev's cards. It runs in a sandbox of its own, as the real Ficha's will, so it reads the files it puts on cards from your Downloads folder alone: a file elsewhere is refused, with a message that says to copy it to Downloads. The names of the images and sounds Ficha holds work as before.
+Each `ficha` runs in a sandbox of its own, so it reads the files it puts on cards from your Downloads folder alone: a file elsewhere is refused, with a message that says to copy it to Downloads. The names of the images and sounds Ficha holds work as before. The `ficha` inside Ficha Dev, which `make build` puts in `.build/DerivedData/Build/Products/Debug/Ficha Dev.app/Contents/Helpers/`, works on Ficha Dev's cards.
 
 ### Agents' runs of Ficha Dev's `ficha`
 
