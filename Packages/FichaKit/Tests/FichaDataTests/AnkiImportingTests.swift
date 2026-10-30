@@ -502,7 +502,7 @@ final class AnkiImportingTests {
             choosing: ImportChoices(
                 deckNames: ["Medicina::Anatomía": " Medicina:: anatomía humana"], tagNames: ["repaso": " "]))
 
-        #expect(preview.proposedDecks == ["Medicina::Anatomía", "Medicina::Fisiología", "Viejas"])
+        #expect(preview.proposedDecks == ["Medicina", "Medicina::Anatomía", "Medicina::Fisiología", "Viejas"])
         #expect(preview.proposedTags == ["repaso", "hueso largo", "Medicina::Cardio"])
         let cards = try engine.cards()
         #expect(
@@ -534,6 +534,64 @@ final class AnkiImportingTests {
         #expect(try engine.cards().map(\.deck) == ["Arte", "Great Works of Art::Titles"])
         #expect(try engine.cards().map(\.tags) == [["Renaissance"], []])
         #expect(try engine.decks().map(\.name) == ["Arte", "Great Works of Art", "Great Works of Art::Titles"])
+    }
+
+    // As Great Works of Art can come in under Arte, and as a tag's rename
+    // takes the tags inside it along (ADR 0021).
+    @Test(
+        "the preview proposes the decks the cards sit inside too, and renaming one renames the decks inside it, but one renamed on its own keeps its name, and the decks inside it take that",
+        arguments: schemas)
+    func renamingADeckRenamesTheDecksInsideIt(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["Leonardo da Vinci", "La Gioconda."], deck: "Great Works of Art::Artists"),
+                AnkiNote(
+                    type: .basic, fields: ["La Gioconda", "Leonardo da Vinci."], deck: "Great Works of Art::Titles"),
+                AnkiNote(
+                    type: .basic, fields: ["La primavera", "Sandro Botticelli."],
+                    deck: "Great Works of Art::Titles::Italian"),
+            ])
+        let preview = try await engine.previewImport(of: file("Great Works of Art.apkg", package))
+
+        try engine.importCards(
+            preview,
+            choosing: ImportChoices(
+                deckNames: ["Great Works of Art": "Arte:: Great Works of Art", "Great Works of Art::Titles": "Títulos"]
+            ))
+
+        #expect(
+            preview.proposedDecks == [
+                "Great Works of Art", "Great Works of Art::Artists", "Great Works of Art::Titles",
+                "Great Works of Art::Titles::Italian",
+            ])
+        #expect(
+            try engine.cards().map(\.deck) == [
+                "Arte::Great Works of Art::Artists", "Títulos", "Títulos::Italian",
+            ])
+    }
+
+    // Anki keeps each card's deck, so a note's two cards can sit in two decks,
+    // while the one card they make lives in one (ADR 0024).
+    @Test(
+        "a reversed note whose two cards sit in different Anki decks comes in as one card in its first card's deck",
+        arguments: schemas)
+    func aReversedNoteComesIntoItsFirstCardsDeck(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basicAndReversed, fields: ["perro", "dog"], deck: "Inglés::Al inglés",
+                    reversedCardDeck: "Inglés::Al español")
+            ])
+        let preview = try await engine.previewImport(of: file("Inglés.apkg", package))
+
+        try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(preview.proposedDecks == ["Inglés", "Inglés::Al inglés"])
+        #expect(try engine.cards().map(\.deck) == ["Inglés::Al inglés"])
+        #expect(try engine.cards().map(\.bothWays) == [true])
     }
 
     // A side with only a sound comes in with it, or stays out for want of

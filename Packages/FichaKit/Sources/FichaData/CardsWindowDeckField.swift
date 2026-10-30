@@ -21,7 +21,7 @@ extension CardsWindowState {
     /// editor's while Lucas edits no card.
     public func deckFieldChoices(_ fields: CardFields) -> [Deck] {
         guard let held = deck(in: fields) else { return [] }
-        return decksToChoose(adding: [held]).flatMap(\.flattened).map(\.deck)
+        return decksToPick(holding: held)
     }
 
     /// Moves the card Lucas edits to the deck `deck`, by its whole name, or

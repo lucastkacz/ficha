@@ -191,7 +191,7 @@ final class CardsWindowImportTests {
 
         #expect(
             deckFields
-                == ["Great Works of Art::Artists", "Medicina::Anatomía", "Medicina"].map {
+                == ["Great Works of Art", "Great Works of Art::Artists", "Medicina", "Medicina::Anatomía"].map {
                     CardsWindowState.ImportDeckField(proposed: $0, name: $0)
                 })
         #expect(
@@ -200,6 +200,64 @@ final class CardsWindowImportTests {
         #expect(window.importing?.offersDeckChoice == false)
         #expect(try engine.cards().map(\.deck) == ["Arte", "Medicina::Anatomía humana", "Medicina"])
         #expect(try engine.cards().map(\.tags) == [["Renacimiento", "Painting"], [], []])
+    }
+
+    // In Great Works of Art only the decks inside it hold cards, and it comes
+    // in under Arte by one field, as a tag's rename takes the tags inside it
+    // along (ADR 0021).
+    @Test(
+        "the sheet has a field for each deck the cards sit inside too, and renaming one renames the decks inside it, but one renamed on its own keeps its name"
+    )
+    func renamingADeckInTheSheetRenamesTheDecksInsideIt() async throws {
+        var window = try await ankiImportSheet(
+            on: "Great Works of Art.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(
+                    type: .basic, fields: ["Leonardo da Vinci", "La Gioconda."], deck: "Great Works of Art::Artists"),
+                AnkiNote(
+                    type: .basic, fields: ["La Gioconda", "Leonardo da Vinci."], deck: "Great Works of Art::Titles"),
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+            ]))
+        let proposed = window.importing?.deckFields.map(\.proposed)
+
+        window.nameImportDeck("Great Works of Art::Titles", as: "Títulos")
+        window.nameImportDeck("Great Works of Art", as: "Arte:: Great Works of Art")
+        let names = window.importing?.deckFields.map(\.name)
+        await window.importCardsAndWait()
+
+        #expect(
+            proposed == [
+                "Great Works of Art", "Great Works of Art::Artists", "Great Works of Art::Titles", "Medicina",
+            ])
+        #expect(
+            names == ["Arte:: Great Works of Art", "Arte::Great Works of Art::Artists", "Títulos", "Medicina"])
+        #expect(try engine.cards().map(\.deck) == ["Arte::Great Works of Art::Artists", "Títulos", "Medicina"])
+    }
+
+    @Test(
+        "the sheet lists Default among the decks the cards come into while some new cards name no deck beside others that name one, and a menu of decks while none names one"
+    )
+    func defaultIsListedWhileSomeNewCardsNameNoDeck() async throws {
+        try approveCard("fémur", in: engine)
+        let mixed = try await ankiImportSheet(
+            on: "Medicina.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+                AnkiNote(type: .basic, fields: ["gripe", "Una infección por el virus de la influenza."]),
+            ]))
+        let decked = try await ankiImportSheet(
+            on: "Anatomía.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+                AnkiNote(type: .basic, fields: ["fémur", "El hueso del muslo."]),
+            ]))
+        let deckless = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
+
+        #expect(mixed.importing?.listsDefault == true)
+        #expect(mixed.importing?.offersDeckChoice == false)
+        #expect(decked.importing?.listsDefault == false)
+        #expect(deckless.importing?.listsDefault == false)
+        #expect(deckless.importing?.offersDeckChoice == true)
     }
 
     @Test("Import is off while a deck's field is blank or names Default, which the sheet says why")
@@ -233,13 +291,17 @@ final class CardsWindowImportTests {
         var unchosen = try await importSheet(on: "Más palabras.txt", "petricor\tEl olor de la lluvia.\n")
         let offered = chosen.importing
 
+        let choicesOffered = chosen.importDeckChoices.map(\.name)
         chosen.chooseImportDeck("Idiomas")
         let choosingIdiomas = chosen.importing?.chosenDeck
         chosen.askForNewImportDeck()
+        chosen.cancelNewDeck()
+        let cancelled = chosen.importing
+        chosen.askForNewImportDeck()
         let naming = chosen.importing?.isNamingNewDeck
-        let refused = chosen.newImportDeckEntry("Default")
-        chosen.chooseNewImportDeck("Idiomas:: Inglés")
-        let choicesWithTheNewDeck = chosen.importDeckChoices
+        let refused = chosen.newDeckEntry("Default")
+        chosen.chooseNewDeck("Idiomas:: Inglés")
+        let choicesWithTheNewDeck = chosen.importDeckChoices.map(\.name)
         chosen.chooseImportDeck("Ciencias")
         await chosen.importCardsAndWait()
         await unchosen.importCardsAndWait()
@@ -247,7 +309,10 @@ final class CardsWindowImportTests {
         #expect(offered?.offersDeckChoice == true)
         #expect(offered?.chosenDeck == Deck.defaultName)
         #expect(offered?.deckFields == [])
+        #expect(choicesOffered == [Deck.defaultName, "Idiomas"])
         #expect(choosingIdiomas == "Idiomas")
+        #expect(cancelled?.isNamingNewDeck == false)
+        #expect(cancelled?.chosenDeck == "Idiomas")
         #expect(naming == true)
         #expect(refused == .refused(.defaultDeckName("Default")))
         #expect(choicesWithTheNewDeck == [Deck.defaultName, "Idiomas", "Idiomas::Inglés"])

@@ -42,9 +42,9 @@ private struct ImportButtonAndSheet: ViewModifier {
                         preview: { run(state.previewImport(of: $0)) },
                         nameDeck: { state.nameImportDeck($0, as: $1) }, chooseDeck: { state.chooseImportDeck($0) },
                         askForNewDeck: { state.askForNewImportDeck() },
-                        newDeckEntry: { state.newImportDeckEntry($0) },
-                        chooseNewDeck: { state.chooseNewImportDeck($0) },
-                        cancelNewDeck: { state.cancelNewImportDeck() },
+                        newDeckEntry: { state.newDeckEntry($0) },
+                        chooseNewDeck: { state.chooseNewDeck($0) },
+                        cancelNewDeck: { state.cancelNewDeck() },
                         nameTag: { state.nameImportTag($0, as: $1) }, removeTag: { state.removeImportTag($0) },
                         chooseForRepeatedCards: { state.chooseForRepeatedCards($0) },
                         chooseToBringProgress: { state.chooseToBringProgress($0) },
@@ -133,24 +133,26 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// both ways (ADR 0016), how many come in with the first of several images
 /// or sounds on a side, and how many without a sound Ficha can't read. Then
 /// the decks the cards come into (ADR 0024), an Anki package's or a text
-/// file's Deck column's, with all their levels, each in a field the user
-/// renames; or for a file that puts its cards in no deck, a menu of decks,
-/// on Default until the user chooses another, whose New Deck… asks for a
-/// new deck's name in the preview's place. Then the tags the cards get: for
-/// a text file, one named after the file, for every card; for an Anki
-/// package, its notes' tags. The user renames each tag, or clears it to
-/// leave it out. An Anki package's cards come in where Anki had them while
-/// Bring progress is ticked (ADR 0013), and how many of them land on a step
-/// goes in the line under the title. Import imports them. While it reads the
-/// file or imports, it says so beside a spinner. A preview taller than the
-/// window scrolls between the title and the buttons. Last, it says what the
-/// import did. `CardsWindowState` holds the preview, the choices and the
-/// outcome, and the sheet draws them.
+/// file's Deck column's, and the decks they sit inside, each by its whole
+/// name in a field the user renames, which renames the decks inside it too,
+/// but those the user renamed on their own, with Default above them while
+/// some cards name no deck; or for a file that puts its cards in no deck, a
+/// menu of decks, on Default until the user chooses another, whose New
+/// Deck… asks for a new deck's name in the preview's place. Then the tags
+/// the cards get: for a text file, one named after the file, for every
+/// card; for an Anki package, its notes' tags. The user renames each tag,
+/// or clears it to leave it out. An Anki package's cards come in where Anki
+/// had them while Bring progress is ticked (ADR 0013), and how many of them
+/// land on a step goes in the line under the title. Import imports them.
+/// While it reads the file or imports, it says so beside a spinner. A
+/// preview taller than the window scrolls between the title and the
+/// buttons. Last, it says what the import did. `CardsWindowState` holds the
+/// preview, the choices and the outcome, and the sheet draws them.
 struct ImportSheet: View {
     let importing: CardsWindowState.Importing
-    /// The decks the menu of decks offers, by their whole names, Default
-    /// first: none while the sheet offers no such menu.
-    let deckChoices: [String]
+    /// The decks the menu of decks offers, Default first: none while the
+    /// sheet offers no such menu.
+    let deckChoices: [Deck]
     /// The tallest the sheet gets, as `sheetWithinWindow` hands it.
     let maximumHeight: CGFloat
     /// What couldn't be done, as the alert over the sheet says it.
@@ -182,9 +184,6 @@ struct ImportSheet: View {
     @Environment(\.dismiss) private var dismiss
     /// Whether the open panel is open.
     @State private var isChoosingFile = false
-    /// What the new deck's name field holds, after New Deck….
-    @State private var newDeckName = ""
-    @FocusState private var isNewDeckNameFocused: Bool
     /// The space between the sheet's parts, and around them.
     private let spacing: CGFloat = 16
     private let padding: CGFloat = 20
@@ -199,7 +198,7 @@ struct ImportSheet: View {
                 choosingFile
             case .preview(let preview):
                 if importing.isNamingNewDeck {
-                    namingNewDeck
+                    NewDeckName(entry: newDeckEntry, choose: chooseNewDeck, cancel: cancelNewDeck)
                 } else {
                     previewOf(preview)
                 }
@@ -545,9 +544,11 @@ struct ImportSheet: View {
         }
     }
 
-    /// The decks the cards come into, by their whole names, each in a field
-    /// the user renames, with why Import doesn't take what it holds under
-    /// it, in a list that scrolls when they're many.
+    /// The decks the cards come into, and the decks they sit inside, by
+    /// their whole names, each in a field the user renames, with why Import
+    /// doesn't take what it holds under it, after Default, in a field no one
+    /// renames, while some cards come into it, in a list that scrolls when
+    /// they're many.
     private var deckFields: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(
@@ -558,6 +559,16 @@ struct ImportSheet: View {
                     """)
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
+                    if importing.listsDefault {
+                        TextField(
+                            String(
+                                localized: "Deck",
+                                comment: "The Import sheet's field for a deck the imported cards come into."),
+                            text: .constant(Deck.shownName(Deck.defaultName))
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(true)
+                    }
                     ForEach(importing.deckFields, id: \.proposed) { field in
                         VStack(alignment: .leading, spacing: 4) {
                             TextField(
@@ -596,65 +607,15 @@ struct ImportSheet: View {
     /// deck, and New Deck…, which asks for a new deck's name in the
     /// preview's place.
     private var deckChoice: some View {
-        Picker(selection: chosenDeck) {
-            ForEach(deckChoices, id: \.self) { deck in
-                Text(Deck.shownName(deck)).tag(String?.some(deck))
-            }
-            Divider()
-            Text(
-                "New Deck…",
-                comment: "The last item of the Import sheet's menu of decks: it asks for a new deck's name."
-            )
-            .tag(String?.none)
+        let label = Text(
+            "Put every card in",
+            comment: "In the Import sheet, before the menu of the deck every card it imports comes into.")
+        return LabeledContent {
+            DeckPicker(
+                deck: importing.chosenDeck, decks: deckChoices, label: label, choose: chooseDeck,
+                newDeck: askForNewDeck)
         } label: {
-            Text(
-                "Put every card in",
-                comment: "In the Import sheet, before the menu of the deck every card it imports comes into.")
-        }
-        .fixedSize()
-    }
-
-    /// The new deck's name field, in the preview's place after New Deck… in
-    /// the menu of decks, with Cancel, which goes back to the preview, and
-    /// OK, which chooses the deck in the menu, for Import to make it.
-    @ViewBuilder
-    private var namingNewDeck: some View {
-        heading(
-            Text(
-                "New Deck",
-                comment: "The title of the Cards window's Import sheet, after New Deck… in its menu of decks."),
-            Text(
-                "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”.",
-                comment: "Under the title of the Cards window's Import sheet, after New Deck… in its menu of decks."))
-        TextField(
-            String(
-                localized: "Name",
-                comment:
-                    "The field of the Cards window's Import sheet, after New Deck… in its menu of decks: a new deck's name."
-            ),
-            text: $newDeckName
-        )
-        .textFieldStyle(.roundedBorder)
-        .focused($isNewDeckNameFocused)
-        // A focused text field keeps Return from reaching the default button.
-        .onSubmit(submitNewDeckName)
-        .task {
-            isNewDeckNameFocused = true
-        }
-        if case .refused(let error)? = newDeckEntry(newDeckName) {
-            refusal(error)
-        }
-        HStack {
-            Spacer()
-            Button("Cancel") {
-                cancelNewDeck()
-            }
-            .keyboardShortcut(.cancelAction)
-            Button("OK") {
-                submitNewDeckName()
-            }
-            .keyboardShortcut(.defaultAction)
-            .disabled(!canChooseNewDeckName)
+            label
         }
     }
 
@@ -900,33 +861,5 @@ struct ImportSheet: View {
         } set: {
             chooseToBringProgress($0)
         }
-    }
-
-    /// The deck the menu of decks has chosen, as the state holds it, or nil
-    /// for New Deck…, which choosing asks for a new deck's name.
-    private var chosenDeck: Binding<String?> {
-        Binding {
-            importing.chosenDeck
-        } set: { deck in
-            if let deck {
-                chooseDeck(deck)
-            } else {
-                newDeckName = ""
-                askForNewDeck()
-            }
-        }
-    }
-
-    /// Whether OK takes what the new deck's name field holds.
-    private var canChooseNewDeckName: Bool {
-        guard case .name? = newDeckEntry(newDeckName) else { return false }
-        return true
-    }
-
-    /// Chooses the new deck in the menu of decks, unless OK doesn't take the
-    /// name.
-    private func submitNewDeckName() {
-        guard canChooseNewDeckName else { return }
-        chooseNewDeck(newDeckName)
     }
 }

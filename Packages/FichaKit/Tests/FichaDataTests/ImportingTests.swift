@@ -127,7 +127,7 @@ final class ImportingTests {
         let preview = try await engine.previewImport(of: file)
         try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Palabras": ""]))
 
-        #expect(preview.proposedDecks == ["Idiomas::Español", "Idiomas", "Viejas"])
+        #expect(preview.proposedDecks == ["Idiomas", "Idiomas::Español", "Viejas"])
         #expect(
             try engine.cards().map(\.deck) == [
                 "Idiomas::Español", "Idiomas", Deck.defaultName, Deck.defaultName, "Viejas",
@@ -142,7 +142,7 @@ final class ImportingTests {
         let file = try file("Palabras.txt", "inefable\tQue no se puede decir.\t\tword\t\tLecturas\n")
 
         let preview = try await engine.previewImport(of: file)
-        try engine.importCards(preview, choosing: ImportChoices(deck: "Idiomas:: Español"))
+        try engine.importCards(preview, choosing: ImportChoices(deckForCardsWithoutDeck: "Idiomas:: Español"))
 
         #expect(preview.proposedDecks == [])
         #expect(try engine.cards().map(\.deck) == ["Idiomas::Español"])
