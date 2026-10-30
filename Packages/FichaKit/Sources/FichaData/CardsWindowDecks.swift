@@ -64,8 +64,9 @@ extension CardsWindowState {
         public internal(set) var isNamingNewDeck: Bool
     }
 
-    /// What OK makes of what the Change Deck sheet's name field holds, after
-    /// New Deck….
+    /// What OK makes of what a deck's name field holds: the Change Deck
+    /// sheet's, or the Import sheet's, after New Deck…, or one of the Import
+    /// sheet's deck fields.
     public enum NewDeckEntry: Sendable, Equatable {
         /// The deck's whole name, its levels cleaned up.
         case name(String)
@@ -75,6 +76,19 @@ extension CardsWindowState {
         /// A name OK refuses, and why, for the sheet to say: one whose top
         /// level is one of Default's names.
         case refused(EngineError)
+
+        /// What OK makes of `text`: the deck's whole name, its levels
+        /// cleaned up; a blank name; or a refusal of a name whose top level
+        /// is one of Default's, as the engine refuses it.
+        init(checking text: String) {
+            do throws(EngineError) {
+                self = .name(try checkedDeckName(text))
+            } catch .blankDeckName {
+                self = .blankName
+            } catch {
+                self = .refused(error)
+            }
+        }
     }
 
     /// The sidebar's Decks section, as last read: every deck as a tree,
@@ -153,13 +167,7 @@ extension CardsWindowState {
     /// it. Nil while the sheet asks for no name.
     public func newDeckEntry(_ text: String) -> NewDeckEntry? {
         guard case .changeDeck(let change) = question, change.isNamingNewDeck else { return nil }
-        do throws(EngineError) {
-            return .name(try checkedDeckName(text))
-        } catch .blankDeckName {
-            return .blankName
-        } catch {
-            return .refused(error)
-        }
+        return NewDeckEntry(checking: text)
     }
 
     /// Chooses OK after New Deck…, whose name field holds `text`: the

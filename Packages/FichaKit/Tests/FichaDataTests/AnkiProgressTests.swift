@@ -432,7 +432,7 @@ final class AnkiProgressTests {
     // A filtered deck keeps the card's due in its home deck aside, and
     // gives it one of its own, as when the user crams a deck.
     @Test(
-        "a card in a filtered deck comes in where it stands in its home deck, with its home deck's tags",
+        "a card in a filtered deck comes in where it stands in its home deck, into its home deck",
         arguments: schemas)
     func aCardInAFilteredDeckComesInAsInItsHomeDeck(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -447,7 +447,7 @@ final class AnkiProgressTests {
         try await importPackage(package)
 
         #expect(try standing(of: "sístole") == .onLadder(step: 4, due: try october(31, at: 4)))
-        #expect(try engine.cards().map(\.tags) == [["Medicina"]])
+        #expect(try engine.cards().map(\.deck) == ["Medicina"])
     }
 }
 

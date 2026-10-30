@@ -14,7 +14,10 @@ import Foundation
 /// of its cards, a column for each side and each kind, which the `#columns`
 /// header names, names its image or its sound. A `Both ways` column, which
 /// the header names too, holds any text for a card that goes both ways, as
-/// Anki's "Add Reverse" field does for a note that makes a reversed card.
+/// Anki's "Add Reverse" field does for a note that makes a reversed card. A
+/// `Deck` column, which the header names, or Anki's `#deck column` header
+/// numbers, holds the card's deck by its whole name, with `::` between a
+/// deck and a deck inside it, as Anki writes its decks, or nothing for none.
 public enum CardsTextFile {
     /// A column of the file.
     public enum Column: String, Sendable, CaseIterable {
@@ -23,6 +26,8 @@ public enum CardsTextFile {
         case tags = "Tags"
         case type = "Type"
         case source = "Source"
+        /// The card's deck, by its whole name, or blank for none.
+        case deck = "Deck"
         /// The name of the front's image, a file in the zip beside the text
         /// file, or blank for none.
         case frontImage = "Front image"
@@ -47,17 +52,22 @@ public enum CardsTextFile {
             self == .frontSound || self == .backSound
         }
 
-        /// Whether it names a side's file, an image or a sound, which a line
-        /// holds as it is, never as HTML.
+        /// Whether it names a side's file, an image or a sound.
         var isFile: Bool {
             isImage || isSound
         }
 
-        /// Whether a file has it only when its `#columns` header names it,
-        /// as an export writes it only when a card needs it: a side's file,
-        /// or Both ways.
+        /// Whether a line holds it as it is, never as HTML: the tags, the
+        /// deck and a side's file.
+        var isNeverHTML: Bool {
+            self == .tags || self == .deck || isFile
+        }
+
+        /// Whether a file has it only when a header names it, as an export
+        /// writes it only when a card needs it: a side's file, Both ways, or
+        /// the deck, which Anki's `#deck column` header numbers too.
         var comesOnlyByName: Bool {
-            isFile || self == .bothWays
+            isFile || self == .bothWays || self == .deck
         }
     }
 
@@ -115,23 +125,29 @@ public enum CardsTextFile {
     }
 
     /// The text of a file holding `cards`, in their order, as Ficha exports
-    /// them: `read` reads it back as the same cards, and Anki as notes with a
-    /// front, a back and tags. Its headers say that tabs separate its
-    /// columns, that its fields hold no HTML, which columns it has, by their
-    /// names, and which one holds the tags; then each card has a line with
-    /// its front, back, tags, type and source, and a blank field for what it
-    /// lacks. When a card has an image, every line also names the image of
-    /// its front and of its back, by the name Ficha keeps it by, which is
-    /// the name of its file in the zip the text goes in; and when a card has
-    /// a sound, the sound of each side, the same way. When a card goes both
-    /// ways, every line also says whether its card does, with `y` or a blank
-    /// field.
-    public static func text(of cards: [(content: CardContent, bothWays: Bool)]) -> String {
+    /// them, each with its deck's whole name, or an empty one for Default:
+    /// `read` reads it back as the same cards, and Anki as notes with a
+    /// front, a back and tags, in their decks. Its headers say that tabs
+    /// separate its columns, that its fields hold no HTML, which columns it
+    /// has, by their names, and which one holds the tags; then each card has
+    /// a line with its front, back, tags, type and source, and a blank field
+    /// for what it lacks. When a card lives in a deck other than Default,
+    /// every line also names its card's deck, or leaves the field blank for
+    /// Default, and a header says which column holds the decks, as Anki's
+    /// `#deck column` does. When a card has an image, every line also names
+    /// the image of its front and of its back, by the name Ficha keeps it
+    /// by, which is the name of its file in the zip the text goes in; and
+    /// when a card has a sound, the sound of each side, the same way. When a
+    /// card goes both ways, every line also says whether its card does, with
+    /// `y` or a blank field.
+    public static func text(of cards: [ExportedCard]) -> String {
+        let hasDecks = cards.contains { !$0.deck.isEmpty }
         let hasImages = cards.contains { !$0.content.images.isEmpty }
         let hasSounds = cards.contains { !$0.content.sounds.isEmpty }
         let hasBothWays = cards.contains(where: \.bothWays)
         let columns = Column.allCases.filter {
-            (hasImages || !$0.isImage) && (hasSounds || !$0.isSound) && (hasBothWays || $0 != .bothWays)
+            (hasDecks || $0 != .deck) && (hasImages || !$0.isImage) && (hasSounds || !$0.isSound)
+                && (hasBothWays || $0 != .bothWays)
         }
         var lines = [
             "#separator:tab",
@@ -141,14 +157,31 @@ public enum CardsTextFile {
         if let tags = columns.firstIndex(of: .tags) {
             lines.append("#tags column:\(tags + 1)")
         }
+        if let deck = columns.firstIndex(of: .deck) {
+            lines.append("#deck column:\(deck + 1)")
+        }
         for card in cards {
             lines.append(columns.map { written(field($0, of: card)) }.joined(separator: "\t"))
         }
         return lines.joined(separator: "\n") + "\n"
     }
 
+    /// A card as an export writes it: what it holds, its deck's whole name,
+    /// or an empty one for Default, and whether it goes both ways.
+    public struct ExportedCard: Sendable {
+        public let content: CardContent
+        public let deck: String
+        public let bothWays: Bool
+
+        public init(content: CardContent, deck: String, bothWays: Bool) {
+            self.content = content
+            self.deck = deck
+            self.bothWays = bothWays
+        }
+    }
+
     /// What `card` holds in `column`, before it's written.
-    private static func field(_ column: Column, of card: (content: CardContent, bothWays: Bool)) -> String {
+    private static func field(_ column: Column, of card: ExportedCard) -> String {
         let content = card.content
         return switch column {
         case .front: content.front
@@ -156,6 +189,7 @@ public enum CardsTextFile {
         case .tags: tagsColumn(holding: content.tags)
         case .type: content.type?.writtenName ?? ""
         case .source: content.source ?? ""
+        case .deck: card.deck
         case .frontImage: content.frontImage?.rawValue ?? ""
         case .backImage: content.backImage?.rawValue ?? ""
         case .frontSound: content.frontSound?.rawValue ?? ""
@@ -186,8 +220,9 @@ public enum CardsTextFile {
 
     /// The card that `fields`, the columns of the record on `line`, make,
     /// each the column `columns` says, and as plain text when `isHTML`, but
-    /// its tags and its files' names, with the images `images` finds and the
-    /// sounds `sounds` finds; or the line left out, with why it makes none.
+    /// its tags, its deck and its files' names, with the images `images`
+    /// finds and the sounds `sounds` finds, in its deck, its levels cleaned
+    /// up as a tag's are; or the line left out, with why it makes none.
     private static func card(
         in fields: [String], on line: Int, columns: ColumnMap, isHTML: Bool, images: (String) -> ImageLookup,
         sounds: (String) async -> SoundLookup
@@ -198,7 +233,7 @@ public enum CardsTextFile {
         var values: [Column: String] = [:]
         for (index, field) in fields.enumerated() {
             if let column = columns.column(at: index), values[column] == nil {
-                values[column] = isHTML && column != .tags && !column.isFile ? plainText(fromHTML: field) : field
+                values[column] = isHTML && !column.isNeverHTML ? plainText(fromHTML: field) : field
             }
         }
         let front = values[.front] ?? ""
@@ -226,7 +261,8 @@ public enum CardsTextFile {
         return ImportedCard(
             content: content, typeName: nonBlank(values[.type]),
             bothWays: nonBlank(values[.bothWays]) != nil,
-            fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line)
+            fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line,
+            deck: values[.deck].flatMap(TagPath.normalized))
     }
 
     /// The image and the sound a side with `text` gets from what its image
@@ -325,9 +361,11 @@ private struct Headers {
     /// The column, from 0, that `#tags column` says holds the tags, or nil
     /// without it.
     var tagsColumn: Int?
-    /// The columns, from 0, that `#guid column`, `#notetype column` and
-    /// `#deck column` say hold an Anki note's id, note type and deck, which
-    /// Ficha leaves out.
+    /// The column, from 0, that `#deck column` says holds the decks, or nil
+    /// without it.
+    var deckColumn: Int?
+    /// The columns, from 0, that `#guid column` and `#notetype column` say
+    /// hold an Anki note's id and note type, which Ficha leaves out.
     var skippedColumns: Set<Int> = []
 
     init(_ lines: [String]) throws(CardsFileProblem) {
@@ -359,7 +397,9 @@ private struct Headers {
                 columnNames = value
             case "tags column":
                 tagsColumn = try Self.column(trimmed, in: key)
-            case "guid column", "notetype column", "deck column":
+            case "deck column":
+                deckColumn = try Self.column(trimmed, in: key)
+            case "guid column", "notetype column":
                 if let column = try Self.column(trimmed, in: key) {
                     skippedColumns.insert(column)
                 }
@@ -380,15 +420,17 @@ private struct Headers {
 }
 
 /// Which column of the file each column of a line is, by its place: the
-/// tags where `#tags column` puts them, nothing where the other column
-/// headers put what Ficha leaves out, and the others as `#columns` names
-/// them, or else, in order, the front, the back, the tags, the type and the
-/// source, without the tags when a header puts them elsewhere. A column
-/// beyond those, or one `#columns` names otherwise, is left out: the image,
-/// sound and Both ways columns come only by name, so a file without headers
-/// reads as before them.
+/// tags and the decks where `#tags column` and `#deck column` put them,
+/// nothing where the other column headers put what Ficha leaves out, and the
+/// others as `#columns` names them, or else, in order, the front, the back,
+/// the tags, the type and the source, without the tags when a header puts
+/// them elsewhere. A column beyond those, or one `#columns` names otherwise,
+/// is left out: the deck, image, sound and Both ways columns come only by a
+/// header, so a file without headers reads as before them.
 private struct ColumnMap {
-    private let tagsColumn: Int?
+    /// The columns a header numbers, the tags' and the decks', by their
+    /// place: the tags' first, when both headers number one place.
+    private let numbered: [Int: CardsTextFile.Column]
     private let skippedColumns: Set<Int>
     /// The columns `#columns` names, by their place, or nil without it.
     private let named: [CardsTextFile.Column?]?
@@ -396,10 +438,16 @@ private struct ColumnMap {
     private let unplaced: [CardsTextFile.Column]
 
     init(_ headers: Headers, separatedBy separator: Unicode.Scalar) throws(CardsFileProblem) {
-        tagsColumn = headers.tagsColumn
+        let numbered = [(headers.deckColumn, CardsTextFile.Column.deck), (headers.tagsColumn, .tags)]
+            .reduce(into: [Int: CardsTextFile.Column]()) { numbered, header in
+                if let place = header.0 {
+                    numbered[place] = header.1
+                }
+            }
+        self.numbered = numbered
         skippedColumns = headers.skippedColumns
         unplaced = CardsTextFile.Column.allCases.filter {
-            !$0.comesOnlyByName && ($0 != .tags || headers.tagsColumn == nil)
+            !$0.comesOnlyByName && !numbered.values.contains($0)
         }
         guard let columnNames = headers.columnNames else {
             named = nil
@@ -412,8 +460,9 @@ private struct ColumnMap {
                 let column = CardsTextFile.Column.allCases.first {
                     $0.rawValue.lowercased() == name.trimmingCharacters(in: .whitespaces).lowercased()
                 }
-                // A column named twice is the first one.
-                let isLeftOut = column.map { named.contains($0) || ($0 == .tags && headers.tagsColumn != nil) } ?? true
+                // A column named twice is the first one, and a header's
+                // number goes before a name.
+                let isLeftOut = column.map { named.contains($0) || numbered.values.contains($0) } ?? true
                 named.append(isLeftOut ? nil : column)
             }
         }
@@ -432,8 +481,8 @@ private struct ColumnMap {
     /// The column of the file a line's column at `index`, from 0, is, or nil
     /// when Ficha leaves it out.
     func column(at index: Int) -> CardsTextFile.Column? {
-        if index == tagsColumn {
-            return .tags
+        if let column = numbered[index] {
+            return column
         }
         if skippedColumns.contains(index) {
             return nil
@@ -441,7 +490,7 @@ private struct ColumnMap {
         if let named {
             return index < named.count ? named[index] : nil
         }
-        let placedBefore = skippedColumns.count { $0 < index } + ((tagsColumn ?? index) < index ? 1 : 0)
+        let placedBefore = skippedColumns.union(numbered.keys).count { $0 < index }
         let place = index - placedBefore
         return place < unplaced.count ? unplaced[place] : nil
     }

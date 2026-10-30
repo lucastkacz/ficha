@@ -187,6 +187,64 @@ final class ExportingTests {
             ])
     }
 
+    // Anki reads its decks from the same header, and takes a blank field as
+    // the deck its Import window chooses.
+    @Test(
+        "an export writes a Deck column, with Anki's #deck column header, only when a card lives in a deck other than Default, whose cards have it blank, and another Ficha puts the cards back in their decks"
+    )
+    func anExportWritesADeckColumnWhenACardLivesInADeck() async throws {
+        let serendipia = try approveCard("serendipia", tags: ["vocabulario"])
+        try approveCard("petricor", tags: [])
+        let ubuntu = try approveCard("ubuntu", tags: ["filosofía"])
+        try engine.changeDeck(of: [serendipia.id], to: "Idiomas::Español")
+        try engine.changeDeck(of: [ubuntu.id], to: "Filosofía")
+        let all = folder.appending(path: "Todas.txt")
+        let philosophy = folder.appending(path: "filosofía.txt")
+
+        try engine.export(.all, to: all)
+        try engine.export(.tag("filosofía"), to: philosophy)
+
+        #expect(
+            try String(contentsOf: all, encoding: .utf8) == """
+                #separator:tab
+                #html:false
+                #columns:Front\tBack\tTags\tType\tSource\tDeck
+                #tags column:3
+                #deck column:6
+                serendipia\tLo que hay que saber de «serendipia».\tvocabulario\tword\t\tIdiomas::Español
+                petricor\tLo que hay que saber de «petricor».\t\tword\t\t
+                ubuntu\tLo que hay que saber de «ubuntu».\tfilosofía\tword\t\tFilosofía
+
+                """)
+        #expect(try await anotherFicha(importing: all).cards().map(\.deck) == ["Idiomas::Español", "", "Filosofía"])
+        let other = try await anotherFicha(importing: philosophy)
+        #expect(try other.cards().map(\.deck) == ["Filosofía"])
+    }
+
+    // As the sidebar lists a parent deck's cards (ADR 0024).
+    @Test("exporting a deck's cards holds those of the decks inside it, buried ones too, and Default's its own")
+    func exportingADecksCardsHoldsThoseOfTheDecksInsideIt() async throws {
+        let inflation = try approveCard("inflación", tags: [])
+        let peso = try approveCard("cepo", tags: [])
+        let economist = try approveCard("economista", tags: [])
+        try approveCard("petricor", tags: [])
+        try engine.changeDeck(of: [inflation.id], to: "Economía")
+        try engine.changeDeck(of: [peso.id], to: "Economía::Argentina")
+        try engine.changeDeck(of: [economist.id], to: "EconomíaX")
+        try engine.bury(peso.id)
+        let economy = folder.appending(path: "Economía.txt")
+        let defaultDeck = folder.appending(path: "Default.txt")
+
+        let count = try engine.export(.deck("Economía"), to: economy)
+        let defaultCount = try engine.export(.deck(Deck.defaultName), to: defaultDeck)
+
+        #expect(count == 2)
+        #expect(
+            try await anotherFicha(importing: economy).cards().map(\.deck) == ["Economía", "Economía::Argentina"])
+        #expect(defaultCount == 1)
+        #expect(try await anotherFicha(importing: defaultDeck).cards().map(\.front) == ["petricor"])
+    }
+
     // As the sidebar lists a parent's cards (ADR 0021).
     @Test("exporting a tag's cards holds those of the tags inside it, with their whole names")
     func exportingATagsCardsHoldsThoseOfTheTagsInsideIt() async throws {

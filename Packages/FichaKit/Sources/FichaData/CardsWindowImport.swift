@@ -34,8 +34,20 @@ extension CardsWindowState {
         /// work did, as one the sheet started before it closed, it leaves
         /// alone.
         fileprivate var awaitedWork: UUID?
+        /// A field for each deck the preview proposes, in its order.
+        public fileprivate(set) var deckFields: [ImportDeckField] = []
         /// A field for each tag the preview proposes, in its order.
         public fileprivate(set) var tagFields: [TagField] = []
+        /// The deck the cards come into while the sheet offers a choice of
+        /// deck, by its whole name: Default, until the user chooses another.
+        public fileprivate(set) var chosenDeck = Deck.defaultName
+        /// The decks the user named with New Deck… in the sheet, which its
+        /// choice of deck lists, and Import makes when the cards come into
+        /// one.
+        public fileprivate(set) var newDecks: [String] = []
+        /// Whether the sheet asks for a new deck's name, after New Deck…, in
+        /// place of the preview.
+        public fileprivate(set) var isNamingNewDeck = false
         /// What happens to the file's cards that repeat the user's: Update,
         /// until the user chooses Skip.
         public fileprivate(set) var repeatedCards = ImportChoices.RepeatedCards.update
@@ -54,13 +66,23 @@ extension CardsWindowState {
         }
 
         /// Whether Import is on: while the sheet shows a preview whose import
-        /// brings in a card, or updates one, as the user chose, and isn't
-        /// busy.
+        /// brings in a card, or updates one, as the user chose, every deck's
+        /// field names a deck the import takes, and it isn't busy.
         public var canImport: Bool {
-            guard let preview, busy == nil else {
+            guard let preview, busy == nil, deckFields.allSatisfy(\.isTaken) else {
                 return false
             }
             return preview.newCount > 0 || (repeatedCards == .update && preview.repeatedCount > 0)
+        }
+
+        /// Whether the sheet offers a choice of deck for the cards: while it
+        /// shows the preview of a file that brings new cards and puts them in
+        /// no deck, such as a text file without a Deck column.
+        public var offersDeckChoice: Bool {
+            guard let preview else {
+                return false
+            }
+            return preview.newCount > 0 && preview.proposedDecks.isEmpty
         }
 
         /// Whether the sheet offers Bring progress: for the preview of an
@@ -140,15 +162,44 @@ extension CardsWindowState {
         /// it's ticked.
         fileprivate func choices(on ladder: Ladder) -> ImportChoices {
             ImportChoices(
+                deckNames: Dictionary(deckFields.map { ($0.proposed, $0.name) }) { first, _ in first },
+                deck: chosenDeck,
                 tagNames: tagNames,
                 repeatedCards: repeatedCards,
                 progress: importBringsProgress ? .brought(onto: ladder) : .leftOut)
         }
     }
 
+    /// The field that names a deck the preview proposes, whose whole name
+    /// the user types, with `::` between a deck and a deck inside it.
+    public struct ImportDeckField: Sendable, Equatable {
+        /// The deck as proposed, like an Anki deck's whole name.
+        public let proposed: String
+        /// What the field holds: at first the proposed name.
+        public fileprivate(set) var name: String
+
+        /// What Import makes of what the field holds, as OK makes of what
+        /// New Deck…'s field holds: the deck's whole name, or a blank name,
+        /// which keeps Import off, or a refusal, which keeps it off too, and
+        /// which the sheet says.
+        public var entry: NewDeckEntry {
+            NewDeckEntry(checking: name)
+        }
+
+        /// Whether Import takes what the field holds.
+        fileprivate var isTaken: Bool {
+            if case .name = entry { true } else { false }
+        }
+
+        public init(proposed: String, name: String) {
+            self.proposed = proposed
+            self.name = name
+        }
+    }
+
     /// The field that names a tag the preview proposes.
     public struct TagField: Sendable, Equatable {
-        /// The tag as proposed, like the file's name, or an Anki deck's.
+        /// The tag as proposed, like the file's name, or an Anki note's tag.
         public let proposed: String
         /// What the field holds: at first the proposed name. A blank one
         /// leaves the tag out.
@@ -193,11 +244,74 @@ extension CardsWindowState {
     /// Starts reading `file`, the one the user chose, while the sheet isn't
     /// busy, and returns the work, which the app runs away from the main
     /// actor and hands to `finishImportWork(_:)`: the sheet then shows the
-    /// file's preview, with the tags it proposes in their fields, its
-    /// repeated cards updated and Bring progress ticked, or says why it
-    /// couldn't read it, and stays where it was.
+    /// file's preview, with the decks and the tags it proposes in their
+    /// fields, Default chosen for the cards it puts in no deck, its repeated
+    /// cards updated and Bring progress ticked, or says why it couldn't read
+    /// it, and stays where it was.
     public mutating func previewImport(of file: URL) -> ImportWork? {
         startImportWork(.preview(file), busy: .reading(file.lastPathComponent))
+    }
+
+    /// The decks the sheet's choice of deck offers, by their whole names, in
+    /// the order a tree lists them: Default first, always, then every deck
+    /// the sidebar lists, and those the user named with New Deck… there,
+    /// with the decks they sit inside. Empty while the sheet offers no
+    /// choice of deck.
+    public var importDeckChoices: [String] {
+        guard let importing, importing.offersDeckChoice else { return [] }
+        let named = decks.map(\.deck.name) + TagPath.lineages(of: importing.newDecks)
+        return [Deck.defaultName] + TagPath.sortedAsTree(named.filter { $0 != Deck.defaultName })
+    }
+
+    /// Gives the field of the deck the preview proposes as `proposed` what
+    /// the user typed in it, `name`.
+    public mutating func nameImportDeck(_ proposed: String, as name: String) {
+        guard let index = importing?.deckFields.firstIndex(where: { $0.proposed == proposed }) else { return }
+        importing?.deckFields[index].name = name
+    }
+
+    /// Chooses `deck` for the cards, while the sheet's choice of deck
+    /// offers it.
+    public mutating func chooseImportDeck(_ deck: String) {
+        guard importDeckChoices.contains(deck) else { return }
+        importing?.chosenDeck = deck
+    }
+
+    /// Asks for a new deck's name, in the sheet's place, after New Deck… in
+    /// its choice of deck.
+    public mutating func askForNewImportDeck() {
+        guard importing?.offersDeckChoice == true else { return }
+        importing?.isNamingNewDeck = true
+    }
+
+    /// What OK makes of `text`, what the new deck's name field holds, after
+    /// New Deck… in the sheet's choice of deck, as the Change Deck sheet's
+    /// OK makes of its own (`newDeckEntry(_:)`). Nil while the sheet asks
+    /// for no name.
+    public func newImportDeckEntry(_ text: String) -> NewDeckEntry? {
+        guard importing?.isNamingNewDeck == true else { return nil }
+        return NewDeckEntry(checking: text)
+    }
+
+    /// Chooses OK after New Deck…, whose name field holds `text`: the
+    /// sheet's choice of deck lists the deck, with the decks it sits inside,
+    /// and chooses it, for Import to make it as the cards come into it, and
+    /// the sheet shows the preview again. A deck already listed is chosen.
+    /// While OK doesn't take `text`, as `newImportDeckEntry(_:)` says, it
+    /// does nothing, and the sheet says why.
+    public mutating func chooseNewImportDeck(_ text: String) {
+        guard case .name(let name)? = newImportDeckEntry(text) else { return }
+        if importing?.newDecks.contains(name) == false {
+            importing?.newDecks.append(name)
+        }
+        importing?.chosenDeck = name
+        importing?.isNamingNewDeck = false
+    }
+
+    /// Goes back to the preview from the name New Deck… asked for, which
+    /// the user cancelled.
+    public mutating func cancelNewImportDeck() {
+        importing?.isNamingNewDeck = false
     }
 
     /// Gives the field of the tag the preview proposes as `proposed` what
@@ -263,6 +377,7 @@ extension CardsWindowState {
         case .preview(.success(let preview)):
             importing = Importing(
                 step: .preview(preview),
+                deckFields: preview.proposedDecks.map { ImportDeckField(proposed: $0, name: $0) },
                 tagFields: preview.proposedTags.map { TagField(proposed: $0, name: $0) })
         case .preview(.failure(let error)):
             importing?.failure = ImportFailure(action: .preview, error: error)

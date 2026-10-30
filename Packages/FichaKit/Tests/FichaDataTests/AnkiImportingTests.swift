@@ -14,9 +14,9 @@ private let schemas: [AnkiPackage.Format] = [.supportOlderAnkiVersions, .current
 private let everyVersion: [AnkiPackage.Format] = [.anki20, .anki21, .supportOlderAnkiVersions, .current]
 
 /// Tests on importing a deck from an Anki package, from any Anki: which
-/// cards there are once the import is done, with which sides and tags, and
-/// what the preview reports, from packages the tests write in a folder of
-/// their own, into an engine in memory on a Mac in Buenos Aires.
+/// cards there are once the import is done, with which sides, decks and
+/// tags, and what the preview reports, from packages the tests write in a
+/// folder of their own, into an engine in memory on a Mac in Buenos Aires.
 final class AnkiImportingTests {
     let time: ManualTimeSource
     let engine: Engine
@@ -474,12 +474,12 @@ final class AnkiImportingTests {
             ])
     }
 
-    // Default, which every package has, names no subject, so it gives no
-    // tag, not even a level to the decks below it (ADR 0021).
+    // Anki's Default, whose id is 1, names no subject: its cards come into
+    // Ficha's, and a deck inside it loses its level (ADR 0024).
     @Test(
-        "a deck with levels becomes one tag with them all, Anki tags come as they are, an underscore as a space, and renamed or removed tags apply",
+        "each card comes into its Anki deck by its whole name, Anki's Default's into Default, its note's tags come in as tags, an underscore as a space, and renamed decks and renamed or removed tags apply",
         arguments: schemas)
-    func decksAndAnkiTagsBecomeTags(format: AnkiPackage.Format) async throws {
+    func cardsComeIntoTheirAnkiDecksWithTheirNotesTags(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -498,16 +498,42 @@ final class AnkiImportingTests {
         let preview = try await engine.previewImport(of: file("Medicina.apkg", package))
 
         try engine.importCards(
-            preview, choosing: ImportChoices(tagNames: ["Medicina::Anatomía": "medicina:: anatomía", "repaso": " "]))
+            preview,
+            choosing: ImportChoices(
+                deckNames: ["Medicina::Anatomía": " Medicina:: anatomía humana"], tagNames: ["repaso": " "]))
 
+        #expect(preview.proposedDecks == ["Medicina::Anatomía", "Medicina::Fisiología", "Viejas"])
+        #expect(preview.proposedTags == ["repaso", "hueso largo", "Medicina::Cardio"])
+        let cards = try engine.cards()
         #expect(
-            preview.proposedTags == [
-                "Medicina::Anatomía", "repaso", "hueso largo", "Medicina::Fisiología", "Medicina::Cardio", "Viejas",
-            ])
+            cards.map(\.deck) == ["Medicina::anatomía humana", "Medicina::Fisiología", Deck.defaultName, "Viejas"])
+        #expect(cards.map(\.tags) == [["hueso largo"], [], ["Medicina::Cardio"], []])
         #expect(
-            try engine.cards().map(\.tags) == [
-                ["medicina::anatomía", "hueso largo"], ["Medicina::Fisiología"], ["Medicina::Cardio"], ["Viejas"],
+            try engine.decks().map(\.name) == [
+                Deck.defaultName, "Medicina", "Medicina::anatomía humana", "Medicina::Fisiología", "Viejas",
             ])
+    }
+
+    // As importing a deck again adds to it.
+    @Test("an Anki deck whose name you have takes its cards, and one you don't is made", arguments: schemas)
+    func aDeckWhoseNameExistsTakesTheCards(format: AnkiPackage.Format) async throws {
+        try engine.makeDeck(named: "Arte")
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["Leonardo da Vinci", "La Gioconda."], tags: ["Renaissance"],
+                    deck: "Great Works of Art::Artists"),
+                AnkiNote(
+                    type: .basic, fields: ["La Gioconda", "Leonardo da Vinci."], deck: "Great Works of Art::Titles"),
+            ])
+        let preview = try await engine.previewImport(of: file("Great Works of Art.apkg", package))
+
+        try engine.importCards(preview, choosing: ImportChoices(deckNames: ["Great Works of Art::Artists": "Arte"]))
+
+        #expect(try engine.cards().map(\.deck) == ["Arte", "Great Works of Art::Titles"])
+        #expect(try engine.cards().map(\.tags) == [["Renaissance"], []])
+        #expect(try engine.decks().map(\.name) == ["Arte", "Great Works of Art", "Great Works of Art::Titles"])
     }
 
     // A side with only a sound comes in with it, or stays out for want of
@@ -614,12 +640,14 @@ final class AnkiImportingTests {
     }
 
     @Test(
-        "repeated cards are updated with the deck's back and tags, keeping their type and source, or skipped, as chosen",
+        "repeated cards are updated with the package's back and tags, keeping their deck, type and source, or skipped, as chosen",
         arguments: schemas, [ImportChoices.RepeatedCards.update, .skip])
     func repeatedCardsAreUpdatedOrSkipped(format: AnkiPackage.Format, choice: ImportChoices.RepeatedCards) async throws
     {
-        let heart = try approve(
+        let approved = try approve(
             card(.word, front: "Corazón", back: "Un órgano.", tags: ["biología"], source: "Un libro"), in: engine)
+        try engine.changeDeck(of: [approved.id], to: "Biología")
+        let heart = try #require(try engine.cards().first)
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -636,6 +664,7 @@ final class AnkiImportingTests {
         let cards = try engine.cards()
         #expect(cards.first?.id == heart.id)
         #expect(cards.dropFirst().map(\.front) == ["pulmón"])
+        #expect(cards.dropFirst().map(\.deck) == ["Medicina"])
         switch choice {
         case .update:
             #expect(outcome == ImportOutcome(added: 1, updated: 1, skipped: 0, copyBeforeImport: nil))
@@ -643,7 +672,8 @@ final class AnkiImportingTests {
                 cards.first.flatMap(content(of:))
                     == (try card(
                         .word, front: "Corazón", back: "El órgano que bombea la sangre.",
-                        tags: ["biología", "Medicina", "anatomía"], source: "Un libro")))
+                        tags: ["biología", "anatomía"], source: "Un libro")))
+            #expect(cards.first?.deck == "Biología")
         case .skip:
             #expect(outcome == ImportOutcome(added: 1, updated: 0, skipped: 1, copyBeforeImport: nil))
             #expect(cards.first == heart)

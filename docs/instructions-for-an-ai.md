@@ -6,7 +6,7 @@ Ficha is a flashcard app for the Mac: every so often it shows its user a small c
 
 1. Write cards about what the user asks for, in the language they write in. Each card holds one small thing to remember: its front a word, a name or a question, and its back a sentence or two.
 2. Write the file as the next section describes, with every card on it.
-3. Answer with the file alone, and nothing before or after it: one code block holding the whole file, or a `.txt` file to download when you can make files, named after its subject, like `Biology.txt`. The user saves it as a UTF-8 text file and imports it in Ficha, which proposes the file's name as a tag for every card.
+3. Answer with the file alone, and nothing before or after it: one code block holding the whole file, or a `.txt` file to download when you can make files, named after its subject, like `Biology.txt`. The user saves it as a UTF-8 text file and imports it in Ficha, which proposes the file's name as a tag for every card, and lets them choose the deck the cards go in.
 
 ## The file
 
@@ -25,7 +25,7 @@ Then each card has a line of its own, with five columns separated by tab charact
 
 1. **Front**: what the card shows first, such as a word, a name or a question.
 2. **Back**: what the user tries to remember, such as a meaning, an answer, or who said a quote.
-3. **Tags**: the subjects the card belongs to, separated by spaces, such as `history philosophy`. An underscore stands for a space inside a tag: `cell_biology` is the tag "cell biology". It can be empty.
+3. **Tags**: labels for what the card is about, separated by spaces, such as `history philosophy`. An underscore stands for a space inside a tag: `cell_biology` is the tag "cell biology". It can be empty.
 4. **Type**: one of these words, or empty when none fits:
    - `word`: a word or an expression, with its meaning on the back.
    - `concept`: an idea, a term or a thing, explained on the back.
@@ -59,6 +59,32 @@ This file holds five cards:
 - The quote "I think, therefore I am.", whose front is in quotes since it holds double quotes, each written twice, with the tag "philosophy".
 - "What is the capital of Mongolia?", a question, with the tag "geography".
 - "photosynthesis", with no type, whose back is in quotes since it takes two lines, with the tag "biology".
+
+## Cards in decks
+
+Ficha keeps each card in one deck, its subject, and a deck can sit inside another, as "Cells" does in "Biology". As the user imports a file, they choose one deck for all its cards, so write a deck for each card only when the user asks for cards in several decks.
+
+- The header names one more column after Source, `Deck`, with a tab before it, and has one more line after `#tags column:3`: `#deck column:6`, which tells Anki too which column holds the decks. Every line has all six columns, and the image, sound and Both ways columns, when the cards have them, go after it.
+- Each holds the card's deck by its whole name, with `::` between a deck and a deck inside it, such as `Biology::Cells`, or nothing for Ficha's Default deck. Ficha makes each deck the user doesn't have.
+
+### An example of cards in decks
+
+```text
+#separator:tab
+#html:false
+#columns:Front	Back	Tags	Type	Source	Deck
+#tags column:3
+#deck column:6
+mitochondria	The part of a cell that turns food into the energy the cell uses.	cell_biology	concept		Biology::Cells
+photosynthesis	How plants make their food from water, carbon dioxide and light.		concept		Biology
+What is the capital of Mongolia?	Ulaanbaatar.		question		Geography
+```
+
+This file holds three cards:
+
+- "mitochondria", a concept in the deck "Cells", inside "Biology", with the tag "cell biology".
+- "photosynthesis", a concept in the deck "Biology".
+- "What is the capital of Mongolia?", a question in the deck "Geography".
 
 ## Cards with images
 
