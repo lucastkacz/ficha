@@ -146,7 +146,7 @@ extension FileNames {
 /// The names of the files of `Name`'s kind that the cards in `db` that sync
 /// use, on either side, as `namesReferred(_:onCardsWhere:in:)` reads them.
 func namesSynced<Name: NameOfFileOnCard>(_: Name.Type, in db: Database) throws -> Set<Name> {
-    try namesReferred(Name.self, onCardsWhere: cardSyncs(tags: "card.tags"), in: db)
+    try namesReferred(Name.self, onCardsWhere: cardSyncs(deck: "card.deck"), in: db)
 }
 
 /// What a device knows of the images and sounds that sync: those its cards

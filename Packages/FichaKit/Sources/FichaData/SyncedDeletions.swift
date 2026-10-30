@@ -18,7 +18,19 @@ internal import GRDB
 // is never deleted: a tag the user deletes, or whose row goes otherwise,
 // syncs as one with nothing of its own, which is just a name, and the
 // deletion reaches the cards as a change to the tag, whose record stays in
-// iCloud for good (`TagChanges.swift`).
+// iCloud for good (`TagChanges.swift`). A deck's record is deleted as the
+// deck is, or renamed, which is recorded as a change to the deck, and it's
+// the change that moves or deletes the deck's row and its cards on a device
+// that hears of it (`DeckChanges.swift`), with what the row has of its own
+// and whether the deck was made there: iCloud may hand a device the record's
+// deletion before the change, in an earlier event of a fetch, which then
+// leaves the row to the change. A device that holds the change already,
+// one it made or heard of that reaches the deck, deletes the row as it hears
+// of the deletion: a deck isn't deleted for good, since a device that
+// changed it meanwhile sends it again, until it hears of the change, and
+// deletes it again then, which the other devices follow. So does one that
+// made a deck of the same name since, whose row a late deletion of the old
+// record deletes too: the deletion can't say which change it came from.
 
 extension Sync {
     /// Takes `deletions`, which other devices made, in one write that records
@@ -105,8 +117,10 @@ extension SyncedRow.RecordType {
     /// takes at once: what refers to a row before the row, so that the device
     /// sends again only what the deleting device didn't delete. Nil for a row
     /// that's never deleted for good, which goes again when iCloud lacks its
-    /// record: a tag is just a name once it has nothing of its own, and a
-    /// change to a tag stays for the devices that haven't heard of it.
+    /// record: a tag is just a name once it has nothing of its own, a deck
+    /// changed meanwhile moves with its change to the deck once the device
+    /// hears of it, and a change to a tag or a deck stays for the devices
+    /// that haven't heard of it.
     fileprivate var deletionRank: Int? {
         switch self {
         case .reviewLogEntry: 0
@@ -132,6 +146,15 @@ private func deletionRank(ofType type: String) -> Int {
 private func receiveDeletion(of id: ICloudRecordID, type: String, at time: Date, in db: Database) throws -> [Card] {
     try forgetDeletion(of: id, in: db)
     guard id.zone == .cards else {
+        return []
+    }
+    if type == SyncedRow.RecordType.deck.rawValue {
+        // Named by its name's hash: the device finds the deck among those it
+        // knows. Its row goes only once the device holds a change that
+        // reaches the deck, as the file's header says.
+        if case .deck(let name)? = try syncedRow(named: id, in: db), try holdsAChange(reaching: name, in: db) {
+            try db.execute(sql: "DELETE FROM deck WHERE name = ?", arguments: [name])
+        }
         return []
     }
     let row: SyncedRow
@@ -160,14 +183,16 @@ private func receiveDeletion(of id: ICloudRecordID, type: String, at time: Date,
     return []
 }
 
-/// Deletes the card with this ID, which another device deleted, as
-/// `deleteCard(_:in:)` does on one device, and returns it, or nil when the
-/// device doesn't hold it. What that changes here waits to be sent, as a
-/// change of this device's, at `time`: the deletion of each entry of its
-/// review log iCloud holds, which another device may have sent before the
-/// deletion reached it, and each capture that let go of it, which a device
-/// that holds the capture without the card would otherwise wait on.
-private func deleteCard(deletedOnAnotherDevice uuid: UUID, at time: Date, in db: Database) throws -> Card? {
+/// Deletes the card with this ID, which another device deleted, or deleted
+/// the deck of (`DeckChanges.swift`), as `deleteCard(_:in:)` does on one
+/// device, and returns it, or nil when the device doesn't hold it. What that
+/// changes here waits to be sent, as a change of this device's, at `time`:
+/// the deletion of each entry of its review log iCloud holds, which another
+/// device may have sent before the deletion reached it, and each capture
+/// that let go of it, which a device that holds the capture without the card
+/// would otherwise wait on.
+@discardableResult
+func deleteCard(deletedOnAnotherDevice uuid: UUID, at time: Date, in db: Database) throws -> Card? {
     guard let cardID = try Int64.fetchOne(db, sql: "SELECT id FROM card WHERE uuid = ?", arguments: [uuid.uuidString])
     else {
         return nil
@@ -251,11 +276,16 @@ private func forgetDeletion(of id: ICloudRecordID, in db: Database) throws {
 /// The place among the changes recorded of the deletion of the row the
 /// record with this ID held, which waits to be sent, or nil when none waits.
 /// A row that's deleted is named by its ID unique across devices, as its
-/// record is.
+/// record is, or is a deck, named by its name, whose record by its name's
+/// hash.
 func pendingDeletion(of id: ICloudRecordID, in db: Database) throws -> Int64? {
     let deletions = try Row.fetchAll(
-        db, sql: "SELECT id, recordType, recordName FROM syncPending WHERE isDeletion AND recordName = ?",
-        arguments: [id.name])
+        db,
+        sql: """
+            SELECT id, recordType, recordName FROM syncPending
+            WHERE isDeletion AND (recordName = ? OR recordType = ?)
+            """,
+        arguments: [id.name, SyncedRow.RecordType.deck.rawValue])
     for deletion in deletions {
         let row = try SyncedRow(
             recordType: deletion.decode(forColumn: "recordType"), recordName: deletion.decode(forColumn: "recordName"))

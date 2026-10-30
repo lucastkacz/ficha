@@ -3,8 +3,8 @@ import Foundation
 
 // All Tags (ADR 0022), where the Cards window's table was: every tag as a
 // tree, each with how many cards it holds and how many are due, and whether
-// it's pinned, a priority tag or set aside, a set-aside tag grayed in its
-// place with the tags inside it. Lucas sorts each level by a column, narrows
+// it's pinned; a tag only labels its cards (ADR 0024), so Set Aside and
+// Prioritize are a deck's. Lucas sorts each level by a column, narrows
 // the tree with the search field, opens its parents, which start closed, and
 // selects several tags, which a tag's menu then acts on at once
 // (`CardsWindowTags.swift`). He drags tags onto another to move them inside
@@ -18,8 +18,7 @@ extension CardsWindowState {
     /// disclosure triangle shows.
     public struct AllTagsRow: Sendable, Equatable, Identifiable {
         /// The tag, with what it has of its own and takes from the tags it
-        /// sits inside: its Pinned, Priority and Set Aside checkboxes show
-        /// its own.
+        /// sits inside: its Pinned checkbox shows whether it's pinned.
         public let tag: CardTag
         /// What its row says, without its emoji: its last level under its
         /// parent, and its whole name at the top, written with " › ".
@@ -27,35 +26,11 @@ extension CardsWindowState {
         /// How many cards it lists and how many of those are due, counting
         /// the tags inside it: its Cards and Due columns.
         public let counts: TagCounts
-        /// Whether its row is grayed: while its cards are out of Lucas's
-        /// reviews, as it's set aside on its own or sits inside a tag that
-        /// is.
-        public let isGrayed: Bool
-        /// Whether its Priority checkbox is on: not while it's set aside, on
-        /// its own or inside a tag that is, as the menu bar's Prioritize
-        /// submenu leaves it out, unless it's a priority tag, to untick.
-        public let canPrioritize: Bool
         /// The tags right inside it that All Tags lists, in its order.
         public let children: [AllTagsRow]
 
         public var id: String {
             tag.name
-        }
-
-        /// Whether its `checkbox` is ticked: whether the tag is pinned, a
-        /// priority tag or set aside, of its own.
-        public func isTicked(_ checkbox: AllTagsCheckbox) -> Bool {
-            switch checkbox {
-            case .pinned: tag.isPinned
-            case .priority: tag.isPriority
-            case .setAside: tag.isSetAside
-            }
-        }
-
-        /// Whether its `checkbox` is on: Pinned and Set Aside always, and
-        /// Priority as `canPrioritize` says.
-        public func isEnabled(_ checkbox: AllTagsCheckbox) -> Bool {
-            checkbox != .priority || canPrioritize
         }
     }
 
@@ -67,17 +42,12 @@ extension CardsWindowState {
         case cards
         /// How many of those are due.
         case due
-        /// One of the checkboxes, the ticked ones apart from the others.
-        case checkbox(AllTagsCheckbox)
-
-        /// Every column, in All Tags' order: the tag, Cards, Due, then
-        /// Pinned, Priority and Set Aside.
-        public static let allCases: [AllTagsColumn] =
-            [.tag, .cards, .due] + AllTagsCheckbox.allCases.map(Self.checkbox)
+        /// Pinned's checkbox, the pinned tags apart from the others.
+        case pinned
 
         /// Whether a first click on its title sorts it descending, so that
         /// the tags with the most cards, or the most due cards, come first,
-        /// and the ticked ones: all but the tag, which sorts alphabetically.
+        /// and the pinned ones: all but the tag, which sorts alphabetically.
         public var sortsDescendingFirst: Bool {
             self != .tag
         }
@@ -89,7 +59,7 @@ extension CardsWindowState {
             case .tag: 0
             case .cards: row.counts.cards
             case .due: row.counts.due
-            case .checkbox(let checkbox): row.isTicked(checkbox) ? 1 : 0
+            case .pinned: row.tag.isPinned ? 1 : 0
             }
         }
     }
@@ -99,7 +69,7 @@ extension CardsWindowState {
     public struct AllTagsSort: Sendable, Equatable {
         /// The column it sorts by.
         public let column: AllTagsColumn
-        /// Whether it's ascending: the fewest first, the unticked first, or
+        /// Whether it's ascending: the fewest first, the unpinned first, or
         /// from A to Z.
         public let isAscending: Bool
 
@@ -127,13 +97,6 @@ extension CardsWindowState {
                 }
                 .map(\.element)
         }
-    }
-
-    /// A checkbox of All Tags' rows, in its order.
-    public enum AllTagsCheckbox: Sendable, Hashable, CaseIterable {
-        case pinned
-        case priority
-        case setAside
     }
 
     /// What Lucas can do in All Tags with the tags selected there, beyond a
@@ -180,14 +143,10 @@ extension CardsWindowState {
     /// order a tree lists them: as a tree, each level in `sort`'s order,
     /// keeping only the tags whose last level mentions `search`, with the
     /// tags they sit inside, or every tag while it's blank. Each row is named
-    /// by its last level under its parent and its whole name at the top,
-    /// grayed when it's set aside, on its own or inside a tag that is, and
-    /// with Priority off then, unless it's a priority tag.
+    /// by its last level under its parent and its whole name at the top.
     static func allTagsRows(of counted: [CountedTag], search: String, sort: AllTagsSort) -> [AllTagsRow] {
         let tags = counted.map(\.tag)
         let byName = Dictionary(counted.map { ($0.tag.name, $0) }, uniquingKeysWith: { first, _ in first })
-        let isSetAside = setAside(among: tags)
-        let setAsideNames = setAsideNames(among: tags)
         /// The rows of `trees`, listed under `parent`.
         func rows(of trees: [TagTree], under parent: String?) -> [AllTagsRow] {
             sort.sorted(
@@ -202,8 +161,7 @@ extension CardsWindowState {
                     }
                     return AllTagsRow(
                         tag: counted.tag, title: TagPath.shown(tree.name, under: parent), counts: counted.counts,
-                        isGrayed: isSetAside(tree.name),
-                        canPrioritize: counted.tag.canBePrioritized(amongSetAside: setAsideNames), children: children)
+                        children: children)
                 })
         }
         return rows(of: TagTree.forest(of: tags.map(\.name)), under: nil)
@@ -286,20 +244,12 @@ extension CardsWindowState {
         return selected.contains(tag) ? selected : [tag]
     }
 
-    /// Ticks `checkbox` of All Tags' tag named `tag`, or unticks it when
-    /// `isTicked` is false: pins it after the pinned tags or unpins it, makes
-    /// it a priority tag or no longer, while its menu's Prioritize is on, or
-    /// sets it aside or stops; and reads the cards again, or records why it
-    /// couldn't.
-    public mutating func tick(_ checkbox: AllTagsCheckbox, _ isTicked: Bool, on tag: String) {
+    /// Ticks the Pinned checkbox of All Tags' tag named `tag`, or unticks it
+    /// when `isTicked` is false: pins it after the pinned tags or unpins it,
+    /// and reads the cards again, or records why it couldn't.
+    public mutating func tickPinned(_ isTicked: Bool, on tag: String) {
         guard let menu = menu(for: [tag]) else { return }
-        switch checkbox {
-        case .pinned: setPinned(isTicked, of: menu.tags)
-        case .priority:
-            guard menu.canPrioritize else { return }
-            setPriority(isTicked, of: menu.tags)
-        case .setAside: setSetAside(isTicked, of: menu.tags)
-        }
+        setPinned(isTicked, of: menu.tags)
     }
 
     /// Lists the cards of All Tags' tag named `tag` in All Tags' place, with
@@ -334,9 +284,8 @@ extension CardsWindowState {
 
     /// Asks whether to delete `tags`, those of them the window offers, each
     /// with every tag inside it, saying what that does: how many cards lose
-    /// them, how many tags sit inside them, how many cards come back to
-    /// Lucas's reviews, and, under selective sync, how many stop syncing; or
-    /// records why it couldn't count them. After Delete… in their menu.
+    /// them, how many tags sit inside them, and, under selective sync, how
+    /// many stop syncing; or records why it couldn't count them. After Delete… in their menu.
     public mutating func askToDeleteTags(_ tags: [String]) {
         let offered = offeredTags(tags).map(\.name)
         guard let first = offered.first else { return }

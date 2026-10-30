@@ -3,7 +3,8 @@ import FichaData
 import SwiftUI
 
 /// The fields the user edits a card in, in place of its detail: its type, or
-/// None, front and back, each with its text, its image and its sound, dragged
+/// None, its deck, which Save moves it to, front and back, each with its
+/// text, its image and its sound, dragged
 /// or pasted under it, an image also with ⌘V in its text while the clipboard
 /// holds no text, tags, source and Both ways, under the flag's note when
 /// it's flagged. Return saves, Option-Return starts a new line, and Escape
@@ -31,6 +32,10 @@ struct CardEditor: View {
     let type: CardType?
     /// The types its type picker offers, as the window offers them.
     let types: [CardType]
+    /// Its deck as Save would move it to, which the window holds.
+    let deck: String
+    /// The decks its Deck field offers, as the window offers them.
+    let decks: [Deck]
     /// Whether Save is on: not while a sound converts.
     let canSave: Bool
     /// Whether Lucas is in the window's search field, which then keeps Return
@@ -48,6 +53,10 @@ struct CardEditor: View {
     let setType: (CardType?) -> Void
     /// New Type… in its type picker.
     let newType: () -> Void
+    /// Picks its deck, as Save will move it to.
+    let setDeck: (String) -> Void
+    /// New Deck… in its Deck field.
+    let newDeck: () -> Void
     /// Saves the card with `content`, which ends the edit once it's saved.
     let save: (CardContent) -> Void
     /// Ends the edit without saving it.
@@ -71,6 +80,8 @@ struct CardEditor: View {
         bothWays: Bool,
         type: CardType?,
         types: [CardType],
+        deck: String,
+        decks: [Deck],
         canSave: Bool,
         isSearching: Bool,
         putImage: @escaping (DroppedImage, CardSide) -> Void,
@@ -79,6 +90,8 @@ struct CardEditor: View {
         setBothWays: @escaping (Bool) -> Void,
         setType: @escaping (CardType?) -> Void,
         newType: @escaping () -> Void,
+        setDeck: @escaping (String) -> Void,
+        newDeck: @escaping () -> Void,
         save: @escaping (CardContent) -> Void,
         cancel: @escaping () -> Void
     ) {
@@ -89,6 +102,8 @@ struct CardEditor: View {
         self.bothWays = bothWays
         self.type = type
         self.types = types
+        self.deck = deck
+        self.decks = decks
         self.canSave = canSave
         self.isSearching = isSearching
         self.putImage = putImage
@@ -97,6 +112,8 @@ struct CardEditor: View {
         self.setBothWays = setBothWays
         self.setType = setType
         self.newType = newType
+        self.setDeck = setDeck
+        self.newDeck = newDeck
         self.save = save
         self.cancel = cancel
         _front = State(initialValue: card.front)
@@ -129,6 +146,12 @@ struct CardEditor: View {
                     "Type", comment: "In the Cards window, the label of a card's type, while Lucas edits it.")
                 gridLabel(label)
                 CardTypePicker(type: type, types: types, label: label, choose: setType, newType: newType)
+            }
+            GridRow {
+                let label = Text(
+                    "Deck", comment: "In the Cards window, the label of a card's deck, while Lucas edits it.")
+                gridLabel(label)
+                DeckPicker(deck: deck, decks: decks, label: label, choose: setDeck, newDeck: newDeck)
             }
             GridRow {
                 gridLabel(

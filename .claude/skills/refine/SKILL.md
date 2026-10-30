@@ -85,7 +85,7 @@ When Lucas asks to change a tag or a type of his own, or a draft would read bett
 | Renaming or moving a tag, or merging it into another | `ficha tag rename <tag> <new name>` |
 | Deleting tags, or the tags no card carries | `ficha tag delete <tag>…`, or `ficha tag clear-unused` |
 | Pinning, unpinning or reordering the sidebar's tags | `ficha tag pin`, `unpin` or `move-pinned` |
-| A tag's switch, color, emoji or choice to sync | `ficha tag set-aside`, `prioritize`, `color`, `emoji` or `choose-to-sync` |
+| A tag's color or emoji | `ficha tag color` or `emoji` |
 | Making, renaming, giving an emoji to or deleting a type of his own | `ficha type make`, `rename`, `emoji` or `delete` |
 
 ## Images and sounds

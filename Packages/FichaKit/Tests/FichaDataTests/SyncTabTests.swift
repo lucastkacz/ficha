@@ -134,7 +134,7 @@ final class SyncTabTests {
     // longer holds, isn't one, so the line says none until the Mac syncs
     // again.
     @Test(
-        "after a purge, the line says turning sync on sends the cards again, every one or those with chosen tags, and then no sync from before it"
+        "after a purge, the line says turning sync on sends the cards again, every one or those in chosen decks, and then no sync from before it"
     )
     func afterAPurge() async throws {
         try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -145,15 +145,15 @@ final class SyncTabTests {
         try await mac.syncNow()
         var tab = mac.engine.openSyncTab()
 
-        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenTags: false), sending: nil))
+        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenDecks: false), sending: nil))
         #expect(!tab.switchIsOn)
         #expect(tab.canTurnSwitch)
 
-        tab.syncOnlyChosenTags(true)
+        tab.syncOnlyChosenDecks(true)
 
-        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenTags: true), sending: nil))
+        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenDecks: true), sending: nil))
 
-        tab.syncOnlyChosenTags(false)
+        tab.syncOnlyChosenDecks(false)
         tab.turnSync(on: true)
 
         #expect(tab.status == .on(lastSynced: nil))
@@ -189,82 +189,78 @@ final class SyncTabTests {
         try await mac.syncNow()
         tab.read()
 
-        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenTags: false), sending: 100_000_000))
+        #expect(tab.status == .off(turningOn: .sendsCardsAgain(onlyChosenDecks: false), sending: 100_000_000))
     }
 
     // The app asks iCloud at launch, which a database only the CLI opened
     // never heard: the switch shows as it was left, and the user can turn it.
-    // The map is on two of geografía's cards, and counts once; lenguaje's
-    // card has no file; historia is chosen while no card carries it.
+    // The map is on Geografía's card and on Mapas', and counts in each;
+    // Lenguaje's card has no file; Historia is chosen while no card lives in
+    // it. Default holds no card, and is listed all the same, to choose.
     @Test(
-        "while only the cards with chosen tags sync, the tab lists every tag, a new one not chosen, with what its cards' files weigh, and none while every card syncs"
+        "while only the cards in chosen decks sync, the tab lists Default and every deck, a new one not chosen, with what its cards' files weigh, and none while every card syncs"
     )
-    func theTabListsTheTagsToChoose() throws {
+    func theTabListsTheDecksToChoose() throws {
         let map = try heavyImage(weighing: 1_500_000, named: "a", in: mac.engine)
         try mac.engine.create(
-            card(nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía"], frontImage: map))
+            card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map), deck: "Geografía")
         try mac.engine.create(
-            card(
-                nil, front: "¿De qué país es?", back: "De la Argentina.", tags: ["geografía", "mapas"], frontImage: map)
-        )
-        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia.", tags: ["lenguaje"]))
+            card(nil, front: "¿De qué país es?", back: "De la Argentina.", frontImage: map),
+            deck: "Mapas")
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."), deck: "Lenguaje")
         var tab = mac.engine.openSyncTab()
 
-        #expect(!tab.onlyChosenTags)
-        #expect(tab.tags.isEmpty)
+        #expect(!tab.onlyChosenDecks)
+        #expect(tab.decks.isEmpty)
         #expect(tab.canChoose)
 
-        tab.syncOnlyChosenTags(true)
-        tab.choose("historia", true)
+        tab.syncOnlyChosenDecks(true)
+        tab.choose("Historia", true)
 
-        #expect(tab.onlyChosenTags)
-        #expect(
-            tab.tags == [
-                TagToChoose(name: "geografía", isChosen: false, weight: 1_500_000),
-                TagToChoose(name: "historia", isChosen: true, weight: nil),
-                TagToChoose(name: "lenguaje", isChosen: false, weight: nil),
-                TagToChoose(name: "mapas", isChosen: false, weight: 1_500_000),
-            ])
+        #expect(tab.onlyChosenDecks)
+        #expect(tab.deckRows.map(\.id) == [Deck.defaultName, "Geografía", "Historia", "Lenguaje", "Mapas"])
+        #expect(tab.deckRows.map(\.deck.isChosen) == [false, false, true, false, false])
+        #expect(tab.deckRows.map(\.deck.weight) == [nil, 1_500_000, nil, nil, 1_500_000])
         #expect(tab.failure == nil)
     }
 
-    // The map is on Argentina's card and on banderas', and counts once in
-    // geografía. Argentina is ticked, then América, which it sits inside, so
+    // The map is on Argentina's card and on Banderas', and counts once in
+    // Geografía. Argentina is ticked, then América, which it sits inside, so
     // unticking Argentina changes nothing while América is, nor does Chile,
-    // never ticked, which syncs with América. historia::Roma is chosen while
-    // no card carries it, and historia isn't listed.
+    // never ticked, which syncs with América. Historia::Roma is chosen while
+    // no card lives in it, and Historia is listed with it.
     @Test(
-        "the tab lists the tags as a tree, a tag inside a chosen one as syncing, which can't be unticked, a parent's weight counting the tags inside it, and a tag whose parent isn't listed by its whole name"
+        "the tab lists the decks as a tree, Default first, a deck inside a chosen one as syncing, which can't be unticked, and a parent's weight counting the decks inside it"
     )
-    func theTabListsTheTagsAsATree() throws {
+    func theTabListsTheDecksAsATree() throws {
         let map = try heavyImage(weighing: 1_500_000, named: "a", in: mac.engine)
         let flag = try heavyImage(weighing: 500_000, named: "b", in: mac.engine)
         try mac.engine.create(
-            card(
-                nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía::América::Argentina"],
-                frontImage: map))
+            card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map),
+            deck: "Geografía::América::Argentina")
         try mac.engine.create(
-            card(nil, front: "¿Cuál es su capital?", back: "Santiago.", tags: ["geografía::América::Chile"]))
+            card(nil, front: "¿Cuál es su capital?", back: "Santiago."), deck: "Geografía::América::Chile")
         try mac.engine.create(
-            card(
-                nil, front: "¿De qué país es?", back: "De la Argentina.", tags: ["geografía::banderas"],
-                frontImage: flag, backImage: map))
+            card(nil, front: "¿De qué país es?", back: "De la Argentina.", frontImage: flag, backImage: map),
+            deck: "Geografía::Banderas")
         var tab = mac.engine.openSyncTab()
-        tab.syncOnlyChosenTags(true)
+        tab.syncOnlyChosenDecks(true)
 
-        tab.choose("geografía::América::Argentina", true)
-        tab.choose("geografía::América", true)
-        tab.choose("historia::Roma", true)
-        tab.choose("geografía::América::Argentina", false)
-        tab.choose("geografía::América::Chile", false)
+        tab.choose("Geografía::América::Argentina", true)
+        tab.choose("Geografía::América", true)
+        tab.choose("Historia::Roma", true)
+        tab.choose("Geografía::América::Argentina", false)
+        tab.choose("Geografía::América::Chile", false)
 
         #expect(
-            tab.tagRows.map(\.title) == ["geografía", "América", "Argentina", "Chile", "banderas", "historia › Roma"])
-        #expect(tab.tagRows.map(\.level) == [0, 1, 2, 2, 1, 0])
-        #expect(tab.tagRows.map(\.tag.isTicked) == [false, true, true, true, false, true])
-        #expect(tab.tagRows.map(\.tag.canChoose) == [true, true, false, false, true, true])
-        #expect(tab.tagRows.map(\.tag.isChosen) == [false, true, true, false, false, true])
-        #expect(tab.tagRows.map(\.tag.weight) == [2_000_000, 1_500_000, 1_500_000, nil, 2_000_000, nil])
+            tab.deckRows.map(\.deck.title)
+                == ["", "Geografía", "América", "Argentina", "Chile", "Banderas", "Historia", "Roma"])
+        #expect(tab.deckRows.map(\.level) == [0, 0, 1, 2, 2, 1, 0, 1])
+        #expect(tab.deckRows.map(\.deck.isTicked) == [false, false, true, true, true, false, false, true])
+        #expect(tab.deckRows.map(\.deck.canChoose) == [true, true, true, false, false, true, true, true])
+        #expect(tab.deckRows.map(\.deck.isChosen) == [false, false, true, true, false, false, false, true])
+        #expect(
+            tab.deckRows.map(\.deck.weight) == [nil, 2_000_000, 1_500_000, 1_500_000, nil, 2_000_000, nil, nil])
         #expect(tab.failure == nil)
     }
 
@@ -274,19 +270,19 @@ final class SyncTabTests {
         tab.turnSync(on: false)
         let map = try heavyImage(weighing: 100_000_000, named: "a", in: mac.engine)
         try mac.engine.create(
-            card(nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía"], frontImage: map))
-        tab.syncOnlyChosenTags(true)
+            card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map), deck: "Geografía")
+        tab.syncOnlyChosenDecks(true)
 
         #expect(tab.status == .off(turningOn: nil, sending: nil))
 
-        tab.choose("geografía", true)
+        tab.choose("Geografía", true)
 
         #expect(tab.status == .off(turningOn: nil, sending: 100_000_000))
     }
 
     // As Lucas's Mac migrates: it held cards, and never synced (#355).
     @Test(
-        "on a Mac that held cards before it ever synced, the off line says turning sync on sends its cards, every one or those with chosen tags"
+        "on a Mac that held cards before it ever synced, the off line says turning sync on sends its cards, every one or those in chosen decks"
     )
     func theFirstSyncLine() throws {
         let folder = URL.temporaryDirectory.appending(
@@ -299,12 +295,12 @@ final class SyncTabTests {
             Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
         var tab = macFromBefore.engine.openSyncTab()
 
-        #expect(tab.status == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: false), sending: nil))
+        #expect(tab.status == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil))
         #expect(!tab.switchIsOn)
 
-        tab.syncOnlyChosenTags(true)
+        tab.syncOnlyChosenDecks(true)
 
-        #expect(tab.status == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: true), sending: nil))
+        #expect(tab.status == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: true), sending: nil))
 
         tab.turnSync(on: true)
 

@@ -55,12 +55,17 @@ struct SyncKeptThroughARestore {
 /// Drops every row that syncs, in a write that records nothing to send, as a
 /// device takes a restore's cards in place of its own: the cards that sync
 /// (`SelectiveSync.swift`), their review log, the captures that sync, the
-/// tags, the user's card types and the changes to tags, with what waited to
-/// be sent and when each field of them last changed. A card that stays keeps
+/// tags, the decks' rows, the user's card types and the changes to tags and
+/// decks, with what waited to be sent and when each field of them last changed. A
+/// deck a card that stays lives in stays through the card. The device keeps
+/// the names of the decks the user made on it, which is its own and never
+/// syncs, for each to be made here again as the restore's copy brings its
+/// row (`takeMadeHereBeforeARestore(_:in:)`); those of a restore before go,
+/// which the copy they waited for didn't bring. A card that stays keeps
 /// its type's ID, and has its type again once the restore's copy brings it.
-/// The device keeps the IDs of the changes to tags it dropped, which it
-/// applied: those the copy holds come again, and are applied only when the
-/// device never heard of them (`TagChanges.swift`), so that none reaches the
+/// The device keeps the IDs of the changes to tags and decks it dropped, which
+/// it applied: those the copy holds come again, and are applied only when the
+/// device never heard of them (`TagChanges.swift`, `DeckChanges.swift`), so that none reaches the
 /// cards that stay a second time; one the copy lacks, which the restore
 /// undid, goes for good, so that the device never sends it again. The cards
 /// that don't sync stay, with their review log, the captures tied to them
@@ -76,7 +81,7 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
     used.images = try namesSynced(ImageName.self, in: db)
     used.sounds = try namesSynced(SoundName.self, in: db)
     let (card, capture) = (SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue)
-    let syncing = "SELECT id FROM card WHERE \(cardSyncs(tags: "card.tags"))"
+    let syncing = "SELECT id FROM card WHERE \(cardSyncs(deck: "card.deck"))"
     let untied = """
         SELECT id FROM capture WHERE expandsCardId IS NULL AND followsUpCardId IS NULL
             AND id NOT IN (SELECT captureId FROM card WHERE captureId IS NOT NULL)
@@ -93,11 +98,25 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
             WHERE recordType = '\(capture)' AND recordName IN (SELECT uuid FROM capture WHERE id IN (\(untied)));
             DELETE FROM capture WHERE id IN (\(untied));
             DELETE FROM tag;
+            DELETE FROM deckMadeHereBeforeARestore;
+            INSERT INTO deckMadeHereBeforeARestore (name) SELECT name FROM deck WHERE madeHere;
+            DELETE FROM deck;
             DELETE FROM userType;
             INSERT OR IGNORE INTO tagChangeAppliedBeforeARestore (uuid) SELECT uuid FROM tagChange;
             DELETE FROM tagChange;
+            INSERT OR IGNORE INTO deckChangeAppliedBeforeARestore (uuid) SELECT uuid FROM deckChange;
+            DELETE FROM deckChange;
             DELETE FROM syncFieldTime WHERE recordType NOT IN ('\(card)', '\(capture)');
             DELETE FROM syncPending;
             """)
     return used
+}
+
+/// Takes, in the write `db`, whether the user made the deck named `name` on
+/// this device before it took a restore's cards, which dropped the deck's
+/// row (`dropEverythingThatSyncs(in:)`): it says so once, as the restore's
+/// copy brings the row again, which says it from then on.
+func takeMadeHereBeforeARestore(_ name: String, in db: Database) throws -> Bool {
+    try db.execute(sql: "DELETE FROM deckMadeHereBeforeARestore WHERE name = ?", arguments: [name])
+    return db.changesCount > 0
 }

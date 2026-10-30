@@ -59,8 +59,8 @@ struct WidgetTests {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
         time.advance(by: hours(1))
-        let ubuntu = try approve(card(.word, front: "ubuntu", back: "Humanidad.", tags: ["urgente"]), in: engine)
-        try engine.togglePriority(of: "urgente")
+        let ubuntu = try approveInDeck("ubuntu", deck: "Urgente", in: engine)
+        try engine.togglePriority(ofDeck: "Urgente")
         // With a single card, a priority card's new way comes before
         // another card's due way, and takes the only place.
         var settings = ReviewSettings.defaults

@@ -6,9 +6,11 @@ import Foundation
 // tags alone, in his order, which he reorders by dragging, pinning a tag he
 // drags in from All Tags among them or onto All Tags…; a tag's context menu,
 // one menu in the sidebar and in All Tags, which pins or unpins it, renames
-// it, gives it a color or an emoji, sets it aside or prioritizes it, and asks
-// to delete it, for every tag selected in All Tags at once but for Rename…
-// and Emoji…; and renaming a tag, which moves it too, with Rename…. All Tags
+// it, gives it a color or an emoji, and asks to delete it, for every tag
+// selected in All Tags at once but for Rename… and Emoji…; and renaming a
+// tag, which moves it too, with Rename…. A tag only labels its cards (ADR
+// 0024): Set Aside and Prioritize are a deck's (`CardsWindowDecks.swift`),
+// so no tag is grayed. All Tags
 // itself, its tree, its drops and a tag's cards in its place, is in
 // `CardsWindowAllTags.swift`. The rename sheet that Rename… opens renames a
 // card type of the user's own too, so its entry and OK are with the emoji
@@ -20,10 +22,6 @@ extension CardsWindowState {
         /// The tag, with what it has of its own and takes from the tags it
         /// sits inside.
         public let tag: CardTag
-        /// Whether its row is grayed: while its cards are out of Lucas's
-        /// reviews, as it's set aside on its own or sits inside a tag that
-        /// is.
-        public let isGrayed: Bool
 
         public var id: String {
             tag.name
@@ -33,27 +31,6 @@ extension CardsWindowState {
         public var item: SidebarItem {
             .cards(.tag(tag.name))
         }
-    }
-
-    /// The sidebar's rows of `pinned`, the pinned tags in Lucas's order, each
-    /// grayed when it's set aside, on its own or inside one of `tags`, every
-    /// tag the window offers, that is.
-    static func pinnedRows(of pinned: [CardTag], among tags: [CardTag]) -> [PinnedTagRow] {
-        let isSetAside = setAside(among: tags)
-        return pinned.map { PinnedTagRow(tag: $0, isGrayed: isSetAside($0.name)) }
-    }
-
-    /// Whether the tag with a name is set aside, on its own or inside a tag
-    /// that is, among `tags`, which hold every set-aside tag, as
-    /// `tagSettingAside(_:amongSetAside:)` says.
-    static func setAside(among tags: [CardTag]) -> (String) -> Bool {
-        let setAside = setAsideNames(among: tags)
-        return { name in tagSettingAside(name, amongSetAside: setAside) != nil }
-    }
-
-    /// The names of the tags among `tags` set aside on their own.
-    static func setAsideNames(among tags: [CardTag]) -> Set<String> {
-        Set(tags.filter(\.isSetAside).map(\.name))
     }
 
     /// The tags named `names` that the window offers, those it read last,
@@ -75,32 +52,18 @@ extension CardsWindowState {
         offeredTags(draggedTags ?? [], keepingTheirOrder: keepingTheirOrder).map(\.name)
     }
 
-    /// Chooses All Tags, as All Tags… in the menu bar's Prioritize submenu
-    /// asks, unless Lucas is editing a card or a capture, while the sidebar
-    /// waits for him.
-    public mutating func showAllTags() {
-        guard editing == nil else { return }
-        choose(.allTags)
-    }
-
     /// What the context menu offers for the tags named `tags`, those of them
     /// the window offers, in the sidebar or in All Tags, as
     /// `tagsActedOn(clicking:)` says which; or nil when it offers none of
-    /// them. Prioritize is off while one of them is set aside, on its own or
-    /// inside a tag that is, as the menu bar's Prioritize submenu leaves it
-    /// out, unless it's a priority tag, to untick.
+    /// them.
     public func menu(for tags: [String]) -> TagMenu? {
         let offered = offeredTags(tags)
         guard !offered.isEmpty else {
             return nil
         }
-        let colors = Set(offered.map(\.color))
-        let setAside = Self.setAsideNames(among: self.tags)
         return TagMenu(
             tags: offered.map(\.name), isPinned: offered.allSatisfy(\.isPinned),
-            isSetAsideTicked: offered.allSatisfy(\.isSetAside), isPriorityTicked: offered.allSatisfy(\.isPriority),
-            canPrioritize: offered.allSatisfy { $0.canBePrioritized(amongSetAside: setAside) },
-            colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: colors == [$0]) })
+            colorItems: ColorItem.items(forOwn: Set(offered.map(\.color))))
     }
 
     /// Chooses Pin to Sidebar in the context menu of `tags`, in All Tags or
@@ -110,22 +73,6 @@ extension CardsWindowState {
     public mutating func choosePin(on tags: [String]) {
         guard let menu = menu(for: tags) else { return }
         setPinned(!menu.isPinned, of: menu.tags)
-    }
-
-    /// Chooses Set Aside in the context menu of `tags`: sets them aside, or
-    /// undoes it while it's ticked, and reads the cards again, or records why
-    /// it couldn't.
-    public mutating func chooseSetAside(on tags: [String]) {
-        guard let menu = menu(for: tags) else { return }
-        setSetAside(!menu.isSetAsideTicked, of: menu.tags)
-    }
-
-    /// Chooses Prioritize in the context menu of `tags`, while it's on: makes
-    /// them priority tags, or no longer, while it's ticked, and reads the
-    /// cards again, or records why it couldn't.
-    public mutating func choosePriority(on tags: [String]) {
-        guard let menu = menu(for: tags), menu.canPrioritize else { return }
-        setPriority(!menu.isPriorityTicked, of: menu.tags)
     }
 
     /// Chooses `color` in the Color submenu of `tags`, or None when it's nil:
@@ -164,27 +111,6 @@ extension CardsWindowState {
         allTagsSearch = ""
         selectedTags = [chosen]
         openTags.formUnion(TagPath.ancestors(of: chosen))
-    }
-
-    /// Sets `tags` aside, or stops setting them aside when `isSetAside` is
-    /// false, and reads the cards again, or records why it couldn't.
-    mutating func setSetAside(_ isSetAside: Bool, of tags: [String]) {
-        if isSetAside {
-            change(tags, as: FailedAction.setAside(tag:)) { engine throws(EngineError) in try engine.setAside(tags) }
-        } else {
-            change(tags, as: FailedAction.stopSettingAside(tag:)) { engine throws(EngineError) in
-                try engine.stopSettingAside(tags)
-            }
-        }
-    }
-
-    /// Makes `tags` priority tags, or no longer when `isPriority` is false,
-    /// and reads the cards again, or records why it couldn't, as when one of
-    /// them was set aside meanwhile.
-    mutating func setPriority(_ isPriority: Bool, of tags: [String]) {
-        change(tags, as: isPriority ? FailedAction.prioritize(tag:) : FailedAction.stopPrioritizing(tag:)) {
-            engine throws(EngineError) in try engine.setPriority(isPriority, of: tags)
-        }
     }
 
     /// Does `work`, the engine's part of an action on the tags named `tags`,
@@ -319,8 +245,9 @@ extension CardsWindowState {
 
     /// Points what the window holds of tags at their names after `renames`,
     /// made in that order: the tag the sidebar chose, the one whose cards
-    /// All Tags lists in its place, and All Tags' selection and open
-    /// parents, each when it's a tag renamed or inside one.
+    /// All Tags lists in its place, the one chosen among the chosen deck's
+    /// tags, and All Tags' selection and open parents, each when it's a tag
+    /// renamed or inside one.
     mutating func follow(_ renames: [TagEdit]) {
         func renamed(_ name: String) -> String {
             renames.reduce(name) { name, edit in edit.name(of: name) ?? name }
@@ -329,6 +256,7 @@ extension CardsWindowState {
             sidebarItem = .cards(.tag(renamed(chosen)))
         }
         tagShownFromAllTags = tagShownFromAllTags.map(renamed)
+        chosenDeckTag = chosenDeckTag.map(renamed)
         selectedTags = Set(selectedTags.map(renamed))
         openTags = Set(openTags.map(renamed))
     }

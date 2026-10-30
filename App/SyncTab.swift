@@ -4,9 +4,9 @@ import SwiftUI
 /// The Sync tab of Settings, in an app that syncs (ADR 0017): "Sync with
 /// iCloud", and under it the status line, how sync stands and, while it's
 /// off, what turning it on does; then which cards sync, every one or only
-/// those with the tags the user ticks in a list, a tree of tags inside tags
-/// (ADR 0021), each with what its images and sounds weigh (ADR 0020). What
-/// the switch shows, the line says and the list holds, the model's
+/// those in the decks the user ticks in a list, a tree of decks inside decks,
+/// each with what its images and sounds weigh (ADR 0020, ADR 0024). What the
+/// switch shows, the line says and the list holds, the model's
 /// `SyncTabState` decides.
 struct SyncTab: View {
     @Bindable var model: AppModel
@@ -23,13 +23,13 @@ struct SyncTab: View {
                     .disabled(!sync.canTurnSwitch)
                     Picker(
                         selection: Binding(
-                            get: { sync.onlyChosenTags }, set: { model.sync?.syncOnlyChosenTags($0) })
+                            get: { sync.onlyChosenDecks }, set: { model.sync?.syncOnlyChosenDecks($0) })
                     ) {
                         Text("Every card", comment: "Settings, under Sync: the choice that syncs every card.")
                             .tag(false)
                         Text(
-                            "Only cards with the tags you choose",
-                            comment: "Settings, under Sync: the choice that syncs only the cards with ticked tags."
+                            "Only cards in the decks you choose",
+                            comment: "Settings, under Sync: the choice that syncs only the cards in ticked decks."
                         )
                         .tag(true)
                     } label: {
@@ -45,8 +45,8 @@ struct SyncTab: View {
                         """,
                         comment: "Settings, under Sync, below the switch: what sync does.")
                 }
-                if sync.onlyChosenTags {
-                    tagsSection(sync)
+                if sync.onlyChosenDecks {
+                    decksSection(sync)
                 }
             }
         }
@@ -99,41 +99,34 @@ struct SyncTab: View {
         }
     }
 
-    /// The list of tags to choose from, as a tree, each row named and
-    /// indented as the state says, with a checkbox and what the images and
-    /// sounds of its cards, and of the cards of the tags inside it, weigh,
-    /// when they weigh anything. A tag inside a ticked tag shows ticked, since
-    /// it syncs with it, and its checkbox waits.
-    private func tagsSection(_ sync: SyncTabState) -> some View {
+    /// The list of decks to choose from, as a tree, Default first, each row
+    /// named and indented as the state says, with a checkbox and what the
+    /// images and sounds of its cards, and of the cards of the decks inside
+    /// it, weigh, when they weigh anything. A deck inside a ticked deck shows
+    /// ticked, since it syncs with it, and its checkbox waits.
+    private func decksSection(_ sync: SyncTabState) -> some View {
         Section {
-            if sync.tags.isEmpty {
-                Text(
-                    "Your cards have no tags yet.",
-                    comment: "Settings, under Sync: the list of tags to choose is empty, as no card has a tag."
-                )
-                .foregroundStyle(.secondary)
-            }
-            ForEach(sync.tagRows) { row in
-                let tag = row.tag
+            ForEach(sync.deckRows) { row in
+                let deck = row.deck
                 // In a stack, the checkbox comes before the name, as macOS lists
                 // them; a form's label would put it after.
                 HStack {
-                    Toggle(isOn: Binding(get: { tag.isTicked }, set: { model.sync?.choose(tag.name, $0) })) {
-                        Text(verbatim: row.title)
+                    Toggle(isOn: Binding(get: { deck.isTicked }, set: { model.sync?.choose(deck.id, $0) })) {
+                        Text(verbatim: deck.shownTitle)
                     }
                     .toggleStyle(.checkbox)
-                    .disabled(!tag.canChoose)
+                    .disabled(!deck.canChoose)
                     .help(
-                        tag.canChoose
+                        deck.canChoose
                             ? Text(verbatim: "")
                             : Text(
-                                "It syncs with the ticked tag it sits inside.",
+                                "It syncs with the ticked deck it sits inside.",
                                 comment: """
-                                    Settings, under Sync: the tooltip of a tag's checkbox, ticked and waiting, inside a \
-                                    ticked tag.
+                                    Settings, under Sync: the tooltip of a deck's checkbox, ticked and waiting, \
+                                    inside a ticked deck.
                                     """))
                     Spacer()
-                    if let weight = tag.weight {
+                    if let weight = deck.weight {
                         Text(weight.formatted(.byteCount(style: .file)))
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -143,14 +136,14 @@ struct SyncTab: View {
                 .disabled(!sync.canChoose)
             }
         } header: {
-            Text("Tags to sync", comment: "Settings, under Sync: the heading of the list of tags to choose.")
+            Text("Decks to sync", comment: "Settings, under Sync: the heading of the list of decks to choose.")
         } footer: {
             Text(
                 """
-                Only the cards with a ticked tag go up to iCloud, with their images and sounds. Unticking a tag \
-                deletes nothing: its cards stay on each of your devices.
+                Only the cards in a ticked deck, or in a deck inside it, go up to iCloud, with their images and \
+                sounds. Unticking a deck deletes nothing: its cards stay on each of your devices.
                 """,
-                comment: "Settings, under Sync, below the list of tags: what ticking and unticking a tag does.")
+                comment: "Settings, under Sync, below the list of decks: what ticking and unticking a deck does.")
         }
     }
 
@@ -158,22 +151,22 @@ struct SyncTab: View {
     /// says.
     private func turningOnLine(_ turningOn: SyncTabState.TurningOn) -> Text {
         switch turningOn {
-        case .sendsCardsAgain(onlyChosenTags: false):
+        case .sendsCardsAgain(onlyChosenDecks: false):
             Text(
                 "\(AppVariant.current.name)'s data was deleted from iCloud. Turning sync on sends all your cards again.",
                 comment: """
                     Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned \
                     sync off. The name is the app's.
                     """)
-        case .sendsCardsAgain(onlyChosenTags: true):
+        case .sendsCardsAgain(onlyChosenDecks: true):
             Text(
                 """
-                \(AppVariant.current.name)'s data was deleted from iCloud. Turning sync on sends the cards with the \
-                tags you choose again.
+                \(AppVariant.current.name)'s data was deleted from iCloud. Turning sync on sends the cards in the \
+                decks you choose again.
                 """,
                 comment: """
                     Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned \
-                    sync off, while only the cards with ticked tags sync. The name is the app's.
+                    sync off, while only the cards in ticked decks sync. The name is the app's.
                     """)
         case .replacesICloudsCopy:
             Text(
@@ -182,17 +175,17 @@ struct SyncTab: View {
                     Settings, under Sync, after the user restored a backup, which turned sync off: turning it on \
                     replaces the cards in iCloud, and on the user's other devices, with this Mac's.
                     """)
-        case .sendsCardsForTheFirstTime(onlyChosenTags: true):
+        case .sendsCardsForTheFirstTime(onlyChosenDecks: true):
             Text(
                 """
                 This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards \
-                with the tags you choose to your iCloud.
+                in the decks you choose to your iCloud.
                 """,
                 comment: """
                     Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: \
-                    turning it on sends the cards with ticked tags.
+                    turning it on sends the cards in ticked decks.
                     """)
-        case .sendsCardsForTheFirstTime(onlyChosenTags: false):
+        case .sendsCardsForTheFirstTime(onlyChosenDecks: false):
             Text(
                 """
                 This Mac had cards before it ever synced, so sync waits for you. Turning it on sends all your \

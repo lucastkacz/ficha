@@ -43,40 +43,23 @@ struct CardsWindowStateTests {
         #expect(window.listedCardIDs == [serendipia.id])
     }
 
-    // So that Lucas can undo it, and a card that gets the tag later is set
-    // aside too.
-    @Test("a set-aside tag stays listed without cards, and choosing it lists no cards rather than All cards")
-    func aSetAsideTagStaysListedWithoutCards() throws {
-        let mayo = try approve(
-            card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia"]), in: engine)
+    // So that Lucas can undo it, and a card that moves in later is set aside
+    // too.
+    @Test("a set-aside deck stays listed without cards, and choosing it lists no cards rather than All cards")
+    func aSetAsideDeckStaysListedWithoutCards() throws {
+        let mayo = try approveInDeck("Revolución de Mayo", deck: "Historia", in: engine)
         try approveCard("serendipia", in: engine)
         var window = openWindow()
-        window.chooseSetAside(on: ["historia"])
-        window.choose(.cards(.tag("historia")))
+        window.chooseSetAside(onDeck: "Historia")
+        window.choose(.cards(.deck("Historia")))
 
         try engine.delete([mayo.id])
         window.read(on: ladder)
 
-        #expect(window.tags == [CardTag(name: "historia", switchedOn: .setAside)])
-        #expect(window.sidebarItem == .cards(.tag("historia")))
+        #expect(window.deckRows.map(\.id) == [Deck.defaultName, "Historia"])
+        #expect(window.menu(forDeck: "Historia")?.isSetAsideTicked == true)
+        #expect(window.sidebarItem == .cards(.deck("Historia")))
         #expect(window.listedCardIDs == [])
-    }
-
-    @Test("Set Aside in a tag's menu is ticked while the tag is set aside, and choosing it again undoes it")
-    func setAsideIsTickedAsTheTagStands() throws {
-        let ubuntu = try approve(
-            card(.word, front: "ubuntu", back: "Humanidad.", tags: ["filosofía", "lenguaje"]), in: engine)
-        var window = openWindow()
-        #expect(window.menu(for: ["filosofía"])?.isSetAsideTicked == false)
-
-        window.chooseSetAside(on: ["filosofía"])
-
-        #expect(window.menu(for: ["filosofía"])?.isSetAsideTicked == true)
-        #expect(window.menu(for: ["lenguaje"])?.isSetAsideTicked == false)
-        #expect(try engine.cards().map(\.standing) == [.setAside(by: ["filosofía"])])
-        window.chooseSetAside(on: ["filosofía"])
-        #expect(window.menu(for: ["filosofía"])?.isSetAsideTicked == false)
-        #expect(try engine.cards().map(\.standing) == [ubuntu.standing])
     }
 
     @Test("the Color submenu offers None and Finder's seven colors, and ticks the tag's color, or None")
@@ -122,24 +105,22 @@ struct CardsWindowStateTests {
         #expect(window.tags == [CardTag(name: "argentina")])
     }
 
-    @Test("New, Due and Learned leave set-aside cards out, while All cards and the tag's group hold them")
+    @Test("New, Due and Learned leave set-aside cards out, while All cards, the deck's group and a tag's hold them")
     func newDueAndLearnedLeaveSetAsideCardsOut() throws {
         // eudaimonía gets to the 30-day step, from which a card is learned,
         // and comes due there; ataraxia is new.
-        let eudaimonia = try approve(
-            card(.concept, front: "eudaimonía", back: "Vida plena.", tags: ["filosofía"]), in: engine)
-        let ataraxia = try approve(
-            card(.concept, front: "ataraxia", back: "Serenidad.", tags: ["filosofía"]), in: engine)
+        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", tags: ["ética"], in: engine)
+        let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", tags: ["ética"], in: engine)
         try engine.climb(eudaimonia, to: 5, movingForward: time)
         time.advance(by: days(30))
         var window = openWindow()
-        window.chooseSetAside(on: ["filosofía"])
+        window.chooseSetAside(onDeck: "Filosofía")
 
         for group in [CardGroup.new, .due, .learned] {
             window.choose(.cards(group))
             #expect(window.listedCardIDs == [], "\(group)")
         }
-        for group in [CardGroup.all, .tag("filosofía")] {
+        for group in [CardGroup.all, .deck("Filosofía"), .tag("ética")] {
             window.choose(.cards(group))
             #expect(window.listedCardIDs == [eudaimonia.id, ataraxia.id], "\(group)")
         }
@@ -147,14 +128,13 @@ struct CardsWindowStateTests {
 
     @Test("the Due column says a set-aside card is set aside, where its due time goes")
     func theDueColumnSaysASetAsideCardIsSetAside() throws {
-        let eudaimonia = try approve(
-            card(.concept, front: "eudaimonía", back: "Vida plena.", tags: ["filosofía"]), in: engine)
+        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         try engine.meet(eudaimonia)
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
         var window = openWindow()
 
-        window.chooseSetAside(on: ["filosofía"])
+        window.chooseSetAside(onDeck: "Filosofía")
 
         let rows = try #require(window.listedCardRows)
         #expect(rows.map(\.frontFirst.dueColumn) == [.setAside, .due(time.now + hours(1))])
@@ -190,7 +170,7 @@ struct CardsWindowStateTests {
         #expect(window.selectedRows.map(\.id) == [ubuntu.id])
         #expect(shown.row.id == ubuntu.id)
         #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.firstView, .review(.good)])
-        #expect(window.actions == [.edit, .bury, .delete])
+        #expect(window.actions == [.edit, .bury, .changeDeck, .delete])
     }
 
     @Test("selecting an expansion in the inbox shows it, with the card it expands, and offers Edit and Discard")
@@ -327,8 +307,8 @@ struct CardsWindowStateTests {
         window.select([ojala.id, acaso.id])
         let offeredInBuried = window.actions
 
-        #expect(offeredInAllCards == [.bury, .turnOnBothWays, .delete])
-        #expect(offeredInBuried == [.unbury, .turnOnBothWays, .delete])
+        #expect(offeredInAllCards == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredInBuried == [.unbury, .turnOnBothWays, .changeDeck, .delete])
     }
 
     // So that a whole subject goes both ways from its tag, ⌘A and one click.
@@ -351,13 +331,13 @@ struct CardsWindowStateTests {
         let offeredForBothWays = window.actions
         window.turnOffBothWays()
 
-        #expect(offeredForOne == [.edit, .flag, .bury, .delete])
-        #expect(offeredForOneWay == [.bury, .turnOnBothWays, .delete])
-        #expect(offeredForAMix == [.bury, .turnOnBothWays, .delete])
+        #expect(offeredForOne == [.edit, .flag, .bury, .changeDeck, .delete])
+        #expect(offeredForOneWay == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredForAMix == [.bury, .turnOnBothWays, .changeDeck, .delete])
         #expect(turnedOn == [true, true, true])
-        #expect(offeredForBothWays == [.bury, .turnOffBothWays, .delete])
+        #expect(offeredForBothWays == [.bury, .turnOffBothWays, .changeDeck, .delete])
         #expect(try engine.cards().map(\.bothWays) == [false, false, false])
-        #expect(window.actions == [.bury, .turnOnBothWays, .delete])
+        #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
     }
 
     // The Back-first step and Back-first due columns show `backFirst`, and

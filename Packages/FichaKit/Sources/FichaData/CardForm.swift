@@ -87,8 +87,13 @@ extension CardsWindowState.CardForm {
         public var source = ""
         /// Whether the card goes both ways, which the form starts off.
         public var bothWays = false
+        /// The deck the Deck field holds, by its whole name, or Default's,
+        /// which Add puts the card in, making it if it isn't there: the deck
+        /// the form starts in, as `CardsWindowDecks.swift` decides it, until
+        /// the user picks another, or names one with New Deck….
+        public var deck = Deck.defaultName
 
-        /// Empty fields, the type None, and Both ways off.
+        /// Empty fields, the type None, Both ways off, and Default.
         public init() {}
 
         /// What Add saves, checked as every card is, or nil while a side is
@@ -129,27 +134,33 @@ extension CardsWindowState.CardForm {
 }
 
 extension CardsWindowState {
-    /// Opens the form on a new card: every field empty, the type None and
-    /// Both ways off; or brings back the new card's form Show Card set aside,
-    /// as it was.
+    /// Opens the form on a new card: every field empty, the type None, Both
+    /// ways off, and the deck a new card starts in
+    /// (`CardsWindowDeckField.swift`); or brings back the new card's form
+    /// Show Card set aside, as it was.
     public mutating func openNewCardForm() {
         guard cardForm == nil else { return }
-        openCardForm(CardForm(openedBy: .newCard))
+        var form = CardForm(openedBy: .newCard)
+        form.draft.deck = deckANewCardStartsIn
+        openCardForm(form)
     }
 
     /// Convert to Card: opens the form from the capture the detail shows,
-    /// while it's offered, with the capture's source filled in, or from the
-    /// follow-up it shows, with its card beside it and the card's tags filled
-    /// in, so the new cards land next to it; or brings back the form from
-    /// that capture or follow-up Show Card set aside, as it was.
+    /// while it's offered, with the capture's source filled in, in the deck a
+    /// new card starts in, or from the follow-up it shows, with its card
+    /// beside it and the card's deck and tags filled in, so the new cards
+    /// land next to it; or brings back the form from that capture or
+    /// follow-up Show Card set aside, as it was.
     public mutating func convertToCard() {
         guard cardForm == nil, actions.contains(.convertToCard) else { return }
         var form: CardForm
         switch detail {
         case .capture(let capture):
             form = CardForm(openedBy: .capture(capture))
+            form.draft.deck = deckANewCardStartsIn
         case .followUp(let followUp):
             form = CardForm(openedBy: .followUp(followUp))
+            form.draft.deck = followUp.card.deck
             form.draft.tags = CardContent.tagsField(of: followUp.card.tags)
         case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
             return
@@ -218,19 +229,23 @@ extension CardsWindowState {
     /// Add: saves what the form holds as a new card, while Add is on, straight
     /// into the user's reviews as new, with the images and sounds on its
     /// sides, which Ficha keeps from then on, going both ways when the form
-    /// says so. A card added from a capture keeps it as its capture, and the
-    /// capture stays in the inbox until the form closes. Then it clears the
-    /// front and the back, their images and sounds too, and keeps the type,
-    /// the tags, the source and Both ways, for the next card. When the card
-    /// can't be saved, it records why, and the fields stay as they were.
+    /// says so, in the deck the Deck field holds, made if it isn't there,
+    /// which becomes the deck the last card was added to. A card added from a
+    /// capture keeps it as its capture, and the capture stays in the inbox
+    /// until the form closes. Then it clears the front and the back, their
+    /// images and sounds too, and keeps the type, the deck, the tags, the
+    /// source and Both ways, for the next card. When the card can't be saved,
+    /// it records why, and the fields stay as they were.
     public mutating func addCard() {
         guard let form = cardForm, form.canAdd, let content = form.draft.content else { return }
         var added: Card?
         let files = heldFiles(of: content)
         perform(.addCard) { engine throws(EngineError) in
-            added = try engine.create(keeping: files, content, bothWays: form.draft.bothWays, from: form.capture?.id)
+            added = try engine.create(
+                keeping: files, content, deck: form.draft.deck, bothWays: form.draft.bothWays, from: form.capture?.id)
         }
         guard let added else { return }
+        lastDeckAddedTo = added.deck
         cardForm?.addedCards.append(added)
         cardForm?.draft.front = CardForm.Side()
         cardForm?.draft.back = CardForm.Side()

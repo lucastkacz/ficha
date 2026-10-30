@@ -193,14 +193,14 @@ struct ReviewPanelView: View {
             }
         case .firstView(let card, let way):
             sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
-                topLine(way, isNew: true, tags: panel.state.tags)
+                topLine(way, isNew: true, deck: panel.state.deck, tags: panel.state.tags)
             }
             enterButton(Text("Got it")) {
                 panel.state.endFirstView()
             }
         case .upperSide(let card, let way, let isNew, let isAhead):
             sides(of: card, way, showingLowerSide: false, buttons: .forTheCard, in: panel) {
-                topLine(way, isNew: isNew, isAhead: isAhead, tags: panel.state.tags)
+                topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
             }
             HStack {
                 Spacer()
@@ -217,7 +217,7 @@ struct ReviewPanelView: View {
             }
         case .bothSides(let card, let way, let isAhead):
             sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
-                topLine(way, isAhead: isAhead, tags: panel.state.tags)
+                topLine(way, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
             }
             HStack {
                 ratingButton("Don't know", key: "1", rating: .again, in: panel)
@@ -590,12 +590,14 @@ struct ReviewPanelView: View {
 
     /// The line at the top of a card: its badges, "New" on a first view,
     /// "Ahead" on a review ahead and "Back first" when `way` is, each when it
-    /// applies, and the card's tags, when it has some.
+    /// applies, then the card's deck, and its tags, when it has some.
     @ViewBuilder
-    private func topLine(_ way: Way, isNew: Bool = false, isAhead: Bool = false, tags: [CardTag]) -> some View {
+    private func topLine(
+        _ way: Way, isNew: Bool = false, isAhead: Bool = false, deck: Deck?, tags: [CardTag]
+    ) -> some View {
         let isBackFirst = way == .backFirst
-        if isNew || isAhead || isBackFirst || !tags.isEmpty {
-            TagLine(tags: tags) {
+        if isNew || isAhead || isBackFirst || deck != nil || !tags.isEmpty {
+            TagLine(deck: deck, tags: tags) {
                 if isNew {
                     newBadge
                 }
@@ -731,12 +733,15 @@ struct BackFirstBadge: View {
 }
 
 /// The line at the top of a card in the review panel: its badges, "New" or
-/// "Ahead", and "Back first", when it has some, and then its tags, each as
-/// the Cards window's Tags column draws it, so that Lucas knows which subject
-/// the card is about, and which way he's asked, before he answers it. It's
-/// one line, so the panel stays as small as it is: the tags that don't fit
-/// collapse into a "+n" capsule, whose tooltip names them.
+/// "Ahead", and "Back first", when it has some, then its deck, by its whole
+/// name (`DeckCapsule`), and then its tags, each as the Cards window's Tags
+/// column draws it, so that Lucas knows which subject the card is about, and
+/// which way he's asked, before he answers it (ADR 0024). It's one line, so
+/// the panel stays as small as it is: the tags that don't fit collapse into a
+/// "+n" capsule, whose tooltip names them, and a deck's name too long for
+/// what's left gives way in its middle.
 private struct TagLine<Badge: View>: View {
+    let deck: Deck?
     let tags: [CardTag]
     @ViewBuilder let badge: Badge
 
@@ -747,6 +752,9 @@ private struct TagLine<Badge: View>: View {
             ForEach((0...tags.count).reversed(), id: \.self) { shown in
                 HStack(spacing: 4) {
                     badge
+                    if let deck {
+                        DeckCapsule(deck: deck)
+                    }
                     ForEach(tags.prefix(shown), id: \.name) { tag in
                         TagCapsule(tag: tag)
                     }
@@ -843,7 +851,8 @@ extension EngineError {
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
             .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
-            .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .tagSetAside, .blankTypeName,
+            .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .deckSetAside, .blankDeckName,
+            .defaultDeckName, .deckInsideItself, .defaultDeckStays, .deckNotFound, .blankTypeName,
             .builtInTypeName, .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog,
             .storage,
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,

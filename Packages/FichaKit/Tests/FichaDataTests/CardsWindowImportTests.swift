@@ -45,6 +45,18 @@ final class CardsWindowImportTests {
         return window
     }
 
+    /// Opens the Cards window, reads the cards, and opens the Import sheet
+    /// on `package`, written as `name`, as choosing it in the open panel does.
+    private func ankiImportSheet(on name: String, _ package: AnkiPackage) async throws -> CardsWindowState {
+        let file = folder.appending(path: name)
+        try package.write(to: file)
+        var window = engine.openCardsWindow(on: ladder)
+        window.read(on: ladder)
+        window.startImport()
+        await window.previewImportAndWait(of: file)
+        return window
+    }
+
     @Test(
         "the Import sheet starts before a file is chosen, and choosing one shows its preview, which Import goes on from"
     )
@@ -151,30 +163,161 @@ final class CardsWindowImportTests {
         #expect(try engine.cards().first?.id == serendipia.id)
     }
 
-    @Test("the preview of an Anki package lists every tag it adds, each of which the user renames or removes")
-    func anAnkiPackagesTagsAreRenamedOrRemoved() async throws {
-        let package = AnkiPackage(notes: [
-            AnkiNote(
-                type: .basic, fields: ["fémur", "El hueso del muslo."], tags: ["repaso"], deck: "Medicina::Anatomía"),
-            AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
-        ])
-        let file = folder.appending(path: "Medicina.apkg")
-        try package.write(to: file)
-        var window = engine.openCardsWindow(on: ladder)
-        window.startImport()
-        await window.previewImportAndWait(of: file)
+    // As Great Works of Art can come in under Arte.
+    @Test(
+        "the preview of an Anki package lists its decks and its tags apart, and the user renames a deck, also to one they have, and renames or clears a tag"
+    )
+    func anAnkiPackagesDecksAndTagsAreListedApart() async throws {
+        try engine.makeDeck(named: "Arte")
+        var window = try await ankiImportSheet(
+            on: "Great Works of Art.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(
+                    type: .basic, fields: ["Leonardo da Vinci", "La Gioconda."], tags: ["Renaissance", "Painting"],
+                    deck: "Great Works of Art::Artists"),
+                AnkiNote(
+                    type: .basic, fields: ["fémur", "El hueso del muslo."], tags: ["repaso"],
+                    deck: "Medicina::Anatomía"),
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+            ]))
+        let deckFields = window.importing?.deckFields
         let tagFields = window.importing?.tagFields
 
-        window.nameImportTag("Medicina::Anatomía", as: "Medicina::anatomía humana")
+        window.nameImportDeck("Great Works of Art::Artists", as: "Arte")
+        window.nameImportDeck("Medicina::Anatomía", as: "Medicina:: Anatomía humana")
         window.removeImportTag("repaso")
+        window.nameImportTag("Renaissance", as: "Renacimiento")
         await window.importCardsAndWait()
 
         #expect(
-            tagFields
-                == ["Medicina::Anatomía", "repaso", "Medicina"].map {
-                    CardsWindowState.TagField(proposed: $0, name: $0)
+            deckFields
+                == ["Great Works of Art", "Great Works of Art::Artists", "Medicina", "Medicina::Anatomía"].map {
+                    CardsWindowState.ImportDeckField(proposed: $0, name: $0)
                 })
-        #expect(try engine.cards().map(\.tags) == [["Medicina::anatomía humana"], ["Medicina"]])
+        #expect(
+            tagFields
+                == ["Renaissance", "Painting", "repaso"].map { CardsWindowState.TagField(proposed: $0, name: $0) })
+        #expect(window.importing?.offersDeckChoice == false)
+        #expect(try engine.cards().map(\.deck) == ["Arte", "Medicina::Anatomía humana", "Medicina"])
+        #expect(try engine.cards().map(\.tags) == [["Renacimiento", "Painting"], [], []])
+    }
+
+    // In Great Works of Art only the decks inside it hold cards, and it comes
+    // in under Arte by one field, as a tag's rename takes the tags inside it
+    // along (ADR 0021).
+    @Test(
+        "the sheet has a field for each deck the cards sit inside too, and renaming one renames the decks inside it, but one renamed on its own keeps its name"
+    )
+    func renamingADeckInTheSheetRenamesTheDecksInsideIt() async throws {
+        var window = try await ankiImportSheet(
+            on: "Great Works of Art.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(
+                    type: .basic, fields: ["Leonardo da Vinci", "La Gioconda."], deck: "Great Works of Art::Artists"),
+                AnkiNote(
+                    type: .basic, fields: ["La Gioconda", "Leonardo da Vinci."], deck: "Great Works of Art::Titles"),
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+            ]))
+        let proposed = window.importing?.deckFields.map(\.proposed)
+
+        window.nameImportDeck("Great Works of Art::Titles", as: "Títulos")
+        window.nameImportDeck("Great Works of Art", as: "Arte:: Great Works of Art")
+        let names = window.importing?.deckFields.map(\.name)
+        await window.importCardsAndWait()
+
+        #expect(
+            proposed == [
+                "Great Works of Art", "Great Works of Art::Artists", "Great Works of Art::Titles", "Medicina",
+            ])
+        #expect(
+            names == ["Arte:: Great Works of Art", "Arte::Great Works of Art::Artists", "Títulos", "Medicina"])
+        #expect(try engine.cards().map(\.deck) == ["Arte::Great Works of Art::Artists", "Títulos", "Medicina"])
+    }
+
+    @Test(
+        "the sheet lists Default among the decks the cards come into while some new cards name no deck beside others that name one, and a menu of decks while none names one"
+    )
+    func defaultIsListedWhileSomeNewCardsNameNoDeck() async throws {
+        try approveCard("fémur", in: engine)
+        let mixed = try await ankiImportSheet(
+            on: "Medicina.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+                AnkiNote(type: .basic, fields: ["gripe", "Una infección por el virus de la influenza."]),
+            ]))
+        let decked = try await ankiImportSheet(
+            on: "Anatomía.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina"),
+                AnkiNote(type: .basic, fields: ["fémur", "El hueso del muslo."]),
+            ]))
+        let deckless = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
+
+        #expect(mixed.importing?.listsDefault == true)
+        #expect(mixed.importing?.offersDeckChoice == false)
+        #expect(decked.importing?.listsDefault == false)
+        #expect(deckless.importing?.listsDefault == false)
+        #expect(deckless.importing?.offersDeckChoice == true)
+    }
+
+    @Test("Import is off while a deck's field is blank or names Default, which the sheet says why")
+    func importIsOffWhileADecksFieldIsBlankOrNamesDefault() async throws {
+        var window = try await ankiImportSheet(
+            on: "Medicina.apkg",
+            AnkiPackage(notes: [
+                AnkiNote(type: .basic, fields: ["sístole", "La contracción del corazón."], deck: "Medicina")
+            ]))
+
+        window.nameImportDeck("Medicina", as: " ")
+        let blank = window.importing
+        window.nameImportDeck("Medicina", as: "Default::Cardiología")
+        let named = window.importing
+        window.nameImportDeck("Medicina", as: "Cardiología")
+
+        #expect(blank?.deckFields.map(\.entry) == [.blankName])
+        #expect(blank?.canImport == false)
+        #expect(named?.deckFields.map(\.entry) == [.refused(.defaultDeckName("Default"))])
+        #expect(named?.canImport == false)
+        #expect(window.importing?.deckFields.map(\.entry) == [.name("Cardiología")])
+        #expect(window.importing?.canImport == true)
+    }
+
+    @Test(
+        "for a file that puts its cards in no deck, the sheet offers Default, every deck you have, and one New Deck… names, and Import puts the cards in the one chosen"
+    )
+    func aFileWithNoDeckLetsTheUserChooseOne() async throws {
+        try engine.makeDeck(named: "Idiomas")
+        var chosen = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
+        var unchosen = try await importSheet(on: "Más palabras.txt", "petricor\tEl olor de la lluvia.\n")
+        let offered = chosen.importing
+
+        let choicesOffered = chosen.importDeckChoices.map(\.name)
+        chosen.chooseImportDeck("Idiomas")
+        let choosingIdiomas = chosen.importing?.chosenDeck
+        chosen.askForNewImportDeck()
+        chosen.cancelNewDeck()
+        let cancelled = chosen.importing
+        chosen.askForNewImportDeck()
+        let naming = chosen.importing?.isNamingNewDeck
+        let refused = chosen.newDeckEntry("Default")
+        chosen.chooseNewDeck("Idiomas:: Inglés")
+        let choicesWithTheNewDeck = chosen.importDeckChoices.map(\.name)
+        chosen.chooseImportDeck("Ciencias")
+        await chosen.importCardsAndWait()
+        await unchosen.importCardsAndWait()
+
+        #expect(offered?.offersDeckChoice == true)
+        #expect(offered?.chosenDeck == Deck.defaultName)
+        #expect(offered?.deckFields == [])
+        #expect(choicesOffered == [Deck.defaultName, "Idiomas"])
+        #expect(choosingIdiomas == "Idiomas")
+        #expect(cancelled?.isNamingNewDeck == false)
+        #expect(cancelled?.chosenDeck == "Idiomas")
+        #expect(naming == true)
+        #expect(refused == .refused(.defaultDeckName("Default")))
+        #expect(choicesWithTheNewDeck == [Deck.defaultName, "Idiomas", "Idiomas::Inglés"])
+        #expect(chosen.importing?.isNamingNewDeck == false)
+        #expect(try engine.cards().map(\.deck) == ["Idiomas::Inglés", Deck.defaultName])
     }
 
     @Test("the preview of an Anki package counts the cards that stay out by why, in the order each reason first comes")

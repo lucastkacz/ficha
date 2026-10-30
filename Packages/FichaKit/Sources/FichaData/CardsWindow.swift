@@ -153,6 +153,10 @@ public enum CardGroup: Sendable, Hashable {
     case flagged
     /// Every buried card, flagged or not.
     case buried
+    /// The cards that live in the deck with this whole name, or in a deck
+    /// inside it, and aren't buried, set-aside ones too: Default's, by
+    /// `Deck.defaultName`, are those that live in Default alone.
+    case deck(String)
     /// The cards with this tag, or a tag inside it, that aren't buried,
     /// set-aside ones too.
     case tag(String)
@@ -363,6 +367,7 @@ extension CardGroup {
             case .buried: true
             case .inReviews, .inInbox, .setAside: false
             }
+        case .deck(let deck): TagPath.isTag(row.card.deck, within: deck) && row.cardStanding.isInAllCards
         case .tag(let tag): row.card.hasTag(within: tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type?.isSameType(as: type) == true && row.cardStanding.isInAllCards
         case .noType: row.card.type == nil && row.cardStanding.isInAllCards

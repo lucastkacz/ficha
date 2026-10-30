@@ -173,9 +173,11 @@ final class AppModel {
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder
-    /// he set in Settings: what he does in it goes through the state.
+    /// he set in Settings, remembering the deck he last added a card to, as
+    /// this Mac's preferences keep it: what he does in it goes through the
+    /// state.
     func openCardsWindow() -> CardsWindowState {
-        engine.openCardsWindow(on: settings.ladder)
+        engine.openCardsWindow(on: settings.ladder, lastDeckAddedTo: Preferences.lastDeckAddedTo)
     }
 
     /// Every change to Lucas's cards from now on, by the app or by the
@@ -215,17 +217,18 @@ final class AppModel {
         progress = try? engine.progress(settings)
     }
 
-    /// Toggles `tag`'s priority, as the Prioritize submenu does: its cards
-    /// come first, or no longer do, from the next appearance, review now or
-    /// "See more" on. An open review panel keeps its cards. The submenu reads
-    /// the tags again when the engine says the database changed.
-    func togglePriority(of tag: String) throws(EngineError) {
-        try engine.togglePriority(of: tag)
+    /// Toggles the priority of the deck `deck`, as the Prioritize submenu
+    /// does: its cards, and those of the decks inside it, come first, or no
+    /// longer do, from the next appearance, review now or "See more" on. An
+    /// open review panel keeps its cards. The submenu reads the decks again
+    /// when the engine says the database changed.
+    func togglePriority(ofDeck deck: String) throws(EngineError) {
+        try engine.togglePriority(ofDeck: deck)
     }
 
-    /// Makes no tag a priority tag, as the Prioritize submenu's "None" does.
-    func clearPriorityTags() throws(EngineError) {
-        try engine.clearPriorityTags()
+    /// Makes no deck a priority deck, as the Prioritize submenu's "None" does.
+    func clearPriorityDecks() throws(EngineError) {
+        try engine.clearPriorityDecks()
     }
 
     /// Reads again what the Prioritize submenu offers, whenever the database

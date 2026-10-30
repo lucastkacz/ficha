@@ -12,9 +12,12 @@ struct EmojiField: View {
     var body: some View {
         HStack {
             TextField(
-                String(localized: "Emoji", comment: "The field of the sheet that gives a tag or a card type an emoji."),
+                String(
+                    localized: "Emoji",
+                    comment: "The field of the sheet that gives a tag, a deck or a card type an emoji."),
                 text: $emoji,
-                prompt: Text("None", comment: "The empty field of the sheet that gives a tag or a card type an emoji.")
+                prompt: Text(
+                    "None", comment: "The empty field of the sheet that gives a tag, a deck or a card type an emoji.")
             )
             .textFieldStyle(.roundedBorder)
             .focused(isFocused)

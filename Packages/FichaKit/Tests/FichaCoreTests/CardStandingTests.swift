@@ -19,17 +19,17 @@ struct CardStandingTests {
         #expect(CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: []) == .buried(at: buriedAt, flag: flag))
     }
 
-    @Test("a card with a set-aside tag is set aside rather than in Lucas's reviews")
+    @Test("a card in a set-aside deck is set aside rather than in Lucas's reviews")
     func setAsideWinsOverReviews() {
         #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: ["filosofía"]) == .setAside(by: ["filosofía"]))
     }
 
-    @Test("a flagged card with a set-aside tag waits in the inbox")
+    @Test("a flagged card in a set-aside deck waits in the inbox")
     func theInboxWinsOverSetAside() {
         #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: ["filosofía"]) == .inInbox(flag))
     }
 
-    @Test("a buried card with a set-aside tag is buried, and keeps its flag")
+    @Test("a buried card in a set-aside deck is buried, and keeps its flag")
     func buriedWinsOverSetAside() {
         #expect(
             CardStanding(flag: nil, buriedAt: buriedAt, setAsideBy: ["filosofía"]) == .buried(at: buriedAt, flag: nil))
@@ -38,15 +38,17 @@ struct CardStandingTests {
         )
     }
 
-    @Test(
-        "a card's set-aside tags are those of its tags that are set aside, in alphabetical order as the Mac sorts text")
-    func setAsideTagsAreTheCardsInAlphabeticalOrder() {
-        let setAsideTags: Set = ["filosofía", "física", "lenguaje", "Ética"]
+    @Test("a card's set-aside decks are its deck and the decks it sits inside that are set aside, the outermost first")
+    func setAsideDecksAreTheCardsDeckAndThoseItSitsInside() {
+        let setAsideDecks: Set = ["Idiomas", "Idiomas::Inglés::Verbos", "Historia", "Idiomas::Francés"]
 
         #expect(
-            CardStanding.setAsideTags(of: ["lenguaje", "historia", "Ética", "filosofía"], among: setAsideTags)
-                == ["Ética", "filosofía", "lenguaje"])
-        #expect(CardStanding.setAsideTags(of: ["historia"], among: setAsideTags).isEmpty)
+            CardStanding.setAsideDecks(of: "Idiomas::Inglés::Verbos", among: setAsideDecks)
+                == ["Idiomas", "Idiomas::Inglés::Verbos"])
+        #expect(CardStanding.setAsideDecks(of: "Idiomas::Inglés", among: setAsideDecks) == ["Idiomas"])
+        #expect(CardStanding.setAsideDecks(of: "Historia Argentina", among: setAsideDecks).isEmpty)
+        #expect(CardStanding.setAsideDecks(of: "", among: setAsideDecks).isEmpty)
+        #expect(CardStanding.setAsideDecks(of: "", among: [""]) == [""])
     }
 
     @Test(

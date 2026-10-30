@@ -6,6 +6,9 @@ internal import GRDB
 public enum CardsToExport: Sendable, Hashable {
     /// The cards with these ids: those the user selected.
     case cards(Set<Int64>)
+    /// Every card in this deck, by its whole name, or in a deck inside it;
+    /// for Default, by `Deck.defaultName`, the cards in Default.
+    case deck(String)
     /// Every card with this tag, or a tag inside it.
     case tag(String)
     /// Every card.
@@ -17,6 +20,7 @@ public enum CardsToExport: Sendable, Hashable {
     fileprivate func takes(_ card: Card) -> Bool {
         switch self {
         case .cards(let ids): ids.contains(card.id)
+        case .deck(let deck): TagPath.isTag(card.deck, within: deck)
         case .tag(let tag): card.hasTag(within: tag)
         case .all: true
         }
@@ -26,11 +30,12 @@ public enum CardsToExport: Sendable, Hashable {
 extension Engine {
     /// Writes the cards `cards` takes to `file`, in the order they came in,
     /// as the text file the import reads: what each card says, its front,
-    /// back, tags, type and source, and whether it goes both ways, and never
-    /// where it stands, its review log, its flag or its burial. When a card
-    /// it takes has an image or a sound, the file is a zip instead, with that
-    /// text file, named after `file`, and the cards' images and sounds beside
-    /// it, each once, which its lines name. Returns how many cards it wrote.
+    /// back, tags, type and source, its deck, and whether it goes both ways,
+    /// and never where it stands, its review log, its flag or its burial.
+    /// When a card it takes has an image or a sound, the file is a zip
+    /// instead, with that text file, named after `file`, and the cards'
+    /// images and sounds beside it, each once, which its lines name. Returns
+    /// how many cards it wrote.
     @discardableResult
     public func export(_ cards: CardsToExport, to file: URL) throws(EngineError) -> Int {
         let exported = try read { db in
@@ -83,9 +88,9 @@ extension Engine {
 }
 
 /// What `card` holds, as an export writes it, which every card it read
-/// makes, since every card came in through the same check, and whether it
-/// goes both ways.
-private func exportedCard(of card: Card) throws -> (content: CardContent, bothWays: Bool) {
+/// makes, since every card came in through the same check, its deck, and
+/// whether it goes both ways.
+private func exportedCard(of card: Card) throws -> CardsTextFile.ExportedCard {
     guard
         let content = CardContent(
             type: card.type, front: card.front, back: card.back, tags: card.tags, source: card.source,
@@ -94,5 +99,5 @@ private func exportedCard(of card: Card) throws -> (content: CardContent, bothWa
     else {
         throw unreadable("Card \(card.id) has a blank front or back")
     }
-    return (content, card.bothWays)
+    return CardsTextFile.ExportedCard(content: content, deck: card.deck, bothWays: card.bothWays)
 }

@@ -1,10 +1,9 @@
 import Foundation
 
 /// Where a card stands: in Lucas's reviews, waiting in the inbox to be fixed,
-/// buried, or set aside with one of its tags, or a tag one of them sits
-/// inside (ADR 0021). Out of his reviews, it keeps its `LadderStanding`, so
-/// it comes back on its step when it's fixed, unburied, or its tags are no
-/// longer set aside.
+/// buried, or set aside with its deck, or a deck its deck sits inside (ADR
+/// 0024). Out of his reviews, it keeps its `LadderStanding`, so it comes back
+/// on its step when it's fixed, unburied, or its deck is no longer set aside.
 public enum CardStanding: Sendable, Equatable {
     /// In Lucas's reviews: new, or on a ladder step until it's due.
     case inReviews
@@ -14,38 +13,39 @@ public enum CardStanding: Sendable, Equatable {
     /// inbox. With the flag it had, if any, since unburying it brings it back
     /// to the inbox.
     case buried(at: Date, flag: Flag?)
-    /// Set aside by these tags, the card's or tags they sit inside, as the
-    /// user set them aside, in alphabetical order: out of Lucas's reviews for
-    /// now, while one of them is set aside (ADR 0011, ADR 0021).
+    /// Set aside by these decks, the card's own or decks it sits inside, as
+    /// the user set them aside, the outermost first: out of Lucas's reviews
+    /// for now, while one of them is set aside (ADR 0011, ADR 0024).
     case setAside(by: [String])
 }
 
 extension CardStanding {
-    /// Where a card with this flag, burial date and set-aside tags, as
-    /// `setAsideTags(of:among:)` picks them, stands, the first of these that
+    /// Where a card with this flag, burial date and set-aside decks, as
+    /// `setAsideDecks(of:among:)` picks them, stands, the first of these that
     /// holds: buried, waiting in the inbox, set aside, or in Lucas's reviews.
     /// A burial wins over a flag: a flagged card Lucas buries leaves the
     /// inbox. Both win over set aside, which never hides a card Lucas needs to
     /// fix or brings back one he buried.
-    public init(flag: Flag?, buriedAt: Date?, setAsideBy setAsideTags: [String]) {
+    public init(flag: Flag?, buriedAt: Date?, setAsideBy setAsideDecks: [String]) {
         if let buriedAt {
             self = .buried(at: buriedAt, flag: flag)
         } else if let flag {
             self = .inInbox(flag)
-        } else if !setAsideTags.isEmpty {
-            self = .setAside(by: setAsideTags)
+        } else if !setAsideDecks.isEmpty {
+            self = .setAside(by: setAsideDecks)
         } else {
             self = .inReviews
         }
     }
 
-    /// Which of a card's `tags`, and of the tags they sit inside, are set
-    /// aside while the tags in `setAsideTags` are, in alphabetical order as
-    /// the Mac sorts text, whether the card is buried, flagged or neither:
-    /// when it's neither, they set it aside. A parent set aside is named as
-    /// the user set it aside, economía, not economía::Argentina.
-    public static func setAsideTags(of tags: [String], among setAsideTags: Set<String>) -> [String] {
-        TagPath.lineages(of: tags).filter(setAsideTags.contains).sortedAlphabetically()
+    /// Which of a card's `deck`, by its whole name, and the decks it sits
+    /// inside, as `TagPath` reads a deck's levels, are set aside while the
+    /// decks in `setAsideDecks` are, the outermost first, whether the card is
+    /// buried, flagged or neither: when it's neither, they set it aside. A
+    /// parent set aside is named as the user set it aside, Idiomas, not
+    /// Idiomas::Inglés. A card's tags never set it aside.
+    public static func setAsideDecks(of deck: String, among setAsideDecks: Set<String>) -> [String] {
+        TagPath.lineage(of: deck).reversed().filter(setAsideDecks.contains)
     }
 }
 

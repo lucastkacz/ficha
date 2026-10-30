@@ -10,15 +10,22 @@ extension Engine {
     /// it: its flag goes, and it's back in his reviews, on its step, unless
     /// it's buried, since an edited card stays buried. An edit that changes
     /// its front or back keeps when. An image or a sound it no longer has
-    /// goes, unless another card uses it. `bothWays` turns Both ways on or
-    /// off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
+    /// goes, unless another card uses it. `deck` moves it to that deck, as
+    /// `changeDeck(of:to:)` does, and nil, or the deck it lives in, leaves it
+    /// there, which makes no deck on this device. `bothWays` turns Both ways
+    /// on or off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
     /// Returns the card.
     @discardableResult
-    public func edit(_ cardID: Int64, with content: CardContent, bothWays: Bool? = nil) throws(EngineError) -> Card {
+    public func edit(_ cardID: Int64, with content: CardContent, deck: String? = nil, bothWays: Bool? = nil)
+        throws(EngineError) -> Card
+    {
         let editedAt = time.now
         let (before, edited) = try write { db in
             let before = try existingCard(cardID, in: db)
             _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
+            if let deck, try checkedDeckForCards(deck) != before.deck {
+                try moveCards([cardID], to: deck, in: db)
+            }
             if let bothWays {
                 _ = try setBothWays(bothWays, of: cardID, in: db)
             }

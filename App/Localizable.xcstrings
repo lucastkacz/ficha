@@ -16,7 +16,7 @@
       }
     },
     "%@ (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards with a tag, with the tag and how many.",
+      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.\nAn item of the “+N more” menu above the Cards window's card list: a tag of the deck the sidebar chose, with how many of its cards carry it.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -69,8 +69,8 @@
     "%@'s data was deleted from iCloud. Turning sync on sends all your cards again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off. The name is the app's."
     },
-    "%@'s data was deleted from iCloud. Turning sync on sends the cards with the tags you choose again." : {
-      "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards with ticked tags sync. The name is the app's."
+    "%@'s data was deleted from iCloud. Turning sync on sends the cards in the decks you choose again." : {
+      "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards in ticked decks sync. The name is the app's."
     },
     "%lld · %@" : {
       "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
@@ -99,6 +99,35 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld cards are Image Occlusion cards, which hide parts of an image."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards go too, with their review logs, here and on every device that syncs them." : {
+      "comment" : "In the Cards window's question before it deletes a deck: the cards in it and in the decks inside it, counted on this Mac.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 card goes too, with its review log, here and on every device that syncs it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards go too, with their review logs, here and on every device that syncs them."
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No card here goes with it."
                 }
               }
             }
@@ -742,52 +771,6 @@
         }
       }
     },
-    "%lld of those cards come back to your reviews." : {
-      "comment" : "In the Cards window's question before it deletes tags: the cards they set aside, which come back to Lucas's reviews.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "1 of those cards comes back to your reviews."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld of those cards come back to your reviews."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld of those cards stop syncing, left with no tag you chose to sync." : {
-      "comment" : "In the Cards window's question before it deletes tags, while only the cards with a tag Lucas chose sync: the cards that stop syncing.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "1 of those cards stops syncing, left with no tag you chose to sync."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld of those cards stop syncing, left with no tag you chose to sync."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld tags selected" : {
       "comment" : "In the Cards window's detail, when Lucas selected several tags in All Tags.",
       "localizations" : {
@@ -813,6 +796,9 @@
     },
     "+%lld" : {
       "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
+    },
+    "+%lld more" : {
+      "comment" : "A menu above the Cards window's card list, after the tags of the deck the sidebar chose that fit: the tags that don't, with how many."
     },
     "A book, a podcast…" : {
       "comment" : "In the Cards window's card form, in the empty source.\nIn the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
@@ -848,7 +834,7 @@
       "comment" : "A tab of the Settings window."
     },
     "Actions" : {
-      "comment" : "A menu button of the Cards window, beside All Tags: the context menu of the tags selected there."
+      "comment" : "A menu button of the Cards window, above the card list while the sidebar chose a deck: the deck's menu, as on its row in the sidebar.\nA menu button of the Cards window, beside All Tags: the context menu of the tags selected there."
     },
     "Add" : {
       "comment" : "The button of the Cards window's card form that saves the card."
@@ -898,19 +884,7 @@
       "comment" : "An item of the Export sheet's menu: every card, buried ones too, with how many."
     },
     "All Tags…" : {
-      "comment" : "The last item of the Tags section of the Cards window's sidebar: it lists every tag, pinned or not.\nThe last item of the menu's Prioritize submenu: it opens the Cards window on All Tags, which lists every tag."
-    },
-    "all-tags.set-aside-column" : {
-      "comment" : "A column of the Cards window's All Tags: a checkbox, ticked while the tag is set aside, its cards out of Lucas's reviews for now.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Set Aside"
-          }
-        }
-      }
+      "comment" : "The last item of the Tags section of the Cards window's sidebar: it lists every tag, pinned or not."
     },
     "Allow it in System Settings, in Login Items." : {
 
@@ -1098,6 +1072,15 @@
     "Cards…" : {
       "comment" : "A menu item that opens the Cards window, where Lucas sees all his cards."
     },
+    "Change Deck" : {
+      "comment" : "The title of the Cards window's sheet that moves cards to another deck."
+    },
+    "Change Deck…" : {
+      "comment" : "A button of the Cards window that moves the selected cards to another deck, asking which."
+    },
+    "Change Deck… (⌘D)" : {
+      "comment" : "The tooltip of the Cards window's button that moves the cards to another deck."
+    },
     "Checking your iCloud account…" : {
       "comment" : "Settings, under Sync: the app is asking whether this Mac is signed into iCloud."
     },
@@ -1126,7 +1109,7 @@
       "comment" : "How an appearance closed, in Diagnostics."
     },
     "Color" : {
-      "comment" : "A submenu of a tag's menu in the Cards window's sidebar or its All Tags: the tag's color."
+      "comment" : "A submenu of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: the deck's color, which the decks inside it show while they have none.\nA submenu of a tag's menu in the Cards window's sidebar or its All Tags: the tag's color."
     },
     "Concept" : {
       "comment" : "A card type."
@@ -1185,15 +1168,15 @@
 
     },
     "Couldn't change the color of “%@”" : {
-      "comment" : "An alert's title in the Cards window, after a color in a tag's menu, with the tag."
+      "comment" : "An alert's title in the Cards window, after a color in a deck's menu, with the deck.\nAn alert's title in the Cards window, after a color in a tag's menu, with the tag."
     },
     "Couldn't change the emoji of “%@”" : {
-      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the tag."
+      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the deck.\nAn alert's title in the Cards window's emoji sheet, after OK, with the tag."
     },
     "Couldn't change the emoji of the type “%@”" : {
       "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with a card type's name."
     },
-    "Couldn't change the priority tags" : {
+    "Couldn't change the priority decks" : {
 
     },
     "Couldn't change whether %@ starts at login" : {
@@ -1215,7 +1198,7 @@
 
     },
     "Couldn't delete “%@”" : {
-      "comment" : "An alert's title in the Cards window, after Delete… in a tag's menu or its question, with the tag's whole name, the first when Lucas deletes several."
+      "comment" : "An alert's title in the Cards window, after Delete… in a deck's menu or its question, with the deck's whole name.\nAn alert's title in the Cards window, after Delete… in a tag's menu or its question, with the tag's whole name, the first when Lucas deletes several."
     },
     "Couldn't delete %lld cards" : {
       "comment" : "An alert's title in the Cards window.",
@@ -1264,17 +1247,40 @@
     "Couldn't look for more cards" : {
 
     },
-    "Couldn't make “%@” a priority tag" : {
-      "comment" : "An alert's title in the Cards window, after Prioritize in a tag's menu or its Priority checkbox in All Tags, with the tag."
+    "Couldn't make “%@” a priority deck" : {
+      "comment" : "An alert's title in the Cards window, after Prioritize in a deck's menu, with the deck."
     },
     "Couldn't make the type" : {
       "comment" : "An alert's title in the Cards window's New Type sheet, after OK."
     },
     "Couldn't move “%@”" : {
-      "comment" : "An alert's title in the Cards window, after dragging a tag in All Tags onto another or between two rows, with the tag's whole name, the first when Lucas drags several."
+      "comment" : "An alert's title in the Cards window, after dragging a deck in the sidebar onto another or onto the Decks section's title, with the deck's whole name.\nAn alert's title in the Cards window, after dragging a tag in All Tags onto another or between two rows, with the tag's whole name, the first when Lucas drags several."
     },
     "Couldn't move “%@” in the sidebar" : {
       "comment" : "An alert's title in the Cards window, after dragging a pinned tag to another place among the sidebar's pinned tags, with the tag's whole name."
+    },
+    "Couldn't move %lld cards to another deck" : {
+      "comment" : "An alert's title in the Cards window's Change Deck sheet, after Move.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't move the card to another deck"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't move the %lld cards to another deck"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Couldn't move %lld copies to the Trash" : {
       "comment" : "An alert's title in Settings' Backups tab, with how many copies.",
@@ -1305,11 +1311,11 @@
     "Couldn't read the file" : {
       "comment" : "An alert's title in the Cards window's Import sheet."
     },
-    "Couldn't read your tags" : {
+    "Couldn't read your decks" : {
 
     },
     "Couldn't rename “%@”" : {
-      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the deck's whole name.\nAn alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
     },
     "Couldn't rename the type “%@”" : {
       "comment" : "An alert's title in the Cards window's rename sheet, after OK, with a card type's name."
@@ -1333,7 +1339,7 @@
 
     },
     "Couldn't set “%@” aside" : {
-      "comment" : "An alert's title in the Cards window, after Set Aside in a tag's menu or its Set Aside checkbox in All Tags, with the tag."
+      "comment" : "An alert's title in the Cards window, after Set Aside in a deck's menu, with the deck."
     },
     "Couldn't show this image." : {
       "comment" : "In place of an image on a card's side that can't be read."
@@ -1426,16 +1432,28 @@
       "comment" : "An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu or unticking its Pinned checkbox in All Tags, with the tag's whole name."
     },
     "Couldn't untick Prioritize on “%@”" : {
-      "comment" : "An alert's title in the Cards window, after choosing a ticked Prioritize in a tag's menu or unticking its Priority checkbox in All Tags, with the tag."
+      "comment" : "An alert's title in the Cards window, after choosing a ticked Prioritize in a deck's menu, with the deck."
     },
     "Couldn't untick Set Aside on “%@”" : {
-      "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu or unticking its Set Aside checkbox in All Tags, with the tag."
+      "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, with the deck."
     },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
+    "Deck" : {
+      "comment" : "In the Cards window's card form, the label of the card's deck.\nIn the Cards window, the label of a card's deck, while Lucas edits it.\nThe Import sheet's field for a deck the imported cards come into."
+    },
+    "Decks" : {
+      "comment" : "A section of the Cards window's sidebar: the decks, as a tree."
+    },
+    "Decks to sync" : {
+      "comment" : "Settings, under Sync: the heading of the list of decks to choose."
+    },
+    "Default" : {
+      "comment" : "The deck a card lives in when it has no other."
+    },
     "Delete" : {
-      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about.\nThe button that deletes the tags the Cards window asks about."
+      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about.\nThe button that deletes the deck the Cards window asks about.\nThe button that deletes the tags the Cards window asks about."
     },
     "Delete “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a card, with its front."
@@ -1509,6 +1527,9 @@
         }
       }
     },
+    "Delete the deck “%@”?" : {
+      "comment" : "The title of the Cards window's question before it deletes a deck, with its whole name."
+    },
     "Delete the tag “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a tag, with its whole name."
     },
@@ -1516,10 +1537,22 @@
       "comment" : "The title of the Cards window's question before it deletes a card type of the user's own, with its name."
     },
     "Delete…" : {
-      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks whether to delete the deck, with the decks inside it and their cards.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
       "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
+    },
+    "deletion.next-sentence" : {
+      "comment" : "Joins two sentences of the Cards window's question before it deletes tags or a deck: what it says so far, then the next sentence, as the language writes one sentence after another.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
@@ -1576,7 +1609,7 @@
       "comment" : "A column of the Cards window: when the card's front or back last changed."
     },
     "Emoji" : {
-      "comment" : "The field of the sheet that gives a tag or a card type an emoji."
+      "comment" : "The field of the sheet that gives a tag, a deck or a card type an emoji."
     },
     "Emoji & Symbols" : {
       "comment" : "A button beside the emoji field: it opens the Mac's emoji picker."
@@ -1585,13 +1618,13 @@
       "comment" : "The tooltip of the button beside the emoji field that opens the Mac's emoji picker."
     },
     "Emoji for “%@”" : {
-      "comment" : "The title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
+      "comment" : "The title of the Cards window's sheet that gives a deck an emoji, with the deck's whole name.\nThe title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
     },
     "Emoji for the type “%@”" : {
       "comment" : "The title of the Cards window's sheet that gives a card type of the user's own an emoji, with the type's name."
     },
     "Emoji…" : {
-      "comment" : "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's emoji.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -1885,14 +1918,17 @@
     "It leaves the inbox without becoming cards, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it discards a capture."
     },
+    "It shows before the deck's name, and before the names of the decks inside it that have none. Leave the field empty for none." : {
+      "comment" : "Under the title of the Cards window's sheet that gives a deck an emoji."
+    },
     "It shows before the tag's name. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a tag an emoji."
     },
     "It shows before the type's name. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a card type of the user's own an emoji."
     },
-    "It syncs with the ticked tag it sits inside." : {
-      "comment" : "Settings, under Sync: the tooltip of a tag's checkbox, ticked and waiting, inside a ticked tag."
+    "It syncs with the ticked deck it sits inside." : {
+      "comment" : "Settings, under Sync: the tooltip of a deck's checkbox, ticked and waiting, inside a ticked deck."
     },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
@@ -2012,6 +2048,12 @@
     "Line %lld opens a quote that nothing closes." : {
       "comment" : "In the Import sheet, a line the file can't read."
     },
+    "List all of the deck's cards again" : {
+      "comment" : "The tooltip of a tag above the Cards window's card list, while it narrows the list to it."
+    },
+    "List only the deck's cards tagged %@" : {
+      "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
+    },
     "macOS didn't let %@ start at login (%@). Try again, or add it in System Settings > General > Login Items." : {
       "localizations" : {
         "en" : {
@@ -2047,6 +2089,32 @@
     "Microphone" : {
       "comment" : "A detector in Diagnostics: the microphones in use."
     },
+    "Move" : {
+      "comment" : "The button of the Cards window's Change Deck sheet that moves the cards to the chosen deck."
+    },
+    "Move %lld cards to the deck you choose." : {
+      "comment" : "Under the title of the Cards window's sheet that moves cards to another deck, with how many.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Move the card to the deck you choose."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Move the %lld cards to the deck you choose."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Move %lld copies to the Trash?" : {
       "comment" : "The title of the Backups tab's question before it moves copies to the Trash, with how many.",
       "localizations" : {
@@ -2074,7 +2142,10 @@
       "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
     },
     "Name" : {
-      "comment" : "The field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag, its whole name, or a card type of the user's own."
+      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag or a deck, its whole name, or a card type of the user's own."
+    },
+    "Name the deck" : {
+      "comment" : "The Import sheet's field for a deck the cards come into, empty: Import stays off until it names one."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -2090,6 +2161,15 @@
     },
     "New cards per day" : {
 
+    },
+    "New Deck" : {
+      "comment" : "The title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+    },
+    "New Deck…" : {
+      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nThe last item of a menu of decks in the Cards window, a card's Deck field or the Import sheet's: it asks for a new deck's name."
+    },
+    "New Deck… (⌘N)" : {
+      "comment" : "The tooltip of the Change Deck sheet's button that asks for a new deck's name."
     },
     "New Type" : {
       "comment" : "The title of the Cards window's sheet that makes a card type of the user's own."
@@ -2117,6 +2197,12 @@
     },
     "No cards due" : {
       "comment" : "In the Cards window: no card is due now."
+    },
+    "No cards in %@" : {
+      "comment" : "In the Cards window: no card that isn't buried lives in this deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”."
+    },
+    "No cards in Default" : {
+      "comment" : "In the Cards window: no card that isn't buried lives in Default, the deck of cards with no other."
     },
     "No cards of the type %@" : {
       "comment" : "In the Cards window: no card that isn't buried has this type of the user's own, with its name."
@@ -2170,7 +2256,7 @@
       "comment" : "In the Cards window: no word card that isn't buried."
     },
     "None" : {
-      "comment" : "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.\nThe empty field of the sheet that gives a tag or a card type an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
+      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a tag, a deck or a card type an emoji.\nThe first item of the Color submenu of a tag's menu or a deck's: no color."
     },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
@@ -2246,11 +2332,11 @@
         }
       }
     },
-    "Only cards with the tags you choose" : {
-      "comment" : "Settings, under Sync: the choice that syncs only the cards with ticked tags."
+    "Only cards in the decks you choose" : {
+      "comment" : "Settings, under Sync: the choice that syncs only the cards in ticked decks."
     },
-    "Only the cards with a ticked tag go up to iCloud, with their images and sounds. Unticking a tag deletes nothing: its cards stay on each of your devices." : {
-      "comment" : "Settings, under Sync, below the list of tags: what ticking and unticking a tag does."
+    "Only the cards in a ticked deck, or in a deck inside it, go up to iCloud, with their images and sounds. Unticking a deck deletes nothing: its cards stay on each of your devices." : {
+      "comment" : "Settings, under Sync, below the list of decks: what ticking and unticking a deck does."
     },
     "Open %@ when you log in?" : {
       "comment" : "An alert at the app's first launch. The name is the app's."
@@ -2286,13 +2372,10 @@
       "comment" : "The tooltip of the review panel's button that plays the sound on a card's side, with its key."
     },
     "Prioritize" : {
-      "comment" : "A menu-bar submenu that picks the tags whose cards come first, while none is picked.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag is a priority tag, and off while it's set aside."
+      "comment" : "A menu-bar submenu that picks the decks whose cards come first, while none is picked.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list, ticked while the deck is a priority deck, and off while it's set aside."
     },
     "Prioritize: %@" : {
-      "comment" : "The Prioritize submenu's title while some tags are priority tags, which it lists by name."
-    },
-    "Priority" : {
-      "comment" : "A column of the Cards window's All Tags: a checkbox, ticked while the tag is a priority tag."
+      "comment" : "The Prioritize submenu's title while some decks are priority decks, which it lists by name."
     },
     "Privacy Policy" : {
 
@@ -2302,6 +2385,9 @@
     },
     "Purple" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "Put every card in" : {
+      "comment" : "In the Import sheet, before the menu of the deck every card it imports comes into."
     },
     "Question" : {
       "comment" : "A card type.\nThe label of the field where the user writes a question about the card the review panel shows."
@@ -2343,13 +2429,13 @@
       "comment" : "Settings: removes a step of the ladder."
     },
     "Rename “%@”" : {
-      "comment" : "The title of the Cards window's sheet that renames a tag, with the tag's whole name."
+      "comment" : "The title of the Cards window's sheet that renames a deck, with the deck's whole name.\nThe title of the Cards window's sheet that renames a tag, with the tag's whole name."
     },
     "Rename the type “%@”" : {
       "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
     },
     "Rename…" : {
-      "comment" : "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's whole name, which moves it too.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
     },
     "Repeated cards" : {
       "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
@@ -2412,13 +2498,13 @@
       "comment" : "In the Cards window's card form, under the tags.\nIn the Cards window, under a card's tags, while Lucas edits it."
     },
     "set aside" : {
-      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags, or a tag one of them sits inside, is set aside. Lowercase, like “now”."
+      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a deck it sits inside, is set aside. Lowercase, like “now”."
     },
     "Set Aside" : {
-      "comment" : "An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag is set aside: its cards are out of Lucas's reviews for now."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list, ticked while the deck is set aside: its cards, and those of the decks inside it, are out of Lucas's reviews for now."
     },
     "Set aside with %@" : {
-      "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags are set aside, its own or tags they sit inside, each by its whole name, like “Set aside with filosofía and economía › Argentina”."
+      "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these decks are set aside, its own or decks it sits inside, outermost first, each by its whole name, like “Set aside with Historia and Historia › Roma”."
     },
     "Settings…" : {
 
@@ -2504,29 +2590,37 @@
     "Tag every card with" : {
       "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
     },
-    "tag-deletion.next-sentence" : {
-      "comment" : "Joins two sentences of the Cards window's question before it deletes tags: what it says so far, then the next sentence, as the language writes one sentence after another.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@"
-          }
-        }
-      }
-    },
     "Tags" : {
       "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
-    },
-    "Tags to sync" : {
-      "comment" : "Settings, under Sync: the heading of the list of tags to choose."
     },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
     },
     "Text" : {
       "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
+    },
+    "The %lld decks inside it go with it." : {
+      "comment" : "In the Cards window's question before it deletes a deck: the decks inside it.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The deck inside it goes with it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %lld decks inside it go with it."
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "The %lld tags inside it go with it." : {
       "comment" : "In the Cards window's question before it deletes a tag: the tags inside it.",
@@ -2592,7 +2686,10 @@
     "The cards bring new types: %@." : {
       "comment" : "In the Import sheet's preview of a text file, with the names of the card types of the user's own the import makes, as a list, since the user has no type by those names."
     },
-    "The cards get these tags, from Anki's decks and tags:" : {
+    "The cards come into these decks:" : {
+      "comment" : "In the Import sheet's preview, above the decks its cards come into, an Anki package's or a text file's, each in a field the user renames."
+    },
+    "The cards get these tags, from Anki's notes:" : {
       "comment" : "In the Import sheet's preview of an Anki package, above the tags its cards get."
     },
     "The cards you create with New Card show up here, and the ones you bury, in Buried." : {
@@ -2640,8 +2737,8 @@
     "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends all your cards to your iCloud." : {
       "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends every card."
     },
-    "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards with the tags you choose to your iCloud." : {
-      "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends the cards with ticked tags."
+    "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards in the decks you choose to your iCloud." : {
+      "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends the cards in ticked decks."
     },
     "This repeats a card" : {
 
@@ -2697,10 +2794,10 @@
     "Until you empty the Trash, you can put back what you move there." : {
       "comment" : "Under the title of the Backups tab's question before it moves copies to the Trash."
     },
-    "Update them with Anki's back and tags, keeping their progress" : {
+    "Update them with Anki's back and tags, keeping their deck and progress" : {
       "comment" : "In the Import sheet, the choice that updates the cards an Anki package repeats."
     },
-    "Update them with the file's back, tags, type and source, keeping their progress" : {
+    "Update them with the file's back, tags, type and source, keeping their deck and progress" : {
       "comment" : "In the Import sheet, the choice that updates the cards the file repeats."
     },
     "Version %@ (%@)" : {
@@ -2741,11 +2838,20 @@
     "Words" : {
       "comment" : "An item of the Cards window's sidebar: the word cards."
     },
+    "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
+      "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+    },
+    "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one move with it, and a name another deck has joins the two." : {
+      "comment" : "Under the title of the Cards window's sheet that renames a deck."
+    },
     "Write “::” between a tag and a tag inside it, as in “economía::Argentina”. The tags inside this one move with it, and a name another tag has joins the two." : {
       "comment" : "Under the title of the Cards window's sheet that renames a tag."
     },
     "Yellow" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "You can't undo this, but the daily backups in Settings › Backups hold what it deletes." : {
+      "comment" : "The last sentence of the Cards window's question before it deletes a deck."
     },
     "You can't undo this." : {
       "comment" : "The last sentence of the Cards window's question before it deletes tags."
@@ -2758,9 +2864,6 @@
     },
     "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
-    },
-    "Your cards have no tags yet." : {
-      "comment" : "Settings, under Sync: the list of tags to choose is empty, as no card has a tag."
     },
     "Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
       "comment" : "Settings, under Sync, below the switch: what sync does."

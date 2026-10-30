@@ -62,13 +62,13 @@ public enum EngineError: Error, Equatable {
     case cardBuried(Int64)
     /// The card with this id isn't buried, so it can't be unburied.
     case cardNotBuried(Int64)
-    /// The card with this id is set aside by these tags, its own or tags they
-    /// sit inside, in alphabetical order, so it can't be answered until none
-    /// of them is set aside. Everything else treats it as a card in Lucas's
-    /// reviews.
-    case cardSetAside(Int64, tags: [String])
-    /// What Lucas gave a tag or a user type as its emoji isn't one emoji: a
-    /// word, two emoji, a letter or nothing.
+    /// The card with this id is set aside by these decks, its own or decks
+    /// it sits inside, the outermost first, so it can't be answered until
+    /// none of them is set aside. Everything else treats it as a card in
+    /// Lucas's reviews.
+    case cardSetAside(Int64, decks: [String])
+    /// What Lucas gave a tag, a deck or a user type as its emoji isn't one
+    /// emoji: a word, two emoji, a letter or nothing.
     case notOneEmoji
     /// The tag with this name was to be renamed, or moved, inside itself or
     /// inside a tag inside it, which would make the tree loop (ADR 0021), so
@@ -81,10 +81,29 @@ public enum EngineError: Error, Equatable {
     /// isn't pinned, as when another device unpinned it meanwhile, so nothing
     /// moved.
     case tagNotPinned(String)
-    /// The tag with this name was to be made a priority tag, and it's set
-    /// aside, which a priority tag never is (ADR 0011), as when another
-    /// device set it aside meanwhile, so nothing changed.
-    case tagSetAside(String)
+    /// The deck with this name, or `Deck.defaultName` for Default, was to be
+    /// made a priority deck, and it's set aside, or sits inside this deck,
+    /// which is set aside, which a priority deck never is (ADR 0011), as when
+    /// another device set it aside meanwhile, so nothing changed.
+    case deckSetAside(String)
+    /// A deck was to be made, or cards moved to one, with a name with no
+    /// level, blank or only `::`, so nothing changed.
+    case blankDeckName
+    /// A deck was to be made, or cards moved to one, with a name whose top
+    /// level is this one, one of the names Default goes by, so nothing
+    /// changed: Default is a deck of its own, and no deck sits inside it.
+    case defaultDeckName(String)
+    /// The deck with this name was to be renamed, or moved, inside itself or
+    /// inside a deck inside it, which would make the tree loop, so nothing
+    /// changed.
+    case deckInsideItself(String)
+    /// Default was to be renamed, moved or deleted, which it never is: it
+    /// holds the cards no other deck does. Nothing changed.
+    case defaultDeckStays
+    /// The deck with this name was to be renamed, moved or deleted, and it
+    /// isn't there, as when another device renamed or deleted it meanwhile,
+    /// so nothing changed.
+    case deckNotFound(String)
     /// A user type was to be made or renamed with a blank name, so nothing
     /// changed.
     case blankTypeName
@@ -280,18 +299,18 @@ extension EngineError: LocalizedError {
             String(localized: "Card \(id) is buried. To bring it back, unbury it.")
         case .cardNotBuried(let id):
             String(localized: "Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
-        case .cardSetAside(let id, let tags) where tags.count == 1:
+        case .cardSetAside(let id, let decks) where decks.count == 1:
             String(
                 localized: """
-                    Card \(id) is set aside with the tag “\(TagPath.shown(tags[0]))”. To bring it back, untick Set \
-                    Aside on that tag in the Cards window.
+                    Card \(id) is set aside with the deck “\(Deck.shownName(decks[0]))”. To bring it back, untick \
+                    Set Aside on that deck in the Cards window.
                     """
             )
-        case .cardSetAside(let id, let tags):
+        case .cardSetAside(let id, let decks):
             String(
                 localized: """
-                    Card \(id) is set aside with the tags \(quotedList(tags.map(TagPath.shown))). To bring it back, \
-                    untick Set Aside on each of them in the Cards window.
+                    Card \(id) is set aside with the decks \(quotedList(decks.map(Deck.shownName))). To bring it \
+                    back, untick Set Aside on each of them in the Cards window.
                     """
             )
         case .notOneEmoji:
@@ -317,11 +336,47 @@ extension EngineError: LocalizedError {
                     it, so nothing moved. Pin it first.
                     """
             )
-        case .tagSetAside(let tag):
+        case .deckSetAside(let deck):
             String(
                 localized: """
-                    “\(TagPath.shown(tag))” is set aside, and a tag is never both set aside and a priority tag, so \
-                    nothing changed. Stop setting it aside first.
+                    “\(Deck.shownName(deck))” is set aside, and a deck is never both set aside and a priority deck, \
+                    nor is a deck inside it, so nothing changed. Stop setting it aside first.
+                    """
+            )
+        case .blankDeckName:
+            String(
+                localized: """
+                    A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside \
+                    it, as in “Idiomas::Inglés”.
+                    """
+            )
+        case .defaultDeckName(let name):
+            String(
+                localized: """
+                    “\(name)” is Default's name, and Default holds the cards no other deck does, so nothing changed. \
+                    To move cards there, pick Default; to make a deck, write another name.
+                    """
+            )
+        case .deckInsideItself(let deck):
+            String(
+                localized: """
+                    “\(Deck.shownName(deck))” can't go inside itself, or inside a deck inside it, so nothing changed. \
+                    Pick a deck outside it.
+                    """
+            )
+        case .defaultDeckStays:
+            String(
+                localized: """
+                    Default holds the cards no other deck does, so it can't be renamed, moved or deleted, and nothing \
+                    changed. To go on, make a deck of your own and move Default's cards there.
+                    """
+            )
+        case .deckNotFound(let deck):
+            String(
+                localized: """
+                    The deck “\(Deck.shownName(deck))” isn't there any more, maybe since another of your devices \
+                    renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or \
+                    pick another.
                     """
             )
         case .blankTypeName:

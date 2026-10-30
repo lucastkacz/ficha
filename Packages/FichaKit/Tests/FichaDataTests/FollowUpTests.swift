@@ -102,12 +102,13 @@ struct FollowUpTests {
 
         let buried = try engine.bury(ubuntu.id)
         let flagged = try engine.flag(petricor.id, note: note("Falta un ejemplo"))
-        try engine.setAside("historia")
+        try engine.changeDeck(of: [mayo.id], to: "Historia")
+        try engine.setAside(deck: "Historia")
 
         let inbox = try engine.inbox()
         #expect(inbox.followUps.map(\.capture) == followUps)
         #expect(inbox.followUps.map(\.card) == [buried, flagged, try engine.cards()[2]])
-        #expect(try engine.cards()[2].standing == .setAside(by: ["historia"]))
+        #expect(try engine.cards()[2].standing == .setAside(by: ["Historia"]))
     }
 
     // A follow-up never changes the card it came from.

@@ -5,30 +5,31 @@ import Foundation
 /// his reviews, by card in the order he approved them, with which cards are
 /// priority cards, and the whole review log. The planners take nothing else,
 /// so which ways can show up, and which come first, is decided here, from
-/// where each card stands and its tags, and the merge gate watches it.
+/// where each card stands and its deck, and the merge gate watches it.
 public struct CardsInReviews: Sendable, Equatable {
     /// The ways in Lucas's reviews, by card in the order he approved them:
     /// each card's front-first way, and then its back-first way, when it has
     /// one.
     let ways: [CardWay]
-    /// The cards in Lucas's reviews with any of the priority tags, or a tag
+    /// The cards in Lucas's reviews that live in a priority deck, or in a deck
     /// inside one, by id, whose ways come first when cards show up (ADR 0011,
-    /// ADR 0021).
+    /// ADR 0024).
     let priorityIDs: Set<Int64>
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]
 
     /// The cards in Lucas's reviews out of `cards`, every card by id with
-    /// where it stands, its tags and whether it goes both ways, in the order
-    /// he approved them, those with any of `priorityTags`, or a tag inside
-    /// one, as priority cards, along with `log`, the whole review log, in the
-    /// order it was written.
+    /// where it stands, its deck, by its whole name, and whether it goes both
+    /// ways, in the order he approved them, those that live in one of
+    /// `priorityDecks`, or in a deck inside one, as `TagPath` reads a deck's
+    /// levels, as priority cards, along with `log`, the whole review log, in
+    /// the order it was written. A card's tags never make it one.
     /// Each card in his reviews brings its front-first way, and, when it goes
     /// both ways, its back-first way, once its front-first way had its first
     /// view or a placement (ADR 0016): the card's standing is both ways'.
     public init(
-        _ cards: [(id: Int64, standing: CardStanding, tags: [String], bothWays: Bool)],
-        priorityTags: Set<String>,
+        _ cards: [(id: Int64, standing: CardStanding, deck: String, bothWays: Bool)],
+        priorityDecks: Set<String>,
         log: [ReviewLogEntry]
     ) {
         let inReviews = cards.filter { $0.standing == .inReviews }
@@ -41,7 +42,7 @@ public struct CardsInReviews: Sendable, Equatable {
             return [frontFirst, CardWay(cardID: card.id, way: .backFirst)]
         }
         priorityIDs = Set(
-            inReviews.filter { !priorityTags.isDisjoint(with: TagPath.lineages(of: $0.tags)) }.map(\.id))
+            inReviews.filter { !priorityDecks.isDisjoint(with: TagPath.lineage(of: $0.deck)) }.map(\.id))
         self.log = log
     }
 
@@ -53,7 +54,7 @@ public struct CardsInReviews: Sendable, Equatable {
         self.log = log
     }
 
-    /// The same cards as if no tag were a priority tag.
+    /// The same cards as if no deck were a priority deck.
     var withoutPriority: CardsInReviews {
         CardsInReviews(ways: ways, priorityIDs: [], log: log)
     }

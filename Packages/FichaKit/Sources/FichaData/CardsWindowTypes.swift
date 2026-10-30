@@ -11,15 +11,6 @@ import Foundation
 // opens too.
 
 extension CardsWindowState {
-    /// The type picker New Type… was chosen in, which takes the type the New
-    /// Type sheet makes.
-    public enum TypePicker: Sendable, Equatable {
-        /// The card form's.
-        case form
-        /// The editor's, while Lucas edits a card.
-        case editor
-    }
-
     /// What OK in the New Type sheet makes of what its fields hold.
     public enum NewTypeEntry: Sendable, Equatable {
         /// A name, without the spaces around it, and an emoji, or none, which
@@ -67,14 +58,12 @@ extension CardsWindowState {
     }
 
     /// Asks for a new type's name and emoji, in the New Type sheet, after New
-    /// Type… in the type picker `picker`, while it's there: the card form's,
-    /// while it's open, or the editor's, while Lucas edits a card.
-    public mutating func askForNewType(in picker: TypePicker) {
-        switch picker {
-        case .form: guard cardForm != nil else { return }
-        case .editor: guard case .card = editing else { return }
-        }
-        question = .newType(picker)
+    /// Type… in the type picker of the fields `fields`, while they're there:
+    /// the card form's, while it's open, or the editor's, while Lucas edits a
+    /// card.
+    public mutating func askForNewType(in fields: CardFields) {
+        guard areOpen(fields) else { return }
+        question = .newType(fields)
     }
 
     /// What OK in the New Type sheet makes of what its fields hold, `name`
@@ -103,7 +92,7 @@ extension CardsWindowState {
     /// While OK doesn't take what the fields hold, as `newTypeEntry` says, it
     /// does nothing, and the sheet says why.
     public mutating func chooseNewType(name: String, emoji: String) {
-        guard case .newType(let picker) = question,
+        guard case .newType(let fields) = question,
             case .type(let name, let emoji)? = newTypeEntry(name: name, emoji: emoji)
         else { return }
         var made: UserType?
@@ -112,7 +101,7 @@ extension CardsWindowState {
         }
         guard done, let made else { return }
         question = nil
-        switch picker {
+        switch fields {
         case .form: cardForm?.draft.type = .user(made)
         case .editor: setTypeInEditor(.user(made))
         }

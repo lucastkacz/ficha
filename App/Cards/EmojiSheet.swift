@@ -2,14 +2,14 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The sheet the Cards window opens from Emoji… in the context menu of a tag
-/// or of a card type of the user's own, with one field for its emoji, which
-/// starts with the one it has. Lucas types an emoji, or picks one from the
-/// Mac's Emoji & Symbols, which the button beside the field opens, since
-/// Ficha has no menu bar for the Edit menu's. OK gives the tag or the type
-/// the emoji, or takes its emoji away when the field is empty, and refuses
-/// anything else, which the sheet says under the field. `CardsWindowState`
-/// decides what OK takes.
+/// The sheet the Cards window opens from Emoji… in the menu of a tag, of a
+/// deck or of a card type of the user's own, with one field for its emoji,
+/// which starts with the one it has of its own. Lucas types an emoji, or
+/// picks one from the Mac's Emoji & Symbols, which the button beside the
+/// field opens, since Ficha has no menu bar for the Edit menu's. OK gives the
+/// tag, the deck or the type the emoji, or takes its emoji away when the
+/// field is empty, and refuses anything else, which the sheet says under the
+/// field. `CardsWindowState` decides what OK takes.
 struct EmojiSheet: View {
     let subject: SheetSubject
     /// What couldn't be saved, as the alert over the sheet says it.
@@ -70,13 +70,18 @@ struct EmojiSheet: View {
         .failureAlert(failure)
     }
 
-    /// The sheet's title, with the tag's or the type's name.
+    /// The sheet's title, with the tag's, the deck's or the type's name.
     private var title: Text {
         switch subject {
         case .tag(let tag):
             Text(
                 "Emoji for “\(TagPath.shown(tag.name))”",
                 comment: "The title of the Cards window's sheet that gives a tag an emoji, with the tag's name.")
+        case .deck(let deck):
+            Text(
+                "Emoji for “\(Deck.shownName(deck.name))”",
+                comment: "The title of the Cards window's sheet that gives a deck an emoji, with the deck's whole name."
+            )
         case .type(let type):
             Text(
                 "Emoji for the type “\(type.name)”",
@@ -93,6 +98,13 @@ struct EmojiSheet: View {
             Text(
                 "It shows before the tag's name. Leave the field empty for none.",
                 comment: "Under the title of the Cards window's sheet that gives a tag an emoji.")
+        case .deck:
+            Text(
+                """
+                It shows before the deck's name, and before the names of the decks inside it that have none. Leave \
+                the field empty for none.
+                """,
+                comment: "Under the title of the Cards window's sheet that gives a deck an emoji.")
         case .type:
             Text(
                 "It shows before the type's name. Leave the field empty for none.",
