@@ -176,10 +176,10 @@ extension Deck: GroupWithLook {
 }
 
 extension DeckInTree {
-    /// What it says in a tree of decks, in the sidebar, the Change Deck sheet
-    /// and the menu bar's Prioritize submenu: its emoji, its own or else the
-    /// decks' it sits inside, when it shows one, before its last level, or
-    /// before Default's name in the Mac's language.
+    /// What it says in a tree of decks, in the sidebar, the Change Deck sheet,
+    /// the menu bar's Prioritize submenu and the Sync tab: its emoji, its own
+    /// or else the decks' it sits inside, when it shows one, before its last
+    /// level, or before Default's name in the Mac's language.
     var shownTitle: String {
         deck.title(shown: deck.isDefault ? Deck.shownName(deck.name) : title)
     }

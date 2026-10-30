@@ -179,7 +179,10 @@ public struct ImportPreview: Sendable, Equatable {
         var going = Set<SyncedFile>()
         for (card, (kept, brought)) in zip(cards, zip(filesGoingUp.repeatedDecks, filesGoingUp.brought))
         where kept == nil || choices.repeatedCards == .update {
-            if filesGoingUp.whatSyncs.cardSyncs(inDeck: kept ?? choices.deckComingIn(proposed: card.deck)) {
+            // A deck's name the import refuses brings no card.
+            if let deck = kept ?? (try? choices.deckComingIn(proposed: card.deck)),
+                filesGoingUp.whatSyncs.cardSyncs(inDeck: deck)
+            {
                 going.formUnion(brought)
             }
         }
@@ -278,13 +281,15 @@ public struct ImportChoices: Sendable, Equatable {
     }
 
     /// The deck a card that proposes `proposed`, or nil for none, comes into
-    /// new, by its whole name, as the import cleans it up: the name
-    /// `deckName(for:)` gives the deck it proposes, or else
-    /// `deckForCardsWithoutDeck`. A name the import refuses stays as it's
-    /// given, since the import refuses it before it brings any card.
-    func deckComingIn(proposed: String?) -> String {
-        let name = proposed.map(deckName(for:)) ?? deckForCardsWithoutDeck
-        return name == Deck.defaultName ? name : TagPath.normalized(name) ?? name
+    /// new, by its whole name, cleaned up as `Engine.makeDeck(named:)` cleans
+    /// it up: the name `deckName(for:)` gives the deck it proposes, or else
+    /// `deckForCardsWithoutDeck`, which can be Default. An error for a name
+    /// the import refuses, which it refuses before it brings any card.
+    func deckComingIn(proposed: String?) throws(EngineError) -> String {
+        guard let proposed else {
+            return try checkedDeckForCards(deckForCardsWithoutDeck)
+        }
+        return try checkedDeckName(deckName(for: proposed))
     }
 }
 
@@ -538,10 +543,8 @@ extension ImportChoices {
 }
 
 /// The deck each card an import brings in new comes into, by its whole name,
-/// as the user chose: the one it proposes, under the name
-/// `ImportChoices.deckName(for:)` gives it, or else
-/// `ImportChoices.deckForCardsWithoutDeck`; each checked once, before the
-/// import changes anything.
+/// as the user chose (`ImportChoices.deckComingIn(proposed:)`), each checked
+/// once, before the import changes anything.
 private struct DecksComingIn {
     /// The deck each deck the cards propose comes in under, by the proposed
     /// one.
@@ -558,10 +561,10 @@ private struct DecksComingIn {
         }
         var byProposed: [String: String] = [:]
         for proposed in Set(cards.compactMap(\.deck)) {
-            byProposed[proposed] = try checkedDeckName(choices.deckName(for: proposed))
+            byProposed[proposed] = try choices.deckComingIn(proposed: proposed)
         }
         self.byProposed = byProposed
-        forCardsWithoutDeck = try checkedDeckForCards(choices.deckForCardsWithoutDeck)
+        forCardsWithoutDeck = try choices.deckComingIn(proposed: nil)
     }
 
     /// The deck `card` comes into, or an error for a card that proposes a

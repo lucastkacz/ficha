@@ -1008,8 +1008,9 @@ enum Schema {
             // one of them sits inside, is chosen. The deletion triggers of
             // "v26 selective sync", made again with that rule: a tag sits
             // inside a chosen one when its name starts with the chosen one's
-            // and `::`, compared character by character, as `cardSyncs(tags:)`
-            // in `SelectiveSync.swift` does.
+            // and `::`, compared character by character, as selective sync's
+            // own SQL in `SelectiveSync.swift` did until decks took the
+            // choice ("v31 decks").
             /// Whether the card whose tags are the JSON array `tags` syncs.
             func cardSyncs(tags: String) -> String {
                 """
@@ -1249,16 +1250,20 @@ enum Schema {
             // switch it has on, "priority" or "setAside", or NULL for neither;
             // one of Finder's seven tag colors, or NULL for none; one emoji,
             // or NULL for none; whether the user chose it to sync, which it
-            // isn't until they tick it; and whether it was made on this
-            // device, which never syncs: the engine's own writes make a deck
-            // here, and a deck the device first hears of from another
-            // device's record isn't (`SyncedDecks.swift`), so that under
-            // selective sync a device lists the decks made on it, beside
-            // those that sync and those it holds cards of. Unlike a tag's, a
-            // deck's row needn't hold anything, so a deck the user makes stays
-            // while it has no cards. The `tag` table keeps its switches and
-            // its choice to sync as they were, for Lucas's tags to carry over
-            // to decks.
+            // isn't until they tick it; and whether the user made it on this
+            // device, which never syncs: making a deck, or putting cards in
+            // it, says so, on a row that was there too, and a row a switch,
+            // a color, an emoji or a choice to sync gives a deck, or one
+            // another device's record gives it, doesn't (`Decks.swift`), so
+            // that under selective sync a device lists the decks made on it,
+            // beside those that sync and those it holds cards of. A device
+            // that takes a restore's cards drops every deck's row, with every
+            // row that syncs, and keeps the names of those made on it in
+            // `deckMadeHereBeforeARestore`, until the restore's copy brings
+            // them again. Unlike a tag's, a deck's row needn't hold anything,
+            // so a deck the user makes stays while it has no cards. The `tag`
+            // table keeps its switches and its choice to sync as they were,
+            // for Lucas's tags to carry over to decks.
             try db.create(table: "deck") { table in
                 table.primaryKey("name", .text)
                 table.column("switchedOn", .text)
@@ -1267,7 +1272,10 @@ enum Schema {
                     .check(sql: "color IN ('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray')")
                 table.column("emoji", .text)
                 table.column("chosenToSync", .boolean).notNull().defaults(to: false)
-                table.column("madeHere", .boolean).notNull().defaults(to: true)
+                table.column("madeHere", .boolean).notNull().defaults(to: false)
+            }
+            try db.create(table: "deckMadeHereBeforeARestore") { table in
+                table.primaryKey("name", .text)
             }
             // A card's deck is one of its fields, `deck` as `SyncedField`
             // names it, of which the latest change wins: the trigger of "v21

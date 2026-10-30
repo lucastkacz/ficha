@@ -23,7 +23,8 @@ enum SyncedRow: Sendable, Hashable {
     case reviewLogEntry(UUID)
     case tag(String)
     case progressSettings
-    /// Whether only the cards with a tag the user chose sync (ADR 0020).
+    /// Whether only the cards in a deck the user chose sync (ADR 0020, ADR
+    /// 0024).
     case syncChoice
     /// A card type the user made.
     case userType(UUID)

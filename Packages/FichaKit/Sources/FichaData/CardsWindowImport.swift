@@ -165,9 +165,7 @@ extension CardsWindowState {
         /// name them; nil while the sheet says nothing of it, as
         /// `ImportPreview.weightGoingUpToICloud(choosing:)` says.
         public var weightGoingUpToICloud: Int64? {
-            preview?.weightGoingUpToICloud(
-                choosing: ImportChoices(
-                    deckNames: deckNames, deckForCardsWithoutDeck: chosenDeck, repeatedCards: repeatedCards))
+            preview?.weightGoingUpToICloud(choosing: choices)
         }
 
         /// The names of the user types the import makes, as the preview's
@@ -189,12 +187,18 @@ extension CardsWindowState {
         /// brought onto `ladder`, the user's, when the sheet offers it and
         /// it's ticked.
         fileprivate func choices(on ladder: Ladder) -> ImportChoices {
+            var choices = self.choices
+            choices.progress = importBringsProgress ? .brought(onto: ladder) : .leftOut
+            return choices
+        }
+
+        /// What the user chose, but the cards' progress, which comes in left
+        /// out: what the sheet says before the import, such as what goes up
+        /// to iCloud, takes no ladder.
+        private var choices: ImportChoices {
             ImportChoices(
-                deckNames: deckNames,
-                deckForCardsWithoutDeck: chosenDeck,
-                tagNames: tagNames,
-                repeatedCards: repeatedCards,
-                progress: importBringsProgress ? .brought(onto: ladder) : .leftOut)
+                deckNames: deckNames, deckForCardsWithoutDeck: chosenDeck, tagNames: tagNames,
+                repeatedCards: repeatedCards)
         }
     }
 

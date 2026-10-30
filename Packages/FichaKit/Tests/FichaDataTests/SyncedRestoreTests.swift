@@ -99,6 +99,33 @@ final class SyncedRestoreTests {
         #expect(cardsZonesInICloud().count == 1)
     }
 
+    // Only Filosofía syncs: the iPhone makes Música, empty, which the Mac
+    // hears of before its backup, and doesn't list, as it didn't make it.
+    @Test(
+        "under selective sync, a deck made on one device, with no card and not chosen, stays listed there after another device's restore"
+    )
+    func aDeckMadeHereStaysListedAfterARestore() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."), deck: "Filosofía")
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try iPhone.engine.makeDeck(named: "Música")
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+        let backup = try mac.engine.backUpNow(.defaults)
+
+        try mac.engine.restore(backup.name)
+        try mac.turnSyncOn()
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
+        #expect(try iPhone.engine.decks().map(\.name) == ["Filosofía", "Música"])
+        #expect(try mac.engine.decks().map(\.name) == ["Filosofía"])
+    }
+
     // The iPhone was offline while the Mac restored and turned sync on: it
     // sends what it changed meanwhile before it fetches, as iCloud's engine
     // may.

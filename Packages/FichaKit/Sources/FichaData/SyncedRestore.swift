@@ -57,7 +57,11 @@ struct SyncKeptThroughARestore {
 /// (`SelectiveSync.swift`), their review log, the captures that sync, the
 /// tags, the decks' rows, the user's card types and the changes to tags,
 /// with what waited to be sent and when each field of them last changed. A
-/// deck a card that stays lives in stays through the card. A card that stays keeps
+/// deck a card that stays lives in stays through the card. The device keeps
+/// the names of the decks the user made on it, which is its own and never
+/// syncs, for each to be made here again as the restore's copy brings its
+/// row (`takeMadeHereBeforeARestore(_:in:)`); those of a restore before go,
+/// which the copy they waited for didn't bring. A card that stays keeps
 /// its type's ID, and has its type again once the restore's copy brings it.
 /// The device keeps the IDs of the changes to tags it dropped, which it
 /// applied: those the copy holds come again, and are applied only when the
@@ -94,6 +98,8 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
             WHERE recordType = '\(capture)' AND recordName IN (SELECT uuid FROM capture WHERE id IN (\(untied)));
             DELETE FROM capture WHERE id IN (\(untied));
             DELETE FROM tag;
+            DELETE FROM deckMadeHereBeforeARestore;
+            INSERT INTO deckMadeHereBeforeARestore (name) SELECT name FROM deck WHERE madeHere;
             DELETE FROM deck;
             DELETE FROM userType;
             INSERT OR IGNORE INTO tagChangeAppliedBeforeARestore (uuid) SELECT uuid FROM tagChange;
@@ -102,4 +108,13 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
             DELETE FROM syncPending;
             """)
     return used
+}
+
+/// Takes, in the write `db`, whether the user made the deck named `name` on
+/// this device before it took a restore's cards, which dropped the deck's
+/// row (`dropEverythingThatSyncs(in:)`): it says so once, as the restore's
+/// copy brings the row again, which says it from then on.
+func takeMadeHereBeforeARestore(_ name: String, in db: Database) throws -> Bool {
+    try db.execute(sql: "DELETE FROM deckMadeHereBeforeARestore WHERE name = ?", arguments: [name])
+    return db.changesCount > 0
 }

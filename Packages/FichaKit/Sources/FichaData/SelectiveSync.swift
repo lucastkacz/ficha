@@ -26,9 +26,10 @@ internal import GRDB
 // record that left is our own: CloudKit deletes a record, or holds it.
 //
 // Under selective sync, while sync is on, a device lists only the decks that
-// sync, those it holds cards of and those made on it (`OwnDecks`), so that it
-// doesn't list every deck of the other devices empty; the Sync tab lists
-// every deck, for the user to choose from.
+// sync, those it holds cards of and those made on it
+// (`decksListedWithRows(of:in:)`), so that it doesn't list every deck of the
+// other devices empty; the Sync tab lists every deck, for the user to choose
+// from.
 
 /// The key of the field of a record that says its row left iCloud: 1, or
 /// nothing in a record of a row that syncs.
@@ -62,12 +63,7 @@ extension Engine {
     /// already, nothing changes, and unticking a deck never makes one.
     public func setChosenToSync(_ chosen: Bool, ofDeck deck: String) throws(EngineError) {
         let deck = try checkedDeckForCards(deck)
-        try write { db in
-            var own = try ownDeck(deck, in: db)
-            guard own.chosenToSync != chosen else { return }
-            own.chosenToSync = chosen
-            try save(own, in: db)
-        }
+        try write { db in try changeOwnDecks([deck], in: db) { $0.chosenToSync = chosen } }
     }
 
     /// Every deck the user can choose to sync, as a tree, in the order a tree
@@ -99,8 +95,7 @@ extension Engine {
             sizes[file] = size
             return size
         }
-        let named = TagPath.lineages(of: cards.map(\.deck) + own.names).subtracting([Deck.defaultName])
-        let decks = ([Deck.defaultName] + TagPath.sortedAsTree(named)).map(own.deck)
+        let decks = deckNamesAsTree(cards.map(\.deck) + own.names, withDefault: true).map(own.deck)
         var weights: [String: Int64] = [:]
         for (deck, files) in filesByDeck {
             var weight: Int64 = 0
@@ -252,9 +247,26 @@ struct WhatSyncs: Sendable, Equatable {
 func cardSyncs(deck: String) -> String {
     """
     (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
-        SELECT 1 FROM deck AS chosen WHERE chosen.chosenToSync AND (chosen.name = \(deck)
-            OR (chosen.name <> '' AND substr(\(deck), 1, length(chosen.name) + 2) = chosen.name || '::'))))
+        SELECT 1 FROM deck AS chosen WHERE chosen.chosenToSync AND (chosen.name = \(deck) OR (
+            chosen.name <> '\(Deck.defaultName)'
+            AND substr(\(deck), 1, length(chosen.name) + 2) = chosen.name || '::'))))
     """
+}
+
+/// The decks with a row of `own`, as the `deck` table of `db` keeps it, that
+/// this device lists: every one, or, under selective sync while sync is on,
+/// those that sync, chosen or inside a chosen one, and those the user made
+/// on this device, so that it doesn't list every deck of the other devices
+/// empty (ADR 0024).
+func decksListedWithRows(of own: OwnDecks, in db: Database) throws -> [String] {
+    guard try isSyncOn(in: db) else {
+        return own.names
+    }
+    let whatSyncs = try WhatSyncs(in: db)
+    guard whatSyncs.onlyChosenDecks else {
+        return own.names
+    }
+    return own.names.filter { own.madeHere.contains($0) || whatSyncs.cardSyncs(inDeck: $0) }
 }
 
 /// A table whose rows sync or not as selective sync decides, by their ID

@@ -330,6 +330,34 @@ final class SelectiveSyncTests {
         #expect(left.value(of: SyncedField.deck.rawValue) == .string("Zulú"))
     }
 
+    // Zulú isn't chosen: ubuntu leaves as the Mac moves it there, and the
+    // iPhone, which kept its copy, moves it back to Filosofía.
+    @Test(
+        "a card that left iCloud as Change Deck moved it syncs again as it moves back into a chosen deck, and reaches the other device"
+    )
+    func aCardThatLeftSyncsAgainAsItMovesBack() async throws {
+        let ubuntu = try mac.engine.create(
+            card(.concept, front: "ubuntu", back: "Soy porque somos."), deck: "Filosofía")
+        try mac.engine.meet(ubuntu)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
+        try await syncBoth()
+        time.advance(by: minutes(1))
+        try mac.engine.changeDeck(of: [ubuntu.id], to: "Zulú")
+        try await syncBoth()
+        expectOnlyLeft(records(ofType: .card), keeping: [.deck])
+
+        time.advance(by: minutes(1))
+        try iPhone.engine.changeDeck(of: [iPhone.engine.card(fronted: "ubuntu").id], to: "Filosofía")
+        try await syncBoth()
+
+        #expect(try mac.engine.card(fronted: "ubuntu").deck == "Filosofía")
+        #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+        #expect(records(ofType: .card).map(\.hasLeft) == [false])
+        #expect(try mac.engine.changesToSend().isEmpty)
+    }
+
     @Test("a card deleted while it doesn't sync is deleted on that device alone, and one that never synced too")
     func aCardDeletedWhileItDoesntSyncStaysElsewhere() async throws {
         let ubuntu = try mac.engine.create(
@@ -349,6 +377,37 @@ final class SelectiveSyncTests {
         #expect(try iPhone.engine.cards().map(\.front) == ["ubuntu"])
         expectOnlyLeft(records(ofType: .card), keeping: [.deck])
         #expect(try mac.engine.changesToSend().isEmpty)
+    }
+
+    // Neither device hears the other before it sends: the Mac deletes
+    // ubuntu, which syncs there, and the iPhone moves it to Zulú, a deck
+    // both know that isn't chosen; the deletion reaches iCloud first, or the
+    // card's record as one that left does.
+    @Test(
+        "a card deleted on one device while the other moves it into a deck that isn't chosen is gone from both, whichever sends first",
+        arguments: [true, false])
+    func aDeletionWinsOverAMoveOutOfWhatSyncs(deletionFirst: Bool) async throws {
+        let ubuntu = try mac.engine.create(
+            card(.concept, front: "ubuntu", back: "Soy porque somos."), deck: "Filosofía")
+        try mac.engine.makeDeck(named: "Zulú")
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
+        try await syncBoth()
+
+        time.advance(by: minutes(1))
+        try mac.engine.delete([ubuntu.id])
+        try iPhone.engine.changeDeck(of: [iPhone.engine.card(fronted: "ubuntu").id], to: "Zulú")
+        let (first, second) = deletionFirst ? (mac, iPhone) : (iPhone, mac)
+        try await first.send()
+        #expect(records(ofType: .card).map(\.hasLeft) == (deletionFirst ? [] : [true]))
+        try await second.send()
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.cards().isEmpty)
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+        #expect(records(ofType: .card).isEmpty)
     }
 
     // Each device reviews the card while it doesn't sync, the Mac first.
@@ -456,6 +515,53 @@ final class SelectiveSyncTests {
         ]
         #expect(try mac.engine.decks().map(\.name) == every)
         #expect(try iPhone.engine.decks().map(\.name) == every)
+    }
+
+    // The Mac makes Música empty, which the iPhone hears of and doesn't list,
+    // since it neither syncs nor holds cards there, until it makes Música
+    // too: by its name, or by moving a card there, as New Deck… in the
+    // Change Deck sheet does, and deleting it.
+    @Test(
+        "under selective sync, a deck heard of from the other device and then made here is listed here",
+        arguments: [false, true])
+    func aDeckHeardOfAndThenMadeHereIsListed(byChangeDeck: Bool) async throws {
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.makeDeck(named: "Música")
+        try await syncBoth()
+
+        #expect(try iPhone.engine.decks().isEmpty)
+
+        if byChangeDeck {
+            let saudade = try iPhone.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."))
+            try iPhone.engine.changeDeck(of: [saudade.id], to: "Música")
+            try iPhone.engine.delete([saudade.id])
+        } else {
+            try iPhone.engine.makeDeck(named: "Música")
+        }
+
+        #expect(try iPhone.engine.decks().map(\.name) == ["Música"])
+    }
+
+    // Every card syncs while the iPhone colors Historia, which it knows from
+    // coliseo's deck, Historia::Roma; then only Idiomas syncs, and the Mac
+    // moves coliseo there.
+    @Test(
+        "under selective sync, a deck a device only colored, which it knew from a card, isn't listed there once the card leaves it"
+    )
+    func aDeckOnlyColoredHereIsntListedOnceItsCardLeaves() async throws {
+        let coliseo = try mac.engine.create(
+            card(.concept, front: "Coliseo", back: "Un anfiteatro."), deck: "Historia::Roma")
+        try await syncBoth()
+        try iPhone.engine.setColor(.blue, ofDeck: "Historia")
+        try await syncBoth()
+
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Idiomas")
+        try mac.engine.changeDeck(of: [coliseo.id], to: "Idiomas")
+        try await syncBoth()
+
+        #expect(try iPhone.engine.decks().map(\.name) == ["Idiomas"])
+        #expect(try mac.engine.decks().map(\.name) == ["Historia", "Historia::Roma", "Idiomas"])
     }
 
     // The iPhone holds petricor in Lenguaje, which doesn't sync, and colors

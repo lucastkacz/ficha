@@ -9,9 +9,10 @@ internal import GRDB
 // deck exists, also while it has nothing of its own and no card lives in it,
 // so a deck the user made reaches every device. A deck that two devices made
 // with the same name is one deck, since its record is named after its name.
-// Whether a device made a deck stays on it, and never syncs: a deck it first
-// hears of from iCloud wasn't. A card names its deck in a field of its own
-// record (`SyncedTable.cards`).
+// Whether the user made a deck on a device stays on it, and never syncs: a
+// deck it first hears of from iCloud wasn't, until the user makes it there
+// too, and one whose row a restore dropped keeps what it was. A card names
+// its deck in a field of its own record (`SyncedTable.cards`).
 
 /// The keys of a deck's record.
 enum DeckKey {
@@ -54,12 +55,12 @@ private func record(of deck: Deck, in db: Database) throws -> ICloudRecord {
 }
 
 /// Applies `record`, from iCloud, to the deck named `name`, which gets its
-/// row when it has none, as a deck not made on this device: it takes each of
-/// its switch, color, emoji and choice to sync whose change in the record is
-/// the latest.
+/// row when it has none, as a deck not made on this device, unless the user
+/// made it here before a restore dropped its row
+/// (`takeMadeHereBeforeARestore(_:in:)`): it takes each of its switch,
+/// color, emoji and choice to sync whose change in the record is the latest.
 func applyDeck(_ record: ICloudRecord, named name: String, in db: Database) throws -> Bool {
-    try db.execute(
-        sql: "INSERT INTO deck (name, madeHere) VALUES (?, 0) ON CONFLICT (name) DO NOTHING", arguments: [name])
+    try makeRow(ofDeck: name, madeHere: takeMadeHereBeforeARestore(name, in: db), in: db)
     let own = try FichaData.record(of: ownDeck(name, in: db), in: db)
     try takeLatestChanges(of: deckFields, in: record, over: own, to: .deck(name), in: db) { won in
         var deck = try ownDeck(name, in: db)
