@@ -61,10 +61,9 @@ extension CardsWindowState {
         guard !offered.isEmpty else {
             return nil
         }
-        let colors = Set(offered.map(\.color))
         return TagMenu(
             tags: offered.map(\.name), isPinned: offered.allSatisfy(\.isPinned),
-            colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: colors == [$0]) })
+            colorItems: ColorItem.items(forOwn: Set(offered.map(\.color))))
     }
 
     /// Chooses Pin to Sidebar in the context menu of `tags`, in All Tags or
@@ -246,8 +245,9 @@ extension CardsWindowState {
 
     /// Points what the window holds of tags at their names after `renames`,
     /// made in that order: the tag the sidebar chose, the one whose cards
-    /// All Tags lists in its place, and All Tags' selection and open
-    /// parents, each when it's a tag renamed or inside one.
+    /// All Tags lists in its place, the one chosen among the chosen deck's
+    /// tags, and All Tags' selection and open parents, each when it's a tag
+    /// renamed or inside one.
     mutating func follow(_ renames: [TagEdit]) {
         func renamed(_ name: String) -> String {
             renames.reduce(name) { name, edit in edit.name(of: name) ?? name }
@@ -256,6 +256,7 @@ extension CardsWindowState {
             sidebarItem = .cards(.tag(renamed(chosen)))
         }
         tagShownFromAllTags = tagShownFromAllTags.map(renamed)
+        chosenDeckTag = chosenDeckTag.map(renamed)
         selectedTags = Set(selectedTags.map(renamed))
         openTags = Set(openTags.map(renamed))
     }

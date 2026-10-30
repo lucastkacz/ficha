@@ -140,9 +140,9 @@ extension Engine {
     /// isn't there is made, as Change Deck makes one, and a name
     /// `makeDeck(named:)` refuses is refused.
     public func setAside(deck: String) throws(EngineError) {
-        let deck = try checkedSwitchedDeck(deck)
+        let deck = try checkedDeckForCards(deck)
         try write { db in
-            try changeSwitch(of: deck, in: db) { $0.switchedOn = .setAside }
+            try changeOwnDecks([deck], in: db) { $0.switchedOn = .setAside }
         }
     }
 
@@ -150,9 +150,9 @@ extension Engine {
     /// reviews where they'd be without it, unless a deck it sits inside is
     /// set aside too. A deck that isn't set aside stays as it is.
     public func stopSettingAside(deck: String) throws(EngineError) {
-        let deck = try checkedSwitchedDeck(deck)
+        let deck = try checkedDeckForCards(deck)
         try write { db in
-            try changeSwitch(of: deck, in: db) { own in
+            try changeOwnDecks([deck], in: db) { own in
                 if own.isSetAside {
                     own.switchedOn = nil
                 }
@@ -164,7 +164,7 @@ extension Engine {
     /// priority deck is no longer one, and any other becomes one, as
     /// `setPriority(_:ofDeck:)` says.
     public func togglePriority(ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedSwitchedDeck(deck)
+        let deck = try checkedDeckForCards(deck)
         try write { db in
             try setPriority(try !ownDeck(deck, in: db).isPriority, of: deck, in: db)
         }
@@ -180,7 +180,7 @@ extension Engine {
     /// meanwhile. A deck that isn't there is made, as `setAside(deck:)`
     /// says.
     public func setPriority(_ isPriority: Bool, ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedSwitchedDeck(deck)
+        let deck = try checkedDeckForCards(deck)
         try write { db in
             try setPriority(isPriority, of: deck, in: db)
         }
@@ -192,7 +192,7 @@ extension Engine {
     public func clearPriorityDecks() throws(EngineError) {
         try write { db in
             for deck in try FichaData.decks(switchedOn: .priority, in: db).sorted() {
-                try changeSwitch(of: deck, in: db) { $0.switchedOn = nil }
+                try changeOwnDecks([deck], in: db) { $0.switchedOn = nil }
             }
         }
     }
@@ -201,7 +201,7 @@ extension Engine {
     /// `db`, as `setPriority(_:ofDeck:)` says.
     private func setPriority(_ isPriority: Bool, of deck: String, in db: Database) throws {
         let setAside = try setAsideDecks(in: db)
-        try changeSwitch(of: deck, in: db) { own in
+        try changeOwnDecks([deck], in: db) { own in
             switch (own.switchedOn, isPriority) {
             case (.setAside, false), (.priority, true), (nil, false): return
             case (.priority, false): own.switchedOn = nil
@@ -212,24 +212,5 @@ extension Engine {
                 own.switchedOn = .priority
             }
         }
-    }
-}
-
-/// `deck`, a deck's whole name a switch is set on, as `makeDeck(named:)`
-/// takes it, or Default's.
-private func checkedSwitchedDeck(_ deck: String) throws(EngineError) -> String {
-    deck == Deck.defaultName ? deck : try checkedDeckName(deck)
-}
-
-/// Changes what the deck `deck` has of its own with `change`, in the write
-/// `db`, and saves it when `change` changed it, giving it its row then: a
-/// change that leaves it as it was makes no row, so that unticking a switch
-/// never makes a deck.
-private func changeSwitch(of deck: String, in db: Database, _ change: (inout Deck) throws -> Void) throws {
-    let before = try ownDeck(deck, in: db)
-    var own = before
-    try change(&own)
-    if own != before {
-        try save(own, in: db)
     }
 }

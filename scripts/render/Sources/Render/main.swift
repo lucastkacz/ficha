@@ -36,13 +36,18 @@ enum Window: String {
     case cardsAllTags = "cards-all-tags"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit
     /// in, with its sidebar's Decks section: Default first, then every deck
-    /// as a tree, each with how many of its cards are due, Ciencias and
-    /// Humanidades closed, so that Sociedad shows, set aside, grayed with the
-    /// deck inside it; the bar above
-    /// the card list, with Idiomas's name and its Actions menu; and two of
+    /// as a tree, each with how many of its cards are due, Idiomas and
+    /// Ciencias with a color and an emoji, which the decks inside them show
+    /// too, Ciencias and Humanidades closed, so that Sociedad shows, set
+    /// aside, grayed with the deck inside it; the bar above the card list,
+    /// with Idiomas's name, its Actions menu and its cards' tags; and two of
     /// Idiomas's cards selected, which `--key cmd+d` asks to move in the
     /// Change Deck sheet.
     case cardsDecks = "cards-decks"
+    /// The same on Idiomas › Español, with historia, one of its
+    /// tags, chosen above the card list, which lists only the deck's cards
+    /// that carry it.
+    case cardsDeckTag = "cards-deck-tag"
     /// The Cards window on Idiomas › Español with the card form on a new
     /// card, which starts in that deck, and the New Deck sheet that New Deck…
     /// in the form's Deck field opens, which the tool can't open, over it,
@@ -118,6 +123,11 @@ enum Window: String {
     /// The Diagnostics window, while a Focus holds appearances back, once it
     /// held one back.
     case diagnostics
+    /// The review panel on a new card in Ciencias › Psicología, a deck inside
+    /// Ciencias, whose color and emoji it shows, with its three tags, drawn
+    /// on a gradient in a window, since the panel's own has nothing behind
+    /// its Liquid Glass below the desktop picture.
+    case panelCard = "panel-card"
 }
 
 /// What the tool was asked to draw.
@@ -808,6 +818,16 @@ func setSampleDeckAside(in engine: Engine) throws {
     try engine.setAside(deck: "Sociedad")
 }
 
+/// Gives Idiomas the color purple and an emoji, and Ciencias the color green
+/// and an emoji, as Color and Emoji… in a deck's menu do, which the decks
+/// inside them show too.
+func giveSampleDecksLooks(in engine: Engine) throws {
+    try engine.setColor(.purple, ofDeck: "Idiomas")
+    try engine.setEmoji(try Emoji("🗣️"), ofDeck: "Idiomas")
+    try engine.setColor(.green, ofDeck: "Ciencias")
+    try engine.setEmoji(try Emoji("🔬"), ofDeck: "Ciencias")
+}
+
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,
 /// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
 /// emoji, to the Moon landing's question; Sesgo, with none, to the two
@@ -1150,9 +1170,14 @@ func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
-    case .cardsDecks:
+    case .cardsDecks, .cardsDeckTag:
         let engine = try sampleEngine(at: .inMemory).engine
         try setSampleDeckAside(in: engine)
+        try giveSampleDecksLooks(in: engine)
+        return try AppModel(engine: engine)
+    case .panelCard:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try giveSampleDecksLooks(in: engine)
         return try AppModel(engine: engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1300,6 +1325,20 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
+    case .cardsDeckTag:
+        var state = model.openCardsWindow()
+        state.read(on: state.ladder)
+        state.setDeckOpen(false, "Ciencias")
+        state.setDeckOpen(false, "Humanidades")
+        state.choose(.cards(.deck("Idiomas::Español")))
+        state.chooseDeckTag("historia")
+        guard state.chosenDeckTag == "historia" else {
+            throw RenderError(
+                description: "No card of Idiomas › Español carries historia: fix SampleCards.swift.")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
     case .cardsNewDeck:
         var state = model.openCardsWindow()
         state.read(on: state.ladder)
@@ -1349,7 +1388,26 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let mac = SystemMacSignals { model.now }
         mac.focusChanged(holdsBack: true)
         return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
+    case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
     }
+}
+
+/// The review panel on the sample's new card whose front is `front`, as an
+/// appearance brings it, on a gradient in a window, so that its Liquid Glass
+/// has something to show through, as the README's pictures draw it.
+func panelWindow(model: AppModel, on front: String) throws -> NSWindow {
+    guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
+        throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
+    }
+    let panel = model.startAppearance(with: [.firstView(card)])
+    let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
+        .padding(32)
+        .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+    let window = AppWindow(title: "Review", content: content)
+    if let view = window.contentView {
+        window.setContentSize(view.fittingSize)
+    }
+    return window
 }
 
 /// The menu under Ficha's icon, its content in a window, as SwiftUI lays it

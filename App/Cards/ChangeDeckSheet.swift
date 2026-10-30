@@ -60,9 +60,13 @@ struct ChangeDeckSheet: View {
         .fixedSize(horizontal: false, vertical: true)
         List(selection: chosenDeck) {
             ForEach(Self.lines(of: state.deckChoices, depth: 0), id: \.row.id) { line in
-                Label(line.row.shownTitle, systemImage: CardGroup.deck(line.row.id).symbol)
-                    .padding(.leading, CGFloat(line.depth) * 16)
-                    .tag(line.row.id)
+                Label {
+                    Text(verbatim: line.row.shownTitle)
+                } icon: {
+                    line.row.deck.symbol
+                }
+                .padding(.leading, CGFloat(line.depth) * 16)
+                .tag(line.row.id)
             }
         }
         .frame(height: 220)

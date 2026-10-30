@@ -36,6 +36,7 @@ struct RenameSheet: View {
         self.choose = choose
         switch subject {
         case .tag(let tag): _name = State(initialValue: tag.name)
+        case .deck(let deck): _name = State(initialValue: deck.name)
         case .type(let type): _name = State(initialValue: type.name)
         }
     }
@@ -96,6 +97,10 @@ struct RenameSheet: View {
             Text(
                 "Rename “\(TagPath.shown(tag.name))”",
                 comment: "The title of the Cards window's sheet that renames a tag, with the tag's whole name.")
+        case .deck(let deck):
+            Text(
+                "Rename “\(Deck.shownName(deck.name))”",
+                comment: "The title of the Cards window's sheet that renames a deck, with the deck's whole name.")
         case .type(let type):
             Text(
                 "Rename the type “\(type.name)”",
@@ -114,6 +119,13 @@ struct RenameSheet: View {
                 move with it, and a name another tag has joins the two.
                 """,
                 comment: "Under the title of the Cards window's sheet that renames a tag.")
+        case .deck:
+            Text(
+                """
+                Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one \
+                move with it, and a name another deck has joins the two.
+                """,
+                comment: "Under the title of the Cards window's sheet that renames a deck.")
         case .type:
             Text(
                 "Its cards keep it, with its new name.",

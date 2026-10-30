@@ -10,9 +10,11 @@ import UniformTypeIdentifiers
 /// it, with what Lucas can do with it at its foot. The sidebar's Decks
 /// section lists every deck as a tree, Default first while it holds cards or
 /// has a switch on, each with how many of its cards are due, grayed while
-/// its cards are out of Lucas's reviews; a deck's context menu, and the
-/// Actions menu above the card list while the sidebar chose it
-/// (`DeckMenu.swift`), set it aside or prioritize it; and Change Deck…
+/// its cards are out of Lucas's reviews, and with its emoji and color; a
+/// deck's context menu, and the Actions menu above the card list while the
+/// sidebar chose it (`DeckMenu.swift`), set it aside or prioritize it, and
+/// give it a color and an emoji, and under that menu the deck's tags narrow
+/// the card list to one of them (`DeckTagsRow.swift`); and Change Deck…
 /// moves the selected cards to the deck Lucas picks in its sheet, or names there with
 /// New Deck… (`ChangeDeckSheet.swift`). The card form and the editor have a
 /// Deck field, whose New Deck… names a deck in the New Deck sheet
@@ -173,12 +175,14 @@ struct CardsView: View {
     /// six columns to leave the tag's some room, and the detail beside it,
     /// a few buttons, can be narrower to give it: a minimum the split view
     /// keeps whenever it changes, where an ideal width counts only as the
-    /// window first opens. The panes' least widths add up to the window's
-    /// either way.
+    /// window first opens. The sidebar opens wide enough for the sample
+    /// decks' names to read whole beside their counts, after their emoji,
+    /// two levels down too, like Idiomas › Español › Rioplatense. The panes'
+    /// least widths add up to the window's either way.
     private var panes: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
+                .navigationSplitViewColumnWidth(min: 160, ideal: 260, max: 280)
                 .waiting(while: state.editing != nil)
         } content: {
             table
@@ -415,11 +419,12 @@ struct CardsView: View {
         return row
     }
 
-    /// The tag or the user type the window asks which emoji to give, while
-    /// the emoji sheet asks.
+    /// The tag, the deck or the user type the window asks which emoji to
+    /// give, while the emoji sheet asks.
     private var emojiSubject: SheetSubject? {
         switch state.question {
         case .emoji(let tag): .tag(tag)
+        case .deckEmoji(let deck): .deck(deck)
         case .typeEmoji(let type): .type(type)
         default: nil
         }
@@ -641,6 +646,18 @@ struct CardsView: View {
                         An alert's title in the Cards window, after choosing a ticked Prioritize in a deck's menu, \
                         with the deck.
                         """),
+                error: error)
+        case .setDeckColor(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the color of “\(Deck.shownName(deck))”",
+                    comment: "An alert's title in the Cards window, after a color in a deck's menu, with the deck."),
+                error: error)
+        case .setDeckEmoji(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the emoji of “\(Deck.shownName(deck))”",
+                    comment: "An alert's title in the Cards window's emoji sheet, after OK, with the deck."),
                 error: error)
         case .deleteTags(let tag):
             return Failure(
@@ -976,15 +993,7 @@ struct CardsView: View {
                         isOn: Binding(
                             get: { item.isTicked }, set: { _ in state.chooseColor(item.color, on: menu.tags) })
                     ) {
-                        if let color = item.color {
-                            Label {
-                                Text(verbatim: color.name)
-                            } icon: {
-                                color.swatch
-                            }
-                        } else {
-                            Text("None", comment: "The first item of the Color submenu of a tag's menu: no color.")
-                        }
+                        ColorItemLabel(color: item.color)
                     }
                 }
             } label: {
@@ -1833,7 +1842,8 @@ struct CardsView: View {
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
 
-/// A deck's row in the sidebar, its title with how many of its cards are
+/// A deck's row in the sidebar, its title, after its emoji and its symbol in
+/// its color, with how many of its cards are
 /// due, grayed while its cards are out of Lucas's reviews, as it's set aside
 /// on its own or sits inside a deck that is, with the deck's menu on a right
 /// click; and the decks inside it under a disclosure triangle, open or closed
@@ -1858,17 +1868,23 @@ private struct DeckBranch: View {
         }
     }
 
-    /// Its own row, which choosing lists its cards.
+    /// Its own row, which choosing lists its cards: its emoji before its
+    /// title, and its symbol in its color, its own or else the decks' it sits
+    /// inside, as a pinned tag's row shows a tag's.
     private var label: some View {
-        Label(row.shownTitle, systemImage: CardGroup.deck(row.id).symbol)
-            .badge(row.counts.due)
-            .opacity(row.isGrayed ? 0.5 : 1)
-            .tag(row.item)
-            .contextMenu {
-                if let menu = state.menu(forDeck: row.id) {
-                    DeckMenuItems(menu: menu, state: $state)
-                }
+        Label {
+            Text(verbatim: row.shownTitle)
+        } icon: {
+            row.deck.symbol
+        }
+        .badge(row.counts.due)
+        .opacity(row.isGrayed ? 0.5 : 1)
+        .tag(row.item)
+        .contextMenu {
+            if let menu = state.menu(forDeck: row.id) {
+                DeckMenuItems(menu: menu, state: $state)
             }
+        }
     }
 }
 

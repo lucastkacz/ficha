@@ -2,9 +2,7 @@ import FichaCore
 import Foundation
 import Testing
 
-// For what a deck has of its own, which the engine stores and syncs before
-// the user has actions that set it, its color and emoji: `changeOwnDecks`,
-// the loop those actions go through.
+// For what waits to be sent (`changesToSend()`).
 @testable import FichaData
 
 /// Tests on decks across devices (ADR 0024, ADR 0017): a deck reaching the
@@ -42,13 +40,9 @@ final class DecksSyncTests {
         try mac.engine.changeDeck(of: [coliseo.id], to: "Historia")
         try mac.engine.makeDeck(named: "Arte::Escultura")
         try mac.engine.setPriority(true, ofDeck: "Arte")
+        try mac.engine.setColor(.orange, ofDeck: "Arte")
+        try mac.engine.setEmoji(Emoji("🎨"), ofDeck: "Arte")
         try mac.engine.setChosenToSync(true, ofDeck: "Arte")
-        try mac.engine.write { db in
-            try changeOwnDecks(["Arte"], in: db) { deck in
-                deck.color = .orange
-                deck.emoji = "🎨"
-            }
-        }
         try await syncBoth()
 
         let arte = Deck(name: "Arte", switchedOn: .priority, color: .orange, emoji: "🎨", chosenToSync: true)
@@ -128,6 +122,55 @@ final class DecksSyncTests {
             #expect(try device.engine.changesToSend().isEmpty)
         }
         #expect(petricor.deck == Deck.defaultName)
+    }
+
+    // The iPhone, offline, colors Historia green first; the Mac colors it
+    // blue later, and sends first, so the latest change is the one the iPhone
+    // hears of, while the iPhone's emoji, which the Mac didn't change, stays.
+    @Test(
+        "a deck's color and emoji reach the other device, Default's too, the latest change to each wins, and taking one away reaches it"
+    )
+    func aDecksColorAndEmojiReachTheOtherDevice() async throws {
+        let coliseo = try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."))
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try mac.engine.changeDeck(of: [coliseo.id], to: "Historia::Roma")
+        try mac.engine.setEmoji(Emoji("📥"), ofDeck: Deck.defaultName)
+        try await syncBoth()
+
+        iPhone.iCloud.isOffline = true
+        time.advance(by: minutes(1))
+        try iPhone.engine.setColor(.green, ofDeck: "Historia")
+        try iPhone.engine.setEmoji(Emoji("🏛️"), ofDeck: "Historia")
+        time.advance(by: minutes(1))
+        try mac.engine.setColor(.blue, ofDeck: "Historia")
+        try mac.engine.setEmoji(nil, ofDeck: Deck.defaultName)
+        try await mac.syncNow()
+        iPhone.iCloud.isOffline = false
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(
+                try device.engine.decks() == [
+                    Deck(name: Deck.defaultName), Deck(name: "Historia", color: .blue, emoji: "🏛️"),
+                    Deck(name: "Historia::Roma", inheritedColor: .blue, inheritedEmoji: "🏛️"),
+                ])
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+    }
+
+    // Historia exists through Historia::Roma, with no row of its own (ADR
+    // 0021): None in its Color submenu mustn't make it a deck that outlives
+    // the decks inside it, on this device or the other.
+    @Test("no color or no emoji for a deck that has none sends nothing to the other device")
+    func noColorForADeckWithNoneSendsNothing() async throws {
+        let coliseo = try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."))
+        try mac.engine.changeDeck(of: [coliseo.id], to: "Historia::Roma")
+        try await syncBoth()
+
+        try mac.engine.setColor(nil, ofDeck: "Historia")
+        try mac.engine.setEmoji(nil, ofDeck: "Historia")
+
+        #expect(try mac.engine.changesToSend().isEmpty)
     }
 
     @Test("a deck made while sync is off reaches the other device once it's on")

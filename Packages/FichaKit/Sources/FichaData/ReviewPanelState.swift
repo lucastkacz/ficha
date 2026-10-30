@@ -3,7 +3,7 @@ import Foundation
 
 /// An appearance or a review now while the review panel shows it: the cards
 /// it brought, which Lucas goes through one at a time, what the panel shows of
-/// the card he's on, its tags included, whether the panel may have the
+/// the card he's on, its deck and tags included, whether the panel may have the
 /// keyboard, and how it closes. Each card comes one of its ways, front first
 /// or back first, and his answers move only that way. He ends a new way's
 /// first view, back first once he flipped it, and flips and rates a due way,
@@ -121,6 +121,9 @@ public struct ReviewPanelState: Sendable {
     /// changed while it's open shows from the next panel on, so the card
     /// Lucas is on doesn't change under him.
     private let ownTags: OwnTags
+    /// What every deck has of its own, as it was when the panel opened, as
+    /// with the tags.
+    private let ownDecks: OwnDecks
     let engine: Engine
     private let settings: ReviewSettings
     /// The note the panel offers to flag a card forgotten often with, for
@@ -151,13 +154,15 @@ public struct ReviewPanelState: Sendable {
     private var followUpsOnCard: [Int64] = []
 
     init(
-        trigger: Trigger, cards: [PanelCard], ownTags: OwnTags, engine: Engine, settings: ReviewSettings,
-        clock: some Clock<Duration>, forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String
+        trigger: Trigger, cards: [PanelCard], ownTags: OwnTags, ownDecks: OwnDecks, engine: Engine,
+        settings: ReviewSettings, clock: some Clock<Duration>,
+        forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String
     ) {
         self.trigger = trigger
         self.cards = cards
         broughtCount = cards.count
         self.ownTags = ownTags
+        self.ownDecks = ownDecks
         self.engine = engine
         self.settings = settings
         self.forgottenOftenNote = forgottenOftenNote
@@ -176,9 +181,20 @@ public struct ReviewPanelState: Sendable {
         wentThrough.count < cards.count ? cards[wentThrough.count] : nil
     }
 
+    /// The deck the card Lucas is on lives in, by its whole name, Default
+    /// too, with its color and emoji, its own or the nearest deck's it sits
+    /// inside, as they were when the panel opened, which the panel shows at
+    /// the card's top, before its tags, so that he knows which subject it's
+    /// about in the mixed stream (ADR 0011, ADR 0024); or nil once he went
+    /// through every card.
+    public var deck: Deck? {
+        current.map { ownDecks.deck($0.card.deck) }
+    }
+
     /// The tags of the card Lucas is on, in the card's order, each with its
     /// color and emoji as they were when the panel opened, which the panel
-    /// shows at the card's top, or none once he went through every card.
+    /// shows at the card's top, after its deck, or none once he went through
+    /// every card.
     public var tags: [CardTag] {
         current?.card.tags.map(ownTags.tag) ?? []
     }
@@ -703,18 +719,20 @@ private struct Asking: Sendable {
 
 extension Engine {
     /// Opens the review panel with `cards`, which `trigger` brought: the panel
-    /// shows them from now on, with their tags' colors and emoji as they are
-    /// now, and times Lucas on each on `clock`, a steady one, which moving the
-    /// engine's time doesn't move: the system's continuous clock in the app.
-    /// `forgottenOftenNote` writes the note the panel offers to flag a card
-    /// forgotten often with, for how many times Lucas forgot it and which
-    /// way, in the Mac's language, which the app translates.
+    /// shows them from now on, with their decks' and tags' colors and emoji
+    /// as they are now, and times Lucas on each on `clock`, a steady one,
+    /// which moving the engine's time doesn't move: the system's continuous
+    /// clock in the app. `forgottenOftenNote` writes the note the panel
+    /// offers to flag a card forgotten often with, for how many times Lucas
+    /// forgot it and which way, in the Mac's language, which the app
+    /// translates.
     public func openPanel(
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>,
         forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String
     ) throws(EngineError) -> ReviewPanelState {
-        ReviewPanelState(
-            trigger: trigger, cards: cards, ownTags: try read(OwnTags.init(in:)), engine: self,
-            settings: settings, clock: clock, forgottenOftenNote: forgottenOftenNote)
+        let (ownTags, ownDecks) = try read { db in (try OwnTags(in: db), try OwnDecks(in: db)) }
+        return ReviewPanelState(
+            trigger: trigger, cards: cards, ownTags: ownTags, ownDecks: ownDecks, engine: self, settings: settings,
+            clock: clock, forgottenOftenNote: forgottenOftenNote)
     }
 }
