@@ -406,7 +406,7 @@ public struct CardsWindowState: Sendable {
     public private(set) var tags: [CardTag] = []
     /// Every deck the sidebar's Decks section lists, with what each has of
     /// its own and its counts, in the order a tree lists them, Default first
-    /// while it holds cards: `CardsWindowDecks.swift`.
+    /// while it holds cards or has a switch on: `CardsWindowDecks.swift`.
     public private(set) var decks: [CountedDeck] = []
     /// The sidebar's decks Lucas closed, which each start open, and the
     /// window remembers while it's open.

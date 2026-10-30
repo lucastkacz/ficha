@@ -241,18 +241,3 @@ private struct DeckChangeAsked: Equatable {
     var newDecks: [String] = []
     var isNamingNewDeck = false
 }
-
-extension [CardsWindowState.DeckRow] {
-    /// The tree, a row per deck in its order, each its title, or Default's
-    /// name, and its due count, indented two spaces per level.
-    fileprivate var outline: [String] {
-        func lines(_ rows: [CardsWindowState.DeckRow], depth: Int) -> [String] {
-            rows.flatMap { row in
-                let title = row.deck.isDefault ? "Default" : row.title
-                return ["\(String(repeating: "  ", count: depth))\(title) \(row.counts.due)"]
-                    + lines(row.children, depth: depth + 1)
-            }
-        }
-        return lines(self, depth: 0)
-    }
-}

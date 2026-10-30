@@ -11,7 +11,7 @@ internal import GRDB
 // stays while it has no cards; it holds the deck's switch, color, emoji and
 // choice to sync, which sync as a tag's do (`SyncedDecks.swift`). Default
 // gets its row once something is set on it, and is listed only while it
-// holds cards.
+// holds cards or has a switch on, so that its switch can be turned off.
 
 /// A switch a deck can have on, which changes which of its cards show up
 /// (ADR 0011, ADR 0024). A deck has one on at most. Its raw value is how the
@@ -87,12 +87,60 @@ public struct Deck: Sendable, Hashable {
         emoji ?? inheritedEmoji
     }
 
+    /// The deck named `name` as the app names it on its own, in a message
+    /// too: its whole name, written with " › ", or Default's in the Mac's
+    /// language.
+    public static func shownName(_ name: String) -> String {
+        name == defaultName ? defaultShownName : TagPath.shown(name)
+    }
+
+    /// Default's name in the Mac's language: the key "Default" of the app's
+    /// String Catalog, which the app's own sources put there
+    /// (`CardsNames.swift`), since Xcode fills the catalog from no package.
+    static var defaultShownName: String {
+        String(localized: "Default", comment: "The deck a card lives in when it has no other.")
+    }
+
     /// The names Default goes by, which no deck the user makes takes at its
     /// top level: "Default", and its name in the Mac's language, as the app
-    /// shows it, whose key of the app's String Catalog this is.
+    /// shows it.
     static var defaultNames: [String] {
-        ["Default", String(localized: "Default", comment: "The deck a card lives in when it has no other.")]
+        ["Default", defaultShownName]
     }
+}
+
+/// A deck in a tree of decks, as `deckTree(of:named:_:)` builds them: a
+/// `CardsWindowState.DeckRow` in the Cards window's sidebar and the Change
+/// Deck sheet, and a `PrioritizeMenu.DeckItem` in the menu bar's Prioritize
+/// submenu.
+public protocol DeckInTree {
+    /// The deck, with what it has of its own and takes from the decks it
+    /// sits inside.
+    var deck: Deck { get }
+    /// What it says: its last level under its parent, or nothing for
+    /// Default, which the app names in the Mac's language.
+    var title: String { get }
+}
+
+/// `elements`, each of which `name` names a deck, as a tree, in the order a
+/// tree lists them (`TagTree.forest(of:)`): each made by `node` from the
+/// element, its title, its last level under its parent, and the nodes of the
+/// decks right inside it. A deck whose parent isn't among them heads a tree
+/// of its own. The one builder of the trees of decks the app lists.
+func deckTree<Element, Node>(
+    of elements: [Element], named name: (Element) -> String, _ node: (Element, String, [Node]) -> Node
+) -> [Node] {
+    let byName = Dictionary(elements.map { (name($0), $0) }, uniquingKeysWith: { first, _ in first })
+    /// The nodes of `trees`, listed under `parent`.
+    func nodes(of trees: [TagTree], under parent: String?) -> [Node] {
+        trees.compactMap { tree in
+            // The forest holds `elements`' names alone, so each tree finds
+            // its own.
+            guard let element = byName[tree.name] else { return nil }
+            return node(element, TagPath.shown(tree.name, under: parent), nodes(of: tree.children, under: tree.name))
+        }
+    }
+    return nodes(of: TagTree.forest(of: elements.map(name)), under: nil)
 }
 
 /// A deck's counts, as the Cards window's sidebar shows them.
@@ -128,7 +176,7 @@ extension Engine {
     /// first: every deck with a row, every deck a card lives in, buried cards
     /// too, and every deck those sit inside, each with what it has of its own
     /// and takes from the decks it sits inside; and Default only while it
-    /// holds cards.
+    /// holds cards or has a switch on, so that its switch can be turned off.
     public func decks() throws(EngineError) -> [Deck] {
         try read { db in
             let own = try OwnDecks(in: db)
@@ -253,13 +301,15 @@ struct OwnDecks: Sendable {
     }
 
     /// The name of every deck, as `Engine.decks()` lists them, in the order a
-    /// tree lists them: Default first, while one of `cards` lives in it, then
+    /// tree lists them: Default first, while one of `cards` lives in it or it
+    /// has a switch on, so that its switch can always be turned off, then
     /// every deck one of `cards` lives in, every deck with a row, and every
     /// deck those sit inside.
     func everyDeckName(livedInBy cards: [Card]) -> [String] {
-        let holdsDefault = cards.contains { $0.deck == Deck.defaultName }
+        let listsDefault =
+            cards.contains { $0.deck == Deck.defaultName } || byName[Deck.defaultName]?.switchedOn != nil
         let named = TagPath.lineages(of: cards.map(\.deck) + byName.keys).subtracting([Deck.defaultName])
-        return (holdsDefault ? [Deck.defaultName] : []) + TagPath.sortedAsTree(named)
+        return (listsDefault ? [Deck.defaultName] : []) + TagPath.sortedAsTree(named)
     }
 }
 

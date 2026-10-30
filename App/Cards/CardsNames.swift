@@ -105,33 +105,21 @@ extension CardGroup {
 }
 
 extension Deck {
-    /// Default's name, as the Mac's language says it: "Default" is the key of
-    /// the String Catalog `Deck.defaultNames` reads too, so that no deck the
-    /// user makes takes it.
-    nonisolated static var defaultShownName: String {
-        String(localized: "Default", comment: "The deck a card lives in when it has no other.")
-    }
-
-    /// The deck named `name` as the window names it on its own: its whole
-    /// name, written with " › ", or Default's in the Mac's language.
-    nonisolated static func shownName(_ name: String) -> String {
-        name == defaultName ? defaultShownName : TagPath.shown(name)
-    }
+    /// "Default", the key of the app's String Catalog by which
+    /// `Deck.shownName(_:)`, in FichaData, names Default in the Mac's
+    /// language: Xcode fills the catalog from the app's own sources alone,
+    /// never from a package's, so this line puts the key there. Nothing
+    /// reads it.
+    private static let defaultNameInCatalog = String(
+        localized: "Default", comment: "The deck a card lives in when it has no other.")
 }
 
-extension CardsWindowState.DeckRow {
-    /// What its row says, in the sidebar and the Change Deck sheet: its last
-    /// level, or Default's name in the Mac's language.
+extension DeckInTree {
+    /// What it says in a tree of decks, in the sidebar, the Change Deck sheet
+    /// and the menu bar's Prioritize submenu: its last level, or Default's
+    /// name in the Mac's language.
     var shownTitle: String {
-        deck.isDefault ? Deck.defaultShownName : title
-    }
-}
-
-extension PrioritizeMenu.DeckItem {
-    /// What it says in the menu bar's Prioritize submenu: its last level, or
-    /// Default's name in the Mac's language.
-    var shownTitle: String {
-        deck.isDefault ? Deck.defaultShownName : title
+        deck.isDefault ? Deck.shownName(deck.name) : title
     }
 }
 

@@ -90,7 +90,8 @@ extension Engine {
 
     /// Unburies a card: it goes back to where it was before Lucas buried it,
     /// his reviews or the inbox, on the step its review log puts it on, or
-    /// it's set aside when one of its tags is. Returns the card.
+    /// it's set aside when its deck, or a deck its deck sits inside, is.
+    /// Returns the card.
     @discardableResult
     public func unbury(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in

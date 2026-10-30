@@ -53,19 +53,19 @@ extension Sequence<Deck> {
 }
 
 /// The name of the deck that sets aside the cards of the deck `name` while
-/// the decks named `setAside` are set aside on their own: itself, when it's
-/// one, or else the nearest deck it sits inside that is, as a card's deck
-/// counts the decks it sits inside (`CardStanding.setAsideDecks(of:among:)`);
+/// the decks named `setAside` are set aside on their own: the innermost of
+/// those that set aside a card in it (`CardStanding.setAsideDecks(of:among:)`),
+/// itself when it's one, or else the nearest deck it sits inside that is;
 /// nil while none is. The one rule for graying a deck and for keeping it from
 /// becoming a priority deck.
 func deckSettingAside(_ name: String, amongSetAside setAside: Set<String>) -> String? {
-    TagPath.lineage(of: name).first(where: setAside.contains)
+    CardStanding.setAsideDecks(of: name, among: setAside).last
 }
 
 /// What the menu bar's Prioritize submenu offers, as the engine reads it:
-/// "None", then every deck as a tree, Default first while it holds cards,
-/// with a submenu for each parent, which lists the parent itself first and
-/// then the decks right inside it.
+/// "None", then every deck as a tree, Default first while it holds cards or
+/// has a switch on, with a submenu for each parent, which lists the parent
+/// itself first and then the decks right inside it.
 public struct PrioritizeMenu: Sendable, Equatable {
     /// A deck the submenu offers, ticked while it's a priority deck, which
     /// toggles it, with the decks right inside it.
@@ -114,6 +114,8 @@ public struct PrioritizeMenu: Sendable, Equatable {
     }
 }
 
+extension PrioritizeMenu.DeckItem: DeckInTree {}
+
 extension Engine {
     /// What the menu bar's Prioritize submenu offers: every deck this device
     /// lists (`decks()`), as a tree, each ticked while it's a priority deck,
@@ -122,20 +124,12 @@ extension Engine {
     public func prioritizeMenu() throws(EngineError) -> PrioritizeMenu {
         let decks = try self.decks()
         let setAside = decks.setAsideNames
-        let byName = Dictionary(decks.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
-        /// The items of `trees`, listed under `parent`.
-        func items(of trees: [TagTree], under parent: String?) -> [PrioritizeMenu.DeckItem] {
-            trees.compactMap { tree in
-                // The forest holds `decks`' names alone, so each tree finds
-                // its own.
-                guard let deck = byName[tree.name] else { return nil }
-                return PrioritizeMenu.DeckItem(
-                    deck: deck, title: TagPath.shown(tree.name, under: parent),
-                    isEnabled: deck.canBePrioritized(amongSetAside: setAside),
-                    children: items(of: tree.children, under: tree.name))
-            }
-        }
-        return PrioritizeMenu(decks: items(of: TagTree.forest(of: decks.map(\.name)), under: nil))
+        return PrioritizeMenu(
+            decks: deckTree(of: decks, named: \.name) { deck, title, children in
+                PrioritizeMenu.DeckItem(
+                    deck: deck, title: title, isEnabled: deck.canBePrioritized(amongSetAside: setAside),
+                    children: children)
+            })
     }
 
     /// Sets the deck `deck` aside, by its whole name, or Default by

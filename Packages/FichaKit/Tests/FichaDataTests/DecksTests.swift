@@ -20,7 +20,7 @@ struct DecksTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    @Test("every card starts in Default, which the decks list only while it holds cards, buried ones too")
+    @Test("every card starts in Default, which the decks list while it holds cards, buried ones too")
     func everyCardStartsInDefault() throws {
         #expect(try engine.decks().isEmpty)
 

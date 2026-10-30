@@ -291,15 +291,15 @@ extension EngineError: LocalizedError {
         case .cardSetAside(let id, let decks) where decks.count == 1:
             String(
                 localized: """
-                    Card \(id) is set aside with the deck “\(shownDeck(decks[0]))”. To bring it back, untick Set \
-                    Aside on that deck in the Cards window.
+                    Card \(id) is set aside with the deck “\(Deck.shownName(decks[0]))”. To bring it back, untick \
+                    Set Aside on that deck in the Cards window.
                     """
             )
         case .cardSetAside(let id, let decks):
             String(
                 localized: """
-                    Card \(id) is set aside with the decks \(quotedList(decks.map(shownDeck))). To bring it back, \
-                    untick Set Aside on each of them in the Cards window.
+                    Card \(id) is set aside with the decks \(quotedList(decks.map(Deck.shownName))). To bring it \
+                    back, untick Set Aside on each of them in the Cards window.
                     """
             )
         case .notOneEmoji:
@@ -328,8 +328,8 @@ extension EngineError: LocalizedError {
         case .deckSetAside(let deck):
             String(
                 localized: """
-                    “\(shownDeck(deck))” is set aside, and a deck is never both set aside and a priority deck, nor \
-                    is a deck inside it, so nothing changed. Stop setting it aside first.
+                    “\(Deck.shownName(deck))” is set aside, and a deck is never both set aside and a priority deck, \
+                    nor is a deck inside it, so nothing changed. Stop setting it aside first.
                     """
             )
         case .blankDeckName:
@@ -590,13 +590,6 @@ extension CardsFileProblem {
 /// and “filosofía” in English.
 private func quotedList(_ words: [String]) -> String {
     words.map { "“\($0)”" }.formatted(.list(type: .and))
-}
-
-/// The deck named `name` as a message names it: its whole name, written with
-/// " › ", or Default's in the Mac's language, as the Cards window names it.
-private func shownDeck(_ name: String) -> String {
-    name == Deck.defaultName
-        ? String(localized: "Default", comment: "The deck a card lives in when it has no other.") : TagPath.shown(name)
 }
 
 /// What to do when the review panel shows a card for an answer it can't take:

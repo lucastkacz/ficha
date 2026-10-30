@@ -3,10 +3,10 @@ import Foundation
 
 // The Cards window's decks (ADR 0024): the sidebar's Decks section, after
 // Inbox and before Tags, lists every deck as a tree, Default first while it
-// holds cards, then the others in alphabetical order, each with how many of
-// its cards are due, those of the decks inside it counted. Each parent starts
-// open, as in Anki's deck list, and the window remembers the ones Lucas
-// closes while it's open. Choosing a deck lists its cards and those of every
+// holds cards or has a switch on, then the others in alphabetical order,
+// each with how many of its cards are due, those of the decks inside it
+// counted. Each parent starts open, as in Anki's deck list, and the window
+// remembers the ones Lucas closes while it's open. Choosing a deck lists its cards and those of every
 // deck inside it. A deck's menu, Default's too, the same in its row's context
 // menu and in the Actions menu above the card list while the sidebar chose
 // it, which is its keyboard path, sets it aside or prioritizes it
@@ -115,7 +115,8 @@ extension CardsWindowState {
     }
 
     /// The sidebar's Decks section, as last read: every deck as a tree,
-    /// Default first while it holds cards, each with its counts.
+    /// Default first while it holds cards or has a switch on, each with its
+    /// counts.
     public var deckRows: [DeckRow] {
         Self.deckRows(of: decks)
     }
@@ -316,23 +317,16 @@ extension CardsWindowState {
     /// named by its last level under its parent, and grayed while it's set
     /// aside, on its own or inside one of `decks` that is.
     private static func deckRows(of decks: [CountedDeck]) -> [DeckRow] {
-        let byName = Dictionary(decks.map { ($0.deck.name, $0) }, uniquingKeysWith: { first, _ in first })
         let setAside = decks.map(\.deck).setAsideNames
-        /// The rows of `trees`, listed under `parent`.
-        func rows(of trees: [TagTree], under parent: String?) -> [DeckRow] {
-            trees.compactMap { tree in
-                // The forest holds `decks`' names alone, so each tree finds
-                // its own.
-                guard let counted = byName[tree.name] else { return nil }
-                return DeckRow(
-                    deck: counted.deck, title: TagPath.shown(tree.name, under: parent), counts: counted.counts,
-                    isGrayed: deckSettingAside(tree.name, amongSetAside: setAside) != nil,
-                    children: rows(of: tree.children, under: tree.name))
-            }
+        return deckTree(of: decks, named: \.deck.name) { counted, title, children in
+            DeckRow(
+                deck: counted.deck, title: title, counts: counted.counts,
+                isGrayed: deckSettingAside(counted.deck.name, amongSetAside: setAside) != nil, children: children)
         }
-        return rows(of: TagTree.forest(of: decks.map(\.deck.name)), under: nil)
     }
 }
+
+extension CardsWindowState.DeckRow: DeckInTree {}
 
 extension CountedDeck {
     /// The deck `name`, with nothing of its own, which counts no card.

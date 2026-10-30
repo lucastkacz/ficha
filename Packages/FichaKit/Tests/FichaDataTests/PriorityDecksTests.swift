@@ -44,8 +44,8 @@ struct PriorityDecksTests {
     func aNewPriorityCardTakesASlotAheadOfTheOtherDueCards() throws {
         // Met the day before, so none of the day's new cards is met yet.
         let due = try ["uno", "dos", "tres", "cuatro", "cinco"].map { try meetCard($0, deck: "Lenguaje") }
-        try approveCard("ataraxia")
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
+        try approveInDeck("ataraxia", in: engine)
+        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         time.move(to: try morning(of: 15, in: calendar))
         #expect(try engine.reviewNow(settings) == due.map { PanelCard.review($0) })
 
@@ -61,8 +61,8 @@ struct PriorityDecksTests {
         for front in ["uno", "dos", "tres", "cuatro", "cinco"] {
             try meetCard(front, deck: "Filosofía")
         }
-        try approveCard("ataraxia")
-        try approveCard("eudaimonía", deck: "Filosofía")
+        try approveInDeck("ataraxia", in: engine)
+        try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
 
         try engine.togglePriority(ofDeck: "Filosofía")
 
@@ -74,7 +74,7 @@ struct PriorityDecksTests {
     func aNewCardOutsideThePriorityDecksWaitsForEveryDueCard() throws {
         let eudaimonia = try meetCard("eudaimonía", deck: "Filosofía")
         let others = try ["uno", "dos", "tres", "cuatro"].map { try meetCard($0, deck: "Lenguaje") }
-        let ataraxia = try approveCard("ataraxia")
+        let ataraxia = try approveInDeck("ataraxia", in: engine)
         try engine.togglePriority(ofDeck: "Filosofía")
         time.move(to: try morning(of: 15, in: calendar))
 
@@ -95,7 +95,7 @@ struct PriorityDecksTests {
         let priority = try ["uno", "dos", "tres", "cuatro", "cinco", "seis"].map {
             try meetCard($0, deck: "Filosofía")
         }
-        try approveCard("eudaimonía", deck: "Filosofía")
+        try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         time.move(to: try morning(of: 15, in: calendar))
         // Met today, the other card first, so it's due sooner: neither is due
         // for an hour.
@@ -119,7 +119,7 @@ struct PriorityDecksTests {
     func aPriorityCardsBackFirstWayComesWithThePriorityCards() throws {
         let ubuntu = try meetCard("ubuntu", deck: "Lenguaje")
         let eudaimonia = try meetCard("eudaimonía", deck: "Filosofía")
-        let petricor = try approveCard("petricor")
+        let petricor = try approveInDeck("petricor", in: engine)
         let bothWays = try engine.setBothWays(true, of: [ubuntu.id, eudaimonia.id])
         try engine.togglePriority(ofDeck: "Filosofía")
         time.move(to: try morning(of: 15, in: calendar))
@@ -176,9 +176,9 @@ struct PriorityDecksTests {
 
     @Test("each card's step and due time are the same with or without priority decks")
     func priorityDecksChangeNoStepOrDueTime() throws {
-        let ubuntu = try approveCard("ubuntu", deck: "Lenguaje")
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
-        let ataraxia = try approveCard("ataraxia", deck: "Filosofía")
+        let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
+        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
+        let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", in: engine)
         try engine.climb(ubuntu, to: 2, movingForward: time)
         try engine.climb(eudaimonia, to: 1, movingForward: time)
         let cards = [ubuntu, eudaimonia, ataraxia]
@@ -197,8 +197,8 @@ struct PriorityDecksTests {
         // Five cards climb to the third step, which waits 2 days, so they
         // come due on the 16th at 14:00, when none of that day's new cards is
         // met yet.
-        let lenguaje = try ["uno", "dos", "tres", "cuatro"].map { try approveCard($0, deck: "Lenguaje") }
-        let cinco = try approveCard("cinco", deck: "Filosofía")
+        let lenguaje = try ["uno", "dos", "tres", "cuatro"].map { try approveInDeck($0, deck: "Lenguaje", in: engine) }
+        let cinco = try approveInDeck("cinco", deck: "Filosofía", in: engine)
         for card in lenguaje + [cinco] {
             try engine.meet(card)
         }
@@ -208,7 +208,7 @@ struct PriorityDecksTests {
                 try engine.review(card, .good)
             }
         }
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
+        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         let dueTime = time.now + days(2)
         try engine.togglePriority(ofDeck: "Filosofía")
 
@@ -228,11 +228,11 @@ struct PriorityDecksTests {
     )
     func theSubmenuListsTheDecksAsATree() throws {
         let before = try engine.prioritizeMenu().decks
-        try approveCard("ubuntu")
-        try approveCard("Revolución de Mayo", deck: "Historia::Argentina")
-        try approveCard("eudaimonía", deck: "Filosofía::Ética")
-        try approveCard("Coliseo", deck: "Literatura::Roma")
-        try approveCard("Martín Fierro", deck: "Literatura::Poesía")
+        try approveInDeck("ubuntu", in: engine)
+        try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
+        try approveInDeck("eudaimonía", deck: "Filosofía::Ética", in: engine)
+        try approveInDeck("Coliseo", deck: "Literatura::Roma", in: engine)
+        try approveInDeck("Martín Fierro", deck: "Literatura::Poesía", in: engine)
         try engine.setAside(deck: "Ciencia")
         try engine.togglePriority(ofDeck: "Historia")
         try engine.togglePriority(ofDeck: "Filosofía::Ética")
@@ -251,12 +251,32 @@ struct PriorityDecksTests {
         #expect(menu.decks[2].children.map(\.id) == ["Filosofía::Ética"])
     }
 
+    // Default is listed only while it holds cards or has a switch on, and its
+    // one card moved out after it became a priority deck.
+    @Test(
+        "the Prioritize submenu keeps Default, ticked, while it's a priority deck with no card, so None isn't ticked and Default can be unticked"
+    )
+    func theSubmenuKeepsAPriorityDefaultWithNoCard() throws {
+        let petricor = try approveInDeck("petricor", in: engine)
+        try engine.togglePriority(ofDeck: Deck.defaultName)
+        try engine.changeDeck(of: [petricor.id], to: "Lenguaje")
+
+        let menu = try engine.prioritizeMenu()
+        try engine.togglePriority(ofDeck: Deck.defaultName)
+
+        #expect(menu.decks.flatMap(\.lines) == [" ✓", "Lenguaje"])
+        #expect(!menu.isNoneTicked)
+        #expect(menu.priorityDeckNames == [Deck.defaultName])
+        #expect(try engine.prioritizeMenu().decks.flatMap(\.lines) == ["Lenguaje"])
+        #expect(try engine.prioritizeMenu().isNoneTicked)
+    }
+
     @Test(
         "the Prioritize submenu ticks None while no deck is a priority deck, and its title names the priority decks as a tree lists them once some are"
     )
     func theSubmenuTicksNoneAndNamesThePriorityDecks() throws {
-        try approveCard("ubuntu", deck: "Lenguaje")
-        try approveCard("Revolución de Mayo", deck: "Historia::Argentina")
+        try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
+        try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
         #expect(try engine.prioritizeMenu().isNoneTicked)
         #expect(try engine.prioritizeMenu().priorityDeckNames.isEmpty)
 
@@ -291,8 +311,8 @@ struct PriorityDecksTests {
         "setting aside a priority deck drops its priority, the submenu turns it off, and toggling its priority is refused"
     )
     func settingAsideAPriorityDeckDropsItsPriority() throws {
-        let ubuntu = try approveCard("ubuntu", deck: "Filosofía")
-        try approveCard("Revolución de Mayo", deck: "Historia")
+        let ubuntu = try approveInDeck("ubuntu", deck: "Filosofía", in: engine)
+        try approveInDeck("Revolución de Mayo", deck: "Historia", in: engine)
         try engine.togglePriority(ofDeck: "Filosofía")
 
         try engine.setAside(deck: "Filosofía")
@@ -310,8 +330,8 @@ struct PriorityDecksTests {
         "setting a deck's priority makes it a priority deck or no longer one, whatever it was, and is refused on a set-aside deck"
     )
     func settingADecksPriority() throws {
-        try approveCard("ubuntu", deck: "Filosofía")
-        try approveCard("Revolución de Mayo", deck: "Historia")
+        try approveInDeck("ubuntu", deck: "Filosofía", in: engine)
+        try approveInDeck("Revolución de Mayo", deck: "Historia", in: engine)
         try engine.setAside(deck: "Filosofía")
 
         try engine.setPriority(true, ofDeck: "Historia")
@@ -332,8 +352,8 @@ struct PriorityDecksTests {
         "a deck inside a set-aside deck can't become a priority deck, as the submenu turns it off, but one that is stops being one"
     )
     func prioritizingADeckInsideASetAsideDeck() throws {
-        try approveCard("Coliseo", deck: "Literatura::Roma")
-        try approveCard("Martín Fierro", deck: "Literatura::Poesía::Gauchesca")
+        try approveInDeck("Coliseo", deck: "Literatura::Roma", in: engine)
+        try approveInDeck("Martín Fierro", deck: "Literatura::Poesía::Gauchesca", in: engine)
         try engine.setPriority(true, ofDeck: "Literatura::Roma")
         try engine.setAside(deck: "Literatura")
 
@@ -350,7 +370,7 @@ struct PriorityDecksTests {
 
     @Test("unticking a deck's priority never makes a deck, and making one a priority deck does, as Change Deck does")
     func prioritizingMakesTheDeckAndUntickingMakesNone() throws {
-        try approveCard("ubuntu", deck: "Lenguaje")
+        try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
 
         try engine.setPriority(false, ofDeck: "Música")
         try engine.clearPriorityDecks()
@@ -391,18 +411,10 @@ struct PriorityDecksTests {
     /// moves time a minute forward, so the next card met comes due after it.
     @discardableResult
     private func meetCard(_ front: String, deck: String = Deck.defaultName) throws -> Card {
-        let card = try approveCard(front, deck: deck)
+        let card = try approveInDeck(front, deck: deck, in: engine)
         try engine.meet(card)
         time.advance(by: minutes(1))
         return card
-    }
-
-    /// Approves a capture into one word card with this front, the way
-    /// refining saves cards, moves it to `deck` with Change Deck, and returns
-    /// the card as it is then: a new card, after the ones approved before it.
-    @discardableResult
-    private func approveCard(_ front: String, deck: String = Deck.defaultName) throws -> Card {
-        try approveInDeck(front, deck: deck, in: engine)
     }
 }
 

@@ -4,9 +4,9 @@ internal import GRDB
 
 /// A switch a tag had on before decks took them (ADR 0024): priority or set
 /// aside. The `tag` table keeps it, for the conversion of Lucas's tags into
-/// decks to give it to their decks, and nothing else reads it: no card is set
-/// aside or comes first by its tags, and no tag's switch syncs. Its raw value
-/// is how the `tag` table keeps it, so it never changes.
+/// decks to give it to their decks, and it decides nothing else: no card is
+/// set aside or comes first by its tags, and no tag's switch syncs. Its raw
+/// value is how the `tag` table keeps it, so it never changes.
 public enum TagSwitch: String, Sendable {
     /// Its cards came first when cards showed up.
     case priority
@@ -37,7 +37,7 @@ public struct CardTag: Sendable, Hashable {
     /// Its whole name, its levels joined by `::`, as `TagPath` reads it.
     public let name: String
     /// The switch it had on before decks, or nil for none: kept for the
-    /// conversion of Lucas's tags into decks (ADR 0024), and read by nothing
+    /// conversion of Lucas's tags into decks (ADR 0024), and deciding nothing
     /// else.
     public var switchedOn: TagSwitch?
     /// Its color, or nil for none.

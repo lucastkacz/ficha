@@ -8,12 +8,12 @@ import UniformTypeIdentifiers
 /// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
 /// it, with what Lucas can do with it at its foot. The sidebar's Decks
-/// section lists every deck as a tree, Default first while it holds cards,
-/// each with how many of its cards are due, grayed while its cards are out
-/// of Lucas's reviews; a deck's context menu, and the Actions menu above the
-/// card list while the sidebar chose it (`DeckMenu.swift`), set it aside or
-/// prioritize it; and Change Deck… moves the
-/// selected cards to the deck Lucas picks in its sheet, or names there with
+/// section lists every deck as a tree, Default first while it holds cards or
+/// has a switch on, each with how many of its cards are due, grayed while
+/// its cards are out of Lucas's reviews; a deck's context menu, and the
+/// Actions menu above the card list while the sidebar chose it
+/// (`DeckMenu.swift`), set it aside or prioritize it; and Change Deck…
+/// moves the selected cards to the deck Lucas picks in its sheet, or names there with
 /// New Deck… (`ChangeDeckSheet.swift`). The card form and the editor have a
 /// Deck field, whose New Deck… names a deck in the New Deck sheet
 /// (`NewDeckSheet.swift`). The sidebar's Tags section

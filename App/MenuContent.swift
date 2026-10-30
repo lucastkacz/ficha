@@ -134,12 +134,12 @@ struct MenuContent: View {
 
     /// The Prioritize submenu, with what the engine offers (ADR 0011, ADR
     /// 0024): "None", ticked while no deck is a priority deck, which clears
-    /// them; then every deck as a tree, Default first while it holds cards,
-    /// each ticked while it's a priority deck, which toggles it, and off
-    /// while it's set aside, on its own or inside a deck that is. A parent is
-    /// a submenu that lists itself first, then the decks right inside it. A
-    /// divider sets the decks apart. A change applies from the next
-    /// appearance, review now or "See more" on.
+    /// them; then every deck as a tree, Default first while it holds cards or
+    /// has a switch on, each ticked while it's a priority deck, which toggles
+    /// it, and off while it's set aside, on its own or inside a deck that
+    /// is. A parent is a submenu that lists itself first, then the decks
+    /// right inside it. A divider sets the decks apart. A change applies from
+    /// the next appearance, review now or "See more" on.
     private var prioritizeSubmenu: some View {
         Menu(prioritizeTitle) {
             if let menu = model.prioritizeMenu {

@@ -72,6 +72,29 @@ struct CardsWindowDeckSwitchesTests {
         #expect(window.failure == nil)
     }
 
+    // Default is listed only while it holds cards or has a switch on, and its
+    // one card moved out after it was set aside.
+    @Test(
+        "Default stays in the sidebar, grayed, while it's set aside with no card, so its menu can untick Set Aside, and leaves it then"
+    )
+    func aSetAsideDefaultWithNoCardStaysInTheSidebar() throws {
+        let petricor = try approveInDeck("petricor", in: engine)
+        var window = openWindow()
+        window.chooseSetAside(onDeck: Deck.defaultName)
+        try engine.changeDeck(of: [petricor.id], to: "Arte")
+        window.read(on: ladder)
+
+        let setAside = window.deckRows.outline
+        let menu = window.menu(forDeck: Deck.defaultName)
+        window.chooseSetAside(onDeck: Deck.defaultName)
+
+        #expect(setAside == ["Default 0 grayed", "Arte 0"])
+        #expect(menu?.isSetAsideTicked == true)
+        #expect(window.deckRows.outline == ["Arte 0"])
+        #expect(window.menu(forDeck: Deck.defaultName) == nil)
+        #expect(window.failure == nil)
+    }
+
     @Test(
         "Prioritize in a deck's menu makes it a priority deck, or no longer one, and does nothing on a set-aside deck or one inside it"
     )
@@ -144,21 +167,5 @@ struct CardsWindowDeckSwitchesTests {
         var window = engine.openCardsWindow(on: ladder)
         window.read(on: ladder)
         return window
-    }
-}
-
-extension [CardsWindowState.DeckRow] {
-    /// The tree, a row per deck in its order, each its title, or Default's
-    /// name, its due count and whether it's grayed, indented two spaces per
-    /// level.
-    fileprivate var outline: [String] {
-        func lines(_ rows: [CardsWindowState.DeckRow], depth: Int) -> [String] {
-            rows.flatMap { row in
-                let title = row.deck.isDefault ? "Default" : row.title
-                let line = "\(String(repeating: "  ", count: depth))\(title) \(row.counts.due)"
-                return [line + (row.isGrayed ? " grayed" : "")] + lines(row.children, depth: depth + 1)
-            }
-        }
-        return lines(self, depth: 0)
     }
 }

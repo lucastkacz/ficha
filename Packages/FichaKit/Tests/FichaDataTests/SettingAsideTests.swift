@@ -110,24 +110,48 @@ struct SettingAsideTests {
     }
 
     // Change Deck moves cards, and a refine session approves new cards into
-    // the deck.
+    // the deck. serendipia gets to the second step, which waits 4 hours, and
+    // comes due while it's set aside.
     @Test(
-        "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back"
+        "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back on its step, due when it was"
     )
     func aCardMovedIntoASetAsideDeckLeavesReviews() throws {
         let serendipia = try approveCard("serendipia")
         let coliseo = try approveCard("Coliseo")
+        try engine.climb(serendipia, to: 1, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
         try engine.setAside(deck: "Historia")
 
         let mayo = try approveCard("Revolución de Mayo", deck: "Historia")
         try engine.changeDeck(of: [serendipia.id], to: "Historia")
         try engine.changeDeck(of: [coliseo.id], to: "Historia::Roma")
+        time.advance(by: hours(5))
 
         #expect(mayo.standing == .setAside(by: ["Historia"]))
         #expect(try engine.cards().map(\.standing) == Array(repeating: .setAside(by: ["Historia"]), count: 3))
         #expect(try engine.reviewNow(settings).isEmpty)
         try engine.changeDeck(of: [serendipia.id, coliseo.id], to: Deck.defaultName)
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews, .setAside(by: ["Historia"])])
+        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.reviewNow(settings) == [.review(serendipia), .firstView(coliseo)])
+    }
+
+    // Historia::Roma became a priority deck before Historia was set aside,
+    // and stays one, to untick.
+    @Test("a priority deck inside a set-aside deck brings none of its cards to review now, See more or appearances")
+    func aPriorityDeckInsideASetAsideDeckBringsNoCard() throws {
+        let ubuntu = try meetCard("ubuntu", deck: "Lenguaje", dueAt: try at(10, 0))
+        try meetCard("Coliseo", deck: "Historia::Roma", dueAt: try at(10, 1))
+        try approveCard("Foro Romano", deck: "Historia::Roma")
+        time.move(to: try at(10, 1))
+        try engine.togglePriority(ofDeck: "Historia::Roma")
+
+        try engine.setAside(deck: "Historia")
+
+        #expect(try engine.prioritizeMenu().priorityDeckNames == ["Historia::Roma"])
+        #expect(try engine.reviewNow(settings) == [.review(ubuntu)])
+        #expect(try engine.openPanel(.reviewNow, with: [], settings: settings).moreCards == [.review(ubuntu)])
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.review(ubuntu)]))
     }
 
     @Test("Default can be set aside, which takes out its cards alone, and Default goes by its name, empty")
@@ -307,9 +331,8 @@ struct SettingAsideTests {
         #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia, petricor].map { PanelCard.review($0) })
     }
 
-    /// Approves a card with this front, in this deck and with these tags,
-    /// and meets it, an hour before `due`, so that it's due then, after the
-    /// first step's wait. Each card is met after the ones before it, so they
+    /// Approves a card with this front, in this deck, and meets it, an hour
+    /// before `due`, so that it's due then, after the first step's wait. Each card is met after the ones before it, so they
     /// come due in order.
     @discardableResult
     private func meetCard(_ front: String, deck: String = Deck.defaultName, dueAt due: Date) throws -> Card {

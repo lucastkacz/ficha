@@ -19,17 +19,17 @@ struct CardStandingTests {
         #expect(CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: []) == .buried(at: buriedAt, flag: flag))
     }
 
-    @Test("a card with a set-aside tag is set aside rather than in Lucas's reviews")
+    @Test("a card in a set-aside deck is set aside rather than in Lucas's reviews")
     func setAsideWinsOverReviews() {
         #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: ["filosofía"]) == .setAside(by: ["filosofía"]))
     }
 
-    @Test("a flagged card with a set-aside tag waits in the inbox")
+    @Test("a flagged card in a set-aside deck waits in the inbox")
     func theInboxWinsOverSetAside() {
         #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: ["filosofía"]) == .inInbox(flag))
     }
 
-    @Test("a buried card with a set-aside tag is buried, and keeps its flag")
+    @Test("a buried card in a set-aside deck is buried, and keeps its flag")
     func buriedWinsOverSetAside() {
         #expect(
             CardStanding(flag: nil, buriedAt: buriedAt, setAsideBy: ["filosofía"]) == .buried(at: buriedAt, flag: nil))
