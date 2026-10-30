@@ -18,9 +18,9 @@ struct TagAndTypeCommandsTests {
         engine = try Engine(location: .inMemory, time: ManualTimeSource(now: Date(timeIntervalSince1970: 0)))
     }
 
-    // historia is pinned first, a priority tag, green and chosen to sync;
-    // literatura is pinned second, set aside and has an emoji; música has a
-    // color and no card.
+    // historia is pinned first, green and chosen to sync; literatura is
+    // pinned second and has an emoji; música has a color and no card. A tag
+    // has no switch to print: decks have them (ADR 0024).
     @Test(
         "`ficha tags` prints every tag in tree order, with its counts, its pin and its place, and what it has of its own"
     )
@@ -28,8 +28,6 @@ struct TagAndTypeCommandsTests {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
         try approveCard("Facundo", tags: ["historia"])
         try engine.pin(["historia", "literatura"])
-        try engine.setAside("literatura")
-        try engine.togglePriority(of: "historia")
         try engine.setColor(.green, of: "historia")
         try engine.setEmoji(Emoji("📚"), of: "literatura")
         try engine.chooseToSync("historia", true)
@@ -47,9 +45,7 @@ struct TagAndTypeCommandsTests {
                     "due" : 0,
                     "name" : "historia",
                     "pinPlace" : 0,
-                    "pinned" : true,
-                    "priority" : true,
-                    "setAside" : false
+                    "pinned" : true
                   },
                   {
                     "cards" : 1,
@@ -58,18 +54,14 @@ struct TagAndTypeCommandsTests {
                     "emoji" : "📚",
                     "name" : "literatura",
                     "pinPlace" : 1,
-                    "pinned" : true,
-                    "priority" : false,
-                    "setAside" : true
+                    "pinned" : true
                   },
                   {
                     "cards" : 1,
                     "chosenToSync" : false,
                     "due" : 0,
                     "name" : "literatura::poesía",
-                    "pinned" : false,
-                    "priority" : false,
-                    "setAside" : false
+                    "pinned" : false
                   },
                   {
                     "cards" : 0,
@@ -77,9 +69,7 @@ struct TagAndTypeCommandsTests {
                     "color" : "blue",
                     "due" : 0,
                     "name" : "música",
-                    "pinned" : false,
-                    "priority" : false,
-                    "setAside" : false
+                    "pinned" : false
                   }
                 ]
                 """)
@@ -101,7 +91,6 @@ struct TagAndTypeCommandsTests {
     func deletingTags() async throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia", "argentina"])
         try approveCard("Facundo", tags: ["historia"])
-        try engine.setAside("literatura")
 
         let printed = try await ficha("tag", "delete", "literatura", "historia")
 
@@ -109,7 +98,6 @@ struct TagAndTypeCommandsTests {
             printed == """
                 {
                   "cards" : 2,
-                  "cardsBackInReviews" : 1,
                   "tags" : [
                     "literatura",
                     "historia"
@@ -165,37 +153,10 @@ struct TagAndTypeCommandsTests {
         }
     }
 
-    @Test("`ficha tag set-aside` and `prioritize` switch a tag, `--off` switches it off, and each prints the tag")
-    func switchingATag() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
-
-        let prioritized = try await tag(from: ficha("tag", "prioritize", "literatura"))
-        let setAside = try await tag(from: ficha("tag", "set-aside", "literatura"))
-        let back = try await tag(from: ficha("tag", "set-aside", "literatura", "--off"))
-        let prioritizedAgain = try await tag(from: ficha("tag", "prioritize", "literatura"))
-        let unprioritized = try await tag(from: ficha("tag", "prioritize", "literatura", "--off"))
-
-        #expect(prioritized.priority && !prioritized.setAside)
-        #expect(setAside.setAside && !setAside.priority)
-        #expect(!back.setAside && !back.priority)
-        #expect(prioritizedAgain.priority)
-        #expect(!unprioritized.priority)
-    }
-
-    @Test(
-        "`ficha tag prioritize` refuses a set-aside tag, which a tag never is with a priority, and a tag inside one"
-    )
-    func prioritizingASetAsideTag() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
-        try engine.setAside("literatura")
-
-        await #expect(throws: EngineError.tagSetAside("literatura")) {
-            try await ficha("tag", "prioritize", "literatura")
-        }
-        await #expect(throws: EngineError.tagSetAside("literatura")) {
-            try await ficha("tag", "prioritize", "literatura::poesía")
-        }
-        #expect(try engine.allTags().map(\.switchedOn) == [.setAside, nil])
+    @Test("`ficha tag` no longer sets a tag aside or prioritizes it: decks do (ADR 0024)")
+    func aTagHasNoSwitch() throws {
+        #expect(throws: (any Error).self) { try FichaCommand.parseAsRoot(["tag", "set-aside", "literatura"]) }
+        #expect(throws: (any Error).self) { try FichaCommand.parseAsRoot(["tag", "prioritize", "literatura"]) }
     }
 
     @Test(
@@ -225,24 +186,20 @@ struct TagAndTypeCommandsTests {
     func takingAwayATagsLastOwnThing() async throws {
         try engine.setColor(.blue, of: "música")
         try engine.setEmoji(Emoji("🎬"), of: "cine")
-        try engine.setAside("teatro")
-        try engine.togglePriority(of: "danza")
         try engine.chooseToSync("ópera", true)
 
         let printed = [
             try await tag(from: ficha("tag", "color", "música", "none")),
             try await tag(from: ficha("tag", "emoji", "cine", "none")),
-            try await tag(from: ficha("tag", "set-aside", "teatro", "--off")),
-            try await tag(from: ficha("tag", "prioritize", "danza", "--off")),
             try await tag(from: ficha("tag", "choose-to-sync", "ópera", "--off")),
         ]
 
         #expect(
             printed
-                == ["música", "cine", "teatro", "danza", "ópera"].map { name in
+                == ["música", "cine", "ópera"].map { name in
                     TagAsPrinted(
-                        name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, setAside: false, priority: false,
-                        color: nil, emoji: nil, chosenToSync: false)
+                        name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, color: nil, emoji: nil,
+                        chosenToSync: false)
                 })
         #expect(try engine.allTags().isEmpty)
     }
@@ -384,8 +341,6 @@ private struct TagAsPrinted: Decodable, Equatable {
     let due: Int
     let pinned: Bool
     let pinPlace: Int?
-    let setAside: Bool
-    let priority: Bool
     let color: String?
     let emoji: String?
     let chosenToSync: Bool

@@ -259,10 +259,10 @@ final class BackupTests {
         #expect(try engine.copies().count == 3)
     }
 
-    @Test("a copy from before tags of their own restores with every card where it stood, and no tag set aside")
-    func copyFromBeforeTagsRestoresWithNoTagSetAside() throws {
+    @Test("a copy from before tags of their own restores with every card where it stood, and no deck set aside")
+    func copyFromBeforeTagsRestoresWithNoDeckSetAside() throws {
         let engine = try openEngine()
-        try engine.setAside("filosofía")
+        try engine.setAside(deck: Deck.defaultName)
         let backups = try #require(engine.backupsFolder)
         try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
         let name = "Backup 2026-01-02T120000Z.sqlite"
@@ -275,7 +275,7 @@ final class BackupTests {
                 .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
                 .buried(at: time.now, flag: nil),
             ])
-        #expect(try engine.allTags().filter(\.isSetAside).isEmpty)
+        #expect(try engine.decks().filter(\.isSetAside).isEmpty)
     }
 
     @Test("a copy from before cards without a type or a capture restores with every card as it was")

@@ -21,7 +21,7 @@ struct FixCommand: EngineCommand {
             top, or doesn't; left out, the card keeps its own.
 
             Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, \
-            unless one of its tags, or a tag one of them sits inside, is set aside, and the command prints it.
+            unless its deck, or a deck it sits inside, is set aside, and the command prints it.
             """
     )
 

@@ -12,10 +12,10 @@ import Foundation
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, turns Both ways on or off for several cards
 /// at once, and moves them to the deck Lucas picks in the Change Deck sheet,
-/// whose tree the sidebar lists too (`CardsWindowDecks.swift`), as it pins
-/// tags to the sidebar, sets them aside,
-/// prioritizes them or gives them a color from a tag's context menu, for one
-/// tag or several, it asks which emoji a tag gets and which name, and puts
+/// whose tree the sidebar lists too, where a deck's menu sets it aside or
+/// prioritizes it (`CardsWindowDecks.swift`), as it pins tags to the sidebar
+/// or gives them a color from a tag's context menu, for one tag or several,
+/// it asks which emoji a tag gets and which name, and puts
 /// the sidebar's pinned tags in the order Lucas drags them into, pinning a
 /// tag he drags in from All Tags (`CardsWindowTags.swift`), it lists every
 /// tag in All Tags, sorted, searched and selected, deletes tags and clears
@@ -162,17 +162,6 @@ public struct CardsWindowState: Sendable {
         /// Whether every one is pinned to the sidebar, so the menu offers
         /// Unpin from Sidebar, and Pin to Sidebar otherwise.
         public let isPinned: Bool
-        /// Whether Set Aside is ticked: every one is set aside on its own,
-        /// and choosing it again undoes it.
-        public let isSetAsideTicked: Bool
-        /// Whether Prioritize is ticked: every one is a priority tag, and
-        /// choosing it again undoes it.
-        public let isPriorityTicked: Bool
-        /// Whether Prioritize is on: none is set aside, on its own or inside
-        /// a tag that is, since a tag is never both (ADR 0011) and the menu
-        /// bar's Prioritize submenu leaves those out, but for a priority tag,
-        /// which it unticks.
-        public let canPrioritize: Bool
         /// The Color submenu's items: None, then Finder's seven colors in
         /// Finder's order, with the one every tag has of its own ticked, or
         /// None when none has one.
@@ -299,18 +288,15 @@ public struct CardsWindowState: Sendable {
         case turnOffBothWays(cardCount: Int)
         /// He deleted this many cards.
         case delete(cardCount: Int)
-        /// He set this tag aside, from its menu or its Set Aside checkbox,
-        /// with any others he chose it on along with it.
-        case setAside(tag: String)
-        /// He undid setting this tag aside, with any others he chose it on
-        /// along with it.
-        case stopSettingAside(tag: String)
-        /// He made this tag a priority tag, from its menu or its Priority
-        /// checkbox, with any others he chose it on along with it.
-        case prioritize(tag: String)
-        /// He made this tag no longer a priority tag, with any others he
-        /// chose it on along with it.
-        case stopPrioritizing(tag: String)
+        /// He set this deck aside, from its menu, by its whole name, or
+        /// Default by `Deck.defaultName`.
+        case setAside(deck: String)
+        /// He undid setting this deck aside.
+        case stopSettingAside(deck: String)
+        /// He made this deck a priority deck, from its menu.
+        case prioritize(deck: String)
+        /// He made this deck no longer a priority deck.
+        case stopPrioritizing(deck: String)
         /// He gave this tag a color, or took its color away, with any others
         /// he chose it on along with it.
         case setColor(tag: String)
@@ -945,7 +931,7 @@ public struct CardsWindowState: Sendable {
             } else {
                 tags = try engine.allTags()
             }
-            pinnedTags = Self.pinnedRows(of: tags.pinnedInOrder, among: tags)
+            pinnedTags = tags.pinnedInOrder.map(PinnedTagRow.init(tag:))
             decks = try engine.countedDecks(on: ladder)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()

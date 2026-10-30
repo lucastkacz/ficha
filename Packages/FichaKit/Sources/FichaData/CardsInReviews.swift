@@ -18,11 +18,12 @@ struct CardsThatShowUp {
     private let cards: [Int64: Card]
 
     /// The cards that show up out of `cards`, every card in the order Lucas
-    /// approved them, those with any of `priorityTags` as priority cards, and
-    /// `log`, the whole review log, in the order it was written.
-    fileprivate init(_ cards: [Card], priorityTags: Set<String>, log: [ReviewLogEntry]) {
+    /// approved them, those that live in one of `priorityDecks`, or in a deck
+    /// inside one, as priority cards, and `log`, the whole review log, in the
+    /// order it was written.
+    fileprivate init(_ cards: [Card], priorityDecks: Set<String>, log: [ReviewLogEntry]) {
         inReviews = CardsInReviews(
-            cards.map { ($0.id, $0.standing, $0.tags, $0.bothWays) }, priorityTags: priorityTags, log: log)
+            cards.map { ($0.id, $0.standing, $0.deck, $0.bothWays) }, priorityDecks: priorityDecks, log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 
@@ -50,23 +51,25 @@ struct CardsThatShowUp {
     }
 }
 
-/// The cards that show up, out of every card, the priority tags and the
+/// The cards that show up, out of every card, the priority decks and the
 /// whole review log: the one way in to them, which every entry point that
 /// picks cards reads, never gathering them again.
 func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
     CardsThatShowUp(
-        try allCards(in: db), priorityTags: try tags(switchedOn: .priority, in: db), log: try logEntries(in: db))
+        try allCards(in: db), priorityDecks: try decks(switchedOn: .priority, in: db), log: try logEntries(in: db))
 }
 
-/// The tags that are set aside: every card with one of them, or a tag inside
-/// one, is set aside, unless it's buried or flagged, as its standing says.
-func setAsideTags(in db: Database) throws -> Set<String> {
-    try tags(switchedOn: .setAside, in: db)
+/// The decks that are set aside: every card that lives in one of them, or in
+/// a deck inside one, is set aside, unless it's buried or flagged, as its
+/// standing says. A tag's switch, kept from before decks for the conversion
+/// of Lucas's tags (ADR 0024), sets no card aside.
+func setAsideDecks(in db: Database) throws -> Set<String> {
+    try decks(switchedOn: .setAside, in: db)
 }
 
-/// The tags that have `tagSwitch` on.
-private func tags(switchedOn tagSwitch: TagSwitch, in db: Database) throws -> Set<String> {
-    Set(try String.fetchAll(db, sql: "SELECT name FROM tag WHERE switchedOn = ?", arguments: [tagSwitch.rawValue]))
+/// The decks that have `deckSwitch` on.
+func decks(switchedOn deckSwitch: DeckSwitch, in db: Database) throws -> Set<String> {
+    Set(try String.fetchAll(db, sql: "SELECT name FROM deck WHERE switchedOn = ?", arguments: [deckSwitch.rawValue]))
 }
 
 /// The card with this id, while it's in Lucas's reviews, or an error that
@@ -77,6 +80,6 @@ func cardInReviews(_ cardID: Int64, in db: Database) throws -> Card {
     case .inReviews: return card
     case .inInbox: throw EngineError.cardFlagged(cardID)
     case .buried: throw EngineError.cardBuried(cardID)
-    case .setAside(let tags): throw EngineError.cardSetAside(cardID, tags: tags)
+    case .setAside(let decks): throw EngineError.cardSetAside(cardID, decks: decks)
     }
 }

@@ -6,7 +6,9 @@ import Foundation
 // The `ficha` CLI's control of tags (ADR 0022): `ficha tags` lists every tag
 // as All Tags does, and each of `ficha tag`'s commands makes one change
 // through the engine's actions, as the Cards window does, so it syncs, and
-// prints what it changed. None asks first: the refine session asks Lucas.
+// prints what it changed. None asks first: the refine session asks Lucas. A
+// tag only labels its cards (ADR 0024): setting aside and prioritizing are a
+// deck's.
 
 /// `ficha tags`: lists every tag.
 struct TagsCommand: EngineCommand {
@@ -17,11 +19,10 @@ struct TagsCommand: EngineCommand {
             Tags come in the order a tree lists them, each tag inside another right after it. Each says its whole \
             name in "name", with "::" between a tag and a tag inside it, as in "economía::Argentina"; in "cards", \
             how many cards it lists when you choose it, those with a tag inside it too, buried ones left out; in \
-            "due", how many of those are due now and in your reviews, none while it's set aside; in "pinned" \
-            whether it's pinned to the sidebar, and in "pinPlace" its place among the pinned tags, counted from 0, \
-            left out while it isn't; in "setAside" and "priority" its own switch, which a tag inside it doesn't \
-            show; its own "color" and "emoji", left out when it has none; and in "chosenToSync" whether you chose \
-            it to sync. `ficha tag` changes them.
+            "due", how many of those are due now and in your reviews, which those of a set-aside deck never are; \
+            in "pinned" whether it's pinned to the sidebar, and in "pinPlace" its place among the pinned tags, \
+            counted from 0, left out while it isn't; its own "color" and "emoji", left out when it has none; and in \
+            "chosenToSync" whether you chose it to sync. `ficha tag` changes them.
             """
     )
 
@@ -41,8 +42,8 @@ struct TagCommand: ParsableCommand {
             """,
         subcommands: [
             RenameTagCommand.self, DeleteTagsCommand.self, ClearUnusedTagsCommand.self, PinTagsCommand.self,
-            UnpinTagCommand.self, MovePinnedTagsCommand.self, SetTagAsideCommand.self, PrioritizeTagCommand.self,
-            TagColorCommand.self, TagEmojiCommand.self, ChooseTagToSyncCommand.self,
+            UnpinTagCommand.self, MovePinnedTagsCommand.self, TagColorCommand.self, TagEmojiCommand.self,
+            ChooseTagToSyncCommand.self,
         ]
     )
 }
@@ -55,7 +56,7 @@ struct RenameTagCommand: EngineCommand {
         discussion: """
             A new name with "::" moves the tag inside another, and one without moves it to the top. Every card \
             with it, or with a tag inside it, carries the new name, on every device, and the tag keeps its pin, \
-            switch, color, emoji and choice to sync. Onto a tag that exists, the two join. For example:
+            color, emoji and choice to sync. Onto a tag that exists, the two join. For example:
 
               ficha tag rename economía::Argentina Argentina
             """
@@ -80,11 +81,10 @@ struct DeleteTagsCommand: EngineCommand {
         commandName: "delete",
         abstract: "Delete tags, each with every tag inside it, and print what it did.",
         discussion: """
-            Every card with them, on every device, loses them, and stays: no card is deleted. Their pins, \
-            switches, colors, emoji and choices to sync go too. It prints the tags in "tags", those inside them \
-            that went with them in "tagsInside", how many cards lost them in "cards", how many of those came back \
-            to your reviews in "cardsBackInReviews", as the set-aside tags they had went, and, while only the cards \
-            with chosen tags sync, how many stopped syncing in "cardsThatStopSyncing", left with no chosen tag.
+            Every card with them, on every device, loses them, and stays: no card is deleted. Their pins, colors, \
+            emoji and choices to sync go too. It prints the tags in "tags", those inside them that went with them \
+            in "tagsInside", how many cards lost them in "cards", and, while only the cards with chosen tags sync, \
+            how many stopped syncing in "cardsThatStopSyncing", left with no chosen tag.
             """
     )
 
@@ -103,8 +103,8 @@ struct ClearUnusedTagsCommand: EngineCommand {
         commandName: "clear-unused",
         abstract: "Delete the tags no card carries, and print their names.",
         discussion: """
-            It deletes each tag that has something of its own, a pin, a switch, a color, an emoji or a choice to \
-            sync, which no card carries, nor a tag inside it. While only the cards with chosen tags sync, it \
+            It deletes each tag that has something of its own, a pin, a color, an emoji or a choice to sync, \
+            which no card carries, nor a tag inside it. While only the cards with chosen tags sync, it \
             deletes only those chosen and those inside them: another device may keep cards with a tag that \
             doesn't sync.
             """
@@ -192,58 +192,6 @@ struct MovePinnedTagsCommand: EngineCommand {
         let listing = try PrintedTags(of: engine)
         try engine.movePinnedTags(try tags.map(listing.existing), to: to)
         return try PrintedTags(of: engine).pinned
-    }
-}
-
-/// `ficha tag set-aside`: sets a tag aside, or stops.
-struct SetTagAsideCommand: EngineCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "set-aside",
-        abstract: "Set a tag aside, or with --off stop setting it aside, and print the tag.",
-        discussion: """
-            A set-aside tag's cards, and those of the tags inside it, are out of your reviews for now; they keep \
-            their steps. A priority tag set aside is no longer one.
-            """
-    )
-
-    @Argument(help: "The tag's whole name, as `ficha tags` prints it.")
-    var tag: String
-
-    @ArgumentParser.Flag(help: "Stop setting it aside instead.")
-    var off = false
-
-    func run(on engine: Engine) throws -> any Encodable {
-        let tag = try PrintedTags(of: engine).existing(tag)
-        if off {
-            try engine.stopSettingAside(tag)
-        } else {
-            try engine.setAside(tag)
-        }
-        return try PrintedTags(of: engine).tag(tag)
-    }
-}
-
-/// `ficha tag prioritize`: makes a tag a priority tag, or not.
-struct PrioritizeTagCommand: EngineCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "prioritize",
-        abstract: "Make a tag a priority tag, or with --off no longer one, and print the tag.",
-        discussion: """
-            A priority tag's cards come first when cards show up. A set-aside tag can't be one: stop setting it \
-            aside first.
-            """
-    )
-
-    @Argument(help: "The tag's whole name, as `ficha tags` prints it.")
-    var tag: String
-
-    @ArgumentParser.Flag(help: "Make it no longer a priority tag instead.")
-    var off = false
-
-    func run(on engine: Engine) throws -> any Encodable {
-        let tag = try PrintedTags(of: engine).existing(tag)
-        try engine.setPriority(!off, of: tag)
-        return try PrintedTags(of: engine).tag(tag)
     }
 }
 
@@ -342,8 +290,6 @@ struct PrintedTag: Encodable, Equatable {
     let due: Int
     let pinned: Bool
     let pinPlace: Int?
-    let setAside: Bool
-    let priority: Bool
     let color: String?
     let emoji: String?
     let chosenToSync: Bool
@@ -354,8 +300,7 @@ extension PrintedTag {
     /// leave it, which `ficha tags` no longer lists.
     init(withNothingNamed name: String) {
         self.init(
-            name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, setAside: false, priority: false, color: nil,
-            emoji: nil, chosenToSync: false)
+            name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, color: nil, emoji: nil, chosenToSync: false)
     }
 }
 
@@ -375,8 +320,8 @@ struct PrintedTags {
             let (tag, count) = (counted.tag, counted.counts)
             return PrintedTag(
                 name: tag.name, cards: count.cards, due: count.due, pinned: tag.isPinned,
-                pinPlace: pinnedNames.firstIndex(of: tag.name), setAside: tag.isSetAside, priority: tag.isPriority,
-                color: tag.color?.rawValue, emoji: tag.emoji, chosenToSync: tag.chosenToSync)
+                pinPlace: pinnedNames.firstIndex(of: tag.name), color: tag.color?.rawValue, emoji: tag.emoji,
+                chosenToSync: tag.chosenToSync)
         }
         self.tags = tags
         pinned = pinnedNames.compactMap { name in tags.first { $0.name == name } }

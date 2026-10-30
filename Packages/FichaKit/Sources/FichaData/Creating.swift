@@ -5,8 +5,8 @@ internal import GRDB
 extension Engine {
     /// Creates a card with `content`, as the Cards window's form and the
     /// imports make cards, and returns it. It goes straight into the user's
-    /// reviews as a new card, after the cards before it, unless one of its
-    /// tags is set aside. It's saved whether or not its front repeats another
+    /// reviews as a new card, after the cards before it, unless its deck, or
+    /// a deck it sits inside, is set aside. It's saved whether or not its front repeats another
     /// card's: the duplicate rule only warns. It goes both ways when
     /// `bothWays` says so, and one way otherwise.
     ///

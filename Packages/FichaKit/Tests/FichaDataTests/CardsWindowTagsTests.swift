@@ -17,16 +17,11 @@ struct CardsWindowTagsTests {
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 14, in: calendar)), calendar: calendar)
     }
 
-    // historia::Roma sits inside a set-aside tag, and ciencia is set aside
-    // with no card.
-    @Test(
-        "the sidebar lists the pinned tags alone, in their order, a set-aside one grayed, and nothing at first"
-    )
+    // ciencia has no card.
+    @Test("the sidebar lists the pinned tags alone, in their order, and nothing at first")
     func theSidebarListsThePinnedTags() throws {
         try approveCard("deuda", tags: ["economía::Argentina", "lenguaje"])
         try approveCard("Coliseo", tags: ["historia::Roma"])
-        try engine.setAside("historia")
-        try engine.setAside("ciencia")
         let before = openWindow().pinnedTags
 
         for tag in ["lenguaje", "economía::Argentina", "historia::Roma", "ciencia"] {
@@ -36,7 +31,6 @@ struct CardsWindowTagsTests {
 
         #expect(before.isEmpty)
         #expect(window.pinnedTags.map(\.id) == ["lenguaje", "economía::Argentina", "historia::Roma", "ciencia"])
-        #expect(window.pinnedTags.grayed == ["historia::Roma", "ciencia"])
     }
 
     // Every card has a type, so the Types section has no No Type, and lives
@@ -234,14 +228,6 @@ struct CardsWindowTagsTests {
     @discardableResult
     private func approveCard(_ front: String, tags: [String]) throws -> Card {
         try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
-    }
-}
-
-extension [CardsWindowState.PinnedTagRow] {
-    /// The whole names of the grayed rows among these tags, in the order
-    /// they're listed.
-    var grayed: [String] {
-        filter(\.isGrayed).map(\.id)
     }
 }
 

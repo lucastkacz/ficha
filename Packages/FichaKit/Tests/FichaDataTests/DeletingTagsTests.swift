@@ -28,7 +28,6 @@ struct DeletingTagsTests {
         let ficciones = try approveCard("Ficciones", tags: ["literatura"])
         try approveCard("Revolución de Mayo", tags: ["historia"])
         try engine.bury(ficciones.id)
-        try engine.setAside("literatura")
         try engine.setColor(.purple, of: "literatura::poesía")
         try engine.pin("literatura::poesía")
         try engine.chooseToSync("literatura", true)
@@ -41,13 +40,9 @@ struct DeletingTagsTests {
         #expect(try engine.pinnedTags().isEmpty)
     }
 
-    // literatura is set aside, and so is política; literatura::poesía and
-    // argentina are chosen to sync. Martín Fierro and El Aleph come back to
-    // the reviews, Ficciones stays buried and Facundo set aside by política;
-    // Martín Fierro is left with no chosen tag.
-    @Test(
-        "Delete… counts first the tags inside, the cards that carry them, those that come back to the reviews, and those that stop syncing"
-    )
+    // literatura::poesía and argentina are chosen to sync, so Martín Fierro
+    // is left with no chosen tag; Ficciones is buried.
+    @Test("Delete… counts first the tags inside, the cards that carry them, and those that stop syncing")
     func deleteCountsFirst() throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
         let ficciones = try approveCard("Ficciones", tags: ["literatura"])
@@ -55,8 +50,6 @@ struct DeletingTagsTests {
         try approveCard("Facundo", tags: ["literatura", "política"])
         try approveCard("Revolución de Mayo", tags: ["historia"])
         try engine.bury(ficciones.id)
-        try engine.setAside("literatura")
-        try engine.setAside("política")
         try engine.syncOnlyChosenTags(true)
         try engine.chooseToSync("literatura::poesía", true)
         try engine.chooseToSync("argentina", true)
@@ -66,27 +59,8 @@ struct DeletingTagsTests {
         #expect(deletion.tags == ["literatura"])
         #expect(deletion.tagsInside == ["literatura::poesía"])
         #expect(deletion.cards == 4)
-        #expect(deletion.cardsBackInReviews == 2)
         #expect(deletion.cardsThatStopSyncing == 1)
         #expect(try engine.deleteTags(["literatura"]) == deletion)
-    }
-
-    // literatura is set aside; Martín Fierro carries only a tag inside it,
-    // and Ficciones carries literatura too.
-    @Test(
-        "deleting a tag inside a set-aside tag brings back to the reviews a card it alone set aside, as Delete… counts first"
-    )
-    func deletingATagInsideASetAsideTag() throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
-        try approveCard("Ficciones", tags: ["literatura::poesía", "literatura"])
-        try engine.setAside("literatura")
-
-        #expect(try engine.deletion(of: ["literatura::poesía"]).cardsBackInReviews == 1)
-
-        try engine.deleteTags(["literatura::poesía"])
-
-        #expect(try engine.card(fronted: "Martín Fierro").standing == .inReviews)
-        #expect(try engine.card(fronted: "Ficciones").standing == .setAside(by: ["literatura"]))
     }
 
     @Test("Delete… counts no card that stops syncing while every card syncs, or while sync is off")
@@ -121,7 +95,7 @@ struct DeletingTagsTests {
         try engine.setColor(.purple, of: "literatura")
         try engine.setColor(.blue, of: "música")
         try engine.pin("música::tango")
-        try engine.setAside("cine")
+        try engine.setEmoji(Emoji("🎬"), of: "cine")
 
         #expect(try engine.unusedTags() == ["cine", "música", "música::tango"])
 
@@ -139,7 +113,7 @@ struct DeletingTagsTests {
     func clearingUnusedTagsUnderSelectiveSync() throws {
         try engine.chooseToSync("música", true)
         try engine.pin("música::tango")
-        try engine.setAside("cine")
+        try engine.setEmoji(Emoji("🎬"), of: "cine")
         try engine.syncOnlyChosenTags(true)
 
         #expect(try engine.unusedTags() == ["música", "música::tango"])
@@ -150,7 +124,8 @@ struct DeletingTagsTests {
     }
 
     // Martín Fierro, Facundo and El Aleph are due, Ficciones too but buried,
-    // and Rayuela is new; cine is set aside, and música has a color alone.
+    // and Rayuela is new; El Aleph lives in a set-aside deck, and música has
+    // a color alone.
     @Test("each tag counts the cards it lists, those inside it too but buried ones, and those due in the reviews")
     func cardsAndDuePerTag() throws {
         let ladder = ReviewSettings.defaults.ladder
@@ -160,8 +135,10 @@ struct DeletingTagsTests {
         try engine.bury(ficciones.id)
         try engine.meet(try approveCard("Facundo", tags: ["historia::argentina"]))
         try approveCard("Rayuela", tags: ["literatura"])
-        try engine.meet(try approveCard("El Aleph", tags: ["cine"]))
-        try engine.setAside("cine")
+        let aleph = try approveCard("El Aleph", tags: ["cine"])
+        try engine.meet(aleph)
+        try engine.changeDeck(of: [aleph.id], to: "Borges")
+        try engine.setAside(deck: "Borges")
         try engine.setColor(.blue, of: "música")
         time.advance(by: hours(2))
 

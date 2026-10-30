@@ -9,16 +9,19 @@ import UniformTypeIdentifiers
 /// narrowed by the toolbar's search field, and the selected row whole beside
 /// it, with what Lucas can do with it at its foot. The sidebar's Decks
 /// section lists every deck as a tree, Default first while it holds cards,
-/// each with how many of its cards are due, and Change Deck… moves the
+/// each with how many of its cards are due, grayed while its cards are out
+/// of Lucas's reviews; a deck's context menu, and the Actions menu above the
+/// card list while the sidebar chose it (`DeckMenu.swift`), set it aside or
+/// prioritize it; and Change Deck… moves the
 /// selected cards to the deck Lucas picks in its sheet, or names there with
 /// New Deck… (`ChangeDeckSheet.swift`). The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
-/// and checkboxes (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
+/// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
 /// its place, with Back. A tag's context menu, in either place, and the
 /// detail's Actions menu beside All Tags, act on the tags selected there:
-/// they pin them to the sidebar or unpin them, set them aside, prioritize
-/// them, give them a color and an emoji, which the sidebar and the table's
+/// they pin them to the sidebar or unpin them, give them a color and an
+/// emoji, which the sidebar and the table's
 /// Tags column show, rename one, in the rename sheet (`RenameSheet.swift`),
 /// and delete them, asking first; and in All Tags Lucas drags tags into the
 /// sidebar to pin them there, onto another to move them inside, or between
@@ -66,17 +69,12 @@ struct CardsView: View {
     /// Plays the sound the window says plays, in the form, the editor or the
     /// detail.
     @State private var player = SoundPlayer()
-    /// What the window is asked from outside it: All Tags, from the menu
-    /// bar's All Tags….
-    let requests: CardsWindowRequests
 
     /// The content for the user's cards in `model`, opening with `state` when
     /// it's given, as `make render` opens it partway through an import, and
-    /// on All cards otherwise, and choosing All Tags whenever `requests` asks
-    /// for it.
-    init(model: AppModel, state: CardsWindowState? = nil, requests: CardsWindowRequests) {
+    /// on All cards otherwise.
+    init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
-        self.requests = requests
         _state = State(initialValue: state ?? model.openCardsWindow())
     }
 
@@ -154,11 +152,6 @@ struct CardsView: View {
             }
             .onChange(of: state.playingSound) {
                 play(state.playingSound)
-            }
-            .onChange(of: requests.isAllTagsAsked, initial: true) {
-                guard requests.isAllTagsAsked else { return }
-                requests.isAllTagsAsked = false
-                state.showAllTags()
             }
             .onDisappear {
                 player.stop()
@@ -355,15 +348,6 @@ struct CardsView: View {
                     localized: "\(deletion.cards) cards lose them, and keep everything else.",
                     comment: "In the Cards window's question before it deletes several tags: the cards that carry them."
                 ))
-        if deletion.cardsBackInReviews > 0 {
-            sentences.append(
-                String(
-                    localized: "\(deletion.cardsBackInReviews) of those cards come back to your reviews.",
-                    comment: """
-                        In the Cards window's question before it deletes tags: the cards they set aside, which come \
-                        back to Lucas's reviews.
-                        """))
-        }
         if let stopSyncing = deletion.cardsThatStopSyncing, stopSyncing > 0 {
             sentences.append(
                 String(
@@ -629,40 +613,34 @@ struct CardsView: View {
                     "Couldn't move \(count) cards to another deck",
                     comment: "An alert's title in the Cards window's Change Deck sheet, after Move."),
                 message: error.messageInCardsWindow(actingOn: count))
-        case .setAside(let tag):
+        case .setAside(let deck):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't set “\(TagPath.shown(tag))” aside",
+                    "Couldn't set “\(Deck.shownName(deck))” aside",
+                    comment: "An alert's title in the Cards window, after Set Aside in a deck's menu, with the deck."),
+                error: error)
+        case .stopSettingAside(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't untick Set Aside on “\(Deck.shownName(deck))”",
                     comment: """
-                        An alert's title in the Cards window, after Set Aside in a tag's menu or its Set Aside \
-                        checkbox in All Tags, with the tag.
+                        An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, \
+                        with the deck.
                         """),
                 error: error)
-        case .stopSettingAside(let tag):
+        case .prioritize(let deck):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't untick Set Aside on “\(TagPath.shown(tag))”",
-                    comment: """
-                        An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu or \
-                        unticking its Set Aside checkbox in All Tags, with the tag.
-                        """),
+                    "Couldn't make “\(Deck.shownName(deck))” a priority deck",
+                    comment: "An alert's title in the Cards window, after Prioritize in a deck's menu, with the deck."),
                 error: error)
-        case .prioritize(let tag):
+        case .stopPrioritizing(let deck):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't make “\(TagPath.shown(tag))” a priority tag",
+                    "Couldn't untick Prioritize on “\(Deck.shownName(deck))”",
                     comment: """
-                        An alert's title in the Cards window, after Prioritize in a tag's menu or its Priority \
-                        checkbox in All Tags, with the tag.
-                        """),
-                error: error)
-        case .stopPrioritizing(let tag):
-            return Failure(
-                title: LocalizedStringResource(
-                    "Couldn't untick Prioritize on “\(TagPath.shown(tag))”",
-                    comment: """
-                        An alert's title in the Cards window, after choosing a ticked Prioritize in a tag's menu or \
-                        unticking its Priority checkbox in All Tags, with the tag.
+                        An alert's title in the Cards window, after choosing a ticked Prioritize in a deck's menu, \
+                        with the deck.
                         """),
                 error: error)
         case .deleteTags(let tag):
@@ -956,10 +934,8 @@ struct CardsView: View {
     /// Sidebar while all are pinned; Rename…, which opens the rename sheet,
     /// for one tag; Color, with None and Finder's seven colors, each with a
     /// swatch, the one they all have ticked; Emoji…, which opens the emoji
-    /// sheet, for one tag; Set Aside, ticked while all are set aside on their
-    /// own; Prioritize, ticked while all are priority tags, and off as the
-    /// state says, while one is set aside, on its own or inside a tag that
-    /// is; and Delete…, which asks first.
+    /// sheet, for one tag; and Delete…, which asks first. Set Aside and
+    /// Prioritize are a deck's (`DeckMenu.swift`, ADR 0024).
     @ViewBuilder
     private func tagMenu(for tags: [String]) -> some View {
         if let menu = state.menu(for: tags) {
@@ -1030,27 +1006,6 @@ struct CardsView: View {
                 )
             }
             .disabled(!menu.isForOneTag)
-            Toggle(
-                isOn: Binding(get: { menu.isSetAsideTicked }, set: { _ in state.chooseSetAside(on: menu.tags) })
-            ) {
-                Text(
-                    "Set Aside",
-                    comment: """
-                        An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag \
-                        is set aside: its cards are out of Lucas's reviews for now.
-                        """)
-            }
-            Toggle(
-                isOn: Binding(get: { menu.isPriorityTicked }, set: { _ in state.choosePriority(on: menu.tags) })
-            ) {
-                Text(
-                    "Prioritize",
-                    comment: """
-                        An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag \
-                        is a priority tag, and off while it's set aside.
-                        """)
-            }
-            .disabled(!menu.canPrioritize)
             Divider()
             Button {
                 state.askToDeleteTags(menu.tags)
@@ -1129,7 +1084,12 @@ struct CardsView: View {
     private var table: some View {
         switch state.listing {
         case .success(.cards(let rows)):
-            cardTable(rows)
+            VStack(spacing: 0) {
+                if let menu = state.chosenDeckMenu {
+                    DeckBar(menu: menu, state: $state)
+                }
+                cardTable(rows)
+            }
         case .success(.inbox(let rows)):
             inboxTable(rows)
         case .success(.allTags(let rows)):
@@ -1870,7 +1830,9 @@ struct CardsView: View {
 private typealias SidebarItem = CardsWindowState.SidebarItem
 
 /// A deck's row in the sidebar, its title with how many of its cards are
-/// due, and the decks inside it under a disclosure triangle, open or closed
+/// due, grayed while its cards are out of Lucas's reviews, as it's set aside
+/// on its own or sits inside a deck that is, with the deck's menu on a right
+/// click; and the decks inside it under a disclosure triangle, open or closed
 /// as the window remembers it.
 private struct DeckBranch: View {
     let row: CardsWindowState.DeckRow
@@ -1896,7 +1858,13 @@ private struct DeckBranch: View {
     private var label: some View {
         Label(row.shownTitle, systemImage: CardGroup.deck(row.id).symbol)
             .badge(row.counts.due)
+            .opacity(row.isGrayed ? 0.5 : 1)
             .tag(row.item)
+            .contextMenu {
+                if let menu = state.menu(forDeck: row.id) {
+                    DeckMenuItems(menu: menu, state: $state)
+                }
+            }
     }
 }
 
@@ -1920,8 +1888,8 @@ private struct TypeRow: View {
 
 /// A pinned tag's row in the sidebar: its emoji, its own or else the tags'
 /// it sits inside, before its whole name, and the tag symbol, filled with its
-/// color, found the same way, when it has one, grayed when the state says
-/// so. Its tooltip says its whole name.
+/// color, found the same way, when it has one. Its tooltip says its whole
+/// name.
 private struct TagRow: View {
     let tag: CardsWindowState.PinnedTagRow
 
@@ -1931,7 +1899,6 @@ private struct TagRow: View {
         } icon: {
             tag.tag.symbol
         }
-        .opacity(tag.isGrayed ? 0.5 : 1)
         // Its whole name, which a narrow sidebar may cut short.
         .help(Text(verbatim: tag.tag.title))
     }

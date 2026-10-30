@@ -22,9 +22,6 @@ public struct TagDeletion: Sendable, Equatable, Encodable {
     /// How many cards carry them, or a tag inside them, buried ones too, each
     /// of which loses them.
     public let cards: Int
-    /// How many of those cards come back to the user's reviews: set aside by
-    /// the tags, or by a tag they sit inside, and not after.
-    public let cardsBackInReviews: Int
     /// How many of those cards stop syncing, left with no chosen tag, while
     /// sync is on and only the cards with a chosen tag sync; nil otherwise.
     public let cardsThatStopSyncing: Int?
@@ -40,7 +37,7 @@ extension Engine {
     /// Deletes `tags`, each with every tag inside it, in one write: every
     /// card that carries one loses it, and records the edit to its tags,
     /// while every card stays, and their rows of the `tag` table go, with
-    /// their pins, switches, colors, emoji and choices to sync. Each deletion
+    /// their pins, colors, emoji and choices to sync. Each deletion
     /// reaches the cards the user's other devices hold, those that don't sync
     /// too, as a change to the tag. Returns what it did.
     @discardableResult
@@ -92,7 +89,6 @@ extension TagDeletion {
             edits.reduce(tags) { $1.tags(after: $0) }
         }
         let own = try OwnTags(in: db)
-        let setAsideAfter = Set(remaining(own.tags(switchedOn: .setAside).map(\.name)))
         let whatSyncs = try WhatSyncs(in: db)
         let whatSyncsAfter = whatSyncs.choosing(Set(remaining(Array(whatSyncs.chosenTags))))
         let measuresSync = try isSyncOn(in: db) && whatSyncs.onlyChosenTags
@@ -103,15 +99,6 @@ extension TagDeletion {
             !tags.contains(name) && edits.contains { $0.changes(name) }
         }
         self.cards = cards.count
-        cardsBackInReviews =
-            cards.filter { card in
-                guard case .setAside = card.standing else { return false }
-                let after = CardStanding(
-                    flag: card.flag, buriedAt: card.buriedAt,
-                    setAsideBy: CardStanding.setAsideTags(of: remaining(card.tags), among: setAsideAfter))
-                return after == .inReviews
-            }
-            .count
         cardsThatStopSyncing =
             measuresSync
             ? cards.filter {

@@ -29,7 +29,7 @@ final class TagsInsideTagsSyncTests {
         try mac.engine.create(
             card(.concept, front: "cepo", back: "Un límite a la compra de dólares.", tags: ["economía::Argentina"]))
         try mac.engine.setColor(.green, of: "economía")
-        try mac.engine.setAside("economía::Argentina")
+        try mac.engine.setEmoji(Emoji("🇦🇷"), of: "economía::Argentina")
         try await syncBoth()
 
         time.advance(by: minutes(1))
@@ -43,7 +43,7 @@ final class TagsInsideTagsSyncTests {
         #expect(
             try iPhone.engine.allTags() == [
                 CardTag(name: "economics", color: .green),
-                CardTag(name: "economics::Argentina", switchedOn: .setAside, inheritedColor: .green),
+                CardTag(name: "economics::Argentina", emoji: "🇦🇷", inheritedColor: .green),
             ])
     }
 

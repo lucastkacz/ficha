@@ -38,15 +38,17 @@ struct CardStandingTests {
         )
     }
 
-    @Test(
-        "a card's set-aside tags are those of its tags that are set aside, in alphabetical order as the Mac sorts text")
-    func setAsideTagsAreTheCardsInAlphabeticalOrder() {
-        let setAsideTags: Set = ["filosofía", "física", "lenguaje", "Ética"]
+    @Test("a card's set-aside decks are its deck and the decks it sits inside that are set aside, the outermost first")
+    func setAsideDecksAreTheCardsDeckAndThoseItSitsInside() {
+        let setAsideDecks: Set = ["Idiomas", "Idiomas::Inglés::Verbos", "Historia", "Idiomas::Francés"]
 
         #expect(
-            CardStanding.setAsideTags(of: ["lenguaje", "historia", "Ética", "filosofía"], among: setAsideTags)
-                == ["Ética", "filosofía", "lenguaje"])
-        #expect(CardStanding.setAsideTags(of: ["historia"], among: setAsideTags).isEmpty)
+            CardStanding.setAsideDecks(of: "Idiomas::Inglés::Verbos", among: setAsideDecks)
+                == ["Idiomas", "Idiomas::Inglés::Verbos"])
+        #expect(CardStanding.setAsideDecks(of: "Idiomas::Inglés", among: setAsideDecks) == ["Idiomas"])
+        #expect(CardStanding.setAsideDecks(of: "Historia Argentina", among: setAsideDecks).isEmpty)
+        #expect(CardStanding.setAsideDecks(of: "", among: setAsideDecks).isEmpty)
+        #expect(CardStanding.setAsideDecks(of: "", among: [""]) == [""])
     }
 
     @Test(

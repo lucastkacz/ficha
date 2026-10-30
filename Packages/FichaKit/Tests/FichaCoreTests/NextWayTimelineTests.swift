@@ -18,7 +18,7 @@ struct NextWayTimelineTests {
 
     @Test("a new card the widget shows stays as days go by, so the timeline ends, rather than asking again days ahead")
     func aNewCardStaysAsDaysGoBy() throws {
-        let cards = CardsInReviews([card(1)], priorityTags: [], log: [])
+        let cards = CardsInReviews([card(1)], priorityDecks: [], log: [])
 
         let timeline = try ReviewSettings.defaults.nextWayTimeline(cards: cards, from: now, calendar: calendar)
 
@@ -34,7 +34,7 @@ struct NextWayTimelineTests {
         let placed = (1...250).map { id in
             placement(of: Int64(id), on: 0, dueAt: now + TimeInterval(id * 60))
         }
-        let cards = CardsInReviews((1...250).map { card(Int64($0)) }, priorityTags: [], log: placed)
+        let cards = CardsInReviews((1...250).map { card(Int64($0)) }, priorityDecks: [], log: placed)
 
         let timeline = try ReviewSettings.defaults.nextWayTimeline(cards: cards, from: now, calendar: calendar)
 
@@ -55,7 +55,7 @@ struct NextWayTimelineTests {
         let placed = (1...40).map { id in
             placement(of: Int64(id), on: 40 - id, dueAt: now + TimeInterval(id * 60 * 60))
         }
-        let cards = CardsInReviews((1...40).map { card(Int64($0)) }, priorityTags: [], log: placed)
+        let cards = CardsInReviews((1...40).map { card(Int64($0)) }, priorityDecks: [], log: placed)
 
         let timeline = try settings.nextWayTimeline(cards: cards, from: now, calendar: calendar)
 
@@ -72,7 +72,7 @@ struct NextWayTimelineTests {
     }
 }
 
-/// The card with the id `id`, in Lucas's reviews, one way, with no tags.
-private func card(_ id: Int64) -> (id: Int64, standing: CardStanding, tags: [String], bothWays: Bool) {
-    (id, .inReviews, [], false)
+/// The card with the id `id`, in Lucas's reviews, one way, in Default.
+private func card(_ id: Int64) -> (id: Int64, standing: CardStanding, deck: String, bothWays: Bool) {
+    (id, .inReviews, "", false)
 }

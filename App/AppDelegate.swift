@@ -95,13 +95,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cardsWindowMadeIfNeeded()?.open()
     }
 
-    /// Opens the Cards window on All Tags, as All Tags… in the menu bar's
-    /// Prioritize submenu does, or brings it forward on All Tags when it's
-    /// open.
-    func openAllTags() {
-        cardsWindowMadeIfNeeded()?.openOnAllTags()
-    }
-
     /// The Cards window, made the first time it's asked for, or nil without
     /// a model.
     private func cardsWindowMadeIfNeeded() -> CardsWindow? {

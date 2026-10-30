@@ -193,7 +193,6 @@ extension CardTag {
     /// holds otherwise, as they sync.
     fileprivate func fieldsDiffering(from other: CardTag) -> [SyncedField] {
         var fields: [SyncedField] = []
-        if switchedOn != other.switchedOn { fields.append(.switchedOn) }
         if color != other.color { fields.append(.color) }
         if emoji != other.emoji { fields.append(.emoji) }
         if chosenToSync != other.chosenToSync { fields.append(.chosenToSync) }

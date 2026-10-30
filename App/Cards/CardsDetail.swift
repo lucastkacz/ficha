@@ -135,14 +135,14 @@ private struct BuriedIcon: View {
 /// The mark beside a set-aside card in the detail.
 private struct SetAsideIcon: View {
     var body: some View {
-        Image(systemName: "tag.slash")
+        Image(systemName: "rectangle.portrait.on.rectangle.portrait.slash")
             .foregroundStyle(.secondary)
             .accessibilityHidden(true)
     }
 }
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
-/// buried it when it's buried, and its set-aside tags when it's set aside,
+/// buried it when it's buried, and its set-aside decks when it's set aside,
 /// its type and tags and whether it goes both ways, its front and back, each
 /// side's image above its text and its sound below it, and its source, where
 /// it stands, and its review log, in a chart and in full.
@@ -440,9 +440,9 @@ private struct TiedCard: View {
 
 /// What the detail says on top of a card that's out of Lucas's reviews, as
 /// where it stands says: his note when it's flagged, and when he buried it
-/// when it's buried, after the note it keeps, or which of its tags are set
-/// aside when it's set aside. While he edits a flagged card, the note also
-/// says that saving fixes it.
+/// when it's buried, after the note it keeps, or which decks set it aside,
+/// its own or decks it sits inside, when it's set aside. While he edits a
+/// flagged card, the note also says that saving fixes it.
 struct FlagAndBurial: View {
     let standing: CardStanding
     /// Whether Lucas is editing the card.
@@ -459,21 +459,21 @@ struct FlagAndBurial: View {
                 note(flag)
             }
             burial(at: buriedAt)
-        case .setAside(let tags):
-            setAside(by: tags)
+        case .setAside(let decks):
+            setAside(by: decks)
         }
     }
 
-    /// Which set-aside tags, the card's own or tags they sit inside, keep it
-    /// out of Lucas's reviews, each by its whole name.
-    private func setAside(by tags: [String]) -> some View {
+    /// Which set-aside decks, the card's own or decks it sits inside, keep it
+    /// out of Lucas's reviews, outermost first, each by its whole name.
+    private func setAside(by decks: [String]) -> some View {
         Label {
             Text(
-                "Set aside with \(tags.map(TagPath.shown).formatted(.list(type: .and)))",
+                "Set aside with \(decks.map(Deck.shownName).formatted(.list(type: .and)))",
                 comment: """
-                    In the Cards window's detail: the card is out of Lucas's reviews for now, since these tags are set \
-                    aside, its own or tags they sit inside, each by its whole name, like “Set aside with filosofía and \
-                    economía › Argentina”.
+                    In the Cards window's detail: the card is out of Lucas's reviews for now, since these decks are \
+                    set aside, its own or decks it sits inside, outermost first, each by its whole name, like “Set \
+                    aside with Historia and Historia › Roma”.
                     """
             )
             .fixedSize(horizontal: false, vertical: true)
@@ -556,8 +556,8 @@ func stepText(_ way: WayProgress) -> String {
 /// When one of a card's ways is due, counted from `now`: "now" once it's
 /// due, however long ago, and before, as the Mac's locale words it, like
 /// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the card
-/// is set aside, and nothing while the way is new, or the card flagged or
-/// buried, since it won't show up then.
+/// is set aside by its deck, and nothing while the way is new, or the card
+/// flagged or buried, since it won't show up then.
 func dueText(_ way: WayProgress, at now: Date) -> String {
     let due: Date
     switch way.dueColumn {
@@ -567,8 +567,8 @@ func dueText(_ way: WayProgress, at now: Date) -> String {
         return String(
             localized: "set aside",
             comment: """
-                In the Cards window's Due and Back-first due columns: the card won't show up, since one of its tags, \
-                or a tag one of them sits inside, is set aside. Lowercase, like “now”.
+                In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a \
+                deck it sits inside, is set aside. Lowercase, like “now”.
                 """)
     case .nothing:
         return ""

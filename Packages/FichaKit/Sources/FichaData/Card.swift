@@ -6,7 +6,7 @@ internal import GRDB
 /// engine saved it when he approved it or the user created it. Each side
 /// holds text, an image, a sound, or any of them together. The `ficha` CLI
 /// prints it as JSON, without the type, images, sounds, source, edited time,
-/// capture, flag, burial or set-aside tags it doesn't have.
+/// capture, flag, burial or set-aside decks it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none, as when its user type was deleted,
@@ -47,11 +47,10 @@ public struct Card: Sendable, Equatable, Encodable {
     /// When Lucas buried it, while it's buried. Where the card stands is read
     /// from `standing`, never from this.
     public let buriedAt: Date?
-    /// The set-aside tags it's set aside by, its own and the tags they sit
-    /// inside, as the user set them aside, economía and not
-    /// economía::Argentina, in alphabetical order, flagged or buried or not,
-    /// or nil when none is. Where the card stands is read from `standing`,
-    /// never from this.
+    /// The set-aside decks it's set aside by, its deck and the decks it sits
+    /// inside, as the user set them aside, Idiomas and not Idiomas::Inglés,
+    /// the outermost first, flagged or buried or not, or nil when none is.
+    /// Where the card stands is read from `standing`, never from this.
     public let setAsideBy: [String]?
     /// Whether the user also reviews it back first, its back and then its
     /// front, as well as front first (ADR 0016). How it's reviewed, not what
@@ -59,8 +58,8 @@ public struct Card: Sendable, Equatable, Encodable {
     public let bothWays: Bool
 
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, buried, or set aside with one of its tags, or a tag one of them
-    /// sits inside.
+    /// fixed, buried, or set aside with its deck, or a deck its deck sits
+    /// inside.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }
@@ -68,9 +67,9 @@ public struct Card: Sendable, Equatable, Encodable {
 
 extension Card {
     /// A card read from a row of the `card` table, whose tags are a JSON
-    /// array, when the tags in `setAsideTags` are set aside, and the user's
+    /// array, when the decks in `setAsideDecks` are set aside, and the user's
     /// types are `userTypes`.
-    init(row: Row, setAsideTags: Set<String>, userTypes: UserTypes) throws {
+    init(row: Row, setAsideDecks: Set<String>, userTypes: UserTypes) throws {
         let id: Int64 = try row.decode(forColumn: "id")
         self.id = id
         let typeColumn: String? = try row.decode(forColumn: "type")
@@ -96,7 +95,7 @@ extension Card {
             throw unreadable("Card \(id) has a flag without its note or its time")
         }
         buriedAt = try row.decode(forColumn: "buriedAt")
-        let setAside = CardStanding.setAsideTags(of: tags, among: setAsideTags)
+        let setAside = CardStanding.setAsideDecks(of: deck, among: setAsideDecks)
         setAsideBy = setAside.isEmpty ? nil : setAside
         bothWays = try row.decode(forColumn: "bothWays")
     }
@@ -217,11 +216,11 @@ extension CardContent {
 }
 
 /// The cards in `rows` of the `card` table, as they are now, each knowing
-/// which of its tags are set aside.
+/// which decks set it aside.
 func cards(in rows: [Row], in db: Database) throws -> [Card] {
-    let setAside = try setAsideTags(in: db)
+    let setAside = try setAsideDecks(in: db)
     let userTypes = try UserTypes(in: db)
-    return try rows.map { try Card(row: $0, setAsideTags: setAside, userTypes: userTypes) }
+    return try rows.map { try Card(row: $0, setAsideDecks: setAside, userTypes: userTypes) }
 }
 
 /// Every card, in the order Lucas approved them.
@@ -234,7 +233,7 @@ func existingCard(_ cardID: Int64, in db: Database) throws -> Card {
     guard let row = try Table("card").filter(Column("id") == cardID).fetchOne(db) else {
         throw EngineError.cardNotFound(cardID)
     }
-    return try Card(row: row, setAsideTags: setAsideTags(in: db), userTypes: UserTypes(in: db))
+    return try Card(row: row, setAsideDecks: setAsideDecks(in: db), userTypes: UserTypes(in: db))
 }
 
 /// Sets some of a card's columns, as `assignments` say, to `values` in

@@ -168,7 +168,7 @@ final class ExportingTests {
         try engine.bury(buried.id)
         try engine.meet(flagged)
         try engine.flag(flagged.id, note: note("Falta el año."))
-        try engine.setAside("filosofía")
+        try engine.setAside(deck: Deck.defaultName)
         let history = folder.appending(path: "historia.txt")
         let everything = folder.appending(path: "Todas.txt")
 

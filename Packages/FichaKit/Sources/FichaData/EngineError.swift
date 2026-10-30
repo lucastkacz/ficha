@@ -62,11 +62,11 @@ public enum EngineError: Error, Equatable {
     case cardBuried(Int64)
     /// The card with this id isn't buried, so it can't be unburied.
     case cardNotBuried(Int64)
-    /// The card with this id is set aside by these tags, its own or tags they
-    /// sit inside, in alphabetical order, so it can't be answered until none
-    /// of them is set aside. Everything else treats it as a card in Lucas's
-    /// reviews.
-    case cardSetAside(Int64, tags: [String])
+    /// The card with this id is set aside by these decks, its own or decks
+    /// it sits inside, the outermost first, so it can't be answered until
+    /// none of them is set aside. Everything else treats it as a card in
+    /// Lucas's reviews.
+    case cardSetAside(Int64, decks: [String])
     /// What Lucas gave a tag or a user type as its emoji isn't one emoji: a
     /// word, two emoji, a letter or nothing.
     case notOneEmoji
@@ -81,10 +81,11 @@ public enum EngineError: Error, Equatable {
     /// isn't pinned, as when another device unpinned it meanwhile, so nothing
     /// moved.
     case tagNotPinned(String)
-    /// The tag with this name was to be made a priority tag, and it's set
-    /// aside, which a priority tag never is (ADR 0011), as when another
-    /// device set it aside meanwhile, so nothing changed.
-    case tagSetAside(String)
+    /// The deck with this name, or `Deck.defaultName` for Default, was to be
+    /// made a priority deck, and it's set aside, or sits inside this deck,
+    /// which is set aside, which a priority deck never is (ADR 0011), as when
+    /// another device set it aside meanwhile, so nothing changed.
+    case deckSetAside(String)
     /// A deck was to be made, or cards moved to one, with a name with no
     /// level, blank or only `::`, so nothing changed.
     case blankDeckName
@@ -287,17 +288,17 @@ extension EngineError: LocalizedError {
             String(localized: "Card \(id) is buried. To bring it back, unbury it.")
         case .cardNotBuried(let id):
             String(localized: "Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
-        case .cardSetAside(let id, let tags) where tags.count == 1:
+        case .cardSetAside(let id, let decks) where decks.count == 1:
             String(
                 localized: """
-                    Card \(id) is set aside with the tag “\(TagPath.shown(tags[0]))”. To bring it back, untick Set \
-                    Aside on that tag in the Cards window.
+                    Card \(id) is set aside with the deck “\(shownDeck(decks[0]))”. To bring it back, untick Set \
+                    Aside on that deck in the Cards window.
                     """
             )
-        case .cardSetAside(let id, let tags):
+        case .cardSetAside(let id, let decks):
             String(
                 localized: """
-                    Card \(id) is set aside with the tags \(quotedList(tags.map(TagPath.shown))). To bring it back, \
+                    Card \(id) is set aside with the decks \(quotedList(decks.map(shownDeck))). To bring it back, \
                     untick Set Aside on each of them in the Cards window.
                     """
             )
@@ -324,11 +325,11 @@ extension EngineError: LocalizedError {
                     it, so nothing moved. Pin it first.
                     """
             )
-        case .tagSetAside(let tag):
+        case .deckSetAside(let deck):
             String(
                 localized: """
-                    “\(TagPath.shown(tag))” is set aside, and a tag is never both set aside and a priority tag, so \
-                    nothing changed. Stop setting it aside first.
+                    “\(shownDeck(deck))” is set aside, and a deck is never both set aside and a priority deck, nor \
+                    is a deck inside it, so nothing changed. Stop setting it aside first.
                     """
             )
         case .blankDeckName:
@@ -589,6 +590,13 @@ extension CardsFileProblem {
 /// and “filosofía” in English.
 private func quotedList(_ words: [String]) -> String {
     words.map { "“\($0)”" }.formatted(.list(type: .and))
+}
+
+/// The deck named `name` as a message names it: its whole name, written with
+/// " › ", or Default's in the Mac's language, as the Cards window names it.
+private func shownDeck(_ name: String) -> String {
+    name == Deck.defaultName
+        ? String(localized: "Default", comment: "The deck a card lives in when it has no other.") : TagPath.shown(name)
 }
 
 /// What to do when the review panel shows a card for an answer it can't take:

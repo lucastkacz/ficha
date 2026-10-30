@@ -2,14 +2,15 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// A switch a tag can have on, which changes which of its cards show up
-/// (ADR 0011). A tag has one on at most: setting aside a priority tag drops
-/// its priority. Its raw value is how the `tag` table keeps it, so it never
-/// changes.
+/// A switch a tag had on before decks took them (ADR 0024): priority or set
+/// aside. The `tag` table keeps it, for the conversion of Lucas's tags into
+/// decks to give it to their decks, and nothing else reads it: no card is set
+/// aside or comes first by its tags, and no tag's switch syncs. Its raw value
+/// is how the `tag` table keeps it, so it never changes.
 public enum TagSwitch: String, Sendable {
-    /// Its cards come first when cards show up.
+    /// Its cards came first when cards showed up.
     case priority
-    /// Its cards are out of Lucas's reviews for now, without being buried.
+    /// Its cards were out of Lucas's reviews for now, without being buried.
     case setAside
 }
 
@@ -26,25 +27,25 @@ public enum TagColor: String, Sendable, CaseIterable {
 }
 
 /// A tag of Lucas's cards, by its name, exactly as cards carry it, with the
-/// tags it sits inside (ADR 0021), with what it has of its own: the switch it
-/// has on, its color and its emoji, each optional, whether the user chose it
-/// to sync, and its place among the pinned tags, while it's pinned (ADR
-/// 0022). A tag with none of them is just a name. It carries the color
-/// and the emoji it takes from the tags it sits inside too, which it shows
-/// while it has none of its own.
+/// tags it sits inside (ADR 0021), with what it has of its own: its color
+/// and its emoji, each optional, whether the user chose it to sync, its place
+/// among the pinned tags, while it's pinned (ADR 0022), and the switch it had
+/// on before decks, which only the conversion reads. A tag with none of them
+/// is just a name. It carries the color and the emoji it takes from the tags
+/// it sits inside too, which it shows while it has none of its own.
 public struct CardTag: Sendable, Hashable {
     /// Its whole name, its levels joined by `::`, as `TagPath` reads it.
     public let name: String
-    /// The switch it has on, or nil when it's neither a priority tag nor set
-    /// aside.
+    /// The switch it had on before decks, or nil for none: kept for the
+    /// conversion of Lucas's tags into decks (ADR 0024), and read by nothing
+    /// else.
     public var switchedOn: TagSwitch?
     /// Its color, or nil for none.
     public var color: TagColor?
     /// Its emoji, or nil for none.
     public var emoji: String?
-    /// Whether the user chose it to sync, for selective sync (ADR 0020): a
-    /// switch of its own beside the other, so a priority tag or one set
-    /// aside can be chosen too. A tag isn't, until the user ticks it.
+    /// Whether the user chose it to sync, for selective sync (ADR 0020). A tag
+    /// isn't, until the user ticks it.
     public var chosenToSync: Bool
     /// Its place among the tags the user pinned to the Cards window's
     /// sidebar, or nil while it isn't pinned. A tag isn't, until the user
@@ -70,12 +71,6 @@ public struct CardTag: Sendable, Hashable {
         self.pin = pin
         self.inheritedColor = inheritedColor
         self.inheritedEmoji = inheritedEmoji
-    }
-
-    /// Whether it's set aside on its own: every card with it, or with a tag
-    /// inside it, is out of Lucas's reviews for now.
-    public var isSetAside: Bool {
-        switchedOn == .setAside
     }
 
     /// Whether the user pinned it to the Cards window's sidebar.
@@ -124,41 +119,6 @@ extension Engine {
             return own.everyTagName(carriedBy: try allCards(in: db)).map(own.tag)
         }
     }
-
-    /// Sets `tag` aside: every card with it leaves Lucas's reviews for now,
-    /// also cards that get it later, unless it's buried or flagged. A
-    /// priority tag is no longer one. Its cards keep their steps and their
-    /// waits keep running.
-    public func setAside(_ tag: String) throws(EngineError) {
-        try setAside([tag])
-    }
-
-    /// Sets each of `tags` aside, as `setAside(_:)` sets one, in one write,
-    /// as the Cards window's All Tags does for several tags at once.
-    public func setAside(_ tags: [String]) throws(EngineError) {
-        try write { db in
-            try changeOwnTags(tags, in: db) { $0.switchedOn = .setAside }
-        }
-    }
-
-    /// Stops setting `tag` aside: its cards come back to Lucas's reviews where
-    /// they'd be without it, unless another of their tags is set aside. A tag
-    /// that isn't set aside stays as it is.
-    public func stopSettingAside(_ tag: String) throws(EngineError) {
-        try stopSettingAside([tag])
-    }
-
-    /// Stops setting each of `tags` aside, as `stopSettingAside(_:)` does
-    /// for one, in one write.
-    public func stopSettingAside(_ tags: [String]) throws(EngineError) {
-        try write { db in
-            try changeOwnTags(tags, in: db) { own in
-                if own.isSetAside {
-                    own.switchedOn = nil
-                }
-            }
-        }
-    }
 }
 
 /// What every tag has of its own, as the `tag` table keeps it, read at
@@ -182,16 +142,6 @@ struct OwnTags: Sendable {
         return (byName[name] ?? CardTag(name: name)).named(
             name, inheritedColor: ancestors.lazy.compactMap(\.color).first,
             inheritedEmoji: ancestors.lazy.compactMap(\.emoji).first)
-    }
-
-    /// Every tag with `tagSwitch` on.
-    func tags(switchedOn tagSwitch: TagSwitch) -> [CardTag] {
-        byName.values.filter { $0.switchedOn == tagSwitch }
-    }
-
-    /// The name of every tag set aside on its own.
-    var setAsideNames: Set<String> {
-        Set(tags(switchedOn: .setAside).map(\.name))
     }
 
     /// Every tag the user chose to sync.
@@ -225,16 +175,6 @@ extension Sequence<CardTag> {
         compactMap { tag in tag.pin.map { (tag: tag, pin: $0) } }
             .sorted { $0.pin != $1.pin ? $0.pin < $1.pin : $0.tag.name < $1.tag.name }.map(\.tag)
     }
-}
-
-/// The name of the tag that sets aside the cards of the tag `name` while the
-/// tags named `setAside` are set aside on their own: itself, when it's one,
-/// or else the nearest tag it sits inside that is, as a card's set-aside
-/// tags count the tags they sit inside (`CardStanding.setAsideTags(of:among:)`);
-/// nil while none is. The one rule for graying a tag and for keeping it from
-/// becoming a priority tag.
-func tagSettingAside(_ name: String, amongSetAside setAside: Set<String>) -> String? {
-    TagPath.lineage(of: name).first(where: setAside.contains)
 }
 
 /// The tag with this name, with what it has of its own, which is nothing

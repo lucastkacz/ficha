@@ -25,21 +25,23 @@ enum Window: String {
     case cards
     /// The Cards window on ciencia, once the sample's tags sit inside tags
     /// and five are pinned, in an order of their own, with its sidebar's
-    /// pinned tags, one inside another named by its whole path and a
-    /// set-aside one grayed, and All Tags… after them.
+    /// pinned tags, one inside another named by its whole path, and All
+    /// Tags… after them.
     case cardsTags = "cards-tags"
-    /// The Cards window on All Tags, with the same tags, historia a priority
-    /// tag too, and an unused one: every tag as a tree, with its counts and
-    /// its checkboxes, the set-aside ones grayed in their places, ciencia,
+    /// The Cards window on All Tags, with the same tags and an unused one:
+    /// every tag as a tree, with its counts and its Pinned checkbox, ciencia,
     /// economía and historia open, each level sorted by Cards, the most
     /// first, and economía selected, which `--key return` lists the cards
     /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit
     /// in, with its sidebar's Decks section: Default first, then every deck
-    /// as a tree, each with how many of its cards are due, Ciencias closed,
-    /// and two of Idiomas's cards selected, which `--key cmd+d` asks to move
-    /// in the Change Deck sheet.
+    /// as a tree, each with how many of its cards are due, Ciencias and
+    /// Humanidades closed, so that Sociedad shows, set aside, grayed with the
+    /// deck inside it; the bar above
+    /// the card list, with Idiomas's name and its Actions menu; and two of
+    /// Idiomas's cards selected, which `--key cmd+d` asks to move in the
+    /// Change Deck sheet.
     case cardsDecks = "cards-decks"
     /// The Cards window on Ley, one of the card types of the user's own the
     /// tool gives the sample, with its card on Parkinson's law selected, its
@@ -769,7 +771,7 @@ func syncModel(
 /// Moves some of the sample's tags inside others, as Rename… in the Cards
 /// window does (ADR 0021): estadística and psicología inside ciencia, which
 /// is blue, argentina inside historia, which has an emoji, and trabajo inside
-/// economía. Then it sets literatura aside, and economía › trabajo alone.
+/// economía.
 func nestSampleTags(in engine: Engine) throws {
     let moves = [
         ("estadística", "ciencia::estadística"), ("psicología", "ciencia::psicología"),
@@ -780,28 +782,28 @@ func nestSampleTags(in engine: Engine) throws {
     }
     try engine.setColor(.blue, of: "ciencia")
     try engine.setEmoji(try Emoji("🏛️"), of: "historia")
-    try engine.setAside("literatura")
-    try engine.setAside("economía::trabajo")
 }
 
 /// Pins five of the sample's tags, once `nestSampleTags(in:)` moved some
 /// inside others, as Pin to Sidebar in the Cards window does (ADR 0022), in
 /// an order that isn't alphabetical: lenguaje, ciencia, ciencia ›
-/// psicología, historia, and literatura, which is set aside.
+/// psicología, historia, and literatura.
 func pinSampleTags(in engine: Engine) throws {
     for tag in ["lenguaje", "ciencia", "ciencia::psicología", "historia", "literatura"] {
         try engine.pin(tag)
     }
 }
 
-/// Makes historia a priority tag, gives pendientes, a tag no card carries,
-/// the color red, and sets ciencia aside, a parent, so that All Tags ticks a
-/// Priority checkbox, offers Clear Unused Tags…, and grays a set-aside branch:
-/// ciencia with the tags inside it.
-func prioritizeAndLeaveUnusedSampleTags(in engine: Engine) throws {
-    try engine.setPriority(true, of: "historia")
+/// Gives pendientes, a tag no card carries, the color red, so that All Tags
+/// offers Clear Unused Tags….
+func leaveUnusedSampleTag(in engine: Engine) throws {
     try engine.setColor(.red, of: "pendientes")
-    try engine.setAside("ciencia")
+}
+
+/// Sets Sociedad aside, as Set Aside in a deck's menu does (ADR 0024), so
+/// that the sidebar grays it and Sociedad › Economía, the deck inside it.
+func setSampleDeckAside(in engine: Engine) throws {
+    try engine.setAside(deck: "Sociedad")
 }
 
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,
@@ -1144,14 +1146,18 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsDecks, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+    case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsDecks:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try setSampleDeckAside(in: engine)
+        return try AppModel(engine: engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
         try pinSampleTags(in: engine)
         if name == .cardsAllTags {
-            try prioritizeAndLeaveUnusedSampleTags(in: engine)
+            try leaveUnusedSampleTag(in: engine)
         }
         return try AppModel(engine: engine)
     case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
@@ -1294,6 +1300,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         var state = model.openCardsWindow()
         state.read(on: state.ladder)
         state.setDeckOpen(false, "Ciencias")
+        state.setDeckOpen(false, "Humanidades")
         state.choose(.cards(.deck("Idiomas")))
         guard case .success(.cards(let rows)) = state.listing else {
             throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
@@ -1356,7 +1363,7 @@ func menuWindow(model: AppModel) -> NSWindow {
     let content = VStack(alignment: .leading) {
         MenuContent(
             model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
-            openCards: {}, openAllTags: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
+            openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
             openSyncSettings: {},
             checkAppearance: { nil }, timeMoved: {},
             secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))

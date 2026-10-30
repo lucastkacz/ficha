@@ -3,8 +3,8 @@ import Foundation
 import Testing
 
 // For what a deck has of its own, which the engine stores and syncs before
-// the user has actions that set it: `changeOwnDecks`, the loop those actions
-// go through.
+// the user has actions that set it, its color, emoji and choice to sync:
+// `changeOwnDecks`, the loop those actions go through.
 @testable import FichaData
 
 /// Tests on decks across devices (ADR 0024, ADR 0017): a deck reaching the
@@ -41,9 +41,9 @@ final class DecksSyncTests {
         try mac.engine.changeDeck(of: [gioconda.id], to: "Arte::Pintura")
         try mac.engine.changeDeck(of: [coliseo.id], to: "Historia")
         try mac.engine.makeDeck(named: "Arte::Escultura")
+        try mac.engine.setPriority(true, ofDeck: "Arte")
         try mac.engine.write { db in
             try changeOwnDecks(["Arte"], in: db) { deck in
-                deck.switchedOn = .priority
                 deck.color = .orange
                 deck.emoji = "🎨"
                 deck.chosenToSync = true
@@ -94,6 +94,40 @@ final class DecksSyncTests {
             #expect(try device.engine.cards().map(\.deck) == [Deck.defaultName])
             #expect(try device.engine.changesToSend().isEmpty)
         }
+    }
+
+    // The iPhone, offline, prioritizes Historia first; the Mac sets it aside
+    // later, and sends first, so the latest change is the one the iPhone
+    // hears of.
+    @Test(
+        "a deck's switch reaches the other device, which sets its cards aside or brings them first there, and the latest change wins"
+    )
+    func aDecksSwitchReachesTheOtherDevice() async throws {
+        let coliseo = try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."))
+        let petricor = try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try mac.engine.changeDeck(of: [coliseo.id], to: "Historia::Roma")
+        try await syncBoth()
+
+        try mac.engine.togglePriority(ofDeck: Deck.defaultName)
+        try await syncBoth()
+        #expect(try iPhone.engine.prioritizeMenu().priorityDeckNames == [Deck.defaultName])
+
+        iPhone.iCloud.isOffline = true
+        time.advance(by: minutes(1))
+        try iPhone.engine.togglePriority(ofDeck: "Historia")
+        time.advance(by: minutes(1))
+        try mac.engine.setAside(deck: "Historia")
+        try await mac.syncNow()
+        iPhone.iCloud.isOffline = false
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.decks().map(\.switchedOn) == [.priority, .setAside, nil])
+            #expect(try device.engine.card(fronted: "Coliseo").standing == .setAside(by: ["Historia"]))
+            #expect(try device.engine.card(fronted: "petricor").standing == .inReviews)
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+        #expect(petricor.deck == Deck.defaultName)
     }
 
     @Test("a deck made while sync is off reaches the other device once it's on")

@@ -20,12 +20,12 @@ struct CardsWindowAllTagsTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    // No card carries ciencia, historia, arte › barroco, filosofía,
-    // geografía or música, each listed for what it has of its own, and only a
-    // buried card carries política, which lists no card. deuda and arancel
-    // are due, and Coliseo is due but set aside, by literatura.
+    // arte::barroco has a color, filosofía an emoji, geografía is chosen to
+    // sync, historia pinned, ciencia and música have emoji, and no card
+    // carries them; a buried card carries política, which lists no card.
+    // deuda and arancel are due, and Coliseo is due but in a set-aside deck.
     @Test(
-        "All Tags lists every tag as a tree, alphabetical per level, each with its cards and due cards, and a set-aside tag in its place, grayed with the tags inside it"
+        "All Tags lists every tag as a tree, alphabetical per level, each with its cards and due cards, none of a set-aside deck's due"
     )
     func allTagsListsEveryTag() throws {
         let deuda = try approveCard("deuda", tags: ["economía::Argentina::deuda", "lenguaje"])
@@ -37,12 +37,12 @@ struct CardsWindowAllTagsTests {
             try engine.meet(card)
         }
         time.advance(by: hours(1))
-        try engine.setAside("economía::Argentina::deuda")
-        try engine.setAside("literatura")
-        try engine.setAside("ciencia")
+        try engine.changeDeck(of: [coliseo.id], to: "Literatura")
+        try engine.setAside(deck: "Literatura")
+        try engine.setEmoji(Emoji("🔭"), of: "ciencia")
         try engine.pin("historia")
         try engine.setColor(.blue, of: "arte::barroco")
-        try engine.setPriority(true, of: "filosofía")
+        try engine.setEmoji(Emoji("🦉"), of: "filosofía")
         try engine.chooseToSync("geografía", true)
         try engine.setEmoji(Emoji("🎵"), of: "música")
         var window = openWindow()
@@ -55,34 +55,15 @@ struct CardsWindowAllTagsTests {
                 "arte", "  barroco", "ciencia", "economía", "  Argentina", "    deuda", "  mundial", "filosofía",
                 "geografía", "historia", "lenguaje", "literatura", "  Roma", "música", "política",
             ])
-        #expect(rows.grayed == ["ciencia", "deuda", "literatura", "Roma"])
         #expect(
             rows.counted == [
-                "arte 0/0", "barroco 0/0", "ciencia 0/0", "economía 3/1", "Argentina 2/0", "deuda 1/0",
-                "mundial 1/1", "filosofía 0/0", "geografía 0/0", "historia 0/0", "lenguaje 1/0", "literatura 1/0",
+                "arte 0/0", "barroco 0/0", "ciencia 0/0", "economía 3/2", "Argentina 2/1", "deuda 1/1",
+                "mundial 1/1", "filosofía 0/0", "geografía 0/0", "historia 0/0", "lenguaje 1/1", "literatura 1/0",
                 "Roma 1/0", "música 0/0", "política 0/0",
             ])
-        #expect(rows.flattened.filter { !$0.canPrioritize }.map(\.title) == ["ciencia", "deuda", "literatura", "Roma"])
         #expect(window.sidebarItem == .allTags)
         #expect(window.detail == .allTags(selected: []))
         #expect(window.actions.isEmpty)
-    }
-
-    @Test("All Tags… in the menu bar's Prioritize submenu chooses All Tags, but not while a card is edited")
-    func allTagsFromTheMenuBar() throws {
-        let cepo = try approveCard("cepo", tags: ["economía::Argentina"])
-        var window = openWindow()
-        window.select([cepo.id])
-        window.startEditing()
-
-        window.showAllTags()
-        let whileEditing = window.sidebarItem
-        window.cancelEditing()
-        window.showAllTags()
-
-        #expect(whileEditing == .cards(.all))
-        #expect(window.sidebarItem == .allTags)
-        #expect(window.allTagsRows?.outline == ["economía", "  Argentina"])
     }
 
     // arte has two due cards, economía one and three cards in all, so Due
@@ -111,7 +92,7 @@ struct CardsWindowAllTagsTests {
         let mostDueFirst = window.allTagsRows?.counted
         window.sortAllTags(by: .cards, ascending: true)
         let fewestCardsFirst = window.allTagsRows?.counted
-        window.sortAllTags(by: .checkbox(.pinned), ascending: false)
+        window.sortAllTags(by: .pinned, ascending: false)
         let pinnedFirst = window.allTagsRows?.outline
         window.sortAllTags(by: .tag, ascending: false)
 
@@ -138,7 +119,7 @@ struct CardsWindowAllTagsTests {
                 "economía", "  mundial", "  Argentina", "ciencia", "arte", "  renacimiento", "  gótico", "  barroco",
             ])
         #expect(window.allTagsSort == CardsWindowState.AllTagsSort(column: .tag, isAscending: false))
-        #expect(CardsWindowState.AllTagsColumn.allCases.filter(\.sortsDescendingFirst).count == 5)
+        #expect(CardsWindowState.AllTagsColumn.allCases.filter(\.sortsDescendingFirst) == [.cards, .due, .pinned])
     }
 
     // The search's "arg" is in Argentina and in historia's argentina, and
@@ -190,16 +171,13 @@ struct CardsWindowAllTagsTests {
             ])
     }
 
-    // historia is pinned and set aside, lenguaje pinned and a priority tag,
-    // both blue; filosofía isn't pinned.
+    // historia and lenguaje are pinned and blue; filosofía isn't pinned.
     @Test(
         "a tag's menu acts on every selected tag when it's opened on one of them, with Rename… and Emoji… off, and on that tag alone otherwise"
     )
     func theMenuForSeveralTags() throws {
         try approveCard("ubuntu", tags: ["filosofía", "historia", "lenguaje"])
         try engine.pin(["historia", "lenguaje"])
-        try engine.setAside("historia")
-        try engine.setPriority(true, of: "lenguaje")
         try engine.setColor(.blue, of: ["historia", "lenguaje"])
         var window = openWindow()
         window.choose(.allTags)
@@ -214,15 +192,14 @@ struct CardsWindowAllTagsTests {
         #expect(actedOnSelected == ["historia", "lenguaje"])
         #expect(actedOnOther == ["filosofía"])
         #expect(both.isPinned && !both.isForOneTag)
-        #expect(!both.isSetAsideTicked && !both.isPriorityTicked && !both.canPrioritize)
         #expect(both.colorItems.filter(\.isTicked).map(\.color) == [.blue])
-        #expect(lenguaje.isForOneTag && lenguaje.isPriorityTicked && lenguaje.canPrioritize)
+        #expect(lenguaje.isForOneTag && lenguaje.isPinned)
         #expect(!mixed.isPinned)
         #expect(mixed.colorItems.filter(\.isTicked).isEmpty)
         #expect(window.detail == .allTags(selected: try engine.allTags().filter { $0.name != "filosofía" }))
     }
 
-    @Test("choosing an item of the menu for several tags pins, sets aside, prioritizes and colors them all at once")
+    @Test("choosing an item of the menu for several tags pins and colors them all at once")
     func choosingForSeveralTags() throws {
         try approveCard("ubuntu", tags: ["arte", "filosofía", "historia", "lenguaje"])
         try engine.pin("historia")
@@ -234,108 +211,43 @@ struct CardsWindowAllTagsTests {
         let pinned = window.pinnedTags.map(\.id)
         window.choosePin(on: several)
         let unpinned = window.pinnedTags.map(\.id)
-        window.choosePriority(on: ["arte", "filosofía"])
-        let priority = try engine.allTags().filter(\.isPriority).map(\.name)
-        window.chooseSetAside(on: several)
-        let setAside = try engine.allTags().filter(\.isSetAside).map(\.name)
-        window.choosePriority(on: ["arte", "filosofía"])
         window.chooseColor(.green, on: ["arte", "lenguaje"])
 
         #expect(pinned == ["historia", "filosofía", "lenguaje"])
         #expect(unpinned == [])
-        #expect(priority == ["arte", "filosofía"])
-        #expect(setAside == ["filosofía", "historia", "lenguaje"])
-        #expect(try engine.allTags().filter(\.isPriority).map(\.name) == ["arte"])
         #expect(try engine.allTags().filter { $0.color == .green }.map(\.name) == ["arte", "lenguaje"])
         #expect(window.failure == nil)
     }
 
-    @Test(
-        "the Pinned, Priority and Set Aside checkboxes switch their tag, Priority off on a set-aside tag, and refused when it was set aside meanwhile"
-    )
-    func theCheckboxes() throws {
+    // A tag only labels its cards (ADR 0024): Set Aside and Prioritize are
+    // a deck's, so All Tags has no columns for them.
+    @Test("All Tags' columns are the tag, Cards, Due and Pinned, whose checkbox pins and unpins its tag")
+    func thePinnedCheckbox() throws {
         try approveCard("ubuntu", tags: ["filosofía", "historia"])
         var window = openWindow()
         window.choose(.allTags)
 
-        window.tick(.pinned, true, on: "historia")
-        window.tick(.priority, true, on: "historia")
-        window.tick(.setAside, true, on: "filosofía")
-        window.tick(.priority, true, on: "filosofía")
-        let afterTicking = try engine.allTags()
-        try engine.setAside("historia")
-        window.tick(.priority, false, on: "historia")
-        let refused = window.failure
-        window.dismissFailure()
-        window.tick(.pinned, false, on: "historia")
-        window.tick(.setAside, false, on: "filosofía")
+        window.tickPinned(true, on: "historia")
+        let afterTicking = window.pinnedTags.map(\.id)
+        window.tickPinned(false, on: "historia")
 
-        #expect(
-            afterTicking == [
-                CardTag(name: "filosofía", switchedOn: .setAside),
-                CardTag(name: "historia", switchedOn: .priority, pin: try #require(afterTicking.last?.pin)),
-            ])
-        #expect(refused == nil)
-        #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "historia", switchedOn: .setAside)])
-        #expect(window.allTagsRows?.flattened.map(\.canPrioritize) == [true, false])
-    }
-
-    // literatura::Roma was a priority tag before literatura was set aside;
-    // literatura::poesía never was.
-    @Test(
-        "Prioritize is off on a tag inside a set-aside tag, in its menu and its checkbox, as the menu bar's submenu leaves it out, but on for a priority tag there, to untick it"
-    )
-    func prioritizingInsideASetAsideTag() throws {
-        try approveCard("Coliseo", tags: ["literatura::Roma"])
-        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
-        try engine.setPriority(true, of: "literatura::Roma")
-        try engine.setAside("literatura")
-        var window = openWindow()
-        window.choose(.allTags)
-
-        let poesia = try #require(window.menu(for: ["literatura::poesía"]))
-        let roma = try #require(window.menu(for: ["literatura::Roma"]))
-        let both = try #require(window.menu(for: ["literatura::poesía", "literatura::Roma"]))
-        let checkboxes = window.allTagsRows?.flattened.map { "\($0.title) \($0.canPrioritize)" }
-        window.tick(.priority, true, on: "literatura::poesía")
-        window.choosePriority(on: ["literatura::poesía"])
-        let afterPoesia = try engine.allTags().filter(\.isPriority).map(\.name)
-        window.tick(.priority, false, on: "literatura::Roma")
-
-        #expect(!poesia.canPrioritize && roma.canPrioritize && !both.canPrioritize)
-        #expect(checkboxes == ["literatura false", "poesía false", "Roma true"])
-        #expect(afterPoesia == ["literatura::Roma"])
-        #expect(try engine.allTags().filter(\.isPriority).isEmpty)
+        #expect(CardsWindowState.AllTagsColumn.allCases == [.tag, .cards, .due, .pinned])
+        #expect(afterTicking == ["historia"])
+        #expect(window.pinnedTags.isEmpty)
+        #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "historia")])
         #expect(window.failure == nil)
     }
 
-    // historia's priority went when it was set aside, so unticking Priority
-    // changes nothing; prioritizing it is refused.
-    @Test("prioritizing a tag set aside elsewhere meanwhile is refused, and the window says why")
-    func prioritizingATagSetAsideMeanwhile() throws {
-        try approveCard("Cabildo", tags: ["historia"])
-        var window = openWindow()
-        window.choose(.allTags)
-        try engine.setAside("historia")
-
-        window.tick(.priority, true, on: "historia")
-
-        #expect(window.failure?.action == .prioritize(tag: "historia"))
-        #expect(window.failure?.error == .tagSetAside("historia"))
-        #expect(try engine.allTags() == [CardTag(name: "historia", switchedOn: .setAside)])
-    }
-
-    // literatura is set aside, and Martín Fierro and El Aleph carry it or a
-    // tag inside it; under selective sync, only literatura::poesía is chosen,
-    // so Martín Fierro stops syncing. historia stays.
+    // Martín Fierro and El Aleph carry literatura or a tag inside it; under
+    // selective sync, only literatura::poesía is chosen, so Martín Fierro
+    // stops syncing. historia stays.
     @Test(
-        "Delete… on the selected tags asks first, with the cards that lose them, the tags inside, the cards back in the reviews and those that stop syncing, and OK deletes them"
+        "Delete… on the selected tags asks first, with the cards that lose them, the tags inside and the cards that stop syncing, and OK deletes them"
     )
     func deleteAsksFirst() throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
         try approveCard("El Aleph", tags: ["literatura"])
         try approveCard("Facundo", tags: ["política", "historia"])
-        try engine.setAside("literatura")
         try engine.syncOnlyChosenTags(true)
         try engine.chooseToSync("literatura::poesía", true)
         var window = openWindow()
@@ -360,7 +272,6 @@ struct CardsWindowAllTagsTests {
         #expect(deletion.tags == ["literatura", "política"])
         #expect(deletion.tagsInside == ["literatura::poesía"])
         #expect(deletion.cards == 3)
-        #expect(deletion.cardsBackInReviews == 2)
         #expect(deletion.cardsThatStopSyncing == 1)
         #expect(window.question == nil)
         #expect(window.failure == nil)
@@ -369,14 +280,14 @@ struct CardsWindowAllTagsTests {
         #expect(try engine.cards().map(\.tags) == [["historia"], [], ["historia"]])
     }
 
-    // ciencia is set aside with no card, música pinned, and geografía has
+    // ciencia has a color with no card, música is pinned, and geografía has
     // an emoji inside lenguaje, which a card carries.
     @Test(
         "Clear Unused Tags… is offered while some tag has no card, asks first with how many, and OK deletes them"
     )
     func clearUnusedTagsAsksFirst() throws {
         try approveCard("ubuntu", tags: ["lenguaje"])
-        try engine.setAside("ciencia")
+        try engine.setColor(.red, of: "ciencia")
         try engine.pin("música")
         try engine.setEmoji(Emoji("🗺️"), of: "lenguaje::geografía")
         var window = openWindow()
@@ -609,12 +520,6 @@ extension [CardsWindowState.AllTagsRow] {
     /// These rows and the rows inside them, in the order they're listed.
     var flattened: [CardsWindowState.AllTagsRow] {
         flatMap { [$0] + $0.children.flattened }
-    }
-
-    /// The titles of the grayed rows among these and the rows inside them,
-    /// in the order they're listed.
-    var grayed: [String] {
-        flattened.filter(\.isGrayed).map(\.title)
     }
 
     /// Each row's title with its Cards and Due columns, as "economía 3/1",

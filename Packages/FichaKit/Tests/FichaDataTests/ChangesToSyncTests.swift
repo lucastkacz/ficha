@@ -162,28 +162,21 @@ final class ChangesToSyncTests {
                 == log.compactMap(\.uuid).map(SyncedRow.reviewLogEntry))
     }
 
-    @Test("a tag's color, emoji, priority and set aside each record when they changed, also once it has nothing left")
+    @Test("a tag's color and emoji each record when they changed, also once it has nothing left")
     func aTagRecordsWhenEachOfItsFieldsChanged() throws {
         try engine.create(card(.word, front: "Waterloo", back: "1815.", tags: ["historia"]))
         let colored = time.now + minutes(1)
-        let prioritized = colored + minutes(1)
-        let setAside = prioritized + minutes(1)
-        let cleared = setAside + minutes(1)
+        let cleared = colored + minutes(1)
 
         time.move(to: colored)
         let afterColor = try engine.recorded {
             try engine.setColor(.red, of: "historia")
             try engine.setEmoji(Emoji("🏛️"), of: "historia")
         }
-        time.move(to: prioritized)
-        let afterPriority = try engine.recorded { try engine.togglePriority(of: "historia") }
-        time.move(to: setAside)
-        let afterSettingAside = try engine.recorded { try engine.setAside("historia") }
         time.move(to: cleared)
         let afterClearing = try engine.recorded {
             try engine.setColor(nil, of: "historia")
             try engine.setEmoji(nil, of: "historia")
-            try engine.stopSettingAside("historia")
         }
 
         #expect(
@@ -191,24 +184,34 @@ final class ChangesToSyncTests {
                 Waiting(row: .tag("historia"), kind: .saved, fieldTimes: [.color: colored, .emoji: colored])
             ])
         #expect(
-            afterPriority == [
-                Waiting(
-                    row: .tag("historia"), kind: .saved,
-                    fieldTimes: [.color: colored, .emoji: colored, .switchedOn: prioritized])
-            ])
-        #expect(
-            afterSettingAside == [
-                Waiting(
-                    row: .tag("historia"), kind: .saved,
-                    fieldTimes: [.color: colored, .emoji: colored, .switchedOn: setAside])
-            ])
-        #expect(
             afterClearing == [
-                Waiting(
-                    row: .tag("historia"), kind: .saved,
-                    fieldTimes: [.color: cleared, .emoji: cleared, .switchedOn: cleared])
+                Waiting(row: .tag("historia"), kind: .saved, fieldTimes: [.color: cleared, .emoji: cleared])
             ])
         #expect(try engine.allTags() == [CardTag(name: "historia")])
+    }
+
+    @Test("a deck's switch records when it changed, as Prioritize and Set Aside change it, also once it's off")
+    func aDeckRecordsWhenItsSwitchChanged() throws {
+        let waterloo = try engine.create(card(.word, front: "Waterloo", back: "1815."))
+        try engine.changeDeck(of: [waterloo.id], to: "Historia")
+        let prioritized = time.now + minutes(1)
+        let setAside = prioritized + minutes(1)
+        let cleared = setAside + minutes(1)
+
+        time.move(to: prioritized)
+        let afterPriority = try engine.recorded { try engine.togglePriority(ofDeck: "Historia") }
+        time.move(to: setAside)
+        let afterSettingAside = try engine.recorded { try engine.setAside(deck: "Historia") }
+        time.move(to: cleared)
+        let afterClearing = try engine.recorded { try engine.stopSettingAside(deck: "Historia") }
+
+        #expect(
+            afterPriority == [Waiting(row: .deck("Historia"), kind: .saved, fieldTimes: [.switchedOn: prioritized])])
+        #expect(
+            afterSettingAside == [Waiting(row: .deck("Historia"), kind: .saved, fieldTimes: [.switchedOn: setAside])])
+        #expect(
+            afterClearing == [Waiting(row: .deck("Historia"), kind: .saved, fieldTimes: [.switchedOn: cleared])])
+        #expect(try engine.decks() == [Deck(name: "Historia")])
     }
 
     @Test("capturing, editing, discarding, expanding and approving record the captures' changes and the cards'")

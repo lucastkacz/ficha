@@ -127,6 +127,14 @@ extension CardsWindowState.DeckRow {
     }
 }
 
+extension PrioritizeMenu.DeckItem {
+    /// What it says in the menu bar's Prioritize submenu: its last level, or
+    /// Default's name in the Mac's language.
+    var shownTitle: String {
+        deck.isDefault ? Deck.defaultShownName : title
+    }
+}
+
 extension InboxRow.Item {
     /// What kind it is, as the inbox's Kind column and the capture's detail
     /// say it. Each kind has a key of its own, since "Capture" is also the

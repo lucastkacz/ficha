@@ -3,6 +3,39 @@ import FichaCore
 import FichaData
 import SwiftUI
 
+/// A deck in the menu bar's Prioritize submenu, by its last level under its
+/// parent: an item ticked while it's a priority deck, which toggles it, off
+/// while it's set aside, on its own or inside a deck that is, unless it's a
+/// priority deck, to untick; or, for a parent, a submenu that lists that item
+/// first, then the decks right inside it.
+private struct PrioritizeDeckItem: View {
+    let item: PrioritizeMenu.DeckItem
+    /// Toggles the priority of the deck with a whole name.
+    let toggle: (String) -> Void
+
+    var body: some View {
+        if item.children.isEmpty {
+            toggleItem
+        } else {
+            Menu(item.shownTitle) {
+                toggleItem
+                Divider()
+                ForEach(item.children) { child in
+                    PrioritizeDeckItem(item: child, toggle: toggle)
+                }
+            }
+        }
+    }
+
+    /// The item that toggles the deck's priority.
+    private var toggleItem: some View {
+        Toggle(isOn: Binding(get: { item.isTicked }, set: { _ in toggle(item.deck.name) })) {
+            Text(verbatim: item.shownTitle)
+        }
+        .disabled(!item.isEnabled)
+    }
+}
+
 /// The menu under Ficha's icon in the menu bar.
 struct MenuContent: View {
     let model: AppModel
@@ -15,8 +48,6 @@ struct MenuContent: View {
     let openReviewPanel: () -> Void
     /// Opens the Cards window.
     let openCards: () -> Void
-    /// Opens the Cards window on All Tags.
-    let openAllTags: () -> Void
     /// Opens the Diagnostics window.
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
@@ -101,88 +132,67 @@ struct MenuContent: View {
         return String(localized: "Review now (\(due) due)")
     }
 
-    /// The Prioritize submenu, with the items the engine offers, in its
-    /// order: "None", ticked while no tag is a priority tag, which clears
-    /// them; each tag, its emoji before its whole name, as in
-    /// "economía › Argentina", ticked while it's a priority tag, which
-    /// toggles it; and All Tags…, which opens the Cards window on All Tags
-    /// (ADR 0022). A divider sets the tags apart. A change applies from the
-    /// next appearance, review now or "See more" on.
+    /// The Prioritize submenu, with what the engine offers (ADR 0011, ADR
+    /// 0024): "None", ticked while no deck is a priority deck, which clears
+    /// them; then every deck as a tree, Default first while it holds cards,
+    /// each ticked while it's a priority deck, which toggles it, and off
+    /// while it's set aside, on its own or inside a deck that is. A parent is
+    /// a submenu that lists itself first, then the decks right inside it. A
+    /// divider sets the decks apart. A change applies from the next
+    /// appearance, review now or "See more" on.
     private var prioritizeSubmenu: some View {
         Menu(prioritizeTitle) {
             if let menu = model.prioritizeMenu {
-                ForEach(menu.items, id: \.self) { item in
-                    prioritizeItem(item, in: menu)
+                Toggle(
+                    isOn: Binding(
+                        get: { menu.isNoneTicked },
+                        set: { _ in changePriority { () throws(EngineError) in try model.clearPriorityDecks() } })
+                ) {
+                    Text(
+                        "None",
+                        comment:
+                            "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.")
+                }
+                if !menu.decks.isEmpty {
+                    Divider()
+                }
+                ForEach(menu.decks) { item in
+                    PrioritizeDeckItem(item: item, toggle: togglePriority(ofDeck:))
                 }
             } else {
-                Text("Couldn't read your tags")
+                Text("Couldn't read your decks")
             }
         }
     }
 
-    /// The Prioritize submenu's item `item`, of `menu`, with the divider
-    /// after "None" while some tag follows it, and before All Tags….
-    @ViewBuilder
-    private func prioritizeItem(_ item: PrioritizeMenu.Item, in menu: PrioritizeMenu) -> some View {
-        switch item {
-        case .noPriorityTag:
-            Toggle(
-                isOn: Binding(
-                    get: { menu.isNoneTicked },
-                    set: { _ in changePriority { () throws(EngineError) in try model.clearPriorityTags() } })
-            ) {
-                Text(
-                    "None",
-                    comment: "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.")
-            }
-            if !menu.tags.isEmpty {
-                Divider()
-            }
-        case .tag(let tag):
-            Toggle(
-                isOn: Binding(
-                    get: { tag.isPriority },
-                    set: { _ in
-                        changePriority { () throws(EngineError) in try model.togglePriority(of: tag.name) }
-                    })
-            ) {
-                Text(verbatim: tag.title)
-            }
-        case .allTags:
-            Divider()
-            Button(action: openAllTags) {
-                Text(
-                    "All Tags…",
-                    comment: """
-                        The last item of the menu's Prioritize submenu: it opens the Cards window on All Tags, which \
-                        lists every tag.
-                        """)
-            }
-        }
+    /// Toggles the priority of the deck `deck`, as its item in the
+    /// Prioritize submenu does.
+    private func togglePriority(ofDeck deck: String) {
+        changePriority { () throws(EngineError) in try model.togglePriority(ofDeck: deck) }
     }
 
-    /// "Prioritize", naming the priority tags while there are some, so Lucas
+    /// "Prioritize", naming the priority decks while there are some, so Lucas
     /// sees that priority is on without opening the submenu.
     private var prioritizeTitle: String {
-        let names = (model.prioritizeMenu?.priorityTagNames ?? []).map(TagPath.shown)
+        let names = (model.prioritizeMenu?.priorityDeckNames ?? []).map(Deck.shownName)
         guard !names.isEmpty else {
             return String(
                 localized: "Prioritize",
-                comment: "A menu-bar submenu that picks the tags whose cards come first, while none is picked.")
+                comment: "A menu-bar submenu that picks the decks whose cards come first, while none is picked.")
         }
         return String(
             localized: "Prioritize: \(names.formatted(.list(type: .and, width: .narrow)))",
-            comment: "The Prioritize submenu's title while some tags are priority tags, which it lists by name.")
+            comment: "The Prioritize submenu's title while some decks are priority decks, which it lists by name.")
     }
 
-    /// Makes a change to the priority tags, or says in an alert why it
-    /// couldn't be saved.
+    /// Makes a change to the priority decks, or says in an alert why it
+    /// couldn't be saved, as when the deck was set aside meanwhile.
     private func changePriority(_ change: () throws(EngineError) -> Void) {
         do {
             try change()
         } catch {
             showAlert(
-                String(localized: "Couldn't change the priority tags"), explaining: error, style: .warning,
+                String(localized: "Couldn't change the priority decks"), explaining: error, style: .warning,
                 button: String(localized: "OK"))
         }
     }

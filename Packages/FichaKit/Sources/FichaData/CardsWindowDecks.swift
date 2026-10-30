@@ -7,7 +7,11 @@ import Foundation
 // its cards are due, those of the decks inside it counted. Each parent starts
 // open, as in Anki's deck list, and the window remembers the ones Lucas
 // closes while it's open. Choosing a deck lists its cards and those of every
-// deck inside it. Change Deck… moves the selected cards to the deck Lucas
+// deck inside it. A deck's menu, Default's too, the same in its row's context
+// menu and in the Actions menu above the card list while the sidebar chose
+// it, which is its keyboard path, sets it aside or prioritizes it
+// (`DeckSwitches.swift`); a set-aside deck is grayed in its place, with the
+// decks inside it. Change Deck… moves the selected cards to the deck Lucas
 // picks in its sheet, from the same tree with Default always in it, or to one
 // he names there with New Deck…, which the move makes.
 
@@ -25,6 +29,10 @@ extension CardsWindowState {
         /// the decks inside it: none for a deck New Deck… named, which the
         /// move makes.
         public let counts: DeckCounts
+        /// Whether its row is grayed: while its cards are out of Lucas's
+        /// reviews, as it's set aside on its own or sits inside a deck that
+        /// is.
+        public let isGrayed: Bool
         /// The decks right inside it, in the order a tree lists them.
         public let children: [DeckRow]
 
@@ -64,6 +72,32 @@ extension CardsWindowState {
         public internal(set) var isNamingNewDeck: Bool
     }
 
+    /// What a deck's menu offers, Default's too: in the sidebar, as its row's
+    /// context menu, and above the card list while the sidebar chose it, as
+    /// the Actions menu, which is how the keyboard reaches it. The same menu
+    /// in both places, which acts on the one deck.
+    public struct DeckMenu: Sendable, Equatable {
+        /// The deck it acts on, with what it has of its own and takes from
+        /// the decks it sits inside.
+        public let deck: Deck
+        /// Whether Prioritize is on: unless the deck is set aside, on its own
+        /// or inside a deck that is, since a deck is never both (ADR 0011),
+        /// but for a priority deck, which it unticks.
+        public let canPrioritize: Bool
+
+        /// Whether Set Aside is ticked: the deck is set aside on its own, and
+        /// choosing it again undoes it.
+        public var isSetAsideTicked: Bool {
+            deck.isSetAside
+        }
+
+        /// Whether Prioritize is ticked: the deck is a priority deck, and
+        /// choosing it again undoes it.
+        public var isPriorityTicked: Bool {
+            deck.isPriority
+        }
+    }
+
     /// What OK makes of what the Change Deck sheet's name field holds, after
     /// New Deck….
     public enum NewDeckEntry: Sendable, Equatable {
@@ -95,6 +129,58 @@ extension CardsWindowState {
             closedDecks.remove(deck)
         } else {
             closedDecks.insert(deck)
+        }
+    }
+
+    /// What the menu of the deck `deck` offers, by its whole name, or
+    /// Default's by `Deck.defaultName`, while the sidebar lists it; nil
+    /// otherwise.
+    public func menu(forDeck deck: String) -> DeckMenu? {
+        guard let listed = decks.first(where: { $0.deck.name == deck })?.deck else { return nil }
+        return DeckMenu(
+            deck: listed, canPrioritize: listed.canBePrioritized(amongSetAside: decks.map(\.deck).setAsideNames))
+    }
+
+    /// The menu of the deck the sidebar chose, which the Actions menu above
+    /// the card list offers, the keyboard's way to a deck's menu: nil while
+    /// the sidebar chose something else. While Lucas edits a card, it stays,
+    /// waiting with the card list, so the list doesn't move.
+    public var chosenDeckMenu: DeckMenu? {
+        guard case .cards(.deck(let deck)) = sidebarItem else { return nil }
+        return menu(forDeck: deck)
+    }
+
+    /// Chooses Set Aside in the menu of the deck `deck`: sets it aside, or
+    /// undoes it while it's ticked, and reads the cards again, or records why
+    /// it couldn't.
+    public mutating func chooseSetAside(onDeck deck: String) {
+        guard let menu = menu(forDeck: deck) else { return }
+        if menu.isSetAsideTicked {
+            changeSwitch(as: .stopSettingAside(deck: deck)) { engine throws(EngineError) in
+                try engine.stopSettingAside(deck: deck)
+            }
+        } else {
+            changeSwitch(as: .setAside(deck: deck)) { engine throws(EngineError) in try engine.setAside(deck: deck) }
+        }
+    }
+
+    /// Chooses Prioritize in the menu of the deck `deck`, while it's on:
+    /// makes it a priority deck, or no longer while it's ticked, and reads
+    /// the cards again, or records why it couldn't, as when another device
+    /// set it aside meanwhile.
+    public mutating func choosePriority(onDeck deck: String) {
+        guard let menu = menu(forDeck: deck), menu.canPrioritize else { return }
+        let isPriority = !menu.isPriorityTicked
+        changeSwitch(as: isPriority ? .prioritize(deck: deck) : .stopPrioritizing(deck: deck)) {
+            engine throws(EngineError) in try engine.setPriority(isPriority, ofDeck: deck)
+        }
+    }
+
+    /// Does `work`, the engine's part of an action on a deck's switch, and
+    /// reads the cards again, or records why it couldn't, as `action`.
+    private mutating func changeSwitch(as action: FailedAction, _ work: (Engine) throws(EngineError) -> Void) {
+        if perform(action, work) {
+            read(on: ladder)
         }
     }
 
@@ -202,9 +288,11 @@ extension CardsWindowState {
     }
 
     /// The rows of `decks`, as a tree, in the order a tree lists them, each
-    /// named by its last level under its parent.
+    /// named by its last level under its parent, and grayed while it's set
+    /// aside, on its own or inside one of `decks` that is.
     private static func deckRows(of decks: [CountedDeck]) -> [DeckRow] {
         let byName = Dictionary(decks.map { ($0.deck.name, $0) }, uniquingKeysWith: { first, _ in first })
+        let setAside = decks.map(\.deck).setAsideNames
         /// The rows of `trees`, listed under `parent`.
         func rows(of trees: [TagTree], under parent: String?) -> [DeckRow] {
             trees.compactMap { tree in
@@ -213,6 +301,7 @@ extension CardsWindowState {
                 guard let counted = byName[tree.name] else { return nil }
                 return DeckRow(
                     deck: counted.deck, title: TagPath.shown(tree.name, under: parent), counts: counted.counts,
+                    isGrayed: deckSettingAside(tree.name, amongSetAside: setAside) != nil,
                     children: rows(of: tree.children, under: tree.name))
             }
         }
