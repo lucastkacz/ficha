@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on the review panel while it's open: how it closes, when an
 /// appearance's panel takes the keyboard, how long Lucas takes on a card,
-/// and the tags each card comes with, with the default settings. Left untouched for 10 minutes, the panel closes
+/// and the deck and the tags each card comes with, with the default settings. Left untouched for 10 minutes, the panel closes
 /// on its own, and an appearance's panel takes the keyboard once Lucas has
 /// been idle for 5 seconds.
 struct ReviewPanelTests {
@@ -263,6 +263,47 @@ struct ReviewPanelTests {
 
         #expect(panel.content == .firstView(serendipia))
         #expect(panel.tags.isEmpty)
+    }
+
+    // Subjects come mixed (ADR 0011, ADR 0024): the deck says which one a
+    // card is about, before its tags label it.
+    @Test(
+        "a card comes with its deck, by its whole name, with its color and emoji, its own or its parent's, before its tags; Default's too"
+    )
+    func aCardComesWithItsDeckBeforeItsTags() throws {
+        let mayo = try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", tags: ["política"], in: engine)
+        let petricor = try approveInDeck("petricor", in: engine)
+        try engine.setColor(.blue, ofDeck: "Historia")
+        try engine.setEmoji(Emoji("📜"), ofDeck: "Historia")
+        try engine.setEmoji(Emoji("🇦🇷"), ofDeck: "Historia::Argentina")
+
+        var panel = try engine.openPanel(
+            .appearance, with: [.firstView(mayo), .firstView(petricor)], settings: settings)
+
+        #expect(panel.content == .firstView(mayo))
+        #expect(
+            panel.deck
+                == Deck(name: "Historia::Argentina", emoji: "🇦🇷", inheritedColor: .blue, inheritedEmoji: "📜"))
+        #expect(panel.tags == [CardTag(name: "política")])
+        panel.endFirstView()
+        #expect(panel.content == .firstView(petricor))
+        #expect(panel.deck == Deck(name: Deck.defaultName))
+        panel.endFirstView()
+        #expect(panel.deck == nil)
+    }
+
+    // So the card Lucas is on doesn't change under him, as with its tags.
+    @Test("a deck's color or emoji changed while the panel is open shows from the next panel on")
+    func aDeckChangedWhileThePanelIsOpenShowsFromTheNextPanelOn() throws {
+        try approveInDeck("fotosíntesis", deck: "Ciencias", in: engine)
+        let open = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        try engine.setColor(.green, ofDeck: "Ciencias")
+        try engine.setEmoji(Emoji("🔬"), ofDeck: "Ciencias")
+        let next = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        #expect(open.deck == Deck(name: "Ciencias"))
+        #expect(next.deck == Deck(name: "Ciencias", color: .green, emoji: "🔬"))
     }
 
     // So the card Lucas is on doesn't change under him.

@@ -116,10 +116,11 @@ extension Deck {
 
 extension DeckInTree {
     /// What it says in a tree of decks, in the sidebar, the Change Deck sheet
-    /// and the menu bar's Prioritize submenu: its last level, or Default's
-    /// name in the Mac's language.
+    /// and the menu bar's Prioritize submenu: its emoji, its own or else the
+    /// decks' it sits inside, when it shows one, before its last level, or
+    /// before Default's name in the Mac's language.
     var shownTitle: String {
-        deck.isDefault ? Deck.shownName(deck.name) : title
+        deck.title(shown: deck.isDefault ? Deck.shownName(deck.name) : title)
     }
 }
 

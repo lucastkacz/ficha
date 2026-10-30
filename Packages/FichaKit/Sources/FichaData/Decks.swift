@@ -253,8 +253,9 @@ func checkedDeckName(_ name: String) throws(EngineError) -> String {
     return name
 }
 
-/// `name`, a deck cards go to as they're made, edited, moved or imported:
-/// Default, by `Deck.defaultName`, as it is, or any other deck's whole name as
+/// `name`, a deck cards go to as they're made, edited, moved or imported, or
+/// that a switch, a color or an emoji is set on: Default, by
+/// `Deck.defaultName`, as it is, or any other deck's whole name as
 /// `checkedDeckName(_:)` cleans it up, or an error when it refuses it.
 func checkedDeckForCards(_ name: String) throws(EngineError) -> String {
     name == Deck.defaultName ? name : try checkedDeckName(name)
@@ -342,16 +343,21 @@ func deckWithRow(_ name: String, in db: Database) throws -> Deck? {
 }
 
 /// Changes what each of `decks` has of its own with `change`, in the write
-/// `db`, and saves it, giving a deck without a row its row: the loop behind
-/// every change the engine makes to decks' switches, colors, emoji and
-/// choices to sync, in one write, which an error `change` throws undoes
-/// whole. A deck `change` leaves as it was stays as it is, since the sync
-/// triggers record only what changed.
+/// `db`, and saves each one `change` changed, giving a deck without a row its
+/// row then: the loop behind every change the engine makes to decks'
+/// switches, colors, emoji and choices to sync, in one write, which an error
+/// `change` throws undoes whole. A deck `change` leaves as it was stays as it
+/// is, without a row when it had none, so that unticking a switch or choosing
+/// no color never makes a deck of a parent that exists through the decks
+/// inside it (ADR 0021).
 func changeOwnDecks(_ decks: [String], in db: Database, _ change: (inout Deck) throws -> Void) throws {
     for name in decks {
-        var own = try ownDeck(name, in: db)
+        let before = try ownDeck(name, in: db)
+        var own = before
         try change(&own)
-        try save(own, in: db)
+        if own != before {
+            try save(own, in: db)
+        }
     }
 }
 

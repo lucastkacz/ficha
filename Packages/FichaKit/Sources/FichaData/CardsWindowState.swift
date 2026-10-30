@@ -12,8 +12,10 @@ import Foundation
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, turns Both ways on or off for several cards
 /// at once, and moves them to the deck Lucas picks in the Change Deck sheet,
-/// whose tree the sidebar lists too, where a deck's menu sets it aside or
-/// prioritizes it (`CardsWindowDecks.swift`), as it pins tags to the sidebar
+/// whose tree the sidebar lists too, where a deck's menu sets it aside,
+/// prioritizes it, and gives it a color or asks for its emoji
+/// (`CardsWindowDecks.swift`), and a chosen deck's tags narrow its cards to
+/// one of them (`CardsWindowDeckTags.swift`), as it pins tags to the sidebar
 /// or gives them a color from a tag's context menu, for one tag or several,
 /// it asks which emoji a tag gets and which name, and puts
 /// the sidebar's pinned tags in the order Lucas drags them into, pinning a
@@ -211,6 +213,10 @@ public struct CardsWindowState: Sendable {
         /// Which emoji this tag gets, in the emoji sheet, whose field starts
         /// with the one it has.
         case emoji(CardTag)
+        /// Which emoji this deck gets, Default too, in the emoji sheet, whose
+        /// field starts with the one it has of its own:
+        /// `CardsWindowDecks.swift`.
+        case deckEmoji(Deck)
         /// Which name this tag gets, in the rename sheet, whose field starts
         /// with its whole name, written with `::`: `CardsWindowTags.swift`.
         case renameTag(CardTag)
@@ -237,10 +243,10 @@ public struct CardsWindowState: Sendable {
     /// What OK in the emoji sheet, or in the New Type sheet, makes of what an
     /// emoji field holds.
     public enum EmojiEntry: Sendable, Equatable {
-        /// One emoji, which the tag or the user type gets.
+        /// One emoji, which the tag, the deck or the user type gets.
         case emoji(Emoji)
-        /// Nothing but spaces, if any, which takes the tag's or the user
-        /// type's emoji away, or makes the type with none.
+        /// Nothing but spaces, if any, which takes the tag's, the deck's or
+        /// the user type's emoji away, or makes the type with none.
         case removal
         /// Something that isn't one emoji, which OK refuses, and why, for
         /// the sheet to say.
@@ -311,6 +317,11 @@ public struct CardsWindowState: Sendable {
         case prioritize(deck: String)
         /// He made this deck no longer a priority deck.
         case stopPrioritizing(deck: String)
+        /// He gave this deck a color, or took its own away, from its menu.
+        case setDeckColor(deck: String)
+        /// He gave this deck an emoji, or took its own away, in the emoji
+        /// sheet.
+        case setDeckEmoji(deck: String)
         /// He gave this tag a color, or took its color away, with any others
         /// he chose it on along with it.
         case setColor(tag: String)
@@ -411,6 +422,14 @@ public struct CardsWindowState: Sendable {
     /// The sidebar's decks Lucas closed, which each start open, and the
     /// window remembers while it's open.
     var closedDecks: Set<String> = []
+    /// The tags of the deck the sidebar chose, with how many of its cards
+    /// carry each, the most first, which the row above the card list shows:
+    /// none while it chose no deck (`CardsWindowDeckTags.swift`).
+    public internal(set) var deckTags: [DeckTag] = []
+    /// The tag Lucas chose in that row, which narrows the deck's cards to
+    /// those that carry it or a tag inside it, until he chooses it again or
+    /// the sidebar chooses something else: nil while he chose none.
+    public internal(set) var chosenDeckTag: String?
     /// The sidebar's Tags section: the pinned tags, in Lucas's order, each
     /// named by its whole path, before All Tags: `CardsWindowTags.swift`.
     public private(set) var pinnedTags: [PinnedTagRow] = []
@@ -639,6 +658,7 @@ public struct CardsWindowState: Sendable {
         guard item != sidebarItem else { return }
         sidebarItem = item
         tagShownFromAllTags = nil
+        chosenDeckTag = nil
         read(on: ladder)
     }
 
@@ -855,8 +875,8 @@ public struct CardsWindowState: Sendable {
     }
 
     /// What OK in the emoji sheet, or in the New Type sheet, makes of `text`,
-    /// what an emoji field holds: one emoji for the tag or the user type,
-    /// none when the field is empty, or a refusal of anything else.
+    /// what an emoji field holds: one emoji for the tag, the deck or the user
+    /// type, none when the field is empty, or a refusal of anything else.
     public func emojiEntry(_ text: String) -> EmojiEntry {
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .removal
@@ -868,17 +888,18 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Chooses OK in the emoji sheet, whose field holds `text`: gives the tag
-    /// or the user type the window asks about that emoji, or takes its emoji
-    /// away when the field is empty, and reads the cards again, or records
-    /// why it couldn't and goes on asking. While OK refuses `text`, it does
-    /// nothing, and the sheet says why.
+    /// Chooses OK in the emoji sheet, whose field holds `text`: gives the
+    /// tag, the deck or the user type the window asks about that emoji, or
+    /// takes its emoji away when the field is empty, and reads the cards
+    /// again, or records why it couldn't and goes on asking. While OK refuses
+    /// `text`, it does nothing, and the sheet says why.
     public mutating func chooseEmoji(_ text: String) {
         let entry = emojiEntry(text)
         guard !entry.isRefused else { return }
         let done: Bool
         switch question {
         case .emoji(let tag): done = setEmoji(entry.emoji, of: tag)
+        case .deckEmoji(let deck): done = setEmoji(entry.emoji, of: deck)
         case .typeEmoji(let type): done = setEmoji(entry.emoji, of: type)
         default: return
         }
@@ -959,7 +980,9 @@ public struct CardsWindowState: Sendable {
     /// buried has a type, and when the chosen user type is deleted; and when
     /// the tag whose cards All Tags lists is gone, All Tags lists its tree
     /// again, as after Back. A user type renamed, or given another emoji,
-    /// stays chosen. All Tags' selection keeps only the tags there are.
+    /// stays chosen. All Tags' selection keeps only the tags there are. A
+    /// tag chosen among the chosen deck's tags that none of its cards carries
+    /// anymore is no longer chosen, and the deck lists all its cards again.
     public mutating func read(on ladder: Ladder) {
         self.ladder = ladder
         now = engine.now
@@ -979,6 +1002,7 @@ public struct CardsWindowState: Sendable {
             if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = .cards(.all)
             }
+            try readDeckTags()
             if let shown = tagShownFromAllTags, !offers(.tag(shown)) {
                 tagShownFromAllTags = nil
                 search = allTagsSearch
@@ -986,7 +1010,8 @@ public struct CardsWindowState: Sendable {
             let names = Set(tags.map(\.name))
             selectedTags.formIntersection(names)
             if let group = listedGroup {
-                listing = .success(.cards(try engine.cardRows(in: group, matching: search, on: ladder)))
+                listing = .success(
+                    .cards(narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, on: ladder))))
             } else if let counted {
                 listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()

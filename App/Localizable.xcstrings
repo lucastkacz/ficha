@@ -16,7 +16,7 @@
       }
     },
     "%@ (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.",
+      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.\nAn item of the “+N more” menu above the Cards window's card list: a tag of the deck the sidebar chose, with how many of its cards carry it.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -791,6 +791,9 @@
     "+%lld" : {
       "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
     },
+    "+%lld more" : {
+      "comment" : "A menu above the Cards window's card list, after the tags of the deck the sidebar chose that fit: the tags that don't, with how many."
+    },
     "A book, a podcast…" : {
       "comment" : "In the Cards window's card form, in the empty source.\nIn the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
     },
@@ -1100,7 +1103,7 @@
       "comment" : "How an appearance closed, in Diagnostics."
     },
     "Color" : {
-      "comment" : "A submenu of a tag's menu in the Cards window's sidebar or its All Tags: the tag's color."
+      "comment" : "A submenu of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: the deck's color, which the decks inside it show while they have none.\nA submenu of a tag's menu in the Cards window's sidebar or its All Tags: the tag's color."
     },
     "Concept" : {
       "comment" : "A card type."
@@ -1159,10 +1162,10 @@
 
     },
     "Couldn't change the color of “%@”" : {
-      "comment" : "An alert's title in the Cards window, after a color in a tag's menu, with the tag."
+      "comment" : "An alert's title in the Cards window, after a color in a deck's menu, with the deck.\nAn alert's title in the Cards window, after a color in a tag's menu, with the tag."
     },
     "Couldn't change the emoji of “%@”" : {
-      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the tag."
+      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the deck.\nAn alert's title in the Cards window's emoji sheet, after OK, with the tag."
     },
     "Couldn't change the emoji of the type “%@”" : {
       "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with a card type's name."
@@ -1591,13 +1594,13 @@
       "comment" : "The tooltip of the button beside the emoji field that opens the Mac's emoji picker."
     },
     "Emoji for “%@”" : {
-      "comment" : "The title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
+      "comment" : "The title of the Cards window's sheet that gives a deck an emoji, with the deck's whole name.\nThe title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
     },
     "Emoji for the type “%@”" : {
       "comment" : "The title of the Cards window's sheet that gives a card type of the user's own an emoji, with the type's name."
     },
     "Emoji…" : {
-      "comment" : "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's emoji.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
     },
     "End at" : {
       "comment" : "Settings, under Appearances: the hour active hours end at."
@@ -1891,6 +1894,9 @@
     "It leaves the inbox without becoming cards, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it discards a capture."
     },
+    "It shows before the deck's name, and before the names of the decks inside it that have none. Leave the field empty for none." : {
+      "comment" : "Under the title of the Cards window's sheet that gives a deck an emoji."
+    },
     "It shows before the tag's name. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a tag an emoji."
     },
@@ -2017,6 +2023,12 @@
     },
     "Line %lld opens a quote that nothing closes." : {
       "comment" : "In the Import sheet, a line the file can't read."
+    },
+    "List all of the deck's cards again" : {
+      "comment" : "The tooltip of a tag above the Cards window's card list, while it narrows the list to it."
+    },
+    "List only the deck's cards tagged %@" : {
+      "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
     },
     "macOS didn't let %@ start at login (%@). Try again, or add it in System Settings > General > Login Items." : {
       "localizations" : {
@@ -2220,7 +2232,7 @@
       "comment" : "In the Cards window: no word card that isn't buried."
     },
     "None" : {
-      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a tag or a card type an emoji.\nThe first item of the Color submenu of a tag's menu: no color."
+      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a tag, a deck or a card type an emoji.\nThe first item of the Color submenu of a tag's menu or a deck's: no color."
     },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
@@ -2393,7 +2405,7 @@
       "comment" : "Settings: removes a step of the ladder."
     },
     "Rename “%@”" : {
-      "comment" : "The title of the Cards window's sheet that renames a tag, with the tag's whole name."
+      "comment" : "The title of the Cards window's sheet that renames a deck, with the deck's whole name.\nThe title of the Cards window's sheet that renames a tag, with the tag's whole name."
     },
     "Rename the type “%@”" : {
       "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
@@ -2796,6 +2808,9 @@
     },
     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
       "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+    },
+    "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one move with it, and a name another deck has joins the two." : {
+      "comment" : "Under the title of the Cards window's sheet that renames a deck."
     },
     "Write “::” between a tag and a tag inside it, as in “economía::Argentina”. The tags inside this one move with it, and a name another tag has joins the two." : {
       "comment" : "Under the title of the Cards window's sheet that renames a tag."

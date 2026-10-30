@@ -10,8 +10,11 @@ import Foundation
 // deck inside it. A deck's menu, Default's too, the same in its row's context
 // menu and in the Actions menu above the card list while the sidebar chose
 // it, which is its keyboard path, sets it aside or prioritizes it
-// (`DeckSwitches.swift`); a set-aside deck is grayed in its place, with the
-// decks inside it. Change Deck… moves the selected cards to the deck Lucas
+// (`DeckSwitches.swift`), and gives it a color or an emoji
+// (`DeckColorAndEmoji.swift`), which its row shows, as the decks inside it
+// that have none do; a set-aside deck is grayed in its place, with the decks
+// inside it. A chosen deck's tags line up above its cards
+// (`CardsWindowDeckTags.swift`). Change Deck… moves the selected cards to the deck Lucas
 // picks in its sheet, from the same tree with Default always in it, or to one
 // he names there with New Deck…, which the move makes. The Deck field, in the
 // card form and the editor (`CardsWindowDeckField.swift`), offers that tree
@@ -80,7 +83,8 @@ extension CardsWindowState {
     /// What a deck's menu offers, Default's too: in the sidebar, as its row's
     /// context menu, and above the card list while the sidebar chose it, as
     /// the Actions menu, which is how the keyboard reaches it. The same menu
-    /// in both places, which acts on the one deck.
+    /// in both places, which acts on the one deck: Set Aside, Prioritize,
+    /// Color and Emoji….
     public struct DeckMenu: Sendable, Equatable {
         /// The deck it acts on, with what it has of its own and takes from
         /// the decks it sits inside.
@@ -89,6 +93,11 @@ extension CardsWindowState {
         /// or inside a deck that is, since a deck is never both (ADR 0011),
         /// but for a priority deck, which it unticks.
         public let canPrioritize: Bool
+        /// The Color submenu's items: None, then Finder's seven colors in
+        /// Finder's order, with the deck's own color ticked, or None while it
+        /// has none of its own, whatever it takes from the decks it sits
+        /// inside.
+        public let colorItems: [ColorItem]
 
         /// Whether Set Aside is ticked: the deck is set aside on its own, and
         /// choosing it again undoes it.
@@ -158,7 +167,8 @@ extension CardsWindowState {
     public func menu(forDeck deck: String) -> DeckMenu? {
         guard let listed = decks.first(where: { $0.deck.name == deck })?.deck else { return nil }
         return DeckMenu(
-            deck: listed, canPrioritize: listed.canBePrioritized(amongSetAside: decks.map(\.deck).setAsideNames))
+            deck: listed, canPrioritize: listed.canBePrioritized(amongSetAside: decks.map(\.deck).setAsideNames),
+            colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: listed.color == $0) })
     }
 
     /// The menu of the deck the sidebar chose, which the Actions menu above
@@ -176,11 +186,11 @@ extension CardsWindowState {
     public mutating func chooseSetAside(onDeck deck: String) {
         guard let menu = menu(forDeck: deck) else { return }
         if menu.isSetAsideTicked {
-            changeSwitch(as: .stopSettingAside(deck: deck)) { engine throws(EngineError) in
+            changeOwnDeck(as: .stopSettingAside(deck: deck)) { engine throws(EngineError) in
                 try engine.stopSettingAside(deck: deck)
             }
         } else {
-            changeSwitch(as: .setAside(deck: deck)) { engine throws(EngineError) in try engine.setAside(deck: deck) }
+            changeOwnDeck(as: .setAside(deck: deck)) { engine throws(EngineError) in try engine.setAside(deck: deck) }
         }
     }
 
@@ -191,17 +201,47 @@ extension CardsWindowState {
     public mutating func choosePriority(onDeck deck: String) {
         guard let menu = menu(forDeck: deck), menu.canPrioritize else { return }
         let isPriority = !menu.isPriorityTicked
-        changeSwitch(as: isPriority ? .prioritize(deck: deck) : .stopPrioritizing(deck: deck)) {
+        changeOwnDeck(as: isPriority ? .prioritize(deck: deck) : .stopPrioritizing(deck: deck)) {
             engine throws(EngineError) in try engine.setPriority(isPriority, ofDeck: deck)
         }
     }
 
-    /// Does `work`, the engine's part of an action on a deck's switch, and
-    /// reads the cards again, or records why it couldn't, as `action`.
-    private mutating func changeSwitch(as action: FailedAction, _ work: (Engine) throws(EngineError) -> Void) {
-        if perform(action, work) {
-            read(on: ladder)
+    /// Chooses `color` in the Color submenu of the deck `deck`'s menu, or
+    /// None when it's nil: gives the deck that color, or takes its own away,
+    /// and reads the cards again, or records why it couldn't.
+    public mutating func chooseColor(_ color: TagColor?, onDeck deck: String) {
+        guard menu(forDeck: deck) != nil else { return }
+        changeOwnDeck(as: .setDeckColor(deck: deck)) { engine throws(EngineError) in
+            try engine.setColor(color, ofDeck: deck)
         }
+    }
+
+    /// Asks which emoji the deck `deck` gets, in the emoji sheet, after
+    /// Emoji… in its menu, while the sidebar lists it.
+    public mutating func askForEmoji(onDeck deck: String) {
+        guard let listed = decks.first(where: { $0.deck.name == deck })?.deck else { return }
+        question = .deckEmoji(listed)
+    }
+
+    /// Gives `deck`, the deck the window asks about, `emoji`, or takes its
+    /// own away when it's nil, and reads the cards again; or records why it
+    /// couldn't. Whether it did.
+    mutating func setEmoji(_ emoji: Emoji?, of deck: Deck) -> Bool {
+        changeOwnDeck(as: .setDeckEmoji(deck: deck.name)) { engine throws(EngineError) in
+            try engine.setEmoji(emoji, ofDeck: deck.name)
+        }
+    }
+
+    /// Does `work`, the engine's part of an action on what a deck has of its
+    /// own, its switch, color or emoji, and reads the cards again, or records
+    /// why it couldn't, as `action`. Whether it did.
+    @discardableResult
+    private mutating func changeOwnDeck(as action: FailedAction, _ work: (Engine) throws(EngineError) -> Void)
+        -> Bool
+    {
+        guard perform(action, work) else { return false }
+        read(on: ladder)
+        return true
     }
 
     /// What Change Deck… asks, while it asks.

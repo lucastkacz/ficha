@@ -246,8 +246,9 @@ extension CardsWindowState {
 
     /// Points what the window holds of tags at their names after `renames`,
     /// made in that order: the tag the sidebar chose, the one whose cards
-    /// All Tags lists in its place, and All Tags' selection and open
-    /// parents, each when it's a tag renamed or inside one.
+    /// All Tags lists in its place, the one chosen among the chosen deck's
+    /// tags, and All Tags' selection and open parents, each when it's a tag
+    /// renamed or inside one.
     mutating func follow(_ renames: [TagEdit]) {
         func renamed(_ name: String) -> String {
             renames.reduce(name) { name, edit in edit.name(of: name) ?? name }
@@ -256,6 +257,7 @@ extension CardsWindowState {
             sidebarItem = .cards(.tag(renamed(chosen)))
         }
         tagShownFromAllTags = tagShownFromAllTags.map(renamed)
+        chosenDeckTag = chosenDeckTag.map(renamed)
         selectedTags = Set(selectedTags.map(renamed))
         openTags = Set(openTags.map(renamed))
     }

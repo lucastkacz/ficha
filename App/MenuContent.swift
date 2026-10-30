@@ -3,8 +3,8 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// A deck in the menu bar's Prioritize submenu, by its last level under its
-/// parent: an item ticked while it's a priority deck, which toggles it, off
+/// A deck in the menu bar's Prioritize submenu, by its emoji and its last
+/// level under its parent: an item ticked while it's a priority deck, which toggles it, off
 /// while it's set aside, on its own or inside a deck that is, unless it's a
 /// priority deck, to untick; or, for a parent, a submenu that lists that item
 /// first, then the decks right inside it.
