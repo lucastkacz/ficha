@@ -77,17 +77,23 @@ struct TagsInsideTagsTests {
         #expect(try engine.cards().map(\.standing) == [.inReviews, .setAside(by: ["economía"])])
     }
 
-    // So that Lucas can make a parent no card carries alone a priority tag,
-    // its children right after it.
-    @Test("the Prioritize submenu offers each tag in reviews and the tags it sits inside, children after their parent")
+    // economía is a parent no card carries alone, and economía::mundial
+    // isn't a priority tag.
+    @Test(
+        "the Prioritize submenu offers the priority tags that aren't pinned by their whole names, children right after their parent"
+    )
     func thePrioritizeSubmenuOffersParents() throws {
         try approveCard("inflación", tags: ["economía::Argentina"])
         try approveCard("comercio", tags: ["economía::mundial", "economíaX"])
         try approveCard("ubuntu", tags: ["Lenguaje"])
 
+        for tag in ["Lenguaje", "economíaX", "economía::Argentina", "economía"] {
+            try engine.togglePriority(of: tag)
+        }
+
         #expect(
             try engine.prioritizeMenu().tags.map(\.name) == [
-                "economía", "economía::Argentina", "economía::mundial", "economíaX", "Lenguaje",
+                "economía", "economía::Argentina", "economíaX", "Lenguaje",
             ])
     }
 
@@ -104,11 +110,11 @@ struct TagsInsideTagsTests {
         let argentina = CardTag(
             name: "economía::Argentina", emoji: "🇦🇷", inheritedColor: .green, inheritedEmoji: "📈")
         let deuda = CardTag(name: "economía::Argentina::deuda", inheritedColor: .green, inheritedEmoji: "🇦🇷")
-        #expect(try engine.sidebarTags() == [economia, argentina, deuda, CardTag(name: "lenguaje")])
+        #expect(try engine.allTags() == [economia, argentina, deuda, CardTag(name: "lenguaje")])
         #expect(try engine.cardRows(in: .all, on: settings.ladder).map(\.tags) == [[deuda, CardTag(name: "lenguaje")]])
-        let sidebar = try engine.sidebarTags()
-        #expect(sidebar.map(\.shownColor) == [.green, .green, .green, nil])
-        #expect(sidebar.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])
+        let allTags = try engine.allTags()
+        #expect(allTags.map(\.shownColor) == [.green, .green, .green, nil])
+        #expect(allTags.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])
     }
 
     @Test(
@@ -136,7 +142,7 @@ struct TagsInsideTagsTests {
                 .setAside(by: ["economics::Argentina"]), .inReviews, .setAside(by: ["economics::Argentina"]),
             ])
         #expect(
-            try engine.sidebarTags() == [
+            try engine.allTags() == [
                 CardTag(name: "economics", switchedOn: .priority, color: .green, emoji: "📈"),
                 CardTag(
                     name: "economics::Argentina", switchedOn: .setAside, chosenToSync: true, inheritedColor: .green,
@@ -165,7 +171,7 @@ struct TagsInsideTagsTests {
         #expect(try engine.cards().map(\.tags) == [["Argentina"], ["Argentina::deuda"], ["Argentina"]])
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews, .inReviews])
         #expect(
-            try engine.sidebarTags() == [
+            try engine.allTags() == [
                 CardTag(name: "Argentina", switchedOn: .priority, color: .blue),
                 CardTag(name: "Argentina::deuda", inheritedColor: .blue),
             ])
@@ -188,7 +194,7 @@ struct TagsInsideTagsTests {
 
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews])
         #expect(
-            try engine.sidebarTags() == [
+            try engine.allTags() == [
                 CardTag(name: "economía"),
                 CardTag(name: "economía::Argentina"),
                 CardTag(name: "economía::Roma", color: .purple),
@@ -206,7 +212,7 @@ struct TagsInsideTagsTests {
 
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews])
         #expect(
-            try engine.sidebarTags() == [
+            try engine.allTags() == [
                 CardTag(name: "economía"),
                 CardTag(name: "economía::Argentina"),
             ])
@@ -227,7 +233,7 @@ struct TagsInsideTagsTests {
             try engine.renameTag("economía", to: " :: ")
         }
         #expect(try engine.cards().map(\.tags) == [["economía::Argentina"]])
-        #expect(try engine.sidebarTags().map(\.name) == ["economía", "economía::Argentina"])
+        #expect(try engine.allTags().map(\.name) == ["economía", "economía::Argentina"])
     }
 
     // Renaming a tag to the name it has, or a tag no card carries, changes
@@ -240,7 +246,9 @@ struct TagsInsideTagsTests {
         try engine.renameTag("historia", to: "ciencias sociales::historia")
 
         #expect(
-            try engine.sidebarTags() == [CardTag(name: "ciencias sociales::historia", switchedOn: .setAside)])
+            try engine.allTags() == [
+                CardTag(name: "ciencias sociales"), CardTag(name: "ciencias sociales::historia", switchedOn: .setAside),
+            ])
     }
 
     /// Approves a capture into one word card with this front and these tags

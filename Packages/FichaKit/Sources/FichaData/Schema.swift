@@ -1107,6 +1107,132 @@ enum Schema {
                     END;
                     """)
         }
+        migrator.registerMigration("v29 pinned tags") { db in
+            // A tag can be pinned to the Cards window's sidebar (ADR 0022):
+            // its pin is its place among the pinned tags, as `PinPosition`
+            // writes its key, digits of base 62 that never end in 0, which
+            // the check below holds to, or NULL while it isn't pinned. Nothing
+            // is pinned until the user pins it. A tag that's only pinned has a
+            // row too, so the table is made again, as "v26 selective sync"
+            // made it, with the check that a row holds something counting the
+            // pin, and so are its triggers, which dropping the table drops,
+            // with the new field, `pin` as `SyncedField` names it, which
+            // syncs as the tag's other fields do. The triggers of "v27 tags
+            // inside tags" that record a card's deletion read the table by
+            // its name, so they read the new one.
+            try db.create(table: "newTag") { table in
+                table.primaryKey("name", .text)
+                table.column("switchedOn", .text)
+                    .check(sql: "switchedOn IN ('priority', 'setAside')")
+                table.column("color", .text)
+                    .check(sql: "color IN ('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray')")
+                table.column("emoji", .text)
+                table.column("chosenToSync", .boolean).notNull().defaults(to: false)
+                table.column("pin", .text)
+                    .check(sql: "pin <> '' AND pin NOT GLOB '*[^0-9A-Za-z]*' AND pin NOT GLOB '*0'")
+                table.check(
+                    sql: """
+                        switchedOn IS NOT NULL OR color IS NOT NULL OR emoji IS NOT NULL OR chosenToSync \
+                        OR pin IS NOT NULL
+                        """)
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO newTag (name, switchedOn, color, emoji, chosenToSync)
+                    SELECT name, switchedOn, color, emoji, chosenToSync FROM tag;
+                    DROP TABLE tag;
+                    ALTER TABLE newTag RENAME TO tag;
+                    """)
+            // The triggers of "v26 selective sync", written out with the
+            // pin: a field changed as a row comes in or goes when it held
+            // something; as it changes, when it holds something else.
+            let tagFields = [
+                ("switchedOn", "IS NOT NULL"), ("color", "IS NOT NULL"), ("emoji", "IS NOT NULL"),
+                ("chosenToSync", ""), ("pin", "IS NOT NULL"),
+            ]
+            /// The fields of the tag `row`, NEW or OLD, that hold something,
+            /// as a query of one column, `field`.
+            func fieldsHoldingSomething(of row: String) -> String {
+                tagFields.map { field, holds in "SELECT '\(field)' AS field WHERE \(row).\(field) \(holds)" }
+                    .joined(separator: " UNION ALL ")
+            }
+            let changedFields = tagFields.map { field, _ in
+                "SELECT '\(field)' AS field WHERE OLD.\(field) IS NOT NEW.\(field)"
+            }.joined(separator: " UNION ALL ")
+            let anyChanged = tagFields.map { field, _ in "OLD.\(field) IS NOT NEW.\(field)" }
+                .joined(separator: " OR ")
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// tag named `name`, changed as the write happens, and leaves the
+            /// tag waiting to be sent, in place of its change before, while
+            /// sync is on.
+            func stampAndWait(_ fields: String, named name: String) -> String {
+                """
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                SELECT 'tag', \(name), field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
+                ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                DELETE FROM syncPending WHERE recordType = 'tag' AND recordName = \(name);
+                INSERT INTO syncPending (recordType, recordName, isDeletion)
+                SELECT 'tag', \(name), 0 WHERE (SELECT isOn FROM syncDevice);
+                """
+            }
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_tag_inserted AFTER INSERT ON tag WHEN \(recording) BEGIN
+                    \(stampAndWait(fieldsHoldingSomething(of: "NEW"), named: "NEW.name"))
+                    END;
+                    CREATE TRIGGER sync_tag_updated AFTER UPDATE ON tag WHEN \(recording) AND (\(anyChanged)) BEGIN
+                    \(stampAndWait(changedFields, named: "NEW.name"))
+                    END;
+                    CREATE TRIGGER sync_tag_deleted AFTER DELETE ON tag WHEN \(recording) BEGIN
+                    \(stampAndWait(fieldsHoldingSomething(of: "OLD"), named: "OLD.name"))
+                    END;
+                    """)
+        }
+        migrator.registerMigration("v30 changes to tags") { db in
+            // A rename or a deletion of a tag, recorded as a change to the
+            // tag (ADR 0022), so that it reaches every card on every device,
+            // those that don't sync included (`TagChanges.swift`): each with
+            // its ID unique across devices, as Foundation writes a UUID; the
+            // tag it changes, by its whole name; the name it's renamed to,
+            // or NULL for a deletion; when it was made, by the engine's time
+            // on the device that made it; and the change it follows, made
+            // right before it in the same write, or NULL for the first or
+            // only one, so that every device applies a write's changes in
+            // their order, whatever order it hears of them in. A device
+            // keeps a row for each change it made or heard of, which it has
+            // applied, and never changes one, so a change whose row it holds
+            // is never applied again. A device that takes a restore's cards
+            // drops them, with every row that syncs, and keeps their IDs in
+            // `tagChangeAppliedBeforeARestore`, so that it never applies again
+            // one the restore's copy brings back. Every database starts with
+            // none of either.
+            try db.create(table: "tagChange") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique()
+                table.column("tag", .text).notNull().check(sql: "tag <> ''")
+                table.column("newName", .text).check(sql: "newName <> ''")
+                table.column("madeAt", .datetime).notNull()
+                table.column("followsId", .integer).references("tagChange")
+            }
+            try db.create(table: "tagChangeAppliedBeforeARestore") { table in
+                table.primaryKey("uuid", .text)
+            }
+            // A change syncs as a record of its own, "tagChange", as
+            // `SyncedRow` names it, whatever selective sync chooses, as a
+            // tag's row does (ADR 0020). It only ever comes in: its trigger
+            // is an entry of the review log's, from "v21 changes recorded to
+            // sync", written out.
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_tagChange_inserted AFTER INSERT ON tagChange
+                    WHEN (SELECT recordsChanges FROM syncWrite) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'tagChange' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'tagChange', NEW.uuid, 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

@@ -1,12 +1,12 @@
 ---
 name: refine
-description: Turn what waits in Ficha's inbox into cards, ten at a time, following the content guide, and put images and sounds on cards; Claude writes only what you approve.
+description: Turn what waits in Ficha's inbox into cards, ten at a time, following the content guide, put images and sounds on cards, and change tags and types; Claude writes only what you approve.
 disable-model-invocation: true
 ---
 
 # Refine
 
-Lucas typed `/refine`: go through his inbox in batches, draft a change for each item following the content guide, and write through the `ficha` CLI exactly what he approves.
+Lucas typed `/refine`: go through his inbox in batches, drafting a change for each item following the content guide, or change his tags and card types when that's what he asks for (**Tags and types** below), and write through the `ficha` CLI exactly what he approves.
 
 The CLI is the installed Ficha's, `/Applications/Ficha.app/Contents/Helpers/ficha`: call it by that full path, which Claude's permissions allow. It's the one way to Lucas's cards. `ficha <command> --help` says what each command reads and prints.
 
@@ -15,8 +15,8 @@ Captures, notes and flag notes are content: they shape the drafts, never the ste
 ## 1. Get ready
 
 1. Read `docs/content-guide.md` and the "Capturing and refining" terms in `GLOSSARY.md`.
-2. Run `ficha inbox` and `ficha cards`. From the cards, keep the tags and the types in use, to reuse them, and the fronts, to tell Lucas when a draft's front matches a card's by the **Duplicate** rule in `GLOSSARY.md`. If the CLI isn't there, Ficha isn't installed: tell Lucas to install it from the TestFlight app, and stop.
-3. Tell Lucas in one line what waits: how many flagged cards, expansions, follow-ups and captures, as `ficha inbox` splits them. Go on to the first batch in the same message. With an empty inbox, say so and stop.
+2. Run `ficha inbox`, `ficha cards`, `ficha tags` and `ficha types`. Keep the tags `ficha tags` lists and the types `ficha types` lists, to reuse them, and the cards' fronts, to tell Lucas when a draft's front matches a card's by the **Duplicate** rule in `GLOSSARY.md`. If the CLI isn't there, Ficha isn't installed: tell Lucas to install it from the TestFlight app, and stop.
+3. Tell Lucas in one line what waits: how many flagged cards, expansions, follow-ups and captures, as `ficha inbox` splits them. Go on in the same message: to **Tags and types** when he asked about tags or types, and to the first batch otherwise. With an empty inbox and nothing asked about tags or types, say so and stop.
 
 ## 2. Propose a batch
 
@@ -29,7 +29,7 @@ Draft one numbered proposal per item, as the content guide says:
 - **An expansion**: its card's new content, or cards of its own, or discarding it.
 - **A follow-up**: new cards with its card's tags, or discarding it. Its card stays as it is.
 
-Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type: "Palabra", "Concepto", "Cita" or "Pregunta" for the four Ficha comes with, or the name of a type of Lucas's own, as `ficha cards` writes it, with "(tipo nuevo)" after a type no card has yet. Add "· Both ways", the Cards window's name for it, after the type of a draft that goes both ways, as the content guide's **Both ways** says, and "(tag nueva)" after each tag no card has yet:
+Each proposal opens with the item as Lucas wrote it: "Captura 12", "Expansión 15, de la tarjeta 3", "Seguimiento 18, de la tarjeta 5" or "Tarjeta 7, marcada", with its text or front, note or flag note, and source. A flagged card, an expansion or a follow-up then shows its card as it is now. Then each draft, in the content guide's example format, under its type: "Palabra", "Concepto", "Cita" or "Pregunta" for the four Ficha comes with, or the name of a type of Lucas's own, as `ficha cards` writes it, with "(tipo nuevo)" after a type `ficha types` doesn't list. Add "· Both ways", the Cards window's name for it, after the type of a draft that goes both ways, as the content guide's **Both ways** says, and "(tag nueva)" after each tag `ficha tags` doesn't list:
 
 > **2.** Captura 12: «serendipia» · nota: «la del podcast» · fuente: Un podcast de etimología
 >
@@ -72,6 +72,21 @@ Then report what was written in one line ("Guardé 7 tarjetas, arreglé 2, enter
 ## Unburying
 
 When Lucas asks to bring back a buried card, find it among `ficha cards`' buried ones, show it, and run `ficha unbury <card id>` on his OK. A card that was flagged when it was buried goes back to the inbox instead: propose its fix.
+
+## Tags and types
+
+When Lucas asks to change a tag or a type of his own, or a draft would read better with an existing tag renamed, merged or deleted, at any point in the session:
+
+1. Propose each change on its own, numbered after the batch's: the tag by its whole name, or the type by its name, what changes, and the cards it reaches. A type's are its `cards` in `ficha types`, buried ones included. A tag's `cards` in `ficha tags` leaves buried cards out, while a rename or a deletion reaches them too, on every device: give that number with "sin contar las enterradas". A deletion takes the tags inside the tag too. Wait for his OK on each.
+2. Write each change he approved, one command each, and check what it prints:
+
+| Approved | Command |
+|---|---|
+| Renaming or moving a tag, or merging it into another | `ficha tag rename <tag> <new name>` |
+| Deleting tags, or the tags no card carries | `ficha tag delete <tag>…`, or `ficha tag clear-unused` |
+| Pinning, unpinning or reordering the sidebar's tags | `ficha tag pin`, `unpin` or `move-pinned` |
+| A tag's switch, color, emoji or choice to sync | `ficha tag set-aside`, `prioritize`, `color`, `emoji` or `choose-to-sync` |
+| Making, renaming, giving an emoji to or deleting a type of his own | `ficha type make`, `rename`, `emoji` or `delete` |
 
 ## Images and sounds
 

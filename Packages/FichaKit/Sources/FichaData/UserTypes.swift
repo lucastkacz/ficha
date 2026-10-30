@@ -71,11 +71,17 @@ extension Engine {
         }
     }
 
-    /// How many cards have the user type with this ID, buried ones too, as
-    /// the Cards window asks before it deletes the type.
-    public func cardCount(ofUserType id: UUID) throws(EngineError) -> Int {
+    /// How many cards have `type`, buried ones too, as the Cards window asks
+    /// before it deletes a user type, and `ficha types` prints for each.
+    public func cardCount(of type: CardType) throws(EngineError) -> Int {
         try read { db in
-            try Int.fetchOne(db, sql: "SELECT count(*) FROM card WHERE type = ?", arguments: [id.uuidString]) ?? 0
+            guard
+                let count = try Int.fetchOne(
+                    db, sql: "SELECT count(*) FROM card WHERE type = ?", arguments: [type.column])
+            else {
+                throw unreadable("The database didn't count the cards of a type")
+            }
+            return count
         }
     }
 }
@@ -201,9 +207,9 @@ extension CardType {
     /// The type Ficha comes with that `name` names, by its raw value or its
     /// name in the Mac's language (`builtInNames`), as
     /// `UserType.isSameName(_:as:)` compares them, or nil when none does:
-    /// the one lookup of the four by name, as a file, a refine session or a
-    /// new user type's name gives it.
-    init?(builtInNamed name: String) {
+    /// the one lookup of the four by name, as a file, a refine session, a
+    /// new user type's name or the `ficha` CLI's type commands give it.
+    public init?(builtInNamed name: String) {
         guard
             let type = CardType.builtIn.first(where: {
                 $0.builtInNames.contains { UserType.isSameName(name, as: $0) }

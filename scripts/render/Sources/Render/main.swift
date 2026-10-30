@@ -23,10 +23,18 @@ import SwiftUI
 /// A window the tool can draw, by the name its arguments give it.
 enum Window: String {
     case cards
-    /// The Cards window on ciencia, once the sample's tags sit inside tags,
-    /// with its sidebar's tree and its Set Aside section, taller than it
-    /// opens so that the sidebar shows both.
+    /// The Cards window on ciencia, once the sample's tags sit inside tags
+    /// and five are pinned, in an order of their own, with its sidebar's
+    /// pinned tags, one inside another named by its whole path and a
+    /// set-aside one grayed, and All Tags… after them.
     case cardsTags = "cards-tags"
+    /// The Cards window on All Tags, with the same tags, historia a priority
+    /// tag too, and an unused one: every tag as a tree, with its counts and
+    /// its checkboxes, the set-aside ones grayed in their places, ciencia,
+    /// economía and historia open, each level sorted by Cards, the most
+    /// first, and economía selected, which `--key return` lists the cards
+    /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
+    case cardsAllTags = "cards-all-tags"
     /// The Cards window on Ley, one of the card types of the user's own the
     /// tool gives the sample, with its card on Parkinson's law selected, its
     /// sidebar scrolled to its end so that it shows its Types section.
@@ -770,6 +778,26 @@ func nestSampleTags(in engine: Engine) throws {
     try engine.setAside("economía::trabajo")
 }
 
+/// Pins five of the sample's tags, once `nestSampleTags(in:)` moved some
+/// inside others, as Pin to Sidebar in the Cards window does (ADR 0022), in
+/// an order that isn't alphabetical: lenguaje, ciencia, ciencia ›
+/// psicología, historia, and literatura, which is set aside.
+func pinSampleTags(in engine: Engine) throws {
+    for tag in ["lenguaje", "ciencia", "ciencia::psicología", "historia", "literatura"] {
+        try engine.pin(tag)
+    }
+}
+
+/// Makes historia a priority tag, gives pendientes, a tag no card carries,
+/// the color red, and sets ciencia aside, a parent, so that All Tags ticks a
+/// Priority checkbox, offers Clear Unused Tags…, and grays a set-aside branch:
+/// ciencia with the tags inside it.
+func prioritizeAndLeaveUnusedSampleTags(in engine: Engine) throws {
+    try engine.setPriority(true, of: "historia")
+    try engine.setColor(.red, of: "pendientes")
+    try engine.setAside("ciencia")
+}
+
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,
 /// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
 /// emoji, to the Moon landing's question; Sesgo, with none, to the two
@@ -1112,9 +1140,13 @@ func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
-    case .cardsTags:
+    case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
+        try pinSampleTags(in: engine)
+        if name == .cardsAllTags {
+            try prioritizeAndLeaveUnusedSampleTags(in: engine)
+        }
         return try AppModel(engine: engine)
     case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1240,9 +1272,17 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         state.choose(.cards(.tag("ciencia")))
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
-        // Taller than it opens, so that the sidebar shows its Set Aside
-        // section, below the tree, which the tool can't scroll to.
-        window.setContentSize(NSSize(width: window.frame.width, height: 840))
+        return window
+    case .cardsAllTags:
+        var state = model.openCardsWindow()
+        state.choose(.allTags)
+        for tag in ["ciencia", "economía", "historia"] {
+            state.setOpen(true, tag)
+        }
+        state.sortAllTags(by: .cards, ascending: false)
+        state.selectTags(["economía"])
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .cardsTypes:
         var state = model.openCardsWindow()
@@ -1298,7 +1338,8 @@ func menuWindow(model: AppModel) -> NSWindow {
     let content = VStack(alignment: .leading) {
         MenuContent(
             model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
-            openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {}, openSyncSettings: {},
+            openCards: {}, openAllTags: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
+            openSyncSettings: {},
             checkAppearance: { nil }, timeMoved: {},
             secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))
     }

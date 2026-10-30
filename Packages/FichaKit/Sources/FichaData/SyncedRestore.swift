@@ -55,13 +55,19 @@ struct SyncKeptThroughARestore {
 /// Drops every row that syncs, in a write that records nothing to send, as a
 /// device takes a restore's cards in place of its own: the cards that sync
 /// (`SelectiveSync.swift`), their review log, the captures that sync, the
-/// tags and the user's card types, with what waited to be sent and when each
-/// field of them last changed. A card that stays keeps its type's ID, and has
-/// its type again once the restore's copy brings it. The cards that don't sync stay, with their review log, the
-/// captures tied to them and those they were approved from, none of which
-/// the restore's copy brings. The settings that decide progress and the
-/// choice of what syncs stay, as their rows are never deleted, but with no
-/// time of change, so that the restore's take their place as they come.
+/// tags, the user's card types and the changes to tags, with what waited to
+/// be sent and when each field of them last changed. A card that stays keeps
+/// its type's ID, and has its type again once the restore's copy brings it.
+/// The device keeps the IDs of the changes to tags it dropped, which it
+/// applied: those the copy holds come again, and are applied only when the
+/// device never heard of them (`TagChanges.swift`), so that none reaches the
+/// cards that stay a second time; one the copy lacks, which the restore
+/// undid, goes for good, so that the device never sends it again. The cards
+/// that don't sync stay, with their review log, the captures tied to them
+/// and those they were approved from, none of which the restore's copy
+/// brings. The settings that decide progress and the choice of what syncs
+/// stay, as their rows are never deleted, but with no time of change, so
+/// that the restore's take their place as they come.
 /// Returns the images and sounds the cards dropped used, for the device to
 /// remove those iCloud doesn't hold: those it holds stay, for the restore's
 /// cards that use them.
@@ -88,6 +94,8 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
             DELETE FROM capture WHERE id IN (\(untied));
             DELETE FROM tag;
             DELETE FROM userType;
+            INSERT OR IGNORE INTO tagChangeAppliedBeforeARestore (uuid) SELECT uuid FROM tagChange;
+            DELETE FROM tagChange;
             DELETE FROM syncFieldTime WHERE recordType NOT IN ('\(card)', '\(capture)');
             DELETE FROM syncPending;
             """)

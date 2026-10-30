@@ -34,7 +34,7 @@ Lucas doesn't know the plugin's skills by heart, and doesn't have to. This map i
 | A small change that fits in this session | `/implement`, right here, without a spec or tickets |
 | A spec's ticket or a fix to a product bug is done, and it went sideways | `/retro`, in the same session before `/clear`: it suggests changes to the environment, and Lucas wants its findings for the comparison in ADR 0007. Ours, narrower than the plugin's: never after environment work, whose retro turns up more of it |
 | Raw issues are waiting: ideas from Lucas's phone, bug reports | `/triage` |
-| Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them; or Lucas wants an image or a sound on a card | `/refine`, ours, not the plugin's: it proposes the cards, and Lucas approves them |
+| Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them; or Lucas wants an image or a sound on a card, or his tags or card types tidied | `/refine`, ours, not the plugin's: it proposes the cards, or the changes to tags and types, and Lucas approves them |
 | An effort too big and foggy for one session | `/wayfinder` |
 | The code feels hard to change, or there's a spare moment | `/improve-codebase-architecture` |
 | Lucas didn't follow a message | `/wait-what` |

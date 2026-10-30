@@ -39,9 +39,9 @@ final class TagsInsideTagsSyncTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
         #expect(
             try iPhone.engine.cards().map(\.tags).sorted { $0[0] < $1[0] } == [["economics"], ["economics::Argentina"]])
-        #expect(try iPhone.engine.sidebarTags() == mac.engine.sidebarTags())
+        #expect(try iPhone.engine.allTags() == mac.engine.allTags())
         #expect(
-            try iPhone.engine.sidebarTags() == [
+            try iPhone.engine.allTags() == [
                 CardTag(name: "economics", color: .green),
                 CardTag(name: "economics::Argentina", switchedOn: .setAside, inheritedColor: .green),
             ])

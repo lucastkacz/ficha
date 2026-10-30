@@ -67,7 +67,8 @@ private struct ExportButtonAndSheet: ViewModifier {
 /// what each item takes, and the sheet draws it.
 struct ExportSheet: View {
     let exporting: CardsWindowState.Exporting
-    /// The sidebar's tags, for the menu to name each tag as the sidebar does.
+    /// Every tag, as All Tags lists them, for the menu to name each tag as
+    /// the window does, with its emoji.
     let tags: [CardTag]
     /// What couldn't be done, as the alert over the sheet says it.
     let failure: Binding<Failure?>

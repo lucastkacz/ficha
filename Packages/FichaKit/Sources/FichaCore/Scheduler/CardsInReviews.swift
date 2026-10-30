@@ -17,9 +17,6 @@ public struct CardsInReviews: Sendable, Equatable {
     let priorityIDs: Set<Int64>
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]
-    /// The tags of the cards in Lucas's reviews, and the tags those sit
-    /// inside, which the menu's Prioritize submenu offers.
-    public let tags: Set<String>
 
     /// The cards in Lucas's reviews out of `cards`, every card by id with
     /// where it stands, its tags and whether it goes both ways, in the order
@@ -46,27 +43,25 @@ public struct CardsInReviews: Sendable, Equatable {
         priorityIDs = Set(
             inReviews.filter { !priorityTags.isDisjoint(with: TagPath.lineages(of: $0.tags)) }.map(\.id))
         self.log = log
-        tags = TagPath.lineages(of: inReviews.flatMap(\.tags))
     }
 
-    /// These ways in Lucas's reviews, these cards as priority cards, this
-    /// review log, and the tags of the cards in his reviews.
-    private init(ways: [CardWay], priorityIDs: Set<Int64>, log: [ReviewLogEntry], tags: Set<String>) {
+    /// These ways in Lucas's reviews, these cards as priority cards and this
+    /// review log.
+    private init(ways: [CardWay], priorityIDs: Set<Int64>, log: [ReviewLogEntry]) {
         self.ways = ways
         self.priorityIDs = priorityIDs
         self.log = log
-        self.tags = tags
     }
 
     /// The same cards as if no tag were a priority tag.
     var withoutPriority: CardsInReviews {
-        CardsInReviews(ways: ways, priorityIDs: [], log: log, tags: tags)
+        CardsInReviews(ways: ways, priorityIDs: [], log: log)
     }
 
     /// The same cards as if none went both ways: their front-first ways
     /// alone.
     var frontFirstOnly: CardsInReviews {
-        CardsInReviews(ways: ways.filter { $0.way == .frontFirst }, priorityIDs: priorityIDs, log: log, tags: tags)
+        CardsInReviews(ways: ways.filter { $0.way == .frontFirst }, priorityIDs: priorityIDs, log: log)
     }
 
     /// Where each way stands on `ladder`, by card in the order Lucas approved

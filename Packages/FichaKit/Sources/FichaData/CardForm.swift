@@ -151,7 +151,7 @@ extension CardsWindowState {
         case .followUp(let followUp):
             form = CardForm(openedBy: .followUp(followUp))
             form.draft.tags = CardContent.tagsField(of: followUp.card.tags)
-        case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected:
+        case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
             return
         }
         form.draft.source = form.capture?.source ?? ""

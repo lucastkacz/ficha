@@ -511,15 +511,16 @@ public struct Sync: Sendable {
 
     /// Applies `records`, which other devices saved, or this one, as iCloud
     /// holds them now, in one write that records nothing to send back: tags
-    /// and captures first, then cards and the review log, so that what a
-    /// record refers to is there first; and then those that waited for one
-    /// of them.
+    /// first, then the changes to tags, then captures, cards and the review
+    /// log, so that what a record refers to is there first, as
+    /// `applyingRank()` says; and then those that waited for one of them.
     private func receiveFetched(_ records: [ICloudRecord]) throws(EngineError) {
         guard !records.isEmpty else {
             return
         }
         try engine.writeWithoutRecording { db in
-            for record in records.sorted(by: { $0.applyingRank < $1.applyingRank }) {
+            let ranked = try records.map { record in (rank: try record.applyingRank(), record: record) }
+            for (_, record) in ranked.sorted(by: { $0.rank < $1.rank }) {
                 _ = try receive(record, in: db)
             }
             try applyWaitingRecords(in: db)
@@ -731,16 +732,25 @@ extension ChangeToSend {
 extension ICloudRecord {
     /// Its place among the records of a fetch as they're applied: tags, the
     /// settings that decide progress, the choice of what syncs and the user's
-    /// card types, then captures, then cards, then the review log, so that
-    /// what a record refers to comes before it. A type this version doesn't
-    /// know comes last, to wait.
-    fileprivate var applyingRank: Int {
+    /// card types; then the changes to tags, in the order they were made, so
+    /// that each applies to the tags as the fetch left them and to the cards
+    /// as the device held them when it heard of it (`TagChanges.swift`); then
+    /// captures, then cards, then the review log, so that what a record
+    /// refers to comes before it. A type this version doesn't know comes
+    /// last, to wait. Throws for a change to a tag that doesn't say when it
+    /// was made.
+    fileprivate func applyingRank() throws -> (Int, Int64) {
         switch SyncedRow.RecordType(rawValue: type) {
-        case .tag, .progressSettings, .syncChoice, .userType: 0
-        case .capture: 1
-        case .card: 2
-        case .reviewLogEntry: 3
-        case nil: 4
+        case .tag, .progressSettings, .syncChoice, .userType: return (0, 0)
+        case .tagChange:
+            guard let madeAt = try time("madeAt") else {
+                throw unreadable("A change to a tag from iCloud doesn't say when it was made")
+            }
+            return (1, madeAt.wholeMilliseconds)
+        case .capture: return (2, 0)
+        case .card: return (3, 0)
+        case .reviewLogEntry: return (4, 0)
+        case nil: return (5, 0)
         }
     }
 }

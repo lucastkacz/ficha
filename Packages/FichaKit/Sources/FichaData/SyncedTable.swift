@@ -3,10 +3,10 @@ import Foundation
 internal import GRDB
 
 /// A table whose rows sync each as a record named by its ID unique across
-/// devices (ADR 0017): the cards, the captures, the review log and the user's
-/// card types. It says which of its columns the record holds, each under
-/// which key and how, and which of them make up each field that keeps when it
-/// last changed, of which the latest change wins.
+/// devices (ADR 0017): the cards, the captures, the review log, the user's
+/// card types and the changes to tags. It says which of its columns the
+/// record holds, each under which key and how, and which of them make up each
+/// field that keeps when it last changed, of which the latest change wins.
 struct SyncedTable: Sendable {
     /// The table's name.
     let name: String
@@ -44,7 +44,7 @@ struct SyncedTable: Sendable {
     }
 
     /// Every table whose rows sync named by their ID.
-    static let all = [cards, captures, reviewLog, userTypes]
+    static let all = [cards, captures, reviewLog, userTypes, tagChanges]
 
     /// A card's parts, as "What other devices changed" in #298 lists them.
     static let cards = SyncedTable(
@@ -136,6 +136,19 @@ struct SyncedTable: Sendable {
         fixedColumns: [],
         marksRowsFromAnotherDevice: false,
         check: { id, db in _ = try UserType(row: try tableRow(id, of: "userType", in: db)) })
+
+    /// A rename or a deletion of a tag, which never changes: it comes in
+    /// whole, and is applied as it does (`TagChanges.swift`), once the
+    /// change it follows in its write is there.
+    static let tagChanges = SyncedTable(
+        name: "tagChange", syncedRow: { .tagChange($0) },
+        fields: [],
+        fixedColumns: [
+            SyncedColumn("tag", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time),
+            SyncedColumn("followsId", key: TagChangeKey.follows, .link(to: "tagChange")),
+        ],
+        marksRowsFromAnotherDevice: false,
+        check: { id, db in _ = try TagChange(row: try tableRow(id, of: "tagChange", in: db)) })
 
     /// Whether the table has a row with this ID unique across devices.
     func holdsRow(with uuid: UUID, in db: Database) throws -> Bool {

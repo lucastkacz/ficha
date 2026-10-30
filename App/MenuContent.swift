@@ -15,6 +15,8 @@ struct MenuContent: View {
     let openReviewPanel: () -> Void
     /// Opens the Cards window.
     let openCards: () -> Void
+    /// Opens the Cards window on All Tags.
+    let openAllTags: () -> Void
     /// Opens the Diagnostics window.
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
@@ -99,40 +101,62 @@ struct MenuContent: View {
         return String(localized: "Review now (\(due) due)")
     }
 
-    /// The Prioritize submenu, as the engine offers it: "None", ticked while
-    /// no tag is a priority tag, which clears them, and then each tag, its
-    /// emoji before its whole name, as in "economía › Argentina", each tag
-    /// inside another after it, ticked while it's a priority tag, which
-    /// toggles it. A change applies from the next appearance, review now or
-    /// "See more" on.
+    /// The Prioritize submenu, with the items the engine offers, in its
+    /// order: "None", ticked while no tag is a priority tag, which clears
+    /// them; each tag, its emoji before its whole name, as in
+    /// "economía › Argentina", ticked while it's a priority tag, which
+    /// toggles it; and All Tags…, which opens the Cards window on All Tags
+    /// (ADR 0022). A divider sets the tags apart. A change applies from the
+    /// next appearance, review now or "See more" on.
     private var prioritizeSubmenu: some View {
         Menu(prioritizeTitle) {
             if let menu = model.prioritizeMenu {
-                Toggle(
-                    isOn: Binding(
-                        get: { menu.isNoneTicked },
-                        set: { _ in changePriority { () throws(EngineError) in try model.clearPriorityTags() } })
-                ) {
-                    Text(
-                        "None",
-                        comment: "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.")
-                }
-                if !menu.tags.isEmpty {
-                    Divider()
-                }
-                ForEach(menu.tags, id: \.name) { tag in
-                    Toggle(
-                        isOn: Binding(
-                            get: { tag.isPriority },
-                            set: { _ in
-                                changePriority { () throws(EngineError) in try model.togglePriority(of: tag.name) }
-                            })
-                    ) {
-                        Text(verbatim: tag.title)
-                    }
+                ForEach(menu.items, id: \.self) { item in
+                    prioritizeItem(item, in: menu)
                 }
             } else {
                 Text("Couldn't read your tags")
+            }
+        }
+    }
+
+    /// The Prioritize submenu's item `item`, of `menu`, with the divider
+    /// after "None" while some tag follows it, and before All Tags….
+    @ViewBuilder
+    private func prioritizeItem(_ item: PrioritizeMenu.Item, in menu: PrioritizeMenu) -> some View {
+        switch item {
+        case .noPriorityTag:
+            Toggle(
+                isOn: Binding(
+                    get: { menu.isNoneTicked },
+                    set: { _ in changePriority { () throws(EngineError) in try model.clearPriorityTags() } })
+            ) {
+                Text(
+                    "None",
+                    comment: "In the menu's Prioritize submenu: no tag is a priority tag. Choosing it clears them.")
+            }
+            if !menu.tags.isEmpty {
+                Divider()
+            }
+        case .tag(let tag):
+            Toggle(
+                isOn: Binding(
+                    get: { tag.isPriority },
+                    set: { _ in
+                        changePriority { () throws(EngineError) in try model.togglePriority(of: tag.name) }
+                    })
+            ) {
+                Text(verbatim: tag.title)
+            }
+        case .allTags:
+            Divider()
+            Button(action: openAllTags) {
+                Text(
+                    "All Tags…",
+                    comment: """
+                        The last item of the menu's Prioritize submenu: it opens the Cards window on All Tags, which \
+                        lists every tag.
+                        """)
             }
         }
     }

@@ -7,10 +7,14 @@ extension Engine {
     /// the tag later too, and deletes the tag's row once it has nothing
     /// left.
     public func setColor(_ color: TagColor?, of tag: String) throws(EngineError) {
+        try setColor(color, of: [tag])
+    }
+
+    /// Gives each of `tags` `color`, or takes their colors away when it's
+    /// nil, as `setColor(_:of:)` does for one, in one write.
+    public func setColor(_ color: TagColor?, of tags: [String]) throws(EngineError) {
         try write { db in
-            var own = try ownTag(tag, in: db)
-            own.color = color
-            try save(own, in: db)
+            try changeOwnTags(tags, in: db) { $0.color = color }
         }
     }
 
@@ -18,9 +22,7 @@ extension Engine {
     /// `tag` table deletes the tag's row once it has nothing left.
     public func setEmoji(_ emoji: Emoji?, of tag: String) throws(EngineError) {
         try write { db in
-            var own = try ownTag(tag, in: db)
-            own.emoji = emoji?.text
-            try save(own, in: db)
+            try changeOwnTags([tag], in: db) { $0.emoji = emoji?.text }
         }
     }
 }
