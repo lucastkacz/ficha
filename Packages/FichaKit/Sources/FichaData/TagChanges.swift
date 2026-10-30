@@ -172,12 +172,12 @@ private func applyToRows(_ edit: TagEdit, madeAt time: Date, in db: Database) th
 }
 
 /// Records that `field` of `row` changed as the device applied a change to a
-/// tag made at `time`: at `time`, or, when the field changed since, a
-/// millisecond after it last did, as a record holds times, so that the edit
-/// wins over every version of the row the device held, the one it sent
-/// itself included, which iCloud hands back and which wins a tie, and over
-/// no change made later on another device.
-private func stamp(_ field: SyncedField, of row: SyncedRow, changedBy time: Date, in db: Database) throws {
+/// tag or a deck made at `time` (`DeckChanges.swift`): at `time`, or, when
+/// the field changed since, a millisecond after it last did, as a record
+/// holds times, so that the edit wins over every version of the row the
+/// device held, the one it sent itself included, which iCloud hands back and
+/// which wins a tie, and over no change made later on another device.
+func stamp(_ field: SyncedField, of row: SyncedRow, changedBy time: Date, in db: Database) throws {
     let last = try fieldTimes(of: row, in: db)[field]
     let changedAt = last.map { $0 < time ? time : Date(wholeMilliseconds: $0.wholeMilliseconds + 1) } ?? time
     try db.execute(

@@ -6,10 +6,11 @@ import SwiftUI
 /// while the sidebar chose it, as the state offers them: Set Aside, ticked
 /// while the deck is set aside on its own; Prioritize, ticked while it's a
 /// priority deck, and off while it's set aside, on its own or inside a deck
-/// that is (ADR 0011, ADR 0024); Color, with None and Finder's seven colors,
-/// each with a swatch, the deck's own ticked; and Emoji…, which opens the
-/// emoji sheet. Each calls the state, which reads the decks as they are when
-/// Lucas chooses it.
+/// that is (ADR 0011, ADR 0024); Rename…, which opens the rename sheet on the
+/// deck's whole name; Color, with None and Finder's seven colors, each with a
+/// swatch, the deck's own ticked; Emoji…, which opens the emoji sheet; and
+/// Delete…, which asks first. Default's has neither Rename… nor Delete…. Each
+/// calls the state, which reads the decks as they are when Lucas chooses it.
 struct DeckMenuItems: View {
     let menu: CardsWindowState.DeckMenu
     @Binding var state: CardsWindowState
@@ -38,6 +39,18 @@ struct DeckMenuItems: View {
         }
         .disabled(!menu.canPrioritize)
         Divider()
+        if menu.offersRenameAndDelete {
+            Button {
+                state.askToRenameDeck(menu.deck.name)
+            } label: {
+                Text(
+                    "Rename…",
+                    comment: """
+                        An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
+                        above the card list: it asks for the deck's whole name, which moves it too.
+                        """)
+            }
+        }
         Menu {
             ForEach(menu.colorItems, id: \.color) { item in
                 Toggle(
@@ -64,6 +77,20 @@ struct DeckMenuItems: View {
                     An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
                     above the card list: it asks for the deck's emoji.
                     """)
+        }
+        if menu.offersRenameAndDelete {
+            Divider()
+            Button {
+                state.askToDeleteDeck(menu.deck.name)
+            } label: {
+                Text(
+                    "Delete…",
+                    comment: """
+                        An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
+                        above the card list: it asks whether to delete the deck, with the decks inside it and their \
+                        cards.
+                        """)
+            }
         }
     }
 }

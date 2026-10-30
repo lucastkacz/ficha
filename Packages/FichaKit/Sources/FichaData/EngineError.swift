@@ -93,6 +93,17 @@ public enum EngineError: Error, Equatable {
     /// level is this one, one of the names Default goes by, so nothing
     /// changed: Default is a deck of its own, and no deck sits inside it.
     case defaultDeckName(String)
+    /// The deck with this name was to be renamed, or moved, inside itself or
+    /// inside a deck inside it, which would make the tree loop, so nothing
+    /// changed.
+    case deckInsideItself(String)
+    /// Default was to be renamed, moved or deleted, which it never is: it
+    /// holds the cards no other deck does. Nothing changed.
+    case defaultDeckStays
+    /// The deck with this name was to be renamed, moved or deleted, and it
+    /// isn't there, as when another device renamed or deleted it meanwhile,
+    /// so nothing changed.
+    case deckNotFound(String)
     /// A user type was to be made or renamed with a blank name, so nothing
     /// changed.
     case blankTypeName
@@ -344,6 +355,27 @@ extension EngineError: LocalizedError {
                 localized: """
                     “\(name)” is Default's name, and Default holds the cards no other deck does, so nothing changed. \
                     To move cards there, pick Default; to make a deck, write another name.
+                    """
+            )
+        case .deckInsideItself(let deck):
+            String(
+                localized: """
+                    “\(Deck.shownName(deck))” can't go inside itself, or inside a deck inside it, so nothing changed. \
+                    Pick a deck outside it.
+                    """
+            )
+        case .defaultDeckStays:
+            String(
+                localized: """
+                    Default holds the cards no other deck does, so it can't be renamed, moved or deleted, and nothing \
+                    changed.
+                    """
+            )
+        case .deckNotFound(let deck):
+            String(
+                localized: """
+                    The deck “\(Deck.shownName(deck))” isn't there any more, maybe since another of your devices \
+                    renamed or deleted it, so nothing changed.
                     """
             )
         case .blankTypeName:

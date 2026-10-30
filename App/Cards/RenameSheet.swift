@@ -2,14 +2,15 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The sheet the Cards window opens from Rename… in the context menu of a
-/// tag or of a card type of the user's own, with one field for its name,
-/// which starts with the one it has: a tag's whole name, its levels joined by
-/// `::`, as in "economía::Argentina". OK renames the tag and every tag inside
-/// it, which also moves it inside another tag, or to the top, as the name's
-/// levels say, and joins it with a tag that already has the name, which
-/// keeps what it has of its own; it refuses
-/// a blank name, or one inside the tag itself. OK renames a type, whose cards
+/// The sheet the Cards window opens from Rename… in the menu of a tag, of a
+/// deck or of a card type of the user's own, with one field for its name,
+/// which starts with the one it has: a tag's or a deck's whole name, its
+/// levels joined by `::`, as in "economía::Argentina". OK renames the tag and
+/// every tag inside it, which also moves it inside another tag, or to the
+/// top, as the name's levels say, and joins it with a tag that already has
+/// the name, which keeps what it has of its own; it refuses a blank name, or
+/// one inside the tag itself. A deck's OK does the same with decks, and also
+/// refuses one of Default's names. OK renames a type, whose cards
 /// keep it; it refuses a blank name, a name of one of the four types Ficha
 /// comes with, or another type's. The sheet says why under the field.
 /// `CardsWindowState` decides what OK takes.
@@ -54,7 +55,7 @@ struct RenameSheet: View {
                 String(
                     localized: "Name",
                     comment:
-                        "The field of the sheet that renames a tag, its whole name, or a card type of the user's own."
+                        "The field of the sheet that renames a tag or a deck, its whole name, or a card type of the user's own."
                 ),
                 text: $name
             )
@@ -90,7 +91,8 @@ struct RenameSheet: View {
         .failureAlert(failure)
     }
 
-    /// The sheet's title, with the tag's whole name or the type's name.
+    /// The sheet's title, with the tag's or the deck's whole name, or the
+    /// type's name.
     private var title: Text {
         switch subject {
         case .tag(let tag):
@@ -139,8 +141,8 @@ struct RenameSheet: View {
         return error
     }
 
-    /// Renames the tag or the type to what the field holds, unless OK
-    /// refuses it.
+    /// Renames the tag, the deck or the type to what the field holds, unless
+    /// OK refuses it.
     private func submit() {
         guard refusal == nil else { return }
         choose(name)

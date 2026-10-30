@@ -4,7 +4,7 @@ internal import GRDB
 
 /// A table whose rows sync each as a record named by its ID unique across
 /// devices (ADR 0017): the cards, the captures, the review log, the user's
-/// card types and the changes to tags. It says which of its columns the
+/// card types and the changes to tags and decks. It says which of its columns the
 /// record holds, each under which key and how, and which of them make up each
 /// field that keeps when it last changed, of which the latest change wins.
 struct SyncedTable: Sendable {
@@ -44,7 +44,7 @@ struct SyncedTable: Sendable {
     }
 
     /// Every table whose rows sync named by their ID.
-    static let all = [cards, captures, reviewLog, userTypes, tagChanges]
+    static let all = [cards, captures, reviewLog, userTypes, tagChanges, deckChanges]
 
     /// A card's parts, as "What other devices changed" in #298 lists them.
     static let cards = SyncedTable(
@@ -150,6 +150,15 @@ struct SyncedTable: Sendable {
         ],
         marksRowsFromAnotherDevice: false,
         check: { id, db in _ = try TagChange(row: try tableRow(id, of: "tagChange", in: db)) })
+
+    /// A rename or a deletion of a deck, which never changes: it comes in
+    /// whole, and is applied as it does (`DeckChanges.swift`).
+    static let deckChanges = SyncedTable(
+        name: "deckChange", syncedRow: { .deckChange($0) },
+        fields: [],
+        fixedColumns: [SyncedColumn("deck", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time)],
+        marksRowsFromAnotherDevice: false,
+        check: { id, db in _ = try DeckChange(row: try tableRow(id, of: "deckChange", in: db)) })
 
     /// Whether the table has a row with this ID unique across devices.
     func holdsRow(with uuid: UUID, in db: Database) throws -> Bool {

@@ -13,7 +13,9 @@ import Foundation
 // (`DeckSwitches.swift`), and gives it a color or an emoji
 // (`DeckColorAndEmoji.swift`), which its row shows, as the decks inside it
 // that have none do; a set-aside deck is grayed in its place, with the decks
-// inside it. A chosen deck's tags line up above its cards
+// inside it. Every deck's but Default's also renames it and deletes it, and
+// in the sidebar cards and decks dropped on a deck move there
+// (`CardsWindowDeckEdits.swift`). A chosen deck's tags line up above its cards
 // (`CardsWindowDeckTags.swift`). Change Deck… moves the selected cards to the deck Lucas
 // picks in its sheet, from the same tree with Default always in it, or to one
 // he names there with New Deck…, which the move makes. The Deck field, in the
@@ -84,7 +86,8 @@ extension CardsWindowState {
     /// context menu, and above the card list while the sidebar chose it, as
     /// the Actions menu, which is how the keyboard reaches it. The same menu
     /// in both places, which acts on the one deck: Set Aside, Prioritize,
-    /// Color and Emoji….
+    /// Color and Emoji…, and Rename… and Delete… while it offers them
+    /// (`offersRenameAndDelete`).
     public struct DeckMenu: Sendable, Equatable {
         /// The deck it acts on, with what it has of its own and takes from
         /// the decks it sits inside.
@@ -175,7 +178,7 @@ extension CardsWindowState {
     /// `Deck.defaultName`, as the sidebar lists it, with what it has of its
     /// own and takes from the decks it sits inside; nil while it doesn't
     /// list it.
-    private func listedDeck(_ deck: String) -> Deck? {
+    func listedDeck(_ deck: String) -> Deck? {
         decks.first { $0.deck.name == deck }?.deck
     }
 

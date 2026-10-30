@@ -228,6 +228,14 @@ public struct CardsWindowState: Sendable {
         /// Which name this tag gets, in the rename sheet, whose field starts
         /// with its whole name, written with `::`: `CardsWindowTags.swift`.
         case renameTag(CardTag)
+        /// Which name this deck gets, in the rename sheet, whose field starts
+        /// with its whole name, written with `::`:
+        /// `CardsWindowDeckEdits.swift`.
+        case renameDeck(Deck)
+        /// Whether to delete this deck, with every deck inside it and every
+        /// card in them, which does what the deletion says:
+        /// `CardsWindowDeckEdits.swift`.
+        case deleteDeck(DeckDeletion)
         /// A new type's name and emoji, in the New Type sheet, for the type
         /// picker of the fields New Type… was chosen in, which takes it:
         /// `CardsWindowTypes.swift`.
@@ -264,12 +272,13 @@ public struct CardsWindowState: Sendable {
     /// What OK in the rename sheet, or the New Type sheet's name, makes of
     /// what the name field holds.
     public enum RenameEntry: Sendable, Equatable {
-        /// The tag's new whole name, its levels cleaned up, or the type's
-        /// name, without the spaces around it.
+        /// The tag's or the deck's new whole name, its levels cleaned up, or
+        /// the type's name, without the spaces around it.
         case name(String)
         /// A name OK refuses, and why, for the sheet to say: a blank one, or
-        /// one inside the tag itself; or a type's name of one of the four
-        /// Ficha comes with, or another user type's.
+        /// one inside the tag or the deck itself, or a deck's whose top level
+        /// is one of Default's; or a type's name of one of the four Ficha
+        /// comes with, or another user type's.
         case refused(EngineError)
     }
 
@@ -330,6 +339,14 @@ public struct CardsWindowState: Sendable {
         /// He gave this deck an emoji, or took its own away, in the emoji
         /// sheet.
         case setDeckEmoji(deck: String)
+        /// He renamed this deck, in the rename sheet.
+        case renameDeck(deck: String)
+        /// He dragged this deck, in the sidebar, onto another or onto the
+        /// Decks section's title, to move it.
+        case moveDeck(deck: String)
+        /// He deleted this deck, or chose Delete… on it, which counts what
+        /// goes first.
+        case deleteDeck(deck: String)
         /// He gave this tag a color, or took its color away, with any others
         /// he chose it on along with it.
         case setColor(tag: String)
@@ -918,13 +935,17 @@ public struct CardsWindowState: Sendable {
 
     /// What OK in the rename sheet makes of `text`, what its field holds: for
     /// the tag the window asks about, the tag's new whole name, or a refusal
-    /// of a blank name or one inside the tag itself; for the user type it
-    /// asks about, the type's name, or a refusal of a blank name, a name of
-    /// one of the four Ficha comes with, or another user type's; each as the
-    /// engine refuses them. Nil while the window asks about no name.
+    /// of a blank name or one inside the tag itself; for the deck it asks
+    /// about, the deck's new whole name, or a refusal of a blank name, one
+    /// whose top level is one of Default's, or one inside the deck itself;
+    /// for the user type it asks about, the type's name, or a refusal of a
+    /// blank name, a name of one of the four Ficha comes with, or another
+    /// user type's; each as the engine refuses them. Nil while the window
+    /// asks about no name.
     public func renameEntry(_ text: String) -> RenameEntry? {
         switch question {
         case .renameTag(let tag): tagNameEntry(text, renaming: tag.name)
+        case .renameDeck(let deck): deckNameEntry(text, renaming: deck.name)
         case .renameType(let type): typeNameEntry(text, renaming: type.id)
         default: nil
         }
@@ -932,15 +953,18 @@ public struct CardsWindowState: Sendable {
 
     /// Chooses OK in the rename sheet, whose field holds `text`: renames the
     /// tag the window asks about, and every tag inside it, as
-    /// `Engine.renameTag(_:to:)` does, or the user type it asks about, and
-    /// reads the cards again, the sidebar following the tag or the type it
-    /// chose to its new name; or records why it couldn't and goes on asking.
-    /// While OK refuses `text`, it does nothing, and the sheet says why.
+    /// `Engine.renameTag(_:to:)` does, the deck it asks about, and every
+    /// deck inside it, as `Engine.renameDeck(_:to:)` does, or the user type
+    /// it asks about, and reads the cards again, the sidebar following the
+    /// tag, the deck or the type it chose to its new name; or records why it
+    /// couldn't and goes on asking. While OK refuses `text`, it does nothing,
+    /// and the sheet says why.
     public mutating func chooseNewName(_ text: String) {
         guard case .name(let name)? = renameEntry(text) else { return }
         let done: Bool
         switch question {
         case .renameTag(let tag): done = renameTag(tag.name, to: name, as: .rename(tag: tag.name))
+        case .renameDeck(let deck): done = renameDeck(deck.name, to: name, as: .renameDeck(deck: deck.name))
         case .renameType(let type): done = renameType(type, to: name)
         default: return
         }

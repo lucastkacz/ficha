@@ -9,12 +9,13 @@ internal import GRDB
 // reads what they recorded, and is the one way to write without recording.
 // Three changes are recorded by hand: what a device changes as it takes
 // another device's deletion, in such a write (`SyncedDeletions.swift`), or
-// another device's change to a tag (`TagChanges.swift`), and the rows that
+// another device's change to a tag or a deck (`TagChanges.swift`,
+// `DeckChanges.swift`), and the rows that
 // start or stop syncing as selective sync decides (`SelectiveSync.swift`).
 
 /// A row that syncs, as iCloud names its record: a card, a capture, an entry
-/// of the review log, a user type or a change to a tag by its ID unique
-/// across devices, a tag or a deck by its name, or the settings that decide
+/// of the review log, a user type or a change to a tag or a deck by its ID
+/// unique across devices, a tag or a deck by its name, or the settings that decide
 /// progress or the choice of what syncs, of each of which there's one. Images and sounds
 /// are named by their content, as `ImageName` and `SoundName` say.
 enum SyncedRow: Sendable, Hashable {
@@ -33,6 +34,8 @@ enum SyncedRow: Sendable, Hashable {
     /// A deck, by its whole name, or Default by its own, `Deck.defaultName`
     /// (`SyncedDecks.swift`).
     case deck(String)
+    /// A rename or a deletion of a deck (`DeckChanges.swift`).
+    case deckChange(UUID)
 
     /// What kind of row it is, as the database names it.
     enum RecordType: String, Sendable {
@@ -45,6 +48,7 @@ enum SyncedRow: Sendable, Hashable {
         case userType
         case tagChange
         case deck
+        case deckChange
     }
 
     var recordType: RecordType {
@@ -58,6 +62,7 @@ enum SyncedRow: Sendable, Hashable {
         case .userType: .userType
         case .tagChange: .tagChange
         case .deck: .deck
+        case .deckChange: .deckChange
         }
     }
 
@@ -66,7 +71,8 @@ enum SyncedRow: Sendable, Hashable {
     /// or the type of a row there's one of, which names it.
     var recordName: String {
         switch self {
-        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id):
+        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id),
+            .deckChange(let id):
             id.uuidString
         case .tag(let name), .deck(let name): name
         case .progressSettings: RecordType.progressSettings.rawValue
@@ -87,6 +93,7 @@ enum SyncedRow: Sendable, Hashable {
         case .reviewLogEntry: self = .reviewLogEntry(try uuid(named: recordName, of: type))
         case .userType: self = .userType(try uuid(named: recordName, of: type))
         case .tagChange: self = .tagChange(try uuid(named: recordName, of: type))
+        case .deckChange: self = .deckChange(try uuid(named: recordName, of: type))
         case .tag: self = .tag(recordName)
         case .deck: self = .deck(recordName)
         case .progressSettings:
@@ -336,18 +343,19 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
 /// that the other devices take that it has nothing. Every change to a tag the
 /// device made or heard of goes too, so that one made while sync was off
 /// reaches the cards the other devices hold that don't sync, and a device
-/// that heard of one already never applies it again. Every deck with a row
-/// goes, also one no card lives in. The deletions that wait still do. The
+/// that heard of one already never applies it again, and so does every change
+/// to a deck. Every deck with a row goes, also one no card lives in. The
+/// deletions that wait still do. The
 /// user's card types go first: iCloud's engine sends in batches, and a
 /// device that fetches a card before its type reads it as one with no type,
 /// which an edit there would then keep. The decks go next, so that a deck's
 /// cards come with what it has of its own.
 func recordEverythingToSend(in db: Database) throws {
-    let (card, capture, entry, tag, userType, tagChange, deck) = (
+    let (card, capture, entry, tag, userType, tagChange, deck, deckChange) = (
         SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue,
         SyncedRow.RecordType.reviewLogEntry.rawValue, SyncedRow.RecordType.tag.rawValue,
         SyncedRow.RecordType.userType.rawValue, SyncedRow.RecordType.tagChange.rawValue,
-        SyncedRow.RecordType.deck.rawValue
+        SyncedRow.RecordType.deck.rawValue, SyncedRow.RecordType.deckChange.rawValue
     )
     try db.execute(
         sql: """
@@ -373,5 +381,7 @@ func recordEverythingToSend(in db: Database) throws {
             WHERE EXISTS (SELECT 1 FROM syncFieldTime WHERE recordType = 'syncChoice');
             INSERT INTO syncPending (recordType, recordName, isDeletion)
             SELECT '\(tagChange)', uuid, 0 FROM tagChange ORDER BY id;
+            INSERT INTO syncPending (recordType, recordName, isDeletion)
+            SELECT '\(deckChange)', uuid, 0 FROM deckChange ORDER BY id;
             """)
 }

@@ -48,6 +48,10 @@ enum Window: String {
     /// tags, chosen above the card list, which lists only the deck's cards
     /// that carry it.
     case cardsDeckTag = "cards-deck-tag"
+    /// The same on Idiomas, with the question Delete… in its menu asks,
+    /// which the tool can't open, counting the cards it deletes and the
+    /// decks inside it.
+    case cardsDeleteDeck = "cards-delete-deck"
     /// The Cards window on Idiomas › Español with the card form on a new
     /// card, which starts in that deck, and the New Deck sheet that New Deck…
     /// in the form's Deck field opens, which the tool can't open, over it,
@@ -1170,7 +1174,7 @@ func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
-    case .cardsDecks, .cardsDeckTag:
+    case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
         try setSampleDeckAside(in: engine)
         try giveSampleDecksLooks(in: engine)
@@ -1335,6 +1339,19 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         guard state.chosenDeckTag == "historia" else {
             throw RenderError(
                 description: "No card of Idiomas › Español carries historia: fix SampleCards.swift.")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsDeleteDeck:
+        var state = model.openCardsWindow()
+        state.read(on: state.ladder)
+        state.setDeckOpen(false, "Ciencias")
+        state.setDeckOpen(false, "Humanidades")
+        state.choose(.cards(.deck("Idiomas")))
+        state.askToDeleteDeck("Idiomas")
+        guard case .deleteDeck? = state.question else {
+            throw RenderError(description: "Delete… on Idiomas asked nothing: fix SampleCards.swift.")
         }
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)

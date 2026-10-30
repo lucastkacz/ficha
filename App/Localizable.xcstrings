@@ -106,6 +106,35 @@
         }
       }
     },
+    "%lld cards go too, with their review logs, here and on every device that syncs them." : {
+      "comment" : "In the Cards window's question before it deletes a deck: the cards in it and in the decks inside it, counted on this Mac.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 card goes too, with its review log, here and on every device that syncs it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards go too, with their review logs, here and on every device that syncs them."
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "No card here goes with it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld cards have a side with neither text, an image nor a sound once images on the web are left out." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
       "localizations" : {
@@ -1169,7 +1198,7 @@
 
     },
     "Couldn't delete “%@”" : {
-      "comment" : "An alert's title in the Cards window, after Delete… in a tag's menu or its question, with the tag's whole name, the first when Lucas deletes several."
+      "comment" : "An alert's title in the Cards window, after Delete… in a deck's menu or its question, with the deck's whole name.\nAn alert's title in the Cards window, after Delete… in a tag's menu or its question, with the tag's whole name, the first when Lucas deletes several."
     },
     "Couldn't delete %lld cards" : {
       "comment" : "An alert's title in the Cards window.",
@@ -1225,7 +1254,7 @@
       "comment" : "An alert's title in the Cards window's New Type sheet, after OK."
     },
     "Couldn't move “%@”" : {
-      "comment" : "An alert's title in the Cards window, after dragging a tag in All Tags onto another or between two rows, with the tag's whole name, the first when Lucas drags several."
+      "comment" : "An alert's title in the Cards window, after dragging a deck in the sidebar onto another or onto the Decks section's title, with the deck's whole name.\nAn alert's title in the Cards window, after dragging a tag in All Tags onto another or between two rows, with the tag's whole name, the first when Lucas drags several."
     },
     "Couldn't move “%@” in the sidebar" : {
       "comment" : "An alert's title in the Cards window, after dragging a pinned tag to another place among the sidebar's pinned tags, with the tag's whole name."
@@ -1286,7 +1315,7 @@
 
     },
     "Couldn't rename “%@”" : {
-      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the deck's whole name.\nAn alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
     },
     "Couldn't rename the type “%@”" : {
       "comment" : "An alert's title in the Cards window's rename sheet, after OK, with a card type's name."
@@ -1414,6 +1443,18 @@
     "Deck" : {
       "comment" : "In the Cards window's card form, the label of the card's deck.\nIn the Cards window, the label of a card's deck, while Lucas edits it.\nThe Import sheet's field for a deck the imported cards come into."
     },
+    "deck-deletion.next-sentence" : {
+      "comment" : "Joins two sentences of the Cards window's question before it deletes a deck: what it says so far, then the next sentence, as the language writes one sentence after another.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
     "Decks" : {
       "comment" : "A section of the Cards window's sidebar: the decks, as a tree."
     },
@@ -1424,7 +1465,7 @@
       "comment" : "The deck a card lives in when it has no other."
     },
     "Delete" : {
-      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about.\nThe button that deletes the tags the Cards window asks about."
+      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about.\nThe button that deletes the deck the Cards window asks about.\nThe button that deletes the tags the Cards window asks about."
     },
     "Delete “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a card, with its front."
@@ -1498,6 +1539,9 @@
         }
       }
     },
+    "Delete the deck “%@”?" : {
+      "comment" : "The title of the Cards window's question before it deletes a deck, with its whole name."
+    },
     "Delete the tag “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a tag, with its whole name."
     },
@@ -1505,7 +1549,7 @@
       "comment" : "The title of the Cards window's question before it deletes a card type of the user's own, with its name."
     },
     "Delete…" : {
-      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks whether to delete the deck, with the decks inside it and their cards.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
       "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
@@ -2098,7 +2142,7 @@
       "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
     },
     "Name" : {
-      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag, its whole name, or a card type of the user's own."
+      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag or a deck, its whole name, or a card type of the user's own."
     },
     "Name the deck" : {
       "comment" : "The Import sheet's field for a deck the cards come into, empty: Import stays off until it names one."
@@ -2391,7 +2435,7 @@
       "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
     },
     "Rename…" : {
-      "comment" : "An item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's whole name, which moves it too.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
     },
     "Repeated cards" : {
       "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
@@ -2566,6 +2610,29 @@
     },
     "Text" : {
       "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
+    },
+    "The %lld decks inside it go with it." : {
+      "comment" : "In the Cards window's question before it deletes a deck: the decks inside it.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The deck inside it goes with it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The %lld decks inside it go with it."
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "The %lld tags inside it go with it." : {
       "comment" : "In the Cards window's question before it deletes a tag: the tags inside it.",
@@ -2794,6 +2861,9 @@
     },
     "Yellow" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "You can't undo this, but the daily backups in Settings › Backups hold what it deletes." : {
+      "comment" : "The last sentence of the Cards window's question before it deletes a deck."
     },
     "You can't undo this." : {
       "comment" : "The last sentence of the Cards window's question before it deletes tags."

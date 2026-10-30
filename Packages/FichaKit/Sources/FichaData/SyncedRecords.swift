@@ -8,7 +8,7 @@ internal import GRDB
 // changes the row. Of each field that keeps when it last changed, the latest
 // change wins, and the rest merges; a row new to the device comes in whole.
 // Cards, captures, the review log, the user's card types and the changes to
-// tags are described by `SyncedTable`, tags by `SyncedTags.swift`, decks by
+// tags and decks are described by `SyncedTable`, tags by `SyncedTags.swift`, decks by
 // `SyncedDecks.swift`, the settings that decide progress by `SyncedProgressSettings.swift`, and the
 // choice of what syncs by `SelectiveSync.swift`, which also says how a row
 // that stops syncing leaves iCloud.
@@ -22,7 +22,8 @@ extension SyncedRow {
     /// its type.
     var recordID: ICloudRecordID {
         switch self {
-        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id):
+        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id),
+            .deckChange(let id):
             ICloudRecordID(name: id.uuidString, zone: .cards)
         case .tag(let name):
             ICloudRecordID(name: "tag-" + hashed(name), zone: .cards)
@@ -49,7 +50,7 @@ extension SyncedRow {
 
 /// The row that syncs as the record with this ID, as the device holds it
 /// now, or nil when it holds none: a card, a capture, an entry of the review
-/// log, a user type or a change to a tag by its ID, a row there's one of by
+/// log, a user type or a change to a tag or a deck by its ID, a row there's one of by
 /// its type, or a tag or a deck, which needn't have a row of its own, by the
 /// name whose record it is, among those that wait to be sent or that have a
 /// row or had something of their own.
@@ -99,6 +100,7 @@ func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
         case .userType(let id): try SyncedTable.userTypes.record(ofRowWith: id, in: db)
         case .tagChange(let id): try SyncedTable.tagChanges.record(ofRowWith: id, in: db)
         case .deck(let name): try deckRecord(name, in: db)
+        case .deckChange(let id): try SyncedTable.deckChanges.record(ofRowWith: id, in: db)
         }
     return try record.map { try syncedOrLeft($0, of: row, in: db) }?
         .with(systemFields: systemFields(of: row.recordID, in: db))
@@ -106,8 +108,9 @@ func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
 
 /// Applies `record`, from iCloud, to `row`, the row it holds: the row takes
 /// each field whose change in the record is the latest, or comes in whole. A
-/// change to a tag new to the device is applied as it comes in
-/// (`TagChanges.swift`), and one it holds already never again.
+/// change to a tag or a deck new to the device is applied as it comes in
+/// (`TagChanges.swift`, `DeckChanges.swift`), and one it holds already never
+/// again.
 /// Returns false, changing nothing, when the record refers to a row the
 /// device doesn't hold yet, such as a card's capture, for it to wait.
 private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) throws -> Bool {
@@ -121,6 +124,7 @@ private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) t
     case .userType(let id): try SyncedTable.userTypes.apply(record, toRowWith: id, in: db)
     case .tagChange(let id): try applyTagChange(record, as: id, in: db)
     case .deck(let name): try applyDeck(record, named: name, in: db)
+    case .deckChange(let id): try applyDeckChange(record, as: id, in: db)
     }
 }
 

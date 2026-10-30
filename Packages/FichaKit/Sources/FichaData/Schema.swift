@@ -1357,6 +1357,38 @@ enum Schema {
                     SELECT 'deck', OLD.name, 1 WHERE \(recording);
                     END;
                     """)
+            // A rename or a deletion of a deck, recorded as a change to the
+            // deck, as a tag's is in "v30 changes to tags", so that it
+            // reaches every card on every device, those that don't sync
+            // included (`DeckChanges.swift`): its ID unique across devices;
+            // the deck it changes, by its whole name, never Default, which is
+            // neither renamed nor deleted; the name it's renamed to, or NULL
+            // for a deletion; and when it was made. A write makes one change
+            // to decks at most, so none follows another in its write. A
+            // device keeps a row for each change it made or heard of, which
+            // it has applied, and keeps the IDs of those it dropped as it
+            // took a restore's cards in `deckChangeAppliedBeforeARestore`.
+            // Every database starts with none of either. A change syncs as a
+            // record of its own, "deckChange", whatever selective sync
+            // chooses, and only ever comes in, as a change to a tag does.
+            try db.create(table: "deckChange") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique()
+                table.column("deck", .text).notNull().check(sql: "deck <> ''")
+                table.column("newName", .text).check(sql: "newName <> ''")
+                table.column("madeAt", .datetime).notNull()
+            }
+            try db.create(table: "deckChangeAppliedBeforeARestore") { table in
+                table.primaryKey("uuid", .text)
+            }
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_deckChange_inserted AFTER INSERT ON deckChange WHEN \(recording) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'deckChange' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'deckChange', NEW.uuid, 0 WHERE \(isOn);
+                    END;
+                    """)
 
             // Selective sync chooses decks (ADR 0024): a card syncs when every
             // card does, or its deck, or a deck its deck sits inside, is
