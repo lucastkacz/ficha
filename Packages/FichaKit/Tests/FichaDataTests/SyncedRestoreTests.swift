@@ -64,24 +64,23 @@ final class SyncedRestoreTests {
         #expect(iCloud.saves == saves)
     }
 
-    // Only filosofía syncs (#355): petricor never went up, nor did the
+    // Only Filosofía syncs (#355, #385): petricor never went up, nor did the
     // iPhone's saudade, which stays; efímero, made after the backup, goes.
     @Test(
         "after a restore, turning sync on sends only the cards that sync, and the other device replaces only its own that sync, keeping the rest"
     )
     func aRestoreReplacesOnlyTheCardsThatSync() async throws {
-        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
-        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia.", tags: ["lenguaje"]))
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."), deck: "Filosofía")
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."), deck: "Lenguaje")
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try await mac.syncNow()
         try await iPhone.syncNow()
-        try iPhone.engine.create(
-            card(.word, front: "saudade", back: "Nostalgia de lo que se fue.", tags: ["lenguaje"]))
+        try iPhone.engine.create(card(.word, front: "saudade", back: "Nostalgia de lo que se fue."), deck: "Lenguaje")
         try await iPhone.syncNow()
         let backup = try mac.engine.backUpNow(.defaults)
         time.advance(by: minutes(1))
-        try mac.engine.create(card(.word, front: "efímero", back: "Que dura poco.", tags: ["filosofía"]))
+        try mac.engine.create(card(.word, front: "efímero", back: "Que dura poco."), deck: "Filosofía")
         try await mac.syncNow()
         try await iPhone.syncNow()
 
@@ -442,16 +441,17 @@ final class SyncedRestoreTests {
         #expect(try iPhone.engine.card(fronted: "inflación").tags == ["economía"])
     }
 
-    // Only filosofía syncs, so cepo stays on the iPhone. The Mac renames
-    // economía, cepo with it, and the iPhone then gives cepo economía again;
-    // the Mac's backup holds the rename, which the restore's zone brings.
+    // Only Filosofía syncs, so cepo, in Default, stays on the iPhone. The Mac
+    // renames economía, cepo with it, and the iPhone then gives cepo economía
+    // again; the Mac's backup holds the rename, which the restore's zone
+    // brings.
     @Test(
         "a device that takes a restore's cards applies no change to a tag it heard of before, to the cards it keeps that don't sync"
     )
     func aRestoreAppliesNoChangeTwice() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
-        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."), deck: "Filosofía")
         try await mac.syncNow()
         try await iPhone.syncNow()
         try iPhone.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["economía"]))

@@ -146,8 +146,8 @@ enum SyncedField: String, Sendable, CaseIterable {
     case switchedOn
     case color
     case emoji
-    /// Whether the user chose the tag or the deck to sync, beside its other
-    /// switch.
+    /// Whether the user chose the deck to sync, beside its other switch. A
+    /// tag's record held it before decks (ADR 0024), and sends it no more.
     case chosenToSync
     /// The tag's place among the pinned tags, while it's pinned.
     case pin
@@ -155,7 +155,8 @@ enum SyncedField: String, Sendable, CaseIterable {
     case ladder
     case newCardsPerDay
     case forgottenOftenAfter
-    /// Whether only the cards with a tag the user chose sync.
+    /// Whether only the cards in a deck the user chose sync, named when tags
+    /// were chosen, as iCloud's records keep it (ADR 0024).
     case onlyChosenTags
     // A user type's, besides its emoji.
     case name

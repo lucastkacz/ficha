@@ -312,7 +312,7 @@ final class DatabaseFileTests {
 
         let waits = holdsCards && !synced
         #expect(try engine.syncStatus().offBecause == (waits ? .firstSync : nil))
-        #expect(try !engine.syncsOnlyChosenTags())
+        #expect(try !engine.syncsOnlyChosenDecks())
         if waits {
             #expect(try engine.changesToSend().isEmpty)
             try engine.turnSyncOn()
@@ -430,7 +430,7 @@ final class DatabaseFileTests {
         let reopened = try Engine(location: .folder(folder), time: time)
 
         #expect(try reopened.syncStatus().isOn)
-        #expect(try !reopened.syncsOnlyChosenTags())
+        #expect(try !reopened.syncsOnlyChosenDecks())
         #expect(try reopened.changesToSend().count(where: { $0.row.recordType == .card }) == 50)
     }
 

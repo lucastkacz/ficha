@@ -48,7 +48,7 @@ struct TagsInsideTagsTests {
     }
 
     @Test(
-        "renaming a tag moves every card and every tag inside it to the new name, with their color, emoji, pin and choice to sync"
+        "renaming a tag moves every card and every tag inside it to the new name, with their color, emoji and pin"
     )
     func renamingMovesEveryCardAndTagInside() throws {
         try approveCard("inflación", tags: ["economía::Argentina", "lenguaje"])
@@ -57,7 +57,6 @@ struct TagsInsideTagsTests {
         try engine.setColor(.green, of: "economía")
         try engine.setEmoji(Emoji("📈"), of: "economía")
         try engine.pin("economía::Argentina")
-        try engine.chooseToSync("economía::Argentina", true)
 
         let renamed = try engine.renameTag("economía", to: " economics ")
 
@@ -72,7 +71,7 @@ struct TagsInsideTagsTests {
             tags == [
                 CardTag(name: "economics", color: .green, emoji: "📈"),
                 CardTag(
-                    name: "economics::Argentina", chosenToSync: true, pin: pin, inheritedColor: .green,
+                    name: "economics::Argentina", pin: pin, inheritedColor: .green,
                     inheritedEmoji: "📈"),
                 CardTag(name: "economics::Argentina::deuda", inheritedColor: .green, inheritedEmoji: "📈"),
                 CardTag(name: "lenguaje"),
@@ -110,7 +109,6 @@ struct TagsInsideTagsTests {
         try approveCard("inflación", tags: ["economía", "economía::Argentina"])
         try engine.setColor(.red, of: "historia")
         try engine.setEmoji(Emoji("📜"), of: "historia")
-        try engine.chooseToSync("historia", true)
         try engine.setColor(.green, of: "historia::Argentina")
         try engine.setColor(.purple, of: "historia::Roma")
 

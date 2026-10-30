@@ -94,15 +94,15 @@ final class UserTypesSyncTests {
         #expect(!iCloud.records.contains { $0.type == SyncedRow.RecordType.userType.rawValue })
     }
 
-    @Test("while only chosen tags sync, every type syncs, also one whose cards stay on the device")
-    func typesSyncWhileOnlyChosenTagsDo() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("química", true)
+    @Test("while only chosen decks sync, every type syncs, also one whose cards stay on the device")
+    func typesSyncWhileOnlyChosenDecksDo() async throws {
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Química")
         let formula = try mac.engine.makeUserType(named: "Fórmula", emoji: Emoji("🧪"))
         let law = try mac.engine.makeUserType(named: "Ley")
         let word = try mac.engine.makeUserType(named: "Palabra nueva")
-        try mac.engine.create(card(.user(formula), front: "agua", back: "H₂O", tags: ["química"]))
-        try mac.engine.create(card(.user(law), front: "gravedad", back: "Todo cae.", tags: ["física"]))
+        try mac.engine.create(card(.user(formula), front: "agua", back: "H₂O"), deck: "Química")
+        try mac.engine.create(card(.user(law), front: "gravedad", back: "Todo cae."), deck: "Física")
         try await syncBoth()
 
         #expect(try iPhone.engine.userTypes() == [formula, law, word])

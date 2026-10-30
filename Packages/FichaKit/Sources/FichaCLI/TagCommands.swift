@@ -21,8 +21,8 @@ struct TagsCommand: EngineCommand {
             how many cards it lists when you choose it, those with a tag inside it too, buried ones left out; in \
             "due", how many of those are due now and in your reviews, which those of a set-aside deck never are; \
             in "pinned" whether it's pinned to the sidebar, and in "pinPlace" its place among the pinned tags, \
-            counted from 0, left out while it isn't; its own "color" and "emoji", left out when it has none; and in \
-            "chosenToSync" whether you chose it to sync. `ficha tag` changes them.
+            counted from 0, left out while it isn't; and its own "color" and "emoji", left out when it has none. \
+            `ficha tag` changes them.
             """
     )
 
@@ -43,7 +43,6 @@ struct TagCommand: ParsableCommand {
         subcommands: [
             RenameTagCommand.self, DeleteTagsCommand.self, ClearUnusedTagsCommand.self, PinTagsCommand.self,
             UnpinTagCommand.self, MovePinnedTagsCommand.self, TagColorCommand.self, TagEmojiCommand.self,
-            ChooseTagToSyncCommand.self,
         ]
     )
 }
@@ -56,7 +55,7 @@ struct RenameTagCommand: EngineCommand {
         discussion: """
             A new name with "::" moves the tag inside another, and one without moves it to the top. Every card \
             with it, or with a tag inside it, carries the new name, on every device, and the tag keeps its pin, \
-            color, emoji and choice to sync. Onto a tag that exists, the two join. For example:
+            color and emoji. Onto a tag that exists, the two join. For example:
 
               ficha tag rename economía::Argentina Argentina
             """
@@ -81,10 +80,9 @@ struct DeleteTagsCommand: EngineCommand {
         commandName: "delete",
         abstract: "Delete tags, each with every tag inside it, and print what it did.",
         discussion: """
-            Every card with them, on every device, loses them, and stays: no card is deleted. Their pins, colors, \
-            emoji and choices to sync go too. It prints the tags in "tags", those inside them that went with them \
-            in "tagsInside", how many cards lost them in "cards", and, while only the cards with chosen tags sync, \
-            how many stopped syncing in "cardsThatStopSyncing", left with no chosen tag.
+            Every card with them, on every device, loses them, and stays: no card is deleted. Their pins, colors \
+            and emoji go too. It prints the tags in "tags", those inside them that went with them in "tagsInside", \
+            and how many cards lost them in "cards".
             """
     )
 
@@ -103,10 +101,9 @@ struct ClearUnusedTagsCommand: EngineCommand {
         commandName: "clear-unused",
         abstract: "Delete the tags no card carries, and print their names.",
         discussion: """
-            It deletes each tag that has something of its own, a pin, a color, an emoji or a choice to sync, \
-            which no card carries, nor a tag inside it. While only the cards with chosen tags sync, it \
-            deletes only those chosen and those inside them: another device may keep cards with a tag that \
-            doesn't sync.
+            It deletes each tag that has something of its own, a pin, a color or an emoji, which no card here \
+            carries, nor a tag inside it. Your other devices' cards keep their tags: while only the cards in \
+            chosen decks sync, one of theirs that doesn't sync may still carry it.
             """
     )
 
@@ -259,30 +256,6 @@ struct TagEmojiCommand: EngineCommand {
     }
 }
 
-/// `ficha tag choose-to-sync`: chooses a tag to sync, or not.
-struct ChooseTagToSyncCommand: EngineCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "choose-to-sync",
-        abstract: "Choose a tag to sync, or with --off untick it, and print the tag.",
-        discussion: """
-            While only the cards with chosen tags sync, as Settings' Sync tab chooses, a card syncs when it has a \
-            chosen tag, or a tag inside one. Choosing between every card and chosen tags stays in Settings.
-            """
-    )
-
-    @Argument(help: "The tag's whole name, as `ficha tags` prints it.")
-    var tag: String
-
-    @ArgumentParser.Flag(help: "Untick it instead.")
-    var off = false
-
-    func run(on engine: Engine) throws -> any Encodable {
-        let tag = try PrintedTags(of: engine).existing(tag)
-        try engine.chooseToSync(tag, !off)
-        return try PrintedTags(of: engine).tag(tag)
-    }
-}
-
 /// A tag as `ficha tags` prints it.
 struct PrintedTag: Encodable, Equatable {
     let name: String
@@ -292,15 +265,13 @@ struct PrintedTag: Encodable, Equatable {
     let pinPlace: Int?
     let color: String?
     let emoji: String?
-    let chosenToSync: Bool
 }
 
 extension PrintedTag {
     /// The tag `name` with nothing of its own and no card, as a change can
     /// leave it, which `ficha tags` no longer lists.
     init(withNothingNamed name: String) {
-        self.init(
-            name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, color: nil, emoji: nil, chosenToSync: false)
+        self.init(name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, color: nil, emoji: nil)
     }
 }
 
@@ -320,8 +291,7 @@ struct PrintedTags {
             let (tag, count) = (counted.tag, counted.counts)
             return PrintedTag(
                 name: tag.name, cards: count.cards, due: count.due, pinned: tag.isPinned,
-                pinPlace: pinnedNames.firstIndex(of: tag.name), color: tag.color?.rawValue, emoji: tag.emoji,
-                chosenToSync: tag.chosenToSync)
+                pinPlace: pinnedNames.firstIndex(of: tag.name), color: tag.color?.rawValue, emoji: tag.emoji)
         }
         self.tags = tags
         pinned = pinnedNames.compactMap { name in tags.first { $0.name == name } }

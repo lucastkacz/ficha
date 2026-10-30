@@ -91,9 +91,9 @@ public struct ImportPreview: Sendable, Equatable {
     /// as the file was read, and what decided then which cards sync
     /// (`SelectiveSync.swift`).
     struct FilesGoingUp: Sendable, Equatable {
-        /// For each of the file's cards, in its order, the tags of the
+        /// For each of the file's cards, in its order, the deck of the
         /// user's card it repeats, or nil when it repeats none.
-        let repeatedTags: [[String]?]
+        let repeatedDecks: [String?]
         /// For each of the file's cards, in its order, the images and
         /// sounds it holds once it comes in, or once it updates the user's
         /// card.
@@ -164,24 +164,22 @@ public struct ImportPreview: Sendable, Equatable {
 
     /// What the images and sounds the import brings weigh, in bytes, as the
     /// Import sheet says it while they go up to the user's iCloud: those of
-    /// the cards it brings as `repeatedCards` chooses, so a repeated card it
-    /// skips leaves its files out, that sync once they come in, with the
-    /// tags the import adds as `tagNames` names them, as the user's choice of
-    /// what syncs stood as the file was read; and of those only the files no
-    /// card that synced used then, each once, at the size Ficha keeps them. Nil
-    /// when the sheet says nothing of it: while sync isn't on, or under
-    /// 100 MB (#317's decision of 2026-10-28).
-    public func weightGoingUpToICloud(
-        choosing repeatedCards: ImportChoices.RepeatedCards, naming tagNames: [String: String] = [:]
-    ) -> Int64? {
+    /// the cards it brings as `choices` chooses of the repeated ones, so a
+    /// repeated card it skips leaves its files out, that sync once they come
+    /// in, in the decks `choices` names, or the user's card's deck for one an
+    /// update keeps, as the user's choice of what syncs stood as the file was
+    /// read; and of those only the files no card that synced used then, each
+    /// once, at the size Ficha keeps them. Nil when the sheet says nothing of
+    /// it: while sync isn't on, or under 100 MB (#317's decision of
+    /// 2026-10-28).
+    public func weightGoingUpToICloud(choosing choices: ImportChoices) -> Int64? {
         guard goesUpToICloud else {
             return nil
         }
         var going = Set<SyncedFile>()
-        for (card, (kept, brought)) in zip(cards, zip(filesGoingUp.repeatedTags, filesGoingUp.brought))
-        where kept == nil || repeatedCards == .update {
-            let tags = card.tagsOnceImported(keeping: kept, adding: tagsAdded(to: card, namedAs: tagNames))
-            if filesGoingUp.whatSyncs.cardSyncs(tagged: tags) {
+        for (card, (kept, brought)) in zip(cards, zip(filesGoingUp.repeatedDecks, filesGoingUp.brought))
+        where kept == nil || choices.repeatedCards == .update {
+            if filesGoingUp.whatSyncs.cardSyncs(inDeck: kept ?? choices.deckComingIn(proposed: card.deck)) {
                 going.formUnion(brought)
             }
         }
@@ -277,6 +275,16 @@ public struct ImportChoices: Sendable, Equatable {
             }
         }
         return proposed
+    }
+
+    /// The deck a card that proposes `proposed`, or nil for none, comes into
+    /// new, by its whole name, as the import cleans it up: the name
+    /// `deckName(for:)` gives the deck it proposes, or else
+    /// `deckForCardsWithoutDeck`. A name the import refuses stays as it's
+    /// given, since the import refuses it before it brings any card.
+    func deckComingIn(proposed: String?) -> String {
+        let name = proposed.map(deckName(for:)) ?? deckForCardsWithoutDeck
+        return name == Deck.defaultName ? name : TagPath.normalized(name) ?? name
     }
 }
 
@@ -414,7 +422,7 @@ extension Engine {
             reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
             reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) },
             filesGoingUp: ImportPreview.FilesGoingUp(
-                repeatedTags: repeated.map { $0?.tags }, brought: brought, weights: weights, whatSyncs: whatSyncs),
+                repeatedDecks: repeated.map { $0?.deck }, brought: brought, weights: weights, whatSyncs: whatSyncs),
             goesUpToICloud: try syncStatus().sendsToICloud, cardsMakingTypes: cardsMakingTypes)
     }
 

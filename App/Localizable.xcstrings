@@ -69,8 +69,8 @@
     "%@'s data was deleted from iCloud. Turning sync on sends all your cards again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off. The name is the app's."
     },
-    "%@'s data was deleted from iCloud. Turning sync on sends the cards with the tags you choose again." : {
-      "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards with ticked tags sync. The name is the app's."
+    "%@'s data was deleted from iCloud. Turning sync on sends the cards in the decks you choose again." : {
+      "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards in ticked decks sync. The name is the app's."
     },
     "%lld · %@" : {
       "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
@@ -735,29 +735,6 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld notes with a reversed card come in as one card each, with Both ways on."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld of those cards stop syncing, left with no tag you chose to sync." : {
-      "comment" : "In the Cards window's question before it deletes tags, while only the cards with a tag Lucas chose sync: the cards that stop syncing.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "1 of those cards stops syncing, left with no tag you chose to sync."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld of those cards stop syncing, left with no tag you chose to sync."
                 }
               }
             }
@@ -1437,6 +1414,9 @@
     "Decks" : {
       "comment" : "A section of the Cards window's sidebar: the decks, as a tree."
     },
+    "Decks to sync" : {
+      "comment" : "Settings, under Sync: the heading of the list of decks to choose."
+    },
     "Default" : {
       "comment" : "The deck a card lives in when it has no other."
     },
@@ -1897,8 +1877,8 @@
     "It shows before the type's name. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a card type of the user's own an emoji."
     },
-    "It syncs with the ticked tag it sits inside." : {
-      "comment" : "Settings, under Sync: the tooltip of a tag's checkbox, ticked and waiting, inside a ticked tag."
+    "It syncs with the ticked deck it sits inside." : {
+      "comment" : "Settings, under Sync: the tooltip of a deck's checkbox, ticked and waiting, inside a ticked deck."
     },
     "It waits in the inbox, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
@@ -2296,11 +2276,11 @@
         }
       }
     },
-    "Only cards with the tags you choose" : {
-      "comment" : "Settings, under Sync: the choice that syncs only the cards with ticked tags."
+    "Only cards in the decks you choose" : {
+      "comment" : "Settings, under Sync: the choice that syncs only the cards in ticked decks."
     },
-    "Only the cards with a ticked tag go up to iCloud, with their images and sounds. Unticking a tag deletes nothing: its cards stay on each of your devices." : {
-      "comment" : "Settings, under Sync, below the list of tags: what ticking and unticking a tag does."
+    "Only the cards in a ticked deck, or in a deck inside it, go up to iCloud, with their images and sounds. Unticking a deck deletes nothing: its cards stay on each of your devices." : {
+      "comment" : "Settings, under Sync, below the list of decks: what ticking and unticking a deck does."
     },
     "Open %@ when you log in?" : {
       "comment" : "An alert at the app's first launch. The name is the app's."
@@ -2569,9 +2549,6 @@
     "Tags" : {
       "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
-    "Tags to sync" : {
-      "comment" : "Settings, under Sync: the heading of the list of tags to choose."
-    },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
     },
@@ -2693,8 +2670,8 @@
     "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends all your cards to your iCloud." : {
       "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends every card."
     },
-    "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards with the tags you choose to your iCloud." : {
-      "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends the cards with ticked tags."
+    "This Mac had cards before it ever synced, so sync waits for you. Turning it on sends the cards in the decks you choose to your iCloud." : {
+      "comment" : "Settings, under Sync, on a Mac that had cards before it ever synced, which left sync off: turning it on sends the cards in ticked decks."
     },
     "This repeats a card" : {
 
@@ -2814,9 +2791,6 @@
     },
     "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
-    },
-    "Your cards have no tags yet." : {
-      "comment" : "Settings, under Sync: the list of tags to choose is empty, as no card has a tag."
     },
     "Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
       "comment" : "Settings, under Sync, below the switch: what sync does."

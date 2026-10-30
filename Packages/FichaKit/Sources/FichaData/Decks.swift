@@ -9,9 +9,12 @@ internal import GRDB
 // does (ADR 0021), and holds their cards. A deck has a row of its own in the
 // `deck` table while it exists (`Schema`'s "v31 decks"), so one the user makes
 // stays while it has no cards; it holds the deck's switch, color, emoji and
-// choice to sync, which sync as a tag's do (`SyncedDecks.swift`). Default
-// gets its row once something is set on it, and is listed only while it
-// holds cards or has a switch on, so that its switch can be turned off.
+// choice to sync, which sync as a tag's do (`SyncedDecks.swift`), and whether
+// it was made on this device, which doesn't. Default gets its row once
+// something is set on it, and is listed only while it holds cards or has a
+// switch on, so that its switch can be turned off. Under selective sync, a
+// device lists only the decks that sync, those it holds cards of and those
+// made on it (`SelectiveSync.swift`).
 
 /// A switch a deck can have on, which changes which of its cards show up
 /// (ADR 0011, ADR 0024). A deck has one on at most. Its raw value is how the
@@ -180,10 +183,12 @@ public struct CountedDeck: Sendable, Equatable {
 
 extension Engine {
     /// Every deck this device lists, in the order a tree lists them, Default
-    /// first: every deck with a row, every deck a card lives in, buried cards
-    /// too, and every deck those sit inside, each with what it has of its own
-    /// and takes from the decks it sits inside; and Default only while it
-    /// holds cards or has a switch on, so that its switch can be turned off.
+    /// first: every deck with a row, or under selective sync, while sync is
+    /// on, those of them that sync and those made on this device; every deck
+    /// a card lives in, buried cards too; and every deck those sit inside,
+    /// each with what it has of its own and takes from the decks it sits
+    /// inside; and Default only while it holds cards or has a switch on, so
+    /// that its switch can be turned off.
     public func decks() throws(EngineError) -> [Deck] {
         try read { db in
             let own = try OwnDecks(in: db)
@@ -293,15 +298,33 @@ func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
 
 /// What every deck has of its own, as the `deck` table keeps it, read at
 /// once: a deck the table has no row for, one a card lives in or one other
-/// decks sit inside, has nothing of its own.
+/// decks sit inside, has nothing of its own. It knows which decks this device
+/// lists too, as selective sync and the decks made on it decide.
 struct OwnDecks: Sendable {
     /// Every deck the `deck` table has a row for, by name.
     private let byName: [String: Deck]
+    /// The decks with a row this device lists: every one, or, under
+    /// selective sync while sync is on, those that sync, chosen or inside a
+    /// chosen one, and those made on this device (`Schema`'s "v31 decks").
+    private let listedWithRows: Set<String>
 
     /// What every deck has of its own, as the `deck` table keeps it now.
     init(in db: Database) throws {
         let decks = try Row.fetchAll(db, sql: "SELECT * FROM deck").map(Deck.init(row:))
         byName = Dictionary(uniqueKeysWithValues: decks.map { ($0.name, $0) })
+        let whatSyncs = try WhatSyncs(in: db)
+        if try isSyncOn(in: db) && whatSyncs.onlyChosenDecks {
+            let madeHere = try String.fetchAll(db, sql: "SELECT name FROM deck WHERE madeHere")
+            listedWithRows = Set(madeHere + byName.keys.filter(whatSyncs.cardSyncs(inDeck:)))
+        } else {
+            listedWithRows = Set(byName.keys)
+        }
+    }
+
+    /// The name of every deck the `deck` table has a row for, as every device
+    /// has the same rows.
+    var names: [String] {
+        Array(byName.keys)
     }
 
     /// The deck with this name, with what it has of its own, which is nothing
@@ -319,12 +342,15 @@ struct OwnDecks: Sendable {
     /// The name of every deck, as `Engine.decks()` lists them, in the order a
     /// tree lists them: Default first, while one of `cards` lives in it or it
     /// has a switch on, so that its switch can always be turned off, then
-    /// every deck one of `cards` lives in, every deck with a row, and every
-    /// deck those sit inside.
+    /// every deck one of `cards` lives in, every deck with a row this device
+    /// lists, and every deck those sit inside. Under selective sync, while
+    /// sync is on, a device lists of the decks with a row only those that
+    /// sync and those made on it, so that it doesn't list every deck of the
+    /// user's other devices empty (ADR 0024).
     func everyDeckName(livedInBy cards: [Card]) -> [String] {
         let listsDefault =
             cards.contains { $0.deck == Deck.defaultName } || byName[Deck.defaultName]?.switchedOn != nil
-        let named = TagPath.lineages(of: cards.map(\.deck) + byName.keys).subtracting([Deck.defaultName])
+        let named = TagPath.lineages(of: cards.map(\.deck) + listedWithRows).subtracting([Deck.defaultName])
         return (listsDefault ? [Deck.defaultName] : []) + TagPath.sortedAsTree(named)
     }
 }

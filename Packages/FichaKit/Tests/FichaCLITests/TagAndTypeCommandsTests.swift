@@ -18,9 +18,9 @@ struct TagAndTypeCommandsTests {
         engine = try Engine(location: .inMemory, time: ManualTimeSource(now: Date(timeIntervalSince1970: 0)))
     }
 
-    // historia is pinned first, green and chosen to sync; literatura is
-    // pinned second and has an emoji; música has a color and no card. A tag
-    // has no switch to print: decks have them (ADR 0024).
+    // historia is pinned first and green; literatura is pinned second and
+    // has an emoji; música has a color and no card. A tag has no switch nor
+    // choice to sync to print: decks have them (ADR 0024).
     @Test(
         "`ficha tags` prints every tag in tree order, with its counts, its pin and its place, and what it has of its own"
     )
@@ -30,7 +30,6 @@ struct TagAndTypeCommandsTests {
         try engine.pin(["historia", "literatura"])
         try engine.setColor(.green, of: "historia")
         try engine.setEmoji(Emoji("📚"), of: "literatura")
-        try engine.chooseToSync("historia", true)
         try engine.setColor(.blue, of: "música")
 
         let printed = try await ficha("tags")
@@ -40,7 +39,6 @@ struct TagAndTypeCommandsTests {
                 [
                   {
                     "cards" : 2,
-                    "chosenToSync" : true,
                     "color" : "green",
                     "due" : 0,
                     "name" : "historia",
@@ -49,7 +47,6 @@ struct TagAndTypeCommandsTests {
                   },
                   {
                     "cards" : 1,
-                    "chosenToSync" : false,
                     "due" : 0,
                     "emoji" : "📚",
                     "name" : "literatura",
@@ -58,14 +55,12 @@ struct TagAndTypeCommandsTests {
                   },
                   {
                     "cards" : 1,
-                    "chosenToSync" : false,
                     "due" : 0,
                     "name" : "literatura::poesía",
                     "pinned" : false
                   },
                   {
                     "cards" : 0,
-                    "chosenToSync" : false,
                     "color" : "blue",
                     "due" : 0,
                     "name" : "música",
@@ -87,10 +82,15 @@ struct TagAndTypeCommandsTests {
         #expect(try engine.cards().map(\.tags) == [["historia::economía::Argentina"]])
     }
 
-    @Test("`ficha tag delete` deletes several tags, each with the tags inside it, and prints what it did")
+    // Only the cards in a chosen deck sync, and none is chosen: what syncs
+    // is the decks' to decide, so the command says nothing of it.
+    @Test(
+        "`ficha tag delete` deletes several tags, each with the tags inside it, and prints what it did, under selective sync too"
+    )
     func deletingTags() async throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia", "argentina"])
         try approveCard("Facundo", tags: ["historia"])
+        try engine.syncOnlyChosenDecks(true)
 
         let printed = try await ficha("tag", "delete", "literatura", "historia")
 
@@ -153,31 +153,26 @@ struct TagAndTypeCommandsTests {
         }
     }
 
-    @Test("`ficha tag` no longer sets a tag aside or prioritizes it: decks do (ADR 0024)")
+    @Test("`ficha tag` no longer sets a tag aside, prioritizes it or chooses it to sync: decks do (ADR 0024)")
     func aTagHasNoSwitch() throws {
         #expect(throws: (any Error).self) { try FichaCommand.parseAsRoot(["tag", "set-aside", "literatura"]) }
         #expect(throws: (any Error).self) { try FichaCommand.parseAsRoot(["tag", "prioritize", "literatura"]) }
+        #expect(throws: (any Error).self) { try FichaCommand.parseAsRoot(["tag", "choose-to-sync", "literatura"]) }
     }
 
-    @Test(
-        "`ficha tag color`, `emoji` and `choose-to-sync` set a tag's own, take it away with none or `--off`, and print it"
-    )
+    @Test("`ficha tag color` and `emoji` set a tag's own, take it away with none, and print it")
     func settingWhatATagHasOfItsOwn() async throws {
         try approveCard("Martín Fierro", tags: ["literatura"])
 
         let colored = try await tag(from: ficha("tag", "color", "literatura", "purple"))
         let withEmoji = try await tag(from: ficha("tag", "emoji", "literatura", "📚"))
-        let chosen = try await tag(from: ficha("tag", "choose-to-sync", "literatura"))
         let uncolored = try await tag(from: ficha("tag", "color", "literatura", "none"))
         let withoutEmoji = try await tag(from: ficha("tag", "emoji", "literatura", "none"))
-        let unchosen = try await tag(from: ficha("tag", "choose-to-sync", "literatura", "--off"))
 
         #expect(colored.color == "purple")
         #expect(withEmoji.emoji == "📚")
-        #expect(chosen.chosenToSync)
         #expect(uncolored.color == nil)
         #expect(withoutEmoji.emoji == nil)
-        #expect(!unchosen.chosenToSync)
     }
 
     // Each tag has no card and one thing of its own, which the command takes
@@ -186,20 +181,16 @@ struct TagAndTypeCommandsTests {
     func takingAwayATagsLastOwnThing() async throws {
         try engine.setColor(.blue, of: "música")
         try engine.setEmoji(Emoji("🎬"), of: "cine")
-        try engine.chooseToSync("ópera", true)
 
         let printed = [
             try await tag(from: ficha("tag", "color", "música", "none")),
             try await tag(from: ficha("tag", "emoji", "cine", "none")),
-            try await tag(from: ficha("tag", "choose-to-sync", "ópera", "--off")),
         ]
 
         #expect(
             printed
-                == ["música", "cine", "ópera"].map { name in
-                    TagAsPrinted(
-                        name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, color: nil, emoji: nil,
-                        chosenToSync: false)
+                == ["música", "cine"].map { name in
+                    TagAsPrinted(name: name, cards: 0, due: 0, pinned: false, pinPlace: nil, color: nil, emoji: nil)
                 })
         #expect(try engine.allTags().isEmpty)
     }
@@ -343,7 +334,6 @@ private struct TagAsPrinted: Decodable, Equatable {
     let pinPlace: Int?
     let color: String?
     let emoji: String?
-    let chosenToSync: Bool
 }
 
 /// A card type as the CLI prints it, read back by the keys `ficha types`'

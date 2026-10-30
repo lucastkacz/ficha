@@ -77,7 +77,7 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
     used.images = try namesSynced(ImageName.self, in: db)
     used.sounds = try namesSynced(SoundName.self, in: db)
     let (card, capture) = (SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue)
-    let syncing = "SELECT id FROM card WHERE \(cardSyncs(tags: "card.tags"))"
+    let syncing = "SELECT id FROM card WHERE \(cardSyncs(deck: "card.deck"))"
     let untied = """
         SELECT id FROM capture WHERE expandsCardId IS NULL AND followsUpCardId IS NULL
             AND id NOT IN (SELECT captureId FROM card WHERE captureId IS NOT NULL)

@@ -329,9 +329,9 @@ struct CardsView: View {
 
     /// What the question before Lucas deletes the tags of `deletion` says
     /// under its title, a sentence for each thing it does: the tags inside
-    /// them that go too, the cards that lose them, which stay, those of them
-    /// that come back to his reviews, and, under selective sync, those that
-    /// stop syncing; and that it can't be undone. The sentences follow one
+    /// them that go too, the cards that lose them, which stay; and that it
+    /// can't be undone. Since decks decide what syncs, deleting tags changes
+    /// it for no card (ADR 0024). The sentences follow one
     /// another as the Mac's language joins them, with a space in English.
     private func tagDeletionMessage(for deletion: TagDeletion) -> String {
         let isOne = deletion.tags.count == 1
@@ -356,15 +356,6 @@ struct CardsView: View {
                     localized: "\(deletion.cards) cards lose them, and keep everything else.",
                     comment: "In the Cards window's question before it deletes several tags: the cards that carry them."
                 ))
-        if let stopSyncing = deletion.cardsThatStopSyncing, stopSyncing > 0 {
-            sentences.append(
-                String(
-                    localized: "\(stopSyncing) of those cards stop syncing, left with no tag you chose to sync.",
-                    comment: """
-                        In the Cards window's question before it deletes tags, while only the cards with a tag Lucas \
-                        chose sync: the cards that stop syncing.
-                        """))
-        }
         sentences.append(
             String(
                 localized: "You can't undo this.",

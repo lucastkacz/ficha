@@ -1248,11 +1248,17 @@ enum Schema {
             // or Default's, compared character by character, as a tag's: the
             // switch it has on, "priority" or "setAside", or NULL for neither;
             // one of Finder's seven tag colors, or NULL for none; one emoji,
-            // or NULL for none; and whether the user chose it to sync, which
-            // it isn't until they tick it. Unlike a tag's, a deck's row needn't
-            // hold anything, so a deck the user makes stays while it has no
-            // cards. The `tag` table keeps its switches and its choice to sync
-            // as they were, for Lucas's tags to carry over to decks.
+            // or NULL for none; whether the user chose it to sync, which it
+            // isn't until they tick it; and whether it was made on this
+            // device, which never syncs: the engine's own writes make a deck
+            // here, and a deck the device first hears of from another
+            // device's record isn't (`SyncedDecks.swift`), so that under
+            // selective sync a device lists the decks made on it, beside
+            // those that sync and those it holds cards of. Unlike a tag's, a
+            // deck's row needn't hold anything, so a deck the user makes stays
+            // while it has no cards. The `tag` table keeps its switches and
+            // its choice to sync as they were, for Lucas's tags to carry over
+            // to decks.
             try db.create(table: "deck") { table in
                 table.primaryKey("name", .text)
                 table.column("switchedOn", .text)
@@ -1261,6 +1267,7 @@ enum Schema {
                     .check(sql: "color IN ('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray')")
                 table.column("emoji", .text)
                 table.column("chosenToSync", .boolean).notNull().defaults(to: false)
+                table.column("madeHere", .boolean).notNull().defaults(to: true)
             }
             // A card's deck is one of its fields, `deck` as `SyncedField`
             // names it, of which the latest change wins: the trigger of "v21
@@ -1342,6 +1349,54 @@ enum Schema {
                     SELECT 'deck', OLD.name, 1 WHERE \(recording);
                     END;
                     """)
+
+            // Selective sync chooses decks (ADR 0024): a card syncs when every
+            // card does, or its deck, or a deck its deck sits inside, is
+            // chosen, Default included, which no deck sits inside. Whether
+            // only chosen ones sync stays in `syncChoice.onlyChosenTags`, as
+            // it was, and the tags' choices decide nothing. The deletion
+            // triggers of "v27 tags inside tags", made again with that rule:
+            // a deck sits inside a chosen one when its name starts with the
+            // chosen one's and `::`, compared character by character, as
+            // `cardSyncs(deck:)` in `SelectiveSync.swift` does.
+            /// Whether the card whose deck is `deck` syncs.
+            func cardSyncs(deck: String) -> String {
+                """
+                (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
+                    SELECT 1 FROM deck AS chosen WHERE chosen.chosenToSync AND (chosen.name = \(deck)
+                        OR (chosen.name <> '' AND substr(\(deck), 1, length(chosen.name) + 2) = chosen.name || '::'))))
+                """
+            }
+            let synced = [
+                ("card", "card", cardSyncs(deck: "OLD.deck")),
+                (
+                    "reviewLog", "reviewLogEntry",
+                    "EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(deck: "card.deck")))"
+                ),
+                (
+                    "capture", "capture",
+                    """
+                    NOT EXISTS (
+                        SELECT 1 FROM card WHERE card.id IN (OLD.expandsCardId, OLD.followsUpCardId)
+                        AND NOT \(cardSyncs(deck: "card.deck")))
+                    """
+                ),
+            ]
+            for (table, type, rowSynced) in synced {
+                let forgetsFieldTimes =
+                    table == "reviewLog"
+                    ? "" : "DELETE FROM syncFieldTime WHERE recordType = '\(type)' AND recordName = OLD.uuid;"
+                try db.execute(
+                    sql: """
+                        DROP TRIGGER sync_\(table)_deleted;
+                        CREATE TRIGGER sync_\(table)_deleted AFTER DELETE ON \(table) BEGIN
+                        \(forgetsFieldTimes)
+                        DELETE FROM syncPending WHERE recordType = '\(type)' AND recordName = OLD.uuid;
+                        INSERT INTO syncPending (recordType, recordName, isDeletion)
+                        SELECT '\(type)', OLD.uuid, 1 WHERE \(recording) AND \(rowSynced);
+                        END;
+                        """)
+            }
         }
         return migrator
     }()

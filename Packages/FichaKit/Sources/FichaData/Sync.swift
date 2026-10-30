@@ -110,8 +110,9 @@ public struct Sync: Sendable {
     /// while sync is on, handing what it asks for to `iCloud`, the engine
     /// that runs: iCloud answered, so the device keeps that it synced now,
     /// even with nothing new, and notes what syncs, now that it heard every
-    /// change to the choice and to the cards' tags (`noteWhatSyncs(in:)`),
-    /// handing over the rows that start or stop syncing. A device that
+    /// change to the choice, to the decks and to the cards' decks
+    /// (`noteWhatSyncs(in:)`), handing over the rows that start or stop
+    /// syncing. A device that
     /// chooses its cards' zone still,
     /// which a fetch that listed one would have moved there, learns that
     /// iCloud holds none: it makes one, and sends every card into it, the
@@ -294,8 +295,8 @@ public struct Sync: Sendable {
             try takeAccountChange(change, in: iCloud)
         case .didFetchChanges:
             // What syncs is noted again, now that the device heard what the
-            // other devices changed of the choice and the cards' tags, before
-            // the files it lets go of in sync, and the rows that start or
+            // other devices changed of the choice, the decks and the cards'
+            // decks, before the files it lets go of in sync, and the rows that start or
             // stop syncing go. The records that didn't fit go again, while
             // iCloud is full, but not the zones: this fetch may have ended
             // with an error, and the end of one that didn't asks for them

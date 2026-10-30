@@ -2,75 +2,89 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-// Selective sync (ADR 0020): sync carries every card, or only the cards with
-// a tag the user chose. Which it is, and which tags are chosen, is one choice
-// for all the user's devices, which syncs as a tag's color does (the
-// `syncChoice` row, and each tag's `chosenToSync`). A card syncs when every
-// card does, or one of its tags, or a tag one of them sits inside, is chosen
-// (ADR 0021); a card's review log entries go
-// with it, and so do the captures that expand it or follow it up. Every
-// other row syncs whatever the choice: captures, tags, decks, the settings
-// that decide progress and the choice itself.
+// Selective sync (ADR 0020, as ADR 0024 changes it): sync carries every card,
+// or only the cards in a deck the user chose. Which it is, and which decks are
+// chosen, is one choice for all the user's devices, which syncs as a deck's
+// color does (the `syncChoice` row, and each deck's `chosenToSync`). A card
+// syncs when every card does, or its deck, or a deck its deck sits inside, is
+// chosen, Default included, so a deck made inside a chosen one syncs, and any
+// other waits until the user ticks it; a card's review log entries go with
+// it, and so do the captures that expand it or follow it up. Every other row
+// syncs whatever the choice: captures, tags, with their changes, decks, the
+// settings that decide progress and the choice itself. A tag's choice to sync,
+// from before decks, decides nothing: the `tag` table keeps it for the
+// conversion of Lucas's tags into decks, and its record no longer sends it.
 //
 // The triggers record every change, whoever writes it, the CLI too; this file
 // says which of them go up. A row that starts syncing goes up whole, and one
 // that stops leaves iCloud: its record stays there as one that left, holding
-// nothing of its own but, for a card, its tags, so that the other devices
+// nothing of its own but, for a card, its deck, so that the other devices
 // tell it from a deletion, which still removes the record (`SyncedDeletions`),
 // whatever order the two changes reach them in, and learn why it left. Each
 // device keeps its copy of a row that left, which syncs no more until it syncs
 // again, when the copies join as after a long time offline (ADR 0017). The
 // record that left is our own: CloudKit deletes a record, or holds it.
+//
+// Under selective sync, while sync is on, a device lists only the decks that
+// sync, those it holds cards of and those made on it (`OwnDecks`), so that it
+// doesn't list every deck of the other devices empty; the Sync tab lists
+// every deck, for the user to choose from.
 
 /// The key of the field of a record that says its row left iCloud: 1, or
 /// nothing in a record of a row that syncs.
 private let leftKey = "left"
 
 extension Engine {
-    /// Whether only the cards with a tag the user chose sync, rather than
+    /// Whether only the cards in a deck the user chose sync, rather than
     /// every card.
-    public func syncsOnlyChosenTags() throws(EngineError) -> Bool {
-        try read(FichaData.syncsOnlyChosenTags(in:))
+    public func syncsOnlyChosenDecks() throws(EngineError) -> Bool {
+        try read(FichaData.syncsOnlyChosenDecks(in:))
     }
 
-    /// Has only the cards with a tag the user chose sync, or every card, as
+    /// Has only the cards in a deck the user chose sync, or every card, as
     /// `only` says, for all the user's devices. The cards that start syncing
     /// go up whole, and those that stop leave iCloud, kept on every device.
     /// When it's so already, nothing changes.
-    public func syncOnlyChosenTags(_ only: Bool) throws(EngineError) {
+    public func syncOnlyChosenDecks(_ only: Bool) throws(EngineError) {
         try write { db in
             try db.execute(sql: "UPDATE syncChoice SET onlyChosenTags = ?", arguments: [only])
         }
     }
 
-    /// Chooses `tag` to sync, or stops choosing it, as `chosen` says, for all
-    /// the user's devices: while only the cards with a chosen tag sync, its
-    /// cards, and those of the tags inside it, also tags made later, start or
-    /// stop syncing, unless another of their tags, or a tag one of them sits
-    /// inside, is chosen. When it's so already, nothing changes.
-    public func chooseToSync(_ tag: String, _ chosen: Bool) throws(EngineError) {
+    /// Chooses the deck `deck` to sync, by its whole name, or Default by
+    /// `Deck.defaultName`, or stops choosing it, as `chosen` says, for all
+    /// the user's devices: while only the cards in a chosen deck sync, its
+    /// cards, and those of the decks inside it, also decks made inside it
+    /// later, start or stop syncing, unless a deck it sits inside is chosen.
+    /// Choosing deletes no card: one that stops syncing leaves iCloud, kept
+    /// on every device. A deck that isn't there is made, as Change Deck makes
+    /// one, and a name `makeDeck(named:)` refuses is refused. When it's so
+    /// already, nothing changes, and unticking a deck never makes one.
+    public func setChosenToSync(_ chosen: Bool, ofDeck deck: String) throws(EngineError) {
+        let deck = try checkedDeckForCards(deck)
         try write { db in
-            var own = try ownTag(tag, in: db)
+            var own = try ownDeck(deck, in: db)
             guard own.chosenToSync != chosen else { return }
             own.chosenToSync = chosen
             try save(own, in: db)
         }
     }
 
-    /// Every tag the user can choose to sync, as a tree (ADR 0021): those of
-    /// every card, with every tag they sit inside, and those chosen, which
-    /// stay listed while no card carries them, so the user can untick them.
-    /// Each comes with whether it's chosen, whether a tag it sits inside is,
-    /// and what the images and sounds of its cards and of the cards of the
-    /// tags inside it weigh, each file once, at the size Ficha keeps them, or
-    /// nil when those cards have neither; in the order a tree lists them.
-    func tagsToChooseFrom() throws(EngineError) -> [TagToChoose] {
-        let (cards, own) = try read { db in (try allCards(in: db), try OwnTags(in: db)) }
-        var filesByTag: [String: FileNames] = [:]
+    /// Every deck the user can choose to sync, as a tree, in the order a tree
+    /// lists them: Default first, which can be chosen whether or not this
+    /// device holds cards in it, then every deck with a row, which every
+    /// device has, every deck a card here lives in, and every deck those sit
+    /// inside. Each comes with whether it's chosen, whether a deck it sits
+    /// inside is, and what the images and sounds of its cards here, and of
+    /// those of the decks inside it, weigh, each file once, at the size Ficha
+    /// keeps them, or nil when those cards have neither.
+    func decksToChooseFrom() throws(EngineError) -> [DeckToChoose] {
+        let (cards, own) = try read { db in (try allCards(in: db), try OwnDecks(in: db)) }
+        var filesByDeck: [String: FileNames] = [:]
         for card in cards {
-            for tag in TagPath.lineages(of: card.tags) {
-                filesByTag[tag, default: FileNames()].images.formUnion(card.images)
-                filesByTag[tag, default: FileNames()].sounds.formUnion(card.sounds)
+            for deck in TagPath.lineage(of: card.deck) {
+                filesByDeck[deck, default: FileNames()].images.formUnion(card.images)
+                filesByDeck[deck, default: FileNames()].sounds.formUnion(card.sounds)
             }
         }
         var sizes: [SyncedFile: Int64] = [:]
@@ -85,9 +99,10 @@ extension Engine {
             sizes[file] = size
             return size
         }
-        /// The tag at the top of `tree`, with the tags inside it, to choose.
-        func toChoose(_ tree: TagTree) throws(EngineError) -> TagToChoose {
-            let files = filesByTag[tree.name] ?? FileNames()
+        let named = TagPath.lineages(of: cards.map(\.deck) + own.names).subtracting([Deck.defaultName])
+        let decks = ([Deck.defaultName] + TagPath.sortedAsTree(named)).map(own.deck)
+        var weights: [String: Int64] = [:]
+        for (deck, files) in filesByDeck {
             var weight: Int64 = 0
             for image in files.images {
                 weight += try size(of: image)
@@ -95,33 +110,28 @@ extension Engine {
             for sound in files.sounds {
                 weight += try size(of: sound)
             }
-            var children: [TagToChoose] = []
-            for child in tree.children {
-                children.append(try toChoose(child))
-            }
-            return TagToChoose(
-                name: tree.name, isChosen: own.tag(tree.name).chosenToSync,
-                isInsideChosen: TagPath.ancestors(of: tree.name).contains { own.tag($0).chosenToSync },
-                weight: weight > 0 ? weight : nil, children: children)
+            weights[deck] = weight > 0 ? weight : nil
         }
-        let names = Set(filesByTag.keys).union(own.chosenToSync.map(\.name))
-        var trees: [TagToChoose] = []
-        for tree in TagTree.forest(of: names) {
-            trees.append(try toChoose(tree))
+        let chosen = Set(decks.filter(\.chosenToSync).map(\.name))
+        return deckTree(of: decks, named: \.name) { deck, title, children in
+            DeckToChoose(
+                deck: deck, title: title,
+                isInsideChosen: TagPath.ancestors(of: deck.name).contains(where: chosen.contains),
+                weight: weights[deck.name], children: children)
         }
-        return trees
     }
 
     /// Notes what syncs in the database's write `db`, as `noteWhatSyncs(in:)`
     /// says, when `everything` says so or a change that may change what syncs
-    /// waits to be sent: one to a card, whose tags may have changed, to a
-    /// tag, or to the choice. Otherwise only the changes of rows that neither
-    /// sync nor are in iCloud stop waiting, which is quicker: a review, say.
+    /// waits to be sent: one to a card, whose deck may have changed, to a
+    /// deck, or to the choice. Otherwise only the changes of rows that
+    /// neither sync nor are in iCloud stop waiting, which is quicker: a
+    /// review, say.
     func noteWhatSyncs(everything: Bool) throws(EngineError) {
         try writeWithoutTelling { db in
-            // A change to a card, whose tags may have changed, to a tag or to
+            // A change to a card, whose deck may have changed, to a deck or to
             // the choice may change which rows sync.
-            if try everything || savesWait(ofTypes: [.card, .tag, .syncChoice], in: db) {
+            if try everything || savesWait(ofTypes: [.card, .deck, .syncChoice], in: db) {
                 try FichaData.noteWhatSyncs(in: db)
             } else {
                 try forgetChangesThatStayHere(in: db)
@@ -131,13 +141,13 @@ extension Engine {
 
     /// The places among the changes recorded of the rows that leave iCloud,
     /// whose records go up as ones that left, while a change to the choice
-    /// waits to be sent, a tag's or whether only chosen tags sync: those wait
-    /// until it went, so that a device that hears they left already knows
-    /// why, as it does in any order, but sooner. Empty when no such change
-    /// waits.
+    /// waits to be sent, a deck's or whether only chosen decks sync: those
+    /// wait until it went, so that a device that hears they left already
+    /// knows why, as it does in any order, but sooner. Empty when no such
+    /// change waits.
     func leavingWhileTheChoiceChanges() throws(EngineError) -> Set<Int64> {
         try read { db in
-            guard try savesWait(ofTypes: [.tag, .syncChoice], in: db) else {
+            guard try savesWait(ofTypes: [.deck, .syncChoice], in: db) else {
                 return []
             }
             return Set(
@@ -155,52 +165,53 @@ extension Engine {
     }
 }
 
-/// A tag the user can choose to sync, as the Sync tab lists it, in a tree
-/// with the tags inside it.
-public struct TagToChoose: Sendable, Equatable, Identifiable {
-    /// Its whole name, exactly as cards carry it.
-    public let name: String
-    /// Whether the user chose it.
-    public let isChosen: Bool
-    /// Whether the user chose a tag it sits inside, so it syncs whatever its
-    /// own tick, which can't be unticked meanwhile (ADR 0021).
+/// A deck the user can choose to sync, as the Sync tab lists it, in a tree
+/// with the decks inside it.
+public struct DeckToChoose: Sendable, Equatable, Identifiable {
+    /// The deck, with whether the user chose it (`Deck.chosenToSync`), what
+    /// it has of its own and what it takes from the decks it sits inside.
+    public let deck: Deck
+    /// What it says: its last level under its parent, or nothing for
+    /// Default, which the app names in the Mac's language.
+    public let title: String
+    /// Whether the user chose a deck it sits inside, so it syncs whatever its
+    /// own tick, which can't be unticked meanwhile.
     public let isInsideChosen: Bool
-    /// What the images and sounds of its cards, and of the cards of the tags
-    /// inside it, weigh, in bytes, each file once, or nil when they have
-    /// neither.
+    /// What the images and sounds of its cards on this device, and of the
+    /// cards of the decks inside it, weigh, in bytes, each file once, or nil
+    /// when they have neither.
     public let weight: Int64?
-    /// The tags right inside it, in the order a tree lists them.
-    public let children: [TagToChoose]
-
-    init(
-        name: String, isChosen: Bool, isInsideChosen: Bool = false, weight: Int64?, children: [TagToChoose] = []
-    ) {
-        self.name = name
-        self.isChosen = isChosen
-        self.isInsideChosen = isInsideChosen
-        self.weight = weight
-        self.children = children
-    }
+    /// The decks right inside it, in the order a tree lists them.
+    public let children: [DeckToChoose]
 
     public var id: String {
-        name
+        deck.name
+    }
+
+    /// Whether the user chose it.
+    public var isChosen: Bool {
+        deck.chosenToSync
     }
 
     /// Whether its checkbox shows ticked, as its cards sync: it's chosen, or
-    /// a tag it sits inside is.
+    /// a deck it sits inside is.
     public var isTicked: Bool {
         isChosen || isInsideChosen
     }
 
-    /// Whether the user can tick or untick it: unless a tag it sits inside
+    /// Whether the user can tick or untick it: unless a deck it sits inside
     /// is chosen.
     public var canChoose: Bool {
         !isInsideChosen
     }
 }
 
-/// Whether only the cards with a tag the user chose sync, in `db`.
-func syncsOnlyChosenTags(in db: Database) throws -> Bool {
+extension DeckToChoose: DeckInTree {}
+
+/// Whether only the cards in a deck the user chose sync, in `db`: the
+/// `syncChoice` row's `onlyChosenTags`, named when tags were chosen, a name
+/// that iCloud's record and its field's times keep too (ADR 0024).
+func syncsOnlyChosenDecks(in db: Database) throws -> Bool {
     guard let only = try Bool.fetchOne(db, sql: "SELECT onlyChosenTags FROM syncChoice") else {
         throw unreadable("The database doesn't say which cards sync")
     }
@@ -209,54 +220,40 @@ func syncsOnlyChosenTags(in db: Database) throws -> Bool {
 
 /// What decides which cards sync, as a database held it when it was read:
 /// for what a card would do once it changes, as an import's card that comes
-/// in.
+/// in, and for which decks a device lists.
 struct WhatSyncs: Sendable, Equatable {
-    let onlyChosenTags: Bool
-    let chosenTags: Set<String>
+    let onlyChosenDecks: Bool
+    let chosenDecks: Set<String>
 
     /// What decides which cards sync in `db`, now.
     init(in db: Database) throws {
-        onlyChosenTags = try syncsOnlyChosenTags(in: db)
-        chosenTags = Set(try String.fetchAll(db, sql: "SELECT name FROM tag WHERE chosenToSync"))
+        onlyChosenDecks = try syncsOnlyChosenDecks(in: db)
+        chosenDecks = Set(try String.fetchAll(db, sql: "SELECT name FROM deck WHERE chosenToSync"))
     }
 
-    private init(onlyChosenTags: Bool, chosenTags: Set<String>) {
-        self.onlyChosenTags = onlyChosenTags
-        self.chosenTags = chosenTags
-    }
-
-    /// What would decide which cards sync with only `chosenTags` chosen, as
-    /// after some of them are deleted.
-    func choosing(_ chosenTags: Set<String>) -> WhatSyncs {
-        WhatSyncs(onlyChosenTags: onlyChosenTags, chosenTags: chosenTags)
-    }
-
-    /// Whether a card with the tags `tags` syncs, as `cardSyncs(tags:)` says
-    /// in a database's SQL of every tag written as `TagPath.normalized(_:)`
-    /// writes it, as every tag a card gets now is. A tag a card kept from
-    /// before tags sat inside tags (ADR 0021) can differ: one with an empty
-    /// level, or with spaces around one, sits inside no tag here, as All
-    /// Tags lists it, and in SQL inside the tag its name starts with
-    /// before a `::`; and one with an accent written apart from its letter
-    /// is the same name as the accented letter's here, and another in SQL.
-    func cardSyncs(tagged tags: [String]) -> Bool {
-        !onlyChosenTags || !chosenTags.isDisjoint(with: TagPath.lineages(of: tags))
+    /// Whether a card in the deck `deck` syncs, as `cardSyncs(deck:)` says in
+    /// a database's SQL: every card does, or `deck`, or a deck it sits
+    /// inside, is chosen. The two read alike every deck's name the engine
+    /// writes, cleaned up as `checkedDeckName(_:)` cleans it up, and
+    /// Default's.
+    func cardSyncs(inDeck deck: String) -> Bool {
+        !onlyChosenDecks || !chosenDecks.isDisjoint(with: TagPath.lineage(of: deck))
     }
 }
 
-/// SQL that holds when the card whose tags are the JSON array `tags` syncs:
-/// every card does, or one of its tags, or a tag one of them sits inside, is
-/// chosen (ADR 0021). A tag sits inside a chosen one when its name starts with
-/// the chosen one's and `::`, compared character by character: never with
-/// LIKE, whose `_` and `%` match other characters and which ignores the case
-/// of ASCII letters. Swift's twin, `WhatSyncs.cardSyncs(tagged:)`, says where
-/// the two differ. The deletion triggers of `Schema`'s "v27 tags inside
-/// tags" hold a copy, which a migration keeps as it was.
-func cardSyncs(tags: String) -> String {
+/// SQL that holds when the card whose deck is `deck` syncs: every card does,
+/// or its deck, or a deck its deck sits inside, is chosen (ADR 0024), Default
+/// included, which no deck sits inside. A deck sits inside a chosen one when
+/// its name starts with the chosen one's and `::`, compared character by
+/// character: never with LIKE, whose `_` and `%` match other characters and
+/// which ignores the case of ASCII letters. Swift's twin is
+/// `WhatSyncs.cardSyncs(inDeck:)`. The deletion triggers of `Schema`'s "v31
+/// decks" hold a copy, which a migration keeps as it was.
+func cardSyncs(deck: String) -> String {
     """
     (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
-        SELECT 1 FROM json_each(\(tags)) AS cardTag JOIN tag ON tag.chosenToSync AND (tag.name = cardTag.value
-            OR substr(cardTag.value, 1, length(tag.name) + 2) = tag.name || '::')))
+        SELECT 1 FROM deck AS chosen WHERE chosen.chosenToSync AND (chosen.name = \(deck)
+            OR (chosen.name <> '' AND substr(\(deck), 1, length(chosen.name) + 2) = chosen.name || '::'))))
     """
 }
 
@@ -269,15 +266,15 @@ private struct SyncingTable {
     /// SQL that holds when the table's row `row` syncs.
     let syncs: String
 
-    static let cards = SyncingTable(name: "card", type: .card, syncs: cardSyncs(tags: "row.tags"))
+    static let cards = SyncingTable(name: "card", type: .card, syncs: cardSyncs(deck: "row.deck"))
     static let reviewLog = SyncingTable(
         name: "reviewLog", type: .reviewLogEntry,
-        syncs: "EXISTS (SELECT 1 FROM card WHERE card.id = row.cardId AND \(cardSyncs(tags: "card.tags")))")
+        syncs: "EXISTS (SELECT 1 FROM card WHERE card.id = row.cardId AND \(cardSyncs(deck: "card.deck")))")
     static let captures = SyncingTable(
         name: "capture", type: .capture,
         syncs: """
             NOT EXISTS (SELECT 1 FROM card WHERE card.id IN (row.expandsCardId, row.followsUpCardId)
-                AND NOT \(cardSyncs(tags: "card.tags")))
+                AND NOT \(cardSyncs(deck: "card.deck")))
             """)
     static let all = [cards, reviewLog, captures]
 
@@ -329,7 +326,7 @@ func iCloudHoldsInFull(_ id: ICloudRecordID, in db: Database) throws -> Bool {
         == true
 }
 
-/// Notes what syncs, as the choice and the cards' tags decide it now, in the
+/// Notes what syncs, as the choice and the cards' decks decide it now, in the
 /// write `db`, while sync is on: each row that syncs, which iCloud lacks or
 /// holds as one that left, waits to go up whole, as the cards, entries and
 /// captures that start syncing do; each row that doesn't, which iCloud holds
@@ -356,7 +353,7 @@ func noteWhatSyncs(in db: Database) throws {
 /// Forgets, in the write `db`, the saves that wait to be sent of the rows that
 /// neither sync nor are in iCloud in full, as far as the device knows: they
 /// stay on the device. Their deletions waited only if they synced as they
-/// were deleted (`Schema`'s "v26 selective sync", and "v27 tags inside tags"
+/// were deleted (`Schema`'s "v26 selective sync", and "v31 decks"
 /// since).
 private func forgetChangesThatStayHere(in db: Database) throws {
     for table in SyncingTable.all {
@@ -409,7 +406,7 @@ extension ICloudRecord {
 }
 
 /// The record `row` syncs as, as `full` holds the row now: in full while it
-/// syncs, and otherwise as one that left, which keeps a card's tags, so the
+/// syncs, and otherwise as one that left, which keeps a card's deck, so the
 /// other devices learn why it left. A row that syncs whatever the choice is
 /// as `full` holds it.
 func syncedOrLeft(_ full: ICloudRecord, of row: SyncedRow, in db: Database) throws -> ICloudRecord {
@@ -417,24 +414,24 @@ func syncedOrLeft(_ full: ICloudRecord, of row: SyncedRow, in db: Database) thro
         return full
     }
     guard try syncs(row, in: db) else {
-        return full.leaving(keeping: row.recordType == .card ? [.tags] : [])
+        return full.leaving(keeping: row.recordType == .card ? [.deck] : [])
     }
     return full.syncing()
 }
 
 /// Takes `record`, from iCloud, of `row`, which left iCloud: the device keeps
 /// its copy of the row, if it holds one, and never makes one. A card takes
-/// the record's tags when theirs is the latest change, as the tags that made
-/// it leave.
+/// the record's deck when its change is the latest, as the deck that made it
+/// leave, Default when the record names none.
 func takeWhatLeft(_ record: ICloudRecord, of row: SyncedRow, in db: Database) throws {
     guard case .card(let uuid) = row, let own = try SyncedTable.cards.record(ofRowWith: uuid, in: db) else {
         return
     }
-    try takeLatestChanges(of: [.tags], in: record, over: own, to: row, in: db) { won in
-        guard won.contains(.tags) else { return }
+    try takeLatestChanges(of: [.deck], in: record, over: own, to: row, in: db) { won in
+        guard won.contains(.deck) else { return }
         try db.execute(
-            sql: "UPDATE card SET tags = ? WHERE uuid = ?",
-            arguments: [try record.text(SyncedField.tags.rawValue), uuid.uuidString])
+            sql: "UPDATE card SET deck = ? WHERE uuid = ?",
+            arguments: [try record.optionalText(SyncedField.deck.rawValue) ?? Deck.defaultName, uuid.uuidString])
         guard let id = try Int64.fetchOne(db, sql: "SELECT id FROM card WHERE uuid = ?", arguments: [uuid.uuidString])
         else {
             return
@@ -454,7 +451,7 @@ func syncChoiceRecord(in db: Database) throws -> ICloudRecord? {
     guard try !fieldTimes(of: .syncChoice, in: db).isEmpty else {
         return nil
     }
-    return try choiceRecord(holding: syncsOnlyChosenTags(in: db), in: db)
+    return try choiceRecord(holding: syncsOnlyChosenDecks(in: db), in: db)
 }
 
 /// Applies `record`, from iCloud, to the choice of what syncs: it takes it
@@ -468,7 +465,7 @@ func applySyncChoice(_ record: ICloudRecord, in db: Database) throws -> Bool {
     default: throw unreadable("The choice of what syncs from iCloud says something else than which cards sync")
     }
     try takeLatestChanges(
-        of: choiceFields, in: record, over: try choiceRecord(holding: syncsOnlyChosenTags(in: db), in: db),
+        of: choiceFields, in: record, over: try choiceRecord(holding: syncsOnlyChosenDecks(in: db), in: db),
         to: .syncChoice, in: db
     ) { won in
         guard won.contains(.onlyChosenTags) else { return }
@@ -477,7 +474,7 @@ func applySyncChoice(_ record: ICloudRecord, in db: Database) throws -> Bool {
     return true
 }
 
-/// The record of the choice of what syncs when only chosen tags sync, or
+/// The record of the choice of what syncs when only chosen decks sync, or
 /// not, as `only` says, with when that last changed, if it did.
 private func choiceRecord(holding only: Bool, in db: Database) throws -> ICloudRecord {
     try syncedRecord(

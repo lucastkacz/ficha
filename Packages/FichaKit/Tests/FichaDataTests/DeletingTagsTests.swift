@@ -30,7 +30,6 @@ struct DeletingTagsTests {
         try engine.bury(ficciones.id)
         try engine.setColor(.purple, of: "literatura::poesía")
         try engine.pin("literatura::poesía")
-        try engine.chooseToSync("literatura", true)
 
         try engine.deleteTags(["literatura"])
 
@@ -40,40 +39,25 @@ struct DeletingTagsTests {
         #expect(try engine.pinnedTags().isEmpty)
     }
 
-    // literatura::poesía and argentina are chosen to sync, so Martín Fierro
-    // is left with no chosen tag; Ficciones is buried.
-    @Test("Delete… counts first the tags inside, the cards that carry them, and those that stop syncing")
+    // Only the cards in Borges sync, chosen, and Martín Fierro's tags change
+    // nothing of it; Ficciones is buried.
+    @Test("Delete… counts first the tags inside and the cards that carry them, under selective sync too")
     func deleteCountsFirst() throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
         let ficciones = try approveCard("Ficciones", tags: ["literatura"])
-        try approveCard("El Aleph", tags: ["literatura", "argentina"])
+        try approveInDeck("El Aleph", deck: "Borges", tags: ["literatura", "argentina"], in: engine)
         try approveCard("Facundo", tags: ["literatura", "política"])
         try approveCard("Revolución de Mayo", tags: ["historia"])
         try engine.bury(ficciones.id)
-        try engine.syncOnlyChosenTags(true)
-        try engine.chooseToSync("literatura::poesía", true)
-        try engine.chooseToSync("argentina", true)
+        try engine.syncOnlyChosenDecks(true)
+        try engine.setChosenToSync(true, ofDeck: "Borges")
 
         let deletion = try engine.deletion(of: ["literatura"])
 
         #expect(deletion.tags == ["literatura"])
         #expect(deletion.tagsInside == ["literatura::poesía"])
         #expect(deletion.cards == 4)
-        #expect(deletion.cardsThatStopSyncing == 1)
         #expect(try engine.deleteTags(["literatura"]) == deletion)
-    }
-
-    @Test("Delete… counts no card that stops syncing while every card syncs, or while sync is off")
-    func deleteCountsNoCardThatStopsSyncingWhenEveryCardSyncs() throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
-
-        #expect(try engine.deletion(of: ["literatura"]).cardsThatStopSyncing == nil)
-
-        try engine.syncOnlyChosenTags(true)
-        try engine.chooseToSync("literatura", true)
-        try engine.turnSyncOff()
-
-        #expect(try engine.deletion(of: ["literatura"]).cardsThatStopSyncing == nil)
     }
 
     @Test("deleting a tag with a tag inside it among those chosen deletes each once, the tag inside it with it")
@@ -105,22 +89,19 @@ struct DeletingTagsTests {
         #expect(try engine.pinnedTags().isEmpty)
     }
 
-    // música is chosen to sync, cine isn't: another device may hold a card
-    // with cine, which doesn't sync. Once sync is off, every tag counts.
-    @Test(
-        "under selective sync, Clear Unused Tags considers only the tags chosen to sync and those inside them, and every tag while sync is off"
-    )
+    // Only the cards in Música sync, chosen; Martín Fierro, which carries
+    // literatura, doesn't. Another device's cards keep their tags, which
+    // Clear Unused Tags never changes (`SelectiveSyncTests`).
+    @Test("under selective sync, Clear Unused Tags considers every tag no card here carries, whatever syncs")
     func clearingUnusedTagsUnderSelectiveSync() throws {
-        try engine.chooseToSync("música", true)
+        try approveCard("Martín Fierro", tags: ["literatura"])
+        try engine.setColor(.purple, of: "literatura")
         try engine.pin("música::tango")
         try engine.setEmoji(Emoji("🎬"), of: "cine")
-        try engine.syncOnlyChosenTags(true)
+        try engine.syncOnlyChosenDecks(true)
+        try engine.setChosenToSync(true, ofDeck: "Música")
 
-        #expect(try engine.unusedTags() == ["música", "música::tango"])
-
-        try engine.turnSyncOff()
-
-        #expect(try engine.unusedTags() == ["cine", "música", "música::tango"])
+        #expect(try engine.unusedTags() == ["cine", "música::tango"])
     }
 
     // Martín Fierro, Facundo and El Aleph are due, Ficciones too but buried,

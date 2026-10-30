@@ -21,18 +21,20 @@ final class PinnedTagsSyncTests {
         iPhone = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
     }
 
-    // lenguaje's cards don't sync, and historia has none: their pins reach
-    // the iPhone all the same, as tags' rows always sync.
+    // lenguaje's card, in Default, doesn't sync while only Economía does, and
+    // historia has none: their pins reach the iPhone all the same, as tags'
+    // rows always sync.
     @Test(
-        "pins and their order reach the other device, and so does a move or an unpin there, while only chosen tags sync too",
+        "pins and their order reach the other device, and so does a move or an unpin there, while only chosen decks sync too",
         arguments: [false, true])
-    func pinsAndTheirOrderReachTheOtherDevice(onlyChosenTags: Bool) async throws {
+    func pinsAndTheirOrderReachTheOtherDevice(onlyChosenDecks: Bool) async throws {
         try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia.", tags: ["lenguaje"]))
         try mac.engine.create(
-            card(.concept, front: "cepo", back: "Un límite a la compra de dólares.", tags: ["economía::Argentina"]))
-        if onlyChosenTags {
-            try mac.engine.syncOnlyChosenTags(true)
-            try mac.engine.chooseToSync("economía", true)
+            card(.concept, front: "cepo", back: "Un límite a la compra de dólares.", tags: ["economía::Argentina"]),
+            deck: "Economía")
+        if onlyChosenDecks {
+            try mac.engine.syncOnlyChosenDecks(true)
+            try mac.engine.setChosenToSync(true, ofDeck: "Economía")
         }
         for tag in ["lenguaje", "economía::Argentina", "historia"] {
             try mac.engine.pin(tag)

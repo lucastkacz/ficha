@@ -161,11 +161,13 @@ extension CardsWindowState {
         /// What the images and sounds the import brings weigh, in bytes, as
         /// the preview's line says it while they go up to the user's iCloud,
         /// with the files of the repeated cards while the user chooses to
-        /// update them, of the cards that sync with the tags as the fields
+        /// update them, of the cards that sync in the decks as the fields
         /// name them; nil while the sheet says nothing of it, as
-        /// `ImportPreview.weightGoingUpToICloud(choosing:naming:)` says.
+        /// `ImportPreview.weightGoingUpToICloud(choosing:)` says.
         public var weightGoingUpToICloud: Int64? {
-            preview?.weightGoingUpToICloud(choosing: repeatedCards, naming: tagNames)
+            preview?.weightGoingUpToICloud(
+                choosing: ImportChoices(
+                    deckNames: deckNames, deckForCardsWithoutDeck: chosenDeck, repeatedCards: repeatedCards))
         }
 
         /// The names of the user types the import makes, as the preview's

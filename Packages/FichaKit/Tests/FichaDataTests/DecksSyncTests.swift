@@ -3,8 +3,8 @@ import Foundation
 import Testing
 
 // For what a deck has of its own, which the engine stores and syncs before
-// the user has actions that set it, its color, emoji and choice to sync:
-// `changeOwnDecks`, the loop those actions go through.
+// the user has actions that set it, its color and emoji: `changeOwnDecks`,
+// the loop those actions go through.
 @testable import FichaData
 
 /// Tests on decks across devices (ADR 0024, ADR 0017): a deck reaching the
@@ -26,41 +26,41 @@ final class DecksSyncTests {
     }
 
     // Arte::Escultura has no card, and Historia's only card stays on the Mac
-    // while only chosen tags sync: their rows reach the iPhone all the same,
-    // as a tag's row does.
+    // while only chosen decks sync: their rows reach the iPhone all the same,
+    // but under selective sync the iPhone lists only the decks that sync, so
+    // not Historia, which it neither made nor holds cards of.
     @Test(
-        "a deck made on one device reaches the other with what it has of its own, one with no card too, while only chosen tags sync too",
+        "a deck made on one device reaches the other with what it has of its own, one with no card too, while only chosen decks sync too",
         arguments: [false, true])
-    func aDeckReachesTheOtherDevice(onlyChosenTags: Bool) async throws {
+    func aDeckReachesTheOtherDevice(onlyChosenDecks: Bool) async throws {
         let gioconda = try mac.engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo.", tags: ["arte"]))
         let coliseo = try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."))
-        if onlyChosenTags {
-            try mac.engine.syncOnlyChosenTags(true)
-            try mac.engine.chooseToSync("arte", true)
+        if onlyChosenDecks {
+            try mac.engine.syncOnlyChosenDecks(true)
         }
         try mac.engine.changeDeck(of: [gioconda.id], to: "Arte::Pintura")
         try mac.engine.changeDeck(of: [coliseo.id], to: "Historia")
         try mac.engine.makeDeck(named: "Arte::Escultura")
         try mac.engine.setPriority(true, ofDeck: "Arte")
+        try mac.engine.setChosenToSync(true, ofDeck: "Arte")
         try mac.engine.write { db in
             try changeOwnDecks(["Arte"], in: db) { deck in
                 deck.color = .orange
                 deck.emoji = "🎨"
-                deck.chosenToSync = true
             }
         }
         try await syncBoth()
 
         let arte = Deck(name: "Arte", switchedOn: .priority, color: .orange, emoji: "🎨", chosenToSync: true)
-        #expect(
-            try iPhone.engine.decks() == [
-                arte, Deck(name: "Arte::Escultura", inheritedColor: .orange, inheritedEmoji: "🎨"),
-                Deck(name: "Arte::Pintura", inheritedColor: .orange, inheritedEmoji: "🎨"), Deck(name: "Historia"),
-            ])
+        let artes = [
+            arte, Deck(name: "Arte::Escultura", inheritedColor: .orange, inheritedEmoji: "🎨"),
+            Deck(name: "Arte::Pintura", inheritedColor: .orange, inheritedEmoji: "🎨"),
+        ]
+        #expect(try mac.engine.decks() == artes + [Deck(name: "Historia")])
+        #expect(try iPhone.engine.decks() == artes + (onlyChosenDecks ? [] : [Deck(name: "Historia")]))
         #expect(
             try Set(iPhone.engine.cards().map(\.deck))
-                == (onlyChosenTags ? ["Arte::Pintura"] : ["Arte::Pintura", "Historia"]))
-        #expect(try iPhone.engine.decks() == mac.engine.decks())
+                == (onlyChosenDecks ? ["Arte::Pintura"] : ["Arte::Pintura", "Historia"]))
     }
 
     // The iPhone, offline, moves petricor first; the Mac moves it later, and

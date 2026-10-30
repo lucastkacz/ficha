@@ -20,8 +20,8 @@ struct CardsWindowAllTagsTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    // arte::barroco has a color, filosofía an emoji, geografía is chosen to
-    // sync, historia pinned, ciencia and música have emoji, and no card
+    // arte::barroco and geografía have a color, filosofía an emoji,
+    // historia is pinned, ciencia and música have emoji, and no card
     // carries them; a buried card carries política, which lists no card.
     // deuda and arancel are due, and Coliseo is due but in a set-aside deck.
     @Test(
@@ -43,7 +43,7 @@ struct CardsWindowAllTagsTests {
         try engine.pin("historia")
         try engine.setColor(.blue, of: "arte::barroco")
         try engine.setEmoji(Emoji("🦉"), of: "filosofía")
-        try engine.chooseToSync("geografía", true)
+        try engine.setColor(.green, of: "geografía")
         try engine.setEmoji(Emoji("🎵"), of: "música")
         var window = openWindow()
 
@@ -238,18 +238,15 @@ struct CardsWindowAllTagsTests {
         #expect(window.failure == nil)
     }
 
-    // Martín Fierro and El Aleph carry literatura or a tag inside it; under
-    // selective sync, only literatura::poesía is chosen, so Martín Fierro
-    // stops syncing. historia stays.
+    // Martín Fierro and El Aleph carry literatura or a tag inside it.
+    // historia stays.
     @Test(
-        "Delete… on the selected tags asks first, with the cards that lose them, the tags inside and the cards that stop syncing, and OK deletes them"
+        "Delete… on the selected tags asks first, with the cards that lose them and the tags inside, and OK deletes them"
     )
     func deleteAsksFirst() throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
         try approveCard("El Aleph", tags: ["literatura"])
         try approveCard("Facundo", tags: ["política", "historia"])
-        try engine.syncOnlyChosenTags(true)
-        try engine.chooseToSync("literatura::poesía", true)
         var window = openWindow()
         window.choose(.allTags)
         let offeredWithNothingSelected = window.tagActions
@@ -272,7 +269,6 @@ struct CardsWindowAllTagsTests {
         #expect(deletion.tags == ["literatura", "política"])
         #expect(deletion.tagsInside == ["literatura::poesía"])
         #expect(deletion.cards == 3)
-        #expect(deletion.cardsThatStopSyncing == 1)
         #expect(window.question == nil)
         #expect(window.failure == nil)
         #expect(window.allTagsRows?.outline == ["historia"])

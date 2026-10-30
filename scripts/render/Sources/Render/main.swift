@@ -100,13 +100,10 @@ enum Window: String {
     /// Settings, on its Sync tab, once the user restored a copy, which
     /// turned sync off.
     case syncRestored = "sync-restored"
-    /// Settings, on its Sync tab, once the Mac synced only the cards with the
-    /// tags the user chose, filosofía and lenguaje, in the list of every tag.
-    case syncChosenTags = "sync-chosen-tags"
-    /// Settings, on its Sync tab, syncing only the cards with chosen tags,
-    /// once the sample's tags sit inside tags, with ciencia ticked, and so
-    /// the tags inside it, and lenguaje.
-    case syncTagsTree = "sync-tags-tree"
+    /// Settings, on its Sync tab, once the Mac synced only the cards in the
+    /// decks the user chose, in the tree of every deck: Ciencias, and so the
+    /// decks inside it, and Idiomas::Español, and so Rioplatense.
+    case syncChosenDecks = "sync-chosen-decks"
     /// Settings, on its Sync tab, off since the Mac held cards before it ever
     /// synced, as the update that brought selective sync leaves Lucas's.
     case syncFirst = "sync-first"
@@ -365,8 +362,8 @@ let usage = """
                  or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
                  (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
                  full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
-                 in iCloud), sync-restored (off after a restore), sync-chosen-tags (syncing only the cards with
-                 two ticked tags), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
+                 in iCloud), sync-restored (off after a restore), sync-chosen-decks (syncing only the cards in
+                 two ticked decks), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
                  (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
                  or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
@@ -1207,7 +1204,7 @@ func model(for name: Window) throws -> AppModel {
                 .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(modifications: [], deletions: [purge])),
                 to: sync)
         } isShown: {
-            if case .off(turningOn: .sendsCardsAgain(onlyChosenTags: false)?, _) = $0 { true } else { false }
+            if case .off(turningOn: .sendsCardsAgain(onlyChosenDecks: false)?, _) = $0 { true } else { false }
         }
     case .syncRestored:
         return try syncModel(showing: "that a restore turned sync off") { engine, _ in
@@ -1215,23 +1212,12 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             if case .off(turningOn: .replacesICloudsCopy?, _) = $0 { true } else { false }
         }
-    case .syncChosenTags:
-        return try syncModel(showing: "when the Mac last synced, syncing only the cards with chosen tags") {
+    case .syncChosenDecks:
+        return try syncModel(showing: "when the Mac last synced, syncing only the cards in chosen decks") {
             engine, sync in
-            try engine.syncOnlyChosenTags(true)
-            try engine.chooseToSync("filosofía", true)
-            try engine.chooseToSync("lenguaje", true)
-            try sync.finishAFetchWithoutAnError(with: RenderICloud())
-        } isShown: {
-            if case .on(_?) = $0 { true } else { false }
-        }
-    case .syncTagsTree:
-        return try syncModel(showing: "when the Mac last synced, syncing only the cards with chosen tags") {
-            engine, sync in
-            try nestSampleTags(in: engine)
-            try engine.syncOnlyChosenTags(true)
-            try engine.chooseToSync("ciencia", true)
-            try engine.chooseToSync("lenguaje", true)
+            try engine.syncOnlyChosenDecks(true)
+            try engine.setChosenToSync(true, ofDeck: "Ciencias")
+            try engine.setChosenToSync(true, ofDeck: "Idiomas::Español")
             try sync.finishAFetchWithoutAnError(with: RenderICloud())
         } isShown: {
             if case .on(_?) = $0 { true } else { false }
@@ -1244,7 +1230,7 @@ func model(for name: Window) throws -> AppModel {
                 "UPDATE syncDevice SET isOn = 0, offBecause = 'firstSync', timesTurnedOff = timesTurnedOff + 1",
                 in: renderDataFolder.appending(path: "Ficha.sqlite"), writing: "how sync stands on the sample's Mac")
         } isShown: {
-            $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: false), sending: nil)
+            $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil)
         }
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
@@ -1346,8 +1332,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: state)
         return window
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
-    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenTags, .syncTagsTree,
-        .syncFirst:
+    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenDecks, .syncFirst:
         return settingsTabWindow(model: model, openingOn: .sync)
     case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)

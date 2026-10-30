@@ -195,7 +195,6 @@ extension CardTag {
         var fields: [SyncedField] = []
         if color != other.color { fields.append(.color) }
         if emoji != other.emoji { fields.append(.emoji) }
-        if chosenToSync != other.chosenToSync { fields.append(.chosenToSync) }
         if pin != other.pin { fields.append(.pin) }
         return fields
     }

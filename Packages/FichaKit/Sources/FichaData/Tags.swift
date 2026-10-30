@@ -28,10 +28,10 @@ public enum TagColor: String, Sendable, CaseIterable {
 
 /// A tag of Lucas's cards, by its name, exactly as cards carry it, with the
 /// tags it sits inside (ADR 0021), with what it has of its own: its color
-/// and its emoji, each optional, whether the user chose it to sync, its place
-/// among the pinned tags, while it's pinned (ADR 0022), and the switch it had
-/// on before decks, which only the conversion reads. A tag with none of them
-/// is just a name. It carries the color and the emoji it takes from the tags
+/// and its emoji, each optional, its place among the pinned tags, while it's
+/// pinned (ADR 0022), and the switch it had on and whether the user chose it
+/// to sync before decks, which only the conversion reads. A tag with none of
+/// them is just a name. It carries the color and the emoji it takes from the tags
 /// it sits inside too, which it shows while it has none of its own.
 public struct CardTag: Sendable, Hashable {
     /// Its whole name, its levels joined by `::`, as `TagPath` reads it.
@@ -44,8 +44,9 @@ public struct CardTag: Sendable, Hashable {
     public var color: TagColor?
     /// Its emoji, or nil for none.
     public var emoji: String?
-    /// Whether the user chose it to sync, for selective sync (ADR 0020). A tag
-    /// isn't, until the user ticks it.
+    /// Whether the user chose it to sync before decks took the choice (ADR
+    /// 0024): kept for the conversion of Lucas's tags into decks, and
+    /// deciding nothing else, since selective sync chooses decks.
     public var chosenToSync: Bool
     /// Its place among the tags the user pinned to the Cards window's
     /// sidebar, or nil while it isn't pinned. A tag isn't, until the user
@@ -142,11 +143,6 @@ struct OwnTags: Sendable {
         return (byName[name] ?? CardTag(name: name)).named(
             name, inheritedColor: ancestors.lazy.compactMap(\.color).first,
             inheritedEmoji: ancestors.lazy.compactMap(\.emoji).first)
-    }
-
-    /// Every tag the user chose to sync.
-    var chosenToSync: [CardTag] {
-        byName.values.filter(\.chosenToSync)
     }
 
     /// Every pinned tag, with what it has of its own, in the user's order.

@@ -24,14 +24,14 @@ final class TagChangesSyncTests {
         iPhone = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
     }
 
-    // Only filosofía syncs, so ubuntu and cepo stay on the iPhone; economía
+    // Only Filosofía syncs, so ubuntu and cepo stay on the iPhone; economía
     // is orange on the Mac, which holds no card of it.
     @Test(
         "a rename reaches a card the other device holds and doesn't sync, and the tag keeps its color there"
     )
     func aRenameReachesACardThatDoesntSync() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try mac.engine.setColor(.orange, of: "economía")
         try await syncBoth()
         try iPhone.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["economía"]))
@@ -50,7 +50,6 @@ final class TagChangesSyncTests {
             iPhonesTags == [
                 CardTag(name: "economics", color: .orange),
                 CardTag(name: "economics::Argentina", inheritedColor: .orange),
-                CardTag(name: "filosofía", chosenToSync: true),
             ])
         #expect(records(ofType: .card).isEmpty)
         for device in [mac, iPhone] {
@@ -60,8 +59,8 @@ final class TagChangesSyncTests {
 
     @Test("a deletion reaches a card the other device holds and doesn't sync, and deletes no card there")
     func aDeletionReachesACardThatDoesntSync() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try mac.engine.setColor(.green, of: "economía")
         try await syncBoth()
         try iPhone.engine.create(
@@ -76,7 +75,7 @@ final class TagChangesSyncTests {
 
         #expect(try iPhone.engine.cards().map(\.tags) == [["zulú"]])
         let iPhonesTags = try iPhone.engine.allTags().map(\.name)
-        #expect(iPhonesTags == ["filosofía", "zulú"])
+        #expect(iPhonesTags == ["zulú"])
         for device in [mac, iPhone] {
             #expect(try device.engine.changesToSend().isEmpty)
         }
@@ -86,8 +85,8 @@ final class TagChangesSyncTests {
     // offline, and syncs again meanwhile.
     @Test("each change reaches the other device once it comes back online")
     func aChangeHeardAfterComingBackOnline() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try await syncBoth()
         try iPhone.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["economía", "literatura"]))
         try await syncBoth()
@@ -108,17 +107,18 @@ final class TagChangesSyncTests {
         #expect(try iPhone.engine.card(fronted: "cepo").tags == ["economics"])
     }
 
-    // cepo carries filosofía alone of the chosen tags; inflación carries
-    // economía too, which is chosen.
-    @Test("a deletion makes a card left with no chosen tag stop syncing, and each device keeps it")
-    func aDeletionMakesACardStopSyncing() async throws {
+    // Both cards live in Filosofía, which is chosen; cepo carries the tag
+    // filosofía alone, beside zulú, and inflación beside economía.
+    @Test("a deletion of a tag changes for no card whether it syncs, since decks decide it")
+    func aDeletionChangesNothingOfWhatSyncs() async throws {
         try mac.engine.create(
-            card(.concept, front: "cepo", back: "Un límite a la compra de dólares.", tags: ["filosofía", "zulú"]))
+            card(.concept, front: "cepo", back: "Un límite a la compra de dólares.", tags: ["filosofía", "zulú"]),
+            deck: "Filosofía")
         try mac.engine.create(
-            card(.concept, front: "inflación", back: "Suben los precios.", tags: ["filosofía", "economía"]))
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
-        try mac.engine.chooseToSync("economía", true)
+            card(.concept, front: "inflación", back: "Suben los precios.", tags: ["filosofía", "economía"]),
+            deck: "Filosofía")
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try await syncBoth()
         #expect(try iPhone.engine.cards().count == 2)
 
@@ -132,7 +132,7 @@ final class TagChangesSyncTests {
             #expect(try device.engine.changesToSend().isEmpty)
         }
         let cards = records(ofType: .card)
-        #expect(cards.filter(\.hasLeft).map { try? $0.text(SyncedField.tags.rawValue) } == [#"["zulú"]"#])
+        #expect(cards.filter(\.hasLeft).isEmpty)
         #expect(cards.count == 2)
     }
 
@@ -233,7 +233,7 @@ final class TagChangesSyncTests {
         }
     }
 
-    // Only filosofía syncs, so cepo stays on the iPhone, and inflación syncs.
+    // Only Filosofía syncs, so cepo stays on the iPhone, and inflación syncs.
     // The Mac, offline, renames economía to economics, a tag inflación
     // carries; the iPhone then deletes economics, and hears of the rename
     // after, in a fetch of its own.
@@ -241,10 +241,11 @@ final class TagChangesSyncTests {
         "a rename heard in a fetch of its own after a later deletion of its new name follows it: the tag is gone from every card"
     )
     func aRenameHeardAfterALaterDeletion() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try mac.engine.create(
-            card(.concept, front: "inflación", back: "Suben los precios.", tags: ["filosofía", "economics"]))
+            card(.concept, front: "inflación", back: "Suben los precios.", tags: ["filosofía", "economics"]),
+            deck: "Filosofía")
         try await syncBoth()
         try iPhone.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["economía"]))
         try await syncBoth()
@@ -266,18 +267,19 @@ final class TagChangesSyncTests {
         }
     }
 
-    // Only filosofía syncs: inflación syncs, cepo stays on the Mac and ubuntu
+    // Only Filosofía syncs: inflación syncs, cepo stays on the Mac and ubuntu
     // on the iPhone. economía is orange. The Mac renames it to economics and
     // the iPhone, offline, to economy, before it hears of the Mac's.
     @Test(
         "two devices renaming one tag lose no card and no color: the synced cards take the later name, and each device's other cards keep its own"
     )
     func twoDevicesRenamingOneTag() async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         try mac.engine.setColor(.orange, of: "economía")
         try mac.engine.create(
-            card(.concept, front: "inflación", back: "Suben los precios.", tags: ["filosofía", "economía"]))
+            card(.concept, front: "inflación", back: "Suben los precios.", tags: ["filosofía", "economía"]),
+            deck: "Filosofía")
         try mac.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["economía"]))
         try await syncBoth()
         try iPhone.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["economía"]))
@@ -300,7 +302,7 @@ final class TagChangesSyncTests {
                 try device.engine.allTags() == [
                     CardTag(name: "economics", color: .orange),
                     CardTag(name: "economy", color: .orange),
-                    CardTag(name: "filosofía", chosenToSync: true),
+                    CardTag(name: "filosofía"),
                 ])
             #expect(try device.engine.changesToSend().isEmpty)
         }
@@ -308,7 +310,7 @@ final class TagChangesSyncTests {
         #expect(try iPhone.engine.cards().count == 2)
     }
 
-    // Only filosofía syncs, so each device's cards stay on it. The Mac drags
+    // Only Filosofía syncs, so each device's cards stay on it. The Mac drags
     // P › l2 › Y › l1 and Q › l2 into P at once, in All Tags, which moves
     // them in that order: Q › l2 › Y › l1 becomes P › l2 › Y › l1, which the
     // first move no longer reaches. iCloud's engine promises no order, so the
@@ -317,8 +319,8 @@ final class TagChangesSyncTests {
         "tags moved at once reach the cards the other device holds and doesn't sync in the order they were moved, however it hears of them",
         arguments: [false, true], [false, true])
     func tagsMovedAtOnce(laterMoveSentFirst: Bool, heardInOneFetchEach: Bool) async throws {
-        try mac.engine.syncOnlyChosenTags(true)
-        try mac.engine.chooseToSync("filosofía", true)
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
         for device in [mac, iPhone] {
             try device.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["Q::l2::Y::l1"]))
             try device.engine.create(
