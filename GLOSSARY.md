@@ -35,14 +35,14 @@ _Avoid_: audio, clip, recording
 
 **Deck**:
 The subject a card lives in, like "historia" or "Great Works of Art"; each card lives in exactly one. A deck can sit inside another, its parent, for a finer subject under a broad one, as "Artists" does in "Great Works of Art › Artists", and a parent holds the cards of every deck inside it.
-_Avoid_: folder, collection, category, subdeck, nested deck
+_Avoid_: folder, collection, category, nested deck
 
 **Default**:
-The deck a card lives in when it has no other: a card the user didn't put in a deck, or one an Anki package had in Anki's own Default. It can't be renamed or deleted, and the Cards window shows it only while it holds cards.
+The deck a card lives in when it has no other: a card the user didn't put in a deck, or one an Anki package had in Anki's own Default. It can't be renamed or deleted.
 _Avoid_: no deck, unsorted, inbox
 
 **Tag**:
-A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "economía › Argentina".
+A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina".
 _Avoid_: topic, category, deck, subtag, nested tag
 
 **Priority deck**:
@@ -98,7 +98,7 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless its deck, or a deck its deck sits inside, is set aside.
+Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless it's set aside.
 _Avoid_: correct
 
 **Content guide**:
@@ -156,7 +156,7 @@ Taking a card the user no longer wants out of reviews for good, and out of the i
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck, or a deck its deck sits inside; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
