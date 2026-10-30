@@ -183,6 +183,16 @@ public struct CardsWindowState: Sendable {
         public let isTicked: Bool
     }
 
+    /// The fields a card is written in, each with a type picker and a Deck
+    /// field, whose New Type… and New Deck… give them the type or the deck
+    /// their sheet makes or names.
+    public enum CardFields: Sendable, Equatable {
+        /// The card form's.
+        case form
+        /// The editor's, while Lucas edits a card.
+        case editor
+    }
+
     /// What the window asks before it acts, until Lucas confirms or cancels.
     public enum Question: Sendable, Equatable {
         /// Whether to discard this capture in the inbox.
@@ -194,6 +204,10 @@ public struct CardsWindowState: Sendable {
         /// Which deck these cards move to, in the Change Deck sheet:
         /// `CardsWindowDecks.swift`.
         case changeDeck(DeckChange)
+        /// A new deck's whole name, in the New Deck sheet, for the Deck field
+        /// of the fields New Deck… was chosen in, which takes it:
+        /// `CardsWindowDeckField.swift`.
+        case newDeck(CardFields)
         /// Which emoji this tag gets, in the emoji sheet, whose field starts
         /// with the one it has.
         case emoji(CardTag)
@@ -201,9 +215,9 @@ public struct CardsWindowState: Sendable {
         /// with its whole name, written with `::`: `CardsWindowTags.swift`.
         case renameTag(CardTag)
         /// A new type's name and emoji, in the New Type sheet, for the type
-        /// picker New Type… was chosen in, which takes it:
+        /// picker of the fields New Type… was chosen in, which takes it:
         /// `CardsWindowTypes.swift`.
-        case newType(TypePicker)
+        case newType(CardFields)
         /// Which name this user type gets, in the rename sheet, whose field
         /// starts with its name.
         case renameType(UserType)
@@ -415,6 +429,12 @@ public struct CardsWindowState: Sendable {
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
     public internal(set) var cardForm: CardForm?
+    /// The deck the user last added a card to in the form, by its whole
+    /// name, or Default's, which a new card's form starts in while the
+    /// sidebar chose no deck (`CardsWindowDeckField.swift`): as the window
+    /// opened with it, from this device's preferences, which the app keeps
+    /// it in whenever it changes, until they add one.
+    public internal(set) var lastDeckAddedTo: String
     /// The form Show Card set aside, as it was, until it's opened the same
     /// way again, or closes for good: `CardForm.swift`.
     var setAsideCardForm: CardForm?
@@ -445,6 +465,11 @@ public struct CardsWindowState: Sendable {
     /// edit one: the card's own until they pick another, or make one with New
     /// Type… (`CardsWindowTypes.swift`).
     public internal(set) var editedType: CardType?
+    /// The deck of the card the user edits, as Save would move it to, by its
+    /// whole name, or Default's, while they edit one: the card's own until
+    /// they pick another in the Deck field, or name one with New Deck…
+    /// (`CardsWindowDeckField.swift`).
+    public internal(set) var editedDeck = Deck.defaultName
     /// The sound that plays, while one does, which the app's player plays:
     /// `CardsWindowSounds.swift`.
     public internal(set) var playingSound: PlayingSound?
@@ -461,9 +486,10 @@ public struct CardsWindowState: Sendable {
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
-    init(engine: Engine, ladder: Ladder) {
+    init(engine: Engine, ladder: Ladder, lastDeckAddedTo: String) {
         self.engine = engine
         self.ladder = ladder
+        self.lastDeckAddedTo = lastDeckAddedTo
         now = engine.now
     }
 
@@ -653,6 +679,7 @@ public struct CardsWindowState: Sendable {
             editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
             editedBothWays = row.card.bothWays
             editedType = row.card.type
+            editedDeck = row.card.deck
             // The editor takes the detail's place, and its sound's.
             showFiles()
         }
@@ -665,19 +692,32 @@ public struct CardsWindowState: Sendable {
         editedBothWays = bothWays
     }
 
+    /// Whether the fields `fields` are there: the card form's while it's
+    /// open, and the editor's while Lucas edits a card.
+    func areOpen(_ fields: CardFields) -> Bool {
+        switch fields {
+        case .form:
+            return cardForm != nil
+        case .editor:
+            guard case .card = editing else { return false }
+            return true
+        }
+    }
+
     /// Saves the card the user edits with `content`, its images and sounds as
     /// `editedImages` and `editedSounds` hold them, going both ways as
-    /// `editedBothWays` says, and ends the edit, while Save is on, or records
-    /// why it couldn't and goes on with it. The card keeps its step and its
-    /// review log, and a flagged one is fixed, back in the reviews unless
-    /// it's buried. The detail shows it as saved at once, without waiting for
-    /// the engine to say it changed.
+    /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
+    /// edit, while Save is on, or records why it couldn't and goes on with
+    /// it. The card keeps its step and its review log, and a flagged one is
+    /// fixed, back in the reviews unless it's buried. The detail shows it as
+    /// saved at once, without waiting for the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
         let files = heldFiles(of: content)
         let bothWays = editedBothWays
+        let deck = editedDeck
         let saved = perform(.saveCard) { engine throws(EngineError) in
-            try engine.edit(card.id, keeping: files, with: content, bothWays: bothWays)
+            try engine.edit(card.id, keeping: files, with: content, deck: deck, bothWays: bothWays)
         }
         if saved {
             endEditing()
@@ -717,6 +757,7 @@ public struct CardsWindowState: Sendable {
         editedSoundsComingIn = [:]
         editedBothWays = false
         editedType = nil
+        editedDeck = Deck.defaultName
     }
 
     /// Asks what needs fixing in the card the detail shows, to flag it, while
@@ -996,8 +1037,10 @@ private struct CardReviewLog: Sendable {
 extension Engine {
     /// Opens the Cards window on All cards, with nothing searched or
     /// selected, for Lucas's cards standing on `ladder`, the one he set in
-    /// Settings, which it reads once the window asks.
-    public func openCardsWindow(on ladder: Ladder) -> CardsWindowState {
-        CardsWindowState(engine: self, ladder: ladder)
+    /// Settings, which it reads once the window asks, remembering
+    /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
+    /// preferences keep it: Default when they keep none.
+    public func openCardsWindow(on ladder: Ladder, lastDeckAddedTo: String = Deck.defaultName) -> CardsWindowState {
+        CardsWindowState(engine: self, ladder: ladder, lastDeckAddedTo: lastDeckAddedTo)
     }
 }

@@ -177,18 +177,7 @@ extension Engine {
     /// as one to its deck. A deck that isn't there is made. Refuses a name
     /// `makeDeck(named:)` refuses, and a card that isn't there, moving none.
     public func changeDeck(of cardIDs: Set<Int64>, to deck: String) throws(EngineError) {
-        let deck = deck == Deck.defaultName ? deck : try checkedDeckName(deck)
-        try write { db in
-            for cardID in cardIDs.sorted() {
-                _ = try existingCard(cardID, in: db)
-            }
-            if deck != Deck.defaultName {
-                try makeRow(ofDeck: deck, in: db)
-            }
-            for cardID in cardIDs.sorted() {
-                try db.execute(sql: "UPDATE card SET deck = ? WHERE id = ?", arguments: [deck, cardID])
-            }
-        }
+        try write { db in try moveCards(cardIDs.sorted(), to: deck, in: db) }
     }
 }
 
@@ -213,6 +202,29 @@ func checkedDeckName(_ name: String) throws(EngineError) -> String {
 /// unless it has one, which stays as it is.
 func makeRow(ofDeck name: String, in db: Database) throws {
     try db.execute(sql: "INSERT INTO deck (name) VALUES (?) ON CONFLICT (name) DO NOTHING", arguments: [name])
+}
+
+/// The deck `name`, which cards go to as they're made, edited or moved, made
+/// in the write `db` if it isn't there: its whole name, its levels cleaned up
+/// as `checkedDeckName(_:)` cleans them up, with its row, unless it has one,
+/// which stays as it is; or Default, by `Deck.defaultName`, which gets none.
+/// Refuses a name `checkedDeckName(_:)` refuses.
+func madeDeck(named name: String, in db: Database) throws -> String {
+    guard name != Deck.defaultName else { return name }
+    let name = try checkedDeckName(name)
+    try makeRow(ofDeck: name, in: db)
+    return name
+}
+
+/// Moves the cards with the ids `cardIDs` to the deck `deck`, in the write
+/// `db`, made as `madeDeck(named:in:)` makes it: the one way Change Deck and
+/// an edit set the deck a card lives in. Refuses a name `madeDeck(named:in:)`
+/// refuses, and a card that isn't there.
+func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
+    let deck = try madeDeck(named: deck, in: db)
+    for cardID in cardIDs {
+        _ = try updateCard(cardID, setting: "deck = ?", to: [deck], in: db)
+    }
 }
 
 /// What every deck has of its own, as the `deck` table keeps it, read at

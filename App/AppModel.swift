@@ -173,9 +173,11 @@ final class AppModel {
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder
-    /// he set in Settings: what he does in it goes through the state.
+    /// he set in Settings, remembering the deck he last added a card to, as
+    /// this Mac's preferences keep it: what he does in it goes through the
+    /// state.
     func openCardsWindow() -> CardsWindowState {
-        engine.openCardsWindow(on: settings.ladder)
+        engine.openCardsWindow(on: settings.ladder, lastDeckAddedTo: Preferences.lastDeckAddedTo)
     }
 
     /// Every change to Lucas's cards from now on, by the app or by the

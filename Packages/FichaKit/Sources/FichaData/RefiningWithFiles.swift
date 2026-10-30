@@ -95,8 +95,9 @@ public enum FileKind: String, Sendable, CaseIterable {
 }
 
 extension Engine {
-    /// Approves a capture into the cards `drafts`, as `approve(_:into:)`
-    /// does, with the images and sounds they put on their sides: files come
+    /// Approves a capture into the cards `drafts`, in Default, as
+    /// `approve(_:into:deck:)` does, with the images and sounds they put on
+    /// their sides: files come
     /// in shrunk or converted, as from the Cards window's form. A side whose
     /// image or sound is left out or removed has none. Each card goes both
     /// ways when its draft says so, and one way otherwise. A user type a

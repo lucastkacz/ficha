@@ -14,7 +14,9 @@ import UniformTypeIdentifiers
 /// card list while the sidebar chose it (`DeckMenu.swift`), set it aside or
 /// prioritize it; and Change Deck… moves the
 /// selected cards to the deck Lucas picks in its sheet, or names there with
-/// New Deck… (`ChangeDeckSheet.swift`). The sidebar's Tags section
+/// New Deck… (`ChangeDeckSheet.swift`). The card form and the editor have a
+/// Deck field, whose New Deck… names a deck in the New Deck sheet
+/// (`NewDeckSheet.swift`). The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
 /// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
@@ -82,6 +84,8 @@ struct CardsView: View {
         askingAboutTags(askingAboutTypes(panes))
             .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
             .changeDeckSheet($state, failure: failure(overSheet: true))
+            // The card form's opens over the form.
+            .newDeckSheet(for: .editor, $state)
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
                 FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
                     state.flag(note: note)
@@ -152,6 +156,10 @@ struct CardsView: View {
             }
             .onChange(of: state.playingSound) {
                 play(state.playingSound)
+            }
+            // This Mac's own, for the next window to start a new card there.
+            .onChange(of: state.lastDeckAddedTo) {
+                Preferences.lastDeckAddedTo = state.lastDeckAddedTo
             }
             .onDisappear {
                 player.stop()
@@ -1338,7 +1346,8 @@ struct CardsView: View {
             CardEditor(
                 card: card, images: state.editedImages, shownImages: state.images, sounds: state.editedSounds,
                 bothWays: state.editedBothWays, type: state.editedType, types: state.pickerTypes,
-                canSave: state.canSaveCard, isSearching: isSearchFocused
+                deck: state.editedDeck, decks: state.deckFieldChoices(.editor), canSave: state.canSaveCard,
+                isSearching: isSearchFocused
             ) { dropped, side in
                 state.putImageInEditor(dropped, on: side)
             } removeImage: { side in
@@ -1360,6 +1369,10 @@ struct CardsView: View {
                 state.setTypeInEditor(type)
             } newType: {
                 state.askForNewType(in: .editor)
+            } setDeck: { deck in
+                state.setDeckInEditor(deck)
+            } newDeck: {
+                state.askForNewDeck(in: .editor)
             } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()

@@ -1431,6 +1431,9 @@
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
+    "Deck" : {
+      "comment" : "In the Cards window's card form, the label of the card's deck.\nIn the Cards window, the label of a card's deck, while Lucas edits it."
+    },
     "Decks" : {
       "comment" : "A section of the Cards window's sidebar: the decks, as a tree."
     },
@@ -2103,7 +2106,7 @@
       "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
     },
     "Name" : {
-      "comment" : "The field of the Cards window's Change Deck sheet: a new deck's name.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag, its whole name, or a card type of the user's own."
+      "comment" : "The field of the Cards window's sheet that names a new deck.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag, its whole name, or a card type of the user's own."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -2121,10 +2124,10 @@
 
     },
     "New Deck" : {
-      "comment" : "The title of the Cards window's Change Deck sheet, after New Deck…."
+      "comment" : "The title of the Cards window's sheet that names a new deck, after New Deck…."
     },
     "New Deck…" : {
-      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name."
+      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nThe last item of a card's Deck field in the Cards window: it asks for a new deck's name."
     },
     "New Deck… (⌘N)" : {
       "comment" : "The tooltip of the Change Deck sheet's button that asks for a new deck's name."
@@ -2783,7 +2786,7 @@
       "comment" : "An item of the Cards window's sidebar: the word cards."
     },
     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
-      "comment" : "Under the title of the Cards window's Change Deck sheet, after New Deck…."
+      "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…."
     },
     "Write “::” between a tag and a tag inside it, as in “economía::Argentina”. The tags inside this one move with it, and a name another tag has joins the two." : {
       "comment" : "Under the title of the Cards window's sheet that renames a tag."
