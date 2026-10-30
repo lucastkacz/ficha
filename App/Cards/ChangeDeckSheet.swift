@@ -103,7 +103,7 @@ struct ChangeDeckSheet: View {
                 state.changeDeck()
             }
             .keyboardShortcut(.defaultAction)
-            .disabled(state.deckChange?.chosenDeck == nil)
+            .disabled(state.deckChange?.canMove != true)
         }
     }
 

@@ -54,6 +54,8 @@ extension CardsWindowState {
         /// one they all live in, as the sheet opens, or nil when they live in
         /// several, until Lucas picks one.
         public internal(set) var chosenDeck: String?
+        /// Whether Move is offered: once the sheet has chosen a deck.
+        public var canMove: Bool { chosenDeck != nil }
         /// The decks Lucas named with New Deck… in the sheet, which it lists
         /// in its tree, and Move makes when it moves the cards to one.
         public internal(set) var newDecks: [String]

@@ -9,8 +9,8 @@ internal import GRDB
 // card does, or one of its tags, or a tag one of them sits inside, is chosen
 // (ADR 0021); a card's review log entries go
 // with it, and so do the captures that expand it or follow it up. Every
-// other row syncs whatever the choice: captures, tags, the settings that
-// decide progress and the choice itself.
+// other row syncs whatever the choice: captures, tags, decks, the settings
+// that decide progress and the choice itself.
 //
 // The triggers record every change, whoever writes it, the CLI too; this file
 // says which of them go up. A row that starts syncing goes up whole, and one

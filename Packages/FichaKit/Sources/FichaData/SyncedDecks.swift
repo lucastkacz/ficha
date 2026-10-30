@@ -59,16 +59,16 @@ func applyDeck(_ record: ICloudRecord, named name: String, in db: Database) thro
     try takeLatestChanges(of: deckFields, in: record, over: own, to: .deck(name), in: db) { won in
         var deck = try ownDeck(name, in: db)
         if won.contains(.switchedOn) {
-            deck.switchedOn = try record.optionalText(DeckKey.switchedOn).map { name in
-                guard let deckSwitch = DeckSwitch(rawValue: name) else {
+            deck.switchedOn = try record.optionalText(DeckKey.switchedOn).map { rawValue in
+                guard let deckSwitch = DeckSwitch(rawValue: rawValue) else {
                     throw unreadable("A deck from iCloud has an unknown switch on")
                 }
                 return deckSwitch
             }
         }
         if won.contains(.color) {
-            deck.color = try record.optionalText(DeckKey.color).map { name in
-                guard let color = TagColor(rawValue: name) else {
+            deck.color = try record.optionalText(DeckKey.color).map { rawValue in
+                guard let color = TagColor(rawValue: rawValue) else {
                     throw unreadable("A deck from iCloud has an unknown color")
                 }
                 return color
