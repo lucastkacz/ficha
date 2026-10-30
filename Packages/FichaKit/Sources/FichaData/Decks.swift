@@ -177,14 +177,11 @@ extension Engine {
     /// as one to its deck. A deck that isn't there is made. Refuses a name
     /// `makeDeck(named:)` refuses, and a card that isn't there, moving none.
     public func changeDeck(of cardIDs: Set<Int64>, to deck: String) throws(EngineError) {
-        let deck = deck == Deck.defaultName ? deck : try checkedDeckName(deck)
         try write { db in
             for cardID in cardIDs.sorted() {
                 _ = try existingCard(cardID, in: db)
             }
-            if deck != Deck.defaultName {
-                try makeRow(ofDeck: deck, in: db)
-            }
+            let deck = try deckOfCards(deck, in: db)
             for cardID in cardIDs.sorted() {
                 try db.execute(sql: "UPDATE card SET deck = ? WHERE id = ?", arguments: [deck, cardID])
             }
@@ -213,6 +210,18 @@ func checkedDeckName(_ name: String) throws(EngineError) -> String {
 /// unless it has one, which stays as it is.
 func makeRow(ofDeck name: String, in db: Database) throws {
     try db.execute(sql: "INSERT INTO deck (name) VALUES (?) ON CONFLICT (name) DO NOTHING", arguments: [name])
+}
+
+/// `deck`, the deck cards go to as they're made, edited or moved, by its
+/// whole name, its levels cleaned up as `checkedDeckName(_:)` cleans them up,
+/// or Default, by `Deck.defaultName`: a deck other than Default gets its row
+/// in the write `db`, unless it has one, so that it's made if it isn't
+/// there. Refuses a name `checkedDeckName(_:)` refuses.
+func deckOfCards(_ deck: String, in db: Database) throws -> String {
+    guard deck != Deck.defaultName else { return deck }
+    let deck = try checkedDeckName(deck)
+    try makeRow(ofDeck: deck, in: db)
+    return deck
 }
 
 /// What every deck has of its own, as the `deck` table keeps it, read at

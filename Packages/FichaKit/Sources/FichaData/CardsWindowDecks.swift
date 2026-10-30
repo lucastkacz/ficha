@@ -146,13 +146,18 @@ extension CardsWindowState {
         question = .changeDeck(change)
     }
 
-    /// What OK makes of `text`, what the Change Deck sheet's name field
-    /// holds, after New Deck…: the deck's whole name, its levels cleaned up;
-    /// a blank name, as the field starts, which keeps OK off; or a refusal
-    /// of a name whose top level is one of Default's, as the engine refuses
-    /// it. Nil while the sheet asks for no name.
+    /// What OK makes of `text`, what the name field holds after New Deck…,
+    /// in the Change Deck sheet or in the New Deck sheet a Deck field opens
+    /// (`CardsWindowDeckField.swift`): the deck's whole name, its levels
+    /// cleaned up; a blank name, as the field starts, which keeps OK off; or
+    /// a refusal of a name whose top level is one of Default's, as the engine
+    /// refuses it. Nil while the window asks for no new deck's name.
     public func newDeckEntry(_ text: String) -> NewDeckEntry? {
-        guard case .changeDeck(let change) = question, change.isNamingNewDeck else { return nil }
+        switch question {
+        case .changeDeck(let change): guard change.isNamingNewDeck else { return nil }
+        case .newDeck: break
+        default: return nil
+        }
         do throws(EngineError) {
             return .name(try checkedDeckName(text))
         } catch .blankDeckName {
@@ -164,11 +169,19 @@ extension CardsWindowState {
 
     /// Chooses OK after New Deck…, whose name field holds `text`: the
     /// sheet's tree lists the deck, with the decks it sits inside, and
-    /// chooses it, for Move to make it as it moves the cards there. A deck
-    /// already listed is chosen. While OK doesn't take `text`, as
-    /// `newDeckEntry(_:)` says, it does nothing, and the sheet says why.
+    /// chooses it, for Move to make it as it moves the cards there; or, in
+    /// the New Deck sheet, the Deck field it was asked from holds the deck
+    /// (`CardsWindowDeckField.swift`). A deck already listed is chosen.
+    /// While OK doesn't take `text`, as `newDeckEntry(_:)` says, it does
+    /// nothing, and the sheet says why.
     public mutating func chooseNewDeck(_ text: String) {
-        guard case .changeDeck(var change) = question, case .name(let name)? = newDeckEntry(text) else { return }
+        guard case .name(let name)? = newDeckEntry(text) else { return }
+        if case .newDeck(let field) = question {
+            question = nil
+            putInDeckField(name, field)
+            return
+        }
+        guard case .changeDeck(var change) = question else { return }
         if !change.newDecks.contains(name) {
             change.newDecks.append(name)
         }

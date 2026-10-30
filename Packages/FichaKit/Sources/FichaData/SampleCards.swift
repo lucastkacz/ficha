@@ -21,10 +21,7 @@ public enum SampleCards {
             // approved from, so it's a duplicate. Expanding saves it anyway,
             // and approving it adds its cards again, as new ones.
             let capture = try engine.expand(text: sample.text, note: nil, source: sample.source)
-            let approved = try engine.approve(capture.id, into: cards)
-            for (card, sampleCard) in zip(approved, sample.cards) where sampleCard.deck != Deck.defaultName {
-                try engine.changeDeck(of: [card.id], to: sampleCard.deck)
-            }
+            try engine.approve(capture.id, into: cards, deck: sample.deck)
         }
     }
 
@@ -40,11 +37,20 @@ public enum SampleCards {
 }
 
 /// A capture, as Lucas might have jotted it down, and the cards it was approved
-/// into, which take its source.
+/// into, which take its source and go to its deck.
 private struct SampleCapture {
     let text: String
     let source: String?
+    /// The deck its cards go to, or Default when it names none.
+    let deck: String
     let cards: [SampleCard]
+
+    init(text: String, source: String?, deck: String = Deck.defaultName, cards: [SampleCard]) {
+        self.text = text
+        self.source = source
+        self.deck = deck
+        self.cards = cards
+    }
 
     /// Its cards as the engine takes them, with its source.
     func cardContents() throws(SampleCardsError) -> [CardContent] {
@@ -63,15 +69,12 @@ private struct SampleCard {
     let front: String
     let back: String
     let tags: [String]
-    /// The deck it goes to, or Default when it names none.
-    let deck: String
 
-    init(_ type: CardType, front: String, back: String, tags: [String], deck: String = Deck.defaultName) {
+    init(_ type: CardType, front: String, back: String, tags: [String]) {
         self.type = type
         self.front = front
         self.back = back
         self.tags = tags
-        self.deck = deck
     }
 
     /// The card as the engine takes it, with its capture's source, or nil when
@@ -100,13 +103,13 @@ private let sampleCaptures = [
     SampleCapture(
         text: "serendipia",
         source: "Un podcast de etimología",
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
                 front: "serendipia",
                 back: "Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa.",
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             ),
             SampleCard(
                 .question,
@@ -115,14 +118,14 @@ private let sampleCaptures = [
                     De «Los tres príncipes de Serendip», un cuento persa: Horace Walpole inventó la palabra inglesa \
                     en 1754, y el español la tomó de ahí.
                     """,
-                tags: ["lenguaje", "historia"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje", "historia"]
             ),
         ]
     ),
     SampleCapture(
         text: "ubuntu",
         source: nil,
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .concept,
@@ -131,14 +134,14 @@ private let sampleCaptures = [
                     Una idea de los pueblos bantúes del sur de África: una persona es persona a través de las demás. \
                     Se suele resumir como «soy porque somos».
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "Caminante, no hay camino",
         source: "Campos de Castilla",
+        deck: "Humanidades::Literatura",
         cards: [
             SampleCard(
                 .quote,
@@ -147,14 +150,14 @@ private let sampleCaptures = [
                     Antonio Machado, en «Campos de Castilla»: el camino no está trazado de antemano; lo vas haciendo \
                     vos, con cada paso.
                     """,
-                tags: ["literatura"],
-                deck: "Humanidades::Literatura"
+                tags: ["literatura"]
             )
         ]
     ),
     SampleCapture(
         text: "¿Por qué el cielo es azul?",
         source: "Una charla de divulgación",
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .question,
@@ -163,14 +166,14 @@ private let sampleCaptures = [
                     Porque el aire dispersa mucho más la luz azul, de longitud de onda corta, que la roja, y esa luz \
                     dispersada te llega desde todo el cielo. Se llama dispersión de Rayleigh.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "Schadenfreude",
         source: nil,
+        deck: "Idiomas::Palabras prestadas",
         cards: [
             SampleCard(
                 .word,
@@ -179,8 +182,7 @@ private let sampleCaptures = [
                     Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», \
                     alegría.
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Palabras prestadas"
+                tags: ["lenguaje"]
             )
         ]
     ),
@@ -188,6 +190,7 @@ private let sampleCaptures = [
     SampleCapture(
         text: "navaja de Ockham",
         source: nil,
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .concept,
@@ -197,14 +200,14 @@ private let sampleCaptures = [
                     supuestos. Se atribuye a Guillermo de Ockham, un fraile franciscano inglés del siglo XIV, aunque \
                     la idea es más antigua: ya la había planteado Aristóteles.
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "Lo esencial es invisible a los ojos",
         source: "El principito",
+        deck: "Humanidades::Literatura",
         cards: [
             SampleCard(
                 .quote,
@@ -213,14 +216,14 @@ private let sampleCaptures = [
                     Se lo dice el zorro al principito, en el libro de Antoine de Saint-Exupéry: lo que más importa no \
                     se ve con los ojos, sino con el corazón.
                     """,
-                tags: ["literatura"],
-                deck: "Humanidades::Literatura"
+                tags: ["literatura"]
             )
         ]
     ),
     SampleCapture(
         text: "cuándo llegamos a la Luna",
         source: nil,
+        deck: "Humanidades::Historia",
         cards: [
             SampleCard(
                 .question,
@@ -229,8 +232,7 @@ private let sampleCaptures = [
                     En 1969, con el Apolo 11. El 20 de julio, Neil Armstrong fue el primero en pisarla, y Buzz Aldrin \
                     lo siguió poco después.
                     """,
-                tags: ["historia"],
-                deck: "Humanidades::Historia"
+                tags: ["historia"]
             )
         ]
     ),
@@ -250,6 +252,7 @@ private let sampleCaptures = [
     SampleCapture(
         text: "costo hundido",
         source: "Pensar rápido, pensar despacio",
+        deck: "Ciencias::Psicología",
         cards: [
             SampleCard(
                 .concept,
@@ -258,14 +261,14 @@ private let sampleCaptures = [
                     Seguir con algo solo por lo que ya invertiste, aunque no te convenga. Lo gastado no vuelve: para \
                     decidir, mirá lo que viene.
                     """,
-                tags: ["psicología"],
-                deck: "Ciencias::Psicología"
+                tags: ["psicología"]
             )
         ]
     ),
     SampleCapture(
         text: "Solo sé que no sé nada",
         source: nil,
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .quote,
@@ -274,14 +277,14 @@ private let sampleCaptures = [
                     Se le atribuye a Sócrates, a partir de la «Apología» de Platón: reconocer lo que no sabés es el \
                     primer paso para aprender.
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "por qué el mar es salado",
         source: nil,
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .question,
@@ -290,21 +293,20 @@ private let sampleCaptures = [
                     Porque la lluvia disuelve sales de las rocas y los ríos las llevan al mar. El agua se evapora, \
                     pero la sal se queda, y en millones de años se fue acumulando.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "ojalá viene del árabe?",
         source: "Un libro de etimología",
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
                 front: "ojalá",
                 back: "Expresa el deseo de que algo pase. Por ejemplo: «Ojalá mañana no llueva, que tenemos el asado».",
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             ),
             SampleCard(
                 .question,
@@ -313,14 +315,14 @@ private let sampleCaptures = [
                     Del árabe hispánico «law šá lláh», «si Dios quiere», que el español tomó en los siglos de \
                     al-Ándalus. Cada vez que decís «ojalá», sin saberlo, nombrás a Alá.
                     """,
-                tags: ["lenguaje", "historia"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje", "historia"]
             ),
         ]
     ),
     SampleCapture(
         text: "efecto Dunning-Kruger",
         source: nil,
+        deck: "Ciencias::Psicología",
         cards: [
             SampleCard(
                 .concept,
@@ -329,14 +331,14 @@ private let sampleCaptures = [
                     Cuanto menos sabés de un tema, más sobreestimás lo que sabés: te falta justo el saber que \
                     necesitarías para ver tus errores. Como el que vio dos videos y le discute al médico.
                     """,
-                tags: ["psicología"],
-                deck: "Ciencias::Psicología"
+                tags: ["psicología"]
             )
         ]
     ),
     SampleCapture(
         text: "pienso luego existo",
         source: "Discurso del método",
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .quote,
@@ -346,14 +348,14 @@ private let sampleCaptures = [
                     Es la primera certeza sobre la que construyó su filosofía. Se hizo famosa en latín: «cogito, ergo \
                     sum».
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "procrastinar",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -362,14 +364,14 @@ private let sampleCaptures = [
                     Postergar lo que tendrías que hacer ahora, haciendo en su lugar algo más fácil. Por ejemplo: \
                     «Tenía que estudiar, pero procrastiné toda la tarde ordenando el placard».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "cuántos huesos tenemos",
         source: nil,
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .question,
@@ -378,14 +380,14 @@ private let sampleCaptures = [
                     206. Al nacer tenés unos 300, pero muchos se van soldando entre sí mientras crecés, como los del \
                     cráneo.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "sesgo de confirmación",
         source: "Pensar rápido, pensar despacio",
+        deck: "Ciencias::Psicología",
         cards: [
             SampleCard(
                 .concept,
@@ -394,14 +396,14 @@ private let sampleCaptures = [
                     La tendencia a notar y recordar lo que confirma lo que ya creés, y a pasar por alto lo que lo \
                     contradice. Si creés que los lunes todo sale mal, solo te acordás de los lunes malos.
                     """,
-                tags: ["psicología"],
-                deck: "Ciencias::Psicología"
+                tags: ["psicología"]
             )
         ]
     ),
     SampleCapture(
         text: "efímero",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -410,14 +412,14 @@ private let sampleCaptures = [
                     Que dura muy poco. Viene del griego: «que dura un día». Por ejemplo: «La fama de ese video fue \
                     efímera: a la semana nadie se acordaba».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "yo soy yo y mi circunstancia",
         source: "Meditaciones del Quijote",
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .quote,
@@ -426,14 +428,14 @@ private let sampleCaptures = [
                     José Ortega y Gasset: sos vos y también lo que te rodea, tu época, tu lugar y lo que te toca \
                     vivir; no se te puede entender por separado.
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "inefable",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -442,14 +444,14 @@ private let sampleCaptures = [
                     Tan intenso o tan grande que no se puede explicar con palabras. Por ejemplo: «Ver el glaciar \
                     Perito Moreno de cerca fue algo inefable».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "ley de Parkinson",
         source: "Un artículo sobre productividad",
+        deck: "Sociedad",
         cards: [
             SampleCard(
                 .concept,
@@ -458,14 +460,14 @@ private let sampleCaptures = [
                     El trabajo se expande hasta ocupar todo el tiempo disponible: si tenés una semana para un informe, \
                     te lleva una semana; si tenés un día, lo terminás en un día.
                     """,
-                tags: ["trabajo"],
-                deck: "Sociedad"
+                tags: ["trabajo"]
             )
         ]
     ),
     SampleCapture(
         text: "planeta más caliente",
         source: "Un documental del espacio",
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .question,
@@ -474,14 +476,14 @@ private let sampleCaptures = [
                     Venus, aunque Mercurio está más cerca del Sol. Su atmósfera espesa de dióxido de carbono atrapa el \
                     calor como un invernadero, y en la superficie hay unos 460 °C.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "resiliencia",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -490,14 +492,14 @@ private let sampleCaptures = [
                     La capacidad de recuperarte después de un golpe duro y seguir adelante. Por ejemplo: «Cerró su \
                     negocio, y al año abrió otro: qué resiliencia».
                     """,
-                tags: ["lenguaje", "psicología"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje", "psicología"]
             )
         ]
     ),
     SampleCapture(
         text: "regla del 80/20",
         source: nil,
+        deck: "Sociedad::Economía",
         cards: [
             SampleCard(
                 .concept,
@@ -506,14 +508,14 @@ private let sampleCaptures = [
                     En muchos casos, el 80 % de los resultados sale del 20 % de las causas. Vilfredo Pareto lo notó en \
                     Italia: el 20 % de la gente tenía el 80 % de la tierra.
                     """,
-                tags: ["economía"],
-                deck: "Sociedad::Economía"
+                tags: ["economía"]
             )
         ]
     ),
     SampleCapture(
         text: "hygge",
         source: "Un viaje a Copenhague",
+        deck: "Idiomas::Palabras prestadas",
         cards: [
             SampleCard(
                 .word,
@@ -522,14 +524,14 @@ private let sampleCaptures = [
                     Palabra danesa: la sensación de calidez y bienestar de un momento simple y acogedor, en buena \
                     compañía. Por ejemplo: «Llovía afuera, y adentro había velas, mate y amigos: puro hygge».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Palabras prestadas"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "lo que no te mata te hace más fuerte",
         source: "Crepúsculo de los ídolos",
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .quote,
@@ -538,14 +540,14 @@ private let sampleCaptures = [
                     Friedrich Nietzsche: las dificultades que superás te dejan mejor preparado. Él lo escribió en \
                     primera persona: «lo que no me mata me hace más fuerte».
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "años bisiestos",
         source: nil,
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .question,
@@ -554,14 +556,14 @@ private let sampleCaptures = [
                     Porque la Tierra tarda unos 365 días y 6 horas en dar la vuelta al Sol. Esas 6 horas, en cuatro \
                     años, suman un día: el 29 de febrero.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "saudade",
         source: nil,
+        deck: "Idiomas::Palabras prestadas",
         cards: [
             SampleCard(
                 .word,
@@ -570,14 +572,14 @@ private let sampleCaptures = [
                     Palabra portuguesa: la nostalgia, entre dulce y triste, por algo o alguien que ya no está y quizá \
                     no vuelva. Por ejemplo: «Esa canción me da saudade de aquel verano en Brasil».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Palabras prestadas"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "efecto placebo",
         source: nil,
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .concept,
@@ -586,14 +588,14 @@ private let sampleCaptures = [
                     Sentirte mejor solo porque creés que te están curando, aunque lo que tomaste no tenga nada activo, \
                     como una pastilla de azúcar. Por eso un remedio nuevo tiene que ganarle a un placebo.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "Zeitgeist",
         source: nil,
+        deck: "Idiomas::Palabras prestadas",
         cards: [
             SampleCard(
                 .word,
@@ -603,14 +605,14 @@ private let sampleCaptures = [
                     Viene de «Zeit», tiempo, y «Geist», espíritu. Por ejemplo: «Esa película captó el Zeitgeist de los \
                     noventa».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Palabras prestadas"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "sangre, sudor y lágrimas",
         source: "Un documental sobre la Segunda Guerra",
+        deck: "Humanidades::Historia",
         cards: [
             SampleCard(
                 .quote,
@@ -620,14 +622,14 @@ private let sampleCaptures = [
                     prometía una victoria fácil, sino sacrificio. En realidad dijo «sangre, esfuerzo, lágrimas y \
                     sudor»; en inglés, «blood, toil, tears and sweat».
                     """,
-                tags: ["historia"],
-                deck: "Humanidades::Historia"
+                tags: ["historia"]
             )
         ]
     ),
     SampleCapture(
         text: "efecto Streisand",
         source: nil,
+        deck: "Sociedad",
         cards: [
             SampleCard(
                 .concept,
@@ -637,14 +639,14 @@ private let sampleCaptures = [
                     quitaran de internet una foto de su casa; casi nadie la había visto, y con el escándalo la vieron \
                     cientos de miles.
                     """,
-                tags: ["internet"],
-                deck: "Sociedad"
+                tags: ["internet"]
             )
         ]
     ),
     SampleCapture(
         text: "sobremesa",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -653,14 +655,14 @@ private let sampleCaptures = [
                     El rato que te quedás en la mesa charlando después de comer. Por ejemplo: «El almuerzo terminó a \
                     las dos, pero la sobremesa siguió hasta las seis».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "caída del Muro de Berlín",
         source: nil,
+        deck: "Humanidades::Historia",
         cards: [
             SampleCard(
                 .question,
@@ -669,14 +671,14 @@ private let sampleCaptures = [
                     En 1989, el 9 de noviembre. Un vocero de Alemania del Este anunció por error que se podía cruzar \
                     ya mismo, y esa noche miles de berlineses lo pasaron y empezaron a derribarlo.
                     """,
-                tags: ["historia"],
-                deck: "Humanidades::Historia"
+                tags: ["historia"]
             )
         ]
     ),
     SampleCapture(
         text: "tragedia de los comunes",
         source: "Un curso de economía",
+        deck: "Sociedad::Economía",
         cards: [
             SampleCard(
                 .concept,
@@ -685,14 +687,14 @@ private let sampleCaptures = [
                     Cuando un recurso es de todos, a cada uno le conviene usar un poco más, y entre todos lo agotan. \
                     Como un campo compartido donde cada pastor suma una vaca más, hasta que no queda pasto.
                     """,
-                tags: ["economía"],
-                deck: "Sociedad::Economía"
+                tags: ["economía"]
             )
         ]
     ),
     SampleCapture(
         text: "nefelibata",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -701,14 +703,14 @@ private let sampleCaptures = [
                     Una persona soñadora, que no tiene los pies en la tierra. Del griego: «el que anda por las nubes». \
                     Por ejemplo: «Es un nefelibata: se pasa el día imaginando viajes que nunca va a hacer».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "el hombre es un lobo para el hombre",
         source: nil,
+        deck: "Humanidades::Filosofía",
         cards: [
             SampleCard(
                 .quote,
@@ -717,14 +719,14 @@ private let sampleCaptures = [
                     Thomas Hobbes la hizo famosa: sin leyes ni un Estado que nos frene, nos atacaríamos unos a otros. \
                     Pero es más vieja: viene de una comedia del romano Plauto. En latín, «homo homini lupus».
                     """,
-                tags: ["filosofía"],
-                deck: "Humanidades::Filosofía"
+                tags: ["filosofía"]
             )
         ]
     ),
     SampleCapture(
         text: "epifanía",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -733,14 +735,14 @@ private let sampleCaptures = [
                     El momento en que de golpe entendés algo que tenías adelante. Por ejemplo: «Tuve una epifanía en \
                     la ducha y entendí por qué no me salía el ejercicio».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "quién inventó la imprenta",
         source: nil,
+        deck: "Humanidades::Historia",
         cards: [
             SampleCard(
                 .question,
@@ -749,14 +751,14 @@ private let sampleCaptures = [
                     Johannes Gutenberg, en Maguncia, hacia 1450. Con letras de metal que se reordenaban para cada \
                     página, los libros dejaron de copiarse a mano.
                     """,
-                tags: ["historia"],
-                deck: "Humanidades::Historia"
+                tags: ["historia"]
             )
         ]
     ),
     SampleCapture(
         text: "efecto mariposa",
         source: nil,
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .concept,
@@ -766,14 +768,14 @@ private let sampleCaptures = [
                     meteorólogo Edward Lorenz lo planteó con una pregunta: ¿el aleteo de una mariposa en Brasil puede \
                     provocar un tornado en Texas?
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "idiosincrasia",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -782,14 +784,14 @@ private let sampleCaptures = [
                     La manera de ser propia de una persona o de un pueblo, lo que lo distingue de los demás. Por \
                     ejemplo: «Compartir el mate con desconocidos es parte de nuestra idiosincrasia».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "por qué vemos siempre la misma cara de la luna",
         source: "Una charla de divulgación",
+        deck: "Ciencias::Naturales",
         cards: [
             SampleCard(
                 .question,
@@ -798,14 +800,14 @@ private let sampleCaptures = [
                     Porque gira sobre sí misma en el mismo tiempo que tarda en dar la vuelta a la Tierra, unos 27 \
                     días: la gravedad terrestre la fue frenando hasta sincronizarla.
                     """,
-                tags: ["ciencia"],
-                deck: "Ciencias::Naturales"
+                tags: ["ciencia"]
             )
         ]
     ),
     SampleCapture(
         text: "chamuyo",
         source: nil,
+        deck: "Idiomas::Español::Rioplatense",
         cards: [
             SampleCard(
                 .word,
@@ -814,8 +816,7 @@ private let sampleCaptures = [
                     En el habla rioplatense, una charla hábil para convencer o seducir, a veces con mentiras. Por \
                     ejemplo: «No le creas lo del auto nuevo: es puro chamuyo».
                     """,
-                tags: ["lenguaje", "argentina"],
-                deck: "Idiomas::Español::Rioplatense"
+                tags: ["lenguaje", "argentina"]
             )
         ]
     ),
@@ -823,6 +824,7 @@ private let sampleCaptures = [
     SampleCapture(
         text: "sesgo de supervivencia, los aviones de la guerra",
         source: "Un video de estadística",
+        deck: "Ciencias::Psicología",
         cards: [
             SampleCard(
                 .concept,
@@ -832,14 +834,14 @@ private let sampleCaptures = [
                     blindar los aviones donde volvían agujereados; Abraham Wald propuso blindar justo donde no: los \
                     que recibían balas ahí no volvían.
                     """,
-                tags: ["psicología", "historia", "estadística"],
-                deck: "Ciencias::Psicología"
+                tags: ["psicología", "historia", "estadística"]
             )
         ]
     ),
     SampleCapture(
         text: "ikigai",
         source: nil,
+        deck: "Idiomas::Palabras prestadas",
         cards: [
             SampleCard(
                 .word,
@@ -848,14 +850,14 @@ private let sampleCaptures = [
                     Palabra japonesa: tu razón de ser, lo que hace que valga la pena levantarte cada mañana. Por \
                     ejemplo: «Desde que se jubiló, la huerta es su ikigai».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Palabras prestadas"
+                tags: ["lenguaje"]
             )
         ]
     ),
     SampleCapture(
         text: "síndrome del impostor",
         source: nil,
+        deck: "Ciencias::Psicología",
         cards: [
             SampleCard(
                 .concept,
@@ -864,14 +866,14 @@ private let sampleCaptures = [
                     Sentir que no merecés tus logros y que en cualquier momento van a descubrir que no sos tan capaz, \
                     aunque las pruebas digan lo contrario. Es común en gente que se destaca en lo suyo.
                     """,
-                tags: ["psicología"],
-                deck: "Ciencias::Psicología"
+                tags: ["psicología"]
             )
         ]
     ),
     SampleCapture(
         text: "nostalgia",
         source: nil,
+        deck: "Idiomas::Español",
         cards: [
             SampleCard(
                 .word,
@@ -881,8 +883,7 @@ private let sampleCaptures = [
                     «álgos», dolor: el dolor de no poder volver. Por ejemplo: «Ver fotos del secundario me da \
                     nostalgia».
                     """,
-                tags: ["lenguaje"],
-                deck: "Idiomas::Español"
+                tags: ["lenguaje"]
             )
         ]
     ),

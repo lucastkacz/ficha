@@ -41,6 +41,11 @@ enum Window: String {
     /// and two of Idiomas's cards selected, which `--key cmd+d` asks to move
     /// in the Change Deck sheet.
     case cardsDecks = "cards-decks"
+    /// The Cards window on Idiomas › Español with the card form on a new
+    /// card, which starts in that deck, and the New Deck sheet that New Deck…
+    /// in the form's Deck field opens, which the tool can't open, over it,
+    /// the focus in its name field.
+    case cardsNewDeck = "cards-new-deck"
     /// The Cards window on Ley, one of the card types of the user's own the
     /// tool gives the sample, with its card on Parkinson's law selected, its
     /// sidebar scrolled to its end so that it shows its Types section.
@@ -1144,7 +1149,7 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsDecks, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+    case .cards, .cardsDecks, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1299,6 +1304,15 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
             throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
         }
         state.select(Set(rows.filter { ["serendipia", "hygge"].contains($0.card.front) }.map(\.id)))
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsNewDeck:
+        var state = model.openCardsWindow()
+        state.read(on: state.ladder)
+        state.choose(.cards(.deck("Idiomas::Español")))
+        state.openNewCardForm()
+        state.askForNewDeck(in: .form)
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
