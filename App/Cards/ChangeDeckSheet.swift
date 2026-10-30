@@ -29,10 +29,7 @@ struct ChangeDeckSheet: View {
     /// What couldn't be saved, as the alert over the sheet says it.
     let failure: Binding<Failure?>
     @Environment(\.dismiss) private var dismiss
-    /// What the name field holds, after New Deck….
-    @State private var name = ""
     @FocusState private var isTreeFocused: Bool
-    @FocusState private var isNameFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -80,7 +77,6 @@ struct ChangeDeckSheet: View {
                     comment: "A button of the Cards window's Change Deck sheet: it asks for a new deck's name."
                 )
             ) {
-                name = ""
                 state.askForNewDeck()
             }
             .keyboardShortcut("n", modifiers: .command)
@@ -108,46 +104,13 @@ struct ChangeDeckSheet: View {
     }
 
     /// The new deck's name field, with Cancel and OK.
-    @ViewBuilder
     private var naming: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("New Deck", comment: "The title of the Cards window's Change Deck sheet, after New Deck….")
-                .font(.headline)
-            Text(
-                "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”.",
-                comment: "Under the title of the Cards window's Change Deck sheet, after New Deck…."
-            )
-            .foregroundStyle(.secondary)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        TextField(
-            String(localized: "Name", comment: "The field of the Cards window's Change Deck sheet: a new deck's name."),
-            text: $name
-        )
-        .textFieldStyle(.roundedBorder)
-        .focused($isNameFocused)
-        // A focused text field keeps Return from reaching the default button.
-        .onSubmit(submitName)
-        .task {
-            isNameFocused = true
-        }
-        if case .refused(let error)? = state.newDeckEntry(name) {
-            Text(error.localizedDescription)
-                .font(.callout)
-                .foregroundStyle(.red)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        HStack {
-            Spacer()
-            Button("Cancel") {
-                state.cancelNewDeck()
-            }
-            .keyboardShortcut(.cancelAction)
-            Button("OK") {
-                submitName()
-            }
-            .keyboardShortcut(.defaultAction)
-            .disabled(!canChooseName)
+        NewDeckName { name in
+            state.newDeckEntry(name)
+        } choose: { name in
+            state.chooseNewDeck(name)
+        } cancel: {
+            state.cancelNewDeck()
         }
     }
 
@@ -160,19 +123,6 @@ struct ChangeDeckSheet: View {
                 state.chooseInDeckChange(deck)
             }
         }
-    }
-
-    /// Whether OK takes what the name field holds.
-    private var canChooseName: Bool {
-        guard case .name? = state.newDeckEntry(name) else { return false }
-        return true
-    }
-
-    /// Lists the new deck in the tree, chosen, unless OK doesn't take the
-    /// name.
-    private func submitName() {
-        guard canChooseName else { return }
-        state.chooseNewDeck(name)
     }
 
     /// The rows of `rows`, and of the rows inside them, in the order a tree

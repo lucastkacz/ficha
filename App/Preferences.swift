@@ -164,6 +164,17 @@ enum Preferences {
         set { write(newValue, encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
     }
 
+    /// The deck Lucas last added a card to in the Cards window's card form,
+    /// by its whole name, which a new card's form starts in while the
+    /// sidebar chose no deck, as Anki's Add window does (ADR 0024): this
+    /// Mac's own, never synced, and at first Default. One that can't be read
+    /// is only logged, as the tab Settings opens on: the form starts in
+    /// Default, and the next card Lucas adds replaces it.
+    static var lastDeckAddedTo: String {
+        get { read(.lastDeckAddedTo, as: String.self) { $0 } ?? Deck.defaultName }
+        set { write(newValue, for: .lastDeckAddedTo, unless: Deck.defaultName) }
+    }
+
     /// Whether start at login is set up: the user answered whether the real
     /// Ficha opens at login, which it asks at its first launch
     /// (`StartAtLoginQuestion`), or, before it asked, it turned start at login
@@ -208,6 +219,9 @@ enum Preferences {
         case cardsSortOrder = "CardsSortOrder"
         /// The Cards window's table columns, in JSON, as SwiftUI encodes them.
         case cardsColumns = "CardsColumns"
+        /// The whole name of the deck the last card was added to in the
+        /// Cards window's card form.
+        case lastDeckAddedTo = "LastDeckAddedTo"
     }
 
     /// The setting stored for `key`, as `make` makes it out of the stored
