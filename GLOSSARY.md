@@ -33,20 +33,28 @@ _Avoid_: reverse
 What the user hears on one side of a card, from a file they added or imported, such as an excerpt of an aria or a word's pronunciation. It plays only when they ask for it.
 _Avoid_: audio, clip, recording
 
+**Deck**:
+The subject a card lives in, like "historia" or "Great Works of Art"; each card lives in exactly one. A deck can sit inside another, its parent, for a finer subject under a broad one, as "Artists" does in "Great Works of Art › Artists", and a parent holds the cards of every deck inside it.
+_Avoid_: folder, collection, category, subdeck, nested deck
+
+**Default**:
+The deck a card lives in when it has no other: a card the user didn't put in a deck, or one an Anki package had in Anki's own Default. It can't be renamed or deleted, and the Cards window shows it only while it holds cards.
+_Avoid_: no deck, unsorted, inbox
+
 **Tag**:
-A subject a card belongs to, like "historia" or "filosofía"; a card can have several. A tag can sit inside another, its parent, for a finer subject under a broad one, as "Argentina" does in "economía › Argentina".
+A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "economía › Argentina".
 _Avoid_: topic, category, deck, subtag, nested tag
 
-**Priority tag**:
-A tag the user chose so that its cards, and those of every tag inside it, come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.
-_Avoid_: focus, exam mode, filter
+**Priority deck**:
+A deck the user chose so that its cards, and those of every deck inside it, come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.
+_Avoid_: focus, exam mode, filter, priority tag
 
 **Set aside**:
-Taking every card with a tag, or with a tag inside it, out of the user's reviews for now, also those that get one later, as when they're done with a subject, without burying them. Once the tag is no longer set aside, its cards stand where they would without it.
+Taking every card of a deck, and of every deck inside it, out of the user's reviews for now, also those that move in later, as when they're done with a subject, without burying them. Once the deck is no longer set aside, its cards stand where they would without it.
 _Avoid_: pause, suspend, archive, hide, inactive
 
 **Pinned tag**:
-A tag the user chose to keep in the Cards window's sidebar, in an order of their own, so the subjects they use most are always at hand. Which tags are pinned, and in what order, is one choice for all their devices.
+A tag the user chose to keep in the Cards window's sidebar, in an order of their own, so the labels they use most are always at hand. Which tags are pinned, and in what order, is one choice for all their devices.
 _Avoid_: favorite tag, starred tag, sidebar tag
 
 **Source**:
@@ -90,11 +98,11 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless one of its tags, or a tag one of them sits inside, is set aside.
+Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless its deck, or a deck its deck sits inside, is set aside.
 _Avoid_: correct
 
 **Content guide**:
-The written rules Claude follows to draft Lucas's cards: what each type holds, which cards go both ways, how long a card is and how it's worded.
+The written rules Claude follows to draft Lucas's cards: what each type holds, which deck and tags a card gets, which cards go both ways, how long a card is and how it's worded.
 _Avoid_: style guide, template, prompt
 
 ### Reviewing
@@ -148,7 +156,7 @@ Taking a card the user no longer wants out of reviews for good, and out of the i
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with one of its tags, or a tag one of them sits inside; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck, or a deck its deck sits inside; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
@@ -166,15 +174,15 @@ Changing the content of a card or a capture. A card keeps its step and its revie
 _Avoid_: modify, update
 
 **Delete**:
-Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a tag, or a card type, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
+Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
 _Avoid_: remove, erase
 
 **Import**:
-Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a deck exported from Anki, with its progress unless the user leaves it out.
+Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a package exported from Anki, its cards in Anki's decks and with Anki's tags, and with their progress unless the user leaves it out.
 _Avoid_: load, refine
 
 **Export**:
-Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, and which go both ways, never the user's progress.
+Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, their decks and tags, and which go both ways, never the user's progress.
 _Avoid_: backup, share
 
 ### Spacing
@@ -274,9 +282,9 @@ _Avoid_: revert, roll back
 ### Sync
 
 **Sync**:
-Keeping the user's cards and their progress, every card or those with the tags they choose, along with the inbox and the settings that decide progress, the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since deleting a card that syncs deletes it on every device.
+Keeping the user's cards and their progress, every card or those in the decks they choose, along with the inbox and the settings that decide progress, the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since deleting a card that syncs deletes it on every device.
 _Avoid_: cloud, mirror, upload
 
 **Selective sync**:
-Syncing only the cards with a tag the user chose, or a tag inside one, instead of all of them, so the rest never go up to iCloud. Which tags sync is one choice for all their devices, and changing it deletes no card: one that stops syncing leaves iCloud, and each device keeps its copy.
-_Avoid_: partial sync, local cards, offline tags
+Syncing only the cards in a deck the user chose, or in a deck inside one, instead of all of them, so the rest never go up to iCloud. Which decks sync is one choice for all their devices, and changing it deletes no card: one that stops syncing leaves iCloud, and each device keeps its copy.
+_Avoid_: partial sync, local cards, offline decks
