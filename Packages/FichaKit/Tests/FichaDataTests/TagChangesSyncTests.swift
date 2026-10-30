@@ -311,6 +311,61 @@ final class TagChangesSyncTests {
         #expect(try iPhone.engine.cards().count == 2)
     }
 
+    // Only filosofía syncs, so each device's cards stay on it. The Mac drags
+    // P › l2 › Y › l1 and Q › l2 into P at once, in All Tags, which moves
+    // them in that order: Q › l2 › Y › l1 becomes P › l2 › Y › l1, which the
+    // first move no longer reaches. iCloud's engine promises no order, so the
+    // iPhone hears the two moves in either order, in one fetch or in one each.
+    @Test(
+        "tags moved at once reach the cards the other device holds and doesn't sync in the order they were moved, however it hears of them",
+        arguments: [false, true], [false, true])
+    func tagsMovedAtOnce(laterMoveSentFirst: Bool, heardInOneFetchEach: Bool) async throws {
+        try mac.engine.syncOnlyChosenTags(true)
+        try mac.engine.chooseToSync("filosofía", true)
+        for device in [mac, iPhone] {
+            try device.engine.create(card(.concept, front: "cepo", back: "Un límite.", tags: ["Q::l2::Y::l1"]))
+            try device.engine.create(
+                card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["P::l2::Y::l1"]))
+        }
+        try await syncBoth()
+
+        time.advance(by: minutes(1))
+        try mac.engine.moveTags(["P::l2::Y::l1", "Q::l2"], into: "P")
+        try await sendTheMacsTwoChanges(laterFirst: laterMoveSentFirst, oneFetchEach: heardInOneFetchEach)
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.card(fronted: "cepo").tags == ["P::l2::Y::l1"])
+            #expect(try device.engine.card(fronted: "ubuntu").tags == ["P::l1"])
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+    }
+
+    /// Sends the two changes to tags the Mac's last write recorded, the later
+    /// one first when `laterFirst` says so, as iCloud's engine promises no
+    /// order; the iPhone hears them in one fetch, or in one fetch each when
+    /// `oneFetchEach` says so, as the Mac goes offline after its first. Then
+    /// both devices sync.
+    private func sendTheMacsTwoChanges(laterFirst: Bool, oneFetchEach: Bool) async throws {
+        let macsICloud = mac.iCloud
+        try mac.sync.sendWhatChanged(to: macsICloud)
+        let changes = macsICloud.pendingRecordZoneChanges
+        try #require(changes.count == 2)
+        if laterFirst {
+            macsICloud.remove(pendingRecordZoneChanges: changes)
+            macsICloud.add(pendingRecordZoneChanges: changes.reversed())
+        }
+        if oneFetchEach {
+            macsICloud.recordsPerBatch = 1
+            macsICloud.onceSaved { macsICloud.isOffline = true }
+            await #expect(throws: FakeICloudError.offline) { try await macsICloud.sendChanges() }
+            try await iPhone.syncNow()
+            macsICloud.isOffline = false
+        } else {
+            try await macsICloud.sendChanges()
+        }
+        try await syncBoth()
+    }
+
     /// Syncs the Mac, then the iPhone, three times, so that what one sends
     /// as it hears the other reaches it.
     private func syncBoth() async throws {

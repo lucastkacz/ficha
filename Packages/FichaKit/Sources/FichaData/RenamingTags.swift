@@ -36,7 +36,7 @@ extension Engine {
         guard name != tag else {
             return name
         }
-        try write { db in try makeTagEdit(.rename(tag, to: name), in: db) }
+        try write { db in try makeTagEdits([.rename(tag, to: name)], in: db) }
         return name
     }
 
@@ -52,11 +52,7 @@ extension Engine {
     @discardableResult
     public func moveTags(_ tags: [String], into parent: String?) throws(EngineError) -> [TagEdit] {
         let moves = try tagMoves(of: tags, into: parent)
-        try write { db in
-            for move in moves {
-                try makeTagEdit(move, in: db)
-            }
-        }
+        try write { db in try makeTagEdits(moves, in: db) }
         return moves
     }
 }
@@ -94,14 +90,18 @@ func checkedTagName(renaming tag: String, to newName: String) throws(EngineError
     return name
 }
 
-/// Makes `edit`, which the user made on this device, in the write `db`: the
-/// tag's rows and its cards change (`editRows`, `editCards`), each card
-/// recording an edit to its tags, and the edit is recorded as a change to
-/// the tag, which reaches the user's other devices (`TagChanges.swift`).
-func makeTagEdit(_ edit: TagEdit, in db: Database) throws {
-    try editRows(edit, in: db)
-    try editCards(edit, in: db)
-    try recordTagChange(edit, in: db)
+/// Makes `edits`, which the user made on this device at once, one after the
+/// other, in the write `db`: for each, the tag's rows and its cards change
+/// (`editRows`, `editCards`), each card recording an edit to its tags, and
+/// the edit is recorded as a change to the tag, following the one before it,
+/// which reaches the user's other devices (`TagChanges.swift`).
+func makeTagEdits(_ edits: [TagEdit], in db: Database) throws {
+    var previous: Int64?
+    for edit in edits {
+        try editRows(edit, in: db)
+        try editCards(edit, in: db)
+        previous = try recordTagChange(edit, following: previous, in: db)
+    }
 }
 
 /// Makes `edit` to the rows of the `tag` table, in the write `db`, before

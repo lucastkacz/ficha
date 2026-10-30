@@ -47,10 +47,11 @@ extension Engine {
     public func deleteTags(_ tags: [String]) throws(EngineError) -> TagDeletion {
         try write { db in
             let deletion = try TagDeletion(of: tags, in: db)
-            for tag in deletion.tags
-            where !deletion.tags.contains(where: { $0 != tag && TagPath.isTag(tag, within: $0) }) {
-                try makeTagEdit(.deletion(tag), in: db)
-            }
+            try makeTagEdits(
+                deletion.tags.filter { tag in
+                    !deletion.tags.contains { $0 != tag && TagPath.isTag(tag, within: $0) }
+                }
+                .map(TagEdit.deletion), in: db)
             return deletion
         }
     }

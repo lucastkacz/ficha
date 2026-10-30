@@ -1195,12 +1195,15 @@ enum Schema {
             // those that don't sync included (`TagChanges.swift`): each with
             // its ID unique across devices, as Foundation writes a UUID; the
             // tag it changes, by its whole name; the name it's renamed to,
-            // or NULL for a deletion; and when it was made, by the engine's
-            // time on the device that made it. A device keeps a row for each
-            // change it made or heard of, which it has applied, and never
-            // changes one, so a change whose row it holds is never applied
-            // again. A device that takes a restore's cards drops them, with
-            // every row that syncs, and keeps their IDs in
+            // or NULL for a deletion; when it was made, by the engine's time
+            // on the device that made it; and the change it follows, made
+            // right before it in the same write, or NULL for the first or
+            // only one, so that every device applies a write's changes in
+            // their order, whatever order it hears of them in. A device
+            // keeps a row for each change it made or heard of, which it has
+            // applied, and never changes one, so a change whose row it holds
+            // is never applied again. A device that takes a restore's cards
+            // drops them, with every row that syncs, and keeps their IDs in
             // `tagChangeAppliedBeforeARestore`, so that it never applies again
             // one the restore's copy brings back. Every database starts with
             // none of either.
@@ -1210,6 +1213,7 @@ enum Schema {
                 table.column("tag", .text).notNull().check(sql: "tag <> ''")
                 table.column("newName", .text).check(sql: "newName <> ''")
                 table.column("madeAt", .datetime).notNull()
+                table.column("followsId", .integer).references("tagChange")
             }
             try db.create(table: "tagChangeAppliedBeforeARestore") { table in
                 table.primaryKey("uuid", .text)

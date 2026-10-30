@@ -33,7 +33,11 @@ internal import GRDB
 // renamed on every device, and a later change elsewhere still wins. The
 // changes it holds that were made after this one, heard before it, then
 // follow on the cards it changed, in the order they were made, as on the
-// device that made them.
+// device that made them. Changes made in one write, as moving or deleting
+// several tags at once makes them, share their time, so each names the one
+// it follows, and waits for it, as a record that refers to a row does: a
+// device applies them in the order they were made, whether it hears of them
+// in one fetch or in several, in any order.
 
 /// A rename or a deletion of a tag, as a device records it, which syncs to
 /// the user's other devices.
@@ -58,20 +62,35 @@ struct TagChange: Sendable, Equatable {
     }
 }
 
+/// The keys of a change's record that aren't its columns' names.
+enum TagChangeKey {
+    /// The ID of the change made right before it in the same write.
+    static let follows = "follows"
+}
+
 /// Records `edit`, made on this device in the write `db`, as a change to the
-/// tag, made as the write happens, which waits to be sent to the user's other
-/// devices, as the database's trigger records it.
-func recordTagChange(_ edit: TagEdit, in db: Database) throws {
+/// tag, made as the write happens, following the change with the id
+/// `previous`, made right before it in the same write, if one was; it waits
+/// to be sent to the user's other devices, as the database's trigger records
+/// it. Returns its id.
+func recordTagChange(_ edit: TagEdit, following previous: Int64?, in db: Database) throws -> Int64 {
     try db.execute(
-        sql: "INSERT INTO tagChange (uuid, tag, newName, madeAt) VALUES (?, ?, ?, (SELECT at FROM syncWrite))",
-        arguments: [UUID().uuidString, edit.tag, edit.newName])
+        sql: """
+            INSERT INTO tagChange (uuid, tag, newName, madeAt, followsId)
+            VALUES (?, ?, ?, (SELECT at FROM syncWrite), ?)
+            """,
+        arguments: [UUID().uuidString, edit.tag, edit.newName, previous])
+    return db.lastInsertedRowID
 }
 
 /// Takes `record`, from iCloud, of the change to a tag with this ID, in the
 /// write `db`, which records no change to send: a change the device holds
 /// already stays as it is, one it applied before it took a restore's cards
 /// comes in again and isn't applied, and one new to it comes in and is
-/// applied.
+/// applied. One that follows a change the device doesn't hold yet returns
+/// false, to wait for it as a record that refers to a row does, so that
+/// every device applies a write's changes in the order they were made,
+/// whatever order iCloud hands them in.
 func applyTagChange(_ record: ICloudRecord, as id: UUID, in db: Database) throws -> Bool {
     let isNew = try !SyncedTable.tagChanges.holdsRow(with: id, in: db) && !wasAppliedBeforeARestore(id, in: db)
     guard try SyncedTable.tagChanges.apply(record, toRowWith: id, in: db) else {

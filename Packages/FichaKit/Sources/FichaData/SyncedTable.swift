@@ -138,11 +138,15 @@ struct SyncedTable: Sendable {
         check: { id, db in _ = try UserType(row: try tableRow(id, of: "userType", in: db)) })
 
     /// A rename or a deletion of a tag, which never changes: it comes in
-    /// whole, and is applied as it does (`TagChanges.swift`).
+    /// whole, and is applied as it does (`TagChanges.swift`), once the
+    /// change it follows in its write is there.
     static let tagChanges = SyncedTable(
         name: "tagChange", syncedRow: { .tagChange($0) },
         fields: [],
-        fixedColumns: [SyncedColumn("tag", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time)],
+        fixedColumns: [
+            SyncedColumn("tag", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time),
+            SyncedColumn("followsId", key: TagChangeKey.follows, .link(to: "tagChange")),
+        ],
         marksRowsFromAnotherDevice: false,
         check: { id, db in _ = try TagChange(row: try tableRow(id, of: "tagChange", in: db)) })
 
