@@ -85,6 +85,13 @@ public enum EngineError: Error, Equatable {
     /// aside, which a priority tag never is (ADR 0011), as when another
     /// device set it aside meanwhile, so nothing changed.
     case tagSetAside(String)
+    /// A deck was to be made, or cards moved to one, with a name with no
+    /// level, blank or only `::`, so nothing changed.
+    case blankDeckName
+    /// A deck was to be made, or cards moved to one, with a name whose top
+    /// level is this one, one of the names Default goes by, so nothing
+    /// changed: Default is a deck of its own, and no deck sits inside it.
+    case defaultDeckName(String)
     /// A user type was to be made or renamed with a blank name, so nothing
     /// changed.
     case blankTypeName
@@ -322,6 +329,20 @@ extension EngineError: LocalizedError {
                 localized: """
                     “\(TagPath.shown(tag))” is set aside, and a tag is never both set aside and a priority tag, so \
                     nothing changed. Stop setting it aside first.
+                    """
+            )
+        case .blankDeckName:
+            String(
+                localized: """
+                    A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside \
+                    it, as in “Idiomas::Inglés”.
+                    """
+            )
+        case .defaultDeckName(let name):
+            String(
+                localized: """
+                    “\(name)” is Default's name, and Default holds the cards no other deck does, so nothing changed. \
+                    To move cards there, pick Default; to make a deck, write another name.
                     """
             )
         case .blankTypeName:

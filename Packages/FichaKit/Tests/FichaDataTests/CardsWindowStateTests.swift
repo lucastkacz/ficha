@@ -190,7 +190,7 @@ struct CardsWindowStateTests {
         #expect(window.selectedRows.map(\.id) == [ubuntu.id])
         #expect(shown.row.id == ubuntu.id)
         #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.firstView, .review(.good)])
-        #expect(window.actions == [.edit, .bury, .delete])
+        #expect(window.actions == [.edit, .bury, .changeDeck, .delete])
     }
 
     @Test("selecting an expansion in the inbox shows it, with the card it expands, and offers Edit and Discard")
@@ -327,8 +327,8 @@ struct CardsWindowStateTests {
         window.select([ojala.id, acaso.id])
         let offeredInBuried = window.actions
 
-        #expect(offeredInAllCards == [.bury, .turnOnBothWays, .delete])
-        #expect(offeredInBuried == [.unbury, .turnOnBothWays, .delete])
+        #expect(offeredInAllCards == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredInBuried == [.unbury, .turnOnBothWays, .changeDeck, .delete])
     }
 
     // So that a whole subject goes both ways from its tag, ⌘A and one click.
@@ -351,13 +351,13 @@ struct CardsWindowStateTests {
         let offeredForBothWays = window.actions
         window.turnOffBothWays()
 
-        #expect(offeredForOne == [.edit, .flag, .bury, .delete])
-        #expect(offeredForOneWay == [.bury, .turnOnBothWays, .delete])
-        #expect(offeredForAMix == [.bury, .turnOnBothWays, .delete])
+        #expect(offeredForOne == [.edit, .flag, .bury, .changeDeck, .delete])
+        #expect(offeredForOneWay == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredForAMix == [.bury, .turnOnBothWays, .changeDeck, .delete])
         #expect(turnedOn == [true, true, true])
-        #expect(offeredForBothWays == [.bury, .turnOffBothWays, .delete])
+        #expect(offeredForBothWays == [.bury, .turnOffBothWays, .changeDeck, .delete])
         #expect(try engine.cards().map(\.bothWays) == [false, false, false])
-        #expect(window.actions == [.bury, .turnOnBothWays, .delete])
+        #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
     }
 
     // The Back-first step and Back-first due columns show `backFirst`, and

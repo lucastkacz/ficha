@@ -394,6 +394,33 @@ final class DatabaseFileTests {
         #expect(try engine.changesToSend().map(\.row) == [.tag("lenguaje")])
     }
 
+    // Adding the card's deck keeps the card table, with its triggers, so
+    // nothing waits to be sent; the tag table keeps its switches and its
+    // choice to sync for the conversion that carries them to decks.
+    @Test(
+        "a database from before decks migrates with every card in Default and every tag row as it was, and a deck then made syncs"
+    )
+    func aDatabaseFromBeforeDecksPutsEveryCardInDefault() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeDecks(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(try engine.cards().map(\.deck) == [Deck.defaultName, Deck.defaultName])
+        #expect(try engine.cards().map(\.tags) == [["historia::Roma", "lenguaje"], ["ciencia"]])
+        #expect(try engine.decks() == [Deck(name: Deck.defaultName)])
+        #expect(
+            try engine.allTags() == [
+                CardTag(name: "ciencia", switchedOn: .setAside, color: .blue),
+                CardTag(name: "historia", switchedOn: .priority, emoji: "📜", chosenToSync: true),
+                CardTag(name: "historia::Roma", inheritedEmoji: "📜"),
+                CardTag(name: "lenguaje", chosenToSync: true),
+            ])
+        #expect(try engine.changesToSend().isEmpty)
+        try engine.changeDeck(of: [1], to: "Historia")
+        #expect(try engine.changesToSend().map(\.row.recordType) == [.deck, .card])
+    }
+
     // Ficha Dev's sample cards, and an agent's scratch run, load into a new
     // database, which then syncs them.
     @Test("a new database starts with sync on and every card syncing, the sample cards loaded into it too")
@@ -591,6 +618,32 @@ func saveDatabaseBeforePinnedTags(at file: URL, at time: Date) throws {
                     ('lenguaje', NULL, NULL, NULL, 1);
                 """,
             arguments: [time])
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before decks, through the
+/// schema's migrations up to the one before them, with sync on and nothing
+/// waiting to be sent: two cards made at `time`, Coliseo tagged
+/// historia::Roma and lenguaje, and ADN tagged ciencia, and a row of the
+/// `tag` table for each kind of thing a tag had of its own.
+func saveDatabaseBeforeDecks(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v30 changes to tags")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO card (type, front, back, tags, createdAt) VALUES
+                    ('word', 'Coliseo', 'Un anfiteatro.', '["historia::Roma","lenguaje"]', ?),
+                    ('concept', 'ADN', 'La molécula de la herencia.', '["ciencia"]', ?);
+                INSERT INTO tag (name, switchedOn, color, emoji, chosenToSync) VALUES
+                    ('ciencia', 'setAside', 'blue', NULL, 0),
+                    ('historia', 'priority', NULL, '📜', 1),
+                    ('lenguaje', NULL, NULL, NULL, 1);
+                """,
+            arguments: [time, time])
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()
@@ -871,14 +924,17 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
         try engine.cards() == [
             Card(
                 id: 1, type: .word, front: "serendipia", back: "Un hallazgo por casualidad.", frontImage: nil,
-                backImage: nil, frontSound: nil, backSound: nil, tags: ["lenguaje"], source: nil, createdAt: time,
+                backImage: nil, frontSound: nil, backSound: nil, deck: Deck.defaultName, tags: ["lenguaje"],
+                source: nil,
+                createdAt: time,
                 editedAt: nil, captureID: 1, flag: nil, buriedAt: nil, setAsideBy: nil, bothWays: false),
             Card(
                 id: 2, type: .concept, front: "ubuntu", back: "Soy porque somos.",
                 frontImage: ImageName(rawValue: ubuntuFiles.frontImage),
                 backImage: ImageName(rawValue: ubuntuFiles.backImage),
                 frontSound: SoundName(rawValue: ubuntuFiles.frontSound),
-                backSound: SoundName(rawValue: ubuntuFiles.backSound), tags: ["filosofía"], source: "Desmond Tutu",
+                backSound: SoundName(rawValue: ubuntuFiles.backSound), deck: Deck.defaultName, tags: ["filosofía"],
+                source: "Desmond Tutu",
                 createdAt: time, editedAt: time + hours(3), captureID: nil,
                 flag: Flag(note: "Falta un ejemplo", flaggedAt: time + hours(4)), buriedAt: time + hours(5),
                 setAsideBy: nil, bothWays: true),

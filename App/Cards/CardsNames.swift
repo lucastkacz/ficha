@@ -20,6 +20,8 @@ extension CardGroup {
             String(localized: "Flagged", comment: "An item of the Cards window's sidebar: the flagged cards.")
         case .buried:
             String(localized: "Buried", comment: "An item of the Cards window's sidebar: the buried cards.")
+        case .deck(let deck):
+            Deck.shownName(deck)
         case .tag(let tag):
             TagPath.shown(tag)
         case .type(let type):
@@ -39,6 +41,7 @@ extension CardGroup {
         case .learned: "checkmark.seal"
         case .flagged: "flag"
         case .buried: "eye.slash"
+        case .deck: "rectangle.portrait.on.rectangle.portrait"
         case .tag: "tag"
         case .type(let type): type.symbol
         case .noType: "square.dashed"
@@ -60,6 +63,19 @@ extension CardGroup {
             String(localized: "No flagged cards", comment: "In the Cards window: no card is flagged.")
         case .buried:
             String(localized: "No buried cards", comment: "In the Cards window: no card is buried.")
+        case .deck(Deck.defaultName):
+            String(
+                localized: "No cards in Default",
+                comment:
+                    "In the Cards window: no card that isn't buried lives in Default, the deck of cards with no other."
+            )
+        case .deck(let deck):
+            String(
+                localized: "No cards in \(TagPath.shown(deck))",
+                comment: """
+                    In the Cards window: no card that isn't buried lives in this deck, or a deck inside it, with the \
+                    deck's whole name, like “Idiomas › Inglés”.
+                    """)
         case .tag(let tag):
             String(
                 localized: "No cards tagged \(TagPath.shown(tag))",
@@ -85,6 +101,29 @@ extension CardGroup {
                 localized: "No cards without a type",
                 comment: "In the Cards window: every card that isn't buried has a type.")
         }
+    }
+}
+
+extension Deck {
+    /// Default's name, as the Mac's language says it: "Default" is the key of
+    /// the String Catalog `Deck.defaultNames` reads too, so that no deck the
+    /// user makes takes it.
+    nonisolated static var defaultShownName: String {
+        String(localized: "Default", comment: "The deck a card lives in when it has no other.")
+    }
+
+    /// The deck named `name` as the window names it on its own: its whole
+    /// name, written with " › ", or Default's in the Mac's language.
+    nonisolated static func shownName(_ name: String) -> String {
+        name == defaultName ? defaultShownName : TagPath.shown(name)
+    }
+}
+
+extension CardsWindowState.DeckRow {
+    /// What its row says, in the sidebar and the Change Deck sheet: its last
+    /// level, or Default's name in the Mac's language.
+    var shownTitle: String {
+        deck.isDefault ? Deck.defaultShownName : title
     }
 }
 

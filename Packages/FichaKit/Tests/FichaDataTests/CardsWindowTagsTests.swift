@@ -39,9 +39,10 @@ struct CardsWindowTagsTests {
         #expect(window.pinnedTags.grayed == ["historia::Roma", "ciencia"])
     }
 
-    // Every card has a type, so the Types section has no No Type.
+    // Every card has a type, so the Types section has no No Type, and lives
+    // in Default, which the Decks section lists alone.
     @Test(
-        "the sidebar lists the card groups, then Inbox, then the pinned tags in their order and All Tags, then the card types"
+        "the sidebar lists the card groups, then Inbox, then the decks, then the pinned tags in their order and All Tags, then the card types"
     )
     func theSidebarsItemsInOrder() throws {
         try approveCard("deuda", tags: ["economía::Argentina", "lenguaje"])
@@ -54,6 +55,7 @@ struct CardsWindowTagsTests {
             window.sidebarSections.map(\.items) == [
                 [.cards(.all), .cards(.new), .cards(.due), .cards(.learned), .cards(.flagged), .cards(.buried)],
                 [.inbox],
+                [.cards(.deck(Deck.defaultName))],
                 [.cards(.tag("lenguaje")), .cards(.tag("economía::Argentina")), .allTags],
                 [.cards(.type(.word)), .cards(.type(.concept)), .cards(.type(.quote)), .cards(.type(.question))],
             ])

@@ -55,8 +55,9 @@ struct SyncKeptThroughARestore {
 /// Drops every row that syncs, in a write that records nothing to send, as a
 /// device takes a restore's cards in place of its own: the cards that sync
 /// (`SelectiveSync.swift`), their review log, the captures that sync, the
-/// tags, the user's card types and the changes to tags, with what waited to
-/// be sent and when each field of them last changed. A card that stays keeps
+/// tags, the decks' rows, the user's card types and the changes to tags,
+/// with what waited to be sent and when each field of them last changed. A
+/// deck a card that stays lives in stays through the card. A card that stays keeps
 /// its type's ID, and has its type again once the restore's copy brings it.
 /// The device keeps the IDs of the changes to tags it dropped, which it
 /// applied: those the copy holds come again, and are applied only when the
@@ -93,6 +94,7 @@ func dropEverythingThatSyncs(in db: Database) throws -> FileNames {
             WHERE recordType = '\(capture)' AND recordName IN (SELECT uuid FROM capture WHERE id IN (\(untied)));
             DELETE FROM capture WHERE id IN (\(untied));
             DELETE FROM tag;
+            DELETE FROM deck;
             DELETE FROM userType;
             INSERT OR IGNORE INTO tagChangeAppliedBeforeARestore (uuid) SELECT uuid FROM tagChange;
             DELETE FROM tagChange;

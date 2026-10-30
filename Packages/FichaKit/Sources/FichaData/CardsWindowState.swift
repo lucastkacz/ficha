@@ -10,8 +10,10 @@ import Foundation
 /// Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
-/// buries and unburies at once, and turns Both ways on or off for several
-/// cards at once, as it pins tags to the sidebar, sets them aside,
+/// buries and unburies at once, turns Both ways on or off for several cards
+/// at once, and moves them to the deck Lucas picks in the Change Deck sheet,
+/// whose tree the sidebar lists too (`CardsWindowDecks.swift`), as it pins
+/// tags to the sidebar, sets them aside,
 /// prioritizes them or gives them a color from a tag's context menu, for one
 /// tag or several, it asks which emoji a tag gets and which name, and puts
 /// the sidebar's pinned tags in the order Lucas drags them into, pinning a
@@ -43,6 +45,9 @@ public struct CardsWindowState: Sendable {
         case cardGroups([CardGroup])
         /// The inbox.
         case inbox
+        /// The Decks section: every deck as a tree, as `deckRows` lists them
+        /// (`CardsWindowDecks.swift`).
+        case decks([DeckRow])
         /// The Tags section: the pinned tags, as `pinnedTags` lists them,
         /// then All Tags….
         case tags(pinned: [PinnedTagRow])
@@ -53,6 +58,7 @@ public struct CardsWindowState: Sendable {
         public enum ID: Sendable, Hashable {
             case cardGroups
             case inbox
+            case decks
             case tags
             case types
         }
@@ -61,6 +67,7 @@ public struct CardsWindowState: Sendable {
             switch self {
             case .cardGroups: .cardGroups
             case .inbox: .inbox
+            case .decks: .decks
             case .tags: .tags
             case .types: .types
             }
@@ -71,6 +78,7 @@ public struct CardsWindowState: Sendable {
             switch self {
             case .cardGroups(let groups), .types(let groups): groups.map(SidebarItem.cards)
             case .inbox: [.inbox]
+            case .decks(let rows): rows.flatMap(\.flattened).map(\.item)
             case .tags(let pinned): pinned.map(\.item) + [.allTags]
             }
         }
@@ -118,6 +126,9 @@ public struct CardsWindowState: Sendable {
         case edit
         /// Turn the capture into cards, in the card form opened from it.
         case convertToCard
+        /// Move the cards to another deck, which the Change Deck sheet asks
+        /// for: `CardsWindowDecks.swift`.
+        case changeDeck
         /// Flag the card, with a note on what to fix.
         case flag
         /// Bury the cards.
@@ -191,6 +202,9 @@ public struct CardsWindowState: Sendable {
         case delete([CardRow])
         /// What needs fixing in this card, to flag it with that note.
         case flag(CardRow)
+        /// Which deck these cards move to, in the Change Deck sheet:
+        /// `CardsWindowDecks.swift`.
+        case changeDeck(DeckChange)
         /// Which emoji this tag gets, in the emoji sheet, whose field starts
         /// with the one it has.
         case emoji(CardTag)
@@ -272,6 +286,9 @@ public struct CardsWindowState: Sendable {
         case putSound
         /// He flagged a card.
         case flag
+        /// He moved this many cards to another deck, in the Change Deck
+        /// sheet.
+        case changeDeck(cardCount: Int)
         /// He buried this many cards.
         case bury(cardCount: Int)
         /// He unburied this many cards.
@@ -387,6 +404,13 @@ public struct CardsWindowState: Sendable {
     /// cards, buried ones too, those with something of their own, and every
     /// tag they sit inside, in the order a tree lists them.
     public private(set) var tags: [CardTag] = []
+    /// Every deck the sidebar's Decks section lists, with what each has of
+    /// its own and its counts, in the order a tree lists them, Default first
+    /// while it holds cards: `CardsWindowDecks.swift`.
+    public private(set) var decks: [CountedDeck] = []
+    /// The sidebar's decks Lucas closed, which each start open, and the
+    /// window remembers while it's open.
+    var closedDecks: Set<String> = []
     /// The sidebar's Tags section: the pinned tags, in Lucas's order, each
     /// named by its whole path, before All Tags: `CardsWindowTags.swift`.
     public private(set) var pinnedTags: [PinnedTagRow] = []
@@ -458,12 +482,12 @@ public struct CardsWindowState: Sendable {
     }
 
     /// The sidebar's sections, in its order: the cards by where they stand,
-    /// the inbox, the pinned tags with All Tags… after them, and the type
-    /// groups.
+    /// the inbox, the decks as a tree, the pinned tags with All Tags… after
+    /// them, and the type groups.
     public var sidebarSections: [SidebarSection] {
         [
-            .cardGroups([.all, .new, .due, .learned, .flagged, .buried]), .inbox, .tags(pinned: pinnedTags),
-            .types(typeGroups),
+            .cardGroups([.all, .new, .due, .learned, .flagged, .buried]), .inbox, .decks(deckRows),
+            .tags(pinned: pinnedTags), .types(typeGroups),
         ]
     }
 
@@ -548,9 +572,10 @@ public struct CardsWindowState: Sendable {
     /// What the user can do with what the detail shows: with a capture or a
     /// follow-up, edit it, convert it to cards and discard it; with an
     /// expansion, edit it and discard it; with one card, edit it, flag it
-    /// while it's in the user's reviews, bury or unbury it, and delete it;
-    /// with several, bury or unbury them, turn Both ways on or off for them,
-    /// and delete them.
+    /// while it's in the user's reviews, bury or unbury it, move it to
+    /// another deck, and delete it; with several, bury or unbury them, turn
+    /// Both ways on or off for them, move them to another deck, and delete
+    /// them.
     public var actions: Set<Action> {
         switch detail {
         case .capture, .followUp:
@@ -558,9 +583,9 @@ public struct CardsWindowState: Sendable {
         case .expansion:
             return [.edit, .discard]
         case .card(let row, _):
-            return Self.actions(for: row.cardStanding).union([.edit, .delete])
+            return Self.actions(for: row.cardStanding).union([.edit, .changeDeck, .delete])
         case .cards(let rows):
-            return buryOrUnbury(rows).union([Self.bothWaysAction(for: rows), .delete])
+            return buryOrUnbury(rows).union([Self.bothWaysAction(for: rows), .changeDeck, .delete])
         case .nothingSelectedInInbox, .noCardSelected, .allTags:
             return []
         }
@@ -897,10 +922,11 @@ public struct CardsWindowState: Sendable {
         failure = Failure(action: action, error: error)
     }
 
-    /// Reads the tags and what the sidebar chose, as they are now, on
-    /// `ladder`, the one Lucas set in Settings, which he may have changed
+    /// Reads the decks, the tags and what the sidebar chose, as they are now,
+    /// on `ladder`, the one Lucas set in Settings, which he may have changed
     /// since the last read, and the review log of the card the detail shows.
-    /// When the chosen tag is gone, because its last card was edited or
+    /// When the chosen deck is gone, as Default once its last card moved out,
+    /// or the chosen tag is gone, because its last card was edited or
     /// deleted while it has nothing of its own, the sidebar goes back to All
     /// cards, and so it does when No Type is gone, once every card that isn't
     /// buried has a type, and when the chosen user type is deleted; and when
@@ -920,6 +946,7 @@ public struct CardsWindowState: Sendable {
                 tags = try engine.allTags()
             }
             pinnedTags = Self.pinnedRows(of: tags.pinnedInOrder, among: tags)
+            decks = try engine.countedDecks(on: ladder)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
@@ -946,11 +973,13 @@ public struct CardsWindowState: Sendable {
         readReviewLog()
     }
 
-    /// Whether the sidebar offers `group`, as last read: a tag while All Tags
-    /// lists it, pinned or not, No Type while some card has none, a user
-    /// type while it lists it, and every other group always.
+    /// Whether the sidebar offers `group`, as last read: a deck while the
+    /// Decks section lists it, a tag while All Tags lists it, pinned or not,
+    /// No Type while some card has none, a user type while it lists it, and
+    /// every other group always.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
+        case .deck(let deck): decks.contains { $0.deck.name == deck }
         case .tag(let tag): tags.contains { $0.name == tag }
         case .noType: typeGroups.contains(.noType)
         case .type(let type): offersType(type)

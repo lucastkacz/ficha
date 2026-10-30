@@ -35,6 +35,12 @@ enum Window: String {
     /// first, and economía selected, which `--key return` lists the cards
     /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
+    /// The Cards window on Idiomas, one of the decks the sample's cards sit
+    /// in, with its sidebar's Decks section: Default first, then every deck
+    /// as a tree, each with how many of its cards are due, Ciencias closed,
+    /// and two of Idiomas's cards selected, which `--key cmd+d` asks to move
+    /// in the Change Deck sheet.
+    case cardsDecks = "cards-decks"
     /// The Cards window on Ley, one of the card types of the user's own the
     /// tool gives the sample, with its card on Parkinson's law selected, its
     /// sidebar scrolled to its end so that it shows its Types section.
@@ -1138,7 +1144,7 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+    case .cards, .cardsDecks, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1281,6 +1287,18 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         }
         state.sortAllTags(by: .cards, ascending: false)
         state.selectTags(["economía"])
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsDecks:
+        var state = model.openCardsWindow()
+        state.read(on: state.ladder)
+        state.setDeckOpen(false, "Ciencias")
+        state.choose(.cards(.deck("Idiomas")))
+        guard case .success(.cards(let rows)) = state.listing else {
+            throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
+        }
+        state.select(Set(rows.filter { ["serendipia", "hygge"].contains($0.card.front) }.map(\.id)))
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window

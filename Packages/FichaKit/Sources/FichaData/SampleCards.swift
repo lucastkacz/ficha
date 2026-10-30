@@ -6,7 +6,9 @@ import Foundation
 /// iPhone app. They're written by hand, never taken from Lucas's cards, and
 /// follow the rules the content guide starts from: Rioplatense Spanish, one
 /// idea per card, a one-line front and a back of at most 40 words, and words
-/// from other languages explained in Spanish. There are 50, words most of all.
+/// from other languages explained in Spanish. There are 50, words most of all,
+/// in decks by subject, some inside others, and one in Default; their tags
+/// stay, as labels that cross decks.
 public enum SampleCards {
     /// Loads the sample cards into the engine's database as new cards, each
     /// approved from a capture of its own, the way refining leaves them, so the
@@ -19,7 +21,10 @@ public enum SampleCards {
             // approved from, so it's a duplicate. Expanding saves it anyway,
             // and approving it adds its cards again, as new ones.
             let capture = try engine.expand(text: sample.text, note: nil, source: sample.source)
-            try engine.approve(capture.id, into: cards)
+            let approved = try engine.approve(capture.id, into: cards)
+            for (card, sampleCard) in zip(approved, sample.cards) where sampleCard.deck != Deck.defaultName {
+                try engine.changeDeck(of: [card.id], to: sampleCard.deck)
+            }
         }
     }
 
@@ -58,12 +63,15 @@ private struct SampleCard {
     let front: String
     let back: String
     let tags: [String]
+    /// The deck it goes to, or Default when it names none.
+    let deck: String
 
-    init(_ type: CardType, front: String, back: String, tags: [String]) {
+    init(_ type: CardType, front: String, back: String, tags: [String], deck: String = Deck.defaultName) {
         self.type = type
         self.front = front
         self.back = back
         self.tags = tags
+        self.deck = deck
     }
 
     /// The card as the engine takes it, with its capture's source, or nil when
@@ -97,7 +105,8 @@ private let sampleCaptures = [
                 .word,
                 front: "serendipia",
                 back: "Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa.",
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             ),
             SampleCard(
                 .question,
@@ -106,7 +115,8 @@ private let sampleCaptures = [
                     De «Los tres príncipes de Serendip», un cuento persa: Horace Walpole inventó la palabra inglesa \
                     en 1754, y el español la tomó de ahí.
                     """,
-                tags: ["lenguaje", "historia"]
+                tags: ["lenguaje", "historia"],
+                deck: "Idiomas::Español"
             ),
         ]
     ),
@@ -121,7 +131,8 @@ private let sampleCaptures = [
                     Una idea de los pueblos bantúes del sur de África: una persona es persona a través de las demás. \
                     Se suele resumir como «soy porque somos».
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -136,7 +147,8 @@ private let sampleCaptures = [
                     Antonio Machado, en «Campos de Castilla»: el camino no está trazado de antemano; lo vas haciendo \
                     vos, con cada paso.
                     """,
-                tags: ["literatura"]
+                tags: ["literatura"],
+                deck: "Humanidades::Literatura"
             )
         ]
     ),
@@ -151,7 +163,8 @@ private let sampleCaptures = [
                     Porque el aire dispersa mucho más la luz azul, de longitud de onda corta, que la roja, y esa luz \
                     dispersada te llega desde todo el cielo. Se llama dispersión de Rayleigh.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -166,7 +179,8 @@ private let sampleCaptures = [
                     Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», \
                     alegría.
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Palabras prestadas"
             )
         ]
     ),
@@ -183,7 +197,8 @@ private let sampleCaptures = [
                     supuestos. Se atribuye a Guillermo de Ockham, un fraile franciscano inglés del siglo XIV, aunque \
                     la idea es más antigua: ya la había planteado Aristóteles.
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -198,7 +213,8 @@ private let sampleCaptures = [
                     Se lo dice el zorro al principito, en el libro de Antoine de Saint-Exupéry: lo que más importa no \
                     se ve con los ojos, sino con el corazón.
                     """,
-                tags: ["literatura"]
+                tags: ["literatura"],
+                deck: "Humanidades::Literatura"
             )
         ]
     ),
@@ -213,11 +229,12 @@ private let sampleCaptures = [
                     En 1969, con el Apolo 11. El 20 de julio, Neil Armstrong fue el primero en pisarla, y Buzz Aldrin \
                     lo siguió poco después.
                     """,
-                tags: ["historia"]
+                tags: ["historia"],
+                deck: "Humanidades::Historia"
             )
         ]
     ),
-    // A card without tags.
+    // A card without tags, in Default.
     SampleCapture(
         text: "petricor",
         source: nil,
@@ -241,7 +258,8 @@ private let sampleCaptures = [
                     Seguir con algo solo por lo que ya invertiste, aunque no te convenga. Lo gastado no vuelve: para \
                     decidir, mirá lo que viene.
                     """,
-                tags: ["psicología"]
+                tags: ["psicología"],
+                deck: "Ciencias::Psicología"
             )
         ]
     ),
@@ -256,7 +274,8 @@ private let sampleCaptures = [
                     Se le atribuye a Sócrates, a partir de la «Apología» de Platón: reconocer lo que no sabés es el \
                     primer paso para aprender.
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -271,7 +290,8 @@ private let sampleCaptures = [
                     Porque la lluvia disuelve sales de las rocas y los ríos las llevan al mar. El agua se evapora, \
                     pero la sal se queda, y en millones de años se fue acumulando.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -283,7 +303,8 @@ private let sampleCaptures = [
                 .word,
                 front: "ojalá",
                 back: "Expresa el deseo de que algo pase. Por ejemplo: «Ojalá mañana no llueva, que tenemos el asado».",
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             ),
             SampleCard(
                 .question,
@@ -292,7 +313,8 @@ private let sampleCaptures = [
                     Del árabe hispánico «law šá lláh», «si Dios quiere», que el español tomó en los siglos de \
                     al-Ándalus. Cada vez que decís «ojalá», sin saberlo, nombrás a Alá.
                     """,
-                tags: ["lenguaje", "historia"]
+                tags: ["lenguaje", "historia"],
+                deck: "Idiomas::Español"
             ),
         ]
     ),
@@ -307,7 +329,8 @@ private let sampleCaptures = [
                     Cuanto menos sabés de un tema, más sobreestimás lo que sabés: te falta justo el saber que \
                     necesitarías para ver tus errores. Como el que vio dos videos y le discute al médico.
                     """,
-                tags: ["psicología"]
+                tags: ["psicología"],
+                deck: "Ciencias::Psicología"
             )
         ]
     ),
@@ -323,7 +346,8 @@ private let sampleCaptures = [
                     Es la primera certeza sobre la que construyó su filosofía. Se hizo famosa en latín: «cogito, ergo \
                     sum».
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -338,7 +362,8 @@ private let sampleCaptures = [
                     Postergar lo que tendrías que hacer ahora, haciendo en su lugar algo más fácil. Por ejemplo: \
                     «Tenía que estudiar, pero procrastiné toda la tarde ordenando el placard».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -353,7 +378,8 @@ private let sampleCaptures = [
                     206. Al nacer tenés unos 300, pero muchos se van soldando entre sí mientras crecés, como los del \
                     cráneo.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -368,7 +394,8 @@ private let sampleCaptures = [
                     La tendencia a notar y recordar lo que confirma lo que ya creés, y a pasar por alto lo que lo \
                     contradice. Si creés que los lunes todo sale mal, solo te acordás de los lunes malos.
                     """,
-                tags: ["psicología"]
+                tags: ["psicología"],
+                deck: "Ciencias::Psicología"
             )
         ]
     ),
@@ -383,7 +410,8 @@ private let sampleCaptures = [
                     Que dura muy poco. Viene del griego: «que dura un día». Por ejemplo: «La fama de ese video fue \
                     efímera: a la semana nadie se acordaba».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -398,7 +426,8 @@ private let sampleCaptures = [
                     José Ortega y Gasset: sos vos y también lo que te rodea, tu época, tu lugar y lo que te toca \
                     vivir; no se te puede entender por separado.
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -413,7 +442,8 @@ private let sampleCaptures = [
                     Tan intenso o tan grande que no se puede explicar con palabras. Por ejemplo: «Ver el glaciar \
                     Perito Moreno de cerca fue algo inefable».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -428,7 +458,8 @@ private let sampleCaptures = [
                     El trabajo se expande hasta ocupar todo el tiempo disponible: si tenés una semana para un informe, \
                     te lleva una semana; si tenés un día, lo terminás en un día.
                     """,
-                tags: ["trabajo"]
+                tags: ["trabajo"],
+                deck: "Sociedad"
             )
         ]
     ),
@@ -443,7 +474,8 @@ private let sampleCaptures = [
                     Venus, aunque Mercurio está más cerca del Sol. Su atmósfera espesa de dióxido de carbono atrapa el \
                     calor como un invernadero, y en la superficie hay unos 460 °C.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -458,7 +490,8 @@ private let sampleCaptures = [
                     La capacidad de recuperarte después de un golpe duro y seguir adelante. Por ejemplo: «Cerró su \
                     negocio, y al año abrió otro: qué resiliencia».
                     """,
-                tags: ["lenguaje", "psicología"]
+                tags: ["lenguaje", "psicología"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -473,7 +506,8 @@ private let sampleCaptures = [
                     En muchos casos, el 80 % de los resultados sale del 20 % de las causas. Vilfredo Pareto lo notó en \
                     Italia: el 20 % de la gente tenía el 80 % de la tierra.
                     """,
-                tags: ["economía"]
+                tags: ["economía"],
+                deck: "Sociedad::Economía"
             )
         ]
     ),
@@ -488,7 +522,8 @@ private let sampleCaptures = [
                     Palabra danesa: la sensación de calidez y bienestar de un momento simple y acogedor, en buena \
                     compañía. Por ejemplo: «Llovía afuera, y adentro había velas, mate y amigos: puro hygge».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Palabras prestadas"
             )
         ]
     ),
@@ -503,7 +538,8 @@ private let sampleCaptures = [
                     Friedrich Nietzsche: las dificultades que superás te dejan mejor preparado. Él lo escribió en \
                     primera persona: «lo que no me mata me hace más fuerte».
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -518,7 +554,8 @@ private let sampleCaptures = [
                     Porque la Tierra tarda unos 365 días y 6 horas en dar la vuelta al Sol. Esas 6 horas, en cuatro \
                     años, suman un día: el 29 de febrero.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -533,7 +570,8 @@ private let sampleCaptures = [
                     Palabra portuguesa: la nostalgia, entre dulce y triste, por algo o alguien que ya no está y quizá \
                     no vuelva. Por ejemplo: «Esa canción me da saudade de aquel verano en Brasil».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Palabras prestadas"
             )
         ]
     ),
@@ -548,7 +586,8 @@ private let sampleCaptures = [
                     Sentirte mejor solo porque creés que te están curando, aunque lo que tomaste no tenga nada activo, \
                     como una pastilla de azúcar. Por eso un remedio nuevo tiene que ganarle a un placebo.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -564,7 +603,8 @@ private let sampleCaptures = [
                     Viene de «Zeit», tiempo, y «Geist», espíritu. Por ejemplo: «Esa película captó el Zeitgeist de los \
                     noventa».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Palabras prestadas"
             )
         ]
     ),
@@ -580,7 +620,8 @@ private let sampleCaptures = [
                     prometía una victoria fácil, sino sacrificio. En realidad dijo «sangre, esfuerzo, lágrimas y \
                     sudor»; en inglés, «blood, toil, tears and sweat».
                     """,
-                tags: ["historia"]
+                tags: ["historia"],
+                deck: "Humanidades::Historia"
             )
         ]
     ),
@@ -596,7 +637,8 @@ private let sampleCaptures = [
                     quitaran de internet una foto de su casa; casi nadie la había visto, y con el escándalo la vieron \
                     cientos de miles.
                     """,
-                tags: ["internet"]
+                tags: ["internet"],
+                deck: "Sociedad"
             )
         ]
     ),
@@ -611,7 +653,8 @@ private let sampleCaptures = [
                     El rato que te quedás en la mesa charlando después de comer. Por ejemplo: «El almuerzo terminó a \
                     las dos, pero la sobremesa siguió hasta las seis».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -626,7 +669,8 @@ private let sampleCaptures = [
                     En 1989, el 9 de noviembre. Un vocero de Alemania del Este anunció por error que se podía cruzar \
                     ya mismo, y esa noche miles de berlineses lo pasaron y empezaron a derribarlo.
                     """,
-                tags: ["historia"]
+                tags: ["historia"],
+                deck: "Humanidades::Historia"
             )
         ]
     ),
@@ -641,7 +685,8 @@ private let sampleCaptures = [
                     Cuando un recurso es de todos, a cada uno le conviene usar un poco más, y entre todos lo agotan. \
                     Como un campo compartido donde cada pastor suma una vaca más, hasta que no queda pasto.
                     """,
-                tags: ["economía"]
+                tags: ["economía"],
+                deck: "Sociedad::Economía"
             )
         ]
     ),
@@ -656,7 +701,8 @@ private let sampleCaptures = [
                     Una persona soñadora, que no tiene los pies en la tierra. Del griego: «el que anda por las nubes». \
                     Por ejemplo: «Es un nefelibata: se pasa el día imaginando viajes que nunca va a hacer».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -671,7 +717,8 @@ private let sampleCaptures = [
                     Thomas Hobbes la hizo famosa: sin leyes ni un Estado que nos frene, nos atacaríamos unos a otros. \
                     Pero es más vieja: viene de una comedia del romano Plauto. En latín, «homo homini lupus».
                     """,
-                tags: ["filosofía"]
+                tags: ["filosofía"],
+                deck: "Humanidades::Filosofía"
             )
         ]
     ),
@@ -686,7 +733,8 @@ private let sampleCaptures = [
                     El momento en que de golpe entendés algo que tenías adelante. Por ejemplo: «Tuve una epifanía en \
                     la ducha y entendí por qué no me salía el ejercicio».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -701,7 +749,8 @@ private let sampleCaptures = [
                     Johannes Gutenberg, en Maguncia, hacia 1450. Con letras de metal que se reordenaban para cada \
                     página, los libros dejaron de copiarse a mano.
                     """,
-                tags: ["historia"]
+                tags: ["historia"],
+                deck: "Humanidades::Historia"
             )
         ]
     ),
@@ -717,7 +766,8 @@ private let sampleCaptures = [
                     meteorólogo Edward Lorenz lo planteó con una pregunta: ¿el aleteo de una mariposa en Brasil puede \
                     provocar un tornado en Texas?
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -732,7 +782,8 @@ private let sampleCaptures = [
                     La manera de ser propia de una persona o de un pueblo, lo que lo distingue de los demás. Por \
                     ejemplo: «Compartir el mate con desconocidos es parte de nuestra idiosincrasia».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),
@@ -747,7 +798,8 @@ private let sampleCaptures = [
                     Porque gira sobre sí misma en el mismo tiempo que tarda en dar la vuelta a la Tierra, unos 27 \
                     días: la gravedad terrestre la fue frenando hasta sincronizarla.
                     """,
-                tags: ["ciencia"]
+                tags: ["ciencia"],
+                deck: "Ciencias::Naturales"
             )
         ]
     ),
@@ -762,7 +814,8 @@ private let sampleCaptures = [
                     En el habla rioplatense, una charla hábil para convencer o seducir, a veces con mentiras. Por \
                     ejemplo: «No le creas lo del auto nuevo: es puro chamuyo».
                     """,
-                tags: ["lenguaje", "argentina"]
+                tags: ["lenguaje", "argentina"],
+                deck: "Idiomas::Español::Rioplatense"
             )
         ]
     ),
@@ -779,7 +832,8 @@ private let sampleCaptures = [
                     blindar los aviones donde volvían agujereados; Abraham Wald propuso blindar justo donde no: los \
                     que recibían balas ahí no volvían.
                     """,
-                tags: ["psicología", "historia", "estadística"]
+                tags: ["psicología", "historia", "estadística"],
+                deck: "Ciencias::Psicología"
             )
         ]
     ),
@@ -794,7 +848,8 @@ private let sampleCaptures = [
                     Palabra japonesa: tu razón de ser, lo que hace que valga la pena levantarte cada mañana. Por \
                     ejemplo: «Desde que se jubiló, la huerta es su ikigai».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Palabras prestadas"
             )
         ]
     ),
@@ -809,7 +864,8 @@ private let sampleCaptures = [
                     Sentir que no merecés tus logros y que en cualquier momento van a descubrir que no sos tan capaz, \
                     aunque las pruebas digan lo contrario. Es común en gente que se destaca en lo suyo.
                     """,
-                tags: ["psicología"]
+                tags: ["psicología"],
+                deck: "Ciencias::Psicología"
             )
         ]
     ),
@@ -825,7 +881,8 @@ private let sampleCaptures = [
                     «álgos», dolor: el dolor de no poder volver. Por ejemplo: «Ver fotos del secundario me da \
                     nostalgia».
                     """,
-                tags: ["lenguaje"]
+                tags: ["lenguaje"],
+                deck: "Idiomas::Español"
             )
         ]
     ),

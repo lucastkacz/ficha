@@ -4,10 +4,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
-/// sidebar to choose a group of cards, the inbox or All Tags, a table with
-/// one row per card in it, or per capture and flagged card in the inbox,
+/// sidebar to choose a group of cards, the inbox, a deck or All Tags, a table
+/// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
-/// it, with what Lucas can do with it at its foot. The sidebar's Tags section
+/// it, with what Lucas can do with it at its foot. The sidebar's Decks
+/// section lists every deck as a tree, Default first while it holds cards,
+/// each with how many of its cards are due, and Change Deck… moves the
+/// selected cards to the deck Lucas picks in its sheet, or names there with
+/// New Deck… (`ChangeDeckSheet.swift`). The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
 /// and checkboxes (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
@@ -79,6 +83,7 @@ struct CardsView: View {
     var body: some View {
         askingAboutTags(askingAboutTypes(panes))
             .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
+            .changeDeckSheet($state, failure: failure(overSheet: true))
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
                 FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
                     state.flag(note: note)
@@ -475,16 +480,17 @@ struct CardsView: View {
     }
 
     /// Where the alert shows now: over the New Type sheet while it's open;
-    /// over the flag sheet, the emoji sheet, the rename sheet, the card form
-    /// or the Export sheet while one is open, since the window's own alert
-    /// can't show over its sheet; and over the window otherwise.
+    /// over the flag sheet, the emoji sheet, the rename sheet, the Change Deck
+    /// sheet, the card form or the Export sheet while one is open, since the
+    /// window's own alert can't show over its sheet; and over the window
+    /// otherwise.
     private var alertPlace: AlertPlace {
         if case .newType = state.question {
             return .newTypeSheet
         }
         let isSheetOpen =
-            cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.cardForm != nil
-            || state.exporting != nil
+            cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.deckChange != nil
+            || state.cardForm != nil || state.exporting != nil
         return isSheetOpen ? .sheet : .window
     }
 
@@ -616,6 +622,12 @@ struct CardsView: View {
             return Failure(
                 title: LocalizedStringResource(
                     "Couldn't delete \(count) cards", comment: "An alert's title in the Cards window."),
+                message: error.messageInCardsWindow(actingOn: count))
+        case .changeDeck(let count):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't move \(count) cards to another deck",
+                    comment: "An alert's title in the Cards window's Change Deck sheet, after Move."),
                 message: error.messageInCardsWindow(actingOn: count))
         case .setAside(let tag):
             return Failure(
@@ -787,6 +799,8 @@ struct CardsView: View {
 
     /// The sidebar's section `section`: the cards by where they stand; the
     /// inbox, with how many things wait in it, as the menu counts them; the
+    /// decks as a tree, each parent open or closed as Lucas left it, each
+    /// deck with how many of its cards are due; the
     /// cards of each pinned tag, in Lucas's order, each with its context
     /// menu, which he drags into another order, or tags from All Tags in
     /// among them to pin them, then All Tags…, which pins tags dropped on it
@@ -811,6 +825,14 @@ struct CardsView: View {
                 )
                 .badge(model.progress?.inInbox ?? 0)
                 .tag(SidebarItem.inbox)
+            }
+        case .decks(let rows):
+            Section {
+                ForEach(rows) { row in
+                    DeckBranch(row: row, state: $state)
+                }
+            } header: {
+                Text("Decks", comment: "A section of the Cards window's sidebar: the decks, as a tree.")
             }
         case .tags(let pinned):
             Section {
@@ -1620,7 +1642,8 @@ struct CardsView: View {
     }
 
     /// What the detail says when Lucas selected several cards: how many, with
-    /// what he can do with all of them.
+    /// what he can do with all of them, one button under another, since four
+    /// in a row don't fit the detail.
     private func selectionSummary(_ rows: [CardRow]) -> some View {
         ContentUnavailableView {
             Label(
@@ -1629,13 +1652,16 @@ struct CardsView: View {
                     comment: "In the Cards window's detail, when Lucas selected several cards in the table."),
                 systemImage: "rectangle.stack")
         } actions: {
-            actionButtons
+            VStack {
+                actionButtons
+            }
         }
     }
 
     /// A button for each thing Lucas can do with what the detail shows, as
     /// the state offers them: Edit, Convert to Card, Flag…, Bury or Unbury,
-    /// Turn On or Turn Off Both Ways, Delete… and Discard…, in that order.
+    /// Turn On or Turn Off Both Ways, Change Deck…, Delete… and Discard…, in
+    /// that order.
     /// Each button calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
@@ -1665,6 +1691,9 @@ struct CardsView: View {
         }
         if actions.contains(.turnOffBothWays) {
             turnOffBothWaysButton
+        }
+        if actions.contains(.changeDeck) {
+            changeDeckButton
         }
         if actions.contains(.delete) {
             deleteButton
@@ -1791,6 +1820,24 @@ struct CardsView: View {
                 comment: "The tooltip of the Cards window's button that turns Both ways off for the cards."))
     }
 
+    /// Change Deck…, which asks which deck the selected cards move to, in the
+    /// Change Deck sheet: ⌘D, as Change Deck in Anki's browser.
+    private var changeDeckButton: some View {
+        Button(
+            String(
+                localized: "Change Deck…",
+                comment: "A button of the Cards window that moves the selected cards to another deck, asking which."
+            )
+        ) {
+            state.askToChangeDeck()
+        }
+        .keyboardShortcut("d", modifiers: .command)
+        .help(
+            Text(
+                "Change Deck… (⌘D)",
+                comment: "The tooltip of the Cards window's button that moves the cards to another deck."))
+    }
+
     /// The title of the question before Lucas deletes the cards in `rows`:
     /// the card's front when it's one, or how many when they're several.
     private func deletionTitle(for rows: [CardRow]) -> Text {
@@ -1821,6 +1868,37 @@ struct CardsView: View {
 }
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
+
+/// A deck's row in the sidebar, its title with how many of its cards are
+/// due, and the decks inside it under a disclosure triangle, open or closed
+/// as the window remembers it.
+private struct DeckBranch: View {
+    let row: CardsWindowState.DeckRow
+    @Binding var state: CardsWindowState
+
+    var body: some View {
+        if row.children.isEmpty {
+            label
+        } else {
+            DisclosureGroup(
+                isExpanded: Binding(get: { state.isDeckOpen(row.id) }, set: { state.setDeckOpen($0, row.id) })
+            ) {
+                ForEach(row.children) { child in
+                    DeckBranch(row: child, state: $state)
+                }
+            } label: {
+                label
+            }
+        }
+    }
+
+    /// Its own row, which choosing lists its cards.
+    private var label: some View {
+        Label(row.shownTitle, systemImage: CardGroup.deck(row.id).symbol)
+            .badge(row.counts.due)
+            .tag(row.item)
+    }
+}
 
 /// A type's row in the sidebar: its name, after a user type's emoji, when it
 /// has one, or else the type's symbol.

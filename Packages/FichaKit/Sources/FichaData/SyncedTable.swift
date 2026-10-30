@@ -59,6 +59,7 @@ struct SyncedTable: Sendable {
             // A JSON array, as the table keeps it.
             Field(.tags, SyncedColumn("tags", .text)),
             Field(.type, SyncedColumn("type", key: "cardType", .text)),
+            Field(.deck, SyncedColumn("deck", .textOrEmpty)),
             Field(.source, SyncedColumn("source", .text)),
             Field(.bothWays, SyncedColumn("bothWays", .boolean)),
             Field(.flag, SyncedColumn(CardKey.flagNote, .text), SyncedColumn(CardKey.flaggedAt, .time)) {
@@ -189,7 +190,7 @@ struct SyncedTable: Sendable {
                 holdsSomething: field.columns.contains { record.value(of: $0.key) != nil })
             let local = FieldChange(
                 changedAt: localTimes[field.syncedField],
-                holdsSomething: field.columns.contains { !(stored[$0.name] as DatabaseValue).isNull })
+                holdsSomething: try field.columns.contains { try $0.holdsSomething(in: stored) })
             guard incoming.wins(over: local) else {
                 continue
             }
@@ -279,6 +280,10 @@ struct SyncedColumn: Sendable {
     /// What the column holds, and so how the record holds it.
     enum Kind: Sendable, Equatable {
         case text
+        /// Text the row keeps empty for nothing, as a card keeps Default as
+        /// its deck, which the record holds as nothing, so that a record from
+        /// before the column, which lacks it, holds what the row would.
+        case textOrEmpty
         /// True or false, which the record holds as 1 or 0.
         case boolean
         case integer
@@ -303,12 +308,24 @@ struct SyncedColumn: Sendable {
         self.kind = kind
     }
 
+    /// Whether the column of `row`, of the table, holds something, which the
+    /// record holds too.
+    func holdsSomething(in row: Row) throws -> Bool {
+        switch kind {
+        case .textOrEmpty: try row.decode(forColumn: name) as String != ""
+        default: !(row[name] as DatabaseValue).isNull
+        }
+    }
+
     /// The value the record holds for the column of `row`, of the table, or
     /// nil for none.
     func value(in row: Row, in db: Database) throws -> ICloudValue? {
         switch kind {
         case .text:
             return (try row.decode(forColumn: name) as String?).map(ICloudValue.string)
+        case .textOrEmpty:
+            let text: String = try row.decode(forColumn: name)
+            return text.isEmpty ? nil : .string(text)
         case .boolean:
             return (try row.decode(forColumn: name) as Bool?).map { .int($0 ? 1 : 0) }
         case .integer:
@@ -334,9 +351,11 @@ struct SyncedColumn: Sendable {
     /// holds something else than the column does.
     func databaseValue(in record: ICloudRecord, in db: Database) throws -> DatabaseValue? {
         switch (kind, record.value(of: key)) {
+        case (.textOrEmpty, nil):
+            return "".databaseValue
         case (_, nil):
             return .null
-        case (.text, .string(let text)?):
+        case (.text, .string(let text)?), (.textOrEmpty, .string(let text)?):
             return text.databaseValue
         case (.boolean, .int(let number)?) where number == 0 || number == 1:
             return (number == 1).databaseValue

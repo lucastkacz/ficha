@@ -27,6 +27,9 @@ public struct Card: Sendable, Equatable, Encodable {
     public let frontSound: SoundName?
     /// The back's sound, or nil when it has none.
     public let backSound: SoundName?
+    /// The deck it lives in, by its whole name, its levels joined by `::`,
+    /// or `Deck.defaultName`, which is empty, for Default.
+    public let deck: String
     public let tags: [String]
     public let source: String?
     /// When it came in: when the user approved it in a refine session, or created it.
@@ -78,6 +81,7 @@ extension Card {
         backImage = try fileName(in: row, column: ImageName.columns.back, ofCard: id)
         frontSound = try fileName(in: row, column: SoundName.columns.front, ofCard: id)
         backSound = try fileName(in: row, column: SoundName.columns.back, ofCard: id)
+        deck = try row.decode(forColumn: "deck")
         tags = try tagsFromJSON(try row.decode(forColumn: "tags"))
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")

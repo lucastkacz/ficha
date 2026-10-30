@@ -730,9 +730,9 @@ extension ChangeToSend {
 }
 
 extension ICloudRecord {
-    /// Its place among the records of a fetch as they're applied: tags, the
-    /// settings that decide progress, the choice of what syncs and the user's
-    /// card types; then the changes to tags, in the order they were made, so
+    /// Its place among the records of a fetch as they're applied: tags,
+    /// decks, the settings that decide progress, the choice of what syncs and
+    /// the user's card types; then the changes to tags, in the order they were made, so
     /// that each applies to the tags as the fetch left them and to the cards
     /// as the device held them when it heard of it (`TagChanges.swift`); then
     /// captures, then cards, then the review log, so that what a record
@@ -741,7 +741,7 @@ extension ICloudRecord {
     /// was made.
     fileprivate func applyingRank() throws -> (Int, Int64) {
         switch SyncedRow.RecordType(rawValue: type) {
-        case .tag, .progressSettings, .syncChoice, .userType: return (0, 0)
+        case .tag, .deck, .progressSettings, .syncChoice, .userType: return (0, 0)
         case .tagChange:
             guard let madeAt = try time("madeAt") else {
                 throw unreadable("A change to a tag from iCloud doesn't say when it was made")

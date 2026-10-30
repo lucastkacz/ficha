@@ -1233,6 +1233,116 @@ enum Schema {
                     END;
                     """)
         }
+        migrator.registerMigration("v31 decks") { db in
+            // Each card lives in exactly one deck (ADR 0024), which it names
+            // by its whole name, its levels joined by `::`, as it names its
+            // tags (ADR 0021), or by Default's, '', which no name the user
+            // types is, since a blank one is refused. A parent exists through
+            // the decks inside it. Every card from before this migration is
+            // in Default, with its tags as they were, and nothing waits to be
+            // sent for it: adding a column keeps the table, with its triggers.
+            try db.alter(table: "card") { table in
+                table.add(column: "deck", .text).notNull().defaults(to: "")
+            }
+            // A deck has a row of its own while it exists, by its whole name,
+            // or Default's, compared character by character, as a tag's: the
+            // switch it has on, "priority" or "setAside", or NULL for neither;
+            // one of Finder's seven tag colors, or NULL for none; one emoji,
+            // or NULL for none; and whether the user chose it to sync, which
+            // it isn't until they tick it. Unlike a tag's, a deck's row needn't
+            // hold anything, so a deck the user makes stays while it has no
+            // cards. The `tag` table keeps its switches and its choice to sync
+            // as they were, for Lucas's tags to carry over to decks.
+            try db.create(table: "deck") { table in
+                table.primaryKey("name", .text)
+                table.column("switchedOn", .text)
+                    .check(sql: "switchedOn IN ('priority', 'setAside')")
+                table.column("color", .text)
+                    .check(sql: "color IN ('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray')")
+                table.column("emoji", .text)
+                table.column("chosenToSync", .boolean).notNull().defaults(to: false)
+            }
+            // A card's deck is one of its fields, `deck` as `SyncedField`
+            // names it, of which the latest change wins: the trigger of "v21
+            // changes recorded to sync" that records a change to a card, made
+            // again with it.
+            let cardFields = [
+                ("front", ["front"]), ("back", ["back"]), ("frontImage", ["frontImage"]),
+                ("backImage", ["backImage"]), ("frontSound", ["frontSound"]), ("backSound", ["backSound"]),
+                ("tags", ["tags"]), ("type", ["type"]), ("source", ["source"]), ("bothWays", ["bothWays"]),
+                ("flag", ["flagNote", "flaggedAt"]), ("burial", ["buriedAt"]), ("deck", ["deck"]),
+            ]
+            let changedCardFields = cardFields.map { field, columns in
+                "SELECT '\(field)' AS field WHERE \(columns.map { "OLD.\($0) IS NOT NEW.\($0)" }.joined(separator: " OR "))"
+            }.joined(separator: " UNION ALL ")
+            let anyCardColumnChanged = cardFields.flatMap(\.1).map { "OLD.\($0) IS NOT NEW.\($0)" }
+                .joined(separator: " OR ")
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            let isOn = "(SELECT isOn FROM syncDevice)"
+            try db.execute(
+                sql: """
+                    DROP TRIGGER sync_card_updated;
+                    CREATE TRIGGER sync_card_updated AFTER UPDATE ON card
+                    WHEN \(recording) AND (\(anyCardColumnChanged)) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'card', NEW.uuid, field, (SELECT at FROM syncWrite) FROM (\(changedCardFields)) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'card' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'card', NEW.uuid, 0 WHERE \(isOn);
+                    END;
+                    """)
+            // A deck syncs as a record of its own, "deck", as `SyncedRow`
+            // names it, named by its name, whatever selective sync chooses, as
+            // a tag's row does (ADR 0020), each of its fields, `switchedOn`,
+            // `color`, `emoji` and `chosenToSync` as `SyncedField` names them,
+            // keeping its latest change. Its triggers are a tag's, from "v29
+            // pinned tags", as it comes in and changes, a field changed as the
+            // row comes in when it holds something, and a user type's, from
+            // "v28 card types of the user's own", as it's deleted: its record
+            // goes, which waits to be sent whether sync is on or not.
+            let deckFields = [
+                ("switchedOn", "IS NOT NULL"), ("color", "IS NOT NULL"), ("emoji", "IS NOT NULL"), ("chosenToSync", ""),
+            ]
+            let deckFieldsHoldingSomething = deckFields.map { field, holds in
+                "SELECT '\(field)' AS field WHERE NEW.\(field) \(holds)"
+            }.joined(separator: " UNION ALL ")
+            let changedDeckFields = deckFields.map { field, _ in
+                "SELECT '\(field)' AS field WHERE OLD.\(field) IS NOT NEW.\(field)"
+            }.joined(separator: " UNION ALL ")
+            let anyDeckFieldChanged = deckFields.map { field, _ in "OLD.\(field) IS NOT NEW.\(field)" }
+                .joined(separator: " OR ")
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// deck `NEW`, changed as the write happens, and leaves the deck
+            /// waiting to be sent, in place of its change before, while sync
+            /// is on.
+            func stampAndWait(_ fields: String) -> String {
+                """
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                SELECT 'deck', NEW.name, field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
+                ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                DELETE FROM syncPending WHERE recordType = 'deck' AND recordName = NEW.name;
+                INSERT INTO syncPending (recordType, recordName, isDeletion)
+                SELECT 'deck', NEW.name, 0 WHERE \(isOn);
+                """
+            }
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_deck_inserted AFTER INSERT ON deck WHEN \(recording) BEGIN
+                    \(stampAndWait(deckFieldsHoldingSomething))
+                    END;
+                    CREATE TRIGGER sync_deck_updated AFTER UPDATE ON deck WHEN \(recording) AND (\(anyDeckFieldChanged))
+                    BEGIN
+                    \(stampAndWait(changedDeckFields))
+                    END;
+                    CREATE TRIGGER sync_deck_deleted AFTER DELETE ON deck BEGIN
+                    DELETE FROM syncFieldTime WHERE recordType = 'deck' AND recordName = OLD.name;
+                    DELETE FROM syncPending WHERE recordType = 'deck' AND recordName = OLD.name;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'deck', OLD.name, 1 WHERE \(recording);
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

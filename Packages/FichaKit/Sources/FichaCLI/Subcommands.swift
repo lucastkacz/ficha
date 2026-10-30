@@ -121,7 +121,9 @@ struct CardsCommand: EngineCommand {
         abstract: "List your cards, in the order you approved them, and whether each goes both ways.",
         discussion: """
             Every card says in "bothWays" whether it goes both ways, coming back first too, its back on top, once \
-            you've met it; `ficha approve` and `ficha fix` set it. A flagged card has your note on what to fix in \
+            you've met it; `ficha approve` and `ficha fix` set it. Every card names in "deck" the deck it lives \
+            in, by its whole name, as "Idiomas::Inglés", or "" for Default, where a card lives when it has no \
+            other deck. A flagged card has your note on what to fix in \
             "flag", a buried one says when you buried it in "buriedAt", and one set aside lists in "setAsideBy" the \
             tags you set aside in the Cards window that it's set aside by: its own, or tags its tags sit inside. A \
             card's "type" is word, concept, quote or question, or a type \
