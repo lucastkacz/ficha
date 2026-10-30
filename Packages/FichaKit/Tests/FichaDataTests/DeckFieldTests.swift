@@ -65,6 +65,36 @@ struct DeckFieldTests {
         #expect(windowAfterTheDeckWent.cardForm?.draft.deck == Deck.defaultName)
     }
 
+    // Default is a deck the sidebar chose like any other.
+    @Test(
+        "with Default chosen in the sidebar, a new card's form starts in Default, whatever the last card was added to")
+    func aNewCardStartsInDefaultWhenTheSidebarChoseIt() throws {
+        try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+        var window = openWindow(lastDeckAddedTo: "Arte")
+        window.choose(.cards(.deck(Deck.defaultName)))
+
+        window.openNewCardForm()
+
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
+        #expect(window.cardForm?.draft.deck == Deck.defaultName)
+    }
+
+    // A tag doesn't say where a card lives.
+    @Test("with a tag chosen in the sidebar, a new card's form starts in the deck the last card was added to")
+    func aNewCardStartsInTheLastDeckAddedToWhenTheSidebarChoseATag() throws {
+        try engine.create(
+            card(.concept, front: "La Gioconda", back: "De Leonardo.", tags: ["renacimiento"]), deck: "Arte")
+        try engine.makeDeck(named: "Música")
+        var window = openWindow(lastDeckAddedTo: "Música")
+        window.choose(.cards(.tag("renacimiento")))
+
+        window.openNewCardForm()
+
+        #expect(window.sidebarItem == .cards(.tag("renacimiento")))
+        #expect(window.cardForm?.draft.deck == "Música")
+    }
+
     @Test(
         "the form's Deck field offers Default and every deck as a tree, and New Deck… there refuses Default's name, names a deck the field then holds and offers, and Add makes it"
     )

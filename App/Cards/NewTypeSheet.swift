@@ -4,14 +4,14 @@ import SwiftUI
 
 extension View {
     /// The New Type sheet over the view while the window `state` runs asks
-    /// for a new type for `picker`, the card form's type picker or the
-    /// editor's, with `failure` as the alert over it.
+    /// for a new type for the type picker of `fields`, the card form or the
+    /// editor, with `failure` as the alert over it.
     func newTypeSheet(
-        for picker: CardsWindowState.TypePicker, _ state: Binding<CardsWindowState>, failure: Binding<Failure?>
+        for fields: CardsWindowState.CardFields, _ state: Binding<CardsWindowState>, failure: Binding<Failure?>
     ) -> some View {
         sheet(
             isPresented: Binding(
-                get: { state.wrappedValue.question == .newType(picker) },
+                get: { state.wrappedValue.question == .newType(fields) },
                 set: { if !$0 { state.wrappedValue.cancelQuestion() } })
         ) {
             NewTypeSheet(failure: failure) { name, emoji in

@@ -12,25 +12,16 @@ import Foundation
 // Save moves the card to the one the field holds, as Change Deck does.
 
 extension CardsWindowState {
-    /// A Deck field, which takes the deck New Deck… names there.
-    public enum DeckField: Sendable, Equatable {
-        /// The card form's.
-        case form
-        /// The editor's, while Lucas edits a card.
-        case editor
-    }
-
-    /// The decks the Deck field `field` offers, before New Deck…, in the
-    /// order a tree lists them: Default first, always, then every deck the
-    /// sidebar lists, and the deck the field holds, which New Deck… may have
-    /// named, with the decks it sits inside. Empty while the field isn't
-    /// there: the card form's while it's closed, and the editor's while
-    /// Lucas edits no card.
-    public func deckFieldChoices(_ field: DeckField) -> [Deck] {
-        guard let held = deck(in: field) else { return [] }
-        let listed = Dictionary(decks.map { ($0.deck.name, $0.deck) }, uniquingKeysWith: { first, _ in first })
-        let named = TagPath.lineages(of: [held] + listed.keys).subtracting([Deck.defaultName])
-        return ([Deck.defaultName] + TagPath.sortedAsTree(named)).map { listed[$0] ?? Deck(name: $0) }
+    /// The decks the Deck field of the fields `fields` offers, before New
+    /// Deck…, in the order a tree lists them: Default first, always, then
+    /// every deck the sidebar lists, and the deck the field holds, which New
+    /// Deck… may have named, with the decks it sits inside, as the Change
+    /// Deck sheet's tree lists them (`decksToChoose(adding:)`). Empty while
+    /// the field isn't there: the card form's while it's closed, and the
+    /// editor's while Lucas edits no card.
+    public func deckFieldChoices(_ fields: CardFields) -> [Deck] {
+        guard let held = deck(in: fields) else { return [] }
+        return decksToChoose(adding: [held]).flatMap(\.flattened).map(\.deck)
     }
 
     /// Moves the card Lucas edits to the deck `deck`, by its whole name, or
@@ -41,17 +32,18 @@ extension CardsWindowState {
     }
 
     /// Asks for a new deck's whole name, in the New Deck sheet, after New
-    /// Deck… in the Deck field `field`, while it's there: the card form's,
-    /// while it's open, or the editor's, while Lucas edits a card.
-    public mutating func askForNewDeck(in field: DeckField) {
-        guard deck(in: field) != nil else { return }
-        question = .newDeck(field)
+    /// Deck… in the Deck field of the fields `fields`, while they're there:
+    /// the card form's, while it's open, or the editor's, while Lucas edits a
+    /// card.
+    public mutating func askForNewDeck(in fields: CardFields) {
+        guard areOpen(fields) else { return }
+        question = .newDeck(fields)
     }
 
-    /// Puts the deck `deck`, which New Deck… named, in the Deck field
-    /// `field`, while it's there.
-    mutating func putInDeckField(_ deck: String, _ field: DeckField) {
-        switch field {
+    /// Puts the deck `deck`, which New Deck… named, in the Deck field of the
+    /// fields `fields`, while they're there.
+    mutating func putInDeckField(_ deck: String, _ fields: CardFields) {
+        switch fields {
         case .form: cardForm?.draft.deck = deck
         case .editor: setDeckInEditor(deck)
         }
@@ -67,14 +59,13 @@ extension CardsWindowState {
         return decks.contains { $0.deck.name == lastDeckAddedTo } ? lastDeckAddedTo : Deck.defaultName
     }
 
-    /// The deck the Deck field `field` holds, or nil while it isn't there.
-    private func deck(in field: DeckField) -> String? {
-        switch field {
-        case .form:
-            return cardForm?.draft.deck
-        case .editor:
-            guard case .card = editing else { return nil }
-            return editedDeck
+    /// The deck the Deck field of the fields `fields` holds, or nil while
+    /// they aren't there.
+    private func deck(in fields: CardFields) -> String? {
+        guard areOpen(fields) else { return nil }
+        switch fields {
+        case .form: return cardForm?.draft.deck
+        case .editor: return editedDeck
         }
     }
 }

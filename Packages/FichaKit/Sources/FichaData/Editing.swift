@@ -23,7 +23,7 @@ extension Engine {
             let before = try existingCard(cardID, in: db)
             _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
             if let deck {
-                _ = try updateCard(cardID, setting: "deck = ?", to: [try deckOfCards(deck, in: db)], in: db)
+                try moveCards([cardID], to: deck, in: db)
             }
             if let bothWays {
                 _ = try setBothWays(bothWays, of: cardID, in: db)

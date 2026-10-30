@@ -4,12 +4,12 @@ import SwiftUI
 
 extension View {
     /// The New Deck sheet over the view while the window `state` runs asks
-    /// for a new deck's name for `field`, the card form's Deck field or the
-    /// editor's.
-    func newDeckSheet(for field: CardsWindowState.DeckField, _ state: Binding<CardsWindowState>) -> some View {
+    /// for a new deck's name for the Deck field of `fields`, the card form
+    /// or the editor.
+    func newDeckSheet(for fields: CardsWindowState.CardFields, _ state: Binding<CardsWindowState>) -> some View {
         sheet(
             isPresented: Binding(
-                get: { state.wrappedValue.question == .newDeck(field) },
+                get: { state.wrappedValue.question == .newDeck(fields) },
                 set: { if !$0 { state.wrappedValue.cancelQuestion() } })
         ) {
             NewDeckName { name in

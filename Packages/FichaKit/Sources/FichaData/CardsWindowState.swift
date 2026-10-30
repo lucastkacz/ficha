@@ -194,6 +194,16 @@ public struct CardsWindowState: Sendable {
         public let isTicked: Bool
     }
 
+    /// The fields a card is written in, each with a type picker and a Deck
+    /// field, whose New Type… and New Deck… give them the type or the deck
+    /// their sheet makes or names.
+    public enum CardFields: Sendable, Equatable {
+        /// The card form's.
+        case form
+        /// The editor's, while Lucas edits a card.
+        case editor
+    }
+
     /// What the window asks before it acts, until Lucas confirms or cancels.
     public enum Question: Sendable, Equatable {
         /// Whether to discard this capture in the inbox.
@@ -206,9 +216,9 @@ public struct CardsWindowState: Sendable {
         /// `CardsWindowDecks.swift`.
         case changeDeck(DeckChange)
         /// A new deck's whole name, in the New Deck sheet, for the Deck field
-        /// New Deck… was chosen in, which takes it:
+        /// of the fields New Deck… was chosen in, which takes it:
         /// `CardsWindowDeckField.swift`.
-        case newDeck(DeckField)
+        case newDeck(CardFields)
         /// Which emoji this tag gets, in the emoji sheet, whose field starts
         /// with the one it has.
         case emoji(CardTag)
@@ -216,9 +226,9 @@ public struct CardsWindowState: Sendable {
         /// with its whole name, written with `::`: `CardsWindowTags.swift`.
         case renameTag(CardTag)
         /// A new type's name and emoji, in the New Type sheet, for the type
-        /// picker New Type… was chosen in, which takes it:
+        /// picker of the fields New Type… was chosen in, which takes it:
         /// `CardsWindowTypes.swift`.
-        case newType(TypePicker)
+        case newType(CardFields)
         /// Which name this user type gets, in the rename sheet, whose field
         /// starts with its name.
         case renameType(UserType)
@@ -694,6 +704,18 @@ public struct CardsWindowState: Sendable {
     public mutating func setBothWaysInEditor(_ bothWays: Bool) {
         guard case .card = editing else { return }
         editedBothWays = bothWays
+    }
+
+    /// Whether the fields `fields` are there: the card form's while it's
+    /// open, and the editor's while Lucas edits a card.
+    func areOpen(_ fields: CardFields) -> Bool {
+        switch fields {
+        case .form:
+            return cardForm != nil
+        case .editor:
+            guard case .card = editing else { return false }
+            return true
+        }
     }
 
     /// Saves the card the user edits with `content`, its images and sounds as

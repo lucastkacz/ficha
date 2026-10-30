@@ -9,7 +9,10 @@ import Foundation
 // closes while it's open. Choosing a deck lists its cards and those of every
 // deck inside it. Change Deck… moves the selected cards to the deck Lucas
 // picks in its sheet, from the same tree with Default always in it, or to one
-// he names there with New Deck…, which the move makes.
+// he names there with New Deck…, which the move makes. The Deck field, in the
+// card form and the editor (`CardsWindowDeckField.swift`), offers that tree
+// too, and its New Deck… names a deck in the New Deck sheet with the same
+// name field and the same checks, for the field to hold.
 
 extension CardsWindowState {
     /// A deck in the sidebar's tree, or in the Change Deck sheet's, with the
@@ -110,10 +113,19 @@ extension CardsWindowState {
     /// window asks no such thing.
     public var deckChoices: [DeckRow] {
         guard case .changeDeck(let change) = question else { return [] }
+        return decksToChoose(adding: change.newDecks)
+    }
+
+    /// The decks the Change Deck sheet and the Deck field offer, as a tree,
+    /// in the order a tree lists them: Default first, always, then every
+    /// deck the sidebar lists, and `named`, decks New Deck… may have named,
+    /// with the decks they sit inside, each with nothing of its own and no
+    /// cards.
+    func decksToChoose(adding named: [String]) -> [DeckRow] {
         let listed = decks.map(\.deck.name)
-        let named = TagPath.lineages(of: change.newDecks).subtracting(listed)
+        let others = TagPath.lineages(of: named).subtracting(listed + [Deck.defaultName])
         let defaultDeck = listed.contains(Deck.defaultName) ? [] : [CountedDeck.empty(Deck.defaultName)]
-        return Self.deckRows(of: defaultDeck + decks + named.map(CountedDeck.empty))
+        return Self.deckRows(of: defaultDeck + decks + others.map(CountedDeck.empty))
     }
 
     /// Asks which deck the selected cards the table lists move to, in the
@@ -176,9 +188,9 @@ extension CardsWindowState {
     /// nothing, and the sheet says why.
     public mutating func chooseNewDeck(_ text: String) {
         guard case .name(let name)? = newDeckEntry(text) else { return }
-        if case .newDeck(let field) = question {
+        if case .newDeck(let fields) = question {
             question = nil
-            putInDeckField(name, field)
+            putInDeckField(name, fields)
             return
         }
         guard case .changeDeck(var change) = question else { return }

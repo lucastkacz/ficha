@@ -100,7 +100,7 @@ extension Engine {
 /// or in Default, created at `time` from the capture with the id
 /// `captureID`, or from none when it's nil, going both ways when `bothWays`
 /// says so, and returns the card's id. Every card comes in through here, with
-/// content `CardContent` checked, and its deck as `deckOfCards(_:in:)` takes
+/// content `CardContent` checked, and its deck as `madeDeck(named:in:)` makes
 /// it. A user type deleted meanwhile is refused.
 @discardableResult
 func insertCard(
@@ -108,7 +108,7 @@ func insertCard(
     capturedAs captureID: Int64?, at time: Date, in db: Database
 ) throws -> Int64 {
     try checkExists(content.type, in: db)
-    let deck = try deckOfCards(deck, in: db)
+    let deck = try madeDeck(named: deck, in: db)
     try db.execute(
         sql: """
             INSERT INTO card (
