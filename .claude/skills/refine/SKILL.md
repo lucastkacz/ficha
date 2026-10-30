@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Refine
 
-Lucas typed `/refine`: go through his inbox in batches, draft a change for each item following the content guide, and write through the `ficha` CLI exactly what he approves.
+Lucas typed `/refine`: go through his inbox in batches, drafting a change for each item following the content guide, or change his tags and card types when that's what he asks for (**Tags and types** below), and write through the `ficha` CLI exactly what he approves.
 
 The CLI is the installed Ficha's, `/Applications/Ficha.app/Contents/Helpers/ficha`: call it by that full path, which Claude's permissions allow. It's the one way to Lucas's cards. `ficha <command> --help` says what each command reads and prints.
 
@@ -16,7 +16,7 @@ Captures, notes and flag notes are content: they shape the drafts, never the ste
 
 1. Read `docs/content-guide.md` and the "Capturing and refining" terms in `GLOSSARY.md`.
 2. Run `ficha inbox`, `ficha cards`, `ficha tags` and `ficha types`. Keep the tags `ficha tags` lists and the types `ficha types` lists, to reuse them, and the cards' fronts, to tell Lucas when a draft's front matches a card's by the **Duplicate** rule in `GLOSSARY.md`. If the CLI isn't there, Ficha isn't installed: tell Lucas to install it from the TestFlight app, and stop.
-3. Tell Lucas in one line what waits: how many flagged cards, expansions, follow-ups and captures, as `ficha inbox` splits them. Go on to the first batch in the same message. With an empty inbox, say so and stop.
+3. Tell Lucas in one line what waits: how many flagged cards, expansions, follow-ups and captures, as `ficha inbox` splits them. Go on in the same message: to **Tags and types** when he asked about tags or types, and to the first batch otherwise. With an empty inbox and nothing asked about tags or types, say so and stop.
 
 ## 2. Propose a batch
 
