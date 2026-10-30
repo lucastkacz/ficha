@@ -7,16 +7,17 @@ import UniformTypeIdentifiers
 // Deck moves them, and a deck's row, which goes inside the deck it's dropped
 // on, or to the top on the Decks section's title. `CardsWindowState` decides
 // which drops it takes (`CardsWindowDeckEdits.swift`); this file carries
-// what's dragged and draws where it lands. Tags are dragged in All Tags
-// alone, as text, with an outline of their own (`AllTagsOutline.swift`).
+// what's dragged, hands what's dropped to it as it came, and draws where it
+// lands. Tags are dragged in All Tags alone, as text, with an outline of
+// their own (`AllTagsOutline.swift`).
 
-/// What Lucas drags onto the sidebar's decks: a card of the card list, each
-/// of the selected ones when he drags one of them, or a deck's row. It stays
-/// within Ficha, under a type of its own, so no other app takes it, and the
-/// sidebar's pinned tags, which take text, don't either.
-nonisolated enum SidebarDrag: Codable, Sendable, Transferable {
-    case card(CardRow.ID)
-    case deck(String)
+/// What Lucas drags onto the sidebar's decks, as the window's state names
+/// it: a card of the card list, each of the selected ones when he drags one
+/// of them, or a deck's row. It stays within Ficha, under a type of its own,
+/// so no other app takes it, and the sidebar's pinned tags, which take text,
+/// don't either.
+nonisolated struct SidebarDrag: Codable, Sendable, Transferable {
+    let dragged: CardsWindowState.Dragged
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .sidebarDrag)
@@ -26,18 +27,17 @@ nonisolated enum SidebarDrag: Codable, Sendable, Transferable {
 
 extension UTType {
     /// The type of what Lucas drags onto the sidebar's decks, the app's own,
-    /// as its Info.plist exports it, under the bundle's identifier, so Ficha
-    /// and Ficha Dev each have theirs.
-    nonisolated static let sidebarDrag = UTType(
-        exportedAs: "\(Bundle.main.bundleIdentifier ?? "com.lucastkacz.ficha").sidebar-drag")
+    /// as its Info.plist exports it, under the app's bundle identifier, so
+    /// Ficha and Ficha Dev each have theirs.
+    nonisolated static let sidebarDrag = UTType(exportedAs: AppVariant.current.sidebarDragIdentifier)
 }
 
 /// Where Lucas drops cards or a deck in the sidebar, a deck's row or the
 /// Decks section's title, as wide as the list, highlighted while he holds
-/// them over it. `drop` takes the cards, or the deck, and says whether it
-/// took them: when it doesn't, they go back where they came from.
+/// them over it. `drop` takes what's dropped, and says whether it took it:
+/// when it doesn't, it goes back where it came from.
 private struct SidebarDropTarget: ViewModifier {
-    let drop: (_ cards: [CardRow.ID], _ deck: String?) -> Bool
+    let drop: ([CardsWindowState.Dragged]) -> Bool
     @State private var isTargeted = false
 
     func body(content: Content) -> some View {
@@ -48,17 +48,7 @@ private struct SidebarDropTarget: ViewModifier {
                 isTargeted ? AnyShapeStyle(.tint.opacity(0.3)) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 4)
             )
             .dropDestination(for: SidebarDrag.self) { items, _ in
-                var cards: [CardRow.ID] = []
-                var decks: [String] = []
-                for item in items {
-                    switch item {
-                    case .card(let id): cards.append(id)
-                    case .deck(let name): decks.append(name)
-                    }
-                }
-                // One deck's row, or cards, never both: a drag holds one kind.
-                guard decks.count <= 1, decks.isEmpty || cards.isEmpty else { return false }
-                return drop(cards, decks.first)
+                drop(items.map(\.dragged))
             } isTargeted: {
                 isTargeted = $0
             }
@@ -69,17 +59,17 @@ extension View {
     /// The view as a place in the sidebar where Lucas drops cards or a deck,
     /// highlighted while he holds them over it, which `drop` takes, saying
     /// whether it took them.
-    func takingSidebarDrops(_ drop: @escaping (_ cards: [CardRow.ID], _ deck: String?) -> Bool) -> some View {
+    func takingSidebarDrops(_ drop: @escaping ([CardsWindowState.Dragged]) -> Bool) -> some View {
         modifier(SidebarDropTarget(drop: drop))
     }
 
-    /// The view, which Lucas drags as the deck `deck`, onto another deck's
-    /// row or the Decks section's title; or as it is, when `deck` is nil, as
-    /// for Default, which stays where it is.
+    /// The view, which Lucas drags as `dragged`, a card onto a deck's row, or
+    /// a deck onto another's row or the Decks section's title; or as it is,
+    /// when `dragged` is nil, as for Default, which stays where it is.
     @ViewBuilder
-    func draggingDeck(_ deck: String?) -> some View {
-        if let deck {
-            draggable(SidebarDrag.deck(deck))
+    func dragging(_ dragged: CardsWindowState.Dragged?) -> some View {
+        if let dragged {
+            draggable(SidebarDrag(dragged: dragged))
         } else {
             self
         }

@@ -344,10 +344,9 @@ struct CardsView: View {
     /// What the question before Lucas deletes the deck of `deletion` says
     /// under its title, a sentence for each thing it does: the decks inside
     /// it that go too, and the cards in them, counted on this Mac, which go
-    /// on every device that syncs them, while a device that doesn't moves
-    /// its own to Default; and that it can't be undone, though the daily
-    /// backups hold them. The sentences follow one another as the Mac's
-    /// language joins them, with a space in English.
+    /// here and on every device that syncs them; and that it can't be
+    /// undone, though the daily backups hold them. The sentences follow one
+    /// another as the Mac's language joins them (`joinedSentences(_:)`).
     private func deckDeletionMessage(for deletion: DeckDeletion) -> String {
         var sentences: [String] = []
         if !deletion.decksInside.isEmpty {
@@ -368,15 +367,22 @@ struct CardsView: View {
             String(
                 localized: "You can't undo this, but the daily backups in Settings › Backups hold what it deletes.",
                 comment: "The last sentence of the Cards window's question before it deletes a deck."))
-        return sentences.reduce(into: "") { text, sentence in
+        return joinedSentences(sentences)
+    }
+
+    /// `sentences`, which a question before Lucas deletes tags or a deck
+    /// says under its title, one after another, as the Mac's language joins
+    /// them, with a space in English.
+    private func joinedSentences(_ sentences: [String]) -> String {
+        sentences.reduce(into: "") { text, sentence in
             text =
                 text.isEmpty
                 ? sentence
                 : String(
-                    localized: "deck-deletion.next-sentence", defaultValue: "\(text) \(sentence)",
+                    localized: "deletion.next-sentence", defaultValue: "\(text) \(sentence)",
                     comment: """
-                        Joins two sentences of the Cards window's question before it deletes a deck: what it says so \
-                        far, then the next sentence, as the language writes one sentence after another.
+                        Joins two sentences of the Cards window's question before it deletes tags or a deck: what it \
+                        says so far, then the next sentence, as the language writes one sentence after another.
                         """)
         }
     }
@@ -413,8 +419,8 @@ struct CardsView: View {
     /// under its title, a sentence for each thing it does: the tags inside
     /// them that go too, the cards that lose them, which stay; and that it
     /// can't be undone. Since decks decide what syncs, deleting tags changes
-    /// it for no card (ADR 0024). The sentences follow one
-    /// another as the Mac's language joins them, with a space in English.
+    /// it for no card (ADR 0024). The sentences follow one another as the
+    /// Mac's language joins them (`joinedSentences(_:)`).
     private func tagDeletionMessage(for deletion: TagDeletion) -> String {
         let isOne = deletion.tags.count == 1
         var sentences: [String] = []
@@ -442,17 +448,7 @@ struct CardsView: View {
             String(
                 localized: "You can't undo this.",
                 comment: "The last sentence of the Cards window's question before it deletes tags."))
-        return sentences.reduce(into: "") { text, sentence in
-            text =
-                text.isEmpty
-                ? sentence
-                : String(
-                    localized: "tag-deletion.next-sentence", defaultValue: "\(text) \(sentence)",
-                    comment: """
-                        Joins two sentences of the Cards window's question before it deletes tags: what it says so \
-                        far, then the next sentence, as the language writes one sentence after another.
-                        """)
-        }
+        return joinedSentences(sentences)
     }
 
     /// Back, which lists All Tags again in place of a tag's cards, as Lucas
@@ -932,10 +928,7 @@ struct CardsView: View {
             } header: {
                 Text("Decks", comment: "A section of the Cards window's sidebar: the decks, as a tree.")
                     // A deck dropped here goes to the top.
-                    .takingSidebarDrops { cards, deck in
-                        guard let deck, cards.isEmpty else { return false }
-                        return state.dropDeckOnDecksTitle(deck)
-                    }
+                    .takingSidebarDrops { state.dropOnDecksTitle($0) }
             }
         case .tags(let pinned):
             Section {
@@ -1364,7 +1357,7 @@ struct CardsView: View {
         } rows: {
             ForEach(rows.sorted(using: sortOrder)) { row in
                 TableRow(row)
-                    .draggable(SidebarDrag.card(row.id))
+                    .draggable(SidebarDrag(dragged: .card(row.id)))
             }
         }
         .focused($isTableFocused)
@@ -1993,11 +1986,8 @@ private struct DeckBranch: View {
         }
         .badge(row.counts.due)
         .opacity(row.isGrayed ? 0.5 : 1)
-        .takingSidebarDrops { cards, deck in
-            guard let deck else { return state.dropCards(cards, onDeck: row.id) }
-            return state.dropDeck(deck, onDeck: row.id)
-        }
-        .draggingDeck(row.isDraggable ? row.id : nil)
+        .takingSidebarDrops { state.drop($0, onDeck: row.id) }
+        .dragging(row.isDraggable ? .deck(row.id) : nil)
         .tag(row.item)
         .contextMenu {
             if let menu = state.menu(forDeck: row.id) {

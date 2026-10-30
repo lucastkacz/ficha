@@ -117,6 +117,40 @@ struct CardsWindowDeckEditsTests {
         #expect(try engine.cards().map(\.front) == ["Coliseo"])
     }
 
+    // The last card was added to Arte::Pintura, and the sidebar chose
+    // Historia. The card form's Deck field holds Arte, and Coliseo's editor
+    // Arte::Escultura, which New Deck… named.
+    @Test(
+        "after Delete…, the card form goes back to the deck a new card starts in, and the editor and the last deck added to go to Default, never naming a deck it deleted"
+    )
+    func deletingADeckTheFieldsHold() throws {
+        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        var window = engine.openCardsWindow(on: ladder, lastDeckAddedTo: "Arte::Pintura")
+        window.read(on: ladder)
+        window.choose(.cards(.deck("Historia")))
+        window.openNewCardForm()
+        var draft = try #require(window.cardForm?.draft)
+        draft.deck = "Arte"
+        window.changeDraft(draft)
+        window.select([coliseo.id])
+        window.startEditing()
+        window.setDeckInEditor("Arte::Escultura")
+
+        window.askToDeleteDeck("Arte")
+        guard case .deleteDeck(let deletion)? = window.question else {
+            Issue.record("Delete… didn't ask")
+            return
+        }
+        window.deleteDeck(deletion)
+
+        #expect(window.failure == nil)
+        #expect(window.cardForm?.draft.deck == "Historia")
+        #expect(window.editedDeck == Deck.defaultName)
+        #expect(window.lastDeckAddedTo == Deck.defaultName)
+        #expect(window.deckFieldChoices(.form).map(\.name) == [Deck.defaultName, "Historia"])
+    }
+
     // petricor and Coliseo are selected; Coliseo lives in Historia already,
     // and ojalá keeps Default in the sidebar.
     @Test(
@@ -131,15 +165,15 @@ struct CardsWindowDeckEditsTests {
         window.select([petricor.id, coliseo.id])
 
         let drops = [
-            window.dropCards([petricor.id, coliseo.id], onDeck: "Historia"),
-            window.dropCards([petricor.id, coliseo.id], onDeck: "Historia"),
-            window.dropCards([99], onDeck: "Arte"),
+            window.drop([.card(petricor.id), .card(coliseo.id)], onDeck: "Historia"),
+            window.drop([.card(petricor.id), .card(coliseo.id)], onDeck: "Historia"),
+            window.drop([.card(99)], onDeck: "Arte"),
         ]
         let moved = try engine.cards().map(\.deck)
-        let toDefault = window.dropCards([coliseo.id], onDeck: Deck.defaultName)
+        let toDefault = window.drop([.card(coliseo.id)], onDeck: Deck.defaultName)
         window.select([petricor.id])
         window.startEditing()
-        let whileEditing = window.dropCards([petricor.id], onDeck: "Arte")
+        let whileEditing = window.drop([.card(petricor.id)], onDeck: "Arte")
         window.cancelEditing()
 
         #expect(drops == [true, false, false])
@@ -162,12 +196,12 @@ struct CardsWindowDeckEditsTests {
         window.choose(.cards(.deck("Arte::Pintura")))
         window.setDeckOpen(false, "Historia")
 
-        let inside = window.dropDeck("Arte::Pintura", onDeck: "Historia")
+        let inside = window.drop([.deck("Arte::Pintura")], onDeck: "Historia")
         #expect(inside)
         #expect(window.sidebarItem == .cards(.deck("Historia::Pintura")))
         #expect(window.isDeckOpen("Historia"))
         #expect(window.deckRows.outline == ["Historia 0", "  Pintura 0"])
-        let toTheTop = window.dropDeckOnDecksTitle("Historia::Pintura")
+        let toTheTop = window.dropOnDecksTitle([.deck("Historia::Pintura")])
 
         #expect(toTheTop)
         #expect(window.sidebarItem == .cards(.deck("Pintura")))
@@ -177,24 +211,30 @@ struct CardsWindowDeckEditsTests {
     }
 
     @Test(
-        "a deck dropped on itself, on a deck inside it or on Default, Default dropped, and a deck dropped where it is already, are refused, saying nothing"
+        "a deck dropped on itself, on a deck inside it or on Default, Default dropped, a deck dropped where it is already, and a drop of cards with a deck, of two decks, of nothing or of cards on the Decks title, are refused, saying nothing"
     )
     func refusedDeckDrops() throws {
-        try approveInDeck("petricor", in: engine)
+        let petricor = try approveInDeck("petricor", in: engine)
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try approveInDeck("fuga", deck: "Música", in: engine)
         var window = openWindow()
         let rows = window.deckRows
 
         let drops = [
-            window.dropDeck("Arte", onDeck: "Arte"), window.dropDeck("Arte", onDeck: "Arte::Pintura"),
-            window.dropDeck("Arte", onDeck: Deck.defaultName), window.dropDeck(Deck.defaultName, onDeck: "Historia"),
-            window.dropDeck("Arte::Pintura", onDeck: "Arte"), window.dropDeckOnDecksTitle("Historia"),
-            window.dropDeckOnDecksTitle(Deck.defaultName),
+            window.drop([.deck("Arte")], onDeck: "Arte"), window.drop([.deck("Arte")], onDeck: "Arte::Pintura"),
+            window.drop([.deck("Arte")], onDeck: Deck.defaultName),
+            window.drop([.deck(Deck.defaultName)], onDeck: "Historia"),
+            window.drop([.deck("Arte::Pintura")], onDeck: "Arte"), window.dropOnDecksTitle([.deck("Historia")]),
+            window.dropOnDecksTitle([.deck(Deck.defaultName)]),
+            window.drop([.card(petricor.id), .deck("Arte")], onDeck: "Música"),
+            window.drop([.deck("Arte"), .deck("Historia")], onDeck: "Música"), window.drop([], onDeck: "Música"),
+            window.dropOnDecksTitle([.card(petricor.id)]),
         ]
 
-        #expect(drops == [false, false, false, false, false, false, false])
+        #expect(drops == Array(repeating: false, count: 11))
         #expect(window.deckRows == rows)
+        #expect(try engine.cards().map(\.deck) == [Deck.defaultName, "Arte::Pintura", "Historia", "Música"])
         #expect(window.failure == nil)
     }
 

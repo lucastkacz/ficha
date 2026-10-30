@@ -12,7 +12,8 @@ import Foundation
 // inside it, or to the top when it's dropped on the Decks section's title.
 // The window follows a deck it holds by name to its new one: the deck the
 // sidebar chose, the decks it closed, the deck the card form and the editor
-// hold, and the one the last card was added to.
+// hold, and the one the last card was added to; and lets go of one it
+// deleted.
 
 extension CardsWindowState.DeckMenu {
     /// Whether the menu offers Rename… and Delete…: for every deck but
@@ -83,8 +84,9 @@ extension CardsWindowState {
 
     /// Deletes the deck of `deletion`, which the window asked about and Lucas
     /// confirmed, with every deck inside it and every card in them, and
-    /// reads the cards again, or records why it couldn't. The dialog hands
-    /// `deletion` back, as Delete's hands its cards.
+    /// reads the cards again, the window letting go of them; or records why
+    /// it couldn't. The dialog hands `deletion` back, as Delete's hands its
+    /// cards.
     public mutating func deleteDeck(_ deletion: DeckDeletion) {
         question = nil
         let done = perform(.deleteDeck(deck: deletion.deck)) { engine throws(EngineError) in
@@ -92,7 +94,66 @@ extension CardsWindowState {
         }
         if done {
             read(on: ladder)
+            letGo(ofDeletedDeck: deletion.deck)
         }
+    }
+
+    /// What Lucas drags onto the sidebar's decks: a card of the card list, by
+    /// its id, each of the selected ones when he drags one of them, or a
+    /// deck's row, by its whole name.
+    public enum Dragged: Sendable, Hashable, Codable {
+        case card(CardRow.ID)
+        case deck(String)
+    }
+
+    /// Drops `dragged`, what Lucas drags, on the sidebar's deck `deck`,
+    /// Default too: cards move there, a deck goes inside it. Whether it took
+    /// the drop, as `dropCards(_:onDeck:)` and `dropDeck(_:onDeck:)` say,
+    /// and never for a drop of cards with a deck, of several decks or of
+    /// nothing, which it refuses without a word, as what's dragged goes back.
+    @discardableResult
+    public mutating func drop(_ dragged: [Dragged], onDeck deck: String) -> Bool {
+        switch Self.drop(of: dragged) {
+        case .cards(let cardIDs)?: dropCards(cardIDs, onDeck: deck)
+        case .deck(let dropped)?: dropDeck(dropped, onDeck: deck)
+        case nil: false
+        }
+    }
+
+    /// Drops `dragged`, what Lucas drags, on the Decks section's title: a
+    /// deck goes to the top. Whether it took the drop, as
+    /// `dropDeckOnDecksTitle(_:)` says, and never for cards, which go in no
+    /// deck there, nor for a drop `drop(_:onDeck:)` refuses.
+    @discardableResult
+    public mutating func dropOnDecksTitle(_ dragged: [Dragged]) -> Bool {
+        guard case .deck(let dropped)? = Self.drop(of: dragged) else { return false }
+        return dropDeckOnDecksTitle(dropped)
+    }
+
+    /// What a drop of `dragged` drops: cards alone, or one deck alone; or nil
+    /// for anything else.
+    private static func drop(of dragged: [Dragged]) -> Drop? {
+        var cardIDs: [CardRow.ID] = []
+        var decks: [String] = []
+        for item in dragged {
+            switch item {
+            case .card(let id): cardIDs.append(id)
+            case .deck(let deck): decks.append(deck)
+            }
+        }
+        if decks.isEmpty, !cardIDs.isEmpty {
+            return .cards(cardIDs)
+        }
+        if cardIDs.isEmpty, decks.count == 1, let deck = decks.first {
+            return .deck(deck)
+        }
+        return nil
+    }
+
+    /// What a drop the sidebar takes drops.
+    private enum Drop {
+        case cards([CardRow.ID])
+        case deck(String)
     }
 
     /// Drops the cards with the ids `cardIDs`, which Lucas drags from the
@@ -101,8 +162,7 @@ extension CardsWindowState {
     /// reads the cards again. Whether it took the drop: not while he edits a
     /// card, nor when none of them would move, nor when the engine couldn't
     /// move them, which it records.
-    @discardableResult
-    public mutating func dropCards(_ cardIDs: [CardRow.ID], onDeck deck: String) -> Bool {
+    private mutating func dropCards(_ cardIDs: [CardRow.ID], onDeck deck: String) -> Bool {
         guard editing == nil, listedDeck(deck) != nil, case .success(.cards(let rows))? = listing else {
             return false
         }
@@ -128,8 +188,7 @@ extension CardsWindowState {
     /// nor on the deck it sits right inside already, all of which it refuses
     /// without a word, as the row goes back; nor when the engine couldn't
     /// move it, which it records.
-    @discardableResult
-    public mutating func dropDeck(_ deck: String, onDeck target: String) -> Bool {
+    private mutating func dropDeck(_ deck: String, onDeck target: String) -> Bool {
         guard listedDeck(deck) != nil, listedDeck(target) != nil, deck != Deck.defaultName,
             target != Deck.defaultName, !TagPath.isTag(target, within: deck), TagPath.parent(of: deck) != target
         else {
@@ -142,8 +201,7 @@ extension CardsWindowState {
     /// to the top, as `dropDeck(_:onDeck:)` moves a deck inside another.
     /// Whether it took the drop: never for Default, nor for a deck at the top
     /// already, nor when the engine couldn't move it, which it records.
-    @discardableResult
-    public mutating func dropDeckOnDecksTitle(_ deck: String) -> Bool {
+    private mutating func dropDeckOnDecksTitle(_ deck: String) -> Bool {
         guard listedDeck(deck) != nil, deck != Deck.defaultName, TagPath.parent(of: deck) != nil else {
             return false
         }
@@ -177,7 +235,7 @@ extension CardsWindowState {
     /// the deck or inside it.
     private mutating func follow(_ deck: String, renamedTo name: String) {
         func renamed(_ held: String) -> String {
-            TagPath.renaming(held, from: deck, to: name) ?? held
+            deckName(held, afterRenaming: deck, to: name)
         }
         if case .cards(.deck(let chosen)) = sidebarItem {
             sidebarItem = .cards(.deck(renamed(chosen)))
@@ -187,6 +245,34 @@ extension CardsWindowState {
         if let formsDeck = cardForm?.draft.deck {
             cardForm?.draft.deck = renamed(formsDeck)
         }
+        if let setAsideFormsDeck = setAsideCardForm?.draft.deck {
+            setAsideCardForm?.draft.deck = renamed(setAsideFormsDeck)
+        }
         lastDeckAddedTo = renamed(lastDeckAddedTo)
+    }
+
+    /// Points what the window holds of decks by name away from the deck
+    /// `deck`, which Lucas deleted with every deck inside it, once it read
+    /// the cards again, each when it's the deck or inside it: the deck the
+    /// card form holds, and the one Show Card set aside, go to the deck a new
+    /// card starts in, and the editor's and the one the last card was added
+    /// to go to Default. The sidebar left it as it read them.
+    private mutating func letGo(ofDeletedDeck deck: String) {
+        func isDeleted(_ held: String) -> Bool {
+            TagPath.isTag(held, within: deck)
+        }
+        if isDeleted(lastDeckAddedTo) {
+            lastDeckAddedTo = Deck.defaultName
+        }
+        if isDeleted(editedDeck) {
+            editedDeck = Deck.defaultName
+        }
+        let startingDeck = deckANewCardStartsIn
+        if let formsDeck = cardForm?.draft.deck, isDeleted(formsDeck) {
+            cardForm?.draft.deck = startingDeck
+        }
+        if let setAsideFormsDeck = setAsideCardForm?.draft.deck, isDeleted(setAsideFormsDeck) {
+            setAsideCardForm?.draft.deck = startingDeck
+        }
     }
 }

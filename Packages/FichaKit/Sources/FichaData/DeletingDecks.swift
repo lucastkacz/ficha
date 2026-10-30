@@ -49,9 +49,7 @@ extension Engine {
             // The cards first, while the rows still say whether each syncs,
             // which decides whether its deletion is sent.
             let deleted = try cardsLiving(within: deck, in: db).map { try deleteCard($0.id, in: db) }
-            for name in try String.fetchAll(db, sql: "SELECT name FROM deck") where TagPath.isTag(name, within: deck) {
-                try db.execute(sql: "DELETE FROM deck WHERE name = ?", arguments: [name])
-            }
+            try deleteRows(ofDeck: deck, in: db)
             try recordDeckChange(.deletion(deck), in: db)
             return (deletion, deleted)
         }

@@ -175,6 +175,74 @@ final class DeckChangesSyncTests {
         }
     }
 
+    // Only Idiomas syncs, which the Mac set aside and colored purple. The
+    // iPhone made Arte, which has no card and doesn't sync. The iPhone hears
+    // of the decks' records, the old names' deletions among them, in one
+    // event of its fetch, and of the renames in another, before or after it.
+    @Test(
+        "a rename heard apart from the deletion of its deck's record, before or after it, moves what the deck has of its own there, and that it was made there",
+        arguments: [true, false])
+    func aRenameHeardApartFromItsDecksDeletion(deletionFirst: Bool) async throws {
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Idiomas")
+        try mac.engine.setAside(deck: "Idiomas")
+        try mac.engine.setColor(.purple, ofDeck: "Idiomas")
+        try iPhone.engine.makeDeck(named: "Arte")
+        try await syncBoth()
+        iPhone.iCloud.eventsByType = deletionFirst ? [[.deck], [.deckChange]] : [[.deckChange], [.deck]]
+
+        time.advance(by: minutes(1))
+        try mac.engine.renameDeck("Idiomas", to: "Lenguas")
+        time.advance(by: minutes(1))
+        try mac.engine.renameDeck("Arte", to: "Cultura")
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(
+                try device.engine.decks() == [
+                    Deck(name: "Cultura"),
+                    Deck(name: "Lenguas", switchedOn: .setAside, color: .purple, chosenToSync: true),
+                ])
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+    }
+
+    // Only Arte syncs. The iPhone adds Guernica to Arte::Pintura once the
+    // Mac deleted Arte, before it hears of it, so the Mac never holds it.
+    // The iPhone hears of the deletion of Arte's record in one event of its
+    // fetch, and of the deck's deletion in another, before or after it, and
+    // of La Gioconda's deletion last.
+    @Test(
+        "a deletion heard apart from the deletion of its deck's record, before or after it, deletes the cards there that sync, never moving one to Default",
+        arguments: [true, false])
+    func aDeletionHeardApartFromItsDecksDeletion(deletionFirst: Bool) async throws {
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: "Arte")
+        try mac.engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+        try await syncBoth()
+        iPhone.iCloud.eventsByType = deletionFirst ? [[.deck], [.deckChange]] : [[.deckChange], [.deck]]
+
+        time.advance(by: minutes(1))
+        try mac.engine.deleteDeck("Arte")
+        try await mac.syncNow()
+        try iPhone.engine.create(card(.concept, front: "Guernica", back: "De Picasso."), deck: "Arte::Pintura")
+        try await iPhone.syncNow()
+        let guernica = try #require(try records(ofType: .card).first { try $0.text("front") == "Guernica" }).id
+        // What its deletion changed, before the Mac fetches.
+        try await iPhone.send()
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.cards().isEmpty)
+            #expect(try device.engine.decks().isEmpty)
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+        #expect(iCloud.timesSent(guernica) == 1)
+        for type in [SyncedRow.RecordType.card, .deck] {
+            #expect(records(ofType: type).isEmpty)
+        }
+    }
+
     /// Syncs the Mac, then the iPhone, three times, so that what one sends
     /// as it hears the other reaches it.
     private func syncBoth() async throws {

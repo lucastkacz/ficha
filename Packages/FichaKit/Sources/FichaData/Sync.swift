@@ -512,9 +512,10 @@ public struct Sync: Sendable {
 
     /// Applies `records`, which other devices saved, or this one, as iCloud
     /// holds them now, in one write that records nothing to send back: tags
-    /// first, then the changes to tags, then captures, cards and the review
-    /// log, so that what a record refers to is there first, as
-    /// `applyingRank()` says; and then those that waited for one of them.
+    /// and decks first, then the changes to tags and decks, then captures,
+    /// cards and the review log, so that what a record refers to is there
+    /// first, as `applyingRank()` says; and then those that waited for one of
+    /// them.
     /// A change to a deck among them can delete cards (`DeckChanges.swift`),
     /// whose images and sounds no card uses then go.
     private func receiveFetched(_ records: [ICloudRecord]) throws(EngineError) {

@@ -1443,18 +1443,6 @@
     "Deck" : {
       "comment" : "In the Cards window's card form, the label of the card's deck.\nIn the Cards window, the label of a card's deck, while Lucas edits it.\nThe Import sheet's field for a deck the imported cards come into."
     },
-    "deck-deletion.next-sentence" : {
-      "comment" : "Joins two sentences of the Cards window's question before it deletes a deck: what it says so far, then the next sentence, as the language writes one sentence after another.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@"
-          }
-        }
-      }
-    },
     "Decks" : {
       "comment" : "A section of the Cards window's sidebar: the decks, as a tree."
     },
@@ -1553,6 +1541,18 @@
     },
     "Delete… (⌘⌫)" : {
       "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
+    },
+    "deletion.next-sentence" : {
+      "comment" : "Joins two sentences of the Cards window's question before it deletes tags or a deck: what it says so far, then the next sentence, as the language writes one sentence after another.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
@@ -2589,18 +2589,6 @@
     },
     "Tag every card with" : {
       "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
-    },
-    "tag-deletion.next-sentence" : {
-      "comment" : "Joins two sentences of the Cards window's question before it deletes tags: what it says so far, then the next sentence, as the language writes one sentence after another.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@"
-          }
-        }
-      }
     },
     "Tags" : {
       "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."

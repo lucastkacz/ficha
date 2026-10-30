@@ -19,10 +19,18 @@ internal import GRDB
 // syncs as one with nothing of its own, which is just a name, and the
 // deletion reaches the cards as a change to the tag, whose record stays in
 // iCloud for good (`TagChanges.swift`). A deck's record is deleted as the
-// deck is, or renamed, and its row goes on a device that hears of it, while
-// its cards wait for the change to the deck, which reaches them
-// (`DeckChanges.swift`); but a deck isn't deleted for good: a device that
-// changed it meanwhile sends it again, until it hears of the change.
+// deck is, or renamed, which is recorded as a change to the deck, and it's
+// the change that moves or deletes the deck's row and its cards on a device
+// that hears of it (`DeckChanges.swift`), with what the row has of its own
+// and whether the deck was made there: iCloud may hand a device the record's
+// deletion before the change, in an earlier event of a fetch, which then
+// leaves the row to the change. A device that holds the change already,
+// one it made or heard of that reaches the deck, deletes the row as it hears
+// of the deletion: a deck isn't deleted for good, since a device that
+// changed it meanwhile sends it again, until it hears of the change, and
+// deletes it again then, which the other devices follow. So does one that
+// made a deck of the same name since, whose row a late deletion of the old
+// record deletes too: the deletion can't say which change it came from.
 
 extension Sync {
     /// Takes `deletions`, which other devices made, in one write that records
@@ -142,10 +150,9 @@ private func receiveDeletion(of id: ICloudRecordID, type: String, at time: Date,
     }
     if type == SyncedRow.RecordType.deck.rawValue {
         // Named by its name's hash: the device finds the deck among those it
-        // knows, and its row goes, with whether it was made here, as the
-        // deleting device's did. Its cards stay, for the change to the deck
-        // to reach them (`DeckChanges.swift`).
-        if case .deck(let name)? = try syncedRow(named: id, in: db) {
+        // knows. Its row goes only once the device holds a change that
+        // reaches the deck, as the file's header says.
+        if case .deck(let name)? = try syncedRow(named: id, in: db), try holdsAChange(reaching: name, in: db) {
             try db.execute(sql: "DELETE FROM deck WHERE name = ?", arguments: [name])
         }
         return []

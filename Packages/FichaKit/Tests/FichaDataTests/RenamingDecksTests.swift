@@ -48,10 +48,11 @@ struct RenamingDecksTests {
         #expect(try engine.standing(of: gioconda.id, on: ladder) == standing)
     }
 
-    // Arte and Pintura each have a color; Pintura::Óleo has none and moves
-    // in, as Escultura did.
+    // Arte::Pintura is purple, set aside and chosen to sync; Pinturas is
+    // orange, a priority deck and not chosen. Pintura::Óleo has nothing
+    // there and moves in, as Escultura did.
     @Test(
-        "renaming a deck onto one that exists joins them, the deck there keeping what it has of its own, and so for each deck inside it"
+        "renaming a deck onto one that exists joins them, the deck there keeping what it has of its own, its switch and its choice to sync too, and so for each deck inside it"
     )
     func renamingADeckOntoOneThatExists() throws {
         try approveInDeck("La Gioconda", deck: "Pinturas::Óleo", in: engine)
@@ -59,14 +60,18 @@ struct RenamingDecksTests {
         try approveInDeck("La Piedad", deck: "Arte::Escultura", in: engine)
         try engine.makeDeck(named: "Arte::Pintura")
         try engine.setColor(.purple, ofDeck: "Arte::Pintura")
+        try engine.setAside(deck: "Arte::Pintura")
+        try engine.setChosenToSync(true, ofDeck: "Arte::Pintura")
         try engine.setColor(.orange, ofDeck: "Pinturas")
+        try engine.setPriority(true, ofDeck: "Pinturas")
         try engine.setEmoji(Emoji("🖌️"), ofDeck: "Pinturas::Óleo")
 
         try engine.renameDeck("Pinturas", to: "Arte::Pintura")
 
         #expect(
             try engine.decks() == [
-                Deck(name: "Arte"), Deck(name: "Arte::Escultura"), Deck(name: "Arte::Pintura", color: .purple),
+                Deck(name: "Arte"), Deck(name: "Arte::Escultura"),
+                Deck(name: "Arte::Pintura", switchedOn: .setAside, color: .purple, chosenToSync: true),
                 Deck(name: "Arte::Pintura::Óleo", emoji: "🖌️", inheritedColor: .purple),
             ])
         #expect(

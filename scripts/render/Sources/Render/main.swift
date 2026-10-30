@@ -832,6 +832,18 @@ func giveSampleDecksLooks(in engine: Engine) throws {
     try engine.setEmoji(try Emoji("🔬"), ofDeck: "Ciencias")
 }
 
+/// The Cards window of `model` on the sample cards' deck `deck`, its cards
+/// read, with Ciencias and Humanidades closed in the sidebar, as
+/// `cards-decks`, `cards-deck-tag` and `cards-delete-deck` start.
+func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
+    var state = model.openCardsWindow()
+    state.read(on: state.ladder)
+    state.setDeckOpen(false, "Ciencias")
+    state.setDeckOpen(false, "Humanidades")
+    state.choose(.cards(.deck(deck)))
+    return state
+}
+
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,
 /// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
 /// emoji, to the Moon landing's question; Sesgo, with none, to the two
@@ -1317,11 +1329,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: state)
         return window
     case .cardsDecks:
-        var state = model.openCardsWindow()
-        state.read(on: state.ladder)
-        state.setDeckOpen(false, "Ciencias")
-        state.setDeckOpen(false, "Humanidades")
-        state.choose(.cards(.deck("Idiomas")))
+        var state = cardsWindow(onSampleDeck: "Idiomas", of: model)
         guard case .success(.cards(let rows)) = state.listing else {
             throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
         }
@@ -1330,11 +1338,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: state)
         return window
     case .cardsDeckTag:
-        var state = model.openCardsWindow()
-        state.read(on: state.ladder)
-        state.setDeckOpen(false, "Ciencias")
-        state.setDeckOpen(false, "Humanidades")
-        state.choose(.cards(.deck("Idiomas::Español")))
+        var state = cardsWindow(onSampleDeck: "Idiomas::Español", of: model)
         state.chooseDeckTag("historia")
         guard state.chosenDeckTag == "historia" else {
             throw RenderError(
@@ -1344,11 +1348,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: state)
         return window
     case .cardsDeleteDeck:
-        var state = model.openCardsWindow()
-        state.read(on: state.ladder)
-        state.setDeckOpen(false, "Ciencias")
-        state.setDeckOpen(false, "Humanidades")
-        state.choose(.cards(.deck("Idiomas")))
+        var state = cardsWindow(onSampleDeck: "Idiomas", of: model)
         state.askToDeleteDeck("Idiomas")
         guard case .deleteDeck? = state.question else {
             throw RenderError(description: "Delete… on Idiomas asked nothing: fix SampleCards.swift.")

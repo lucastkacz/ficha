@@ -41,24 +41,101 @@ internal import GRDB
 
 /// A rename or a deletion of a tag, as a device records it, which syncs to
 /// the user's other devices.
-struct TagChange: Sendable, Equatable {
-    /// Its ID unique across devices, which its record is named by.
+struct TagChange: RecordedChange, Equatable {
+    static var table: SyncedTable { .tagChanges }
     let id: UUID
     let edit: TagEdit
-    /// When it was made, by the engine's time on the device that made it.
     let madeAt: Date
 
-    /// A change read from a row of the `tagChange` table.
     init(row: Row) throws {
+        let columns = try Self.columns(of: row, naming: "tag")
+        id = columns.id
+        edit = columns.newName.map { .rename(columns.name, to: $0) } ?? .deletion(columns.name)
+        madeAt = columns.madeAt
+    }
+}
+
+/// A rename or a deletion of a tag or a deck, as a device records it in a
+/// table of its own, which syncs to the user's other devices, each of which
+/// applies it once, as this file's header and `DeckChanges.swift`'s say.
+protocol RecordedChange: Sendable {
+    /// The table that keeps the changes of its kind.
+    static var table: SyncedTable { get }
+    /// Its ID unique across devices, which its record is named by.
+    var id: UUID { get }
+    /// When it was made, by the engine's time on the device that made it.
+    var madeAt: Date { get }
+    /// A change read from a row of its table.
+    init(row: Row) throws
+}
+
+/// What applying a change to a tag or a deck changed on a device, which the
+/// changes made after it, heard of before it, follow on.
+protocol ReachedByChanges {
+    var isEmpty: Bool { get }
+    mutating func formUnion(_ other: Self)
+}
+
+extension Set<Int64>: ReachedByChanges {}
+
+extension RecordedChange {
+    /// What a row of its table holds: its ID, the tag or the deck it changes,
+    /// under `column`, the name it renames it to, or nil for a deletion, and
+    /// when it was made.
+    static func columns(of row: Row, naming column: String) throws -> (
+        id: UUID, name: String, newName: String?, madeAt: Date
+    ) {
         let uuid: String = try row.decode(forColumn: "uuid")
         guard let id = UUID(uuidString: uuid) else {
-            throw unreadable("A change to a tag isn't named by a UUID")
+            throw unreadable("A change to a tag or a deck isn't named by a UUID")
         }
-        self.id = id
-        let tag: String = try row.decode(forColumn: "tag")
-        let newName: String? = try row.decode(forColumn: "newName")
-        edit = newName.map { .rename(tag, to: $0) } ?? .deletion(tag)
-        madeAt = try row.decode(forColumn: "madeAt")
+        return (
+            id, try row.decode(forColumn: column), try row.decode(forColumn: "newName"),
+            try row.decode(forColumn: "madeAt")
+        )
+    }
+
+    /// Takes `record`, from iCloud, of the change with this ID, in the write
+    /// `db`, which records no change to send: a change the device holds
+    /// already stays as it is; one it applied before it took a restore's
+    /// cards, whose IDs `<its table>AppliedBeforeARestore` keeps
+    /// (`dropEverythingThatSyncs(in:)`), comes in again and isn't applied;
+    /// and one new to it comes in and is applied with `apply`, to every card
+    /// and row it reaches, and then each change of its kind made after it,
+    /// which the device heard of before it, in the order they were made, to
+    /// what the ones before it reached, while they reached something, as on
+    /// the device that made them. Returns false, changing nothing, when the
+    /// record refers to a row the device doesn't hold yet, for it to wait.
+    static func take<Reached: ReachedByChanges>(
+        _ record: ICloudRecord, as id: UUID, in db: Database,
+        applying apply: (Self, _ among: Reached?) throws -> Reached
+    ) throws -> Bool {
+        let appliedBeforeARestore = try Bool.fetchOne(
+            db, sql: "SELECT EXISTS (SELECT 1 FROM \(table.name)AppliedBeforeARestore WHERE uuid = ?)",
+            arguments: [id.uuidString])
+        let isNew = try !table.holdsRow(with: id, in: db) && appliedBeforeARestore != true
+        guard try table.apply(record, toRowWith: id, in: db) else {
+            return false
+        }
+        guard isNew else {
+            return true
+        }
+        guard
+            let row = try Row.fetchOne(
+                db, sql: "SELECT * FROM \(table.name) WHERE uuid = ?", arguments: [id.uuidString])
+        else {
+            throw unreadable("A change to a tag or a deck that came from iCloud isn't there")
+        }
+        let change = try Self(row: row)
+        var reached = try apply(change, nil)
+        let later = try Row.fetchAll(
+            db, sql: "SELECT * FROM \(table.name) WHERE madeAt > ? AND uuid <> ? ORDER BY madeAt, id",
+            arguments: [change.madeAt, id.uuidString]
+        ).map(Self.init(row:))
+        for following in later where !reached.isEmpty {
+            reached.formUnion(try apply(following, reached))
+        }
+        return true
     }
 }
 
@@ -84,53 +161,21 @@ func recordTagChange(_ edit: TagEdit, following previous: Int64?, in db: Databas
 }
 
 /// Takes `record`, from iCloud, of the change to a tag with this ID, in the
-/// write `db`, which records no change to send: a change the device holds
-/// already stays as it is, one it applied before it took a restore's cards
-/// comes in again and isn't applied, and one new to it comes in and is
-/// applied. One that follows a change the device doesn't hold yet returns
-/// false, to wait for it as a record that refers to a row does, so that
-/// every device applies a write's changes in the order they were made,
-/// whatever order iCloud hands them in.
+/// write `db`, as `RecordedChange.take` says, applying one new to the device
+/// as the file's header says, as an edit of the device's own. One that
+/// follows a change the device doesn't hold yet returns false, to wait for it
+/// as a record that refers to a row does, so that every device applies a
+/// write's changes in the order they were made, whatever order iCloud hands
+/// them in.
 func applyTagChange(_ record: ICloudRecord, as id: UUID, in db: Database) throws -> Bool {
-    let isNew = try !SyncedTable.tagChanges.holdsRow(with: id, in: db) && !wasAppliedBeforeARestore(id, in: db)
-    guard try SyncedTable.tagChanges.apply(record, toRowWith: id, in: db) else {
-        return false
-    }
-    if isNew {
-        try applyHeardTagChange(id, in: db)
-    }
-    return true
-}
-
-/// Whether the device applied the change to a tag with this ID before it
-/// took a restore's cards (`dropEverythingThatSyncs(in:)`).
-private func wasAppliedBeforeARestore(_ id: UUID, in db: Database) throws -> Bool {
-    try Bool.fetchOne(
-        db, sql: "SELECT EXISTS (SELECT 1 FROM tagChangeAppliedBeforeARestore WHERE uuid = ?)",
-        arguments: [id.uuidString]) == true
-}
-
-/// Applies the change with this ID, which this device just heard of from
-/// another, in the write `db` that took it from iCloud, which records no
-/// change to send: as the file's header says, as an edit of the device's
-/// own.
-private func applyHeardTagChange(_ id: UUID, in db: Database) throws {
-    guard let row = try Row.fetchOne(db, sql: "SELECT * FROM tagChange WHERE uuid = ?", arguments: [id.uuidString])
-    else {
-        throw unreadable("A change to a tag that came from iCloud isn't there")
-    }
-    let change = try TagChange(row: row)
-    // The rows first, which a rename moves joining the tags that exist apart
-    // from the tag, as the cards carry them before it, as on the device that
-    // made it.
-    try applyToRows(change.edit, madeAt: change.madeAt, in: db)
-    var edited = try applyToCards(change.edit, madeAt: change.madeAt, among: nil, in: db)
-    let later = try Row.fetchAll(
-        db, sql: "SELECT * FROM tagChange WHERE madeAt > ? AND uuid <> ? ORDER BY madeAt, id",
-        arguments: [change.madeAt, id.uuidString]
-    ).map(TagChange.init(row:))
-    for following in later where !edited.isEmpty {
-        edited.formUnion(try applyToCards(following.edit, madeAt: following.madeAt, among: edited, in: db))
+    try TagChange.take(record, as: id, in: db) { (change, edited: Set<Int64>?) in
+        // The rows first, which a rename moves joining the tags that exist
+        // apart from the tag, as the cards carry them before it, as on the
+        // device that made it; the changes that follow on reach cards alone.
+        if edited == nil {
+            try applyToRows(change.edit, madeAt: change.madeAt, in: db)
+        }
+        return try applyToCards(change.edit, madeAt: change.madeAt, among: edited, in: db)
     }
 }
 

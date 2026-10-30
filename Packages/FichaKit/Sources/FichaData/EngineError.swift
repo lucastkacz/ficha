@@ -368,14 +368,15 @@ extension EngineError: LocalizedError {
             String(
                 localized: """
                     Default holds the cards no other deck does, so it can't be renamed, moved or deleted, and nothing \
-                    changed.
+                    changed. To go on, make a deck of your own and move Default's cards there.
                     """
             )
         case .deckNotFound(let deck):
             String(
                 localized: """
                     The deck “\(Deck.shownName(deck))” isn't there any more, maybe since another of your devices \
-                    renamed or deleted it, so nothing changed.
+                    renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or \
+                    pick another.
                     """
             )
         case .blankTypeName:

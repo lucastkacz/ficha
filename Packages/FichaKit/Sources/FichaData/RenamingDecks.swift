@@ -84,8 +84,17 @@ func checkedDeckName(renaming deck: String, to newName: String) throws(EngineErr
 private func makeDeckRename(_ deck: String, to name: String, in db: Database) throws {
     try moveRows(ofDeck: deck, to: name, among: nil, markingMadeHere: true, in: db)
     for card in try cardsLiving(within: deck, in: db) {
-        let newDeck = TagPath.renaming(card.deck, from: deck, to: name) ?? card.deck
-        _ = try updateCard(card.id, setting: "deck = ?", to: [newDeck], in: db)
+        _ = try updateCard(
+            card.id, setting: "deck = ?", to: [deckName(card.deck, afterRenaming: deck, to: name)], in: db)
     }
     try recordDeckChange(.rename(deck, to: name), in: db)
+}
+
+/// The deck `held`, by its whole name, once the deck `deck` is renamed
+/// `name`: renamed along when it's `deck` or a deck inside it, and as it is
+/// otherwise. How a card's deck follows a rename, here or as another device's
+/// change to the deck reaches this one, and what the Cards window holds of
+/// decks by name.
+func deckName(_ held: String, afterRenaming deck: String, to name: String) -> String {
+    TagPath.renaming(held, from: deck, to: name) ?? held
 }

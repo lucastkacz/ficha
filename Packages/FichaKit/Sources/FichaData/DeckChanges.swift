@@ -32,9 +32,15 @@ internal import GRDB
 // what a deck's row has of its own, records it as made when the change was,
 // or a millisecond after it last changed, as a tag's change records it
 // (`stamp(_:of:changedBy:in:)`), and an old row's record waits to be deleted,
-// as the device that made it deletes it. The changes it holds that were made
+// as the device that made it deletes it. That deletion, from the device that
+// made the change, can reach this one before the change, in an earlier event
+// of a fetch, and never deletes a row ahead of it
+// (`holdsAChange(reaching:in:)`, `SyncedDeletions.swift`): what the row has
+// of its own, whether the deck was made here and whether its cards sync are
+// the change's to move or to decide. The changes it holds that were made
 // after this one, heard before it, then follow on the cards and the rows it
-// changed, in the order they were made, as on the device that made them.
+// changed, in the order they were made, as on the device that made them
+// (`RecordedChange.take`).
 
 /// A rename or a deletion of a deck, which reaches every card that lives in
 /// it or in a deck inside it, and the decks inside it.
@@ -62,24 +68,17 @@ enum DeckEdit: Sendable, Equatable {
 
 /// A rename or a deletion of a deck, as a device records it, which syncs to
 /// the user's other devices.
-struct DeckChange: Sendable, Equatable {
-    /// Its ID unique across devices, which its record is named by.
+struct DeckChange: RecordedChange, Equatable {
+    static var table: SyncedTable { .deckChanges }
     let id: UUID
     let edit: DeckEdit
-    /// When it was made, by the engine's time on the device that made it.
     let madeAt: Date
 
-    /// A change read from a row of the `deckChange` table.
     init(row: Row) throws {
-        let uuid: String = try row.decode(forColumn: "uuid")
-        guard let id = UUID(uuidString: uuid) else {
-            throw unreadable("A change to a deck isn't named by a UUID")
-        }
-        self.id = id
-        let deck: String = try row.decode(forColumn: "deck")
-        let newName: String? = try row.decode(forColumn: "newName")
-        edit = newName.map { .rename(deck, to: $0) } ?? .deletion(deck)
-        madeAt = try row.decode(forColumn: "madeAt")
+        let columns = try Self.columns(of: row, naming: "deck")
+        id = columns.id
+        edit = columns.newName.map { .rename(columns.name, to: $0) } ?? .deletion(columns.name)
+        madeAt = columns.madeAt
     }
 }
 
@@ -93,52 +92,15 @@ func recordDeckChange(_ edit: DeckEdit, in db: Database) throws {
 }
 
 /// Takes `record`, from iCloud, of the change to a deck with this ID, in the
-/// write `db`, which records no change to send: a change the device holds
-/// already stays as it is, one it applied before it took a restore's cards
-/// comes in again and isn't applied, and one new to it comes in and is
-/// applied, as the file's header says.
+/// write `db`, as `RecordedChange.take` says, applying one new to the device
+/// as the file's header says.
 func applyDeckChange(_ record: ICloudRecord, as id: UUID, in db: Database) throws -> Bool {
-    let isNew = try !SyncedTable.deckChanges.holdsRow(with: id, in: db) && !wasAppliedBeforeARestore(id, in: db)
-    guard try SyncedTable.deckChanges.apply(record, toRowWith: id, in: db) else {
-        return false
-    }
-    if isNew {
-        try applyHeardDeckChange(id, in: db)
-    }
-    return true
-}
-
-/// Whether the device applied the change to a deck with this ID before it
-/// took a restore's cards (`dropEverythingThatSyncs(in:)`).
-private func wasAppliedBeforeARestore(_ id: UUID, in db: Database) throws -> Bool {
-    try Bool.fetchOne(
-        db, sql: "SELECT EXISTS (SELECT 1 FROM deckChangeAppliedBeforeARestore WHERE uuid = ?)",
-        arguments: [id.uuidString]) == true
-}
-
-/// Applies the change with this ID, which this device just heard of from
-/// another, in the write `db` that took it from iCloud, which records no
-/// change to send, as the file's header says, and then the changes made
-/// after it, heard before it, on what it changed.
-private func applyHeardDeckChange(_ id: UUID, in db: Database) throws {
-    guard let row = try Row.fetchOne(db, sql: "SELECT * FROM deckChange WHERE uuid = ?", arguments: [id.uuidString])
-    else {
-        throw unreadable("A change to a deck that came from iCloud isn't there")
-    }
-    let change = try DeckChange(row: row)
-    var reached = try apply(change, among: nil, in: db)
-    let later = try Row.fetchAll(
-        db, sql: "SELECT * FROM deckChange WHERE madeAt > ? AND uuid <> ? ORDER BY madeAt, id",
-        arguments: [change.madeAt, id.uuidString]
-    ).map(DeckChange.init(row:))
-    for following in later where !reached.isEmpty {
-        reached.formUnion(try apply(following, among: reached, in: db))
-    }
+    try DeckChange.take(record, as: id, in: db) { change, reached in try apply(change, among: reached, in: db) }
 }
 
 /// What applying a change to a deck changed on this device: the ids of the
 /// cards it moved, and the new names of the rows it moved.
-private struct Reached {
+private struct Reached: ReachedByChanges {
     var cards: Set<Int64> = []
     var decks: Set<String> = []
 
@@ -158,14 +120,12 @@ private struct Reached {
 private func apply(_ change: DeckChange, among reached: Reached?, in db: Database) throws -> Reached {
     let deck = change.edit.deck
     let cards = try cardsLiving(within: deck, in: db).filter { reached?.cards.contains($0.id) ?? true }
-    let rows = try String.fetchAll(db, sql: "SELECT name FROM deck").filter { name in
-        TagPath.isTag(name, within: deck) && (reached?.decks.contains(name) ?? true)
-    }
+    let rows = try rowNames(ofDeck: deck, among: reached?.decks, in: db)
     var changed = Reached()
     switch change.edit {
     case .rename(_, let name):
         for card in cards {
-            let newDeck = TagPath.renaming(card.deck, from: deck, to: name) ?? card.deck
+            let newDeck = deckName(card.deck, afterRenaming: deck, to: name)
             try db.execute(sql: "UPDATE card SET deck = ? WHERE id = ?", arguments: [newDeck, card.id])
             try stamp(.deck, of: card.row, changedBy: change.madeAt, in: db)
             try waitToBeSent(card.row, as: .saved, in: db)
@@ -195,7 +155,7 @@ private func apply(_ change: DeckChange, among reached: Reached?, in db: Databas
         for (old, new) in moved {
             let since = changedSince[old]?.times ?? [:]
             if let oldDeck = changedSince[old]?.deck, !since.isEmpty {
-                try changeOwnDecks([new], in: db) { $0.take(since.keys, of: oldDeck) }
+                try changeOwnDecks([new], in: db) { try $0.take(since.keys, of: oldDeck) }
             }
             let fields = (had[new] ?? Deck(name: new)).fieldsDiffering(from: try ownDeck(new, in: db))
             for field in fields {
@@ -221,8 +181,7 @@ private func apply(_ change: DeckChange, among reached: Reached?, in db: Databas
                 changed.cards.insert(card.id)
             }
         }
-        for name in rows {
-            try db.execute(sql: "DELETE FROM deck WHERE name = ?", arguments: [name])
+        for name in try deleteRows(ofDeck: deck, among: Set(rows), in: db) {
             try waitToBeSent(.deck(name), as: .deleted, in: db)
         }
     }
@@ -281,13 +240,10 @@ func cardsLiving(within deck: String, in db: Database) throws -> [CardInDeck] {
 func moveRows(
     ofDeck deck: String, to name: String, among rows: Set<String>?, markingMadeHere: Bool, in db: Database
 ) throws -> [(old: String, new: String)] {
-    let own = try OwnDecks(in: db)
+    let madeHere = try OwnDecks(in: db).madeHere
     let existing = try decksThatExist(apartFrom: deck, in: db)
-    let moving = own.names.filter { TagPath.isTag($0, within: deck) && (rows?.contains($0) ?? true) }.sorted()
-    let before = try moving.map { try ownDeck($0, in: db) }
-    for old in moving {
-        try db.execute(sql: "DELETE FROM deck WHERE name = ?", arguments: [old])
-    }
+    let before = try rowNames(ofDeck: deck, among: rows, in: db).sorted().map { try ownDeck($0, in: db) }
+    try deleteRows(ofDeck: deck, among: rows, in: db)
     var moved: [(old: String, new: String)] = []
     for old in before {
         guard let new = TagPath.renaming(old.name, from: deck, to: name) else {
@@ -296,10 +252,31 @@ func moveRows(
         if !existing.contains(new) {
             try save(old.named(new), in: db)
         }
-        try makeRow(ofDeck: new, madeHere: markingMadeHere || own.madeHere.contains(old.name), in: db)
+        try makeRow(ofDeck: new, madeHere: markingMadeHere || madeHere.contains(old.name), in: db)
         moved.append((old.name, new))
     }
     return moved
+}
+
+/// The names of the rows of the `deck` table of `deck` and of the decks
+/// inside it, of those among `rows`, or every one when it's nil, in `db`.
+func rowNames(ofDeck deck: String, among rows: Set<String>?, in db: Database) throws -> [String] {
+    try String.fetchAll(db, sql: "SELECT name FROM deck").filter { name in
+        TagPath.isTag(name, within: deck) && (rows?.contains(name) ?? true)
+    }
+}
+
+/// Deletes the rows of the `deck` table of `deck` and of the decks inside
+/// it, of those among `rows`, or every one when it's nil, in the write `db`,
+/// and returns their names: as a deck is deleted, or renamed, here or as
+/// another device's change to it reaches this one.
+@discardableResult
+func deleteRows(ofDeck deck: String, among rows: Set<String>? = nil, in db: Database) throws -> [String] {
+    let names = try rowNames(ofDeck: deck, among: rows, in: db)
+    for name in names {
+        try db.execute(sql: "DELETE FROM deck WHERE name = ?", arguments: [name])
+    }
+    return names
 }
 
 /// The decks that exist apart from `deck` and the decks inside it, in `db`:
@@ -310,6 +287,15 @@ func decksThatExist(apartFrom deck: String, in db: Database) throws -> Set<Strin
     let livedIn = try String.fetchAll(db, sql: "SELECT DISTINCT deck FROM card")
     return TagPath.lineages(of: (rows + livedIn).filter { !TagPath.isTag($0, within: deck) })
         .subtracting([Deck.defaultName])
+}
+
+/// Whether the device holds a change to a deck, one it made or heard of, that
+/// reaches `deck`: a rename or a deletion of it, or of a deck it sits inside.
+/// A device that holds one applied it, so a deletion of `deck`'s record
+/// heard now came after the change, or from a device that sent the deck
+/// again before it heard of it (`SyncedDeletions.swift`).
+func holdsAChange(reaching deck: String, in db: Database) throws -> Bool {
+    try String.fetchAll(db, sql: "SELECT DISTINCT deck FROM deckChange").contains { TagPath.isTag(deck, within: $0) }
 }
 
 /// Refuses `deck`, which was to be renamed, moved or deleted in `db`, when
@@ -331,15 +317,16 @@ extension Deck {
         Deck(name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync)
     }
 
-    /// Takes `fields` of what `other` has of its own.
-    fileprivate mutating func take(_ fields: some Sequence<SyncedField>, of other: Deck) {
+    /// Takes `fields` of what `other` has of its own, or throws for a field a
+    /// deck doesn't have, which no deck's row changes.
+    fileprivate mutating func take(_ fields: some Sequence<SyncedField>, of other: Deck) throws {
         for field in fields {
             switch field {
             case .switchedOn: switchedOn = other.switchedOn
             case .color: color = other.color
             case .emoji: emoji = other.emoji
             case .chosenToSync: chosenToSync = other.chosenToSync
-            default: break
+            default: throw unreadable("A deck's row holds when a field a deck doesn't have changed")
             }
         }
     }
