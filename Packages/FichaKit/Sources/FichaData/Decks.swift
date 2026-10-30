@@ -107,6 +107,13 @@ public struct Deck: Sendable, Hashable {
     static var defaultNames: [String] {
         ["Default", defaultShownName]
     }
+
+    /// Whether `level`, a level of a deck's name, is one of the names Default
+    /// goes by (`defaultNames`), ignoring case and accents, as a user type's
+    /// name is compared.
+    static func isOneOfDefaultNames(_ level: String) -> Bool {
+        defaultNames.contains { UserType.isSameName(level, as: $0) }
+    }
 }
 
 /// A deck in a tree of decks, as `deckTree(of:named:_:)` builds them: a
@@ -240,10 +247,17 @@ func checkedDeckName(_ name: String) throws(EngineError) -> String {
         throw .blankDeckName
     }
     let top = TagPath.levels(of: name).first ?? name
-    guard !Deck.defaultNames.contains(where: { UserType.isSameName(top, as: $0) }) else {
+    guard !Deck.isOneOfDefaultNames(top) else {
         throw .defaultDeckName(top)
     }
     return name
+}
+
+/// `name`, a deck cards go to as they're made, edited, moved or imported:
+/// Default, by `Deck.defaultName`, as it is, or any other deck's whole name as
+/// `checkedDeckName(_:)` cleans it up, or an error when it refuses it.
+func checkedDeckForCards(_ name: String) throws(EngineError) -> String {
+    name == Deck.defaultName ? name : try checkedDeckName(name)
 }
 
 /// Gives the deck `name` its row, with nothing of its own, in the write `db`,
@@ -252,15 +266,17 @@ func makeRow(ofDeck name: String, in db: Database) throws {
     try db.execute(sql: "INSERT INTO deck (name) VALUES (?) ON CONFLICT (name) DO NOTHING", arguments: [name])
 }
 
-/// The deck `name`, which cards go to as they're made, edited or moved, made
-/// in the write `db` if it isn't there: its whole name, its levels cleaned up
-/// as `checkedDeckName(_:)` cleans them up, with its row, unless it has one,
-/// which stays as it is; or Default, by `Deck.defaultName`, which gets none.
-/// Refuses a name `checkedDeckName(_:)` refuses.
+/// The deck `name`, which cards go to as they're made, edited, moved or
+/// imported, made in the write `db` if it isn't there: its whole name, its
+/// levels cleaned up as `checkedDeckName(_:)` cleans them up, with its row,
+/// unless it has one, which stays as it is; or Default, by
+/// `Deck.defaultName`, which gets none. Refuses a name
+/// `checkedDeckForCards(_:)` refuses.
 func madeDeck(named name: String, in db: Database) throws -> String {
-    guard name != Deck.defaultName else { return name }
-    let name = try checkedDeckName(name)
-    try makeRow(ofDeck: name, in: db)
+    let name = try checkedDeckForCards(name)
+    if name != Deck.defaultName {
+        try makeRow(ofDeck: name, in: db)
+    }
     return name
 }
 

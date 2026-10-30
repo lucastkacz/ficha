@@ -60,9 +60,10 @@ private struct ExportButtonAndSheet: ViewModifier {
 }
 
 /// The sheet the Cards window's Export button opens: a line on what an
-/// export holds, a menu of what to export, the selected cards, all cards
-/// and each tag, each with how many cards it takes, and Export…, which opens
-/// a save panel and writes the file where the user saves it.
+/// export holds, a menu of what to export, the selected cards, all cards,
+/// each deck, with the decks inside it, and each tag, each with how many
+/// cards it takes, and Export…, which opens a save panel and writes the file
+/// where the user saves it, with each card's deck.
 /// `CardsWindowState` decides what the menu offers, what it starts on and
 /// what each item takes, and the sheet draws it.
 struct ExportSheet: View {
@@ -108,6 +109,12 @@ struct ExportSheet: View {
             .fixedSize(horizontal: false, vertical: true)
             Picker(selection: chosen) {
                 ForEach(exporting.cardChoices, id: \.cards) { choice in
+                    Text(title(of: choice)).tag(choice.cards)
+                }
+                if !exporting.deckChoices.isEmpty {
+                    Divider()
+                }
+                ForEach(exporting.deckChoices, id: \.cards) { choice in
                     Text(title(of: choice)).tag(choice.cards)
                 }
                 if !exporting.tagChoices.isEmpty {
@@ -160,6 +167,13 @@ struct ExportSheet: View {
             String(
                 localized: "All cards (\(count))",
                 comment: "An item of the Export sheet's menu: every card, buried ones too, with how many.")
+        case .deck(let name):
+            String(
+                localized: "\(Deck.shownName(name)) (\(count))",
+                comment: """
+                    An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the \
+                    deck's whole name, like “Idiomas › Inglés”, and how many.
+                    """)
         case .tag(let name):
             String(
                 localized: "\(tags.first { $0.name == name }?.title ?? TagPath.shown(name)) (\(count))",
@@ -168,8 +182,9 @@ struct ExportSheet: View {
     }
 
     /// The name the save panel proposes for the file, as the state chose it:
-    /// for a tag's cards, the tag's whole name, written with " › ", as in
-    /// "economía › Argentina", since a Mac's file name can't hold a colon.
+    /// for a deck's cards or a tag's, its whole name, written with " › ", as
+    /// in "economía › Argentina", since a Mac's file name can't hold a colon,
+    /// or Default's name in the Mac's language.
     private var fileName: String {
         switch exporting.fileName {
         case .selectedCards:
@@ -180,6 +195,8 @@ struct ExportSheet: View {
             String(
                 localized: "All cards",
                 comment: "The name the Export sheet's save panel proposes for the file of all cards.")
+        case .deck(let name):
+            Deck.shownName(name)
         case .tag(let name):
             TagPath.shown(name)
         }

@@ -3,16 +3,18 @@ import FichaData
 import SwiftUI
 
 /// The pop-up of a card's deck, its Deck field, in the card form and in the
-/// card editor: each deck the window offers, Default first, then the others
-/// in the order a tree lists them, each by its whole name, as “Idiomas ›
-/// Inglés”, and last New Deck…, which opens the New Deck sheet and leaves the
-/// deck as it was until the sheet names one. `label` names it for VoiceOver,
-/// since the label beside it is a view of its own.
+/// card editor, and of the deck every card comes into, in the Import sheet:
+/// each deck the window offers, Default first, then the others in the order
+/// a tree lists them, each by its whole name, as “Idiomas › Inglés”, and last
+/// New Deck…, which asks for a new deck's name, in the New Deck sheet or in
+/// the Import sheet's preview's place, and leaves the deck as it was until
+/// one is named. `label` names it for VoiceOver, since the label beside it is
+/// a view of its own.
 struct DeckPicker: View {
-    /// The card's deck, by its whole name, or Default's.
+    /// The deck it holds, by its whole name, or Default's.
     let deck: String
-    /// The decks it offers, as `CardsWindowState.deckFieldChoices(_:)` lists
-    /// them.
+    /// The decks it offers, as `CardsWindowState.deckFieldChoices(_:)` or
+    /// `CardsWindowState.importDeckChoices` lists them.
     let decks: [Deck]
     let label: Text
     /// Picks a deck, by its whole name, or Default's.
@@ -29,7 +31,10 @@ struct DeckPicker: View {
             Divider()
             Text(
                 "New Deck…",
-                comment: "The last item of a card's Deck field in the Cards window: it asks for a new deck's name."
+                comment: """
+                    The last item of a menu of decks in the Cards window, a card's Deck field or the Import sheet's: it \
+                    asks for a new deck's name.
+                    """
             )
             .tag(Choice.newDeck)
         } label: {

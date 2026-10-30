@@ -53,8 +53,16 @@ public struct ImportedCard: Sendable, Equatable {
     public let line: Int
     /// The tags the import proposes for it, on top of its own, which the
     /// user may rename or leave out in the preview: a text file's name, or
-    /// an Anki card's deck and its note's tags.
+    /// an Anki card's note's tags.
     public let proposedTags: [String]
+    /// The deck the file puts it in, by its whole name, its levels joined by
+    /// `::` and cleaned up as `TagPath` cleans up a tag's, which the user may
+    /// rename in the preview: an Anki card's home deck, or what a text file's
+    /// Deck column holds; or nil when the file puts it in none, such as an
+    /// Anki card in Anki's Default, or a text file's card with that column
+    /// blank or missing. A card it comes into new takes it, and one of the
+    /// user's it updates keeps its own.
+    public let deck: String?
     /// Where it stood in the app the file comes from, which an import that
     /// brings progress gives it when it comes in new to Ficha: an Anki
     /// card's; nil for a text file's, which says nothing of it. For a card
@@ -81,7 +89,7 @@ public struct ImportedCard: Sendable, Equatable {
 
     public init(
         content: CardContent, typeName: String? = nil, bothWays: Bool = false, fields: Set<CardField>, line: Int,
-        proposedTags: [String] = [],
+        proposedTags: [String] = [], deck: String? = nil,
         progress: ImportedProgress? = nil, backFirstProgress: ImportedProgress? = nil, hasImagesDropped: Bool = false,
         hasSoundsDropped: Bool = false, hasUnreadableSoundsLeftOut: Bool = false
     ) {
@@ -91,6 +99,7 @@ public struct ImportedCard: Sendable, Equatable {
         self.fields = fields
         self.line = line
         self.proposedTags = proposedTags
+        self.deck = deck
         self.progress = progress
         self.backFirstProgress = backFirstProgress
         self.hasImagesDropped = hasImagesDropped

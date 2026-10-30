@@ -185,7 +185,8 @@ struct AnkiPackage {
                     // A filtered deck keeps the card's home deck and its due
                     // in `odid` and `odue`, and gives it a position of its
                     // own, below zero, as rescheduling filtered decks do.
-                    var (deck, originalDeck, originalDue) = (deckID(of: note.deck), Int64(0), Int64(0))
+                    let homeDeck = (ordinal == 1 ? note.reversedCardDeck : nil) ?? note.deck
+                    var (deck, originalDeck, originalDue) = (deckID(of: homeDeck), Int64(0), Int64(0))
                     if let filteredDeck = note.filteredDeck {
                         (deck, originalDeck, originalDue) = (deckID(of: filteredDeck), deck, due)
                         due = -100_000 + Int64(index)
@@ -225,12 +226,15 @@ struct AnkiPackage {
         Int64(1_600_000_000_000 + (noteTypes.firstIndex(of: type) ?? 0))
     }
 
-    /// The decks' names, the notes' and their parents', each once, in the
-    /// order they first come, after Default, which every collection has,
-    /// and then the filtered decks'.
+    /// The decks' names, the notes' and their reversed cards', and their
+    /// parents', each once, in the order they first come, after Default,
+    /// which every collection has, and then the filtered decks'.
     private var deckNames: [String] {
         notes.flatMap { note in
-            let parts = note.deck.components(separatedBy: "::")
+            [note.deck] + [note.reversedCardDeck].compactMap(\.self)
+        }
+        .flatMap { deck in
+            let parts = deck.components(separatedBy: "::")
             return parts.indices.map { parts[...$0].joined(separator: "::") }
         }
         .reduce(into: ["Default"]) { names, name in
@@ -477,6 +481,10 @@ struct AnkiNote {
     /// Its cards' deck, with `::` between levels: their home deck while
     /// they're in a filtered deck.
     var deck = "Default"
+    /// The home deck of its reversed card, its second template's, in place
+    /// of `deck`, or nil when it's in `deck`, as Anki lets a card move to a
+    /// deck apart from its note's other cards.
+    var reversedCardDeck: String? = nil
     var progress = Progress.new
     var queue = Queue.asItsTypeSays
     /// How its reversed card, its second template's, stands in Anki, in

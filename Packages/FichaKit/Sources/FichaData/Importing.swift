@@ -5,8 +5,8 @@ internal import ZIPFoundation
 
 /// What importing a file would do, as the engine read it, before anything
 /// changes: the cards that come in, in the file's order, how many of them
-/// repeat the user's cards, the lines it left out, the tags it proposes, and
-/// the user types it makes.
+/// repeat the user's cards, the lines it left out, the decks and the tags it
+/// proposes, and the user types it makes.
 public struct ImportPreview: Sendable, Equatable {
     /// What kind of file an import reads.
     public enum Kind: Sendable, Equatable {
@@ -33,9 +33,23 @@ public struct ImportPreview: Sendable, Equatable {
     /// The tags the import proposes to add to its cards, on top of each
     /// card's own, each once, in the order they first come: for a text
     /// file, its name without its extension, for every card; for an Anki
-    /// package, the levels of each card's deck and its note's tags, for the
-    /// cards that have them.
+    /// package, its notes' tags, for the cards that have them.
     public let proposedTags: [String]
+    /// The decks the import proposes to put the cards it brings new in, and
+    /// the decks those sit inside, by their whole names, each once, in the
+    /// order a tree lists them: an Anki package's cards' home decks, or what
+    /// a text file's Deck column holds, without the top levels named as
+    /// Default is, as Anki names its Default and the decks inside it, of the
+    /// cards that repeat none of the user's, as the user's cards were when
+    /// the file was read. A card that names no deck comes into the one
+    /// `ImportChoices.deckForCardsWithoutDeck` says, and one of the user's
+    /// that a repeated card updates keeps its own.
+    public let proposedDecks: [String]
+    /// How many of the file's cards that repeat none of the user's name no
+    /// deck, and come into the one `ImportChoices.deckForCardsWithoutDeck`
+    /// says: a text file's without a Deck column, or with it empty, and an
+    /// Anki package's in Anki's Default.
+    public let newCardsWithoutDeck: Int
     /// How many of the file's cards repeat one of the user's, by the
     /// duplicate rule, as the user's cards were when the file was read.
     public let repeatedCount: Int
@@ -210,6 +224,18 @@ public struct ImportChoices: Sendable, Equatable {
         case brought(onto: Ladder)
     }
 
+    /// The name the user gave each deck the preview proposes that they
+    /// renamed, by the proposed name: its whole name, which the import
+    /// cleans up as `Engine.makeDeck(named:)` does, and refuses as it
+    /// refuses one. A deck inside one named here takes its name, as a tag's
+    /// rename takes the tags inside it along (ADR 0021), unless it's named
+    /// here itself (`deckName(for:)`); any other comes in as it's proposed.
+    /// A deck whose name the user has takes the cards, and the import makes
+    /// any other.
+    public var deckNames: [String: String]
+    /// The deck the cards that name none come into: Default, or the one the
+    /// user chose, by its whole name, as `deckNames` gives one.
+    public var deckForCardsWithoutDeck: String
     /// The name each tag the preview proposes goes on the cards with, by the
     /// proposed name: another one, or a blank one, which leaves the tag out.
     /// A proposed tag that isn't here goes on the cards as it's proposed.
@@ -220,15 +246,37 @@ public struct ImportChoices: Sendable, Equatable {
     public var repeatedCards: RepeatedCards
     public var progress: Progress
 
-    /// The choices an import starts with in the engine: every proposed tag
-    /// as it's proposed, the repeated cards updated, and progress left out.
-    /// The Import sheet starts with progress brought for an Anki package.
+    /// The choices an import starts with in the engine: every proposed deck
+    /// and tag as it's proposed, Default for the cards that name no deck,
+    /// the repeated cards updated, and progress left out. The Import sheet
+    /// starts with progress brought for an Anki package.
     public init(
+        deckNames: [String: String] = [:], deckForCardsWithoutDeck: String = Deck.defaultName,
         tagNames: [String: String] = [:], repeatedCards: RepeatedCards = .update, progress: Progress = .leftOut
     ) {
+        self.deckNames = deckNames
+        self.deckForCardsWithoutDeck = deckForCardsWithoutDeck
         self.tagNames = tagNames
         self.repeatedCards = repeatedCards
         self.progress = progress
+    }
+
+    /// The name the deck the preview proposes as `proposed` comes in under,
+    /// as the user typed it, before the import cleans it up and checks it:
+    /// the one `deckNames` gives it; or else, inside the nearest deck
+    /// `deckNames` names, that deck's name with the levels `proposed` has
+    /// under it, so “Great Works of Art” renamed “Arte::Great Works of Art”
+    /// takes “Great Works of Art::Artists” to “Arte::Great Works of
+    /// Art::Artists”; or else `proposed`.
+    func deckName(for proposed: String) -> String {
+        for deck in TagPath.lineage(of: proposed) {
+            if let name = deckNames[deck] {
+                // `deck` is `proposed`, or a deck it sits inside, whose whole
+                // name starts `proposed`'s.
+                return name + proposed.dropFirst(deck.count)
+            }
+        }
+        return proposed
     }
 }
 
@@ -296,20 +344,23 @@ extension Engine {
             throw .unreadableFile(name, error)
         }
         if kind == .cardsFile {
-            // Every card of a text file gets a tag named after the file.
+            // Every card of a text file gets a tag named after the file. An
+            // Anki package's reader leaves Anki's Default out of its decks
+            // by the deck's id, which a text file lacks.
             let tag = file.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
-            reading = reading.proposing(tag.isEmpty ? [] : [tag])
+            reading = reading.proposing(tag.isEmpty ? [] : [tag]).outsideDefault()
         }
         return try preview(reading, of: name, kind: kind, images: images, sounds: sounds)
     }
 
     /// What importing `reading`, read from the file named `fileName`, would
-    /// do, whatever reader read it, with the tags each card proposes, and
-    /// the user types it makes: in a file that doesn't name its Type column,
-    /// a card whose type is neither one of the four nor a user type the user
-    /// has stays out instead (`ImportReading.typeColumnIsNamed`). `images`
-    /// and `sounds` are the files that came in with the file, of which the
-    /// preview holds those its cards refer to, until they're imported.
+    /// do, whatever reader read it, with the deck and the tags each card
+    /// proposes, and the user types it makes: in a file that doesn't name
+    /// its Type column, a card whose type is neither one of the four nor a
+    /// user type the user has stays out instead
+    /// (`ImportReading.typeColumnIsNamed`). `images` and `sounds` are the
+    /// files that came in with the file, of which the preview holds those its
+    /// cards refer to, until they're imported.
     func preview(
         _ fileReading: ImportReading, of fileName: String, kind: ImportPreview.Kind,
         images: [ImageName: CardImage] = [:], sounds: [SoundName: CardSound] = [:]
@@ -336,6 +387,7 @@ extension Engine {
         let images = images.filter { referredImages.contains($0.key) }
         let sounds = sounds.filter { referredSounds.contains($0.key) }
         let proposedTags = reading.cards.flatMap(\.proposedTags).uniqued()
+        let newCards = zip(reading.cards, repeated).filter { $1 == nil }.map(\.0)
         let placedCount = zip(reading.cards, repeated).count { card, repeated in
             switch (card.progress?.stage, repeated) {
             case (.learning?, nil), (.review?, nil): true
@@ -343,9 +395,7 @@ extension Engine {
             }
         }
         // A card made of two, one for each way, has the second's progress.
-        let newReversedNotes = zip(reading.cards, repeated).filter { card, repeated in
-            repeated == nil && card.backFirstProgress != nil
-        }.map(\.0)
+        let newReversedNotes = newCards.filter { $0.backFirstProgress != nil }
         // A file a card that syncs uses is in iCloud, or on its way there; any
         // other the import may send, as Ficha keeps it, or as it comes in.
         var weights: [SyncedFile: Int64] = [:]
@@ -357,7 +407,9 @@ extension Engine {
         }
         return ImportPreview(
             fileName: fileName, kind: kind, cards: reading.cards, images: images, sounds: sounds,
-            leftOut: reading.leftOut, proposedTags: proposedTags, repeatedCount: repeated.count { $0 != nil },
+            leftOut: reading.leftOut, proposedTags: proposedTags,
+            proposedDecks: TagPath.sortedAsTree(TagPath.lineages(of: newCards.compactMap(\.deck))),
+            newCardsWithoutDeck: newCards.count { $0.deck == nil }, repeatedCount: repeated.count { $0 != nil },
             placedCount: placedCount,
             reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
             reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) },
@@ -371,7 +423,11 @@ extension Engine {
     /// new cards come up for their first view in that order; each one that
     /// repeats a card of the user's updates it or is skipped. A card goes
     /// both ways as the file says, and an updated one keeps its own Both ways
-    /// when the file says nothing of it. Every card that comes in or is
+    /// when the file says nothing of it. A card that comes in new comes into
+    /// the deck it proposes, as the user named it, or into the one the user
+    /// chose for the cards that name none, and the import makes each deck the
+    /// user doesn't have; one that updates the user's keeps its deck. Every
+    /// card that comes in or is
     /// updated gets the tags it proposes, as the user named them, and its
     /// tags that repeat each other as duplicates are compared, such as
     /// “banderas” and “Banderas”, come in as one. A card's type is the one
@@ -383,7 +439,8 @@ extension Engine {
     /// saves none. The images and sounds that came with the file are kept
     /// with the cards that refer to them, and an image or a sound an updated
     /// card no longer refers to goes once no card uses it. Returns what it
-    /// did.
+    /// did. Refuses a deck's name that `Engine.makeDeck(named:)` refuses,
+    /// changing nothing.
     @discardableResult
     public func importCards(_ preview: ImportPreview, choosing choices: ImportChoices) throws(EngineError)
         -> ImportOutcome
@@ -392,6 +449,7 @@ extension Engine {
         func addedTags(_ card: ImportedCard) -> [String] {
             tagsAdded(to: card, namedAs: choices.tagNames)
         }
+        let decks = try DecksComingIn(of: preview.cards, choosing: choices)
         let repeatedCount = try read { db in try repeatedCards(of: preview.cards, in: db) }.count { $0 != nil }
         let skippedCount = choices.repeatedCards == .skip ? repeatedCount : 0
         guard preview.cards.count > skippedCount else {
@@ -414,7 +472,7 @@ extension Engine {
                     case (nil, _):
                         let type = try types.type(named: card.typeName, savingIn: db)
                         let cardID = try insertCard(
-                            try card.content(as: type, adding: addedTags(card)),
+                            try card.content(as: type, adding: addedTags(card)), deck: try decks.deck(of: card),
                             bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
                             at: importedAt, in: db)
                         if case .brought(let ladder) = choices.progress {
@@ -468,6 +526,46 @@ extension ImportChoices {
     /// from.
     var bringsProgress: Bool {
         if case .brought = progress { true } else { false }
+    }
+}
+
+/// The deck each card an import brings in new comes into, by its whole name,
+/// as the user chose: the one it proposes, under the name
+/// `ImportChoices.deckName(for:)` gives it, or else
+/// `ImportChoices.deckForCardsWithoutDeck`; each checked once, before the
+/// import changes anything.
+private struct DecksComingIn {
+    /// The deck each deck the cards propose comes in under, by the proposed
+    /// one.
+    private let byProposed: [String: String]
+    /// The deck the cards that propose none come into.
+    private let forCardsWithoutDeck: String
+
+    /// The decks of `cards`, as `choices` names them, or an error for a name
+    /// `Engine.makeDeck(named:)` refuses, the user's for a deck no card
+    /// lives in included.
+    init(of cards: [ImportedCard], choosing choices: ImportChoices) throws(EngineError) {
+        for name in choices.deckNames.values {
+            _ = try checkedDeckName(name)
+        }
+        var byProposed: [String: String] = [:]
+        for proposed in Set(cards.compactMap(\.deck)) {
+            byProposed[proposed] = try checkedDeckName(choices.deckName(for: proposed))
+        }
+        self.byProposed = byProposed
+        forCardsWithoutDeck = try checkedDeckForCards(choices.deckForCardsWithoutDeck)
+    }
+
+    /// The deck `card` comes into, or an error for a card that proposes a
+    /// deck these weren't worked out for, which no card of theirs does.
+    func deck(of card: ImportedCard) throws -> String {
+        guard let proposed = card.deck else {
+            return forCardsWithoutDeck
+        }
+        guard let deck = byProposed[proposed] else {
+            throw unreadable("The card on line \(card.line) proposes a deck the import didn't check")
+        }
+        return deck
     }
 }
 
@@ -576,14 +674,25 @@ extension ImportReading {
     /// proposes.
     fileprivate func proposing(_ tags: [String]) -> ImportReading {
         ImportReading(
+            cards: cards.map { $0.proposing(tags: ($0.proposedTags + tags).uniqued(), deck: $0.deck) },
+            leftOut: leftOut, typeColumnIsNamed: typeColumnIsNamed)
+    }
+
+    /// The reading of a text file with each card's deck without its top
+    /// levels while they're one of the names Default goes by
+    /// (`Deck.isOneOfDefaultNames(_:)`), as Anki writes its Default, and a
+    /// deck inside it, in a text file, and with no deck when that leaves no
+    /// level: so that “Default” stands for Default, and “Default::Viejas” for
+    /// “Viejas”, as an Anki package's Default and the decks inside it do.
+    fileprivate func outsideDefault() -> ImportReading {
+        ImportReading(
             cards: cards.map { card in
-                ImportedCard(
-                    content: card.content, typeName: card.typeName, bothWays: card.bothWays, fields: card.fields,
-                    line: card.line,
-                    proposedTags: (card.proposedTags + tags).uniqued(), progress: card.progress,
-                    backFirstProgress: card.backFirstProgress, hasImagesDropped: card.hasImagesDropped,
-                    hasSoundsDropped: card.hasSoundsDropped, hasUnreadableSoundsLeftOut: card.hasUnreadableSoundsLeftOut
-                )
+                var levels = TagPath.levels(of: card.deck ?? "")[...]
+                while let top = levels.first, Deck.isOneOfDefaultNames(top) {
+                    levels = levels.dropFirst()
+                }
+                return card.proposing(
+                    tags: card.proposedTags, deck: TagPath.normalized(levels.joined(separator: TagPath.separator)))
             },
             leftOut: leftOut, typeColumnIsNamed: typeColumnIsNamed)
     }
@@ -606,6 +715,16 @@ extension ImportReading {
             }
         }
         return ImportReading(cards: kept, leftOut: leftOut.sorted { $0.line < $1.line }, typeColumnIsNamed: false)
+    }
+}
+
+extension ImportedCard {
+    /// The card, proposing `tags` and `deck` instead of what it proposes.
+    fileprivate func proposing(tags: [String], deck: String?) -> ImportedCard {
+        ImportedCard(
+            content: content, typeName: typeName, bothWays: bothWays, fields: fields, line: line, proposedTags: tags,
+            deck: deck, progress: progress, backFirstProgress: backFirstProgress, hasImagesDropped: hasImagesDropped,
+            hasSoundsDropped: hasSoundsDropped, hasUnreadableSoundsLeftOut: hasUnreadableSoundsLeftOut)
     }
 }
 

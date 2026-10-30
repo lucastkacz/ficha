@@ -72,7 +72,7 @@ final class ImportingTests {
     // As Anki 2.1.55 and later write it, with the deck and the note type
     // included: Anki's tags hold no spaces, and its own subdecks are `::`.
     @Test(
-        "a file exported by Anki as Notes in Plain Text, with its headers and HTML, imports its fronts, backs and tags as plain text"
+        "a file exported by Anki as Notes in Plain Text, with its headers and HTML, imports its fronts, backs and tags as plain text, into the decks its #deck column names"
     )
     func anAnkiExportImportsAsPlainText() async throws {
         let file = try file(
@@ -102,6 +102,70 @@ final class ImportingTests {
                 ["ósmosis", "El paso del agua por una membrana semipermeable; \"<de menos a más>\" & sin energía."],
             ])
         #expect(cards.map(\.tags) == [["Biología", "célula eucariota"], ["Biología"], ["Biología"]])
+        #expect(cards.map(\.deck) == ["Biología::Células", "Biología", "Biología"])
+    }
+
+    // Anki writes its Default by that name, and a deck inside it under it.
+    @Test(
+        "a file's Deck column puts each card in its deck, one you have or one the import makes, and an empty field, Default or a deck inside Default go as an Anki package's do"
+    )
+    func aFilesDeckColumnPutsEachCardInItsDeck() async throws {
+        try engine.makeDeck(named: "Idiomas")
+        let file = try file(
+            "Palabras.txt",
+            """
+            #separator:tab
+            #columns:Front\tBack\tDeck
+            serendipia\tUn hallazgo por casualidad.\tIdiomas::Español
+            petricor\tEl olor de la lluvia.\tIdiomas
+            efímero\tQue dura poco.\t
+            lacónico\tQue dice mucho en pocas palabras.\tDefault
+            ubicuo\tQue está en todas partes.\tDefault:: Viejas
+
+            """)
+
+        let preview = try await engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Palabras": ""]))
+
+        #expect(preview.proposedDecks == ["Idiomas", "Idiomas::Español", "Viejas"])
+        #expect(
+            try engine.cards().map(\.deck) == [
+                "Idiomas::Español", "Idiomas", Deck.defaultName, Deck.defaultName, "Viejas",
+            ])
+        #expect(try engine.decks().map(\.name) == [Deck.defaultName, "Idiomas", "Idiomas::Español", "Viejas"])
+    }
+
+    // A file without headers reads its columns by their place, of which none
+    // is the deck.
+    @Test("a file without a Deck column puts its cards in the deck chosen for them, which the import makes")
+    func aFileWithoutADeckColumnPutsItsCardsInTheDeckChosen() async throws {
+        let file = try file("Palabras.txt", "inefable\tQue no se puede decir.\t\tword\t\tLecturas\n")
+
+        let preview = try await engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(deckForCardsWithoutDeck: "Idiomas:: Español"))
+
+        #expect(preview.proposedDecks == [])
+        #expect(try engine.cards().map(\.deck) == ["Idiomas::Español"])
+    }
+
+    @Test("a card the import updates keeps its deck, whatever deck the file names")
+    func anUpdatedCardKeepsItsDeck() async throws {
+        let serendipia = try approve(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
+        try engine.changeDeck(of: [serendipia.id], to: "Lecturas")
+        let file = try file(
+            "Palabras.txt",
+            """
+            #columns:Front\tBack\tDeck
+            serendipia\tUn hallazgo por casualidad.\tIdiomas
+            petricor\tEl olor de la lluvia.\tIdiomas
+
+            """)
+
+        let preview = try await engine.previewImport(of: file)
+        let outcome = try engine.importCards(preview, choosing: ImportChoices())
+
+        #expect(outcome.updated == 1)
+        #expect(try engine.cards().map(\.deck) == ["Lecturas", "Idiomas"])
     }
 
     // Unlike an Anki package's, whose runs come from what Anki shows
