@@ -175,12 +175,14 @@ struct CardsView: View {
     /// six columns to leave the tag's some room, and the detail beside it,
     /// a few buttons, can be narrower to give it: a minimum the split view
     /// keeps whenever it changes, where an ideal width counts only as the
-    /// window first opens. The panes' least widths add up to the window's
-    /// either way.
+    /// window first opens. The sidebar opens wide enough for the sample
+    /// decks' names to read whole beside their counts, after their emoji,
+    /// two levels down too, like Idiomas › Español › Rioplatense. The panes'
+    /// least widths add up to the window's either way.
     private var panes: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
+                .navigationSplitViewColumnWidth(min: 160, ideal: 260, max: 280)
                 .waiting(while: state.editing != nil)
         } content: {
             table

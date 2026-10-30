@@ -175,14 +175,22 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// An item of the Color submenu in a tag's context menu.
+    /// An item of the Color submenu in a tag's menu or a deck's.
     public struct ColorItem: Sendable, Equatable {
-        /// The color it gives the tags, or nil for None, which takes their
-        /// colors away.
+        /// The color it gives the tags or the deck, or nil for None, which
+        /// takes their own colors away.
         public let color: TagColor?
-        /// Whether it's ticked: every tag has this color, or none has one
-        /// for None.
+        /// Whether it's ticked: every tag, or the deck, has this color of its
+        /// own, or none has one for None.
         public let isTicked: Bool
+
+        /// The Color submenu's items for what the menu acts on, which has
+        /// `colors` of its own, one each: None, then Finder's seven colors in
+        /// Finder's order, with the one they all have ticked, or None when
+        /// none has one, and none ticked when they differ.
+        static func items(forOwn colors: Set<TagColor?>) -> [ColorItem] {
+            ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: colors == [$0]) }
+        }
     }
 
     /// The fields a card is written in, each with a type picker and a Deck

@@ -67,8 +67,8 @@ public enum EngineError: Error, Equatable {
     /// none of them is set aside. Everything else treats it as a card in
     /// Lucas's reviews.
     case cardSetAside(Int64, decks: [String])
-    /// What Lucas gave a tag or a user type as its emoji isn't one emoji: a
-    /// word, two emoji, a letter or nothing.
+    /// What Lucas gave a tag, a deck or a user type as its emoji isn't one
+    /// emoji: a word, two emoji, a letter or nothing.
     case notOneEmoji
     /// The tag with this name was to be renamed, or moved, inside itself or
     /// inside a tag inside it, which would make the tree loop (ADR 0021), so

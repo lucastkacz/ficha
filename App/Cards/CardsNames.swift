@@ -1,6 +1,6 @@
 import FichaCore
 import FichaData
-import Foundation
+import SwiftUI
 
 extension CardGroup {
     /// The group's name in the sidebar.
@@ -112,6 +112,67 @@ extension Deck {
     /// reads it.
     private static let defaultNameInCatalog = String(
         localized: "Default", comment: "The deck a card lives in when it has no other.")
+}
+
+/// A tag or a deck, which the app names and draws alike where it stands
+/// alone, in a capsule, a menu, the sidebar or the bar above the card list:
+/// its emoji before its name, and its group's symbol, filled and tinted with
+/// its color, each its own or else that of the tags or the decks it sits
+/// inside.
+protocol GroupWithLook {
+    /// The cards it groups, as the sidebar names them and draws their
+    /// symbol: the tag's, or the deck's.
+    var group: CardGroup { get }
+    /// The color it shows: its own, or else that of the nearest it sits
+    /// inside that has one.
+    var shownColor: TagColor? { get }
+    /// The emoji it shows, found the same way.
+    var shownEmoji: String? { get }
+}
+
+extension GroupWithLook {
+    /// How it's named where it stands alone, as in a capsule or a menu: its
+    /// emoji, when it shows one, before its whole name, written with " › ",
+    /// as in "economía › Argentina" or "🏛 Historia › Roma", or before
+    /// Default's name in the Mac's language.
+    var title: String {
+        title(shown: group.title)
+    }
+
+    /// How it's named when `shown` names it, as in a tree, by its last
+    /// level: its emoji, when it shows one, before `shown`.
+    func title(shown: String) -> String {
+        shownEmoji.map { "\($0) \(shown)" } ?? shown
+    }
+
+    /// The SF Symbol drawn before its name, in the sidebar, All Tags, the
+    /// Change Deck sheet and the bar above the card list: its group's,
+    /// filled while it shows a color, or outlined while it shows none.
+    var symbolName: String {
+        shownColor == nil ? group.symbol : "\(group.symbol).fill"
+    }
+
+    /// Its symbol (`symbolName`), tinted with the color it shows, for
+    /// SwiftUI.
+    @ViewBuilder var symbol: some View {
+        if let color = shownColor {
+            Image(systemName: symbolName).foregroundStyle(color.color)
+        } else {
+            Image(systemName: symbolName)
+        }
+    }
+}
+
+extension CardTag: GroupWithLook {
+    var group: CardGroup {
+        .tag(name)
+    }
+}
+
+extension Deck: GroupWithLook {
+    var group: CardGroup {
+        .deck(name)
+    }
 }
 
 extension DeckInTree {

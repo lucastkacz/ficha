@@ -4,16 +4,23 @@ import Foundation
 // A deck's tags in the Cards window (ADR 0024): while the sidebar chose a
 // deck, the row above the card list shows the tags its cards carry, those of
 // the decks inside it too, each with how many of them carry it, the most
-// first (`DeckTags.swift`). The ones that fit show, and "+N more" lists the
-// rest; the window's width decides how many fit, which only the view knows,
-// so it asks `deckTagsRow(fitting:)` for each count until one fits. Lucas
-// chooses one at a time, which narrows the deck's cards to those that carry
-// it or a tag inside it, with the search; choosing it again, or something
-// else in the sidebar, lists them all again.
+// first (`DeckTags.swift`). The ones that fit show, up to 15, and "+N more"
+// lists the rest; the window's width decides how many fit, which only the
+// view knows, so the state offers the rows it may show (`deckTagsRows`), the
+// most tags first, and the view shows the first that fits. Lucas chooses one
+// at a time, which narrows the deck's cards to those that carry it or a tag
+// inside it, with the search; choosing it again, or something else in the
+// sidebar, lists them all again.
 
 extension CardsWindowState {
-    /// The row of the chosen deck's tags, when `count` of them fit beside
-    /// "+N more": the tags it shows, and those "+N more" lists.
+    /// The most tags the row shows before "+N more", however wide the window:
+    /// a deck with hundreds of tags, as an Anki package can bring, gives the
+    /// view a few rows to try, not hundreds.
+    private static let mostDeckTagsShown = 15
+
+    /// A row of the chosen deck's tags, for the width that fits as many as
+    /// it shows beside "+N more": the tags it shows, and those "+N more"
+    /// lists.
     public struct DeckTagsRow: Sendable, Equatable {
         /// The tags it shows, in their order: the first that fit, the chosen
         /// one always among them, in the last place, when it would be further
@@ -24,12 +31,22 @@ extension CardsWindowState {
         public let more: [DeckTag]
     }
 
+    /// The rows of the chosen deck's tags the bar above the card list may
+    /// show, the most tags first, for the view to show the first that fits
+    /// the window's width: every tag, or the first 15 and "+N more" for the
+    /// rest, then one fewer each time, down to "+N more" alone. None while
+    /// the sidebar chose no deck, or its cards carry no tag.
+    public var deckTagsRows: [DeckTagsRow] {
+        guard !deckTags.isEmpty else { return [] }
+        return (0...min(deckTags.count, Self.mostDeckTagsShown)).reversed().map(deckTagsRow(fitting:))
+    }
+
     /// The row of the chosen deck's tags (`deckTags`) when `count` of them
     /// fit: the first `count`, the most cards first, and the rest in "+N
     /// more"; or, when Lucas chose a tag further on, the first `count - 1`
     /// and the chosen one, so that it always shows while one fits, and "+N
     /// more" lists the others.
-    public func deckTagsRow(fitting count: Int) -> DeckTagsRow {
+    private func deckTagsRow(fitting count: Int) -> DeckTagsRow {
         guard count < deckTags.count else {
             return DeckTagsRow(shown: deckTags, more: [])
         }

@@ -5,27 +5,21 @@ import SwiftUI
 /// The chosen deck's tags, in the bar above the card list (`DeckBar`): each
 /// a button drawn as its capsule, with how many of the deck's cards carry it,
 /// the most first, then "+N more", a menu of the tags that don't fit. As
-/// many fit as the pane's width holds, up to `mostShown`: the line shows the
-/// most tags that fit beside "+N more", as the review panel's line of tags
-/// does. A tag chosen narrows the card list to the deck's cards that carry
-/// it, outlined while it's chosen, and choosing it again lists them all.
-/// `CardsWindowState` decides which tags show for each count that fits, and
-/// what choosing one does (`CardsWindowDeckTags.swift`).
+/// many fit as the pane's width holds: the line shows the most tags that fit
+/// beside "+N more", as the review panel's line of tags does.
+/// `CardsWindowState` offers the lines to try, up to 15 tags, and decides
+/// what choosing a tag does (`CardsWindowDeckTags.swift`): it narrows the
+/// card list to the deck's cards that carry it, outlined while it's chosen,
+/// and choosing it again lists them all.
 struct DeckTagsRow: View {
     @Binding var state: CardsWindowState
-
-    /// The most tags the line shows before "+N more", whatever the pane's
-    /// width: the line tries each count from it down, so a deck with
-    /// hundreds of tags, as an Anki package can bring, tries a few lines,
-    /// not hundreds.
-    private static let mostShown = 15
 
     var body: some View {
         // The first line that fits shows: the most tags, then one fewer and
         // "+N more", down to "+N more" alone.
         ViewThatFits(in: .horizontal) {
-            ForEach((0...min(state.deckTags.count, Self.mostShown)).reversed(), id: \.self) { count in
-                line(state.deckTagsRow(fitting: count))
+            ForEach(state.deckTagsRows, id: \.shown.count) { row in
+                line(row)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

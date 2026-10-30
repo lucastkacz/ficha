@@ -61,10 +61,9 @@ extension CardsWindowState {
         guard !offered.isEmpty else {
             return nil
         }
-        let colors = Set(offered.map(\.color))
         return TagMenu(
             tags: offered.map(\.name), isPinned: offered.allSatisfy(\.isPinned),
-            colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: colors == [$0]) })
+            colorItems: ColorItem.items(forOwn: Set(offered.map(\.color))))
     }
 
     /// Chooses Pin to Sidebar in the context menu of `tags`, in All Tags or

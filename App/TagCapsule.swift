@@ -1,5 +1,4 @@
 import AppKit
-import FichaCore
 import FichaData
 import SwiftUI
 
@@ -72,75 +71,6 @@ extension View {
     /// when it's nil.
     func capsuleLook(tintedWith color: TagColor?) -> some View {
         modifier(CapsuleLook(color: color))
-    }
-}
-
-extension CardTag {
-    /// How the tag is named where it stands alone, as in a capsule or a
-    /// menu: its emoji, its own or else the tags' it sits inside, when it has
-    /// one, before its whole name, written with " › ", as in "economía ›
-    /// Argentina".
-    var title: String {
-        title(shown: TagPath.shown(name))
-    }
-
-    /// How the tag is named when `shown` names it, as in a tree, by its last
-    /// level: its emoji, when it shows one, before `shown`.
-    func title(shown: String) -> String {
-        shownEmoji.map { "\($0) \(shown)" } ?? shown
-    }
-
-    /// The SF Symbol drawn before the tag's name, in the sidebar and in All
-    /// Tags: the tag filled, tinted with the color it shows, its own or else
-    /// the tags' it sits inside, or outlined while it shows none.
-    var symbolName: String {
-        shownColor == nil ? "tag" : "tag.fill"
-    }
-
-    /// Its symbol (`symbolName`), tinted with the color it shows, for
-    /// SwiftUI.
-    @ViewBuilder var symbol: some View {
-        if let color = shownColor {
-            Image(systemName: symbolName).foregroundStyle(color.color)
-        } else {
-            Image(systemName: symbolName)
-        }
-    }
-}
-
-extension Deck {
-    /// How the deck is named where it stands alone, as in a capsule or the
-    /// bar above the card list: its emoji, its own or else the decks' it sits
-    /// inside, when it has one, before its whole name, written with " › ", as
-    /// in "🏛 Historia › Roma", or before Default's name in the Mac's
-    /// language.
-    var title: String {
-        title(shown: Deck.shownName(name))
-    }
-
-    /// How the deck is named when `shown` names it, as in a tree, by its last
-    /// level: its emoji, when it shows one, before `shown`.
-    func title(shown: String) -> String {
-        shownEmoji.map { "\($0) \(shown)" } ?? shown
-    }
-
-    /// The SF Symbol drawn before the deck's name, in the sidebar, the Change
-    /// Deck sheet and the bar above the card list: the deck's cards, filled
-    /// and tinted with the color it shows, its own or else the decks' it sits
-    /// inside, or outlined while it shows none, as a tag's symbol is.
-    var symbolName: String {
-        let deck = CardGroup.deck(name).symbol
-        return shownColor == nil ? deck : "\(deck).fill"
-    }
-
-    /// Its symbol (`symbolName`), tinted with the color it shows, for
-    /// SwiftUI.
-    @ViewBuilder var symbol: some View {
-        if let color = shownColor {
-            Image(systemName: symbolName).foregroundStyle(color.color)
-        } else {
-            Image(systemName: symbolName)
-        }
     }
 }
 

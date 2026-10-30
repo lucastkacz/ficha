@@ -165,10 +165,18 @@ extension CardsWindowState {
     /// Default's by `Deck.defaultName`, while the sidebar lists it; nil
     /// otherwise.
     public func menu(forDeck deck: String) -> DeckMenu? {
-        guard let listed = decks.first(where: { $0.deck.name == deck })?.deck else { return nil }
+        guard let listed = listedDeck(deck) else { return nil }
         return DeckMenu(
             deck: listed, canPrioritize: listed.canBePrioritized(amongSetAside: decks.map(\.deck).setAsideNames),
-            colorItems: ([nil] + TagColor.allCases).map { ColorItem(color: $0, isTicked: listed.color == $0) })
+            colorItems: ColorItem.items(forOwn: [listed.color]))
+    }
+
+    /// The deck `deck`, by its whole name, or Default by
+    /// `Deck.defaultName`, as the sidebar lists it, with what it has of its
+    /// own and takes from the decks it sits inside; nil while it doesn't
+    /// list it.
+    private func listedDeck(_ deck: String) -> Deck? {
+        decks.first { $0.deck.name == deck }?.deck
     }
 
     /// The menu of the deck the sidebar chose, which the Actions menu above
@@ -210,7 +218,7 @@ extension CardsWindowState {
     /// None when it's nil: gives the deck that color, or takes its own away,
     /// and reads the cards again, or records why it couldn't.
     public mutating func chooseColor(_ color: TagColor?, onDeck deck: String) {
-        guard menu(forDeck: deck) != nil else { return }
+        guard listedDeck(deck) != nil else { return }
         changeOwnDeck(as: .setDeckColor(deck: deck)) { engine throws(EngineError) in
             try engine.setColor(color, ofDeck: deck)
         }
@@ -219,7 +227,7 @@ extension CardsWindowState {
     /// Asks which emoji the deck `deck` gets, in the emoji sheet, after
     /// Emoji… in its menu, while the sidebar lists it.
     public mutating func askForEmoji(onDeck deck: String) {
-        guard let listed = decks.first(where: { $0.deck.name == deck })?.deck else { return }
+        guard let listed = listedDeck(deck) else { return }
         question = .deckEmoji(listed)
     }
 

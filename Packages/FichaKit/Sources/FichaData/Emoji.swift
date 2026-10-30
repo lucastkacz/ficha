@@ -1,8 +1,8 @@
 import Foundation
 
-/// The emoji the user gives a tag or a card type of their own: one character
-/// the Mac draws as an emoji, a flag or a family among them, without the
-/// spaces around it.
+/// The emoji the user gives a tag, a deck or a card type of their own: one
+/// character the Mac draws as an emoji, a flag or a family among them,
+/// without the spaces around it.
 public struct Emoji: Sendable, Hashable {
     /// The emoji.
     public let text: String

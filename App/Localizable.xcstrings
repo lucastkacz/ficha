@@ -1585,7 +1585,7 @@
       "comment" : "A column of the Cards window: when the card's front or back last changed."
     },
     "Emoji" : {
-      "comment" : "The field of the sheet that gives a tag or a card type an emoji."
+      "comment" : "The field of the sheet that gives a tag, a deck or a card type an emoji."
     },
     "Emoji & Symbols" : {
       "comment" : "A button beside the emoji field: it opens the Mac's emoji picker."

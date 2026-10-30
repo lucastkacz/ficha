@@ -106,7 +106,7 @@ struct CardsWindowDeckTagsTests {
     }
 
     // The window's width decides how many fit, which only the view knows: it
-    // asks the row for each count until one fits.
+    // shows the first row that fits.
     @Test(
         "the row shows the tags that fit and lists the rest in +N more, the chosen one always shown, in the last place that fits"
     )
@@ -118,18 +118,49 @@ struct CardsWindowDeckTagsTests {
         var window = openWindow()
         window.choose(.cards(.deck("Historia")))
 
-        #expect(window.deckTagsRow(fitting: 4).shown.map(\.id) == ["a", "b", "c", "d"])
-        #expect(window.deckTagsRow(fitting: 9).more.isEmpty)
-        #expect(window.deckTagsRow(fitting: 2).shown.map(\.id) == ["a", "b"])
-        #expect(window.deckTagsRow(fitting: 2).more.map(\.id) == ["c", "d"])
-        #expect(window.deckTagsRow(fitting: 0).more.map(\.id) == ["a", "b", "c", "d"])
+        #expect(
+            window.deckTagsRows.map { $0.shown.map(\.id) } == [
+                ["a", "b", "c", "d"], ["a", "b", "c"], ["a", "b"], ["a"], [],
+            ])
+        #expect(
+            window.deckTagsRows.map { $0.more.map(\.id) } == [
+                [], ["d"], ["c", "d"], ["b", "c", "d"], ["a", "b", "c", "d"],
+            ])
 
         window.chooseDeckTag("d")
 
-        #expect(window.deckTagsRow(fitting: 2).shown.map(\.id) == ["a", "d"])
-        #expect(window.deckTagsRow(fitting: 2).more.map(\.id) == ["b", "c"])
-        #expect(window.deckTagsRow(fitting: 1).shown.map(\.id) == ["d"])
-        #expect(window.deckTagsRow(fitting: 0).more.map(\.id) == ["a", "b", "c", "d"])
+        #expect(
+            window.deckTagsRows.map { $0.shown.map(\.id) } == [
+                ["a", "b", "c", "d"], ["a", "b", "d"], ["a", "d"], ["d"], [],
+            ])
+        #expect(
+            window.deckTagsRows.map { $0.more.map(\.id) } == [
+                [], ["c"], ["b", "c"], ["a", "b", "c"], ["a", "b", "c", "d"],
+            ])
+        window.choose(.cards(.all))
+        #expect(window.deckTagsRows.isEmpty)
+    }
+
+    // An Anki package can bring hundreds of tags into one deck: the view
+    // tries each row until one fits, so the state offers a few rows, not
+    // hundreds.
+    @Test("the row offers at most 15 tags, however wide the window, and +N more lists the rest")
+    func theRowOffersAtMostFifteenTags() throws {
+        let tags = (1...20).map { "t\($0 < 10 ? "0" : "")\($0)" }
+        try approveInDeck("Mayo", deck: "Historia", tags: tags, in: engine)
+        var window = openWindow()
+        window.choose(.cards(.deck("Historia")))
+
+        #expect(window.deckTagsRows.count == 16)
+        #expect(window.deckTagsRows.first?.shown.map(\.id) == Array(tags.prefix(15)))
+        #expect(window.deckTagsRows.first?.more.map(\.id) == ["t16", "t17", "t18", "t19", "t20"])
+        #expect(window.deckTagsRows.last?.shown.isEmpty == true)
+        #expect(window.deckTagsRows.last?.more.map(\.id) == tags)
+
+        window.chooseDeckTag("t20")
+
+        #expect(window.deckTagsRows.first?.shown.map(\.id) == Array(tags.prefix(14)) + ["t20"])
+        #expect(window.deckTagsRows.first?.more.map(\.id) == ["t15", "t16", "t17", "t18", "t19"])
     }
 
     private func openWindow() -> CardsWindowState {
