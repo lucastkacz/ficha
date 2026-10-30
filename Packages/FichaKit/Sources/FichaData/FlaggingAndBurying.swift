@@ -39,27 +39,31 @@ extension Engine {
     /// content `newContent` makes of the card as it is, in the write that
     /// saves it, or nothing when it throws: as a refine session's draft finds
     /// or makes the user type it names in that write (`CardTypesByName`).
-    /// `bothWays` turns Both ways on or off, as `setBothWays(_:of:)` does,
-    /// and nil leaves it as it was. Returns the card before and after.
+    /// `deck` moves it to that deck, as `edit(_:with:deck:bothWays:)` does,
+    /// and nil leaves it where it lives. `bothWays` turns Both ways on or
+    /// off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
+    /// Returns the card before and after.
     func fix(
-        _ cardID: Int64, bothWays: Bool? = nil, changingContentWith newContent: (Card, Database) throws -> CardContent
+        _ cardID: Int64, deck: String? = nil, bothWays: Bool? = nil,
+        changingContentWith newContent: (Card, Database) throws -> CardContent
     ) throws(EngineError) -> (before: Card, fixed: Card) {
         let fixedAt = time.now
         return try write { db in
             let card = try unflag(cardID, in: db)
-            let fixed = try replaceContent(of: cardID, with: newContent(card, db), at: fixedAt, in: db)
-            guard let bothWays else {
-                return (card, fixed)
+            _ = try replaceContent(of: cardID, with: newContent(card, db), at: fixedAt, in: db)
+            try move(card, to: deck, in: db)
+            if let bothWays {
+                _ = try setBothWays(bothWays, of: cardID, in: db)
             }
-            return (card, try setBothWays(bothWays, of: cardID, in: db))
+            return (card, try existingCard(cardID, in: db))
         }
     }
 
     /// Unflags a flagged card in the inbox: its flag goes and its content
     /// stays, and it goes back to Lucas's reviews, on the step its review log
-    /// puts it on, unless one of its tags, or a tag one of them sits inside,
-    /// is set aside. The review panel's ⌘Z unflags a card Lucas flagged
-    /// there. Returns the card.
+    /// puts it on, unless its deck, or a deck it sits inside, is set aside.
+    /// The review panel's ⌘Z unflags a card Lucas flagged there. Returns the
+    /// card.
     @discardableResult
     public func unflag(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in

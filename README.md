@@ -84,7 +84,7 @@ flowchart LR
 
 **Convert to Card.** When you have a moment, pick a capture in the Cards window's inbox and convert it: the card form opens beside what you jotted down, for one card or several, each in the deck you choose there, and the capture leaves the inbox once you close the form. A follow-up, what you asked about a card in the review panel, shows with its card, and its new cards start in that card's deck, with its tags, so they land beside it.
 
-**Refine.** Lucas, who builds Ficha, turns his own captures into cards another way, outside the app: he goes through his inbox with Claude, Anthropic's AI assistant, in a session he starts. Claude drafts cards for each capture, following [a guide](docs/content-guide.md) for how Lucas's cards are written, and proposes which of them go both ways, a fix for each card he flagged, and where an image or a sound he points to goes. Nothing becomes a card without his OK.
+**Refine.** Lucas, who builds Ficha, turns his own captures into cards another way, outside the app: he goes through his inbox with Claude, Anthropic's AI assistant, in a session he starts. Claude drafts cards for each capture, following [a guide](docs/content-guide.md) for how Lucas's cards are written, and proposes the deck each goes in, which of them go both ways, a fix for each card he flagged, and where an image or a sound he points to goes. Nothing becomes a card without his OK.
 
 ## Everything stays on your Mac
 

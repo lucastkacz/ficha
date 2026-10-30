@@ -8,7 +8,8 @@ import Foundation
 // through the engine's actions, as the Cards window does, so it syncs, and
 // prints what it changed. None asks first: the refine session asks Lucas. A
 // tag only labels its cards (ADR 0024): setting aside and prioritizing are a
-// deck's.
+// deck's, and `ficha tag convert-to-decks` turns the tags that said where
+// Lucas's cards lived before decks into decks, once (`TagsIntoDecks.swift`).
 
 /// `ficha tags`: lists every tag.
 struct TagsCommand: EngineCommand {
@@ -43,6 +44,7 @@ struct TagCommand: ParsableCommand {
         subcommands: [
             RenameTagCommand.self, DeleteTagsCommand.self, ClearUnusedTagsCommand.self, PinTagsCommand.self,
             UnpinTagCommand.self, MovePinnedTagsCommand.self, TagColorCommand.self, TagEmojiCommand.self,
+            ConvertTagsToDecksCommand.self,
         ]
     )
 }
@@ -209,28 +211,13 @@ struct TagColorCommand: EngineCommand {
     @Argument(help: ArgumentHelp("One of Finder's colors, or none.", valueName: "color"))
     var color: String
 
-    /// The color given, or nil for none, or an error naming the colors.
-    private func chosenColor() throws -> TagColor? {
-        if color == "none" {
-            return nil
-        }
-        guard let chosen = TagColor(rawValue: color) else {
-            throw ValidationError(
-                """
-                “\(color)” isn't a color a tag can have. Pick one of \
-                \(TagColor.allCases.map(\.rawValue).joined(separator: ", ")), or none.
-                """)
-        }
-        return chosen
-    }
-
     func validate() throws {
-        _ = try chosenColor()
+        _ = try chosenColor(color, of: "a tag")
     }
 
     func run(on engine: Engine) throws -> any Encodable {
         let tag = try PrintedTags(of: engine).existing(tag)
-        try engine.setColor(try chosenColor(), of: tag)
+        try engine.setColor(try chosenColor(color, of: "a tag"), of: tag)
         return try PrintedTags(of: engine).tag(tag)
     }
 }
@@ -253,6 +240,39 @@ struct TagEmojiCommand: EngineCommand {
         let tag = try PrintedTags(of: engine).existing(tag)
         try engine.setEmoji(try chosenEmoji(emoji), of: tag)
         return try PrintedTags(of: engine).tag(tag)
+    }
+}
+
+/// `ficha tag convert-to-decks`: turns tags into decks, once.
+struct ConvertTagsToDecksCommand: EngineCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "convert-to-decks",
+        abstract: "Turn tags into decks of the same names, moving their cards out of Default, and print what it did.",
+        discussion: """
+            It's for your tags from before decks, once. For each tag, in the order given: the tag, and each tag \
+            inside it, become decks of the same whole names, each with its tag's color, emoji, switch and choice \
+            to sync, and the tags go, their pins with them; every card still in Default that carries one of them \
+            moves to the deck of the deepest one it carries, and loses that tag and those it sits inside. A card \
+            an earlier tag moved out of Default stays there, and keeps this tag as a tag. It prints the decks it \
+            makes in "decks", each with how many cards move to it in "cards", and in "cardsWithTwoTags" the cards \
+            that carry two tags of the list, neither inside the other, each with its "id", its "front", those \
+            "tags", and the "deck" it goes to. With --preview it prints the same, and changes nothing. For \
+            example:
+
+              ficha tag convert-to-decks Idiomas historia --preview
+            """
+    )
+
+    @Argument(help: "The tags' whole names, as `ficha tags` prints them, in the order they turn into decks.")
+    var tags: [String]
+
+    @ArgumentParser.Flag(help: "Print what it would do instead, changing nothing.")
+    var preview = false
+
+    func run(on engine: Engine) throws -> any Encodable {
+        let listing = try PrintedTags(of: engine)
+        let tags = try tags.map(listing.existing)
+        return preview ? try engine.conversion(ofTags: tags) : try engine.convertTagsToDecks(tags)
     }
 }
 
@@ -314,6 +334,22 @@ struct PrintedTags {
     func tag(_ name: String) -> PrintedTag {
         tags.first { $0.name == name } ?? PrintedTag(withNothingNamed: name)
     }
+}
+
+/// The color `text` gives, by its name, or nil for none, written "none"; or
+/// an error naming the colors `what`, a tag or a deck, can have.
+func chosenColor(_ text: String, of what: String) throws -> TagColor? {
+    if text == "none" {
+        return nil
+    }
+    guard let chosen = TagColor(rawValue: text) else {
+        throw ValidationError(
+            """
+            “\(text)” isn't a color \(what) can have. Pick one of \
+            \(TagColor.allCases.map(\.rawValue).joined(separator: ", ")), or none.
+            """)
+    }
+    return chosen
 }
 
 /// The emoji `text` gives, or nil for none, written "none" or left empty; or

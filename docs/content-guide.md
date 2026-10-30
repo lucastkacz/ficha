@@ -1,8 +1,8 @@
 # Content guide
 
-How Claude drafts Lucas's cards in a refine session: what each card holds, whether it goes both ways, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
+How Claude drafts Lucas's cards in a refine session: what each card holds, which deck and tags it gets, whether it goes both ways, how long it is and how it's worded. The terms are `GLOSSARY.md`'s.
 
-Everything Claude drafts is a proposal: a card, a fix, a file on a card, Both ways on a card, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
+Everything Claude drafts is a proposal: a card with its deck, a fix, a file on a card, Both ways on a card, a discarded capture or a burial. Lucas approves, changes or rejects each one, and nothing is written without his OK.
 
 ## The five rules
 
@@ -31,11 +31,13 @@ The back of a card that goes both ways, in a fix or an expansion's new content t
 
 > **serendipia**
 > Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura …: entré a la librería por la lluvia y salí con mi libro favorito».
-> _lenguaje_ · Un podcast de etimología
+> Idiomas › Español · Un podcast de etimología
 
-## Tags
+## Decks and tags
 
-A tag is a subject, in Spanish and in lowercase: "lenguaje", "filosofía", "historia". A card has one usually, and three at most. Claude reuses the tags Lucas's cards already have, and says so when it proposes a new one, so Lucas sees it. A card that fits no subject has no tags.
+Each card goes to the deck of its subject, as in Anki: one deck, the narrowest of Lucas's that fits, such as Español inside Idiomas rather than Idiomas. Claude reuses the decks `ficha decks` lists, and says so when it proposes a new one, named as his other decks are, so Lucas sees it. A card that fits none of his subjects goes to Default.
+
+Tags are for what crosses subjects: a label that cards in different decks share, such as "etimología" on a word in Idiomas and on a question in Historia. In Spanish and in lowercase. A tag never repeats its card's deck, so a card has none usually, and three at most. Claude reuses the tags Lucas's cards already have, and says so when it proposes a new one.
 
 ## Sources
 
@@ -51,7 +53,7 @@ A card takes its capture's source as Lucas wrote it, and the review panel shows 
   - **Burying it**: when the card isn't worth the reviews it costs.
 - **A card forgotten often back first**: its note starts with "Forgotten N times back first", so Lucas misses its front when its back shows first, usually because the back fits other answers too, such as a synonym. Claude rewrites the back so that it leads to the front alone, as **Both ways** says, with clearer wording or a trick to remember it, and keeps the front. When no back within the 40 words can do that, Claude proposes switching Both ways off: that takes the back-first way out of Lucas's reviews and keeps its progress, and the front-first way stays as it is, where burying would take both.
 - **An expansion**: when what it adds fits on its card, within the 40 words, Claude proposes the card's new content. When it's another idea, like a second meaning, it becomes a card of its own.
-- **A follow-up**: it becomes cards as a capture does, and they sit beside its card: they take its card's tags, and the card stays as it is. Its text often leans on the card ("¿Y cómo se eligen?" on a card about the branches of government), so each new front says on its own what it asks.
+- **A follow-up**: it becomes cards as a capture does, and they sit beside its card: they go to its card's deck, with its card's tags, and the card stays as it is. Its text often leans on the card ("¿Y cómo se eligen?" on a card about the branches of government), so each new front says on its own what it asks.
 
 ## Images and sounds
 
@@ -64,48 +66,48 @@ A side of a card can hold an image and a sound, with its text or alone, as the g
 
 ## Examples
 
-Each example is a card: its front in bold, then its back, then its tags in italics and its source, if it has one, after a dot. Most come from Ficha Dev's sample cards, some trimmed or with an example added. After Lucas's first refine session, cards of his own replace them.
+Each example is a card: its front in bold, then its back, then its deck, as the Cards window names it, with "›" between a deck and the deck inside it, and after a dot its tags in italics, if it has any, and its source, if it has one. Most come from Ficha Dev's sample cards, some trimmed or with an example added. After Lucas's first refine session, cards of his own replace them.
 
 ### Word
 
 > **serendipia**
 > Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».
-> _lenguaje_ · Un podcast de etimología
+> Idiomas › Español · Un podcast de etimología
 
 > **Schadenfreude**
 > Palabra alemana: la alegría por la desgracia ajena. Viene de «Schaden», daño, y «Freude», alegría. Por ejemplo: «Sentí un poco de Schadenfreude cuando al que se coló en la fila lo mandaron al final».
-> _lenguaje_
+> Idiomas › Palabras prestadas · _etimología_
 
 ### Concept
 
 > **ubuntu**
 > Palabra de las lenguas bantúes del sur de África: una persona es persona a través de las demás. Se suele resumir como «soy porque somos».
-> _filosofía_
+> Humanidades › Filosofía
 
 > **La falacia del costo hundido**
 > Seguir con algo solo por lo que ya invertiste, aunque no te convenga. Lo gastado no vuelve: para decidir, mirá lo que viene.
-> _psicología_ · Pensar rápido, pensar despacio
+> Ciencias › Psicología · Pensar rápido, pensar despacio
 
 ### Quote
 
 > **Caminante, no hay camino, se hace camino al andar.**
 > Antonio Machado: el camino no está trazado de antemano; lo vas haciendo vos, con cada paso.
-> _literatura_ · Campos de Castilla
+> Humanidades › Literatura · Campos de Castilla
 
 > **Solo sé que no sé nada.**
 > Se le atribuye a Sócrates, a partir de la «Apología» de Platón: reconocer lo que no sabés es el primer paso para aprender.
-> _filosofía_
+> Humanidades › Filosofía
 
 > **La suerte está echada.**
 > Julio César, al cruzar el Rubicón con su ejército y desatar una guerra civil: la decisión está tomada y ya no hay vuelta atrás. En latín, «alea iacta est».
-> _historia_ · Suetonio, Vidas de los doce césares
+> Humanidades › Historia · _latín_ · Suetonio, Vidas de los doce césares
 
 ### Question
 
 > **¿Por qué el cielo es azul?**
 > Porque el aire dispersa mucho más la luz azul, de onda corta, que la roja, y esa luz dispersada te llega desde todo el cielo.
-> _ciencia_ · Una charla de divulgación
+> Ciencias › Naturales · Una charla de divulgación
 
 > **¿En qué año llegó el ser humano a la Luna?**
 > En 1969, con el Apolo 11: el 20 de julio, Neil Armstrong fue el primero en pisarla.
-> _historia_
+> Humanidades › Historia

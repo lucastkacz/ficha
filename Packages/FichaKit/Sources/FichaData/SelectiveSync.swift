@@ -95,7 +95,7 @@ extension Engine {
             sizes[file] = size
             return size
         }
-        let decks = deckNamesAsTree(cards.map(\.deck) + own.names, withDefault: true).map(own.deck)
+        let decks = everyDeckName(of: own, livedInBy: cards).map(own.deck)
         var weights: [String: Int64] = [:]
         for (deck, files) in filesByDeck {
             var weight: Int64 = 0

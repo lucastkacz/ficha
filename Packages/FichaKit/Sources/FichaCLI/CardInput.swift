@@ -11,8 +11,9 @@ let cardFields = """
     type (\(CardType.builtIn.map(\.writtenName).formatted(.list(type: .or).locale(Locale(identifier: "en_GB")))), \
     the name of a type of your own, which Ficha makes when you have none by that name, or null when there's \
     none), front, back, tags (a list, which can be empty) and source (null when there's none), and can have \
-    frontImage, backImage, frontSound and backSound (a file's path or name, or null), and bothWays (true or \
-    false)
+    frontImage, backImage, frontSound and backSound (a file's path or name, or null), bothWays (true or false) \
+    and deck (a deck's whole name, as `ficha decks` prints it, with "::" between a deck and a deck inside it, \
+    which Ficha makes when you have none by that name, or "" for Default)
     """
 
 /// What a card's frontImage, backImage, frontSound and backSound hold, as the
@@ -104,8 +105,9 @@ func standardInput() throws -> Data {
 /// it. Every field must be there, `type` and `source` too, as null when
 /// there's none, so a misspelled field fails instead of passing for a missing
 /// one, but a side's image and sound, which a card leaves out to keep its
-/// own, and `bothWays`, which a card leaves out to go one way or keep its
-/// own. Other fields, such as those `ficha cards` prints, are ignored.
+/// own, `bothWays`, which a card leaves out to go one way or keep its own,
+/// and `deck`, which a card leaves out to live in Default or stay in its own.
+/// Other fields, such as those `ficha cards` prints, are ignored.
 private struct CardInput: Decodable {
     /// The type's name, as `CardDraft` takes it.
     let type: String?
@@ -119,6 +121,9 @@ private struct CardInput: Decodable {
     let backSound: FileChange
     /// True or false, or nil when it's left out; never null.
     let bothWays: Bool?
+    /// A deck's whole name, or "" for Default, as `ficha cards` writes it, or
+    /// nil when it's left out; never null.
+    let deck: String?
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -132,13 +137,14 @@ private struct CardInput: Decodable {
         frontSound = try Self.fileChange(in: container, forKey: .frontSound)
         backSound = try Self.fileChange(in: container, forKey: .backSound)
         bothWays = container.contains(.bothWays) ? try container.decode(Bool.self, forKey: .bothWays) : nil
+        deck = container.contains(.deck) ? try container.decode(String.self, forKey: .deck) : nil
     }
 
     /// The card, as the engine takes it.
     var draft: CardDraft {
         CardDraft(
             type: type, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
-            backImage: backImage, frontSound: frontSound, backSound: backSound, bothWays: bothWays)
+            backImage: backImage, frontSound: frontSound, backSound: backSound, bothWays: bothWays, deck: deck)
     }
 
     /// What the card does with a side's image or sound, under `key`: left
@@ -160,7 +166,7 @@ private struct CardInput: Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, front, back, tags, source, frontImage, backImage, frontSound, backSound, bothWays
+        case type, front, back, tags, source, frontImage, backImage, frontSound, backSound, bothWays, deck
     }
 }
 

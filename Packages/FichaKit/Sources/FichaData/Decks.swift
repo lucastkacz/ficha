@@ -201,8 +201,12 @@ extension Engine {
 
     /// Every deck `decks()` lists, in its order, each with its counts, each
     /// card standing on `ladder` now, in one read: a deck no card lives in
-    /// counts none.
-    public func countedDecks(on ladder: Ladder) throws(EngineError) -> [CountedDeck] {
+    /// counts none. With `everyDeck`, as `ficha decks` lists them, it lists
+    /// every deck the Sync tab lists to choose from instead, whatever
+    /// selective sync hides here: Default first, whether or not it holds
+    /// cards, then every deck with a row, every deck a card lives in, and
+    /// every deck those sit inside.
+    public func countedDecks(on ladder: Ladder, everyDeck: Bool = false) throws(EngineError) -> [CountedDeck] {
         let now = time.now
         return try read { db in
             let own = try OwnDecks(in: db)
@@ -214,7 +218,11 @@ extension Engine {
                     counts[deck, default: (0, 0)].due += isDue ? 1 : 0
                 }
             }
-            return try listedDeckNames(of: own, livedInBy: allCards(in: db), in: db).map { name in
+            let cards = try allCards(in: db)
+            let names =
+                everyDeck
+                ? everyDeckName(of: own, livedInBy: cards) : try listedDeckNames(of: own, livedInBy: cards, in: db)
+            return names.map { name in
                 let count = counts[name, default: (0, 0)]
                 return CountedDeck(deck: own.deck(name), counts: DeckCounts(cards: count.cards, due: count.due))
             }
@@ -311,6 +319,17 @@ func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
     }
 }
 
+/// Moves `card` to the deck `deck`, in the write `db`, as
+/// `moveCards(_:to:in:)` moves it, unless `deck` is nil or the deck the card
+/// lives in, which leaves it there and makes no deck on this device: how an
+/// edit, a fix and an approved expansion set a card's deck. Refuses a name
+/// `madeDeck(named:in:)` refuses.
+func move(_ card: Card, to deck: String?, in db: Database) throws {
+    if let deck, try checkedDeckForCards(deck) != card.deck {
+        try moveCards([card.id], to: deck, in: db)
+    }
+}
+
 /// What every deck has of its own, as the `deck` table keeps it, read at
 /// once: a deck the table has no row for, one a card lives in or one other
 /// decks sit inside, has nothing of its own. It knows which of them the user
@@ -366,6 +385,16 @@ func listedDeckNames(of own: OwnDecks, livedInBy cards: [Card], in db: Database)
     let listsDefault =
         cards.contains { $0.deck == Deck.defaultName } || own.deck(Deck.defaultName).switchedOn != nil
     return deckNamesAsTree(cards.map(\.deck) + (try decksListedWithRows(of: own, in: db)), withDefault: listsDefault)
+}
+
+/// The name of every deck the user has, in the order a tree lists them, as
+/// the Sync tab lists them to choose from and `ficha decks` lists them,
+/// whatever selective sync hides on this device, with `own` as the `deck`
+/// table keeps it: Default first, whether or not one of `cards` lives in it,
+/// then every deck with a row, which every device has, every deck one of
+/// `cards` lives in, and every deck those sit inside.
+func everyDeckName(of own: OwnDecks, livedInBy cards: [Card]) -> [String] {
+    deckNamesAsTree(cards.map(\.deck) + own.names, withDefault: true)
 }
 
 /// The decks `names` names, and every deck they sit inside, each once, in the

@@ -201,17 +201,17 @@ public struct Engine: Sendable {
     public func approve(_ captureID: Int64, into cards: [CardContent], deck: String = Deck.defaultName)
         throws(EngineError) -> [Card]
     {
-        try approve(captureID, deck: deck) { _ in cards.map { ($0, false) } }
+        try approve(captureID) { _ in cards.map { ($0, deck, false) } }
     }
 
     /// Approves a capture into one or more cards, as `approve(_:into:deck:)`
     /// does, into those `newCards` makes in the write that saves them, each
-    /// going both ways when it says so, or into none when it throws: as a
-    /// refine session's drafts find or make the user types they name in that
-    /// write (`CardTypesByName`).
+    /// in its own deck, made if it isn't there, and going both ways when it
+    /// says so, or into none when it throws: as a refine session's drafts
+    /// find or make the user types they name in that write
+    /// (`CardTypesByName`), each naming its deck.
     func approve(
-        _ captureID: Int64, deck: String = Deck.defaultName,
-        into newCards: (Database) throws -> [(content: CardContent, bothWays: Bool)]
+        _ captureID: Int64, into newCards: (Database) throws -> [(content: CardContent, deck: String, bothWays: Bool)]
     ) throws(EngineError) -> [Card] {
         let createdAt = time.now
         return try write { db in
@@ -222,7 +222,8 @@ public struct Engine: Sendable {
             try takeOutOfInbox(captureID, at: createdAt, in: db)
             for card in cards {
                 try insertCard(
-                    card.content, deck: deck, bothWays: card.bothWays, capturedAs: captureID, at: createdAt, in: db)
+                    card.content, deck: card.deck, bothWays: card.bothWays, capturedAs: captureID, at: createdAt,
+                    in: db)
             }
             return try FichaData.cards(
                 in: Row.fetchAll(

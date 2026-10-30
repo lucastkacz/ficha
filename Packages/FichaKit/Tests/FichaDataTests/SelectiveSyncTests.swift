@@ -481,12 +481,49 @@ final class SelectiveSyncTests {
         #expect(try chosenDecks(on: iPhone) == ["Filosofía"])
     }
 
+    // Before decks, historia was chosen to sync and ciencia wasn't; the
+    // update left every card in Default, which Lucas chose so that his cards
+    // kept syncing until he turned his tags into decks.
+    @Test(
+        "a card whose tag was chosen to sync before decks stays in iCloud as turning the tag into a deck moves it there, chosen in the same write, and one whose tag wasn't leaves, kept on both devices"
+    )
+    func aCardOfAChosenTagStaysInICloudAsItsTagBecomesADeck() async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeDecks(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+        let app = try Device(Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
+        try app.engine.syncOnlyChosenDecks(true)
+        try app.engine.setChosenToSync(true, ofDeck: Deck.defaultName)
+        try await app.syncNow()
+        try await iPhone.syncNow()
+        #expect(try Set(iPhone.engine.cards().map(\.front)) == ["Coliseo", "ADN"])
+
+        time.advance(by: minutes(1))
+        try app.engine.convertTagsToDecks(["historia", "ciencia"])
+
+        #expect(try !app.engine.changesToSend().contains { $0.kind == .deleted && $0.row.recordType == .card })
+        for _ in 0..<2 {
+            try await app.syncNow()
+            try await iPhone.syncNow()
+        }
+        #expect(try iPhone.engine.card(fronted: "Coliseo").deck == "historia::Roma")
+        #expect(try iPhone.engine.card(fronted: "Coliseo").asSeen == app.engine.card(fronted: "Coliseo").asSeen)
+        // ADN left iCloud with its deck alone, as a card does that stops
+        // syncing: the iPhone's copy keeps the tag it had.
+        #expect(try iPhone.engine.card(fronted: "ADN").deck == "ciencia")
+        #expect(try iPhone.engine.card(fronted: "ADN").tags == ["ciencia"])
+        let coliseo = try #require(records(ofType: .card).first { $0.value(of: "front") == .string("Coliseo") })
+        #expect(!coliseo.hasLeft)
+        #expect(coliseo.value(of: SyncedField.deck.rawValue) == .string("historia::Roma"))
+        expectOnlyLeft(records(ofType: .card).filter { $0.value(of: "front") != .string("Coliseo") }, keeping: [.deck])
+        #expect(try chosenDecks(on: iPhone) == [Deck.defaultName, "historia"])
+    }
+
     // The Mac makes Arte and Historia empty, holds cards in Lenguaje and in
     // Default, which aren't chosen, and makes Idiomas::Latín, inside the
     // Idiomas the iPhone chose; the iPhone makes Música empty, and Filosofía's
     // cards come to it.
     @Test(
-        "under selective sync, each device lists the decks that sync, those it holds cards of and those made on it, and every deck once every card syncs"
+        "under selective sync, each device lists the decks that sync, those it holds cards of and those made on it, and every deck once every card syncs, as `ficha decks` does all along"
     )
     func whichDecksEachDeviceLists() async throws {
         try mac.engine.makeDeck(named: "Arte")
@@ -506,13 +543,17 @@ final class SelectiveSyncTests {
             try mac.engine.decks().map(\.name)
                 == [Deck.defaultName, "Arte", "Filosofía", "Historia", "Idiomas", "Idiomas::Latín", "Lenguaje"])
         #expect(try iPhone.engine.decks().map(\.name) == ["Filosofía", "Idiomas", "Idiomas::Latín", "Música"])
+        let every = [
+            Deck.defaultName, "Arte", "Filosofía", "Historia", "Idiomas", "Idiomas::Latín", "Lenguaje", "Música",
+        ]
+        // `ficha decks` lists every deck, as the Sync tab does, for a refine
+        // session to draft into and choose from.
+        let iPhoneLadder = try iPhone.engine.progressSettings().ladder
+        #expect(try iPhone.engine.countedDecks(on: iPhoneLadder, everyDeck: true).map(\.deck.name) == every)
 
         try iPhone.engine.syncOnlyChosenDecks(false)
         try await syncBoth()
 
-        let every = [
-            Deck.defaultName, "Arte", "Filosofía", "Historia", "Idiomas", "Idiomas::Latín", "Lenguaje", "Música",
-        ]
         #expect(try mac.engine.decks().map(\.name) == every)
         #expect(try iPhone.engine.decks().map(\.name) == every)
     }

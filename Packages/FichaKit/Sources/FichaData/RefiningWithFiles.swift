@@ -3,9 +3,9 @@ import Foundation
 internal import GRDB
 
 /// A card a refine session drafted, as Lucas approved it and the `ficha` CLI
-/// reads it: what it holds, what becomes of each side's image and sound, and
-/// whether it goes both ways. The engine checks it as `CardContent` does once
-/// its files are in.
+/// reads it: what it holds, what becomes of each side's image and sound, the
+/// deck it lives in, and whether it goes both ways. The engine checks it as
+/// `CardContent` does once its files are in.
 public struct CardDraft: Sendable, Equatable {
     /// Its type, as the refine session names it: one of the four Ficha comes
     /// with, by its raw value, or a user type, by its name, which the engine
@@ -24,6 +24,12 @@ public struct CardDraft: Sendable, Equatable {
     /// left it out: a new card then goes one way, and a fixed card keeps its
     /// own. An approved expansion's card keeps its own whatever this says.
     public let bothWays: Bool?
+    /// The deck it lives in, by its whole name, as `makeDeck(named:)` takes
+    /// it, which is made if it isn't there, or Default, by
+    /// `Deck.defaultName`; or nil when the refine session left it out: a new
+    /// card then lives in Default, and a fixed card, or an expansion's, stays
+    /// in its own.
+    public let deck: String?
 
     public init(
         type: String?,
@@ -35,7 +41,8 @@ public struct CardDraft: Sendable, Equatable {
         backImage: FileChange,
         frontSound: FileChange,
         backSound: FileChange,
-        bothWays: Bool?
+        bothWays: Bool?,
+        deck: String? = nil
     ) {
         self.type = type
         self.front = front
@@ -47,6 +54,7 @@ public struct CardDraft: Sendable, Equatable {
         self.frontSound = frontSound
         self.backSound = backSound
         self.bothWays = bothWays
+        self.deck = deck
     }
 }
 
@@ -95,13 +103,14 @@ public enum FileKind: String, Sendable, CaseIterable {
 }
 
 extension Engine {
-    /// Approves a capture into the cards `drafts`, in Default, as
-    /// `approve(_:into:deck:)` does, with the images and sounds they put on
-    /// their sides: files come
-    /// in shrunk or converted, as from the Cards window's form. A side whose
-    /// image or sound is left out or removed has none. Each card goes both
-    /// ways when its draft says so, and one way otherwise. A user type a
-    /// draft names that the user doesn't have comes in with its cards.
+    /// Approves a capture into the cards `drafts`, as
+    /// `approve(_:into:deck:)` does, each in the deck its draft names, made
+    /// if it isn't there, or in Default when it names none, with the images
+    /// and sounds they put on their sides: files come in shrunk or
+    /// converted, as from the Cards window's form. A side whose image or
+    /// sound is left out or removed has none. Each card goes both ways when
+    /// its draft says so, and one way otherwise. A user type a draft names
+    /// that the user doesn't have comes in with its cards.
     @discardableResult
     public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
         var held = FilesComingIn()
@@ -115,7 +124,7 @@ extension Engine {
                     let content = try drafts[position].content(
                         in: db, with: files[position].applied(to: nil),
                         orIfBlank: .blankSideOnNewCard(position: position))
-                    return (content, drafts[position].bothWays ?? false)
+                    return (content, drafts[position].deck ?? Deck.defaultName, drafts[position].bothWays ?? false)
                 }
             }
         }
@@ -126,15 +135,16 @@ extension Engine {
     /// takes off: files come in shrunk or converted, as from the Cards
     /// window's form, and a side whose image or sound is left out keeps its
     /// own. One the card no longer has goes, unless another card uses it.
-    /// The card goes both ways or one way as the draft says, and keeps its
-    /// own when the draft leaves it out. A user type the draft names that the
-    /// user doesn't have comes in with the fix.
+    /// The card goes both ways or one way as the draft says, and moves to the
+    /// deck it names, made if it isn't there; it keeps its own of each when
+    /// the draft leaves it out. A user type the draft names that the user
+    /// doesn't have comes in with the fix.
     @discardableResult
     public func fix(_ cardID: Int64, with draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
         let (before, fixed) = try keeping(held.files) { () throws(EngineError) in
-            try fix(cardID, bothWays: draft.bothWays) { card, db in
+            try fix(cardID, deck: draft.deck, bothWays: draft.bothWays) { card, db in
                 try draft.content(in: db, with: files.applied(to: card), orIfBlank: .sideLeftBlank(cardID))
             }
         }
@@ -144,14 +154,15 @@ extension Engine {
 
     /// Approves an expansion with `draft`, as `approveExpansion(_:into:)`
     /// does with a card's content, with the images and sounds it puts on its
-    /// card's sides or takes off, as `fix(_:with:)` does with a draft, and
-    /// its type. The card keeps its Both ways, whatever the draft says.
+    /// card's sides or takes off, and its deck, as `fix(_:with:)` does with
+    /// a draft, and its type. The card keeps its Both ways, whatever the
+    /// draft says.
     @discardableResult
     public func approveExpansion(_ captureID: Int64, into draft: CardDraft) async throws(EngineError) -> Card {
         var held = FilesComingIn()
         let files = try await held.bringIn(draft, with: self)
         let (before, approved) = try keeping(held.files) { () throws(EngineError) in
-            try approveExpansion(captureID) { card, db in
+            try approveExpansion(captureID, deck: draft.deck) { card, db in
                 try draft.content(in: db, with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
             }
         }

@@ -18,7 +18,8 @@ struct FixCommand: EngineCommand {
               EOF
 
             bothWays true or false switches Both ways on or off, so the card comes back first too, its back on \
-            top, or doesn't; left out, the card keeps its own.
+            top, or doesn't; left out, the card keeps its own. deck moves the card to that deck; left out, it \
+            stays in its own.
 
             Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, \
             unless its deck, or a deck it sits inside, is set aside, and the command prints it.

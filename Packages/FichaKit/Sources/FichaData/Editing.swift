@@ -23,9 +23,7 @@ extension Engine {
         let (before, edited) = try write { db in
             let before = try existingCard(cardID, in: db)
             _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
-            if let deck, try checkedDeckForCards(deck) != before.deck {
-                try moveCards([cardID], to: deck, in: db)
-            }
+            try move(before, to: deck, in: db)
             if let bothWays {
                 _ = try setBothWays(bothWays, of: cardID, in: db)
             }

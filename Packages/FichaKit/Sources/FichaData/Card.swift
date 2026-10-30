@@ -255,11 +255,12 @@ func updateCard(
 /// leaves that time as it was. Returns the card as it is then. Every change
 /// to a card's content made on this device goes through here, with content
 /// `CardContent` checked, as every new card goes through `insertCard`, but
-/// two that write one column of many cards at once: renaming a tag writes
-/// their tags (`RenamingTags.swift`), and deleting a user type clears their
-/// type (`forgetType`). Neither can make a card `CardContent` refuses, and
-/// going through here would clean up each card's other fields as
-/// `CardContent` does, changing what the user didn't touch, such as a tag
+/// three that write one column of many cards at once: renaming a tag writes
+/// their tags (`RenamingTags.swift`), turning tags into decks writes their
+/// tags with their decks (`TagsIntoDecks.swift`), and deleting a user type
+/// clears their type (`forgetType`). None can make a card `CardContent`
+/// refuses, and going through here would clean up each card's other fields
+/// as `CardContent` does, changing what the user didn't touch, such as a tag
 /// stored before tags sat inside tags. An image or a sound the card no
 /// longer refers to stays where Ficha keeps it: the engine removes it once
 /// no card uses it. A user type deleted meanwhile is refused.
