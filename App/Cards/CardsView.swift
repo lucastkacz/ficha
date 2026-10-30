@@ -1,6 +1,7 @@
 import FichaCore
 import FichaData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
 /// sidebar to choose a group of cards, the inbox or All Tags, a table with
@@ -815,18 +816,22 @@ struct CardsView: View {
             Section {
                 ForEach(pinned) { tag in
                     TagRow(tag: tag)
-                        .tag(SidebarItem.cards(.tag(tag.id)))
+                        .tag(tag.item)
                         .contextMenu {
                             tagMenu(for: [tag.id])
                         }
                 }
                 // List's own move, with its insertion line, and its own
-                // insert, for a tag dragged in from All Tags.
+                // insert, for tags dragged in from All Tags, which the state
+                // knows, as they come as text, as any text does. Its
+                // insert's action comes as the tags are dropped, before All
+                // Tags hears the drag ended, where `dropDestination`'s comes
+                // once it read the text, which can be after.
                 .onMove { offsets, destination in
                     state.movePinnedTags(fromOffsets: offsets, toOffset: destination)
                 }
-                .dropDestination(for: String.self) { names, offset in
-                    state.pinDroppedTags(names, at: offset)
+                .onInsert(of: [.utf8PlainText]) { offset, _ in
+                    state.pinDraggedTags(at: offset)
                 }
                 Label {
                     Text(
@@ -838,7 +843,7 @@ struct CardsView: View {
                 } icon: {
                     Image(systemName: "ellipsis.circle")
                 }
-                .takingDroppedTags { state.dropOnAllTags($0) }
+                .takingDraggedTags(while: state.draggedTags != nil) { state.dropDraggedTagsOnAllTags() }
                 .tag(SidebarItem.allTags)
             } header: {
                 Text(
@@ -1467,12 +1472,7 @@ struct CardsView: View {
                         Label {
                             Text(verbatim: tag.title)
                         } icon: {
-                            if let color = tag.shownColor {
-                                Image(systemName: "tag.fill")
-                                    .foregroundStyle(color.color)
-                            } else {
-                                Image(systemName: "tag")
-                            }
+                            tag.symbol
                         }
                     } else {
                         Label(
@@ -1849,14 +1849,9 @@ private struct TagRow: View {
 
     var body: some View {
         Label {
-            Text(verbatim: tag.tag.title(shown: tag.title))
+            Text(verbatim: tag.tag.title)
         } icon: {
-            if let color = tag.tag.shownColor {
-                Image(systemName: "tag.fill")
-                    .foregroundStyle(color.color)
-            } else {
-                Image(systemName: "tag")
-            }
+            tag.tag.symbol
         }
         .opacity(tag.isGrayed ? 0.5 : 1)
         // Its whole name, which a narrow sidebar may cut short.
@@ -1865,10 +1860,14 @@ private struct TagRow: View {
 }
 
 /// Where Lucas drops tags he drags from All Tags in the sidebar's All
-/// Tags…, as wide as the list, highlighted while he holds them over it.
-private struct DroppedTags: ViewModifier {
-    /// Takes the dropped tags' names, and says whether it took the drop.
-    let drop: ([String]) -> Bool
+/// Tags…, as wide as the list, highlighted while he holds them over it. They
+/// come as text, as any text does, so it takes the tags the state knows he
+/// drags, as they're dropped, before All Tags hears the drag ended.
+private struct DraggedTags: ViewModifier {
+    /// Whether Lucas drags tags from All Tags, which it highlights.
+    let isDragging: Bool
+    /// Takes the dragged tags, and says whether it took the drop.
+    let drop: () -> Bool
     @State private var isTargeted = false
 
     func body(content: Content) -> some View {
@@ -1876,13 +1875,11 @@ private struct DroppedTags: ViewModifier {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
             .background(
-                isTargeted ? AnyShapeStyle(.tint.opacity(0.3)) : AnyShapeStyle(.clear),
+                isTargeted && isDragging ? AnyShapeStyle(.tint.opacity(0.3)) : AnyShapeStyle(.clear),
                 in: .rect(cornerRadius: 4)
             )
-            .dropDestination(for: String.self) { names, _ in
-                drop(names)
-            } isTargeted: {
-                isTargeted = $0
+            .onDrop(of: [.utf8PlainText], isTargeted: $isTargeted) { _ in
+                drop()
             }
     }
 }
@@ -1897,9 +1894,10 @@ extension KeyEquivalent {
 
 extension View {
     /// The view as a place where Lucas drops tags he drags from All Tags,
-    /// which `drop` takes by their names, saying whether it took the drop.
-    fileprivate func takingDroppedTags(_ drop: @escaping ([String]) -> Bool) -> some View {
-        modifier(DroppedTags(drop: drop))
+    /// highlighted while he holds them over it, which `drop` takes, saying
+    /// whether it took the drop.
+    fileprivate func takingDraggedTags(while isDragging: Bool, _ drop: @escaping () -> Bool) -> some View {
+        modifier(DraggedTags(isDragging: isDragging, drop: drop))
     }
 
     /// The view, dimmed and taking no clicks while `isWaiting`: the sidebar

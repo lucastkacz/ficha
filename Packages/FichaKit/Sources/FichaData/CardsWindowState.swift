@@ -71,7 +71,7 @@ public struct CardsWindowState: Sendable {
             switch self {
             case .cardGroups(let groups), .types(let groups): groups.map(SidebarItem.cards)
             case .inbox: [.inbox]
-            case .tags(let pinned): pinned.map { .cards(.tag($0.id)) } + [.allTags]
+            case .tags(let pinned): pinned.map(\.item) + [.allTags]
             }
         }
     }
@@ -358,6 +358,12 @@ public struct CardsWindowState: Sendable {
     /// All Tags' parents Lucas closed while a search narrows it, which opens
     /// every parent it keeps, until the search changes.
     var tagsClosedInSearch: Set<String> = []
+    /// The tags Lucas drags from All Tags, by their names, from when he
+    /// starts until he lets go of them, or nil while he drags none: the only
+    /// ones a drop in the sidebar pins, or in All Tags moves, so that text
+    /// dragged in from another app, or from elsewhere in Ficha, never pins or
+    /// moves a tag it names (`CardsWindowTags.swift`).
+    public internal(set) var draggedTags: [String]?
     /// The tags Clear Unused Tags would delete, as All Tags last read them:
     /// it's offered while there are some.
     var unusedTags: [String] = []
@@ -905,8 +911,15 @@ public struct CardsWindowState: Sendable {
         self.ladder = ladder
         now = engine.now
         do throws(EngineError) {
-            tags = try engine.allTags()
-            pinnedTags = Self.pinnedRows(of: try engine.pinnedTags(), among: tags)
+            // All Tags reads every tag with its counts, which its tree lists,
+            // and the rest of the window reads every tag alone.
+            let counted = sidebarItem == .allTags ? try engine.countedTags(on: ladder) : nil
+            if let counted {
+                tags = counted.map(\.tag)
+            } else {
+                tags = try engine.allTags()
+            }
+            pinnedTags = Self.pinnedRows(of: tags.pinnedInOrder, among: tags)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
@@ -920,11 +933,11 @@ public struct CardsWindowState: Sendable {
             selectedTags.formIntersection(names)
             if let group = listedGroup {
                 listing = .success(.cards(try engine.cardRows(in: group, matching: search, on: ladder)))
-            } else if sidebarItem == .inbox {
-                listing = .success(.inbox(try engine.inboxRows(matching: search, on: ladder)))
-            } else {
-                listing = .success(.allTags(try allTagsRows()))
+            } else if let counted {
+                listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()
+            } else {
+                listing = .success(.inbox(try engine.inboxRows(matching: search, on: ladder)))
             }
         } catch {
             listing = .failure(error)

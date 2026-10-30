@@ -406,12 +406,16 @@ struct CardsWindowAllTagsTests {
         var window = openWindow()
         window.choose(.allTags)
 
-        let movedInside = window.drop(["Argentina", "música"], into: "economía")
+        let movedInside = window.dragFromAllTags(["Argentina", "música"]) { $0.dropDraggedTags(into: "economía") }
         let afterMovingInside = window.allTagsRows?.outline
         let selectedAfterIt = window.selectedTags
         let openAfterIt = window.isOpen("economía")
-        let movedToALevel = window.drop(["economía::mundial::comercio"], into: "economía")
-        let movedToTheTop = window.drop(["economía::música", "economía::mundial"], into: nil)
+        let movedToALevel = window.dragFromAllTags(["economía::mundial::comercio"]) {
+            $0.dropDraggedTags(into: "economía")
+        }
+        let movedToTheTop = window.dragFromAllTags(["economía::música", "economía::mundial"]) {
+            $0.dropDraggedTags(into: nil)
+        }
 
         #expect(movedInside)
         #expect(afterMovingInside == ["economía", "  Argentina", "  mundial", "    comercio", "  música"])
@@ -421,7 +425,7 @@ struct CardsWindowAllTagsTests {
         #expect(movedToTheTop)
         #expect(window.allTagsRows?.outline == ["economía", "  Argentina", "  comercio", "mundial", "música"])
         #expect(window.selectedTags == ["música", "mundial"])
-        #expect(window.pinnedTags.map(\.title) == ["economía › Argentina"])
+        #expect(window.pinnedTags.map(\.id) == ["economía::Argentina"])
         #expect(window.failure == nil)
         #expect(
             try engine.cards().map(\.tags) == [
@@ -430,9 +434,11 @@ struct CardsWindowAllTagsTests {
     }
 
     // economía::mundial and economía::Argentina already sit right inside
-    // economía.
+    // economía. Text dragged in from another app, or from elsewhere in
+    // Ficha, such as a tag's name in a card's tags, is dropped while Lucas
+    // drags nothing from All Tags.
     @Test(
-        "a drop onto a dragged tag, or a tag inside one, is refused, as is one that moves nothing or of a word that isn't a tag"
+        "a drop onto a dragged tag, or a tag inside one, is refused, as is one that moves nothing, of a word that isn't a tag, or of text dragged in from elsewhere"
     )
     func refusedDrops() throws {
         try approveCard("ahorro", tags: ["economía::Argentina", "economía::mundial::comercio", "historia"])
@@ -447,12 +453,17 @@ struct CardsWindowAllTagsTests {
             window.canDrop(["historia"], into: nil),
             window.canDrop(["una palabra"], into: "economía"),
             window.canDrop(["historia"], into: "una palabra"),
+            window.canDropDraggedTags(into: "economía::mundial::comercio"),
         ]
-        let dropped = window.drop(["historia", "economía"], into: "economía::mundial")
+        let dropped = window.dragFromAllTags(["historia", "economía"]) {
+            $0.dropDraggedTags(into: "economía::mundial")
+        }
+        let droppedFromElsewhere = window.dropDraggedTags(into: "economía::mundial::comercio")
 
-        #expect(refused == [false, false, false, false, false, false, false])
+        #expect(refused == [false, false, false, false, false, false, false, false])
         #expect(window.canDrop(["historia"], into: "economía::mundial::comercio"))
         #expect(!dropped)
+        #expect(!droppedFromElsewhere)
         #expect(window.failure == nil)
         #expect(try engine.cards().map(\.tags) == [["economía::Argentina", "economía::mundial::comercio", "historia"]])
     }
@@ -464,7 +475,7 @@ struct CardsWindowAllTagsTests {
         var window = openWindow()
         window.choose(.allTags)
 
-        window.drop(["economía", "economía::Argentina::cepo"], into: "historia")
+        _ = window.dragFromAllTags(["economía", "economía::Argentina::cepo"]) { $0.dropDraggedTags(into: "historia") }
 
         #expect(window.allTagsRows?.outline == ["historia", "  economía", "    Argentina", "      cepo"])
         #expect(window.selectedTags == ["historia::economía"])
@@ -533,7 +544,8 @@ struct CardsWindowAllTagsTests {
         #expect(window.shownTag == CardTag(name: "historia"))
     }
 
-    // #371 left the tag chosen with no selection in the sidebar.
+    // Unpinned, the tag has no row in the sidebar, so the sidebar shows All
+    // Tags…, where the tag is now.
     @Test(
         "unpinning the tag the sidebar chose keeps its cards listed, as All Tags lists a tag's, and Back goes to All Tags with it selected"
     )
@@ -613,6 +625,23 @@ extension [CardsWindowState.AllTagsRow] {
 }
 
 extension CardsWindowState {
+    /// Drags the tags named `names` from All Tags, as Lucas starts dragging
+    /// their rows, drops them with `drop`, and lets go of them: whether the
+    /// drop took them.
+    mutating func dragFromAllTags(_ names: [String], _ drop: (inout Self) -> Bool) -> Bool {
+        startDraggingTags(names)
+        defer { stopDraggingTags() }
+        return drop(&self)
+    }
+
+    /// Whether All Tags would take the tags named `names`, dragged from it,
+    /// dropped inside the tag named `parent`, or at the top when it's nil.
+    func canDrop(_ names: [String], into parent: String?) -> Bool {
+        var window = self
+        window.startDraggingTags(names)
+        return window.canDropDraggedTags(into: parent)
+    }
+
     /// The ids of the cards the table lists, in the order the engine read
     /// them, or nil when it lists the inbox, All Tags' tree, or couldn't
     /// read them.

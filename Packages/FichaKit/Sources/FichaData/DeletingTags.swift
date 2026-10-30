@@ -96,11 +96,12 @@ extension TagDeletion {
         let whatSyncs = try WhatSyncs(in: db)
         let whatSyncsAfter = whatSyncs.choosing(Set(remaining(Array(whatSyncs.chosenTags))))
         let measuresSync = try isSyncOn(in: db) && whatSyncs.onlyChosenTags
-        let cards = try allCards(in: db).filter { remaining($0.tags) != $0.tags }
-        let names = TagPath.lineages(of: try allCards(in: db).flatMap(\.tags) + own.names)
+        let everyCard = try allCards(in: db)
+        let cards = everyCard.filter { remaining($0.tags) != $0.tags }
         self.tags = tags
-        tagsInside = TagPath.sortedAsTree(
-            names.filter { name in !tags.contains(name) && edits.contains { $0.changes(name) } })
+        tagsInside = own.everyTagName(carriedBy: everyCard).filter { name in
+            !tags.contains(name) && edits.contains { $0.changes(name) }
+        }
         self.cards = cards.count
         cardsBackInReviews =
             cards.filter { card in

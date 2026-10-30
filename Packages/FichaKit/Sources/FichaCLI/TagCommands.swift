@@ -367,27 +367,19 @@ struct PrintedTags {
     let pinned: [PrintedTag]
 
     /// The tags `engine` holds now, each with its counts on the engine's
-    /// ladder; or an error when they changed between the engine's reads.
+    /// ladder, read together.
     init(of engine: Engine) throws {
         let counted = try engine.countedTags(on: engine.progressSettings().ladder)
-        let pinnedNames = try engine.pinnedTags().map(\.name)
-        let tags = try counted.map { counted in
+        let pinnedNames = counted.map(\.tag).pinnedInOrder.map(\.name)
+        let tags = counted.map { counted in
             let (tag, count) = (counted.tag, counted.counts)
-            guard tag.isPinned == pinnedNames.contains(tag.name) else {
-                throw TagsChangedMeanwhileError()
-            }
             return PrintedTag(
                 name: tag.name, cards: count.cards, due: count.due, pinned: tag.isPinned,
                 pinPlace: pinnedNames.firstIndex(of: tag.name), setAside: tag.isSetAside, priority: tag.isPriority,
                 color: tag.color?.rawValue, emoji: tag.emoji, chosenToSync: tag.chosenToSync)
         }
         self.tags = tags
-        pinned = try pinnedNames.map { name in
-            guard let tag = tags.first(where: { $0.name == name }) else {
-                throw TagsChangedMeanwhileError()
-            }
-            return tag
-        }
+        pinned = pinnedNames.compactMap { name in tags.first { $0.name == name } }
     }
 
     /// The tag `name` names, its levels cleaned up as a card's are, or an
@@ -426,17 +418,6 @@ struct UnknownTagError: LocalizedError {
         """
         You have no tag named “\(tag)”, so nothing changed. `ficha tags` lists yours, each by its whole name, with \
         “::” between a tag and a tag inside it.
-        """
-    }
-}
-
-/// The tags changed while the CLI read them, in several reads of the
-/// engine, as when the app or sync changes them meanwhile.
-struct TagsChangedMeanwhileError: LocalizedError {
-    var errorDescription: String? {
-        """
-        Your tags changed while ficha read them, in the app or through sync. Run `ficha tags` to see them as they \
-        are now.
         """
     }
 }

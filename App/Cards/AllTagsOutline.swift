@@ -14,13 +14,14 @@ import SwiftUI
 /// set-aside tag's row is grayed, and so are the rows inside it. Lucas
 /// selects several tags with ⌘ and ⇧, opens the context menu `menu` makes
 /// for the tags it acts on, double-clicks a tag to list its cards, and drags
-/// tags onto another, between two rows, or into the sidebar, which takes
-/// their names as text. The state decides what the tree lists, which parents
-/// are open, what's selected, how it sorts, and which of the tags dropped
-/// it takes where; the outline view draws it, tells the state what Lucas
-/// did, and takes a drop only of its own rows, since the state can't see
-/// where a drag comes from, so that a word dragged from elsewhere never
-/// moves a tag of that name.
+/// tags onto another, between two rows, or into the sidebar. The state
+/// decides what the tree lists, which parents are open, what's selected, how
+/// it sorts, and where it takes the tags dropped; the outline view draws it,
+/// and tells the state what Lucas did, the tags he drags among it, from when
+/// he starts until he lets go of them, which the state's drops take alone,
+/// in All Tags and in the sidebar: a drag carries their names as text, as
+/// text dragged from elsewhere does, which never moves or pins a tag it
+/// names.
 struct AllTagsOutline: NSViewRepresentable {
     let rows: [CardsWindowState.AllTagsRow]
     @Binding var state: CardsWindowState
@@ -53,8 +54,7 @@ struct AllTagsOutline: NSViewRepresentable {
         outline.target = coordinator
         outline.doubleAction = #selector(Coordinator.showClickedTagsCards(_:))
         outline.makeMenu = { [weak coordinator] name in coordinator?.menu(clicking: name) }
-        // Its own rows, and the sidebar's, which takes a tag dropped there as
-        // SwiftUI takes text: copied.
+        // Its own rows, as text, which the sidebar takes too: copied.
         outline.registerForDraggedTypes([.string])
         outline.setDraggingSourceOperationMask([.move, .copy], forLocal: true)
         coordinator.outline = outline
@@ -240,30 +240,41 @@ struct AllTagsOutline: NSViewRepresentable {
             (item as? TagNode).map { $0.name as NSString }
         }
 
-        /// Whether the outline view takes the tags Lucas drags over it, its
-        /// own: onto a row, inside that tag, or between two rows, inside the
-        /// tag whose level the insertion line shows, or at the top, as the
-        /// state says. Below the rows, at the top, after them.
+        /// Tells the state Lucas starts dragging the tags of `draggedItems`.
+        func outlineView(
+            _ outlineView: NSOutlineView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint,
+            forItems draggedItems: [Any]
+        ) {
+            parent.state.startDraggingTags(draggedItems.compactMap { ($0 as? TagNode)?.name })
+        }
+
+        /// Tells the state Lucas let go of the tags he dragged, after
+        /// wherever he dropped them took them.
+        func outlineView(
+            _ outlineView: NSOutlineView, draggingSession session: NSDraggingSession, endedAt screenPoint: NSPoint,
+            operation: NSDragOperation
+        ) {
+            parent.state.stopDraggingTags()
+        }
+
+        /// Whether the outline view takes the tags Lucas drags from it, as
+        /// the state knows them: onto a row, inside that tag, or between two
+        /// rows, inside the tag whose level the insertion line shows, or at
+        /// the top, as the state says. Below the rows, at the top, after them.
         func outlineView(
             _ outlineView: NSOutlineView, validateDrop info: any NSDraggingInfo, proposedItem item: Any?,
             proposedChildIndex index: Int
         ) -> NSDragOperation {
-            guard (info.draggingSource as? NSOutlineView) === outlineView else { return [] }
             if item == nil, index == NSOutlineViewDropOnItemIndex {
                 outlineView.setDropItem(nil, dropChildIndex: roots.count)
             }
-            return parent.state.canDrop(Self.names(in: info), into: (item as? TagNode)?.name) ? .move : []
+            return parent.state.canDropDraggedTags(into: (item as? TagNode)?.name) ? .move : []
         }
 
         func outlineView(
             _ outlineView: NSOutlineView, acceptDrop info: any NSDraggingInfo, item: Any?, childIndex index: Int
         ) -> Bool {
-            parent.state.drop(Self.names(in: info), into: (item as? TagNode)?.name)
-        }
-
-        /// The names of the tags Lucas drags.
-        private static func names(in info: any NSDraggingInfo) -> [String] {
-            info.draggingPasteboard.pasteboardItems?.compactMap { $0.string(forType: .string) } ?? []
+            parent.state.dropDraggedTags(into: (item as? TagNode)?.name)
         }
     }
 }
@@ -410,9 +421,8 @@ private final class TagCellView: NSTableCellView {
     }
 
     func show(_ row: CardsWindowState.AllTagsRow) {
-        let color = row.tag.shownColor
-        imageView?.image = NSImage(systemSymbolName: color == nil ? "tag" : "tag.fill", accessibilityDescription: nil)
-        imageView?.contentTintColor = color?.nsColor ?? .secondaryLabelColor
+        imageView?.image = NSImage(systemSymbolName: row.tag.symbolName, accessibilityDescription: nil)
+        imageView?.contentTintColor = row.tag.shownColor?.nsColor ?? .secondaryLabelColor
         textField?.stringValue = row.tag.title(shown: row.title)
         toolTip = row.tag.title
         alphaValue = row.isGrayed ? 0.5 : 1
@@ -471,10 +481,10 @@ private final class CheckboxCellView: NSTableCellView {
         nil
     }
 
-    /// Shows whether `row`'s tag has it ticked, of its own, and Priority
-    /// off while the row says so.
+    /// Shows whether `row`'s tag has it ticked, of its own, and whether it's
+    /// on, as the row says.
     func show(_ row: CardsWindowState.AllTagsRow) {
         button.state = row.isTicked(checkbox) ? .on : .off
-        button.isEnabled = checkbox != .priority || row.canPrioritize
+        button.isEnabled = row.isEnabled(checkbox)
     }
 }

@@ -18,7 +18,7 @@ extension CardTag {
     /// window and the engine.
     func tagKeepingItFromPriority(amongSetAside setAside: Set<String>) -> String? {
         guard !isPriority else { return nil }
-        return TagPath.lineage(of: name).first(where: setAside.contains)
+        return tagSettingAside(name, amongSetAside: setAside)
     }
 
     /// Whether Prioritize is on for it while the tags named `setAside` are
@@ -136,10 +136,7 @@ extension Engine {
     /// appearance, review now or "See more" on.
     public func clearPriorityTags() throws(EngineError) {
         try write { db in
-            for var tag in try OwnTags(in: db).tags(switchedOn: .priority) {
-                tag.switchedOn = nil
-                try save(tag, in: db)
-            }
+            try changeOwnTags(OwnTags(in: db).tags(switchedOn: .priority).map(\.name), in: db) { $0.switchedOn = nil }
         }
     }
 }

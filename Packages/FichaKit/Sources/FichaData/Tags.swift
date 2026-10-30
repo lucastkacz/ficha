@@ -121,8 +121,7 @@ extension Engine {
     public func allTags() throws(EngineError) -> [CardTag] {
         try read { db in
             let own = try OwnTags(in: db)
-            let names = try allCards(in: db).flatMap(\.tags) + own.names
-            return TagPath.sortedAsTree(TagPath.lineages(of: names)).map(own.tag)
+            return own.everyTagName(carriedBy: try allCards(in: db)).map(own.tag)
         }
     }
 
@@ -200,18 +199,42 @@ struct OwnTags: Sendable {
         byName.values.filter(\.chosenToSync)
     }
 
-    /// Every pinned tag, with what it has of its own, in the user's order:
-    /// by its place, and by its name between two tags in the same place, as
-    /// two devices can pin them.
+    /// Every pinned tag, with what it has of its own, in the user's order.
     var pinned: [CardTag] {
-        byName.values.compactMap { tag in tag.pin.map { (tag: tag, pin: $0) } }
-            .sorted { $0.pin != $1.pin ? $0.pin < $1.pin : $0.tag.name < $1.tag.name }.map(\.tag)
+        byName.values.pinnedInOrder
     }
 
     /// The name of every tag the `tag` table has a row for.
     var names: [String] {
         Array(byName.keys)
     }
+
+    /// The name of every tag, as `Engine.allTags()` lists them, in the order
+    /// a tree lists them: every tag one of `cards` carries, every tag with
+    /// something of its own, and every tag those sit inside.
+    func everyTagName(carriedBy cards: [Card]) -> [String] {
+        TagPath.sortedAsTree(TagPath.lineages(of: cards.flatMap(\.tags) + names))
+    }
+}
+
+extension Sequence<CardTag> {
+    /// The pinned tags among these, in the user's order: by their places,
+    /// and by their names between two tags in the same place, as two devices
+    /// can pin them.
+    public var pinnedInOrder: [CardTag] {
+        compactMap { tag in tag.pin.map { (tag: tag, pin: $0) } }
+            .sorted { $0.pin != $1.pin ? $0.pin < $1.pin : $0.tag.name < $1.tag.name }.map(\.tag)
+    }
+}
+
+/// The name of the tag that sets aside the cards of the tag `name` while the
+/// tags named `setAside` are set aside on their own: itself, when it's one,
+/// or else the nearest tag it sits inside that is, as a card's set-aside
+/// tags count the tags they sit inside (`CardStanding.setAsideTags(of:among:)`);
+/// nil while none is. The one rule for graying a tag and for keeping it from
+/// becoming a priority tag.
+func tagSettingAside(_ name: String, amongSetAside setAside: Set<String>) -> String? {
+    TagPath.lineage(of: name).first(where: setAside.contains)
 }
 
 /// The tag with this name, with what it has of its own, which is nothing
@@ -241,7 +264,7 @@ func changeOwnTags(_ tags: [String], in db: Database, _ change: (inout CardTag) 
 /// once it has nothing left.
 func save(_ tag: CardTag, in db: Database) throws {
     if tag.hasNothingOfItsOwn {
-        try db.execute(sql: "DELETE FROM tag WHERE name = ?", arguments: [tag.name])
+        try deleteRow(ofTag: tag.name, in: db)
     } else {
         try db.execute(
             sql: """

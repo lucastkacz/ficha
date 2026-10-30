@@ -51,6 +51,12 @@ extension CardsWindowState {
             case .setAside: tag.isSetAside
             }
         }
+
+        /// Whether its `checkbox` is on: Pinned and Set Aside always, and
+        /// Priority as `canPrioritize` says.
+        public func isEnabled(_ checkbox: AllTagsCheckbox) -> Bool {
+            checkbox != .priority || canPrioritize
+        }
     }
 
     /// A column of All Tags, whose title sorts each level of its tree by it.
@@ -164,10 +170,10 @@ extension CardsWindowState {
         tagShownFromAllTags != nil && editing == nil
     }
 
-    /// All Tags' rows out of every tag, read with its counts on the window's
-    /// ladder, as its search and its sort leave them.
-    func allTagsRows() throws(EngineError) -> [AllTagsRow] {
-        Self.allTagsRows(of: try engine.countedTags(on: ladder), search: hasSearch ? search : "", sort: allTagsSort)
+    /// All Tags' rows out of `counted`, every tag read with its counts on the
+    /// window's ladder, as its search and its sort leave them.
+    func allTagsRows(of counted: [CountedTag]) -> [AllTagsRow] {
+        Self.allTagsRows(of: counted, search: hasSearch ? search : "", sort: allTagsSort)
     }
 
     /// All Tags' rows out of `counted`, every tag with its counts, in the
@@ -387,32 +393,34 @@ extension CardsWindowState {
         }
     }
 
-    /// Whether All Tags takes the tags named `names` dropped inside the tag
-    /// named `parent`, or at the top when it's nil, which says where the
-    /// drag highlights a row or draws its line: when one of `names` is a tag
-    /// the window offers, `parent` too, none of them is `parent` or holds
-    /// it, and one of them would move.
-    public func canDrop(_ names: [String], into parent: String?) -> Bool {
-        let dropped = offeredTags(names).map(\.name)
+    /// Whether All Tags takes the tags Lucas drags from it (`draggedTags`)
+    /// dropped inside the tag named `parent`, or at the top when it's nil,
+    /// which says where the drag highlights a row or draws its line: when he
+    /// drags a tag the window offers, never while he drags none, as with
+    /// text dragged in from elsewhere; when `parent` is a tag the window
+    /// offers, none of them is `parent` or holds it, and one of them would
+    /// move.
+    public func canDropDraggedTags(into parent: String?) -> Bool {
+        let dropped = droppedTags()
         guard !dropped.isEmpty, parent.map({ parent in tags.contains { $0.name == parent } }) ?? true else {
             return false
         }
         return (try? tagMoves(of: dropped, into: parent))?.isEmpty == false
     }
 
-    /// Drops the tags named `names`, which Lucas drags in All Tags, inside
-    /// the tag named `parent`: onto its row, or between two rows at the level
-    /// of the tags right inside it; or at the top when `parent` is nil. Each
-    /// moves there with every tag inside it, as `Engine.moveTags(_:into:)`
-    /// moves them, in one go, and reads the cards again; then the tags that
-    /// moved are selected by their new names, inside `parent` opened, for
-    /// Lucas to see where they went. Whether it took the drop, as
-    /// `canDrop(_:into:)` says; never when the engine couldn't, which it
-    /// records.
+    /// Drops the tags Lucas drags in All Tags inside the tag named `parent`:
+    /// onto its row, or between two rows at the level of the tags right
+    /// inside it; or at the top when `parent` is nil. Each moves there with
+    /// every tag inside it, as `Engine.moveTags(_:into:)` moves them, in one
+    /// go, in the order a tree lists them, and reads the cards again; then
+    /// the tags that moved are selected by their new names, inside `parent`
+    /// opened, for Lucas to see where they went. Whether it took the drop, as
+    /// `canDropDraggedTags(into:)` says; never when the engine couldn't,
+    /// which it records.
     @discardableResult
-    public mutating func drop(_ names: [String], into parent: String?) -> Bool {
-        let dropped = offeredTags(names).map(\.name)
-        guard canDrop(dropped, into: parent), let first = dropped.first else {
+    public mutating func dropDraggedTags(into parent: String?) -> Bool {
+        let dropped = droppedTags()
+        guard canDropDraggedTags(into: parent), let first = dropped.first else {
             return false
         }
         var moves: [TagEdit] = []

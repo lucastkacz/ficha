@@ -316,7 +316,7 @@ extension Engine {
 
 /// The cards in `group` that mention `search` in their front, back or source,
 /// in the order Lucas approved them, each standing on `ladder` at `now`.
-private func cardRows(
+func cardRows(
     in group: CardGroup,
     matching search: String,
     on ladder: Ladder,

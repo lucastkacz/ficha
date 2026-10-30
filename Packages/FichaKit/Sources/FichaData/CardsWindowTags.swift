@@ -20,9 +20,6 @@ extension CardsWindowState {
         /// The tag, with what it has of its own and takes from the tags it
         /// sits inside.
         public let tag: CardTag
-        /// What its row says, without its emoji: its whole name, written
-        /// with " › ", as in "economía › Argentina".
-        public let title: String
         /// Whether its row is grayed: while its cards are out of Lucas's
         /// reviews, as it's set aside on its own or sits inside a tag that
         /// is.
@@ -31,22 +28,27 @@ extension CardsWindowState {
         public var id: String {
             tag.name
         }
+
+        /// What its row offers: the tag's cards.
+        public var item: SidebarItem {
+            .cards(.tag(tag.name))
+        }
     }
 
     /// The sidebar's rows of `pinned`, the pinned tags in Lucas's order, each
-    /// named by its whole path and grayed when it's set aside, on its own or
-    /// inside one of `tags`, every tag the window offers, that is.
+    /// grayed when it's set aside, on its own or inside one of `tags`, every
+    /// tag the window offers, that is.
     static func pinnedRows(of pinned: [CardTag], among tags: [CardTag]) -> [PinnedTagRow] {
         let isSetAside = setAside(among: tags)
-        return pinned.map { PinnedTagRow(tag: $0, title: TagPath.shown($0.name), isGrayed: isSetAside($0.name)) }
+        return pinned.map { PinnedTagRow(tag: $0, isGrayed: isSetAside($0.name)) }
     }
 
     /// Whether the tag with a name is set aside, on its own or inside a tag
     /// that is, among `tags`, which hold every set-aside tag, as
-    /// `CardStanding` picks a card's set-aside tags.
+    /// `tagSettingAside(_:amongSetAside:)` says.
     static func setAside(among tags: [CardTag]) -> (String) -> Bool {
         let setAside = setAsideNames(among: tags)
-        return { name in !CardStanding.setAsideTags(of: [name], among: setAside).isEmpty }
+        return { name in tagSettingAside(name, amongSetAside: setAside) != nil }
     }
 
     /// The names of the tags among `tags` set aside on their own.
@@ -56,10 +58,21 @@ extension CardsWindowState {
 
     /// The tags named `names` that the window offers, those it read last,
     /// whether All Tags lists them or its search leaves them out, each once,
-    /// in the order a tree lists them.
-    func offeredTags(_ names: [String]) -> [CardTag] {
-        let names = Set(names)
-        return tags.filter { names.contains($0.name) }
+    /// in the order a tree lists them, or in the order of `names` when
+    /// `keepingTheirOrder` says so.
+    func offeredTags(_ names: [String], keepingTheirOrder: Bool = false) -> [CardTag] {
+        guard keepingTheirOrder else {
+            let names = Set(names)
+            return tags.filter { names.contains($0.name) }
+        }
+        return names.uniqued().compactMap { name in tags.first { $0.name == name } }
+    }
+
+    /// The names of the tags Lucas drags from All Tags that the window
+    /// offers, in the order a tree lists them, or in the order he drags them
+    /// when `keepingTheirOrder` says so: none while he drags none from it.
+    func droppedTags(keepingTheirOrder: Bool = false) -> [String] {
+        offeredTags(draggedTags ?? [], keepingTheirOrder: keepingTheirOrder).map(\.name)
     }
 
     /// Chooses All Tags, as All Tags… in the menu bar's Prioritize submenu
@@ -207,6 +220,20 @@ extension CardsWindowState {
         }
     }
 
+    /// Starts dragging the tags named `names` from All Tags, as Lucas drags
+    /// their rows, which a drop in the sidebar pins, or in All Tags moves,
+    /// until he lets go of them (`stopDraggingTags()`).
+    public mutating func startDraggingTags(_ names: [String]) {
+        draggedTags = names
+    }
+
+    /// Lucas let go of the tags he dragged from All Tags, wherever he
+    /// dropped them, in the window or out of it, after the window took the
+    /// drop, if it did.
+    public mutating func stopDraggingTags() {
+        draggedTags = nil
+    }
+
     /// Moves the sidebar's pinned tags at `offsets` to before the one at
     /// `destination`, or after them all when it's past them, as Lucas drags
     /// them, each offset and `destination` counted in the pinned tags as
@@ -222,29 +249,30 @@ extension CardsWindowState {
         }
     }
 
-    /// Pins the tags named `names`, which Lucas dropped among the sidebar's
-    /// pinned tags before the one at `offset`, or after them all when it's
-    /// past them, as he drags them in from All Tags, in that order there, in
+    /// Pins the tags Lucas drags from All Tags (`draggedTags`), which he
+    /// dropped among the sidebar's pinned tags before the one at `offset`, or
+    /// after them all when it's past them, in the order he drags them, in
     /// one go; a pinned one moves there. Then it reads the cards again.
-    /// Whether it took the drop: never when none of `names` is a tag the
-    /// window offers, as a word dragged from elsewhere, nor when the engine
-    /// couldn't pin them, which it records.
+    /// Whether it took the drop: never while he drags none from All Tags, as
+    /// when he drops text dragged in from another app or from elsewhere in
+    /// Ficha, even text that names a tag, nor when the engine couldn't pin
+    /// them, which it records.
     @discardableResult
-    public mutating func pinDroppedTags(_ names: [String], at offset: Int) -> Bool {
-        let dropped = names.filter { name in tags.contains { $0.name == name } }.uniqued()
+    public mutating func pinDraggedTags(at offset: Int) -> Bool {
+        let dropped = droppedTags(keepingTheirOrder: true)
         let index = Self.index(of: offset, in: pinnedTags.map(\.id), apartFrom: dropped)
         return change(dropped, as: FailedAction.pin(tag:)) { engine throws(EngineError) in
             try engine.pin(dropped, at: index)
         }
     }
 
-    /// Drops the tags named `names`, which Lucas drags in from All Tags, on
-    /// the sidebar's All Tags…: pins them after the pinned tags, as a drop
-    /// right above All Tags… would, which is where he drops one while none is
-    /// pinned, as the pinned tags then have no rows to drop between. Whether
-    /// it took the drop, as `pinDroppedTags(_:at:)` says.
-    public mutating func dropOnAllTags(_ names: [String]) -> Bool {
-        pinDroppedTags(names, at: pinnedTags.count)
+    /// Drops the tags Lucas drags from All Tags on the sidebar's All Tags…:
+    /// pins them after the pinned tags, as a drop right above All Tags…
+    /// would, which is where he drops one while none is pinned, as the
+    /// pinned tags then have no rows to drop between. Whether it took the
+    /// drop, as `pinDraggedTags(at:)` says.
+    public mutating func dropDraggedTagsOnAllTags() -> Bool {
+        pinDraggedTags(at: pinnedTags.count)
     }
 
     /// The place before the tag at `offset` in `pinned`, the pinned tags as

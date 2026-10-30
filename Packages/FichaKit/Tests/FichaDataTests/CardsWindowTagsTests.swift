@@ -20,7 +20,7 @@ struct CardsWindowTagsTests {
     // historia::Roma sits inside a set-aside tag, and ciencia is set aside
     // with no card.
     @Test(
-        "the sidebar lists the pinned tags alone, in their order, each by its whole path, a set-aside one grayed, and nothing at first"
+        "the sidebar lists the pinned tags alone, in their order, a set-aside one grayed, and nothing at first"
     )
     func theSidebarListsThePinnedTags() throws {
         try approveCard("deuda", tags: ["economía::Argentina", "lenguaje"])
@@ -35,8 +35,8 @@ struct CardsWindowTagsTests {
         let window = openWindow()
 
         #expect(before.isEmpty)
-        #expect(window.pinnedTags.map(\.title) == ["lenguaje", "economía › Argentina", "historia › Roma", "ciencia"])
-        #expect(window.pinnedTags.grayed == ["historia › Roma", "ciencia"])
+        #expect(window.pinnedTags.map(\.id) == ["lenguaje", "economía::Argentina", "historia::Roma", "ciencia"])
+        #expect(window.pinnedTags.grayed == ["historia::Roma", "ciencia"])
     }
 
     // Every card has a type, so the Types section has no No Type.
@@ -78,9 +78,7 @@ struct CardsWindowTagsTests {
         #expect(window.failure == nil)
     }
 
-    @Test(
-        "dragging a pinned tag moves it where it's dropped, and a tag dragged in from All Tags is pinned there, but a word that isn't a tag is refused"
-    )
+    @Test("dragging a pinned tag moves it where it's dropped, and a tag dragged in from All Tags is pinned there")
     func theSidebarsDrops() throws {
         for tag in ["arte", "biología", "ciencia"] {
             try approveCard(tag, tags: [tag, "derecho"])
@@ -92,15 +90,13 @@ struct CardsWindowTagsTests {
         let afterMovingDown = window.pinnedTags.map(\.id)
         window.movePinnedTags(fromOffsets: [2], toOffset: 1)
         let afterMovingUp = window.pinnedTags.map(\.id)
-        let pinned = window.pinDroppedTags(["derecho"], at: 1)
-        let pinnedAgain = window.pinDroppedTags(["arte"], at: 0)
-        let refused = window.pinDroppedTags(["una palabra"], at: 0)
+        let pinned = window.dragFromAllTags(["derecho"]) { $0.pinDraggedTags(at: 1) }
+        let pinnedAgain = window.dragFromAllTags(["arte"]) { $0.pinDraggedTags(at: 0) }
 
         #expect(afterMovingDown == ["biología", "ciencia", "arte"])
         #expect(afterMovingUp == ["biología", "arte", "ciencia"])
         #expect(pinned)
         #expect(pinnedAgain)
-        #expect(!refused)
         #expect(window.pinnedTags.map(\.id) == ["arte", "biología", "derecho", "ciencia"])
         #expect(try engine.pinnedTags().map(\.name) == ["arte", "biología", "derecho", "ciencia"])
         #expect(window.failure == nil)
@@ -123,20 +119,41 @@ struct CardsWindowTagsTests {
 
     // With nothing pinned, the pinned tags have no row to drop between.
     @Test(
-        "a tag dropped on All Tags… in the sidebar is pinned after the pinned tags, also when none is, but a word that isn't a tag is refused"
-    )
+        "a tag dragged from All Tags onto All Tags… in the sidebar is pinned after the pinned tags, also when none is")
     func droppingOnAllTags() throws {
         try approveCard("arte", tags: ["arte", "biología"])
         var window = openWindow()
 
-        let pinnedFirst = window.dropOnAllTags(["biología"])
-        let pinnedAfter = window.dropOnAllTags(["arte"])
-        let refused = window.dropOnAllTags(["una palabra"])
+        let pinnedFirst = window.dragFromAllTags(["biología"]) { $0.dropDraggedTagsOnAllTags() }
+        let pinnedAfter = window.dragFromAllTags(["arte"]) { $0.dropDraggedTagsOnAllTags() }
 
         #expect(pinnedFirst)
         #expect(pinnedAfter)
-        #expect(!refused)
         #expect(window.pinnedTags.map(\.id) == ["biología", "arte"])
+    }
+
+    // Text dragged in from another app, or from elsewhere in Ficha, such as
+    // a tag's name in a card's tags, is dropped while Lucas drags nothing
+    // from All Tags.
+    @Test(
+        "text dragged in from elsewhere pins no tag, even one it names, among the pinned tags or on All Tags…, nor once a drag from All Tags ended"
+    )
+    func textDraggedFromElsewhere() throws {
+        try approveCard("arte", tags: ["arte", "biología"])
+        try engine.pin("arte")
+        var window = openWindow()
+
+        let amongThePinned = window.pinDraggedTags(at: 0)
+        let onAllTags = window.dropDraggedTagsOnAllTags()
+        window.startDraggingTags(["biología"])
+        window.stopDraggingTags()
+        let afterADragFromAllTags = window.dropDraggedTagsOnAllTags()
+
+        #expect(!amongThePinned)
+        #expect(!onAllTags)
+        #expect(!afterADragFromAllTags)
+        #expect(window.pinnedTags.map(\.id) == ["arte"])
+        #expect(window.failure == nil)
     }
 
     // Another device unpinned arte after the window read the pinned tags.
@@ -195,7 +212,7 @@ struct CardsWindowTagsTests {
 
         #expect(window.question == nil)
         #expect(window.failure == nil)
-        #expect(window.pinnedTags.map(\.title) == ["economics › Argentina"])
+        #expect(window.pinnedTags.map(\.id) == ["economics::Argentina"])
         #expect(window.sidebarItem == .cards(.tag("economics::Argentina")))
         window.choose(.allTags)
         #expect(window.allTagsRows?.outline == ["economics", "  Argentina"])
@@ -219,10 +236,10 @@ struct CardsWindowTagsTests {
 }
 
 extension [CardsWindowState.PinnedTagRow] {
-    /// The titles of the grayed rows among these tags, in the order they're
-    /// listed.
+    /// The whole names of the grayed rows among these tags, in the order
+    /// they're listed.
     var grayed: [String] {
-        filter(\.isGrayed).map(\.title)
+        filter(\.isGrayed).map(\.id)
     }
 }
 

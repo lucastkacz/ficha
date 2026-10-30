@@ -53,6 +53,23 @@ extension CardTag {
     func title(shown: String) -> String {
         shownEmoji.map { "\($0) \(shown)" } ?? shown
     }
+
+    /// The SF Symbol drawn before the tag's name, in the sidebar and in All
+    /// Tags: the tag filled, tinted with the color it shows, its own or else
+    /// the tags' it sits inside, or outlined while it shows none.
+    var symbolName: String {
+        shownColor == nil ? "tag" : "tag.fill"
+    }
+
+    /// Its symbol (`symbolName`), tinted with the color it shows, for
+    /// SwiftUI.
+    @ViewBuilder var symbol: some View {
+        if let color = shownColor {
+            Image(systemName: symbolName).foregroundStyle(color.color)
+        } else {
+            Image(systemName: symbolName)
+        }
+    }
 }
 
 extension TagColor {

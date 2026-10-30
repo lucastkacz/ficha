@@ -1,5 +1,6 @@
 import FichaCore
 import Foundation
+internal import GRDB
 
 // Each tag's counts (ADR 0022): how many cards it lists, and how many of
 // those are due, as All Tags' Cards and Due columns show them and `ficha
@@ -37,22 +38,24 @@ public struct CountedTag: Sendable, Equatable {
 extension Engine {
     /// Every tag `allTags()` lists, in its order, each with its counts, as
     /// All Tags shows them, each card standing on `ladder` now: a tag no card
-    /// lists counts none.
+    /// lists counts none. One read, so each tag's pin, which gives the pinned
+    /// tags' order (`pinnedInOrder`), and its counts are of the same moment.
     public func countedTags(on ladder: Ladder) throws(EngineError) -> [CountedTag] {
-        let tags = try allTags()
-        let rows = try cardRows(in: .all, on: ladder)
         let now = time.now
-        var counts: [String: (cards: Int, due: Int)] = [:]
-        for row in rows {
-            let isDue = row.isDue(at: now)
-            for tag in TagPath.lineages(of: row.card.tags) {
-                counts[tag, default: (0, 0)].cards += 1
-                counts[tag, default: (0, 0)].due += isDue ? 1 : 0
+        return try read { db in
+            let own = try OwnTags(in: db)
+            var counts: [String: (cards: Int, due: Int)] = [:]
+            for row in try FichaData.cardRows(in: .all, matching: "", on: ladder, at: now, in: db) {
+                let isDue = row.isDue(at: now)
+                for tag in TagPath.lineages(of: row.card.tags) {
+                    counts[tag, default: (0, 0)].cards += 1
+                    counts[tag, default: (0, 0)].due += isDue ? 1 : 0
+                }
             }
-        }
-        return tags.map { tag in
-            let count = counts[tag.name, default: (0, 0)]
-            return CountedTag(tag: tag, counts: TagCounts(cards: count.cards, due: count.due))
+            return own.everyTagName(carriedBy: try allCards(in: db)).map { name in
+                let count = counts[name, default: (0, 0)]
+                return CountedTag(tag: own.tag(name), counts: TagCounts(cards: count.cards, due: count.due))
+            }
         }
     }
 }

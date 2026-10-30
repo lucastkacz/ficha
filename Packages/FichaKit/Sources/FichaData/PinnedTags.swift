@@ -89,14 +89,12 @@ private func place(_ tags: [String], at index: Int, among pinned: [CardTag], in 
         return
     }
     var before = start > 0 ? others[start - 1].pin : nil
-    for tag in moving {
+    try changeOwnTags(moving, in: db) { own in
         let after = others[start...].lazy.compactMap(\.pin).first { pin in
             guard let before else { return true }
             return pin > before
         }
-        var own = try ownTag(tag, in: db)
         own.pin = PinPosition.between(before, after)
-        try save(own, in: db)
         before = own.pin
     }
 }
