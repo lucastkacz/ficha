@@ -7,7 +7,8 @@ import SwiftUI
 /// once flipped, its lower side under it. A card shows front first, or, when
 /// it goes both ways, back first too, with the back on top and a "Back first"
 /// mark. Every action has a key and a button: Space flips a card, 1, 2 and 3
-/// rate it, Enter ends a first view, which Space flips first when it shows
+/// rate it, and Space again rates it Know it too, as Space answers Good in
+/// Anki, Enter ends a first view, which Space flips first when it shows
 /// back first, A asks a question about the card, which waits in the inbox as
 /// a follow-up, M flags it with a note, E buries it, ⌘Z undoes the last thing
 /// Lucas did, and Esc closes the panel, which snoozes an appearance. A side
@@ -223,6 +224,19 @@ struct ReviewPanelView: View {
                 ratingButton("Don't know", key: "1", rating: .again, in: panel)
                 ratingButton("Sort of", key: "2", rating: .hard, in: panel)
                 ratingButton("Know it", key: "3", rating: .good, in: panel)
+            }
+            .background {
+                // Space too, as it answers Good in Anki once the answer
+                // shows, through a hidden button, since a button takes one
+                // key. The note's and the question's fields never show while
+                // it does, so Space in them types a space.
+                Button {
+                    rate(.good, in: panel)
+                } label: {
+                    Text("Know it")
+                }
+                .keyboardShortcut(.space, modifiers: [])
+                .hidden()
             }
         case .flagging(let card, let way, let showsLowerSide):
             sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .closeWithoutEsc, in: panel) {}
@@ -674,22 +688,26 @@ struct ReviewPanelView: View {
         _ title: LocalizedStringKey, key: Character, rating: Rating, in panel: ReviewPanelModel
     ) -> some View {
         Button {
-            panel.state.rate(rating)
-            // When the rating makes the card forgotten often, the panel
-            // offers to flag it: the note's field gets the keyboard in the
-            // same action that shows it, as after M (#61), with no selection
-            // left from the last note. Once it has the keyboard, the cursor
-            // goes after the note.
-            if panel.state.offersToFlag {
-                noteSelection = nil
-                noteIsFocused = true
-            }
+            rate(rating, in: panel)
         } label: {
             KeyLabel(title: Text(title), key: String(key))
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
         .keyboardShortcut(KeyEquivalent(key), modifiers: [])
+    }
+
+    /// Rates the card the panel shows `rating`. When the rating makes the
+    /// card forgotten often, the panel offers to flag it: the note's field
+    /// gets the keyboard in the same action that shows it, as after M (#61),
+    /// with no selection left from the last note. Once it has the keyboard,
+    /// the cursor goes after the note.
+    private func rate(_ rating: Rating, in panel: ReviewPanelModel) {
+        panel.state.rate(rating)
+        if panel.state.offersToFlag {
+            noteSelection = nil
+            noteIsFocused = true
+        }
     }
 }
 
