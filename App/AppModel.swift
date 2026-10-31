@@ -175,9 +175,14 @@ final class AppModel {
     /// Opens the Cards window on Lucas's cards as they are now, on the ladder
     /// he set in Settings, remembering the deck he last added a card to, as
     /// this Mac's preferences keep it: what he does in it goes through the
-    /// state.
+    /// state. It reads them before the window's first layout, so the table
+    /// is there for it: the split view opens the table's pane at its ideal
+    /// width only then, and at its least otherwise (#391). The window reads
+    /// them again as it starts listening for changes.
     func openCardsWindow() -> CardsWindowState {
-        engine.openCardsWindow(on: settings.ladder, lastDeckAddedTo: Preferences.lastDeckAddedTo)
+        var state = engine.openCardsWindow(on: settings.ladder, lastDeckAddedTo: Preferences.lastDeckAddedTo)
+        state.read(on: settings.ladder)
+        return state
     }
 
     /// Every change to Lucas's cards from now on, by the app or by the

@@ -38,10 +38,11 @@ import UniformTypeIdentifiers
 /// whose context menu renames it, gives it an emoji, in the same sheets, and
 /// deletes it, asking first; New Type… in a card's type picker makes one, in
 /// the New Type sheet (`NewTypeSheet.swift`).
-/// The cards' table opens with the columns
-/// and the order Lucas left it with, which he changes in its headers. He
-/// edits a card or a capture right there, in fields that take the detail's
-/// place while the sidebar and the table wait. He selects several cards with
+/// The cards' table opens with the columns Lucas showed and the order he
+/// sorted it by, which he changes in its headers, each column at a width that
+/// fits its pane. He edits a card or a capture right there, in fields that
+/// take the detail's place while the sidebar and the table wait. He selects
+/// several cards with
 /// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
 /// can do with all of them. New Card in the toolbar, or ⌘N, and Convert to
 /// Card on a capture open the card form, a sheet of its own
@@ -64,8 +65,9 @@ struct CardsView: View {
     /// The table's order: the one Lucas left it in with a click on a column's
     /// header, and at first the newest cards first.
     @State private var sortOrder = Preferences.cardsSortOrder
-    /// The table's columns as Lucas left them: which ones show, in what order
-    /// and how wide. At first Front, Media, Step and Due, until he adds
+    /// The table's columns: which ones show, as Lucas left them, in the
+    /// table's order and at widths that fit the pane, as the preferences
+    /// read them back. At first Front, Media, Step and Due, until he adds
     /// others from the headers' menu.
     @State private var columns = Preferences.cardsColumns
     /// The inbox's order: the latest added first, until Lucas clicks a
@@ -179,10 +181,13 @@ struct CardsView: View {
     /// six columns to leave the tag's some room, and the detail beside it,
     /// a few buttons, can be narrower to give it: a minimum the split view
     /// keeps whenever it changes, where an ideal width counts only as the
-    /// window first opens. The sidebar opens wide enough for the sample
-    /// decks' names to read whole beside their counts, after their emoji,
-    /// two levels down too, like Idiomas › Español › Rioplatense. The panes'
-    /// least widths add up to the window's either way.
+    /// window first opens, and only for a pane whose content is there by
+    /// then, which is why the window opens with the cards already read
+    /// (`AppModel.openCardsWindow()`): the table's pane opens wide enough
+    /// for Front, Media, Step and Due. The sidebar opens wide enough for the
+    /// sample decks' names to read whole beside their counts, after their
+    /// emoji, two levels down too, like Idiomas › Español › Rioplatense. The
+    /// panes' least widths add up to the window's either way.
     private var panes: some View {
         NavigationSplitView {
             sidebar
@@ -1369,7 +1374,8 @@ struct CardsView: View {
                 noCards(in: group)
             }
         }
-        // The window opens the next time with the table as Lucas leaves it.
+        // The window opens the next time with the columns Lucas shows and
+        // the order he sorts by.
         .onChange(of: sortOrder) {
             Preferences.cardsSortOrder = sortOrder
         }

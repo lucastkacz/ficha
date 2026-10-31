@@ -152,16 +152,36 @@ enum Preferences {
         set { write(newValue, encodedFor: .cardsSortOrder, unless: CardRowOrder.newestFirst) }
     }
 
-    /// The Cards window's table columns as Lucas left them: which ones show,
-    /// in what order and how wide, as SwiftUI keeps them. At first the
-    /// table's own: Front, Media, Step and Due. One that can't be read is
-    /// only logged, as the tab Settings opens on: the window opens with its
-    /// first columns, and Lucas's next change to them replaces it. Keeping
-    /// them here, with the other preferences, rather than through SwiftUI's
-    /// `@AppStorage`, is our own.
+    /// The Cards window's table columns: which ones show, as Lucas left them,
+    /// at first the table's own, Front, Media, Step and Due, in the table's
+    /// order and at its widths. SwiftUI keeps their order and widths too,
+    /// which aren't kept here, nor read back from a version before #391: a
+    /// width saved in a wider pane, which the table gave its columns as the
+    /// pane grew, opened them past the pane's edge, behind a horizontal
+    /// scroll bar, since the table fits its columns to its pane only as the
+    /// pane changes size, and SwiftUI has no way to keep the order without
+    /// the widths. One that can't be read is only logged, as the tab Settings
+    /// opens on: the window opens with its first columns, and Lucas's next
+    /// change to them replaces it. Keeping them here, with the other
+    /// preferences, rather than through SwiftUI's `@AppStorage`, is our own.
     static var cardsColumns: TableColumnCustomization<CardRow> {
-        get { read(.cardsColumns, decoding: TableColumnCustomization<CardRow>.self) ?? TableColumnCustomization() }
-        set { write(newValue, encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
+        get {
+            read(.cardsColumns, decoding: TableColumnCustomization<CardRow>.self).map(visibility(of:))
+                ?? TableColumnCustomization()
+        }
+        set { write(visibility(of: newValue), encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
+    }
+
+    /// Which of the Cards window's table columns show in `columns`, as Lucas
+    /// left them, without their order or widths.
+    private static func visibility(
+        of columns: TableColumnCustomization<CardRow>
+    ) -> TableColumnCustomization<CardRow> {
+        var shown = TableColumnCustomization<CardRow>()
+        for column in CardRowOrder.Column.allCases where columns[visibility: column.rawValue] != .automatic {
+            shown[visibility: column.rawValue] = columns[visibility: column.rawValue]
+        }
+        return shown
     }
 
     /// The deck Lucas last added a card to in the Cards window's card form,

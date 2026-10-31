@@ -42,8 +42,9 @@ nonisolated extension ColumnOrder {
 nonisolated struct CardRowOrder: ColumnOrder, Codable {
     /// A column the table sorts by. Its raw value is how the preferences keep
     /// the order, and its table column's customization ID, so it never
-    /// changes.
-    enum Column: String, Codable {
+    /// changes. Every column of the table is one, since the preferences keep
+    /// whether each of these shows, and no other column's.
+    enum Column: String, Codable, CaseIterable {
         /// When Lucas approved the card, and then, for cards approved
         /// together, the order he approved them in.
         case created
