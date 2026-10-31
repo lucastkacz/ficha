@@ -230,7 +230,7 @@ Each change is built in a worktree of its own, in `.claude/worktrees/`, with bui
 make clean-merged
 ```
 
-- For each folder in `.claude/worktrees/`, the implementers' `agent-*` included, it removes the worktree, its build folders and its branch only when nothing is lost: the worktree has no uncommitted changes (`git status --porcelain` prints nothing), and its branch's last commit is a merged PR's head (`headRefOid`), or inside one, as an implementer's branch joined into its spec's branch is. The squash merge leaves those commits off `main`, and the PR keeps them.
+- For each folder in `.claude/worktrees/`, the builders' `agent-*` included, it removes the worktree, its build folders and its branch only when nothing is lost: the worktree has no uncommitted changes (`git status --porcelain` prints nothing), and its branch's last commit is a merged PR's head (`headRefOid`), or inside one, as an implementer's branch joined into its spec's branch is. The squash merge leaves those commits off `main`, and the PR keeps them.
 - Every other worktree stays, listed with the reason: uncommitted changes, an open PR, a last commit no merged PR holds, or a branch with no commits of its own off `main`, as a session's that has only just started.
 - Claude Code locks a session's worktree while the session runs, naming its process, and leaves the lock when it ends. A worktree whose process still runs stays, so archive the finished session first; a lock whose process ended is lifted. Any other lock keeps its worktree. Reading Claude Code's locks is our own.
 - It deletes the branches with `git branch -D` without asking, since the check above stands in for the prompt. The prompt stays for `git branch -D` typed by hand (`.claude/settings.json`).
