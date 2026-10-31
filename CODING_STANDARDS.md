@@ -74,6 +74,6 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 ## Docs
 
-- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
+- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
 - No linter can tell that a file's scope changed, so the reviewer looks beyond the diff for these lines. A line the change left stale is a violation.
-- A document agents read, such as `CLAUDE.md` and those in `.claude/rules/`, `.claude/skills/` and `docs/agents/`, follows the mattpocock-skills plugin's `writing-for-agents` skill.
+- A document agents read, such as `CLAUDE.md` and those in `.claude/rules/`, `.claude/skills/`, `.claude/agents/` and `docs/agents/`, follows the mattpocock-skills plugin's `writing-for-agents` skill.
