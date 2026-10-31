@@ -25,13 +25,11 @@ extension [CardsWindowState.DeckRow] {
     /// name, its due count and " grayed" when it's grayed, indented two
     /// spaces per level.
     var outline: [String] {
-        func lines(_ rows: [CardsWindowState.DeckRow], depth: Int) -> [String] {
-            rows.flatMap { row in
-                let title = row.deck.isDefault ? "Default" : row.title
-                let line = "\(String(repeating: "  ", count: depth))\(title) \(row.counts.due)"
-                return [line + (row.isGrayed ? " grayed" : "")] + lines(row.children, depth: depth + 1)
-            }
+        lines.map { line in
+            let row = line.node
+            let title = row.deck.isDefault ? "Default" : row.title
+            let indent = String(repeating: "  ", count: line.depth)
+            return "\(indent)\(title) \(row.counts.due)" + (row.isGrayed ? " grayed" : "")
         }
-        return lines(self, depth: 0)
     }
 }

@@ -5,7 +5,8 @@ import SwiftUI
 /// The pop-up of a card's deck, its Deck field, in the card form and in the
 /// card editor, and of the deck every card comes into, in the Import sheet:
 /// each deck the window offers, Default first, then the others in the order
-/// a tree lists them, each by its whole name, as “Idiomas › Inglés”, and last
+/// a tree lists them, each by its emoji, when it shows one, and its whole
+/// name, as “🗣️ Idiomas › Inglés” (`GroupWithLook.title`), and last
 /// New Deck…, which asks for a new deck's name, in the New Deck sheet or in
 /// the Import sheet's preview's place, and leaves the deck as it was until
 /// one is named. `label` names it for VoiceOver, since the label beside it is
@@ -25,7 +26,7 @@ struct DeckPicker: View {
     var body: some View {
         Picker(selection: choice) {
             ForEach(decks, id: \.name) { deck in
-                Text(verbatim: Deck.shownName(deck.name))
+                Text(verbatim: deck.title)
                     .tag(Choice.deck(deck.name))
             }
             Divider()

@@ -278,7 +278,7 @@ extension CardsWindowState {
     /// busy, and returns the work, which the app runs away from the main
     /// actor and hands to `finishImportWork(_:)`: the sheet then shows the
     /// file's preview, with the decks and the tags it proposes in their
-    /// fields, Default chosen for the cards it puts in no deck, its repeated
+    /// fields, Default chosen for the cards that name no deck, its repeated
     /// cards updated and Bring progress ticked, or says why it couldn't read
     /// it, and stays where it was.
     public mutating func previewImport(of file: URL) -> ImportWork? {

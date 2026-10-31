@@ -62,7 +62,7 @@ extension Engine {
     /// one, and a name `makeDeck(named:)` refuses is refused. When it's so
     /// already, nothing changes, and unticking a deck never makes one.
     public func setChosenToSync(_ chosen: Bool, ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in try changeOwnDecks([deck], in: db) { $0.chosenToSync = chosen } }
     }
 
@@ -107,7 +107,7 @@ extension Engine {
             }
             weights[deck] = weight > 0 ? weight : nil
         }
-        let chosen = Set(decks.filter(\.chosenToSync).map(\.name))
+        let chosen = own.chosenToSync
         return deckTree(of: decks, named: \.name) { deck, title, children in
             DeckToChoose(
                 deck: deck, title: title,

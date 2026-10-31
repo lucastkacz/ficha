@@ -287,7 +287,7 @@ public struct ImportChoices: Sendable, Equatable {
     /// the import refuses, which it refuses before it brings any card.
     func deckComingIn(proposed: String?) throws(EngineError) -> String {
         guard let proposed else {
-            return try checkedDeckForCards(deckForCardsWithoutDeck)
+            return try checkedDeckOrDefault(deckForCardsWithoutDeck)
         }
         return try checkedDeckName(deckName(for: proposed))
     }

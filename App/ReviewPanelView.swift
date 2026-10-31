@@ -597,7 +597,7 @@ struct ReviewPanelView: View {
     ) -> some View {
         let isBackFirst = way == .backFirst
         if isNew || isAhead || isBackFirst || deck != nil || !tags.isEmpty {
-            TagLine(deck: deck, tags: tags) {
+            CardTopLine(deck: deck, tags: tags) {
                 if isNew {
                     newBadge
                 }
@@ -740,7 +740,7 @@ struct BackFirstBadge: View {
 /// the panel stays as small as it is: the tags that don't fit collapse into a
 /// "+n" capsule, whose tooltip names them, and a deck's name too long for
 /// what's left gives way in its middle.
-private struct TagLine<Badge: View>: View {
+private struct CardTopLine<Badge: View>: View {
     let deck: Deck?
     let tags: [CardTag]
     @ViewBuilder let badge: Badge
@@ -852,7 +852,7 @@ extension EngineError {
             .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
             .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .deckSetAside, .blankDeckName,
-            .defaultDeckName, .deckInsideItself, .defaultDeckStays, .deckNotFound, .blankTypeName,
+            .defaultDeckName, .deckInsideItself, .deckInsideDefault, .defaultDeckStays, .deckNotFound, .blankTypeName,
             .builtInTypeName, .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog,
             .storage,
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,

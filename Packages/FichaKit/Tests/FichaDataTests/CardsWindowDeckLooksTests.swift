@@ -92,6 +92,6 @@ struct CardsWindowDeckLooksTests {
 extension [CardsWindowState.DeckRow] {
     /// Every row of the tree, in the order a tree lists them.
     fileprivate var everyRow: [CardsWindowState.DeckRow] {
-        flatMap { [$0] + $0.children.everyRow }
+        lines.map(\.node)
     }
 }

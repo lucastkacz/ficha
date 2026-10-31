@@ -85,8 +85,8 @@ public struct WayProgress: Sendable, Equatable {
         /// When it's due: the card is in Lucas's reviews, and the way on the
         /// ladder.
         case due(Date)
-        /// That the card is set aside, so it won't show up until none of its
-        /// tags is.
+        /// That the card is set aside, so it won't show up until neither its
+        /// deck nor any deck that deck sits inside is.
         case setAside
         /// Nothing: the way is new, or the card flagged or buried, which the
         /// step's column and the Front column's marks say.

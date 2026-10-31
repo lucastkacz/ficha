@@ -14,8 +14,10 @@ import Foundation
 /// at once, and moves them to the deck Lucas picks in the Change Deck sheet,
 /// whose tree the sidebar lists too, where a deck's menu sets it aside,
 /// prioritizes it, and gives it a color or asks for its emoji
-/// (`CardsWindowDecks.swift`), and a chosen deck's tags narrow its cards to
-/// one of them (`CardsWindowDeckTags.swift`), as it pins tags to the sidebar
+/// (`CardsWindowDecks.swift`), and renames and deletes it, as dropping cards
+/// or a deck on a deck there moves them (`CardsWindowDeckEdits.swift`), and a
+/// chosen deck's tags narrow its cards to one of them
+/// (`CardsWindowDeckTags.swift`), as it pins tags to the sidebar
 /// or gives them a color from a tag's context menu, for one tag or several,
 /// it asks which emoji a tag gets and which name, and puts
 /// the sidebar's pinned tags in the order Lucas drags them into, pinning a
@@ -27,8 +29,10 @@ import Foundation
 /// deletes card types of the user's own (`CardsWindowTypes.swift`), and it
 /// records what couldn't be saved, for the window to say. It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
-/// runs the Import sheet, from a file's preview to what the import did, and
-/// the Export sheet, from what it offers to export to the file it writes.
+/// with its Deck field and the editor's (`CardsWindowDeckField.swift`), runs
+/// the Import sheet, from a file's preview, with the decks its cards go to,
+/// to what the import did (`CardsWindowImport.swift`), and the Export sheet,
+/// from what it offers to export to the file it writes.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, the inbox,
     /// or All Tags.
@@ -447,6 +451,10 @@ public struct CardsWindowState: Sendable {
     /// The sidebar's decks Lucas closed, which each start open, and the
     /// window remembers while it's open.
     var closedDecks: Set<String> = []
+    /// The row id of the last change to decks the window followed, or nil
+    /// until it first reads the cards: it follows those after it each time
+    /// it reads them again (`CardsWindowDeckEdits.swift`).
+    var lastDeckChangeFollowed: Int64?
     /// The tags of the deck the sidebar chose, with how many of its cards
     /// carry each, the most first, which the row above the card list shows:
     /// none while it chose no deck (`CardsWindowDeckTags.swift`).
@@ -1005,7 +1013,9 @@ public struct CardsWindowState: Sendable {
     /// Reads the decks, the tags and what the sidebar chose, as they are now,
     /// on `ladder`, the one Lucas set in Settings, which he may have changed
     /// since the last read, and the review log of the card the detail shows.
-    /// When the chosen deck is gone, as Default once its last card moved out,
+    /// It follows each deck renamed or deleted since it last read, whoever
+    /// did it (`follow(_:)`). When the chosen deck is gone, as Default once
+    /// its last card moved out,
     /// or the chosen tag is gone, because its last card was edited or
     /// deleted while it has nothing of its own, the sidebar goes back to All
     /// cards, and so it does when No Type is gone, once every card that isn't
@@ -1019,6 +1029,7 @@ public struct CardsWindowState: Sendable {
         self.ladder = ladder
         now = engine.now
         do throws(EngineError) {
+            let deckChanges = try engine.deckChanges(after: lastDeckChangeFollowed)
             // All Tags reads every tag with its counts, which its tree lists,
             // and the rest of the window reads every tag alone.
             let counted = sidebarItem == .allTags ? try engine.countedTags(on: ladder) : nil
@@ -1029,6 +1040,7 @@ public struct CardsWindowState: Sendable {
             }
             pinnedTags = tags.pinnedInOrder.map(PinnedTagRow.init(tag:))
             decks = try engine.countedDecks(on: ladder)
+            follow(deckChanges)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
@@ -1063,7 +1075,7 @@ public struct CardsWindowState: Sendable {
     /// every other group always.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
-        case .deck(let deck): decks.contains { $0.deck.name == deck }
+        case .deck(let deck): listedDeck(deck) != nil
         case .tag(let tag): tags.contains { $0.name == tag }
         case .noType: typeGroups.contains(.noType)
         case .type(let type): offersType(type)

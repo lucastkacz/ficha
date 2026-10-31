@@ -218,9 +218,9 @@ final class SyncTabTests {
         tab.choose("Historia", true)
 
         #expect(tab.onlyChosenDecks)
-        #expect(tab.deckRows.map(\.id) == [Deck.defaultName, "Geografía", "Historia", "Lenguaje", "Mapas"])
-        #expect(tab.deckRows.map(\.deck.isChosen) == [false, false, true, false, false])
-        #expect(tab.deckRows.map(\.deck.weight) == [nil, 1_500_000, nil, nil, 1_500_000])
+        #expect(tab.deckLines.map(\.id) == [Deck.defaultName, "Geografía", "Historia", "Lenguaje", "Mapas"])
+        #expect(tab.deckLines.map(\.node.isChosen) == [false, false, true, false, false])
+        #expect(tab.deckLines.map(\.node.weight) == [nil, 1_500_000, nil, nil, 1_500_000])
         #expect(tab.failure == nil)
     }
 
@@ -253,14 +253,14 @@ final class SyncTabTests {
         tab.choose("Geografía::América::Chile", false)
 
         #expect(
-            tab.deckRows.map(\.deck.title)
+            tab.deckLines.map(\.node.title)
                 == ["", "Geografía", "América", "Argentina", "Chile", "Banderas", "Historia", "Roma"])
-        #expect(tab.deckRows.map(\.level) == [0, 0, 1, 2, 2, 1, 0, 1])
-        #expect(tab.deckRows.map(\.deck.isTicked) == [false, false, true, true, true, false, false, true])
-        #expect(tab.deckRows.map(\.deck.canChoose) == [true, true, true, false, false, true, true, true])
-        #expect(tab.deckRows.map(\.deck.isChosen) == [false, false, true, true, false, false, false, true])
+        #expect(tab.deckLines.map(\.depth) == [0, 0, 1, 2, 2, 1, 0, 1])
+        #expect(tab.deckLines.map(\.node.isTicked) == [false, false, true, true, true, false, false, true])
+        #expect(tab.deckLines.map(\.node.canChoose) == [true, true, true, false, false, true, true, true])
+        #expect(tab.deckLines.map(\.node.isChosen) == [false, false, true, true, false, false, false, true])
         #expect(
-            tab.deckRows.map(\.deck.weight) == [nil, 2_000_000, 1_500_000, 1_500_000, nil, 2_000_000, nil, nil])
+            tab.deckLines.map(\.node.weight) == [nil, 2_000_000, 1_500_000, 1_500_000, nil, 2_000_000, nil, nil])
         #expect(tab.failure == nil)
     }
 

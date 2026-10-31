@@ -133,6 +133,46 @@ public protocol DeckInTree {
     /// What it says: its last level under its parent, or nothing for
     /// Default, which the app names in the Mac's language.
     var title: String { get }
+    /// The decks right inside it, in the order a tree lists them.
+    var children: [Self] { get }
+}
+
+extension DeckInTree {
+    /// It, and every deck inside it, in the order a tree lists them.
+    var flattened: [Self] {
+        [self] + children.flatMap(\.flattened)
+    }
+}
+
+/// A deck of a tree of decks, with how deep it sits in it, as a list shows
+/// the tree when it indents each deck by its depth: the Change Deck sheet
+/// and the Sync tab.
+public struct DeckLine<Node: DeckInTree>: Identifiable {
+    /// The deck, as the tree holds it.
+    public let node: Node
+    /// How many decks of the tree it sits inside: 0 at the top.
+    public let depth: Int
+
+    public var id: String {
+        node.deck.name
+    }
+}
+
+extension DeckLine: Sendable where Node: Sendable {}
+
+extension DeckLine: Equatable where Node: Equatable {}
+
+extension Array where Element: DeckInTree {
+    /// Each deck of these trees, followed by the decks inside it, in the
+    /// order a tree lists them, each with how deep it sits.
+    public var lines: [DeckLine<Element>] {
+        lines(depth: 0)
+    }
+
+    /// The lines of these trees, whose tops sit `depth` decks in.
+    private func lines(depth: Int) -> [DeckLine<Element>] {
+        flatMap { node in [DeckLine(node: node, depth: depth)] + node.children.lines(depth: depth + 1) }
+    }
 }
 
 /// `elements`, each of which `name` names a deck, as a tree, in the order a
@@ -274,11 +314,13 @@ func checkedDeckName(_ name: String) throws(EngineError) -> String {
     return name
 }
 
-/// `name`, a deck cards go to as they're made, edited, moved or imported, or
-/// that a switch, a color or an emoji is set on: Default, by
-/// `Deck.defaultName`, as it is, or any other deck's whole name as
-/// `checkedDeckName(_:)` cleans it up, or an error when it refuses it.
-func checkedDeckForCards(_ name: String) throws(EngineError) -> String {
+/// `name`, the name of any deck, Default's included, as one comes in where
+/// Default is a deck like the others, one cards go to as they're made,
+/// edited, moved or imported, or that a switch, a color, an emoji or the
+/// choice to sync is set on: Default, by `Deck.defaultName`, as it is, or any
+/// other deck's whole name as `checkedDeckName(_:)` cleans it up, or an error
+/// when it refuses it.
+func checkedDeckOrDefault(_ name: String) throws(EngineError) -> String {
     name == Deck.defaultName ? name : try checkedDeckName(name)
 }
 
@@ -301,9 +343,9 @@ func makeRow(ofDeck name: String, madeHere: Bool, in db: Database) throws {
 /// levels cleaned up as `checkedDeckName(_:)` cleans them up, with its row,
 /// as `makeRow(ofDeck:madeHere:in:)` makes it; or Default, by
 /// `Deck.defaultName`, which gets none. Refuses a name
-/// `checkedDeckForCards(_:)` refuses.
+/// `checkedDeckOrDefault(_:)` refuses.
 func madeDeck(named name: String, in db: Database) throws -> String {
-    let name = try checkedDeckForCards(name)
+    let name = try checkedDeckOrDefault(name)
     if name != Deck.defaultName {
         try makeRow(ofDeck: name, madeHere: true, in: db)
     }
@@ -311,9 +353,12 @@ func madeDeck(named name: String, in db: Database) throws -> String {
 }
 
 /// Moves the cards with the ids `cardIDs` to the deck `deck`, in the write
-/// `db`, made as `madeDeck(named:in:)` makes it: the one way Change Deck and
-/// an edit set the deck a card lives in. Refuses a name `madeDeck(named:in:)`
-/// refuses, and a card that isn't there.
+/// `db`, made as `madeDeck(named:in:)` makes it: the one way the user's
+/// Change Deck and edits set the deck a card lives in. Sync sets it on its
+/// own, as another device's rename or deletion of a deck reaches a card
+/// (`DeckChanges.swift`) and as a card that left iCloud takes its deck
+/// (`takeWhatLeft(_:of:in:)`), which make no deck on this device. Refuses a
+/// name `madeDeck(named:in:)` refuses, and a card that isn't there.
 func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
     let deck = try madeDeck(named: deck, in: db)
     for cardID in cardIDs {
@@ -327,7 +372,7 @@ func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
 /// edit, a fix and an approved expansion set a card's deck. Refuses a name
 /// `madeDeck(named:in:)` refuses.
 func move(_ card: Card, to deck: String?, in db: Database) throws {
-    if let deck, try checkedDeckForCards(deck) != card.deck {
+    if let deck, try checkedDeckOrDefault(deck) != card.deck {
         try moveCards([card.id], to: deck, in: db)
     }
 }
@@ -361,6 +406,12 @@ struct OwnDecks: Sendable {
     /// has the same rows.
     var names: [String] {
         Array(byName.keys)
+    }
+
+    /// The decks the user chose to sync, by name, as their rows say, and as
+    /// `WhatSyncs` reads them straight from the table.
+    var chosenToSync: Set<String> {
+        Set(byName.values.filter(\.chosenToSync).map(\.name))
     }
 
     /// The deck with this name, with what it has of its own, which is nothing

@@ -12,8 +12,12 @@ import Foundation
 // inside it, or to the top when it's dropped on the Decks section's title.
 // The window follows a deck it holds by name to its new one: the deck the
 // sidebar chose, the decks it closed, the deck the card form and the editor
-// hold, and the one the last card was added to; and lets go of one it
-// deleted.
+// hold, and the one the last card was added to; and lets go of one deleted.
+// It does so as it reads the cards again, after each change to decks this
+// device applied since it last read them (`DeckChangesSince`), whoever made
+// it: the window itself, the `ficha` CLI on the same database, or another
+// device, heard in a fetch; so that Add or Save never makes a deck again
+// under a name it no longer has.
 
 extension CardsWindowState.DeckMenu {
     /// Whether the menu offers Rename… and Delete…: for every deck but
@@ -55,16 +59,13 @@ extension CardsWindowState {
     /// `action`, and reads the cards again, the window following it to its
     /// new name; or records why it couldn't. Whether it did.
     mutating func renameDeck(_ deck: String, to name: String, as action: FailedAction) -> Bool {
-        var renamed = name
         let done = perform(action) { engine throws(EngineError) in
-            renamed = try engine.renameDeck(deck, to: name)
+            try engine.renameDeck(deck, to: name)
         }
-        guard done else {
-            return false
+        if done {
+            read(on: ladder)
         }
-        follow(deck, renamedTo: renamed)
-        read(on: ladder)
-        return true
+        return done
     }
 
     /// Asks whether to delete the deck `deck`, with every deck inside it and
@@ -94,7 +95,6 @@ extension CardsWindowState {
         }
         if done {
             read(on: ladder)
-            letGo(ofDeletedDeck: deletion.deck)
         }
     }
 
@@ -213,14 +213,12 @@ extension CardsWindowState {
     /// `parent` and the decks it sits inside open; or records why it
     /// couldn't. Whether it did.
     private mutating func moveDeck(_ deck: String, into parent: String?) -> Bool {
-        var moved = deck
         let done = perform(.moveDeck(deck: deck)) { engine throws(EngineError) in
-            moved = try engine.moveDeck(deck, into: parent)
+            try engine.moveDeck(deck, into: parent)
         }
         guard done else {
             return false
         }
-        follow(deck, renamedTo: moved)
         if let parent {
             closedDecks.subtract(TagPath.lineage(of: parent))
         }
@@ -228,51 +226,30 @@ extension CardsWindowState {
         return true
     }
 
-    /// Points what the window holds of decks by name at their names after the
-    /// deck `deck` was renamed `name`, with every deck inside it: the deck
-    /// the sidebar chose, the decks it closed, the deck the card form and the
-    /// editor hold, and the one the last card was added to, each when it's
-    /// the deck or inside it.
-    private mutating func follow(_ deck: String, renamedTo name: String) {
-        func renamed(_ held: String) -> String {
-            deckName(held, afterRenaming: deck, to: name)
-        }
+    /// Points what the window holds of decks by name at their names after
+    /// `changes`, the renames and deletions of decks since it last read the
+    /// cards, whoever made them, as it reads them, once it read the decks
+    /// (`DeckChangesSince.name(of:)`): the deck the sidebar chose, the decks
+    /// it closed, the deck the card form holds, and the one Show Card set
+    /// aside, the editor's, and the one the last card was added to. A deck
+    /// deleted lets go: the sidebar goes back to All cards, the forms' decks
+    /// to the deck a new card starts in, and the editor's and the one the
+    /// last card was added to, to Default.
+    mutating func follow(_ changes: DeckChangesSince) {
+        lastDeckChangeFollowed = changes.last
+        guard !changes.new.isEmpty else { return }
         if case .cards(.deck(let chosen)) = sidebarItem {
-            sidebarItem = .cards(.deck(renamed(chosen)))
+            sidebarItem = changes.name(of: chosen).map { .cards(.deck($0)) } ?? .cards(.all)
         }
-        closedDecks = Set(closedDecks.map(renamed))
-        editedDeck = renamed(editedDeck)
+        closedDecks = Set(closedDecks.compactMap(changes.name(of:)))
+        editedDeck = changes.name(of: editedDeck) ?? Deck.defaultName
+        lastDeckAddedTo = changes.name(of: lastDeckAddedTo) ?? Deck.defaultName
+        let startingDeck = deckANewCardStartsIn
         if let formsDeck = cardForm?.draft.deck {
-            cardForm?.draft.deck = renamed(formsDeck)
+            cardForm?.draft.deck = changes.name(of: formsDeck) ?? startingDeck
         }
         if let setAsideFormsDeck = setAsideCardForm?.draft.deck {
-            setAsideCardForm?.draft.deck = renamed(setAsideFormsDeck)
-        }
-        lastDeckAddedTo = renamed(lastDeckAddedTo)
-    }
-
-    /// Points what the window holds of decks by name away from the deck
-    /// `deck`, which Lucas deleted with every deck inside it, once it read
-    /// the cards again, each when it's the deck or inside it: the deck the
-    /// card form holds, and the one Show Card set aside, go to the deck a new
-    /// card starts in, and the editor's and the one the last card was added
-    /// to go to Default. The sidebar left it as it read them.
-    private mutating func letGo(ofDeletedDeck deck: String) {
-        func isDeleted(_ held: String) -> Bool {
-            TagPath.isTag(held, within: deck)
-        }
-        if isDeleted(lastDeckAddedTo) {
-            lastDeckAddedTo = Deck.defaultName
-        }
-        if isDeleted(editedDeck) {
-            editedDeck = Deck.defaultName
-        }
-        let startingDeck = deckANewCardStartsIn
-        if let formsDeck = cardForm?.draft.deck, isDeleted(formsDeck) {
-            cardForm?.draft.deck = startingDeck
-        }
-        if let setAsideFormsDeck = setAsideCardForm?.draft.deck, isDeleted(setAsideFormsDeck) {
-            setAsideCardForm?.draft.deck = startingDeck
+            setAsideCardForm?.draft.deck = changes.name(of: setAsideFormsDeck) ?? startingDeck
         }
     }
 }

@@ -106,8 +106,8 @@ struct SyncTab: View {
     /// ticked, since it syncs with it, and its checkbox waits.
     private func decksSection(_ sync: SyncTabState) -> some View {
         Section {
-            ForEach(sync.deckRows) { row in
-                let deck = row.deck
+            ForEach(sync.deckLines) { line in
+                let deck = line.node
                 // In a stack, the checkbox comes before the name, as macOS lists
                 // them; a form's label would put it after.
                 HStack {
@@ -132,7 +132,7 @@ struct SyncTab: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .padding(.leading, CGFloat(row.level) * 20)
+                .padding(.leading, CGFloat(line.depth) * 20)
                 .disabled(!sync.canChoose)
             }
         } header: {

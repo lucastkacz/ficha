@@ -24,9 +24,9 @@ import SwiftUI
 enum Window: String {
     case cards
     /// The Cards window on ciencia, once the sample's tags sit inside tags
-    /// and five are pinned, in an order of their own, with its sidebar's
-    /// pinned tags, one inside another named by its whole path, and All
-    /// Tags… after them.
+    /// and five are pinned, in an order of their own, its sidebar scrolled to
+    /// its end, below the decks, so that it shows the pinned tags, one inside
+    /// another named by its whole path, and All Tags… after them.
     case cardsTags = "cards-tags"
     /// The Cards window on All Tags, with the same tags and an unused one:
     /// every tag as a tree, with its counts and its Pinned checkbox, ciencia,
@@ -892,7 +892,7 @@ func chooseUserType(_ name: String, selecting front: String, in state: inout Car
 }
 
 /// Scrolls the sidebar of the Cards window `window`, once it shows, to its
-/// last row, No Type. A click in the sidebar would scroll it as Finder's
+/// last row, a type's. A click in the sidebar would scroll it as Finder's
 /// does, but in a window opened on a state of its own, as
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
@@ -1798,9 +1798,9 @@ do {
     try makeKeyWindowOfApp(window)
     window.orderFrontRegardless()
     try wait(1.5)
-    // Its sidebar's Types section, below the tags, which a click in the
-    // sidebar can't reach there.
-    if name == .cardsTypes {
+    // Its sidebar's pinned tags, or its Types section, below the decks,
+    // which a click in the sidebar can't reach there.
+    if [.cardsTags, .cardsTypes].contains(name) {
         try scrollSidebarToEnd(of: window)
         try wait(0.5)
     }

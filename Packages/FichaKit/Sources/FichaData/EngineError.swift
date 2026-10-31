@@ -97,6 +97,9 @@ public enum EngineError: Error, Equatable {
     /// inside a deck inside it, which would make the tree loop, so nothing
     /// changed.
     case deckInsideItself(String)
+    /// The deck with this name was to be moved inside Default, which no deck
+    /// sits inside, so nothing changed.
+    case deckInsideDefault(String)
     /// Default was to be renamed, moved or deleted, which it never is: it
     /// holds the cards no other deck does. Nothing changed.
     case defaultDeckStays
@@ -362,6 +365,13 @@ extension EngineError: LocalizedError {
                 localized: """
                     “\(Deck.shownName(deck))” can't go inside itself, or inside a deck inside it, so nothing changed. \
                     Pick a deck outside it.
+                    """
+            )
+        case .deckInsideDefault(let deck):
+            String(
+                localized: """
+                    “\(Deck.shownName(deck))” can't go inside Default, which holds the cards no other deck does and \
+                    has no decks inside it, so nothing changed. Move it inside another deck, or to the top.
                     """
             )
         case .defaultDeckStays:

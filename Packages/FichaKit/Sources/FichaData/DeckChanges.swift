@@ -98,6 +98,63 @@ func applyDeckChange(_ record: ICloudRecord, as id: UUID, in db: Database) throw
     try DeckChange.take(record, as: id, in: db) { change, reached in try apply(change, among: reached, in: db) }
 }
 
+/// The changes to decks this device applied after a given one, which the
+/// Cards window follows as it reads the cards again, whoever made them: the
+/// window, the `ficha` CLI on the same database, or another device, heard in
+/// a fetch (`CardsWindowDeckEdits.swift`).
+struct DeckChangesSince: Sendable {
+    /// The row id of the last change the device holds, which the next read
+    /// starts after, or 0 while it holds none: the ids start at 1 and never
+    /// go back.
+    let last: Int64
+    /// The changes it applied after the one it started after, in the order
+    /// it applied them: none when it started after none, as the window reads
+    /// for the first time, nor a change it held before it took a restore's
+    /// cards, which comes in again without being applied.
+    let new: [DeckChange]
+    /// Every change it holds, in the order they were made, which follow on a
+    /// change new to it as it applied them (`RecordedChange.take`).
+    let held: [DeckChange]
+
+    /// The deck `deck`, by its whole name, after the new changes, as the
+    /// device's cards that lived in it went: renamed along, or nil once
+    /// deleted, when a change reached it, and each change made after that
+    /// one following on; as it is otherwise.
+    func name(of deck: String) -> String? {
+        var name = deck
+        for change in new {
+            guard TagPath.isTag(name, within: change.edit.deck) else { continue }
+            for following in [change] + held.filter({ $0.madeAt > change.madeAt && $0.id != change.id }) {
+                guard TagPath.isTag(name, within: following.edit.deck) else { continue }
+                guard let newName = following.edit.newName else { return nil }
+                name = deckName(name, afterRenaming: following.edit.deck, to: newName)
+            }
+        }
+        return name
+    }
+}
+
+extension Engine {
+    /// The changes to decks this device applied after the one with the row
+    /// id `last`, as `DeckChangesSince` says, or none when it's nil.
+    func deckChanges(after last: Int64?) throws(EngineError) -> DeckChangesSince {
+        try read { db in
+            let new = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT * FROM deckChange
+                    WHERE id > ? AND uuid NOT IN (SELECT uuid FROM deckChangeAppliedBeforeARestore)
+                    ORDER BY id
+                    """,
+                arguments: [last ?? .max])
+            let held = new.isEmpty ? [] : try Row.fetchAll(db, sql: "SELECT * FROM deckChange ORDER BY madeAt, id")
+            return DeckChangesSince(
+                last: try Int64.fetchOne(db, sql: "SELECT ifnull(max(id), 0) FROM deckChange") ?? 0,
+                new: try new.map(DeckChange.init(row:)), held: try held.map(DeckChange.init(row:)))
+        }
+    }
+}
+
 /// What applying a change to a deck changed on this device: the ids of the
 /// cards it moved, and the new names of the rows it moved.
 private struct Reached: ReachedByChanges {

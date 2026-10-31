@@ -136,8 +136,9 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// file's Deck column's, and the decks they sit inside, each by its whole
 /// name in a field the user renames, which renames the decks inside it too,
 /// but those the user renamed on their own, with Default above them while
-/// some cards name no deck; or for a file that puts its cards in no deck, a
-/// menu of decks, on Default until the user chooses another, whose New
+/// some cards name no deck; or for a file whose cards name none, a menu of
+/// the deck they all come into, on Default until the user chooses another,
+/// whose New
 /// Deck… asks for a new deck's name in the preview's place. Then the tags
 /// the cards get: for a text file, one named after the file, for every
 /// card; for an Anki package, its notes' tags. The user renames each tag,
@@ -602,10 +603,9 @@ struct ImportSheet: View {
         }
     }
 
-    /// The menu of the deck every card comes into, for a file that puts its
-    /// cards in no deck: Default, until the user chooses another, every
-    /// deck, and New Deck…, which asks for a new deck's name in the
-    /// preview's place.
+    /// The menu of the deck every card comes into, for a file whose cards
+    /// name none: Default, until the user chooses another, every deck, and
+    /// New Deck…, which asks for a new deck's name in the preview's place.
     private var deckChoice: some View {
         let label = Text(
             "Put every card in",

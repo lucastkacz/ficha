@@ -109,8 +109,7 @@ private struct TagsIntoDecks {
     /// Turning `list` into decks in `db`, as it is now.
     init(converting list: [String], in db: Database) throws {
         let own = try OwnTags(in: db)
-        let ownDecks = try OwnDecks(in: db)
-        chosenDecks = Set(ownDecks.names.filter { ownDecks.deck($0).chosenToSync })
+        chosenDecks = try OwnDecks(in: db).chosenToSync
         var rows = Set(own.names)
         cards = try allCards(in: db).map { ConvertedCard(card: $0, deck: $0.deck, tags: $0.tags) }
         for tag in list {

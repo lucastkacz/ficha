@@ -52,7 +52,7 @@ private struct ExportButtonAndSheet: ViewModifier {
             .sheet(isPresented: Binding(get: { state.exporting != nil }, set: { if !$0 { state.closeExport() } })) {
                 if let exporting = state.exporting {
                     ExportSheet(
-                        exporting: exporting, tags: state.tags, failure: failure,
+                        exporting: exporting, decks: state.decks.map(\.deck), tags: state.tags, failure: failure,
                         choose: { state.chooseCardsToExport($0) }, export: { state.export(to: $0) })
                 }
             }
@@ -68,8 +68,10 @@ private struct ExportButtonAndSheet: ViewModifier {
 /// what each item takes, and the sheet draws it.
 struct ExportSheet: View {
     let exporting: CardsWindowState.Exporting
-    /// Every tag, as All Tags lists them, for the menu to name each tag as
-    /// the window does, with its emoji.
+    /// Every deck, as the sidebar lists them, and every tag, as All Tags
+    /// lists them, for the menu to name each as the window does, with its
+    /// emoji.
+    let decks: [Deck]
     let tags: [CardTag]
     /// What couldn't be done, as the alert over the sheet says it.
     let failure: Binding<Failure?>
@@ -169,10 +171,10 @@ struct ExportSheet: View {
                 comment: "An item of the Export sheet's menu: every card, buried ones too, with how many.")
         case .deck(let name):
             String(
-                localized: "\(Deck.shownName(name)) (\(count))",
+                localized: "\(decks.first { $0.name == name }?.title ?? Deck.shownName(name)) (\(count))",
                 comment: """
                     An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the \
-                    deck's whole name, like “Idiomas › Inglés”, and how many.
+                    deck's emoji, when it has one, and its whole name, like “🗣️ Idiomas › Inglés”, and how many.
                     """)
         case .tag(let name):
             String(

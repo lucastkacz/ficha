@@ -56,7 +56,7 @@ extension CardsWindowState {
         if case .cards(.deck(let deck)) = sidebarItem {
             return deck
         }
-        return decks.contains { $0.deck.name == lastDeckAddedTo } ? lastDeckAddedTo : Deck.defaultName
+        return listedDeck(lastDeckAddedTo) != nil ? lastDeckAddedTo : Deck.defaultName
     }
 
     /// The deck the Deck field of the fields `fields` holds, or nil while

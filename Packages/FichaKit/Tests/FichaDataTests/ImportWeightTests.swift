@@ -89,8 +89,8 @@ final class ImportWeightTests {
     // Only Geografía syncs (#355, #385): the map, on a card the file puts in
     // Geografía, goes up; the anthem, on a card the file puts in Himnos,
     // only once the user renames that deck into Geografía; the flag, on a
-    // card the file puts in no deck, only once the user picks Geografía for
-    // those.
+    // card that names no deck, which comes into Default, only once the user
+    // picks Geografía for those.
     @Test(
         "the line counts only the files of the cards that sync once they come in, in the decks as the user names them")
     func theLineCountsOnlyTheCardsThatSync() throws {

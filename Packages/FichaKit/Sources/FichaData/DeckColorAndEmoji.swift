@@ -17,7 +17,7 @@ extension Engine {
     /// makes one, but no color for a deck with none changes nothing. A name
     /// `makeDeck(named:)` refuses is refused.
     public func setColor(_ color: TagColor?, ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in
             try changeOwnDecks([deck], in: db) { $0.color = color }
         }
@@ -26,7 +26,7 @@ extension Engine {
     /// Gives the deck `deck` `emoji`, or takes its emoji away when `emoji` is
     /// nil, as `setColor(_:ofDeck:)` does with a color.
     public func setEmoji(_ emoji: Emoji?, ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in
             try changeOwnDecks([deck], in: db) { $0.emoji = emoji?.text }
         }

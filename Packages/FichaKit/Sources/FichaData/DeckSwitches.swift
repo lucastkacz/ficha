@@ -92,11 +92,6 @@ public struct PrioritizeMenu: Sendable, Equatable {
         public var isTicked: Bool {
             deck.isPriority
         }
-
-        /// It, and every item inside it, in the order a tree lists them.
-        fileprivate var flattened: [DeckItem] {
-            [self] + children.flatMap(\.flattened)
-        }
     }
 
     /// The decks it offers after "None", as a tree.
@@ -140,7 +135,7 @@ extension Engine {
     /// isn't there is made, as Change Deck makes one, and a name
     /// `makeDeck(named:)` refuses is refused.
     public func setAside(deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in
             try changeOwnDecks([deck], in: db) { $0.switchedOn = .setAside }
         }
@@ -150,7 +145,7 @@ extension Engine {
     /// reviews where they'd be without it, unless a deck it sits inside is
     /// set aside too. A deck that isn't set aside stays as it is.
     public func stopSettingAside(deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in
             try changeOwnDecks([deck], in: db) { own in
                 if own.isSetAside {
@@ -164,7 +159,7 @@ extension Engine {
     /// priority deck is no longer one, and any other becomes one, as
     /// `setPriority(_:ofDeck:)` says.
     public func togglePriority(ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in
             try setPriority(try !ownDeck(deck, in: db).isPriority, of: deck, in: db)
         }
@@ -180,7 +175,7 @@ extension Engine {
     /// meanwhile. A deck that isn't there is made, as `setAside(deck:)`
     /// says.
     public func setPriority(_ isPriority: Bool, ofDeck deck: String) throws(EngineError) {
-        let deck = try checkedDeckForCards(deck)
+        let deck = try checkedDeckOrDefault(deck)
         try write { db in
             try setPriority(isPriority, of: deck, in: db)
         }

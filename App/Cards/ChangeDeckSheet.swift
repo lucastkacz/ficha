@@ -59,14 +59,14 @@ struct ChangeDeckSheet: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         List(selection: chosenDeck) {
-            ForEach(Self.lines(of: state.deckChoices, depth: 0), id: \.row.id) { line in
+            ForEach(state.deckChoices.lines) { line in
                 Label {
-                    Text(verbatim: line.row.shownTitle)
+                    Text(verbatim: line.node.shownTitle)
                 } icon: {
-                    line.row.deck.symbol
+                    line.node.deck.symbol
                 }
                 .padding(.leading, CGFloat(line.depth) * 16)
-                .tag(line.row.id)
+                .tag(line.id)
             }
         }
         .frame(height: 220)
@@ -128,17 +128,4 @@ struct ChangeDeckSheet: View {
             }
         }
     }
-
-    /// The rows of `rows`, and of the rows inside them, in the order a tree
-    /// lists them, each with how deep it sits, from `depth`.
-    private static func lines(of rows: [CardsWindowState.DeckRow], depth: Int) -> [DeckLine] {
-        rows.flatMap { row in [DeckLine(row: row, depth: depth)] + lines(of: row.children, depth: depth + 1) }
-    }
-}
-
-/// A row of the Change Deck sheet's tree, with how deep it sits: 0 at the
-/// top.
-private struct DeckLine {
-    let row: CardsWindowState.DeckRow
-    let depth: Int
 }

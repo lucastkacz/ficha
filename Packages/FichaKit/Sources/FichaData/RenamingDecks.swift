@@ -53,7 +53,7 @@ extension Engine {
     @discardableResult
     public func moveDeck(_ deck: String, into parent: String?) throws(EngineError) -> String {
         guard parent != Deck.defaultName else {
-            throw .defaultDeckName(Deck.defaultShownName)
+            throw .deckInsideDefault(deck)
         }
         let level = TagPath.lastLevel(of: deck)
         return try renameDeck(deck, to: parent.map { $0 + TagPath.separator + level } ?? level)

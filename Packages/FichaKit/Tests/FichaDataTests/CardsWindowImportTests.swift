@@ -283,9 +283,9 @@ final class CardsWindowImportTests {
     }
 
     @Test(
-        "for a file that puts its cards in no deck, the sheet offers Default, every deck you have, and one New Deck… names, and Import puts the cards in the one chosen"
+        "for a file whose cards name no deck, the sheet offers Default, every deck you have, and one New Deck… names, and Import puts the cards in the one chosen"
     )
-    func aFileWithNoDeckLetsTheUserChooseOne() async throws {
+    func aFileNamingNoDeckLetsTheUserChooseOne() async throws {
         try engine.makeDeck(named: "Idiomas")
         var chosen = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
         var unchosen = try await importSheet(on: "Más palabras.txt", "petricor\tEl olor de la lluvia.\n")

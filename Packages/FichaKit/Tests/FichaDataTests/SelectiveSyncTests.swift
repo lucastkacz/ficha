@@ -660,7 +660,7 @@ final class SelectiveSyncTests {
     /// lists them once every card syncs, or as the Sync tab does.
     private func chosenDecks(on device: Device) throws -> Set<String> {
         let tab = device.engine.openSyncTab()
-        let listed = tab.onlyChosenDecks ? tab.deckRows.map(\.deck.deck) : try device.engine.decks()
+        let listed = tab.onlyChosenDecks ? tab.deckLines.map(\.node.deck) : try device.engine.decks()
         return Set(listed.filter(\.chosenToSync).map(\.name))
     }
 

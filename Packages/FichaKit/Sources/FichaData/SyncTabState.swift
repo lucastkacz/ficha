@@ -52,20 +52,6 @@ public struct SyncTabState: Sendable {
         case sendsCardsForTheFirstTime(onlyChosenDecks: Bool)
     }
 
-    /// A row of the list of decks to choose from, as the tab shows it, in a
-    /// tree of decks inside decks.
-    public struct DeckRow: Sendable, Equatable, Identifiable {
-        /// The deck, with whether it's chosen, whether a deck it sits inside
-        /// is, what its files weigh and what the row says.
-        public let deck: DeckToChoose
-        /// How many of the listed decks it sits inside, which indent it.
-        public let level: Int
-
-        public var id: String {
-            deck.id
-        }
-    }
-
     /// Why turning the switch, or choosing which cards sync, failed, which
     /// the tab says until the user closes it.
     public struct Failure: Sendable, Equatable {
@@ -93,7 +79,7 @@ public struct SyncTabState: Sendable {
     /// every card, as the choice under the switch shows it.
     public private(set) var onlyChosenDecks: Bool
     /// The decks the user can choose to sync, as a tree, which the list
-    /// under the choice shows, in `deckRows`, while only the cards in a
+    /// under the choice shows, in `deckLines`, while only the cards in a
     /// chosen deck sync, and none otherwise: as `Engine.decksToChooseFrom()`
     /// says.
     public private(set) var decks: [DeckToChoose]
@@ -126,19 +112,11 @@ public struct SyncTabState: Sendable {
         canTurnSwitch
     }
 
-    /// The rows of the list of decks to choose from, as the tab shows them:
+    /// The lines of the list of decks to choose from, as the tab shows them:
     /// each deck of `decks`, followed by the decks inside it, in the order
-    /// the tree lists them.
-    public var deckRows: [DeckRow] {
-        Self.rows(of: decks, level: 0)
-    }
-
-    /// The rows of `decks`, each `level` decks in, and of the decks inside
-    /// them.
-    private static func rows(of decks: [DeckToChoose], level: Int) -> [DeckRow] {
-        decks.flatMap { deck in
-            [DeckRow(deck: deck, level: level)] + rows(of: deck.children, level: level + 1)
-        }
+    /// the tree lists them, each with how deep it sits, which indents it.
+    public var deckLines: [DeckLine<DeckToChoose>] {
+        decks.lines
     }
 
     /// Whether the menu says iCloud is full, with a line that opens the tab.
@@ -218,7 +196,7 @@ public struct SyncTabState: Sendable {
     /// why it couldn't. A deck inside a chosen deck syncs with it, and its
     /// checkbox changes nothing meanwhile.
     public mutating func choose(_ deck: String, _ chosen: Bool) {
-        guard canChoose, deckRows.first(where: { $0.id == deck })?.deck.canChoose != false else { return }
+        guard canChoose, deckLines.first(where: { $0.id == deck })?.node.canChoose != false else { return }
         let engine = engine
         change(.choosing) { () throws(EngineError) in try engine.setChosenToSync(chosen, ofDeck: deck) }
     }

@@ -55,11 +55,6 @@ extension CardsWindowState {
         public var item: SidebarItem {
             .cards(.deck(deck.name))
         }
-
-        /// It, and every row inside it, in the order a tree lists them.
-        var flattened: [DeckRow] {
-            [self] + children.flatMap(\.flattened)
-        }
     }
 
     /// What Change Deck… asks, in its sheet, while it asks: which deck the

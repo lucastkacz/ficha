@@ -100,7 +100,7 @@ struct RenamingDecksTests {
 
     // Música isn't there; Arte::Pintura is.
     @Test(
-        "a rename is refused for Default, a deck that isn't there, a blank name, Default's name, and the deck inside itself or a deck inside it"
+        "a rename is refused for Default, a deck that isn't there, a blank name, Default's name, the deck inside itself or a deck inside it, and a move inside Default"
     )
     func renamingRefuses() throws {
         try approveInDeck("petricor", in: engine)
@@ -115,7 +115,7 @@ struct RenamingDecksTests {
             try engine.renameDeck("Arte", to: "Arte::Pintura::Arte")
         }
         #expect(throws: EngineError.deckInsideItself("Arte")) { try engine.moveDeck("Arte", into: "Arte") }
-        #expect(throws: EngineError.defaultDeckName("Default")) {
+        #expect(throws: EngineError.deckInsideDefault("Arte::Pintura")) {
             try engine.moveDeck("Arte::Pintura", into: Deck.defaultName)
         }
         #expect(try engine.decks() == decks)

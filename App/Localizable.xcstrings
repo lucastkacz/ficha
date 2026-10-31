@@ -16,7 +16,7 @@
       }
     },
     "%@ (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.\nAn item of the “+N more” menu above the Cards window's card list: a tag of the deck the sidebar chose, with how many of its cards carry it.",
+      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's emoji, when it has one, and its whole name, like “🗣️ Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.\nAn item of the “+N more” menu above the Cards window's card list: a tag of the deck the sidebar chose, with how many of its cards carry it.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
