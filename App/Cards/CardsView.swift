@@ -344,7 +344,8 @@ struct CardsView: View {
     /// What the question before Lucas deletes the deck of `deletion` says
     /// under its title, a sentence for each thing it does: the decks inside
     /// it that go too, and the cards in them, counted on this Mac, which go
-    /// here and on every device that syncs them; and that it can't be
+    /// here and on his other devices, whether or not they sync, as he
+    /// decided on 2026-10-31 (`DeckChanges.swift`); and that it can't be
     /// undone, though the daily backups hold them. The sentences follow one
     /// another as the Mac's language joins them (`joinedSentences(_:)`).
     private func deckDeletionMessage(for deletion: DeckDeletion) -> String {
@@ -358,7 +359,7 @@ struct CardsView: View {
         sentences.append(
             String(
                 localized:
-                    "\(deletion.cards) cards go too, with their review logs, here and on every device that syncs them.",
+                    "\(deletion.cards) cards go too, with their review logs, here and on your other devices.",
                 comment: """
                     In the Cards window's question before it deletes a deck: the cards in it and in the decks inside \
                     it, counted on this Mac.

@@ -24,23 +24,33 @@ internal import GRDB
 // cards to the deck's new name, and the rows to their new names, each new
 // row made on this device when the old one was, and a row that joins one
 // there made here when either was (`moveRows(ofDeck:to:among:markingMadeHere:in:)`).
-// A deletion deletes the cards that sync, as the device that made it deleted
-// them, with what goes with a card another device deleted
-// (`SyncedDeletions.swift`), and moves those that don't to Default, which
-// the device that made it may never have held; then the rows go, with
-// whether they were made here. Each field the edit changes, a card's deck or
-// what a deck's row has of its own, records it as made when the change was,
-// or a millisecond after it last changed, as a tag's change records it
-// (`stamp(_:of:changedBy:in:)`), and an old row's record waits to be deleted,
-// as the device that made it deletes it. That deletion, from the device that
-// made the change, can reach this one before the change, in an earlier event
-// of a fetch, and never deletes a row ahead of it
-// (`holdsAChange(reaching:in:)`, `SyncedDeletions.swift`): what the row has
-// of its own, whether the deck was made here and whether its cards sync are
-// the change's to move or to decide. The changes it holds that were made
-// after this one, heard before it, then follow on the cards and the rows it
-// changed, in the order they were made, as on the device that made them
-// (`RecordedChange.take`).
+// A deletion deletes every card the device that made it deleted, which its
+// record names, wherever the card lives here now and whether or not it
+// syncs, as a card's deletion wins over what another device changed of it
+// meanwhile: Lucas decided so on 2026-10-31, in the review of #379, so that
+// no card the user deleted comes back through Default, chosen to sync. Of
+// the other cards in the deck, which that device didn't delete, such as one
+// it never held, it deletes those that sync and moves those that don't to
+// Default. Each card it deletes goes with what goes with a card another
+// device deleted (`SyncedDeletions.swift`), and with its record, if iCloud
+// holds one, one that left included; it's never sent again. Then the rows
+// go, with whether they were made here. A record holds 1 MB beside its
+// files, so it names at most `mostCardsADeletionNames` cards, 16 bytes each,
+// those that didn't sync on that device first, whose records' deletions
+// reach no other device: a deletion of more cards that don't sync leaves
+// the rest to go as cards that device didn't delete. Each field the edit
+// changes, a card's deck or what a deck's row has of its own, records it as
+// made when the change was, or a millisecond after it last changed, as a
+// tag's change records it (`stamp(_:of:changedBy:in:)`), and an old row's
+// record waits to be deleted, as the device that made it deletes it. That
+// deletion, from the device that made the change, can reach this one before
+// the change, in an earlier event of a fetch, and never deletes a row ahead
+// of it (`holdsAChange(reaching:in:)`, `SyncedDeletions.swift`): what the
+// row has of its own, whether the deck was made here and whether its cards
+// sync are the change's to move or to decide. The changes it holds that
+// were made after this one, heard before it, then follow on the cards and
+// the rows it changed, in the order they were made, as on the device that
+// made them (`RecordedChange.take`).
 
 /// A rename or a deletion of a deck, which reaches every card that lives in
 /// it or in a deck inside it, and the decks inside it.
@@ -82,13 +92,60 @@ struct DeckChange: RecordedChange, Equatable {
     }
 }
 
+extension DeckChange {
+    /// The IDs of the cards the deletion read from `row` of the `deckChange`
+    /// table names, which the device that made it deleted, or none for a
+    /// rename; or an error when the row doesn't hold whole IDs.
+    static func cardsDeleted(in row: Row) throws -> Set<UUID> {
+        guard let packed = try row.decode(forColumn: "deletedCards") as Data? else {
+            return []
+        }
+        return Set(try unpackedCardIDs(packed))
+    }
+}
+
+/// The most cards a deletion of a deck names, 16 bytes each: 960,000 bytes,
+/// within the 1 MB iCloud holds in a record beside its files, with room for
+/// the deck's name and the rest.
+let mostCardsADeletionNames = 60_000
+
+/// The IDs of `cards`, the first `mostCardsADeletionNames` of them, packed
+/// 16 bytes each, as a deletion of a deck holds the cards it deleted.
+func packedCardIDs(_ cards: [UUID]) -> Data {
+    var packed = Data(capacity: min(cards.count, mostCardsADeletionNames) * 16)
+    for card in cards.prefix(mostCardsADeletionNames) {
+        withUnsafeBytes(of: card.uuid) { packed.append(contentsOf: $0) }
+    }
+    return packed
+}
+
+/// The IDs `packed` holds, as `packedCardIDs(_:)` packs them, in their
+/// order, or an error when it doesn't hold whole IDs.
+func unpackedCardIDs(_ packed: Data) throws -> [UUID] {
+    guard packed.count.isMultiple(of: 16) else {
+        throw unreadable("A deletion of a deck holds a card's ID that isn't whole")
+    }
+    return packed.withUnsafeBytes { bytes in
+        stride(from: 0, to: bytes.count, by: 16).map {
+            UUID(uuid: bytes.loadUnaligned(fromByteOffset: $0, as: uuid_t.self))
+        }
+    }
+}
+
 /// Records `edit`, made on this device in the write `db`, as a change to the
-/// deck, made as the write happens; it waits to be sent to the user's other
-/// devices, as the database's trigger records it.
-func recordDeckChange(_ edit: DeckEdit, in db: Database) throws {
+/// deck, made as the write happens, a deletion with the IDs of the cards it
+/// deleted, `deletedCards`, those that don't sync first, of which it keeps
+/// the first `mostCardsADeletionNames`; it waits to be sent to the user's
+/// other devices, as the database's trigger records it.
+func recordDeckChange(_ edit: DeckEdit, deletedCards: [UUID] = [], in db: Database) throws {
     try db.execute(
-        sql: "INSERT INTO deckChange (uuid, deck, newName, madeAt) VALUES (?, ?, ?, (SELECT at FROM syncWrite))",
-        arguments: [UUID().uuidString, edit.deck, edit.newName])
+        sql: """
+            INSERT INTO deckChange (uuid, deck, newName, madeAt, deletedCards)
+            VALUES (?, ?, ?, (SELECT at FROM syncWrite), ?)
+            """,
+        arguments: [
+            UUID().uuidString, edit.deck, edit.newName, deletedCards.isEmpty ? nil : packedCardIDs(deletedCards),
+        ])
 }
 
 /// Takes `record`, from iCloud, of the change to a deck with this ID, in the
@@ -224,13 +281,14 @@ private func apply(_ change: DeckChange, among reached: Reached?, in db: Databas
             changed.decks.insert(new)
         }
     case .deletion:
+        let named = try cardsDeleted(by: change, in: db)
+        for card in named {
+            try deleteCard(card, deletedBy: change, in: db)
+        }
         let whatSyncs = try WhatSyncs(in: db)
-        for card in cards {
+        for card in cards where !named.contains(card.uuid) {
             if whatSyncs.cardSyncs(inDeck: card.deck) {
-                try deleteCard(deletedOnAnotherDevice: card.uuid, at: change.madeAt, in: db)
-                if try systemFields(of: card.row.recordID, in: db) != nil {
-                    try waitToBeSent(card.row, as: .deleted, in: db)
-                }
+                try deleteCard(card.uuid, deletedBy: change, in: db)
             } else {
                 try db.execute(sql: "UPDATE card SET deck = ? WHERE id = ?", arguments: [Deck.defaultName, card.id])
                 try stamp(.deck, of: card.row, changedBy: change.madeAt, in: db)
@@ -243,6 +301,31 @@ private func apply(_ change: DeckChange, among reached: Reached?, in db: Databas
         }
     }
     return changed
+}
+
+/// The IDs of the cards `change`, a deletion of a deck the device holds in
+/// `db`, names, which the device that made it deleted.
+private func cardsDeleted(by change: DeckChange, in db: Database) throws -> Set<UUID> {
+    guard
+        let row = try Row.fetchOne(
+            db, sql: "SELECT deletedCards FROM deckChange WHERE uuid = ?", arguments: [change.id.uuidString])
+    else {
+        throw unreadable("A change to a deck being applied isn't there")
+    }
+    return try DeckChange.cardsDeleted(in: row)
+}
+
+/// Deletes the card with this ID, when the device holds it, as `change`, a
+/// deletion of its deck another device made, deletes it, in the write `db`:
+/// as a card another device deleted, and in iCloud too while iCloud holds
+/// its record, one that left included, as the file's header says.
+private func deleteCard(_ id: UUID, deletedBy change: DeckChange, in db: Database) throws {
+    guard try deleteCard(deletedOnAnotherDevice: id, at: change.madeAt, in: db) != nil else {
+        return
+    }
+    if try systemFields(of: SyncedRow.card(id).recordID, in: db) != nil {
+        try waitToBeSent(.card(id), as: .deleted, in: db)
+    }
 }
 
 /// A card that lives in a deck, as a change to the deck reaches it.

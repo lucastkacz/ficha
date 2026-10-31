@@ -93,13 +93,16 @@ public struct ICloudUser: Sendable, Hashable, Codable {
 }
 
 /// A value a record's field holds, as `CKRecordValue`: text, a whole number,
-/// a number with a fraction, or a file. Times travel as whole milliseconds
-/// since 1970, as the database keeps them, so iCloud never rounds them and
-/// every device holds the same.
+/// a number with a fraction, bytes, or a file. Times travel as whole
+/// milliseconds since 1970, as the database keeps them, so iCloud never
+/// rounds them and every device holds the same.
 public enum ICloudValue: Sendable, Hashable, Codable {
     case string(String)
     case int(Int64)
     case double(Double)
+    /// Bytes the record holds, within its 1 MB, as `Data`: the cards a
+    /// deletion of a deck deleted (`DeckChanges.swift`).
+    case bytes(Data)
     /// A file iCloud keeps apart from its record, as `CKAsset`, beyond the
     /// record's 1 MB, by where it is on the device: the file to send, which
     /// stays there until it's sent, or one iCloud fetched, into a folder the

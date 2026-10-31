@@ -106,7 +106,7 @@
         }
       }
     },
-    "%lld cards go too, with their review logs, here and on every device that syncs them." : {
+    "%lld cards go too, with their review logs, here and on your other devices." : {
       "comment" : "In the Cards window's question before it deletes a deck: the cards in it and in the decks inside it, counted on this Mac.",
       "localizations" : {
         "en" : {
@@ -115,13 +115,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "1 card goes too, with its review log, here and on every device that syncs it."
+                  "value" : "1 card goes too, with its review log, here and on your other devices."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld cards go too, with their review logs, here and on every device that syncs them."
+                  "value" : "%lld cards go too, with their review logs, here and on your other devices."
                 }
               },
               "zero" : {

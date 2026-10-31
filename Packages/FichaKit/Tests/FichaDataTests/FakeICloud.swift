@@ -363,6 +363,8 @@ extension FakeICloud.Database {
             return text.utf8.count
         case .int?, .double?:
             return 8
+        case .bytes(let bytes)?:
+            return bytes.count
         case .asset(let file)?:
             guard let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
                 throw CocoaError(.fileReadUnknown, userInfo: [NSURLErrorKey: file])

@@ -2,13 +2,15 @@ import FichaCore
 import Foundation
 import Testing
 
-// For what waits to be sent, and the records iCloud holds.
+// For what waits to be sent, the records iCloud holds, and how a deletion's
+// record holds the cards it deleted.
 @testable import FichaData
 
 /// Tests on renames and deletions of decks across devices (ADR 0024): each
 /// reaches every card the other device holds, those that don't sync too, also
-/// once a device comes back online, on two devices, a Mac and an iPhone, each
-/// an engine in memory in Buenos Aires on one clock, syncing through a fake
+/// once a device comes back online, and a deletion deletes there every card
+/// the deleting device deleted, on two devices, a Mac and an iPhone, each an
+/// engine in memory in Buenos Aires on one clock, syncing through a fake
 /// iCloud.
 final class DeckChangesSyncTests {
     let time: ManualTimeSource
@@ -61,7 +63,7 @@ final class DeckChangesSyncTests {
     // Only Arte::Pintura syncs: La Gioconda and Guernica do, La Piedad stays
     // on the iPhone. The Mac reviewed La Gioconda.
     @Test(
-        "a deletion deletes the cards the other device holds that sync, with their review logs, and moves those that don't to Default"
+        "a deletion deletes the cards the other device holds that sync, with their review logs, and moves to Default those that don't, which the deleting device never held"
     )
     func aDeletionReachesTheOtherDevice() async throws {
         try mac.engine.syncOnlyChosenDecks(true)
@@ -89,6 +91,77 @@ final class DeckChangesSyncTests {
         for device in [mac, iPhone] {
             #expect(try device.engine.changesToSend().isEmpty)
         }
+    }
+
+    // Default and Arte sync, then the Mac unticks Arte, so La Gioconda
+    // leaves iCloud and stays on both devices, while Default stays chosen.
+    // Lucas's decision of 2026-10-31, on the spec's review: a deck's deletion
+    // deletes the cards its device deleted on every device, whether or not
+    // they sync, so that none comes back through Default.
+    @Test(
+        "a deletion deletes on the other device the cards the deleting one deleted, those that don't sync too, which never go up again through Default"
+    )
+    func aDeletionDeletesTheCardsThatDontSync() async throws {
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: Deck.defaultName)
+        try mac.engine.setChosenToSync(true, ofDeck: "Arte")
+        try mac.engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."), deck: "Arte::Pintura")
+        try await syncBoth()
+        let gioconda = try #require(records(ofType: .card).only).id
+        try mac.engine.setChosenToSync(false, ofDeck: "Arte")
+        try await syncBoth()
+        #expect(try iPhone.engine.card(fronted: "La Gioconda").deck == "Arte::Pintura")
+        let timesSent = iCloud.timesSent(gioconda)
+
+        time.advance(by: minutes(1))
+        try mac.engine.deleteDeck("Arte")
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.cards().isEmpty)
+            #expect(try device.engine.decks().isEmpty)
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+        #expect(iCloud.timesSent(gioconda) == timesSent)
+    }
+
+    // As above, and the iPhone adds La Piedad to Arte::Escultura once Arte
+    // no longer syncs, so the Mac never holds it.
+    @Test(
+        "a deletion moves to Default a card the other device holds that the deleting one never did and that doesn't sync, which then syncs there as Default does"
+    )
+    func aDeletionMovesACardTheDeletingDeviceNeverHeld() async throws {
+        try mac.engine.syncOnlyChosenDecks(true)
+        try mac.engine.setChosenToSync(true, ofDeck: Deck.defaultName)
+        try mac.engine.setChosenToSync(true, ofDeck: "Arte")
+        try mac.engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."), deck: "Arte::Pintura")
+        try await syncBoth()
+        try mac.engine.setChosenToSync(false, ofDeck: "Arte")
+        try await syncBoth()
+        try iPhone.engine.create(card(.concept, front: "La Piedad", back: "De Miguel Ángel."), deck: "Arte::Escultura")
+        try await syncBoth()
+        #expect(try mac.engine.cards().map(\.front) == ["La Gioconda"])
+
+        time.advance(by: minutes(1))
+        try mac.engine.deleteDeck("Arte")
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.cards().map { "\($0.front) \($0.deck)" } == ["La Piedad "])
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+    }
+
+    // iCloud holds 1 MB in a record beside its files.
+    @Test("a deletion's record names the first 60,000 cards it deleted, 16 bytes each, and reads them back in order")
+    func aDeletionsRecordNamesAtMost60000Cards() throws {
+        let cards = (0...60_000).map { _ in UUID() }
+
+        let packed = packedCardIDs(cards)
+
+        #expect(packed.count == 960_000)
+        #expect(try unpackedCardIDs(packed) == Array(cards.prefix(60_000)))
+        #expect(throws: (any Error).self) { try unpackedCardIDs(packed.dropLast()) }
     }
 
     // Every card syncs. The Mac renames Historia, and deletes Música, while

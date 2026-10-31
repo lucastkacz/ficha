@@ -152,13 +152,21 @@ struct SyncedTable: Sendable {
         check: { id, db in _ = try TagChange(row: try tableRow(id, of: "tagChange", in: db)) })
 
     /// A rename or a deletion of a deck, which never changes: it comes in
-    /// whole, and is applied as it does (`DeckChanges.swift`).
+    /// whole, a deletion with the cards it deleted, and is applied as it
+    /// does (`DeckChanges.swift`).
     static let deckChanges = SyncedTable(
         name: "deckChange", syncedRow: { .deckChange($0) },
         fields: [],
-        fixedColumns: [SyncedColumn("deck", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time)],
+        fixedColumns: [
+            SyncedColumn("deck", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time),
+            SyncedColumn("deletedCards", .bytes),
+        ],
         marksRowsFromAnotherDevice: false,
-        check: { id, db in _ = try DeckChange(row: try tableRow(id, of: "deckChange", in: db)) })
+        check: { id, db in
+            let row = try tableRow(id, of: "deckChange", in: db)
+            _ = try DeckChange(row: row)
+            _ = try DeckChange.cardsDeleted(in: row)
+        })
 
     /// Whether the table has a row with this ID unique across devices.
     func holdsRow(with uuid: UUID, in db: Database) throws -> Bool {
@@ -298,6 +306,8 @@ struct SyncedColumn: Sendable {
         case integer
         /// A number with a fraction.
         case real
+        /// Bytes, which the record holds as they are.
+        case bytes
         /// A time, which the record holds as whole milliseconds since 1970.
         case time
         /// A time that only moves forward, as `time`: a row takes the later
@@ -341,6 +351,8 @@ struct SyncedColumn: Sendable {
             return (try row.decode(forColumn: name) as Int64?).map(ICloudValue.int)
         case .real:
             return (try row.decode(forColumn: name) as Double?).map(ICloudValue.double)
+        case .bytes:
+            return (try row.decode(forColumn: name) as Data?).map(ICloudValue.bytes)
         case .time, .laterTime:
             return (try row.decode(forColumn: name) as Date?).map { .int($0.wholeMilliseconds) }
         case .link(let table):
@@ -374,6 +386,8 @@ struct SyncedColumn: Sendable {
             return number.databaseValue
         case (.real, .int(let number)?):
             return Double(number).databaseValue
+        case (.bytes, .bytes(let bytes)?):
+            return bytes.databaseValue
         case (.time, .int(let milliseconds)?), (.laterTime, .int(let milliseconds)?):
             return Date(wholeMilliseconds: milliseconds).databaseValue
         case (.link(let table), .string(let name)?):

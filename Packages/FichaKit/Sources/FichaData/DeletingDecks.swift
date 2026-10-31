@@ -8,9 +8,11 @@ internal import GRDB
 // its expansions and follow-ups stay in the inbox as plain captures; and
 // their rows go, with what they had of their own. Default is never deleted.
 // The deletion reaches every device as a change to the deck
-// (`DeckChanges.swift`): each deletes there the cards in it that sync, and
-// moves those that don't, which this device may never have held, to
-// Default. Nothing undoes it, but the daily backups keep what it deleted.
+// (`DeckChanges.swift`), which names the cards it deleted: each deletes them
+// there, whether or not they sync, as Lucas decided on 2026-10-31, and of
+// the other cards in it there, such as one this device never held, deletes
+// those that sync and moves those that don't to Default. Nothing undoes it,
+// but the daily backups keep what it deleted.
 
 /// What deleting a deck does on this device, as Delete…'s question says it
 /// before, and the `ficha` CLI prints it after.
@@ -21,7 +23,7 @@ public struct DeckDeletion: Sendable, Equatable, Encodable {
     /// the order a tree lists them.
     public let decksInside: [String]
     /// How many cards on this device live in it or in a deck inside it,
-    /// buried ones too, each of which is deleted.
+    /// buried ones too, each of which is deleted, here and on every device.
     public let cards: Int
 }
 
@@ -47,10 +49,17 @@ extension Engine {
             try checkDeckToChange(deck, in: db)
             let deletion = try DeckDeletion(of: deck, in: db)
             // The cards first, while the rows still say whether each syncs,
-            // which decides whether its deletion is sent.
-            let deleted = try cardsLiving(within: deck, in: db).map { try deleteCard($0.id, in: db) }
+            // which decides whether its deletion is sent. The change names
+            // them all, those that don't sync first, whose deletions reach
+            // no other device otherwise, should there be more than it holds.
+            let whatSyncs = try WhatSyncs(in: db)
+            let cards = try cardsLiving(within: deck, in: db)
+            let deleted = try cards.map { try deleteCard($0.id, in: db) }
             try deleteRows(ofDeck: deck, in: db)
-            try recordDeckChange(.deletion(deck), in: db)
+            let named =
+                cards.filter { !whatSyncs.cardSyncs(inDeck: $0.deck) }
+                + cards.filter { whatSyncs.cardSyncs(inDeck: $0.deck) }
+            try recordDeckChange(.deletion(deck), deletedCards: named.map(\.uuid), in: db)
             return (deletion, deleted)
         }
         removeFilesNoCardUses(images: Set(deleted.flatMap(\.images)), sounds: Set(deleted.flatMap(\.sounds)))

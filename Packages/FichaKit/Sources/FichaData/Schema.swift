@@ -1363,8 +1363,10 @@ enum Schema {
             // included (`DeckChanges.swift`): its ID unique across devices;
             // the deck it changes, by its whole name, never Default, which is
             // neither renamed nor deleted; the name it's renamed to, or NULL
-            // for a deletion; and when it was made. A write makes one change
-            // to decks at most, so none follows another in its write. A
+            // for a deletion; when it was made; and, for a deletion, the IDs
+            // of the cards the device that made it deleted, 16 bytes each,
+            // which every device deletes, or NULL for none. A write makes one
+            // change to decks at most, so none follows another in its write. A
             // device keeps a row for each change it made or heard of, which
             // it has applied, and keeps the IDs of those it dropped as it
             // took a restore's cards in `deckChangeAppliedBeforeARestore`.
@@ -1377,6 +1379,8 @@ enum Schema {
                 table.column("deck", .text).notNull().check(sql: "deck <> ''")
                 table.column("newName", .text).check(sql: "newName <> ''")
                 table.column("madeAt", .datetime).notNull()
+                table.column("deletedCards", .blob).check(
+                    sql: "deletedCards IS NULL OR (newName IS NULL AND length(deletedCards) % 16 = 0)")
             }
             try db.create(table: "deckChangeAppliedBeforeARestore") { table in
                 table.primaryKey("uuid", .text)
