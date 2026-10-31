@@ -49,6 +49,19 @@ struct TagsIntoDecksTests {
         #expect(try engine.allTags().map(\.name) == ["lenguaje"])
     }
 
+    // historia isn't in the list, so the Coliseo keeps it, and it stays a tag.
+    @Test("a card loses the listed tag and the tags inside it it carries, never one above the listed tag")
+    func aTagAboveTheListedOneStays() throws {
+        try approveInDeck("Coliseo", tags: ["historia", "historia::Roma"], in: engine)
+
+        try engine.convertTagsToDecks(["historia::Roma"])
+
+        let coliseo = try #require(try engine.cards().only)
+        #expect(coliseo.deck == "historia::Roma")
+        #expect(coliseo.tags == ["historia"])
+        #expect(try engine.allTags().map(\.name) == ["historia"])
+    }
+
     // Martín Fierro carries two tags of the list; cepo carries two tags of
     // economía, neither inside the other; Facundo was moved to Libros before.
     @Test(
@@ -137,6 +150,28 @@ struct TagsIntoDecksTests {
         #expect(try engine.cards().map(\.tags) == [["lenguaje"], []])
         #expect(try engine.cards().map(\.setAsideBy) == [nil, ["ciencia"]])
         #expect(try engine.allTags() == [CardTag(name: "lenguaje")])
+    }
+
+    // Before decks, historia and lenguaje were chosen to sync and ciencia
+    // wasn't; Lenguas, a deck that's there already, was chosen too.
+    // historia::Roma isn't chosen itself: its cards sync as historia's do.
+    @Test(
+        "the preview says whether each deck it would make will be chosen to sync, as it or its tag was, so that the cards that would leave iCloud show before the run"
+    )
+    func thePreviewSaysWhichDecksWillBeChosenToSync() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeDecks(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
+        let engine = try Engine(location: .folder(folder), time: time, calendar: calendar)
+        try engine.setChosenToSync(true, ofDeck: "Lenguas")
+        try engine.create(card(.word, front: "saudade", back: "Nostalgia.", tags: ["Lenguas"]))
+
+        let preview = try engine.conversion(ofTags: ["ciencia", "historia", "Lenguas"])
+        try engine.convertTagsToDecks(["ciencia", "historia", "Lenguas"])
+
+        #expect(preview.decks.map(\.name) == ["ciencia", "historia", "historia::Roma", "Lenguas"])
+        #expect(preview.decks.map(\.chosenToSync) == [false, true, false, true])
+        #expect(try engine.decks().filter(\.chosenToSync).map(\.name) == ["historia", "Lenguas"])
     }
 
     // historia comes first and would convert alone, but the write is one.

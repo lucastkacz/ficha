@@ -37,7 +37,7 @@ The back of a card that goes both ways, in a fix or an expansion's new content t
 
 Each card goes to the deck of its subject, as in Anki: one deck, the narrowest of Lucas's that fits, such as Español inside Idiomas rather than Idiomas. Claude reuses the decks `ficha decks` lists, and says so when it proposes a new one, named as his other decks are, so Lucas sees it. A card that fits none of his subjects goes to Default.
 
-Tags are for what crosses subjects: a label that cards in different decks share, such as "etimología" on a word in Idiomas and on a question in Historia. In Spanish and in lowercase. A tag never repeats its card's deck, so a card has none usually, and three at most. Claude reuses the tags Lucas's cards already have, and says so when it proposes a new one.
+Tags are for what crosses subjects: a label that cards in different decks share, such as "etimología" on a word in Idiomas and on a question in Historia. In Spanish and in lowercase. A tag adds what its card's deck doesn't say, what the card shares with cards in other decks, so a card has none usually, and three at most. Claude reuses the tags Lucas's cards already have, and says so when it proposes a new one.
 
 ## Sources
 

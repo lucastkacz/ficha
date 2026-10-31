@@ -50,12 +50,9 @@ extension Engine {
         let fixedAt = time.now
         return try write { db in
             let card = try unflag(cardID, in: db)
-            _ = try replaceContent(of: cardID, with: newContent(card, db), at: fixedAt, in: db)
-            try move(card, to: deck, in: db)
-            if let bothWays {
-                _ = try setBothWays(bothWays, of: cardID, in: db)
-            }
-            return (card, try existingCard(cardID, in: db))
+            return (
+                card, try change(card, to: newContent(card, db), deck: deck, bothWays: bothWays, at: fixedAt, in: db)
+            )
         }
     }
 

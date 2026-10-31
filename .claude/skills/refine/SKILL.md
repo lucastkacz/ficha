@@ -62,7 +62,7 @@ Write each draft exactly as Lucas saw and approved it:
 
 Pass the cards as JSON on standard input, in a quoted heredoc (`<<'EOF'`), as `--help` shows. A card whose file fields are left out keeps its images and sounds, and a side that holds only a file keeps its empty text; write a file field only as **Images and sounds** below says. The four go in `type` by their raw values, `word`, `concept`, `quote` or `question`, whatever name Lucas saw them by. A type of Lucas's own goes in `type` by its name; a name he has no type by makes one, so write a "(tipo nuevo)" only as he approved it.
 
-The deck goes in `deck`, by its whole name with `::`, as `ficha decks` prints it, or `""` for Default: on every card `ficha approve` writes, since a card without it goes to Default, and in `ficha fix` or `ficha approve-expansion` only when Lucas approved moving the card, since a card without it stays in its deck. A name `ficha decks` doesn't list makes that deck, so write a "(mazo nuevo)" only as he approved it.
+Write `deck` on every card `ficha approve` writes, and in `ficha fix` or `ficha approve-expansion` only when Lucas approved moving the card; `ficha approve --help` says how to write it. A name `ficha decks` doesn't list makes that deck, so write a "(mazo nuevo)" only as he approved it.
 
 Both ways goes in `bothWays`: `true` on each card Lucas approved with Both ways, `false` when he approved switching it off, and left out everywhere else. Only `ficha approve` and `ficha fix` write it: to switch it on any other card, an expansion's included, send Lucas to the Cards window, which switches it for a card or a selection.
 
@@ -99,10 +99,10 @@ When Lucas asks to change a deck, a tag or a type of his own, or to move cards t
 
 ## Turning tags into decks
 
-When Lucas asks to turn his tags into decks: once, after the update that brought decks put every card of his in Default.
+When Lucas asks to turn his tags into decks: once, after the update that brought decks put every card of his in Default, and before sync is on. The real Ficha keeps sync off until #318, so on his Ficha it runs before that.
 
 1. Run `ficha tags`, and draft the list of tags that become decks: those that are subjects, as the content guide's **Decks and tags** says, leaving out those that cross subjects. Order it: a card that carries two tags of the list goes to the first one's deck, and keeps the other as a tag.
-2. Run `ficha tag convert-to-decks <tag>… --preview`, with the list in its order, which changes nothing. Propose the list to Lucas with what the preview says: each deck, with how many cards go to it, and each card that carries two tags of the list, by its front, with the deck it goes to. Wait for his OK; a list he changes goes through the preview again.
+2. Run `ficha tag convert-to-decks <tag>… --preview`, with the list in its order, which changes nothing. Propose the list to Lucas with what the preview says: each deck, with how many cards go to it, and each card that carries two tags of the list, by its front, with the deck it goes to. If his Ficha syncs by then, ask him whether only the cards in chosen decks sync, as Settings' Sync tab says; if they do, name too each deck whose `chosenToSync` is false and that sits inside no deck whose is true: its cards leave iCloud, kept on every device, and another device keeps its copy with its tags, in Default unless Default was chosen. Wait for his OK; a list he changes goes through the preview again.
 3. Run `ficha tag convert-to-decks <tag>…` with the list he approved, in its order, and check that it prints what the preview did. Then run `ficha decks` and report the decks in one line.
 
 ## Images and sounds

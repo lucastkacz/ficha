@@ -60,9 +60,7 @@ extension Engine {
             case .inReviews, .inInbox, .setAside: break
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            _ = try replaceContent(of: cardID, with: newContent(card, db), at: refinedAt, in: db)
-            try move(card, to: deck, in: db)
-            return (card, try existingCard(cardID, in: db))
+            return (card, try change(card, to: newContent(card, db), deck: deck, bothWays: nil, at: refinedAt, in: db))
         }
     }
 }

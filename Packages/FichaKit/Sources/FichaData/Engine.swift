@@ -201,7 +201,7 @@ public struct Engine: Sendable {
     public func approve(_ captureID: Int64, into cards: [CardContent], deck: String = Deck.defaultName)
         throws(EngineError) -> [Card]
     {
-        try approve(captureID) { _ in cards.map { ($0, deck, false) } }
+        try approve(captureID) { _ in cards.map { ApprovedCard(content: $0, deck: deck, bothWays: false) } }
     }
 
     /// Approves a capture into one or more cards, as `approve(_:into:deck:)`
@@ -210,9 +210,9 @@ public struct Engine: Sendable {
     /// says so, or into none when it throws: as a refine session's drafts
     /// find or make the user types they name in that write
     /// (`CardTypesByName`), each naming its deck.
-    func approve(
-        _ captureID: Int64, into newCards: (Database) throws -> [(content: CardContent, deck: String, bothWays: Bool)]
-    ) throws(EngineError) -> [Card] {
+    func approve(_ captureID: Int64, into newCards: (Database) throws -> [ApprovedCard]) throws(EngineError)
+        -> [Card]
+    {
         let createdAt = time.now
         return try write { db in
             let cards = try newCards(db)
@@ -417,6 +417,15 @@ func captureInInbox(_ captureID: Int64, in db: Database) throws -> Capture {
         throw EngineError.captureNotInInbox(captureID)
     }
     return try Capture(row: row)
+}
+
+/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it:
+/// what it holds, the deck it goes to, by its whole name, made if it isn't
+/// there, or Default, and whether it goes both ways.
+struct ApprovedCard {
+    let content: CardContent
+    let deck: String
+    let bothWays: Bool
 }
 
 /// Takes a capture out of the inbox, as refined at `time`, and returns it, or

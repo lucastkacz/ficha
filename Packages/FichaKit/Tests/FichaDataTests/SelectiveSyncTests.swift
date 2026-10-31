@@ -482,12 +482,12 @@ final class SelectiveSyncTests {
     }
 
     // Before decks, historia was chosen to sync and ciencia wasn't; the
-    // update left every card in Default, which Lucas chose so that his cards
-    // kept syncing until he turned his tags into decks.
+    // update left every card in Default, chosen here so that both cards are
+    // in iCloud, and on the iPhone, as the conversion runs.
     @Test(
-        "a card whose tag was chosen to sync before decks stays in iCloud as turning the tag into a deck moves it there, chosen in the same write, and one whose tag wasn't leaves, kept on both devices"
+        "with Default chosen, a card whose tag was chosen to sync before decks stays in iCloud as turning the tag into a deck moves it there, chosen in the same write, and one whose tag wasn't leaves, kept on both devices, the other's copy with its tags"
     )
-    func aCardOfAChosenTagStaysInICloudAsItsTagBecomesADeck() async throws {
+    func withDefaultChosenACardOfAChosenTagStaysInICloud() async throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforeDecks(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
         let app = try Device(Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
@@ -549,7 +549,7 @@ final class SelectiveSyncTests {
         // `ficha decks` lists every deck, as the Sync tab does, for a refine
         // session to draft into and choose from.
         let iPhoneLadder = try iPhone.engine.progressSettings().ladder
-        #expect(try iPhone.engine.countedDecks(on: iPhoneLadder, everyDeck: true).map(\.deck.name) == every)
+        #expect(try iPhone.engine.countedDecks(on: iPhoneLadder, asTheSyncTabLists: true).map(\.deck.name) == every)
 
         try iPhone.engine.syncOnlyChosenDecks(false)
         try await syncBoth()

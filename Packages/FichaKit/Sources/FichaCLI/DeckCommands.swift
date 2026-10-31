@@ -141,13 +141,13 @@ struct SetDeckAsideCommand: EngineCommand {
     var off = false
 
     func run(on engine: Engine) throws -> any Encodable {
-        let deck = try PrintedDecks(of: engine).existing(deck)
-        if off {
-            try engine.stopSettingAside(deck: deck)
-        } else {
-            try engine.setAside(deck: deck)
+        try PrintedDecks.changing(deck, on: engine) { deck in
+            if off {
+                try engine.stopSettingAside(deck: deck)
+            } else {
+                try engine.setAside(deck: deck)
+            }
         }
-        return try PrintedDecks(of: engine).deck(deck)
     }
 }
 
@@ -169,9 +169,7 @@ struct PrioritizeDeckCommand: EngineCommand {
     var off = false
 
     func run(on engine: Engine) throws -> any Encodable {
-        let deck = try PrintedDecks(of: engine).existing(deck)
-        try engine.setPriority(!off, ofDeck: deck)
-        return try PrintedDecks(of: engine).deck(deck)
+        try PrintedDecks.changing(deck, on: engine) { try engine.setPriority(!off, ofDeck: $0) }
     }
 }
 
@@ -193,13 +191,11 @@ struct DeckColorCommand: EngineCommand {
     var color: String
 
     func validate() throws {
-        _ = try chosenColor(color, of: "a deck")
+        _ = try chosenColor(color, for: .deck)
     }
 
     func run(on engine: Engine) throws -> any Encodable {
-        let deck = try PrintedDecks(of: engine).existing(deck)
-        try engine.setColor(try chosenColor(color, of: "a deck"), ofDeck: deck)
-        return try PrintedDecks(of: engine).deck(deck)
+        try PrintedDecks.changing(deck, on: engine) { try engine.setColor(chosenColor(color, for: .deck), ofDeck: $0) }
     }
 }
 
@@ -218,9 +214,7 @@ struct DeckEmojiCommand: EngineCommand {
     var emoji: String
 
     func run(on engine: Engine) throws -> any Encodable {
-        let deck = try PrintedDecks(of: engine).existing(deck)
-        try engine.setEmoji(try chosenEmoji(emoji), ofDeck: deck)
-        return try PrintedDecks(of: engine).deck(deck)
+        try PrintedDecks.changing(deck, on: engine) { try engine.setEmoji(chosenEmoji(emoji), ofDeck: $0) }
     }
 }
 
@@ -243,9 +237,7 @@ struct ChooseDeckToSyncCommand: EngineCommand {
     var off = false
 
     func run(on engine: Engine) throws -> any Encodable {
-        let deck = try PrintedDecks(of: engine).existing(deck)
-        try engine.setChosenToSync(!off, ofDeck: deck)
-        return try PrintedDecks(of: engine).deck(deck)
+        try PrintedDecks.changing(deck, on: engine) { try engine.setChosenToSync(!off, ofDeck: $0) }
     }
 }
 
@@ -288,6 +280,17 @@ struct PrintedDeck: Encodable, Equatable {
     let chosenToSync: Bool
 }
 
+extension PrintedDeck {
+    /// The deck `name` with nothing of its own and no card, as a command
+    /// would print a deck `ficha decks` doesn't list, which no command leaves
+    /// a deck it changed, since each keeps its row, or Default, always listed.
+    init(withNothingNamed name: String) {
+        self.init(
+            name: name, cards: 0, due: 0, setAside: false, priority: false, color: nil, emoji: nil,
+            chosenToSync: false)
+    }
+}
+
 /// Every deck as `ficha decks` prints it, read from the engine at once.
 struct PrintedDecks {
     /// Every deck, in the order a tree lists them, Default first.
@@ -296,7 +299,8 @@ struct PrintedDecks {
     /// The decks `engine` holds now, every one, as the Sync tab lists them,
     /// each with its counts on the engine's ladder, read together.
     init(of engine: Engine) throws {
-        decks = try engine.countedDecks(on: engine.progressSettings().ladder, everyDeck: true).map { counted in
+        let ladder = try engine.progressSettings().ladder
+        decks = try engine.countedDecks(on: ladder, asTheSyncTabLists: true).map { counted in
             let (deck, count) = (counted.deck, counted.counts)
             return PrintedDeck(
                 name: deck.name, cards: count.cards, due: count.due, setAside: deck.switchedOn == .setAside,
@@ -322,13 +326,18 @@ struct PrintedDecks {
     }
 
     /// The deck named `name` as it stands now: as `ficha decks` lists it, or
-    /// with nothing of its own and no card, which no change leaves a deck
-    /// with a row, nor Default.
+    /// with nothing of its own and no card when it doesn't.
     func deck(_ name: String) -> PrintedDeck {
-        decks.first { $0.name == name }
-            ?? PrintedDeck(
-                name: name, cards: 0, due: 0, setAside: false, priority: false, color: nil, emoji: nil,
-                chosenToSync: false)
+        decks.first { $0.name == name } ?? PrintedDeck(withNothingNamed: name)
+    }
+
+    /// Makes `change` to the deck `name` names, checked as `existing(_:)`
+    /// checks it, on `engine`, and returns the deck as it stands then: what
+    /// each `ficha deck` command that changes a deck's own does.
+    static func changing(_ name: String, on engine: Engine, _ change: (String) throws -> Void) throws -> PrintedDeck {
+        let deck = try PrintedDecks(of: engine).existing(name)
+        try change(deck)
+        return try PrintedDecks(of: engine).deck(deck)
     }
 }
 

@@ -201,12 +201,14 @@ extension Engine {
 
     /// Every deck `decks()` lists, in its order, each with its counts, each
     /// card standing on `ladder` now, in one read: a deck no card lives in
-    /// counts none. With `everyDeck`, as `ficha decks` lists them, it lists
-    /// every deck the Sync tab lists to choose from instead, whatever
+    /// counts none. With `asTheSyncTabLists`, as `ficha decks` lists them, it
+    /// lists every deck the Sync tab lists to choose from instead, whatever
     /// selective sync hides here: Default first, whether or not it holds
     /// cards, then every deck with a row, every deck a card lives in, and
     /// every deck those sit inside.
-    public func countedDecks(on ladder: Ladder, everyDeck: Bool = false) throws(EngineError) -> [CountedDeck] {
+    public func countedDecks(on ladder: Ladder, asTheSyncTabLists: Bool = false) throws(EngineError)
+        -> [CountedDeck]
+    {
         let now = time.now
         return try read { db in
             let own = try OwnDecks(in: db)
@@ -220,7 +222,7 @@ extension Engine {
             }
             let cards = try allCards(in: db)
             let names =
-                everyDeck
+                asTheSyncTabLists
                 ? everyDeckName(of: own, livedInBy: cards) : try listedDeckNames(of: own, livedInBy: cards, in: db)
             return names.map { name in
                 let count = counts[name, default: (0, 0)]

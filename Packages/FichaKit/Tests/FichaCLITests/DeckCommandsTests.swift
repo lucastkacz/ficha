@@ -184,13 +184,14 @@ struct DeckCommandsTests {
     }
 
     // Martín Fierro carries two tags of the list; Rosas carries historia
-    // alone.
+    // alone. A deck historia is there already, chosen to sync.
     @Test(
         "`ficha tag convert-to-decks --preview` prints what turning tags into decks would do, changing nothing, and without it the tags become decks"
     )
     func convertingTagsToDecks() async throws {
         let fierro = try approveCard("Martín Fierro", deck: Deck.defaultName, tags: ["literatura::poesía", "historia"])
         try approveCard("Rosas", deck: Deck.defaultName, tags: ["historia"])
+        try engine.setChosenToSync(true, ofDeck: "historia")
 
         let preview = try await ficha("tag", "convert-to-decks", "literatura", "historia", "--preview")
         let decksBefore = try engine.decks()
@@ -213,20 +214,23 @@ struct DeckCommandsTests {
                   "decks" : [
                     {
                       "cards" : 1,
+                      "chosenToSync" : true,
                       "name" : "historia"
                     },
                     {
                       "cards" : 0,
+                      "chosenToSync" : false,
                       "name" : "literatura"
                     },
                     {
                       "cards" : 1,
+                      "chosenToSync" : false,
                       "name" : "literatura::poesía"
                     }
                   ]
                 }
                 """)
-        #expect(decksBefore.map(\.name) == [Deck.defaultName])
+        #expect(decksBefore.map(\.name) == [Deck.defaultName, "historia"])
         #expect(converted == preview)
         #expect(try engine.cards().map(\.deck) == ["literatura::poesía", "historia"])
         #expect(try engine.cards().map(\.tags) == [["historia"], []])

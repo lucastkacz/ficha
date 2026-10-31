@@ -124,7 +124,9 @@ extension Engine {
                     let content = try drafts[position].content(
                         in: db, with: files[position].applied(to: nil),
                         orIfBlank: .blankSideOnNewCard(position: position))
-                    return (content, drafts[position].deck ?? Deck.defaultName, drafts[position].bothWays ?? false)
+                    return ApprovedCard(
+                        content: content, deck: drafts[position].deck ?? Deck.defaultName,
+                        bothWays: drafts[position].bothWays ?? false)
                 }
             }
         }

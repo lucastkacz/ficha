@@ -10,15 +10,18 @@ internal import GRDB
 // it, become decks of the same whole names, made on this device; every card
 // that carries one of them, and is still in Default, moves to the deck of the
 // deepest one it carries, the first in the order a tree lists them when two
-// are as deep, and loses that tag and those it sits inside, which its deck now
-// says; each tag's color, emoji, switch and choice to sync, kept by the `tag`
-// table from before decks, go to its deck; and each tag's row goes, its pin
-// with it, since decks aren't pinned. A card that an earlier tag of the list
-// moved out of Default stays there, and keeps a later one as a tag, as a card
-// does that carries two tags of one tag, neither inside the other. It's one
-// write, so a deck chosen to sync is chosen as its cards move in, and every
-// change syncs as the rows' own do: no change to a tag is recorded, so a card
-// on another device that doesn't sync keeps its tags.
+// are as deep, and loses that tag and those it sits inside up to the tag of
+// the list, which its deck now says, keeping a tag above it, which the list
+// didn't name; each tag's color, emoji, switch and choice to sync, kept by the
+// `tag` table from before decks, go to its deck; and each tag's row goes, its
+// pin with it, since decks aren't pinned. A card that an earlier tag of the
+// list moved out of Default stays there, and keeps a later one as a tag, as a
+// card does that carries two tags of one tag, neither inside the other. It's
+// one write, so a deck chosen to sync is chosen as its cards move in, and
+// every change syncs as the rows' own do: no change to a tag is recorded, so a
+// card on another device that doesn't sync keeps its tags. Lucas runs it
+// before sync is on; under selective sync, a card that moves to a deck that
+// isn't chosen leaves iCloud, as its preview shows.
 
 /// What turning tags into decks does on this device, as its preview says
 /// before and the `ficha` CLI prints after.
@@ -30,6 +33,10 @@ public struct TagConversion: Sendable, Equatable, Encodable {
         /// How many cards move to it, not counting those of the decks inside
         /// it.
         public let cards: Int
+        /// Whether it will be chosen to sync, as it was or its tag was before
+        /// decks: under selective sync, a card that moves to a deck that
+        /// isn't, nor sits inside one that is, leaves iCloud.
+        public let chosenToSync: Bool
     }
 
     /// A card that carries two tags or more that become decks, neither inside
@@ -87,6 +94,8 @@ private struct TagsIntoDecks {
 
     /// The name of every deck it makes.
     private var decks: Set<String> = []
+    /// The decks chosen to sync before it.
+    private let chosenDecks: Set<String>
     /// What the tags with a row had of their own, by the name of the deck
     /// each becomes.
     private var ownTags: [String: CardTag] = [:]
@@ -100,6 +109,8 @@ private struct TagsIntoDecks {
     /// Turning `list` into decks in `db`, as it is now.
     init(converting list: [String], in db: Database) throws {
         let own = try OwnTags(in: db)
+        let ownDecks = try OwnDecks(in: db)
+        chosenDecks = Set(ownDecks.names.filter { ownDecks.deck($0).chosenToSync })
         var rows = Set(own.names)
         cards = try allCards(in: db).map { ConvertedCard(card: $0, deck: $0.deck, tags: $0.tags) }
         for tag in list {
@@ -120,9 +131,9 @@ private struct TagsIntoDecks {
                 else {
                     continue
                 }
-                let lineage = TagPath.lineage(of: deepest)
+                let lost = TagPath.lineage(of: deepest).filter { TagPath.isTag($0, within: tag) }
                 cards[index].deck = try checkedDeckName(deepest)
-                cards[index].tags.removeAll(where: lineage.contains)
+                cards[index].tags.removeAll(where: lost.contains)
                 cards[index].moved = true
             }
         }
@@ -133,13 +144,20 @@ private struct TagsIntoDecks {
         let moved = cards.filter(\.moved)
         return TagConversion(
             decks: TagPath.sortedAsTree(decks).map { deck in
-                TagConversion.NewDeck(name: deck, cards: moved.count { $0.deck == deck })
+                TagConversion.NewDeck(
+                    name: deck, cards: moved.count { $0.deck == deck }, chosenToSync: isChosenToSync(deck))
             },
             cardsWithTwoTags: moved.filter { $0.tags.contains(where: tags.contains) }.map { converted in
                 TagConversion.CardWithTwoTags(
                     id: converted.card.id, front: converted.card.front,
                     tags: converted.card.tags.filter(tags.contains), deck: converted.deck)
             })
+    }
+
+    /// Whether the deck `deck` it makes is chosen to sync once made: when it
+    /// was, or its tag was before decks.
+    private func isChosenToSync(_ deck: String) -> Bool {
+        chosenDecks.contains(deck) || ownTags[deck]?.chosenToSync == true
     }
 
     /// Makes it in the write `db`: the decks first, with what their tags had
@@ -153,13 +171,13 @@ private struct TagsIntoDecks {
                 own.color = tag.color ?? own.color
                 own.emoji = tag.emoji ?? own.emoji
                 own.switchedOn = tag.switchedOn.map(DeckSwitch.init) ?? own.switchedOn
-                own.chosenToSync = own.chosenToSync || tag.chosenToSync
+                own.chosenToSync = isChosenToSync(deck)
             }
         }
         for converted in cards where converted.moved {
-            try db.execute(
-                sql: "UPDATE card SET deck = ?, tags = ? WHERE id = ?",
-                arguments: [converted.deck, try tagsJSON(converted.tags), converted.card.id])
+            _ = try updateCard(
+                converted.card.id, setting: "deck = ?, tags = ?", to: [converted.deck, try tagsJSON(converted.tags)],
+                in: db)
         }
         for tag in tagRows {
             try deleteRow(ofTag: tag, in: db)

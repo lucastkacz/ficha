@@ -212,12 +212,12 @@ struct TagColorCommand: EngineCommand {
     var color: String
 
     func validate() throws {
-        _ = try chosenColor(color, of: "a tag")
+        _ = try chosenColor(color, for: .tag)
     }
 
     func run(on engine: Engine) throws -> any Encodable {
         let tag = try PrintedTags(of: engine).existing(tag)
-        try engine.setColor(try chosenColor(color, of: "a tag"), of: tag)
+        try engine.setColor(try chosenColor(color, for: .tag), of: tag)
         return try PrintedTags(of: engine).tag(tag)
     }
 }
@@ -249,15 +249,18 @@ struct ConvertTagsToDecksCommand: EngineCommand {
         commandName: "convert-to-decks",
         abstract: "Turn tags into decks of the same names, moving their cards out of Default, and print what it did.",
         discussion: """
-            It's for your tags from before decks, once. For each tag, in the order given: the tag, and each tag \
-            inside it, become decks of the same whole names, each with its tag's color, emoji, switch and choice \
-            to sync, and the tags go, their pins with them; every card still in Default that carries one of them \
-            moves to the deck of the deepest one it carries, and loses that tag and those it sits inside. A card \
-            an earlier tag moved out of Default stays there, and keeps this tag as a tag. It prints the decks it \
-            makes in "decks", each with how many cards move to it in "cards", and in "cardsWithTwoTags" the cards \
-            that carry two tags of the list, neither inside the other, each with its "id", its "front", those \
-            "tags", and the "deck" it goes to. With --preview it prints the same, and changes nothing. For \
-            example:
+            It's for your tags from before decks, once, before sync is on. For each tag, in the order given: the \
+            tag, and each tag inside it, become decks of the same whole names, each with its tag's color, emoji, \
+            switch and choice to sync, and the tags go, their pins with them; every card still in Default that \
+            carries one of them moves to the deck of the deepest one it carries, and loses that tag and those it \
+            sits inside up to the tag given, keeping any above it. A card an earlier tag moved out of Default \
+            stays there, and keeps this tag as a tag. It prints the decks it makes in "decks", each with how many \
+            cards move to it in "cards" and whether it will be chosen to sync in "chosenToSync", and in \
+            "cardsWithTwoTags" the cards that carry two tags of the list, neither inside the other, each with its \
+            "id", its "front", those "tags", and the "deck" it goes to. With --preview it prints the same, and \
+            changes nothing. While sync is on and only the cards in chosen decks sync, a card that moves to a deck \
+            that isn't chosen, nor inside one that is, leaves iCloud and stays on every device: another device \
+            keeps its copy with its tags, in Default unless Default was chosen. For example:
 
               ficha tag convert-to-decks Idiomas historia --preview
             """
@@ -334,29 +337,6 @@ struct PrintedTags {
     func tag(_ name: String) -> PrintedTag {
         tags.first { $0.name == name } ?? PrintedTag(withNothingNamed: name)
     }
-}
-
-/// The color `text` gives, by its name, or nil for none, written "none"; or
-/// an error naming the colors `what`, a tag or a deck, can have.
-func chosenColor(_ text: String, of what: String) throws -> TagColor? {
-    if text == "none" {
-        return nil
-    }
-    guard let chosen = TagColor(rawValue: text) else {
-        throw ValidationError(
-            """
-            “\(text)” isn't a color \(what) can have. Pick one of \
-            \(TagColor.allCases.map(\.rawValue).joined(separator: ", ")), or none.
-            """)
-    }
-    return chosen
-}
-
-/// The emoji `text` gives, or nil for none, written "none" or left empty; or
-/// an error when it isn't one emoji.
-func chosenEmoji(_ text: String) throws -> Emoji? {
-    let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    return text == "none" || text.isEmpty ? nil : try Emoji(text)
 }
 
 /// A tag a `ficha tag` command names that no card carries, nor has anything
