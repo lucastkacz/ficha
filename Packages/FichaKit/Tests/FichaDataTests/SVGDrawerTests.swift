@@ -8,7 +8,11 @@ import os
 @testable import FichaData
 
 /// Tests on the SVG drawer, the only part of Ficha allowed on the network
-/// (ADR 0018), which draws the SVGs an import brings in.
+/// (ADR 0018), which draws the SVGs an import brings in. They run one at a
+/// time: two that hold every thread of Swift's concurrency pool, side by
+/// side, each hold threads the other waits for, and the whole pool, every
+/// other test's included, stalls until one gives up after 30 seconds.
+@Suite(.serialized)
 struct SVGDrawerTests {
     // An SVG from a deck can name images, fonts and style sheets on the web,
     // and the drawer draws only what's already on the Mac.

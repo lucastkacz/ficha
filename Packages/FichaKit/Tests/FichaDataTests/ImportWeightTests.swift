@@ -59,8 +59,8 @@ final class ImportWeightTests {
                 cards[2],
             ], images: [map], sounds: [longerAnthem])
 
-        #expect(under.weightGoingUpToICloud(choosing: .update) == nil)
-        #expect(over.weightGoingUpToICloud(choosing: .update) == 100_000_000)
+        #expect(under.weightGoingUpToICloud(choosing: ImportChoices()) == nil)
+        #expect(over.weightGoingUpToICloud(choosing: ImportChoices()) == 100_000_000)
     }
 
     // Ficha holds the bird already: the file's copy of it, however heavy,
@@ -82,67 +82,98 @@ final class ImportWeightTests {
                 try card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map.name),
             ], giving: [.backImage], images: [heavyBird, nest, map])
 
-        #expect(preview.weightGoingUpToICloud(choosing: .update) == 100_000_000)
-        #expect(preview.weightGoingUpToICloud(choosing: .skip) == nil)
+        #expect(preview.weightGoingUpToICloud(choosing: ImportChoices()) == 100_000_000)
+        #expect(preview.weightGoingUpToICloud(choosing: ImportChoices(repeatedCards: .skip)) == nil)
     }
 
-    // Only geografía syncs (#355): the map, on a card tagged geografía, goes
-    // up; the anthem, on a card the file proposes "Himnos" for, only once
-    // the user names that tag geografía.
+    // Only Geografía syncs (#355, #385): the map, on a card the file puts in
+    // Geografía, goes up; the anthem, on a card the file puts in Himnos,
+    // only once the user renames that deck into Geografía; the flag, on a
+    // card that names no deck, which comes into Default, only once the user
+    // picks Geografía for those.
     @Test(
-        "the line counts only the files of the cards that sync once they come in, with the tags as the user names them")
+        "the line counts only the files of the cards that sync once they come in, in the decks as the user names them")
     func theLineCountsOnlyTheCardsThatSync() throws {
-        try engine.syncOnlyChosenTags(true)
-        try engine.chooseToSync("geografía", true)
+        try engine.syncOnlyChosenDecks(true)
+        try engine.setChosenToSync(true, ofDeck: "Geografía")
         let map = try incomingImage(weighing: 100_000_000, named: "a")
         let anthem = try incomingSound(weighing: 100_000_000, named: "b")
+        let flag = try incomingImage(weighing: 100_000_000, named: "c")
         let read = [
             ImportedCard(
-                content: try card(
-                    nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["geografía"], frontImage: map.name),
-                fields: [], line: 1),
+                content: try card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map.name),
+                fields: [], line: 1, deck: "Geografía"),
             ImportedCard(
                 content: try card(nil, front: "¿Qué himno es?", back: "El de la Argentina.", backSound: anthem.name),
-                fields: [], line: 2, proposedTags: ["Himnos"]),
+                fields: [], line: 2, deck: "Himnos"),
+            ImportedCard(
+                content: try card(nil, front: "¿De qué país es?", back: "De la Argentina.", frontImage: flag.name),
+                fields: [], line: 3),
         ]
 
         let preview = try engine.preview(
-            ImportReading(cards: read, leftOut: []), of: "Himnos.txt", kind: .cardsFile, images: [map.name: map],
-            sounds: [anthem.name: anthem])
+            ImportReading(cards: read, leftOut: []), of: "Himnos.txt", kind: .cardsFile,
+            images: [map.name: map, flag.name: flag], sounds: [anthem.name: anthem])
 
-        #expect(preview.weightGoingUpToICloud(choosing: .update) == 100_000_000)
-        #expect(preview.weightGoingUpToICloud(choosing: .update, naming: ["Himnos": "geografía"]) == 200_000_000)
+        #expect(preview.weightGoingUpToICloud(choosing: ImportChoices()) == 100_000_000)
+        #expect(
+            preview.weightGoingUpToICloud(choosing: ImportChoices(deckNames: ["Himnos": "Geografía::Himnos"]))
+                == 200_000_000)
+        #expect(
+            preview.weightGoingUpToICloud(choosing: ImportChoices(deckForCardsWithoutDeck: "Geografía"))
+                == 200_000_000)
     }
 
-    // Only geografía syncs: the Mac holds the map on a card of historia
-    // alone, so iCloud lacks it, and the file's card of geografía takes it
+    // Only Filosofía syncs: ubuntu lives there, and the file puts its copy in
+    // Otros, which an update leaves as it is, so the nest the update gives it
+    // goes up; skipping it leaves the nest out.
+    @Test("a repeated card the import updates counts by the deck it keeps, not the file's")
+    func aRepeatedCardCountsByItsOwnDeck() throws {
+        try engine.syncOnlyChosenDecks(true)
+        try engine.setChosenToSync(true, ofDeck: "Filosofía")
+        try engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."), deck: "Filosofía")
+        let nest = try incomingImage(weighing: 100_000_000, named: "a")
+        let read = [
+            ImportedCard(
+                content: try card(.concept, front: "ubuntu", back: "Soy porque somos.", backImage: nest.name),
+                fields: [.backImage], line: 1, deck: "Otros")
+        ]
+
+        let preview = try engine.preview(
+            ImportReading(cards: read, leftOut: []), of: "Otros.txt", kind: .cardsFile, images: [nest.name: nest],
+            sounds: [:])
+
+        #expect(preview.weightGoingUpToICloud(choosing: ImportChoices()) == 100_000_000)
+        #expect(preview.weightGoingUpToICloud(choosing: ImportChoices(repeatedCards: .skip)) == nil)
+    }
+
+    // Only Geografía syncs: the Mac holds the map on a card of Historia
+    // alone, so iCloud lacks it, and the file's card in Geografía takes it
     // up. The file's copy of it weighs a byte.
     @Test("a file Ficha holds counts when no card that syncs uses it, at the size Ficha keeps it")
     func aHeldFileNoCardThatSyncsUsesCounts() throws {
-        try engine.syncOnlyChosenTags(true)
-        try engine.chooseToSync("geografía", true)
+        try engine.syncOnlyChosenDecks(true)
+        try engine.setChosenToSync(true, ofDeck: "Geografía")
         let map = try heavyImage(weighing: 100_000_000, named: "a", in: engine)
-        try engine.create(card(nil, front: "¿Qué país es?", back: "La Argentina.", tags: ["historia"], frontImage: map))
+        try engine.create(card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map), deck: "Historia")
         let read = [
             ImportedCard(
-                content: try card(
-                    nil, front: "¿De qué país es este mapa?", back: "De la Argentina.", tags: ["geografía"],
-                    frontImage: map),
-                fields: [], line: 1)
+                content: try card(nil, front: "¿De qué país es este mapa?", back: "De la Argentina.", frontImage: map),
+                fields: [], line: 1, deck: "Geografía")
         ]
 
         let preview = try engine.preview(
             ImportReading(cards: read, leftOut: []), of: "Mapas.txt", kind: .cardsFile,
             images: [map: CardImage(name: map, data: Data(count: 1))], sounds: [:])
 
-        #expect(preview.weightGoingUpToICloud(choosing: .update) == 100_000_000)
+        #expect(preview.weightGoingUpToICloud(choosing: ImportChoices()) == 100_000_000)
     }
 
     @Test("with sync off, or no iCloud account, the import says nothing of iCloud")
     func noLineWithoutSync() throws {
         let map = try incomingImage(weighing: 120_000_000, named: "a")
         let cards = [try card(nil, front: "¿Qué país es?", back: "La Argentina.", frontImage: map.name)]
-        #expect(try preview(of: cards, images: [map]).weightGoingUpToICloud(choosing: .update) == 120_000_000)
+        #expect(try preview(of: cards, images: [map]).weightGoingUpToICloud(choosing: ImportChoices()) == 120_000_000)
 
         try engine.turnSyncOff()
         let whileOff = try preview(of: cards, images: [map])
@@ -151,13 +182,13 @@ final class ImportWeightTests {
         let signedOut = try preview(of: cards, images: [map])
         let neverAsked = try Engine(location: .inMemory, time: time, calendar: calendar)
 
-        #expect(whileOff.weightGoingUpToICloud(choosing: .update) == nil)
-        #expect(signedOut.weightGoingUpToICloud(choosing: .update) == nil)
+        #expect(whileOff.weightGoingUpToICloud(choosing: ImportChoices()) == nil)
+        #expect(signedOut.weightGoingUpToICloud(choosing: ImportChoices()) == nil)
         #expect(
             try neverAsked.preview(
                 ImportReading(cards: [ImportedCard(content: cards[0], fields: [], line: 1)], leftOut: []),
                 of: "Mundo.txt", kind: .cardsFile, images: [map.name: map]
-            ).weightGoingUpToICloud(choosing: .update) == nil)
+            ).weightGoingUpToICloud(choosing: ImportChoices()) == nil)
     }
 }
 

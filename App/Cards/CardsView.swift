@@ -4,17 +4,32 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
-/// sidebar to choose a group of cards, the inbox or All Tags, a table with
-/// one row per card in it, or per capture and flagged card in the inbox,
+/// sidebar to choose a group of cards, the inbox, a deck or All Tags, a table
+/// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
-/// it, with what Lucas can do with it at its foot. The sidebar's Tags section
+/// it, with what Lucas can do with it at its foot. The sidebar's Decks
+/// section lists every deck as a tree, Default first while it holds cards or
+/// has a switch on, each with how many of its cards are due, grayed while
+/// its cards are out of Lucas's reviews, and with its emoji and color; a
+/// deck's context menu, and the Actions menu above the card list while the
+/// sidebar chose it (`DeckMenu.swift`), set it aside or prioritize it, give
+/// it a color and an emoji, rename it, in the rename sheet, which moves it
+/// too, and delete it, with its cards, asking first; and under that menu the
+/// deck's tags narrow the card list to one of them (`DeckTagsRow.swift`).
+/// Change Deck… moves the selected cards to the deck Lucas picks in its
+/// sheet, or names there with New Deck… (`ChangeDeckSheet.swift`), and so
+/// does dragging them onto a deck in the sidebar, where a deck dragged onto
+/// another goes inside it, or onto the Decks title to the top
+/// (`SidebarDrops.swift`). The card form and the editor have a
+/// Deck field, whose New Deck… names a deck in the New Deck sheet
+/// (`NewDeckSheet.swift`). The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
-/// and checkboxes (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
+/// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
 /// its place, with Back. A tag's context menu, in either place, and the
 /// detail's Actions menu beside All Tags, act on the tags selected there:
-/// they pin them to the sidebar or unpin them, set them aside, prioritize
-/// them, give them a color and an emoji, which the sidebar and the table's
+/// they pin them to the sidebar or unpin them, give them a color and an
+/// emoji, which the sidebar and the table's
 /// Tags column show, rename one, in the rename sheet (`RenameSheet.swift`),
 /// and delete them, asking first; and in All Tags Lucas drags tags into the
 /// sidebar to pin them there, onto another to move them inside, or between
@@ -62,23 +77,21 @@ struct CardsView: View {
     /// Plays the sound the window says plays, in the form, the editor or the
     /// detail.
     @State private var player = SoundPlayer()
-    /// What the window is asked from outside it: All Tags, from the menu
-    /// bar's All Tags….
-    let requests: CardsWindowRequests
 
     /// The content for the user's cards in `model`, opening with `state` when
     /// it's given, as `make render` opens it partway through an import, and
-    /// on All cards otherwise, and choosing All Tags whenever `requests` asks
-    /// for it.
-    init(model: AppModel, state: CardsWindowState? = nil, requests: CardsWindowRequests) {
+    /// on All cards otherwise.
+    init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
-        self.requests = requests
         _state = State(initialValue: state ?? model.openCardsWindow())
     }
 
     var body: some View {
-        askingAboutTags(askingAboutTypes(panes))
+        askingAboutDecks(askingAboutTags(askingAboutTypes(panes)))
             .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
+            .changeDeckSheet($state, failure: failure(overSheet: true))
+            // The card form's opens over the form.
+            .newDeckSheet(for: .editor, $state)
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
                 FlagSheet(card: row.card, failure: failure(overSheet: true)) { note in
                     state.flag(note: note)
@@ -150,10 +163,9 @@ struct CardsView: View {
             .onChange(of: state.playingSound) {
                 play(state.playingSound)
             }
-            .onChange(of: requests.isAllTagsAsked, initial: true) {
-                guard requests.isAllTagsAsked else { return }
-                requests.isAllTagsAsked = false
-                state.showAllTags()
+            // This Mac's own, for the next window to start a new card there.
+            .onChange(of: state.lastDeckAddedTo) {
+                Preferences.lastDeckAddedTo = state.lastDeckAddedTo
             }
             .onDisappear {
                 player.stop()
@@ -167,12 +179,14 @@ struct CardsView: View {
     /// six columns to leave the tag's some room, and the detail beside it,
     /// a few buttons, can be narrower to give it: a minimum the split view
     /// keeps whenever it changes, where an ideal width counts only as the
-    /// window first opens. The panes' least widths add up to the window's
-    /// either way.
+    /// window first opens. The sidebar opens wide enough for the sample
+    /// decks' names to read whole beside their counts, after their emoji,
+    /// two levels down too, like Idiomas › Español › Rioplatense. The panes'
+    /// least widths add up to the window's either way.
     private var panes: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 280)
+                .navigationSplitViewColumnWidth(min: 160, ideal: 260, max: 280)
                 .waiting(while: state.editing != nil)
         } content: {
             table
@@ -293,6 +307,87 @@ struct CardsView: View {
             }
     }
 
+    /// `content` with Delete…'s question about a deck, which says what
+    /// deleting it does, on this Mac and on Lucas's other devices, since the
+    /// Cards window has no undo. Its button acts on what the dialog presents.
+    private func askingAboutDecks(_ content: some View) -> some View {
+        content
+            .confirmationDialog(
+                deckToDelete.map {
+                    Text(
+                        "Delete the deck “\(Deck.shownName($0.deck))”?",
+                        comment:
+                            "The title of the Cards window's question before it deletes a deck, with its whole name."
+                    )
+                } ?? Text(verbatim: ""),
+                isPresented: Binding(get: { deckToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
+                titleVisibility: .visible,
+                presenting: deckToDelete
+            ) { deletion in
+                Button(role: .destructive) {
+                    state.deleteDeck(deletion)
+                } label: {
+                    Text("Delete", comment: "The button that deletes the deck the Cards window asks about.")
+                }
+            } message: { deletion in
+                Text(verbatim: deckDeletionMessage(for: deletion))
+            }
+    }
+
+    /// The deck the window asks whether to delete, with what that deletes on
+    /// this Mac, while it asks.
+    private var deckToDelete: DeckDeletion? {
+        guard case .deleteDeck(let deletion) = state.question else { return nil }
+        return deletion
+    }
+
+    /// What the question before Lucas deletes the deck of `deletion` says
+    /// under its title, a sentence for each thing it does: the decks inside
+    /// it that go too, and the cards in them, counted on this Mac, which go
+    /// here and on his other devices, whether or not they sync, as he
+    /// decided on 2026-10-31 (`DeckChanges.swift`); and that it can't be
+    /// undone, though the daily backups hold them. The sentences follow one
+    /// another as the Mac's language joins them (`joinedSentences(_:)`).
+    private func deckDeletionMessage(for deletion: DeckDeletion) -> String {
+        var sentences: [String] = []
+        if !deletion.decksInside.isEmpty {
+            sentences.append(
+                String(
+                    localized: "The \(deletion.decksInside.count) decks inside it go with it.",
+                    comment: "In the Cards window's question before it deletes a deck: the decks inside it."))
+        }
+        sentences.append(
+            String(
+                localized:
+                    "\(deletion.cards) cards go too, with their review logs, here and on your other devices.",
+                comment: """
+                    In the Cards window's question before it deletes a deck: the cards in it and in the decks inside \
+                    it, counted on this Mac.
+                    """))
+        sentences.append(
+            String(
+                localized: "You can't undo this, but the daily backups in Settings › Backups hold what it deletes.",
+                comment: "The last sentence of the Cards window's question before it deletes a deck."))
+        return joinedSentences(sentences)
+    }
+
+    /// `sentences`, which a question before Lucas deletes tags or a deck
+    /// says under its title, one after another, as the Mac's language joins
+    /// them, with a space in English.
+    private func joinedSentences(_ sentences: [String]) -> String {
+        sentences.reduce(into: "") { text, sentence in
+            text =
+                text.isEmpty
+                ? sentence
+                : String(
+                    localized: "deletion.next-sentence", defaultValue: "\(text) \(sentence)",
+                    comment: """
+                        Joins two sentences of the Cards window's question before it deletes tags or a deck: what it \
+                        says so far, then the next sentence, as the language writes one sentence after another.
+                        """)
+        }
+    }
+
     /// The tags the window asks whether to delete, with what that does,
     /// while it asks.
     private var tagsToDelete: TagDeletion? {
@@ -323,10 +418,10 @@ struct CardsView: View {
 
     /// What the question before Lucas deletes the tags of `deletion` says
     /// under its title, a sentence for each thing it does: the tags inside
-    /// them that go too, the cards that lose them, which stay, those of them
-    /// that come back to his reviews, and, under selective sync, those that
-    /// stop syncing; and that it can't be undone. The sentences follow one
-    /// another as the Mac's language joins them, with a space in English.
+    /// them that go too, the cards that lose them, which stay; and that it
+    /// can't be undone. Since decks decide what syncs, deleting tags changes
+    /// it for no card (ADR 0024). The sentences follow one another as the
+    /// Mac's language joins them (`joinedSentences(_:)`).
     private func tagDeletionMessage(for deletion: TagDeletion) -> String {
         let isOne = deletion.tags.count == 1
         var sentences: [String] = []
@@ -350,39 +445,11 @@ struct CardsView: View {
                     localized: "\(deletion.cards) cards lose them, and keep everything else.",
                     comment: "In the Cards window's question before it deletes several tags: the cards that carry them."
                 ))
-        if deletion.cardsBackInReviews > 0 {
-            sentences.append(
-                String(
-                    localized: "\(deletion.cardsBackInReviews) of those cards come back to your reviews.",
-                    comment: """
-                        In the Cards window's question before it deletes tags: the cards they set aside, which come \
-                        back to Lucas's reviews.
-                        """))
-        }
-        if let stopSyncing = deletion.cardsThatStopSyncing, stopSyncing > 0 {
-            sentences.append(
-                String(
-                    localized: "\(stopSyncing) of those cards stop syncing, left with no tag you chose to sync.",
-                    comment: """
-                        In the Cards window's question before it deletes tags, while only the cards with a tag Lucas \
-                        chose sync: the cards that stop syncing.
-                        """))
-        }
         sentences.append(
             String(
                 localized: "You can't undo this.",
                 comment: "The last sentence of the Cards window's question before it deletes tags."))
-        return sentences.reduce(into: "") { text, sentence in
-            text =
-                text.isEmpty
-                ? sentence
-                : String(
-                    localized: "tag-deletion.next-sentence", defaultValue: "\(text) \(sentence)",
-                    comment: """
-                        Joins two sentences of the Cards window's question before it deletes tags: what it says so \
-                        far, then the next sentence, as the language writes one sentence after another.
-                        """)
-        }
+        return joinedSentences(sentences)
     }
 
     /// Back, which lists All Tags again in place of a tag's cards, as Lucas
@@ -427,21 +494,23 @@ struct CardsView: View {
         return row
     }
 
-    /// The tag or the user type the window asks which emoji to give, while
-    /// the emoji sheet asks.
+    /// The tag, the deck or the user type the window asks which emoji to
+    /// give, while the emoji sheet asks.
     private var emojiSubject: SheetSubject? {
         switch state.question {
         case .emoji(let tag): .tag(tag)
+        case .deckEmoji(let deck): .deck(deck)
         case .typeEmoji(let type): .type(type)
         default: nil
         }
     }
 
-    /// The tag or the user type the window asks which name to give, while
-    /// the rename sheet asks.
+    /// The tag, the deck or the user type the window asks which name to give,
+    /// while the rename sheet asks.
     private var renameSubject: SheetSubject? {
         switch state.question {
         case .renameTag(let tag): .tag(tag)
+        case .renameDeck(let deck): .deck(deck)
         case .renameType(let type): .type(type)
         default: nil
         }
@@ -475,16 +544,17 @@ struct CardsView: View {
     }
 
     /// Where the alert shows now: over the New Type sheet while it's open;
-    /// over the flag sheet, the emoji sheet, the rename sheet, the card form
-    /// or the Export sheet while one is open, since the window's own alert
-    /// can't show over its sheet; and over the window otherwise.
+    /// over the flag sheet, the emoji sheet, the rename sheet, the Change Deck
+    /// sheet, the card form or the Export sheet while one is open, since the
+    /// window's own alert can't show over its sheet; and over the window
+    /// otherwise.
     private var alertPlace: AlertPlace {
         if case .newType = state.question {
             return .newTypeSheet
         }
         let isSheetOpen =
-            cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.cardForm != nil
-            || state.exporting != nil
+            cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.deckChange != nil
+            || state.cardForm != nil || state.exporting != nil
         return isSheetOpen ? .sheet : .window
     }
 
@@ -617,40 +687,77 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't delete \(count) cards", comment: "An alert's title in the Cards window."),
                 message: error.messageInCardsWindow(actingOn: count))
-        case .setAside(let tag):
+        case .changeDeck(let count):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't set “\(TagPath.shown(tag))” aside",
+                    "Couldn't move \(count) cards to another deck",
+                    comment: "An alert's title in the Cards window's Change Deck sheet, after Move."),
+                message: error.messageInCardsWindow(actingOn: count))
+        case .setAside(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't set “\(Deck.shownName(deck))” aside",
+                    comment: "An alert's title in the Cards window, after Set Aside in a deck's menu, with the deck."),
+                error: error)
+        case .stopSettingAside(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't untick Set Aside on “\(Deck.shownName(deck))”",
                     comment: """
-                        An alert's title in the Cards window, after Set Aside in a tag's menu or its Set Aside \
-                        checkbox in All Tags, with the tag.
+                        An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, \
+                        with the deck.
                         """),
                 error: error)
-        case .stopSettingAside(let tag):
+        case .prioritize(let deck):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't untick Set Aside on “\(TagPath.shown(tag))”",
+                    "Couldn't make “\(Deck.shownName(deck))” a priority deck",
+                    comment: "An alert's title in the Cards window, after Prioritize in a deck's menu, with the deck."),
+                error: error)
+        case .stopPrioritizing(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't untick Prioritize on “\(Deck.shownName(deck))”",
                     comment: """
-                        An alert's title in the Cards window, after choosing a ticked Set Aside in a tag's menu or \
-                        unticking its Set Aside checkbox in All Tags, with the tag.
+                        An alert's title in the Cards window, after choosing a ticked Prioritize in a deck's menu, \
+                        with the deck.
                         """),
                 error: error)
-        case .prioritize(let tag):
+        case .setDeckColor(let deck):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't make “\(TagPath.shown(tag))” a priority tag",
+                    "Couldn't change the color of “\(Deck.shownName(deck))”",
+                    comment: "An alert's title in the Cards window, after a color in a deck's menu, with the deck."),
+                error: error)
+        case .setDeckEmoji(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the emoji of “\(Deck.shownName(deck))”",
+                    comment: "An alert's title in the Cards window's emoji sheet, after OK, with the deck."),
+                error: error)
+        case .renameDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't rename “\(Deck.shownName(deck))”",
+                    comment:
+                        "An alert's title in the Cards window's rename sheet, after OK, with the deck's whole name."),
+                error: error)
+        case .moveDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't move “\(Deck.shownName(deck))”",
                     comment: """
-                        An alert's title in the Cards window, after Prioritize in a tag's menu or its Priority \
-                        checkbox in All Tags, with the tag.
+                        An alert's title in the Cards window, after dragging a deck in the sidebar onto another or \
+                        onto the Decks section's title, with the deck's whole name.
                         """),
                 error: error)
-        case .stopPrioritizing(let tag):
+        case .deleteDeck(let deck):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't untick Prioritize on “\(TagPath.shown(tag))”",
+                    "Couldn't delete “\(Deck.shownName(deck))”",
                     comment: """
-                        An alert's title in the Cards window, after choosing a ticked Prioritize in a tag's menu or \
-                        unticking its Priority checkbox in All Tags, with the tag.
+                        An alert's title in the Cards window, after Delete… in a deck's menu or its question, with \
+                        the deck's whole name.
                         """),
                 error: error)
         case .deleteTags(let tag):
@@ -787,6 +894,8 @@ struct CardsView: View {
 
     /// The sidebar's section `section`: the cards by where they stand; the
     /// inbox, with how many things wait in it, as the menu counts them; the
+    /// decks as a tree, each parent open or closed as Lucas left it, each
+    /// deck with how many of its cards are due; the
     /// cards of each pinned tag, in Lucas's order, each with its context
     /// menu, which he drags into another order, or tags from All Tags in
     /// among them to pin them, then All Tags…, which pins tags dropped on it
@@ -811,6 +920,16 @@ struct CardsView: View {
                 )
                 .badge(model.progress?.inInbox ?? 0)
                 .tag(SidebarItem.inbox)
+            }
+        case .decks(let rows):
+            Section {
+                ForEach(rows) { row in
+                    DeckBranch(row: row, state: $state)
+                }
+            } header: {
+                Text("Decks", comment: "A section of the Cards window's sidebar: the decks, as a tree.")
+                    // A deck dropped here goes to the top.
+                    .takingSidebarDrops { state.dropOnDecksTitle($0) }
             }
         case .tags(let pinned):
             Section {
@@ -934,10 +1053,8 @@ struct CardsView: View {
     /// Sidebar while all are pinned; Rename…, which opens the rename sheet,
     /// for one tag; Color, with None and Finder's seven colors, each with a
     /// swatch, the one they all have ticked; Emoji…, which opens the emoji
-    /// sheet, for one tag; Set Aside, ticked while all are set aside on their
-    /// own; Prioritize, ticked while all are priority tags, and off as the
-    /// state says, while one is set aside, on its own or inside a tag that
-    /// is; and Delete…, which asks first.
+    /// sheet, for one tag; and Delete…, which asks first. Set Aside and
+    /// Prioritize are a deck's (`DeckMenu.swift`, ADR 0024).
     @ViewBuilder
     private func tagMenu(for tags: [String]) -> some View {
         if let menu = state.menu(for: tags) {
@@ -979,15 +1096,7 @@ struct CardsView: View {
                         isOn: Binding(
                             get: { item.isTicked }, set: { _ in state.chooseColor(item.color, on: menu.tags) })
                     ) {
-                        if let color = item.color {
-                            Label {
-                                Text(verbatim: color.name)
-                            } icon: {
-                                color.swatch
-                            }
-                        } else {
-                            Text("None", comment: "The first item of the Color submenu of a tag's menu: no color.")
-                        }
+                        ColorItemLabel(color: item.color)
                     }
                 }
             } label: {
@@ -1008,27 +1117,6 @@ struct CardsView: View {
                 )
             }
             .disabled(!menu.isForOneTag)
-            Toggle(
-                isOn: Binding(get: { menu.isSetAsideTicked }, set: { _ in state.chooseSetAside(on: menu.tags) })
-            ) {
-                Text(
-                    "Set Aside",
-                    comment: """
-                        An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag \
-                        is set aside: its cards are out of Lucas's reviews for now.
-                        """)
-            }
-            Toggle(
-                isOn: Binding(get: { menu.isPriorityTicked }, set: { _ in state.choosePriority(on: menu.tags) })
-            ) {
-                Text(
-                    "Prioritize",
-                    comment: """
-                        An item of a tag's menu in the Cards window's sidebar or its All Tags, ticked while the tag \
-                        is a priority tag, and off while it's set aside.
-                        """)
-            }
-            .disabled(!menu.canPrioritize)
             Divider()
             Button {
                 state.askToDeleteTags(menu.tags)
@@ -1107,7 +1195,12 @@ struct CardsView: View {
     private var table: some View {
         switch state.listing {
         case .success(.cards(let rows)):
-            cardTable(rows)
+            VStack(spacing: 0) {
+                if let menu = state.chosenDeckMenu {
+                    DeckBar(menu: menu, state: $state)
+                }
+                cardTable(rows)
+            }
         case .success(.inbox(let rows)):
             inboxTable(rows)
         case .success(.allTags(let rows)):
@@ -1124,14 +1217,12 @@ struct CardsView: View {
     }
 
     /// The cards of the group the sidebar chose, or of the tag Lucas opened
-    /// in All Tags, one per row. A right click on
+    /// in All Tags, one per row, which he drags onto a deck in the sidebar,
+    /// with the other selected cards when it's one of them. A right click on
     /// the headers shows SwiftUI's menu of the columns, as in Finder, which
     /// adds or removes all of them but Front.
     private func cardTable(_ rows: [CardRow]) -> some View {
-        Table(
-            rows.sorted(using: sortOrder), selection: selectedCards, sortOrder: $sortOrder,
-            columnCustomization: $columns
-        ) {
+        Table(of: CardRow.self, selection: selectedCards, sortOrder: $sortOrder, columnCustomization: $columns) {
             TableColumn(
                 Text("Front", comment: "A column of the Cards window: the card's front."),
                 sortUsing: CardRowOrder(.front)
@@ -1264,6 +1355,11 @@ struct CardsView: View {
             .width(min: 80, ideal: 96, max: 140)
             .customizationID(CardRowOrder.Column.edited.rawValue)
             .defaultVisibility(.hidden)
+        } rows: {
+            ForEach(rows.sorted(using: sortOrder)) { row in
+                TableRow(row)
+                    .draggable(SidebarDrag(dragged: .card(row.id)))
+            }
         }
         .focused($isTableFocused)
         // The card Show Card selected, which may be far down the list.
@@ -1356,7 +1452,8 @@ struct CardsView: View {
             CardEditor(
                 card: card, images: state.editedImages, shownImages: state.images, sounds: state.editedSounds,
                 bothWays: state.editedBothWays, type: state.editedType, types: state.pickerTypes,
-                canSave: state.canSaveCard, isSearching: isSearchFocused
+                deck: state.editedDeck, decks: state.deckFieldChoices(.editor), canSave: state.canSaveCard,
+                isSearching: isSearchFocused
             ) { dropped, side in
                 state.putImageInEditor(dropped, on: side)
             } removeImage: { side in
@@ -1378,6 +1475,10 @@ struct CardsView: View {
                 state.setTypeInEditor(type)
             } newType: {
                 state.askForNewType(in: .editor)
+            } setDeck: { deck in
+                state.setDeckInEditor(deck)
+            } newDeck: {
+                state.askForNewDeck(in: .editor)
             } save: { content in
                 state.saveCard(content)
                 focusTableOnceEditEnds()
@@ -1620,7 +1721,8 @@ struct CardsView: View {
     }
 
     /// What the detail says when Lucas selected several cards: how many, with
-    /// what he can do with all of them.
+    /// what he can do with all of them, one button under another, since four
+    /// in a row don't fit the detail.
     private func selectionSummary(_ rows: [CardRow]) -> some View {
         ContentUnavailableView {
             Label(
@@ -1629,13 +1731,16 @@ struct CardsView: View {
                     comment: "In the Cards window's detail, when Lucas selected several cards in the table."),
                 systemImage: "rectangle.stack")
         } actions: {
-            actionButtons
+            VStack {
+                actionButtons
+            }
         }
     }
 
     /// A button for each thing Lucas can do with what the detail shows, as
     /// the state offers them: Edit, Convert to Card, Flag…, Bury or Unbury,
-    /// Turn On or Turn Off Both Ways, Delete… and Discard…, in that order.
+    /// Turn On or Turn Off Both Ways, Change Deck…, Delete… and Discard…, in
+    /// that order.
     /// Each button calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
@@ -1665,6 +1770,9 @@ struct CardsView: View {
         }
         if actions.contains(.turnOffBothWays) {
             turnOffBothWaysButton
+        }
+        if actions.contains(.changeDeck) {
+            changeDeckButton
         }
         if actions.contains(.delete) {
             deleteButton
@@ -1791,6 +1899,24 @@ struct CardsView: View {
                 comment: "The tooltip of the Cards window's button that turns Both ways off for the cards."))
     }
 
+    /// Change Deck…, which asks which deck the selected cards move to, in the
+    /// Change Deck sheet: ⌘D, as Change Deck in Anki's browser.
+    private var changeDeckButton: some View {
+        Button(
+            String(
+                localized: "Change Deck…",
+                comment: "A button of the Cards window that moves the selected cards to another deck, asking which."
+            )
+        ) {
+            state.askToChangeDeck()
+        }
+        .keyboardShortcut("d", modifiers: .command)
+        .help(
+            Text(
+                "Change Deck… (⌘D)",
+                comment: "The tooltip of the Cards window's button that moves the cards to another deck."))
+    }
+
     /// The title of the question before Lucas deletes the cards in `rows`:
     /// the card's front when it's one, or how many when they're several.
     private func deletionTitle(for rows: [CardRow]) -> Text {
@@ -1822,6 +1948,56 @@ struct CardsView: View {
 
 private typealias SidebarItem = CardsWindowState.SidebarItem
 
+/// A deck's row in the sidebar, its title, after its emoji and its symbol in
+/// its color, with how many of its cards are
+/// due, grayed while its cards are out of Lucas's reviews, as it's set aside
+/// on its own or sits inside a deck that is, with the deck's menu on a right
+/// click; and the decks inside it under a disclosure triangle, open or closed
+/// as the window remembers it. Lucas drags it, unless it's Default, onto
+/// another deck's row, and drops cards and decks on it, as the state takes
+/// them.
+private struct DeckBranch: View {
+    let row: CardsWindowState.DeckRow
+    @Binding var state: CardsWindowState
+
+    var body: some View {
+        if row.children.isEmpty {
+            label
+        } else {
+            DisclosureGroup(
+                isExpanded: Binding(get: { state.isDeckOpen(row.id) }, set: { state.setDeckOpen($0, row.id) })
+            ) {
+                ForEach(row.children) { child in
+                    DeckBranch(row: child, state: $state)
+                }
+            } label: {
+                label
+            }
+        }
+    }
+
+    /// Its own row, which choosing lists its cards: its emoji before its
+    /// title, and its symbol in its color, its own or else the decks' it sits
+    /// inside, as a pinned tag's row shows a tag's.
+    private var label: some View {
+        Label {
+            Text(verbatim: row.shownTitle)
+        } icon: {
+            row.deck.symbol
+        }
+        .badge(row.counts.due)
+        .opacity(row.isGrayed ? 0.5 : 1)
+        .takingSidebarDrops { state.drop($0, onDeck: row.id) }
+        .dragging(row.isDraggable ? .deck(row.id) : nil)
+        .tag(row.item)
+        .contextMenu {
+            if let menu = state.menu(forDeck: row.id) {
+                DeckMenuItems(menu: menu, state: $state)
+            }
+        }
+    }
+}
+
 /// A type's row in the sidebar: its name, after a user type's emoji, when it
 /// has one, or else the type's symbol.
 private struct TypeRow: View {
@@ -1842,8 +2018,8 @@ private struct TypeRow: View {
 
 /// A pinned tag's row in the sidebar: its emoji, its own or else the tags'
 /// it sits inside, before its whole name, and the tag symbol, filled with its
-/// color, found the same way, when it has one, grayed when the state says
-/// so. Its tooltip says its whole name.
+/// color, found the same way, when it has one. Its tooltip says its whole
+/// name.
 private struct TagRow: View {
     let tag: CardsWindowState.PinnedTagRow
 
@@ -1853,7 +2029,6 @@ private struct TagRow: View {
         } icon: {
             tag.tag.symbol
         }
-        .opacity(tag.isGrayed ? 0.5 : 1)
         // Its whole name, which a narrow sidebar may cut short.
         .help(Text(verbatim: tag.tag.title))
     }

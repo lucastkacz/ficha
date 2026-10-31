@@ -3,10 +3,11 @@ import Foundation
 /// Tags inside tags (ADR 0021): a tag's name carries the tags it sits
 /// inside, its levels joined by `::` as Anki writes them, so
 /// `economía::Argentina` is Argentina inside economía, and a parent exists
-/// through the tags inside it. The one place that reads a tag's levels:
-/// whatever asks which tags one sits inside, as a tag's switches, color and
-/// emoji do, or lists tags as a tree, asks here, never splitting a name
-/// again.
+/// through the tags inside it. Decks are named the same way (ADR 0024). The
+/// one place that reads a tag's levels, or a deck's: whatever asks which
+/// tags or decks one sits inside, as a deck's switch and a tag's or a deck's
+/// color and emoji do, or lists them as a tree, asks here, never splitting a
+/// name again.
 public enum TagPath {
     /// What joins a tag's levels in its name, as cards, the `ficha` CLI,
     /// Export and Import carry it.
@@ -61,13 +62,15 @@ public enum TagPath {
     }
 
     /// The tag `name`, and then every tag it sits inside, its parent first:
-    /// the tags whose switches, color and emoji hold for it.
+    /// the tags whose color and emoji hold for it; or, for a deck, the decks
+    /// whose switches hold for the cards that live in it.
     public static func lineage(of name: String) -> [String] {
         [name] + ancestors(of: name)
     }
 
     /// Every tag in `tags`, and every tag one of them sits inside, each once:
-    /// the tags whose switches hold for a card with `tags`.
+    /// the tags that list a card with `tags`, since a parent lists the cards
+    /// of every tag inside it.
     public static func lineages(of tags: some Sequence<String>) -> Set<String> {
         Set(tags.flatMap(lineage(of:)))
     }

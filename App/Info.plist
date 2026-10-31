@@ -15,5 +15,18 @@
 	</array>
 	<key>FichaURLScheme</key>
 	<string>$(FICHA_URL_SCHEME)</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER).sidebar-drag</string>
+			<key>UTTypeDescription</key>
+			<string>Cards or a deck dragged onto a deck in the Cards window's sidebar</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

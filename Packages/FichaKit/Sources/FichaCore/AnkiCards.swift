@@ -15,16 +15,17 @@ extension AnkiCollection {
     /// such as `[$]x^2[/$]`, comes in as the picture Anki drew of it, found
     /// by its name, after the SHA-1 digest `sha1` gives of a text as
     /// lowercase hex, and as its LaTeX when the package lacks it or Ficha
-    /// can't read it, as a formula among text does. Each proposes one tag
-    /// for its home deck, its levels but Default's joined by `::` as a tag
-    /// inside a tag (ADR 0021), and its note's tags, an underscore in them
-    /// standing for a space, and brings where it
+    /// can't read it, as a formula among text does. Each comes into its home
+    /// deck, by its whole name, its levels but those of Anki's Default
+    /// joined by `::` (ADR 0024), or into none when that leaves no level, as
+    /// for Default's own cards; it proposes its note's tags, an underscore
+    /// in them standing for a space, and brings where it
     /// stands in Anki, its due days as dates in `calendar`, the user's, for
     /// an import that brings progress. But the two cards of a note whose note
     /// type makes a reversed card, when both come in, make one card that
-    /// goes both ways: the first card, where it comes, with the tags both
-    /// propose, and where the reversed card stands for its back-first way
-    /// (ADR 0016). The new cards come first, in Anki's order of new cards,
+    /// goes both ways: the first card, where it comes and in its deck, with
+    /// the tags both propose, and where the reversed card stands for its
+    /// back-first way (ADR 0016). The new cards come first, in Anki's order of new cards,
     /// then the rest by note and template. A card of an Image Occlusion note
     /// type stays out, and so do a card whose template Anki can't render and
     /// one with a side left with neither text, an image nor a sound, each
@@ -171,7 +172,7 @@ extension AnkiCollection {
                 progress: try progress(of: card, in: calendar),
                 front: AnkiSide(html: sides.front, playing: sides.frontSounds, images: images, sha1: sha1),
                 back: AnkiSide(html: sides.back, playing: sides.backSounds, images: images, sha1: sha1),
-                tags: tags(of: note, inDeck: card.homeDeckID), makesReversedCards: noteType.makesReversedCards))
+                tags: tags(of: note), deck: deckName(of: deck), makesReversedCards: noteType.makesReversedCards))
     }
 
     /// The fields a template of `card`, whose number is `number`, can show,
@@ -198,21 +199,24 @@ extension AnkiCollection {
         return fields
     }
 
-    /// The tags a card of `note` in the deck `deckID` proposes: one for the
-    /// deck, its levels joined by `::` as a tag inside a tag (ADR 0021),
-    /// without Default's levels, whose id is 1, whatever its name, then the
-    /// note's own, `::` included, with an underscore standing for a space, as
-    /// in a text file Anki exports. Each comes once, its levels cleaned up as
-    /// a card's tags are.
-    private func tags(of note: AnkiNote, inDeck deckID: Int64) -> [String] {
-        var levels = decks[deckID]?.name[...] ?? []
+    /// The tags a card of `note` proposes: the note's own, `::` included,
+    /// with an underscore standing for a space, as in a text file Anki
+    /// exports. Each comes once, its levels cleaned up as a card's tags are.
+    private func tags(of note: AnkiNote) -> [String] {
+        note.tags.map { $0.replacingOccurrences(of: "_", with: " ") }.compactMap(TagPath.normalized).uniqued()
+    }
+
+    /// The whole name of the deck a card of `deck`, its home deck, comes
+    /// into: its levels joined by `::`, as Anki names a deck inside another,
+    /// without Default's levels, whose id is 1, whatever its name, and
+    /// cleaned up as a tag's are; or nil when that leaves none, as for
+    /// Default itself, whose cards come into Ficha's Default.
+    private func deckName(of deck: AnkiDeck) -> String? {
+        var levels = deck.name[...]
         if let defaultDeck = decks[1], levels.starts(with: defaultDeck.name) {
             levels = levels.dropFirst(defaultDeck.name.count)
         }
-        let tags =
-            [levels.joined(separator: TagPath.separator)]
-            + note.tags.map { $0.replacingOccurrences(of: "_", with: " ") }
-        return tags.compactMap(TagPath.normalized).uniqued()
+        return TagPath.normalized(levels.joined(separator: TagPath.separator))
     }
 }
 
@@ -258,7 +262,8 @@ private enum Rendering {
 
 /// An Anki card as Anki shows it, before it's a Ficha card: where it stands
 /// in Anki, its front and back as Ficha brings them in, still without their
-/// sounds, the tags it proposes, and whether its note makes a reversed card.
+/// sounds, the tags it proposes, the deck it comes into, and whether its
+/// note makes a reversed card.
 private struct RenderedAnkiCard {
     /// Where it stands in Anki.
     let progress: ImportedProgress
@@ -268,6 +273,8 @@ private struct RenderedAnkiCard {
     /// own where the answer starts, or else those above it.
     let back: AnkiSide
     let tags: [String]
+    /// The deck's whole name, or nil for Default.
+    let deck: String?
     /// Whether its note type makes a reversed card, so that it comes in as
     /// one card with its note's other card.
     let makesReversedCards: Bool
@@ -289,7 +296,7 @@ private struct RenderedAnkiCard {
         // a card it updates.
         return .card(
             ImportedCard(
-                content: content, fields: [.backImage, .backSound], line: line, proposedTags: tags,
+                content: content, fields: [.backImage, .backSound], line: line, proposedTags: tags, deck: deck,
                 progress: progress, hasImagesDropped: front.dropsImages || back.dropsImages,
                 hasSoundsDropped: front.dropsSounds || back.dropsSounds,
                 hasUnreadableSoundsLeftOut: front.leavesOutAnUnreadableSound || back.leavesOutAnUnreadableSound))
@@ -305,13 +312,14 @@ private enum Imported {
 extension ImportedCard {
     /// The card of an Anki note that makes a reversed card, as it comes in
     /// with `reversed`, its reversed card, as one card that goes both ways
-    /// (ADR 0016): with its front and back, the tags both propose, and where
-    /// each stood, its own for the front-first way and the reversed card's
-    /// for the back-first way.
+    /// (ADR 0016): with its front and back, the tags both propose, its own
+    /// deck, where Anki may have put the reversed card apart, and where each
+    /// stood, its own for the front-first way and the reversed card's for
+    /// the back-first way.
     fileprivate func goingBothWays(with reversed: ImportedCard) -> ImportedCard {
         ImportedCard(
             content: content, typeName: typeName, bothWays: true, fields: fields, line: line,
-            proposedTags: (proposedTags + reversed.proposedTags).uniqued(), progress: progress,
+            proposedTags: (proposedTags + reversed.proposedTags).uniqued(), deck: deck, progress: progress,
             backFirstProgress: reversed.progress, hasImagesDropped: hasImagesDropped,
             hasSoundsDropped: hasSoundsDropped,
             hasUnreadableSoundsLeftOut: hasUnreadableSoundsLeftOut)

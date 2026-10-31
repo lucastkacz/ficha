@@ -122,6 +122,8 @@ extension ICloudRecord {
                 fields[key] = .string(text)
             case let number as NSNumber:
                 fields[key] = CFNumberIsFloatType(number) ? .double(number.doubleValue) : .int(number.int64Value)
+            case let bytes as Data:
+                fields[key] = .bytes(bytes)
             default:
                 throw .unknownValue(field: key, recordType: record.recordType)
             }
@@ -172,6 +174,7 @@ extension ICloudRecord {
             case .string(let text)?: record[key] = text
             case .int(let number)?: record[key] = number
             case .double(let number)?: record[key] = number
+            case .bytes(let bytes)?: record[key] = bytes
             case .asset(let file)?: record[key] = CKAsset(fileURL: file)
             case nil: record[key] = nil as (any CKRecordValueProtocol)?
             }

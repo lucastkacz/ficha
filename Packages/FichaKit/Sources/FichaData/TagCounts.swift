@@ -11,8 +11,8 @@ public struct TagCounts: Sendable, Equatable {
     /// How many cards the tag lists when it's chosen: those that carry it or
     /// a tag inside it, and aren't buried.
     public let cards: Int
-    /// How many of those are due now and in the user's reviews, which a
-    /// set-aside tag's never are.
+    /// How many of those are due now and in the user's reviews, which those
+    /// of a set-aside deck never are.
     public let due: Int
 
     public init(cards: Int, due: Int) {

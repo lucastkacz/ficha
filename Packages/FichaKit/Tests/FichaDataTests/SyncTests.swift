@@ -396,24 +396,22 @@ final class SyncTests {
         #expect(try iPhone.engine.inbox().captures.isEmpty)
     }
 
-    @Test("a tag's color, emoji and setting aside travel, and two tags made with the same name are one")
+    @Test("a tag's color and emoji travel, and two tags made with the same name are one")
     func aTagTravelsAndTwoWithTheSameNameAreOne() async throws {
         try mac.engine.create(card(.question, front: "¿Waterloo?", back: "1815.", tags: ["historia"]))
         try mac.engine.setColor(.red, of: "historia")
         time.advance(by: minutes(1))
         try iPhone.engine.create(card(.question, front: "¿Caseros?", back: "1852.", tags: ["historia"]))
         try iPhone.engine.setEmoji(Emoji("🏛️"), of: "historia")
-        try iPhone.engine.setAside("historia")
 
         try await mac.syncNow()
         try await iPhone.syncNow()
         try await mac.syncNow()
 
-        let historia = CardTag(name: "historia", switchedOn: .setAside, color: .red, emoji: "🏛️")
+        let historia = CardTag(name: "historia", color: .red, emoji: "🏛️")
         for device in [mac, iPhone] {
             #expect(try device.engine.allTags() == [historia])
             #expect(try device.engine.cards().map(\.front).sorted() == ["¿Caseros?", "¿Waterloo?"])
-            #expect(try device.engine.cards().allSatisfy { $0.setAsideBy == ["historia"] })
         }
     }
 }

@@ -14,7 +14,7 @@ struct FichaApp: App {
                 MenuContent(
                     model: model, openCapture: appDelegate.openCapture,
                     captureShortcut: appDelegate.captureShortcut, openReviewPanel: appDelegate.openReviewPanel,
-                    openCards: appDelegate.openCards, openAllTags: appDelegate.openAllTags,
+                    openCards: appDelegate.openCards,
                     openDiagnostics: appDelegate.openDiagnostics,
                     openSettings: appDelegate.openSettings, openBackupSettings: appDelegate.openBackupSettings,
                     openSyncSettings: appDelegate.openSyncSettings,

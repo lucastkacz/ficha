@@ -14,14 +14,15 @@ struct FixCommand: EngineCommand {
               ficha fix 7 <<'EOF'
               {"type": "word", "front": "serendipia",
                "back": "Un hallazgo valioso que se da por casualidad. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».",
-               "tags": ["lenguaje"], "source": "Un ensayo de Borges"}
+               "tags": ["etimología"], "source": "Un ensayo de Borges"}
               EOF
 
             bothWays true or false switches Both ways on or off, so the card comes back first too, its back on \
-            top, or doesn't; left out, the card keeps its own.
+            top, or doesn't; left out, the card keeps its own. deck moves the card to that deck; left out, it \
+            stays in its own.
 
             Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, \
-            unless one of its tags, or a tag one of them sits inside, is set aside, and the command prints it.
+            unless its deck, or a deck it sits inside, is set aside, and the command prints it.
             """
     )
 

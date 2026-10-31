@@ -363,6 +363,8 @@ extension FakeICloud.Database {
             return text.utf8.count
         case .int?, .double?:
             return 8
+        case .bytes(let bytes)?:
+            return bytes.count
         case .asset(let file)?:
             guard let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
                 throw CocoaError(.fileReadUnknown, userInfo: [NSURLErrorKey: file])
@@ -402,9 +404,12 @@ extension FakeICloud.Database {
 /// tell of a sign-in, since its documentation doesn't say, so Ficha's first
 /// sync can't depend on one; a fetch that fails offline says it ended, where
 /// CloudKit's may not, since its documentation doesn't say, so the end of a
-/// fetch can't say the device synced; and it sends every record that waits
-/// in one batch, unless a test says how many (`recordsPerBatch`), where
-/// CloudKit picks the size.
+/// fetch can't say the device synced; it sends every record that waits in
+/// one batch, unless a test says how many (`recordsPerBatch`), where CloudKit
+/// picks the size; and it hands each zone's changes in one event, unless a
+/// test says which records come apart, and in which order (`eventsByType`),
+/// where CloudKit may split a large fetch into several events, in an order
+/// its documentation doesn't promise.
 final class FakeSyncEngine: ICloudSyncEngine {
     private let delegate: Sync
     /// The stretch of sync being on it started in, as the app notes it for
@@ -470,6 +475,18 @@ final class FakeSyncEngine: ICloudSyncEngine {
         set { batchSize.withLock { $0 = newValue } }
     }
     private let batchSize = Mutex<Int?>(nil)
+
+    /// The record types whose records and deletions it hands in events of
+    /// their own as it fetches a zone's changes, an event per group of
+    /// types, in this order, before an event with the rest; or none, to hand
+    /// them in one event: `CKSyncEngine` may split a fetch into several
+    /// events, in any order, and a test can have a device hear one record
+    /// before another in the same fetch.
+    var eventsByType: [[SyncedRow.RecordType]] {
+        get { typesApart.withLock { $0 } }
+        set { typesApart.withLock { $0 = newValue } }
+    }
+    private let typesApart = Mutex<[[SyncedRow.RecordType]]>([])
 
     /// Whether it's offline: then sending and fetching fail, and the changes
     /// keep waiting.
@@ -670,7 +687,9 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
         let fetchedUpTo = state.withLock(\.fetchedUpTo)
         for (zone, changes, upTo) in account.changes(since: fetchedUpTo, in: zones) {
-            try tell(.fetchedRecordZoneChanges(losingFiles(withoutItsOwnSaves(changes))))
+            for event in inEvents(changes) {
+                try tell(.fetchedRecordZoneChanges(losingFiles(withoutItsOwnSaves(event))))
+            }
             state.withLock { $0.fetchedUpTo[zone.name] = upTo }
         }
         let asked = asked.withLock { asked in
@@ -682,6 +701,24 @@ final class FakeSyncEngine: ICloudSyncEngine {
         }
         try tell(.didFetchChanges)
         try tell(.stateUpdate(serialization()))
+    }
+
+    /// `changes` in the events it hands them in, as `eventsByType` says,
+    /// each holding something.
+    private func inEvents(_ changes: ICloudEvent.FetchedRecordZoneChanges) -> [ICloudEvent.FetchedRecordZoneChanges] {
+        var rest = changes
+        var events: [ICloudEvent.FetchedRecordZoneChanges] = []
+        for group in eventsByType {
+            let types = Set(group.map(\.rawValue))
+            events.append(
+                ICloudEvent.FetchedRecordZoneChanges(
+                    modifications: rest.modifications.filter { types.contains($0.type) },
+                    deletions: rest.deletions.filter { types.contains($0.type) }))
+            rest = ICloudEvent.FetchedRecordZoneChanges(
+                modifications: rest.modifications.filter { !types.contains($0.type) },
+                deletions: rest.deletions.filter { !types.contains($0.type) })
+        }
+        return (events + [rest]).filter { !$0.modifications.isEmpty || !$0.deletions.isEmpty }
     }
 
     /// `changes` without the records it saved itself, as they are until

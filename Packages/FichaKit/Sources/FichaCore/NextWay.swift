@@ -9,7 +9,7 @@ public enum NextWay: Sendable, Equatable {
     /// No way waits, and the next one comes at this time.
     case comesAt(Date)
     /// No way waits, and none comes as time passes: Lucas has to do
-    /// something first, such as approve cards or set a tag aside no longer.
+    /// something first, such as approve cards or set a deck aside no longer.
     case noneComing
 }
 

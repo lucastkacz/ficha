@@ -7,11 +7,10 @@ import SwiftUI
 /// AppKit's outline view, since SwiftUI's `Table` with children takes a drop
 /// neither onto one row nor between two, and an outline view draws its
 /// insertion line at the level a drop goes to, as Finder's and Mail's do.
-/// Its columns are the tag, Cards, Due, and the Pinned, Priority and Set Aside
-/// checkboxes, Priority off on a tag set aside, on its own or inside one,
-/// unless it's a priority tag, to untick; a click on a column's title
-/// sorts each level by it, and a second click turns the order around. A
-/// set-aside tag's row is grayed, and so are the rows inside it. Lucas
+/// Its columns are the tag, Cards, Due, and the Pinned checkbox; a click on a
+/// column's title sorts each level by it, and a second click turns the order
+/// around. A tag only labels its cards, so it has no Priority or Set Aside:
+/// a deck has them (ADR 0024). Lucas
 /// selects several tags with ⌘ and ⇧, opens the context menu `menu` makes
 /// for the tags it acts on, double-clicks a tag to list its cards, and drags
 /// tags onto another, between two rows, or into the sidebar. The state
@@ -149,16 +148,16 @@ struct AllTagsOutline: NSViewRepresentable {
             parent.state.showCards(of: node.name)
         }
 
-        /// Ticks or unticks the checkbox Lucas clicked, as the state does it:
-        /// until the state reads the tags again, the checkbox shows what
-        /// they had, which stays when it couldn't.
+        /// Ticks or unticks the Pinned checkbox Lucas clicked, as the state
+        /// does it: until the state reads the tags again, the checkbox shows
+        /// what they had, which stays when it couldn't.
         @objc func tick(_ sender: NSButton) {
             guard let outline, let cell = sender.superview as? CheckboxCellView,
                 let node = outline.item(atRow: outline.row(for: sender)) as? TagNode
             else { return }
             let isTicked = sender.state == .on
             cell.show(node.row)
-            parent.state.tick(cell.checkbox, isTicked, on: node.name)
+            parent.state.tickPinned(isTicked, on: node.name)
         }
 
         func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
@@ -186,13 +185,13 @@ struct AllTagsOutline: NSViewRepresentable {
                 cell.show(node.row)
                 return cell
             case .cards:
-                return numberCell(identifier, in: outlineView, showing: node.row.counts.cards, of: node.row)
+                return numberCell(identifier, in: outlineView, showing: node.row.counts.cards)
             case .due:
-                return numberCell(identifier, in: outlineView, showing: node.row.counts.due, of: node.row)
-            case .checkbox(let checkbox):
+                return numberCell(identifier, in: outlineView, showing: node.row.counts.due)
+            case .pinned:
                 let cell =
                     outlineView.makeView(withIdentifier: identifier, owner: nil) as? CheckboxCellView
-                    ?? CheckboxCellView(checkbox, title: column.title, target: self, action: #selector(tick(_:)))
+                    ?? CheckboxCellView(title: column.title, target: self, action: #selector(tick(_:)))
                 cell.identifier = identifier
                 cell.show(node.row)
                 return cell
@@ -200,15 +199,14 @@ struct AllTagsOutline: NSViewRepresentable {
         }
 
         /// The cell of the column `identifier`, Cards or Due, showing
-        /// `number` for `row`.
+        /// `number`.
         private func numberCell(
-            _ identifier: NSUserInterfaceItemIdentifier, in outlineView: NSOutlineView, showing number: Int,
-            of row: CardsWindowState.AllTagsRow
+            _ identifier: NSUserInterfaceItemIdentifier, in outlineView: NSOutlineView, showing number: Int
         ) -> NumberCellView {
             let cell =
                 outlineView.makeView(withIdentifier: identifier, owner: nil) as? NumberCellView ?? NumberCellView()
             cell.identifier = identifier
-            cell.show(number, grayed: row.isGrayed)
+            cell.show(number)
             return cell
         }
 
@@ -316,9 +314,7 @@ extension CardsWindowState.AllTagsColumn {
         case .tag: "tag"
         case .cards: "cards"
         case .due: "due"
-        case .checkbox(.pinned): "pinned"
-        case .checkbox(.priority): "priority"
-        case .checkbox(.setAside): "setAside"
+        case .pinned: "pinned"
         }
     }
 
@@ -340,25 +336,12 @@ extension CardsWindowState.AllTagsColumn {
             String(
                 localized: "Due",
                 comment: "A column of the Cards window's All Tags: how many of the tag's cards are due now.")
-        case .checkbox(.pinned):
+        case .pinned:
             String(
                 localized: "Pinned",
                 comment:
                     "A column of the Cards window's All Tags: a checkbox, ticked while the tag is pinned to the sidebar."
             )
-        case .checkbox(.priority):
-            String(
-                localized: "Priority",
-                comment: "A column of the Cards window's All Tags: a checkbox, ticked while the tag is a priority tag.")
-        case .checkbox(.setAside):
-            // A key of its own, since a tag's menu says "Set Aside" too, as a
-            // verb, which a translation may word apart.
-            String(
-                localized: "all-tags.set-aside-column", defaultValue: "Set Aside",
-                comment: """
-                    A column of the Cards window's All Tags: a checkbox, ticked while the tag is set aside, its cards \
-                    out of Lucas's reviews for now.
-                    """)
         }
     }
 
@@ -425,7 +408,6 @@ private final class TagCellView: NSTableCellView {
         imageView?.contentTintColor = row.tag.shownColor?.nsColor ?? .secondaryLabelColor
         textField?.stringValue = row.tag.title(shown: row.title)
         toolTip = row.tag.title
-        alphaValue = row.isGrayed ? 0.5 : 1
     }
 }
 
@@ -451,21 +433,18 @@ private final class NumberCellView: NSTableCellView {
         nil
     }
 
-    func show(_ number: Int, grayed: Bool) {
+    func show(_ number: Int) {
         textField?.stringValue = number.formatted()
         textField?.textColor = number == 0 ? .tertiaryLabelColor : .labelColor
-        alphaValue = grayed ? 0.5 : 1
     }
 }
 
-/// A checkbox's cell, Pinned, Priority or Set Aside, in its middle, named
-/// for VoiceOver by its column.
+/// The Pinned checkbox's cell, in its middle, named for VoiceOver by its
+/// column.
 private final class CheckboxCellView: NSTableCellView {
-    let checkbox: CardsWindowState.AllTagsCheckbox
     private let button: NSButton
 
-    init(_ checkbox: CardsWindowState.AllTagsCheckbox, title: String, target: AnyObject, action: Selector) {
-        self.checkbox = checkbox
+    init(title: String, target: AnyObject, action: Selector) {
         button = NSButton(checkboxWithTitle: "", target: target, action: action)
         super.init(frame: .zero)
         button.setAccessibilityLabel(title)
@@ -481,10 +460,8 @@ private final class CheckboxCellView: NSTableCellView {
         nil
     }
 
-    /// Shows whether `row`'s tag has it ticked, of its own, and whether it's
-    /// on, as the row says.
+    /// Shows whether `row`'s tag is pinned.
     func show(_ row: CardsWindowState.AllTagsRow) {
-        button.state = row.isTicked(checkbox) ? .on : .off
-        button.isEnabled = row.isEnabled(checkbox)
+        button.state = row.tag.isPinned ? .on : .off
     }
 }

@@ -20,7 +20,7 @@ enum AppVariant {
 
     /// The app this build is. A build that doesn't say doesn't compile, so it
     /// can never fall back on the real Ficha's data folder.
-    static var current: AppVariant {
+    nonisolated static var current: AppVariant {
         #if FICHA_DEV
             return .dev
         #elseif FICHA_REAL
@@ -40,11 +40,18 @@ enum AppVariant {
 
     /// The app's bundle identifier, the same as its `PRODUCT_BUNDLE_IDENTIFIER`
     /// in `project.yml`, by which the CLI asks macOS whether its app runs.
-    var bundleIdentifier: String {
+    nonisolated var bundleIdentifier: String {
         switch self {
         case .dev: "com.lucastkacz.ficha.dev"
         case .real: "com.lucastkacz.ficha"
         }
+    }
+
+    /// The identifier of the type of what Lucas drags onto the Cards
+    /// window's sidebar, the same as the type the app's `Info.plist` exports,
+    /// `$(PRODUCT_BUNDLE_IDENTIFIER).sidebar-drag`, so each app has its own.
+    nonisolated var sidebarDragIdentifier: String {
+        "\(bundleIdentifier).sidebar-drag"
     }
 
     /// The bundle identifier of the SVG drawer, the XPC service inside the

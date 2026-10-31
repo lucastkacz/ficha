@@ -5,9 +5,9 @@ import Foundation
 /// for as long as the app runs: what the "Sync with iCloud" switch shows and
 /// whether the user can turn it, what the status line under it says, as
 /// `SyncStatus` reads how sync stands on the device, which cards sync, every
-/// one or those with the tags the user ticks in a list under the switch
-/// (ADR 0020), and why turning the switch or choosing failed, while the tab
-/// says so. The switch is on by default when
+/// one or those in the decks the user ticks in a list under the switch
+/// (ADR 0020, ADR 0024), and why turning the switch or choosing failed, while
+/// the tab says so. The switch is on by default when
 /// the Mac has an iCloud account, and shows off without one, since nothing
 /// syncs then. The app reads it again whenever the database changes, as when
 /// the switch, the account or a full iCloud do, and as time passes, for when
@@ -38,36 +38,18 @@ public struct SyncTabState: Sendable {
     /// line says while it's off.
     public enum TurningOn: Sendable, Equatable {
         /// It sends the device's cards that sync again, every one or only
-        /// those with a chosen tag, as `onlyChosenTags` says, since the user
+        /// those in a chosen deck, as `onlyChosenDecks` says, since the user
         /// deleted Ficha's data in iCloud's settings.
-        case sendsCardsAgain(onlyChosenTags: Bool)
+        case sendsCardsAgain(onlyChosenDecks: Bool)
         /// It replaces the cards iCloud holds with the device's, which the
         /// other devices then take in place of theirs, since the user
         /// restored a copy.
         case replacesICloudsCopy
         /// It sends the device's cards that sync for the first time, every
-        /// one or only those with a chosen tag, as `onlyChosenTags` says: the
+        /// one or only those in a chosen deck, as `onlyChosenDecks` says: the
         /// device held cards and had never synced when Ficha came to choose
         /// which cards sync, so it left sync off until the user says so.
-        case sendsCardsForTheFirstTime(onlyChosenTags: Bool)
-    }
-
-    /// A row of the list of tags to choose from, as the tab shows it, in a
-    /// tree of tags inside tags (ADR 0021).
-    public struct TagRow: Sendable, Equatable, Identifiable {
-        /// The tag, with whether it's chosen, whether a tag it sits inside
-        /// is, and what its files weigh.
-        public let tag: TagToChoose
-        /// How many of the listed tags it sits inside, which indent it.
-        public let level: Int
-        /// What the row says: its last level, under its parent, or its whole
-        /// name, written with " › ", at the top, as in "historia › Roma" for
-        /// a chosen tag no card carries, whose parent isn't listed.
-        public let title: String
-
-        public var id: String {
-            tag.name
-        }
+        case sendsCardsForTheFirstTime(onlyChosenDecks: Bool)
     }
 
     /// Why turning the switch, or choosing which cards sync, failed, which
@@ -79,8 +61,8 @@ public struct SyncTabState: Sendable {
             case turningOn
             /// Turning the switch off.
             case turningOff
-            /// Choosing which cards sync: every card, those with chosen
-            /// tags, or a tag.
+            /// Choosing which cards sync: every card, those in chosen decks,
+            /// or a deck.
             case choosing
         }
 
@@ -93,13 +75,14 @@ public struct SyncTabState: Sendable {
     /// Whether the switch shows on: as the user left it, while the Mac has
     /// an iCloud account or the app hasn't heard yet, and off without one.
     public private(set) var switchIsOn: Bool
-    /// Whether only the cards with a tag the user chose sync, rather than
+    /// Whether only the cards in a deck the user chose sync, rather than
     /// every card, as the choice under the switch shows it.
-    public private(set) var onlyChosenTags: Bool
-    /// The tags the user can choose to sync, as a tree, which the list under
-    /// the choice shows, in `tagRows`, while only the cards with a chosen tag
-    /// sync, and none otherwise: as `Engine.tagsToChooseFrom()` says.
-    public private(set) var tags: [TagToChoose]
+    public private(set) var onlyChosenDecks: Bool
+    /// The decks the user can choose to sync, as a tree, which the list
+    /// under the choice shows, in `deckLines`, while only the cards in a
+    /// chosen deck sync, and none otherwise: as `Engine.decksToChooseFrom()`
+    /// says.
+    public private(set) var decks: [DeckToChoose]
     /// Why turning the switch, or choosing, failed, while the tab says so.
     public private(set) var failure: Failure?
     private let engine: Engine
@@ -108,8 +91,8 @@ public struct SyncTabState: Sendable {
         self.engine = engine
         status = .checkingAccount
         switchIsOn = false
-        onlyChosenTags = false
-        tags = []
+        onlyChosenDecks = false
+        decks = []
         read()
     }
 
@@ -129,20 +112,11 @@ public struct SyncTabState: Sendable {
         canTurnSwitch
     }
 
-    /// The rows of the list of tags to choose from, as the tab shows them:
-    /// each tag of `tags`, followed by the tags inside it, in the order the
-    /// tree lists them.
-    public var tagRows: [TagRow] {
-        Self.rows(of: tags, under: nil, level: 0)
-    }
-
-    /// The rows of `tags`, listed under the tag named `parent`, or at the
-    /// top when it's nil, each `level` tags in, and of the tags inside them.
-    private static func rows(of tags: [TagToChoose], under parent: String?, level: Int) -> [TagRow] {
-        tags.flatMap { tag in
-            [TagRow(tag: tag, level: level, title: TagPath.shown(tag.name, under: parent))]
-                + rows(of: tag.children, under: tag.name, level: level + 1)
-        }
+    /// The lines of the list of decks to choose from, as the tab shows them:
+    /// each deck of `decks`, followed by the decks inside it, in the order
+    /// the tree lists them, each with how deep it sits, which indents it.
+    public var deckLines: [DeckLine<DeckToChoose>] {
+        decks.lines
     }
 
     /// Whether the menu says iCloud is full, with a line that opens the tab.
@@ -152,12 +126,12 @@ public struct SyncTabState: Sendable {
 
     /// Reads again how sync stands on the device: while the switch is off,
     /// what the images and sounds turning it on sends weigh too, of the
-    /// cards that sync; and which cards sync, with the tags to choose from
-    /// while only those with a chosen tag do.
+    /// cards that sync; and which cards sync, with the decks to choose from
+    /// while only those in a chosen deck do.
     public mutating func read() {
         do throws(EngineError) {
-            onlyChosenTags = try engine.syncsOnlyChosenTags()
-            tags = onlyChosenTags ? try engine.tagsToChooseFrom() : []
+            onlyChosenDecks = try engine.syncsOnlyChosenDecks()
+            decks = onlyChosenDecks ? try engine.decksToChooseFrom() : []
             let stored = try engine.syncStatus()
             switch (stored.hasICloudAccount, stored.offBecause) {
             case (nil, _):
@@ -166,7 +140,7 @@ public struct SyncTabState: Sendable {
                 status = .noAccount
             case (true?, let reason?):
                 status = .off(
-                    turningOn: Self.turningOn(after: reason, onlyChosenTags: onlyChosenTags),
+                    turningOn: Self.turningOn(after: reason, onlyChosenDecks: onlyChosenDecks),
                     sending: weightWorthSaying(try engine.weightICloudLacks()))
             case (true?, nil):
                 status = stored.iCloudIsFull ? .iCloudFull : .on(lastSynced: stored.lastSynced)
@@ -175,20 +149,20 @@ public struct SyncTabState: Sendable {
         } catch {
             status = .unreadable(error)
             switchIsOn = false
-            tags = []
+            decks = []
         }
     }
 
     /// What turning the switch on does beyond syncing again, after sync went
-    /// off for `reason`, with only the cards with a chosen tag syncing or
-    /// not, as `onlyChosenTags` says, or nil when it only syncs again, as
-    /// after the user turned it off: the off switch says all there is then.
-    private static func turningOn(after reason: SyncOffReason, onlyChosenTags: Bool) -> TurningOn? {
+    /// off for `reason`, with only the cards in a chosen deck syncing or not,
+    /// as `onlyChosenDecks` says, or nil when it only syncs again, as after
+    /// the user turned it off: the off switch says all there is then.
+    private static func turningOn(after reason: SyncOffReason, onlyChosenDecks: Bool) -> TurningOn? {
         switch reason {
         case .user: nil
-        case .purge: .sendsCardsAgain(onlyChosenTags: onlyChosenTags)
+        case .purge: .sendsCardsAgain(onlyChosenDecks: onlyChosenDecks)
         case .restore: .replacesICloudsCopy
-        case .firstSync: .sendsCardsForTheFirstTime(onlyChosenTags: onlyChosenTags)
+        case .firstSync: .sendsCardsForTheFirstTime(onlyChosenDecks: onlyChosenDecks)
         }
     }
 
@@ -206,24 +180,25 @@ public struct SyncTabState: Sendable {
         }
     }
 
-    /// Has only the cards with a tag the user chose sync, or every card, as
+    /// Has only the cards in a deck the user chose sync, or every card, as
     /// `only` says, as the user picks under the switch, while they can, or
     /// keeps why it couldn't. Choosing never deletes: the cards that stop
     /// syncing leave iCloud, kept on every device.
-    public mutating func syncOnlyChosenTags(_ only: Bool) {
+    public mutating func syncOnlyChosenDecks(_ only: Bool) {
         guard canChoose else { return }
         let engine = engine
-        change(.choosing) { () throws(EngineError) in try engine.syncOnlyChosenTags(only) }
+        change(.choosing) { () throws(EngineError) in try engine.syncOnlyChosenDecks(only) }
     }
 
-    /// Chooses the tag named `tag` to sync, or stops choosing it, as
-    /// `chosen` says, as the user ticks or unticks it in the list, while they
-    /// can, or keeps why it couldn't. A tag inside a chosen tag syncs with it,
-    /// and its checkbox changes nothing meanwhile.
-    public mutating func choose(_ tag: String, _ chosen: Bool) {
-        guard canChoose, tagRows.first(where: { $0.id == tag })?.tag.canChoose != false else { return }
+    /// Chooses the deck named `deck`, by its whole name, or Default by
+    /// `Deck.defaultName`, to sync, or stops choosing it, as `chosen` says,
+    /// as the user ticks or unticks it in the list, while they can, or keeps
+    /// why it couldn't. A deck inside a chosen deck syncs with it, and its
+    /// checkbox changes nothing meanwhile.
+    public mutating func choose(_ deck: String, _ chosen: Bool) {
+        guard canChoose, deckLines.first(where: { $0.id == deck })?.node.canChoose != false else { return }
         let engine = engine
-        change(.choosing) { () throws(EngineError) in try engine.chooseToSync(tag, chosen) }
+        change(.choosing) { () throws(EngineError) in try engine.setChosenToSync(chosen, ofDeck: deck) }
     }
 
     /// Makes the change `make` makes, for `action`, or keeps why it failed,

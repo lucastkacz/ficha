@@ -8,8 +8,8 @@ internal import GRDB
 // changes the row. Of each field that keeps when it last changed, the latest
 // change wins, and the rest merges; a row new to the device comes in whole.
 // Cards, captures, the review log, the user's card types and the changes to
-// tags are described by `SyncedTable`, tags by `SyncedTags.swift`, the
-// settings that decide progress by `SyncedProgressSettings.swift`, and the
+// tags and decks are described by `SyncedTable`, tags by `SyncedTags.swift`, decks by
+// `SyncedDecks.swift`, the settings that decide progress by `SyncedProgressSettings.swift`, and the
 // choice of what syncs by `SelectiveSync.swift`, which also says how a row
 // that stops syncing leaves iCloud.
 
@@ -17,27 +17,31 @@ extension SyncedRow {
     /// The ID of the record iCloud keeps the row as, in the cards' zone:
     /// named by the row's ID unique across devices, a tag by its name's
     /// SHA-256 after "tag-", since a record's name is ASCII, up to 255
-    /// characters, and a tag's name can be anything, and a row there's one
-    /// of by its type.
+    /// characters, and a tag's name can be anything, a deck by its name's
+    /// after "deck-", Default's empty one too, and a row there's one of by
+    /// its type.
     var recordID: ICloudRecordID {
         switch self {
-        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id):
+        case .card(let id), .capture(let id), .reviewLogEntry(let id), .userType(let id), .tagChange(let id),
+            .deckChange(let id):
             ICloudRecordID(name: id.uuidString, zone: .cards)
         case .tag(let name):
-            ICloudRecordID(
-                name: "tag-" + SHA256.hash(data: Data(name.utf8)).map { String(format: "%02x", $0) }.joined(),
-                zone: .cards)
+            ICloudRecordID(name: "tag-" + hashed(name), zone: .cards)
+        case .deck(let name):
+            ICloudRecordID(name: "deck-" + hashed(name), zone: .cards)
         case .progressSettings, .syncChoice:
             ICloudRecordID(name: recordName, zone: .cards)
         }
     }
 
     /// The row `record`, from iCloud, holds: by its type and name, or a tag
-    /// by the name it holds. It throws for a type this version of Ficha
-    /// doesn't know.
+    /// or a deck by the name it holds. It throws for a type this version of
+    /// Ficha doesn't know.
     init(of record: ICloudRecord) throws {
         if record.type == RecordType.tag.rawValue {
             self = .tag(try record.text(TagKey.name))
+        } else if record.type == RecordType.deck.rawValue {
+            self = try .deck(of: record)
         } else {
             try self.init(recordType: record.type, recordName: record.id.name)
         }
@@ -46,10 +50,10 @@ extension SyncedRow {
 
 /// The row that syncs as the record with this ID, as the device holds it
 /// now, or nil when it holds none: a card, a capture, an entry of the review
-/// log, a user type or a change to a tag by its ID, a row there's one of by
-/// its type, or a tag, which needn't have a row of its own, by the name whose
-/// record it is, among those that wait to be sent or that have something of
-/// their own or had.
+/// log, a user type or a change to a tag or a deck by its ID, a row there's one of by
+/// its type, or a tag or a deck, which needn't have a row of its own, by the
+/// name whose record it is, among those that wait to be sent or that have a
+/// row or had something of their own.
 func syncedRow(named id: ICloudRecordID, in db: Database) throws -> SyncedRow? {
     guard id.zone == .cards else {
         return nil
@@ -60,20 +64,30 @@ func syncedRow(named id: ICloudRecordID, in db: Database) throws -> SyncedRow? {
     if let row = [SyncedRow.progressSettings, .syncChoice].first(where: { $0.recordID == id }) {
         return row
     }
-    let tags = try String.fetchAll(
-        db,
-        sql: """
-            SELECT recordName FROM syncPending WHERE recordType = 'tag'
-            UNION SELECT name FROM tag
-            UNION SELECT recordName FROM syncFieldTime WHERE recordType = 'tag'
-            """)
-    return tags.map(SyncedRow.tag).first { $0.recordID == id }
+    let named = try [(SyncedRow.RecordType.tag, SyncedRow.tag), (.deck, SyncedRow.deck)].flatMap { type, row in
+        try String.fetchAll(
+            db,
+            sql: """
+                SELECT recordName FROM syncPending WHERE recordType = ?
+                UNION SELECT name FROM \(type.rawValue)
+                UNION SELECT recordName FROM syncFieldTime WHERE recordType = ?
+                """,
+            arguments: [type.rawValue, type.rawValue]
+        ).map(row)
+    }
+    return named.first { $0.recordID == id }
+}
+
+/// `name`'s SHA-256, in lowercase hexadecimal, which names a tag's or a
+/// deck's record.
+private func hashed(_ name: String) -> String {
+    SHA256.hash(data: Data(name.utf8)).map { String(format: "%02x", $0) }.joined()
 }
 
 /// The record `row` syncs as, as it is now, with what iCloud said of it last,
-/// or nil when the device no longer holds it: a card, a capture or an entry
-/// of the review log that doesn't sync as one that left
-/// (`syncedOrLeft(_:of:in:)`).
+/// or nil when the device no longer holds it, as a deck whose row went: a
+/// card, a capture or an entry of the review log that doesn't sync as one
+/// that left (`syncedOrLeft(_:of:in:)`).
 func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
     let record: ICloudRecord? =
         switch row {
@@ -85,6 +99,8 @@ func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
         case .syncChoice: try syncChoiceRecord(in: db)
         case .userType(let id): try SyncedTable.userTypes.record(ofRowWith: id, in: db)
         case .tagChange(let id): try SyncedTable.tagChanges.record(ofRowWith: id, in: db)
+        case .deck(let name): try deckRecord(name, in: db)
+        case .deckChange(let id): try SyncedTable.deckChanges.record(ofRowWith: id, in: db)
         }
     return try record.map { try syncedOrLeft($0, of: row, in: db) }?
         .with(systemFields: systemFields(of: row.recordID, in: db))
@@ -92,8 +108,9 @@ func record(of row: SyncedRow, in db: Database) throws -> ICloudRecord? {
 
 /// Applies `record`, from iCloud, to `row`, the row it holds: the row takes
 /// each field whose change in the record is the latest, or comes in whole. A
-/// change to a tag new to the device is applied as it comes in
-/// (`TagChanges.swift`), and one it holds already never again.
+/// change to a tag or a deck new to the device is applied as it comes in
+/// (`TagChanges.swift`, `DeckChanges.swift`), and one it holds already never
+/// again.
 /// Returns false, changing nothing, when the record refers to a row the
 /// device doesn't hold yet, such as a card's capture, for it to wait.
 private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) throws -> Bool {
@@ -106,6 +123,8 @@ private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) t
     case .syncChoice: try applySyncChoice(record, in: db)
     case .userType(let id): try SyncedTable.userTypes.apply(record, toRowWith: id, in: db)
     case .tagChange(let id): try applyTagChange(record, as: id, in: db)
+    case .deck(let name): try applyDeck(record, named: name, in: db)
+    case .deckChange(let id): try applyDeckChange(record, as: id, in: db)
     }
 }
 
@@ -326,7 +345,7 @@ extension ICloudRecord {
         switch value(of: key) {
         case nil: return nil
         case .string(let text)?: return text
-        case .int?, .double?, .asset?:
+        case .int?, .double?, .bytes?, .asset?:
             throw unreadable("A record from iCloud holds something else where text should be")
         }
     }
@@ -336,7 +355,7 @@ extension ICloudRecord {
         switch value(of: key) {
         case nil: return nil
         case .int(let milliseconds)?: return Date(wholeMilliseconds: milliseconds)
-        case .string?, .double?, .asset?:
+        case .string?, .double?, .bytes?, .asset?:
             throw unreadable("A record from iCloud holds something else where a time should be")
         }
     }
@@ -359,7 +378,7 @@ extension ICloudRecord {
                 throw unreadable("A record from iCloud holds a number too large for this device")
             }
             return number
-        case .string?, .double?, .asset?:
+        case .string?, .double?, .bytes?, .asset?:
             throw unreadable("A record from iCloud holds something else where a number should be")
         }
     }

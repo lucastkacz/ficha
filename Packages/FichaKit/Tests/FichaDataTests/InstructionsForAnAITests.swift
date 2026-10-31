@@ -60,6 +60,27 @@ final class InstructionsForAnAITests {
             ])
     }
 
+    @Test("the instructions' example of cards in decks imports each card into its deck")
+    func theExampleOfCardsInDecksImportsEachCardIntoItsDeck() async throws {
+        let example = try fencedBlock(
+            after: "### An example of cards in decks", in: String(contentsOf: document, encoding: .utf8))
+        let file = folder.appending(path: "Science.txt")
+        try Data(example.utf8).write(to: file)
+        let calendar = try buenosAiresCalendar()
+        let engine = try Engine(
+            location: .inMemory, time: ManualTimeSource(now: try morning(of: 23, in: calendar)), calendar: calendar)
+
+        let preview = try await engine.previewImport(of: file)
+        try engine.importCards(preview, choosing: ImportChoices(tagNames: ["Science": ""]))
+
+        #expect(preview.leftOut == [])
+        let cards = try engine.cards()
+        #expect(cards.map(\.front) == ["mitochondria", "photosynthesis", "What is the capital of Mongolia?"])
+        #expect(cards.map(\.deck) == ["Biology::Cells", "Biology", "Geography"])
+        #expect(cards.map(\.tags) == [["cell biology"], [], []])
+        #expect(cards.map(\.type) == [.concept, .concept, .question])
+    }
+
     @Test("the instructions' example with images imports from a zip with the images it names")
     func theExampleWithImagesImportsFromAZip() async throws {
         let example = try fencedBlock(

@@ -193,21 +193,26 @@ public struct Engine: Sendable {
     }
 
     /// Approves a capture into one or more cards: saves them as new cards,
-    /// each going one way, in the order given, takes the capture out of the
-    /// inbox and returns the cards.
+    /// each going one way, in the order given, in the deck `deck`, made if
+    /// it isn't there, or in Default, as `create(_:deck:bothWays:from:)`
+    /// takes a deck, takes the capture out of the inbox and returns the
+    /// cards.
     @discardableResult
-    public func approve(_ captureID: Int64, into cards: [CardContent]) throws(EngineError) -> [Card] {
-        try approve(captureID) { _ in cards.map { ($0, false) } }
+    public func approve(_ captureID: Int64, into cards: [CardContent], deck: String = Deck.defaultName)
+        throws(EngineError) -> [Card]
+    {
+        try approve(captureID) { _ in cards.map { ApprovedCard(content: $0, deck: deck, bothWays: false) } }
     }
 
-    /// Approves a capture into one or more cards, as `approve(_:into:)` does,
-    /// into those `newCards` makes in the write that saves them, each going
-    /// both ways when it says so, or into none when it throws: as a refine
-    /// session's drafts find or make the user types they name in that write
-    /// (`CardTypesByName`).
-    func approve(
-        _ captureID: Int64, into newCards: (Database) throws -> [(content: CardContent, bothWays: Bool)]
-    ) throws(EngineError) -> [Card] {
+    /// Approves a capture into one or more cards, as `approve(_:into:deck:)`
+    /// does, into those `newCards` makes in the write that saves them, each
+    /// in its own deck, made if it isn't there, and going both ways when it
+    /// says so, or into none when it throws: as a refine session's drafts
+    /// find or make the user types they name in that write
+    /// (`CardTypesByName`), each naming its deck.
+    func approve(_ captureID: Int64, into newCards: (Database) throws -> [ApprovedCard]) throws(EngineError)
+        -> [Card]
+    {
         let createdAt = time.now
         return try write { db in
             let cards = try newCards(db)
@@ -216,7 +221,9 @@ public struct Engine: Sendable {
             }
             try takeOutOfInbox(captureID, at: createdAt, in: db)
             for card in cards {
-                try insertCard(card.content, bothWays: card.bothWays, capturedAs: captureID, at: createdAt, in: db)
+                try insertCard(
+                    card.content, deck: card.deck, bothWays: card.bothWays, capturedAs: captureID, at: createdAt,
+                    in: db)
             }
             return try FichaData.cards(
                 in: Row.fetchAll(
@@ -410,6 +417,15 @@ func captureInInbox(_ captureID: Int64, in db: Database) throws -> Capture {
         throw EngineError.captureNotInInbox(captureID)
     }
     return try Capture(row: row)
+}
+
+/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it:
+/// what it holds, the deck it goes to, by its whole name, made if it isn't
+/// there, or Default, and whether it goes both ways.
+struct ApprovedCard {
+    let content: CardContent
+    let deck: String
+    let bothWays: Bool
 }
 
 /// Takes a capture out of the inbox, as refined at `time`, and returns it, or

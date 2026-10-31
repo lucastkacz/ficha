@@ -15,10 +15,11 @@ struct ApproveExpansionCommand: EngineCommand {
               ficha approve-expansion 15 <<'EOF'
               {"type": "word", "front": "serendipia",
                "back": "Un hallazgo valioso que se da por casualidad, cuando estabas buscando otra cosa. Por ejemplo: «Fue pura serendipia: entré a la librería por la lluvia y salí con mi libro favorito».",
-               "tags": ["lenguaje"], "source": "Un podcast de etimología"}
+               "tags": ["etimología"], "source": "Un podcast de etimología"}
               EOF
 
-            The card keeps whether it goes both ways, whatever bothWays says. The expansion leaves the inbox, and \
+            The card keeps whether it goes both ways, whatever bothWays says. deck moves the card to that deck; \
+            left out, it stays in its own. The expansion leaves the inbox, and \
             the command prints the card. To make new cards out of an expansion instead, such as one for another \
             meaning of the word, approve it with `ficha approve`.
             """

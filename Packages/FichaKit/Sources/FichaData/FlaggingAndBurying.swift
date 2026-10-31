@@ -26,8 +26,8 @@ extension Engine {
 
     /// Fixes a flagged card in the inbox with `content`, as a refine session
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
-    /// back to his reviews, on the step its review log puts it on, unless one
-    /// of its tags is set aside. It keeps its images and sounds, as a draft
+    /// back to his reviews, on the step its review log puts it on, unless its
+    /// deck, or a deck it sits inside, is set aside. It keeps its images and sounds, as a draft
     /// that leaves them out does (`fix(_:with:)` with a `CardDraft`); a new
     /// front or back keeps when it changed. Returns the card.
     @discardableResult
@@ -39,27 +39,28 @@ extension Engine {
     /// content `newContent` makes of the card as it is, in the write that
     /// saves it, or nothing when it throws: as a refine session's draft finds
     /// or makes the user type it names in that write (`CardTypesByName`).
-    /// `bothWays` turns Both ways on or off, as `setBothWays(_:of:)` does,
-    /// and nil leaves it as it was. Returns the card before and after.
+    /// `deck` moves it to that deck, as `edit(_:with:deck:bothWays:)` does,
+    /// and nil leaves it where it lives. `bothWays` turns Both ways on or
+    /// off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
+    /// Returns the card before and after.
     func fix(
-        _ cardID: Int64, bothWays: Bool? = nil, changingContentWith newContent: (Card, Database) throws -> CardContent
+        _ cardID: Int64, deck: String? = nil, bothWays: Bool? = nil,
+        changingContentWith newContent: (Card, Database) throws -> CardContent
     ) throws(EngineError) -> (before: Card, fixed: Card) {
         let fixedAt = time.now
         return try write { db in
             let card = try unflag(cardID, in: db)
-            let fixed = try replaceContent(of: cardID, with: newContent(card, db), at: fixedAt, in: db)
-            guard let bothWays else {
-                return (card, fixed)
-            }
-            return (card, try setBothWays(bothWays, of: cardID, in: db))
+            return (
+                card, try change(card, to: newContent(card, db), deck: deck, bothWays: bothWays, at: fixedAt, in: db)
+            )
         }
     }
 
     /// Unflags a flagged card in the inbox: its flag goes and its content
     /// stays, and it goes back to Lucas's reviews, on the step its review log
-    /// puts it on, unless one of its tags, or a tag one of them sits inside,
-    /// is set aside. The review panel's ⌘Z unflags a card Lucas flagged
-    /// there. Returns the card.
+    /// puts it on, unless its deck, or a deck it sits inside, is set aside.
+    /// The review panel's ⌘Z unflags a card Lucas flagged there. Returns the
+    /// card.
     @discardableResult
     public func unflag(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in
@@ -90,7 +91,8 @@ extension Engine {
 
     /// Unburies a card: it goes back to where it was before Lucas buried it,
     /// his reviews or the inbox, on the step its review log puts it on, or
-    /// it's set aside when one of its tags is. Returns the card.
+    /// it's set aside when its deck, or a deck its deck sits inside, is.
+    /// Returns the card.
     @discardableResult
     public func unbury(_ cardID: Int64) throws(EngineError) -> Card {
         try write { db in

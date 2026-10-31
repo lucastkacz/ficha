@@ -1,5 +1,4 @@
 import AppKit
-import FichaCore
 import FichaData
 import SwiftUI
 
@@ -9,66 +8,69 @@ import SwiftUI
 /// else the tags' it sits inside. The name always shows, so neither the color
 /// nor the emoji is the only cue. The Cards window's Tags column draws a
 /// card's tags with it, in a row, and the review panel draws them the same
-/// way after its badge.
+/// way after its badge and the card's deck (`DeckCapsule`).
 struct TagCapsule: View {
     let tag: CardTag
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Text(verbatim: tag.title)
+            .capsuleLook(tintedWith: tag.shownColor)
+            .fixedSize()
+    }
+}
+
+/// A card's deck as a capsule, drawn as a tag's (`TagCapsule`): its emoji
+/// before its whole name, as in "🏛 Historia › Roma", or Default's in the
+/// Mac's language, tinted with its color, its own or else the decks' it sits
+/// inside. The review panel draws it first on a card's line, before its tags.
+/// A long name gives way in its middle when the line has no room for it,
+/// which its tooltip names whole.
+struct DeckCapsule: View {
+    let deck: Deck
+
+    var body: some View {
+        Text(verbatim: deck.title)
+            .truncationMode(.middle)
+            .capsuleLook(tintedWith: deck.shownColor)
+            .help(Text(verbatim: deck.title))
+    }
+}
+
+/// How a tag or a deck looks as a capsule, in its color or gray.
+private struct CapsuleLook: ViewModifier {
+    let color: TagColor?
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
             .font(.caption.weight(.semibold))
             .lineLimit(1)
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(background, in: .capsule)
-            .fixedSize()
     }
 
-    /// The text's color: the tag's, or the secondary gray of "Ahead". In
-    /// light mode, the tag's is a third darker, so that yellow and green
-    /// read on the faint capsule; in dark mode, they read as they are.
+    /// The text's color: the tag's or the deck's, or the secondary gray of
+    /// "Ahead". In light mode, the color is a third darker, so that yellow
+    /// and green read on the faint capsule; in dark mode, they read as they
+    /// are.
     private var tint: AnyShapeStyle {
-        tag.shownColor.map { AnyShapeStyle($0.color.mix(with: .black, by: colorScheme == .light ? 1 / 3 : 0)) }
+        color.map { AnyShapeStyle($0.color.mix(with: .black, by: colorScheme == .light ? 1 / 3 : 0)) }
             ?? AnyShapeStyle(.secondary)
     }
 
     /// The capsule's: the text's, faint.
     private var background: AnyShapeStyle {
-        tag.shownColor.map { AnyShapeStyle($0.color.opacity(0.15)) } ?? AnyShapeStyle(.secondary.opacity(0.15))
+        color.map { AnyShapeStyle($0.color.opacity(0.15)) } ?? AnyShapeStyle(.secondary.opacity(0.15))
     }
 }
 
-extension CardTag {
-    /// How the tag is named where it stands alone, as in a capsule or a
-    /// menu: its emoji, its own or else the tags' it sits inside, when it has
-    /// one, before its whole name, written with " › ", as in "economía ›
-    /// Argentina".
-    var title: String {
-        title(shown: TagPath.shown(name))
-    }
-
-    /// How the tag is named when `shown` names it, as in a tree, by its last
-    /// level: its emoji, when it shows one, before `shown`.
-    func title(shown: String) -> String {
-        shownEmoji.map { "\($0) \(shown)" } ?? shown
-    }
-
-    /// The SF Symbol drawn before the tag's name, in the sidebar and in All
-    /// Tags: the tag filled, tinted with the color it shows, its own or else
-    /// the tags' it sits inside, or outlined while it shows none.
-    var symbolName: String {
-        shownColor == nil ? "tag" : "tag.fill"
-    }
-
-    /// Its symbol (`symbolName`), tinted with the color it shows, for
-    /// SwiftUI.
-    @ViewBuilder var symbol: some View {
-        if let color = shownColor {
-            Image(systemName: symbolName).foregroundStyle(color.color)
-        } else {
-            Image(systemName: symbolName)
-        }
+extension View {
+    /// The view as a tag's or a deck's capsule, tinted with `color`, or gray
+    /// when it's nil.
+    func capsuleLook(tintedWith color: TagColor?) -> some View {
+        modifier(CapsuleLook(color: color))
     }
 }
 
@@ -117,5 +119,24 @@ extension TagColor {
         }
         image.isTemplate = false
         return Image(nsImage: image)
+    }
+}
+
+/// An item's label in the Color submenu of a tag's menu or a deck's: the
+/// color's name, as Finder names it, after its swatch, or None.
+struct ColorItemLabel: View {
+    /// The color the item gives, or nil for None, which takes it away.
+    let color: TagColor?
+
+    var body: some View {
+        if let color {
+            Label {
+                Text(verbatim: color.name)
+            } icon: {
+                color.swatch
+            }
+        } else {
+            Text("None", comment: "The first item of the Color submenu of a tag's menu or a deck's: no color.")
+        }
     }
 }

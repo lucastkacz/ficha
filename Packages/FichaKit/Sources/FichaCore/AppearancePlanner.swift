@@ -78,7 +78,7 @@ extension ReviewSettings {
     /// hours, by `calendar`'s clock, and once `separation` has passed since
     /// that closing and `waitAfterWaking` since the device woke, it shows up
     /// once a card is due, or, with nothing due, once a new card may come in
-    /// as it would without priority tags, which never move an appearance,
+    /// as it would without priority decks, which never move an appearance,
     /// unless one of `suppressionsThatApply`, or a Focus, holds it back, or
     /// one of them ended less than `waitAfterSuppression` ago. It brings the
     /// cards review now would, along with those due within `lookAhead`.
@@ -105,7 +105,7 @@ extension ReviewSettings {
         let horizon = now.adding(lookAhead)
         let picked = pickCards(after: standings, of: cards, dueBy: horizon, now: now, calendar: calendar)
         let isAnyCardDue = standings.contains { $0.standing.isDue(at: now) }
-        // Priority tags change which cards come, never when an appearance
+        // Priority decks change which cards come, never when an appearance
         // does: a new priority card fits beside the cards due within the
         // look-ahead where another new card wouldn't, so whether a new card
         // may come in is asked as without them.

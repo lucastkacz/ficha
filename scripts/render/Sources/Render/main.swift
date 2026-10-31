@@ -24,17 +24,39 @@ import SwiftUI
 enum Window: String {
     case cards
     /// The Cards window on ciencia, once the sample's tags sit inside tags
-    /// and five are pinned, in an order of their own, with its sidebar's
-    /// pinned tags, one inside another named by its whole path and a
-    /// set-aside one grayed, and All Tags… after them.
+    /// and five are pinned, in an order of their own, its sidebar scrolled to
+    /// its end, below the decks, so that it shows the pinned tags, one inside
+    /// another named by its whole path, and All Tags… after them.
     case cardsTags = "cards-tags"
-    /// The Cards window on All Tags, with the same tags, historia a priority
-    /// tag too, and an unused one: every tag as a tree, with its counts and
-    /// its checkboxes, the set-aside ones grayed in their places, ciencia,
+    /// The Cards window on All Tags, with the same tags and an unused one:
+    /// every tag as a tree, with its counts and its Pinned checkbox, ciencia,
     /// economía and historia open, each level sorted by Cards, the most
     /// first, and economía selected, which `--key return` lists the cards
     /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
+    /// The Cards window on Idiomas, one of the decks the sample's cards sit
+    /// in, with its sidebar's Decks section: Default first, then every deck
+    /// as a tree, each with how many of its cards are due, Idiomas and
+    /// Ciencias with a color and an emoji, which the decks inside them show
+    /// too, Ciencias and Humanidades closed, so that Sociedad shows, set
+    /// aside, grayed with the deck inside it; the bar above the card list,
+    /// with Idiomas's name, its Actions menu and its cards' tags; and two of
+    /// Idiomas's cards selected, which `--key cmd+d` asks to move in the
+    /// Change Deck sheet.
+    case cardsDecks = "cards-decks"
+    /// The same on Idiomas › Español, with historia, one of its
+    /// tags, chosen above the card list, which lists only the deck's cards
+    /// that carry it.
+    case cardsDeckTag = "cards-deck-tag"
+    /// The same on Idiomas, with the question Delete… in its menu asks,
+    /// which the tool can't open, counting the cards it deletes and the
+    /// decks inside it.
+    case cardsDeleteDeck = "cards-delete-deck"
+    /// The Cards window on Idiomas › Español with the card form on a new
+    /// card, which starts in that deck, and the New Deck sheet that New Deck…
+    /// in the form's Deck field opens, which the tool can't open, over it,
+    /// the focus in its name field.
+    case cardsNewDeck = "cards-new-deck"
     /// The Cards window on Ley, one of the card types of the user's own the
     /// tool gives the sample, with its card on Parkinson's law selected, its
     /// sidebar scrolled to its end so that it shows its Types section.
@@ -87,13 +109,10 @@ enum Window: String {
     /// Settings, on its Sync tab, once the user restored a copy, which
     /// turned sync off.
     case syncRestored = "sync-restored"
-    /// Settings, on its Sync tab, once the Mac synced only the cards with the
-    /// tags the user chose, filosofía and lenguaje, in the list of every tag.
-    case syncChosenTags = "sync-chosen-tags"
-    /// Settings, on its Sync tab, syncing only the cards with chosen tags,
-    /// once the sample's tags sit inside tags, with ciencia ticked, and so
-    /// the tags inside it, and lenguaje.
-    case syncTagsTree = "sync-tags-tree"
+    /// Settings, on its Sync tab, once the Mac synced only the cards in the
+    /// decks the user chose, in the tree of every deck: Ciencias, and so the
+    /// decks inside it, and Idiomas::Español, and so Rioplatense.
+    case syncChosenDecks = "sync-chosen-decks"
     /// Settings, on its Sync tab, off since the Mac held cards before it ever
     /// synced, as the update that brought selective sync leaves Lucas's.
     case syncFirst = "sync-first"
@@ -108,6 +127,11 @@ enum Window: String {
     /// The Diagnostics window, while a Focus holds appearances back, once it
     /// held one back.
     case diagnostics
+    /// The review panel on a new card in Ciencias › Psicología, a deck inside
+    /// Ciencias, whose color and emoji it shows, with its three tags, drawn
+    /// on a gradient in a window, since the panel's own has nothing behind
+    /// its Liquid Glass below the desktop picture.
+    case panelCard = "panel-card"
 }
 
 /// What the tool was asked to draw.
@@ -352,8 +376,8 @@ let usage = """
                  or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
                  (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
                  full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
-                 in iCloud), sync-restored (off after a restore), sync-chosen-tags (syncing only the cards with
-                 two ticked tags), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
+                 in iCloud), sync-restored (off after a restore), sync-chosen-decks (syncing only the cards in
+                 two ticked decks), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
                  (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
                  or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
@@ -763,7 +787,7 @@ func syncModel(
 /// Moves some of the sample's tags inside others, as Rename… in the Cards
 /// window does (ADR 0021): estadística and psicología inside ciencia, which
 /// is blue, argentina inside historia, which has an emoji, and trabajo inside
-/// economía. Then it sets literatura aside, and economía › trabajo alone.
+/// economía.
 func nestSampleTags(in engine: Engine) throws {
     let moves = [
         ("estadística", "ciencia::estadística"), ("psicología", "ciencia::psicología"),
@@ -774,28 +798,50 @@ func nestSampleTags(in engine: Engine) throws {
     }
     try engine.setColor(.blue, of: "ciencia")
     try engine.setEmoji(try Emoji("🏛️"), of: "historia")
-    try engine.setAside("literatura")
-    try engine.setAside("economía::trabajo")
 }
 
 /// Pins five of the sample's tags, once `nestSampleTags(in:)` moved some
 /// inside others, as Pin to Sidebar in the Cards window does (ADR 0022), in
 /// an order that isn't alphabetical: lenguaje, ciencia, ciencia ›
-/// psicología, historia, and literatura, which is set aside.
+/// psicología, historia, and literatura.
 func pinSampleTags(in engine: Engine) throws {
     for tag in ["lenguaje", "ciencia", "ciencia::psicología", "historia", "literatura"] {
         try engine.pin(tag)
     }
 }
 
-/// Makes historia a priority tag, gives pendientes, a tag no card carries,
-/// the color red, and sets ciencia aside, a parent, so that All Tags ticks a
-/// Priority checkbox, offers Clear Unused Tags…, and grays a set-aside branch:
-/// ciencia with the tags inside it.
-func prioritizeAndLeaveUnusedSampleTags(in engine: Engine) throws {
-    try engine.setPriority(true, of: "historia")
+/// Gives pendientes, a tag no card carries, the color red, so that All Tags
+/// offers Clear Unused Tags….
+func leaveUnusedSampleTag(in engine: Engine) throws {
     try engine.setColor(.red, of: "pendientes")
-    try engine.setAside("ciencia")
+}
+
+/// Sets Sociedad aside, as Set Aside in a deck's menu does (ADR 0024), so
+/// that the sidebar grays it and Sociedad › Economía, the deck inside it.
+func setSampleDeckAside(in engine: Engine) throws {
+    try engine.setAside(deck: "Sociedad")
+}
+
+/// Gives Idiomas the color purple and an emoji, and Ciencias the color green
+/// and an emoji, as Color and Emoji… in a deck's menu do, which the decks
+/// inside them show too.
+func giveSampleDecksLooks(in engine: Engine) throws {
+    try engine.setColor(.purple, ofDeck: "Idiomas")
+    try engine.setEmoji(try Emoji("🗣️"), ofDeck: "Idiomas")
+    try engine.setColor(.green, ofDeck: "Ciencias")
+    try engine.setEmoji(try Emoji("🔬"), ofDeck: "Ciencias")
+}
+
+/// The Cards window of `model` on the sample cards' deck `deck`, its cards
+/// read, with Ciencias and Humanidades closed in the sidebar, as
+/// `cards-decks`, `cards-deck-tag` and `cards-delete-deck` start.
+func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
+    var state = model.openCardsWindow()
+    state.read(on: state.ladder)
+    state.setDeckOpen(false, "Ciencias")
+    state.setDeckOpen(false, "Humanidades")
+    state.choose(.cards(.deck(deck)))
+    return state
 }
 
 /// Gives the sample card types of the user's own (#365): Ley, with an emoji,
@@ -846,7 +892,7 @@ func chooseUserType(_ name: String, selecting front: String, in state: inout Car
 }
 
 /// Scrolls the sidebar of the Cards window `window`, once it shows, to its
-/// last row, No Type. A click in the sidebar would scroll it as Finder's
+/// last row, a type's. A click in the sidebar would scroll it as Finder's
 /// does, but in a window opened on a state of its own, as
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
@@ -1138,14 +1184,23 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try setSampleDeckAside(in: engine)
+        try giveSampleDecksLooks(in: engine)
+        return try AppModel(engine: engine)
+    case .panelCard:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try giveSampleDecksLooks(in: engine)
+        return try AppModel(engine: engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
         try pinSampleTags(in: engine)
         if name == .cardsAllTags {
-            try prioritizeAndLeaveUnusedSampleTags(in: engine)
+            try leaveUnusedSampleTag(in: engine)
         }
         return try AppModel(engine: engine)
     case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
@@ -1190,7 +1245,7 @@ func model(for name: Window) throws -> AppModel {
                 .fetchedDatabaseChanges(ICloudEvent.FetchedDatabaseChanges(modifications: [], deletions: [purge])),
                 to: sync)
         } isShown: {
-            if case .off(turningOn: .sendsCardsAgain(onlyChosenTags: false)?, _) = $0 { true } else { false }
+            if case .off(turningOn: .sendsCardsAgain(onlyChosenDecks: false)?, _) = $0 { true } else { false }
         }
     case .syncRestored:
         return try syncModel(showing: "that a restore turned sync off") { engine, _ in
@@ -1198,23 +1253,12 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             if case .off(turningOn: .replacesICloudsCopy?, _) = $0 { true } else { false }
         }
-    case .syncChosenTags:
-        return try syncModel(showing: "when the Mac last synced, syncing only the cards with chosen tags") {
+    case .syncChosenDecks:
+        return try syncModel(showing: "when the Mac last synced, syncing only the cards in chosen decks") {
             engine, sync in
-            try engine.syncOnlyChosenTags(true)
-            try engine.chooseToSync("filosofía", true)
-            try engine.chooseToSync("lenguaje", true)
-            try sync.finishAFetchWithoutAnError(with: RenderICloud())
-        } isShown: {
-            if case .on(_?) = $0 { true } else { false }
-        }
-    case .syncTagsTree:
-        return try syncModel(showing: "when the Mac last synced, syncing only the cards with chosen tags") {
-            engine, sync in
-            try nestSampleTags(in: engine)
-            try engine.syncOnlyChosenTags(true)
-            try engine.chooseToSync("ciencia", true)
-            try engine.chooseToSync("lenguaje", true)
+            try engine.syncOnlyChosenDecks(true)
+            try engine.setChosenToSync(true, ofDeck: "Ciencias")
+            try engine.setChosenToSync(true, ofDeck: "Idiomas::Español")
             try sync.finishAFetchWithoutAnError(with: RenderICloud())
         } isShown: {
             if case .on(_?) = $0 { true } else { false }
@@ -1227,7 +1271,7 @@ func model(for name: Window) throws -> AppModel {
                 "UPDATE syncDevice SET isOn = 0, offBecause = 'firstSync', timesTurnedOff = timesTurnedOff + 1",
                 in: renderDataFolder.appending(path: "Ficha.sqlite"), writing: "how sync stands on the sample's Mac")
         } isShown: {
-            $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenTags: false), sending: nil)
+            $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil)
         }
     case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
@@ -1284,6 +1328,43 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
+    case .cardsDecks:
+        var state = cardsWindow(onSampleDeck: "Idiomas", of: model)
+        guard case .success(.cards(let rows)) = state.listing else {
+            throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
+        }
+        state.select(Set(rows.filter { ["serendipia", "hygge"].contains($0.card.front) }.map(\.id)))
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsDeckTag:
+        var state = cardsWindow(onSampleDeck: "Idiomas::Español", of: model)
+        state.chooseDeckTag("historia")
+        guard state.chosenDeckTag == "historia" else {
+            throw RenderError(
+                description: "No card of Idiomas › Español carries historia: fix SampleCards.swift.")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsDeleteDeck:
+        var state = cardsWindow(onSampleDeck: "Idiomas", of: model)
+        state.askToDeleteDeck("Idiomas")
+        guard case .deleteDeck? = state.question else {
+            throw RenderError(description: "Delete… on Idiomas asked nothing: fix SampleCards.swift.")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsNewDeck:
+        var state = model.openCardsWindow()
+        state.read(on: state.ladder)
+        state.choose(.cards(.deck("Idiomas::Español")))
+        state.openNewCardForm()
+        state.askForNewDeck(in: .form)
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
     case .cardsTypes:
         var state = model.openCardsWindow()
         try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
@@ -1307,8 +1388,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         window.makeContent(opening: state)
         return window
     case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
-    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenTags, .syncTagsTree,
-        .syncFirst:
+    case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenDecks, .syncFirst:
         return settingsTabWindow(model: model, openingOn: .sync)
     case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
@@ -1325,7 +1405,26 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let mac = SystemMacSignals { model.now }
         mac.focusChanged(holdsBack: true)
         return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
+    case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
     }
+}
+
+/// The review panel on the sample's new card whose front is `front`, as an
+/// appearance brings it, on a gradient in a window, so that its Liquid Glass
+/// has something to show through, as the README's pictures draw it.
+func panelWindow(model: AppModel, on front: String) throws -> NSWindow {
+    guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
+        throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
+    }
+    let panel = model.startAppearance(with: [.firstView(card)])
+    let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
+        .padding(32)
+        .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+    let window = AppWindow(title: "Review", content: content)
+    if let view = window.contentView {
+        window.setContentSize(view.fittingSize)
+    }
+    return window
 }
 
 /// The menu under Ficha's icon, its content in a window, as SwiftUI lays it
@@ -1338,7 +1437,7 @@ func menuWindow(model: AppModel) -> NSWindow {
     let content = VStack(alignment: .leading) {
         MenuContent(
             model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
-            openCards: {}, openAllTags: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
+            openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
             openSyncSettings: {},
             checkAppearance: { nil }, timeMoved: {},
             secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))
@@ -1699,9 +1798,9 @@ do {
     try makeKeyWindowOfApp(window)
     window.orderFrontRegardless()
     try wait(1.5)
-    // Its sidebar's Types section, below the tags, which a click in the
-    // sidebar can't reach there.
-    if name == .cardsTypes {
+    // Its sidebar's pinned tags, or its Types section, below the decks,
+    // which a click in the sidebar can't reach there.
+    if [.cardsTags, .cardsTypes].contains(name) {
         try scrollSidebarToEnd(of: window)
         try wait(0.5)
     }

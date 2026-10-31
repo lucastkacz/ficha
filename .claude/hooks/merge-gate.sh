@@ -57,13 +57,14 @@ risky_paths=(
   # which cards take an answer.
   'Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift'
   # The scheduler, which moves cards on the ladder, says where a card stands:
-  # in Lucas's reviews, waiting in the inbox, buried, or set aside by which of
-  # its tags are, and keeps the cards in his reviews for the planners to pick
-  # from.
+  # in Lucas's reviews, waiting in the inbox, buried, or set aside by its deck
+  # or a deck it sits inside, and keeps the cards in his reviews for the
+  # planners to pick from.
   'Packages/FichaKit/Sources/FichaCore/Scheduler/'
-  # Which tags a tag sits inside (ADR 0021), which the scheduler reads to say
-  # a card is set aside by a tag its tags sit inside, and to tell which cards
-  # have a priority tag.
+  # Which decks a deck sits inside, named as tags inside tags are (ADR 0021,
+  # ADR 0024), which the scheduler reads to say a card is set aside by a deck
+  # its deck sits inside, and to tell which cards are in a priority deck or a
+  # deck inside one.
   'Packages/FichaKit/Sources/FichaCore/TagsInsideTags\.swift'
   # Which cards review now brings, when the review panel shows up on its own
   # and with which cards, the settings' defaults, and the trigger's names,

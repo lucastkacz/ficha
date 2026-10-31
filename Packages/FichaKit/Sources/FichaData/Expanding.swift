@@ -43,9 +43,12 @@ extension Engine {
     /// does, with the content `newContent` makes of its card as it is, in the
     /// write that saves it, or nothing when it throws: as a refine session's
     /// draft finds or makes the user type it names in that write
-    /// (`CardTypesByName`). Returns the card before and after.
+    /// (`CardTypesByName`). `deck` moves the card to that deck, as
+    /// `edit(_:with:deck:bothWays:)` does, and nil leaves it where it lives.
+    /// Returns the card before and after.
     func approveExpansion(
-        _ captureID: Int64, changingContentWith newContent: (Card, Database) throws -> CardContent
+        _ captureID: Int64, deck: String? = nil,
+        changingContentWith newContent: (Card, Database) throws -> CardContent
     ) throws(EngineError) -> (before: Card, approved: Card) {
         let refinedAt = time.now
         return try write { db in
@@ -57,7 +60,7 @@ extension Engine {
             case .inReviews, .inInbox, .setAside: break
             case .buried: throw EngineError.cardBuried(cardID)
             }
-            return (card, try replaceContent(of: cardID, with: newContent(card, db), at: refinedAt, in: db))
+            return (card, try change(card, to: newContent(card, db), deck: deck, bothWays: nil, at: refinedAt, in: db))
         }
     }
 }

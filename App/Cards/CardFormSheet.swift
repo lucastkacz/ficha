@@ -83,7 +83,9 @@ struct ConvertToCardButton: View {
     }
 }
 
-/// The card form, a sheet over the Cards window: an optional type, a front
+/// The card form, a sheet over the Cards window: an optional type, the deck
+/// the card goes to, which starts as `CardsWindowState` says, with New Deck…
+/// to name one in the New Deck sheet (`NewDeckSheet.swift`), a front
 /// and a back, each with its text, an image and a sound, dragged or pasted
 /// under it, an image also with ⌘V in its text while the clipboard holds no
 /// text, tags, a source and Both ways, and, when it was opened from a capture, the capture
@@ -164,6 +166,7 @@ private struct CardFormSheet: View {
             }
             .failureAlert(failure)
             .newTypeSheet(for: .form, $state, failure: newTypeFailure)
+            .newDeckSheet(for: .form, $state)
         }
     }
 
@@ -211,6 +214,16 @@ private struct CardFormSheet: View {
                     state.askForNewType(in: .form)
                 }
                 .cardFormPart(.type)
+            }
+            GridRow {
+                let label = Text("Deck", comment: "In the Cards window's card form, the label of the card's deck.")
+                gridLabel(label)
+                DeckPicker(deck: form.draft.deck, decks: state.deckFieldChoices(.form), label: label) { deck in
+                    draft(\.deck).wrappedValue = deck
+                } newDeck: {
+                    state.askForNewDeck(in: .form)
+                }
+                .cardFormPart(.deck)
             }
             GridRow {
                 gridLabel(Text("Front", comment: "In the Cards window's card form, the label of the card's front."))
@@ -358,6 +371,7 @@ private struct CardFormSheet: View {
 /// when it does.
 private enum CardFormPart: Hashable {
     case type
+    case deck
     case text(CardSide)
     case image(CardSide)
     case sound(CardSide)

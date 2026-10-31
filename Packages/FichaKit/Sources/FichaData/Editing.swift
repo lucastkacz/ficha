@@ -10,18 +10,19 @@ extension Engine {
     /// it: its flag goes, and it's back in his reviews, on its step, unless
     /// it's buried, since an edited card stays buried. An edit that changes
     /// its front or back keeps when. An image or a sound it no longer has
-    /// goes, unless another card uses it. `bothWays` turns Both ways on or
-    /// off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
+    /// goes, unless another card uses it. `deck` moves it to that deck, as
+    /// `changeDeck(of:to:)` does, and nil, or the deck it lives in, leaves it
+    /// there, which makes no deck on this device. `bothWays` turns Both ways
+    /// on or off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
     /// Returns the card.
     @discardableResult
-    public func edit(_ cardID: Int64, with content: CardContent, bothWays: Bool? = nil) throws(EngineError) -> Card {
+    public func edit(_ cardID: Int64, with content: CardContent, deck: String? = nil, bothWays: Bool? = nil)
+        throws(EngineError) -> Card
+    {
         let editedAt = time.now
         let (before, edited) = try write { db in
             let before = try existingCard(cardID, in: db)
-            _ = try replaceContent(of: cardID, with: content, at: editedAt, in: db)
-            if let bothWays {
-                _ = try setBothWays(bothWays, of: cardID, in: db)
-            }
+            _ = try change(before, to: content, deck: deck, bothWays: bothWays, at: editedAt, in: db)
             return (before, try takeFlagOff(cardID, in: db))
         }
         removeFilesNoCardUses(before: before, after: edited)
@@ -67,5 +68,22 @@ extension Engine {
     /// or off when it's false, and returns the card as it is then.
     func setBothWays(_ bothWays: Bool, of cardID: Int64, in db: Database) throws -> Card {
         try updateCard(cardID, setting: "bothWays = ?", to: [bothWays], in: db)
+    }
+
+    /// Changes `card`, as it is in the write `db`, in that write: replaces
+    /// its content with `content` at `now`, as `replaceContent(of:with:at:in:)`
+    /// does, moves it to `deck`, as `move(_:to:in:)` does, nil leaving it
+    /// where it lives, and turns Both ways on or off as `bothWays` says, nil
+    /// leaving it as it was. Returns the card as it is then: how an edit, a
+    /// fix and an approved expansion change a card.
+    func change(
+        _ card: Card, to content: CardContent, deck: String?, bothWays: Bool?, at now: Date, in db: Database
+    ) throws -> Card {
+        _ = try replaceContent(of: card.id, with: content, at: now, in: db)
+        try move(card, to: deck, in: db)
+        if let bothWays {
+            _ = try setBothWays(bothWays, of: card.id, in: db)
+        }
+        return try existingCard(card.id, in: db)
     }
 }

@@ -263,24 +263,28 @@ struct HeldFiles {
 }
 
 extension Engine {
-    /// Creates a card with `content`, as `create(_:bothWays:from:)` does, once
-    /// the images and sounds `held` for it are kept. When the card can't be
-    /// created, those no card uses go again.
+    /// Creates a card with `content`, as `create(_:deck:bothWays:from:)`
+    /// does, once the images and sounds `held` for it are kept. When the card
+    /// can't be created, those no card uses go again.
     @discardableResult
-    func create(keeping held: HeldFiles, _ content: CardContent, bothWays: Bool, from captureID: Int64?)
-        throws(EngineError) -> Card
-    {
-        try keeping(held) { () throws(EngineError) in try create(content, bothWays: bothWays, from: captureID) }
+    func create(
+        keeping held: HeldFiles, _ content: CardContent, deck: String, bothWays: Bool, from captureID: Int64?
+    ) throws(EngineError) -> Card {
+        try keeping(held) { () throws(EngineError) in
+            try create(content, deck: deck, bothWays: bothWays, from: captureID)
+        }
     }
 
-    /// Edits a card with `content`, as `edit(_:with:bothWays:)` does, once the
-    /// images and sounds `held` for it are kept. When the card can't be
-    /// edited, those no card uses go again.
+    /// Edits a card with `content`, as `edit(_:with:deck:bothWays:)` does,
+    /// once the images and sounds `held` for it are kept. When the card can't
+    /// be edited, those no card uses go again.
     @discardableResult
-    func edit(_ cardID: Int64, keeping held: HeldFiles, with content: CardContent, bothWays: Bool)
+    func edit(_ cardID: Int64, keeping held: HeldFiles, with content: CardContent, deck: String, bothWays: Bool)
         throws(EngineError) -> Card
     {
-        try keeping(held) { () throws(EngineError) in try edit(cardID, with: content, bothWays: bothWays) }
+        try keeping(held) { () throws(EngineError) in
+            try edit(cardID, with: content, deck: deck, bothWays: bothWays)
+        }
     }
 
     /// Keeps the images and sounds `held`, then does `work`, and when either

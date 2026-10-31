@@ -4,7 +4,7 @@ internal import GRDB
 
 /// A table whose rows sync each as a record named by its ID unique across
 /// devices (ADR 0017): the cards, the captures, the review log, the user's
-/// card types and the changes to tags. It says which of its columns the
+/// card types and the changes to tags and decks. It says which of its columns the
 /// record holds, each under which key and how, and which of them make up each
 /// field that keeps when it last changed, of which the latest change wins.
 struct SyncedTable: Sendable {
@@ -44,7 +44,7 @@ struct SyncedTable: Sendable {
     }
 
     /// Every table whose rows sync named by their ID.
-    static let all = [cards, captures, reviewLog, userTypes, tagChanges]
+    static let all = [cards, captures, reviewLog, userTypes, tagChanges, deckChanges]
 
     /// A card's parts, as "What other devices changed" in #298 lists them.
     static let cards = SyncedTable(
@@ -59,6 +59,7 @@ struct SyncedTable: Sendable {
             // A JSON array, as the table keeps it.
             Field(.tags, SyncedColumn("tags", .text)),
             Field(.type, SyncedColumn("type", key: "cardType", .text)),
+            Field(.deck, SyncedColumn("deck", .textOrEmpty)),
             Field(.source, SyncedColumn("source", .text)),
             Field(.bothWays, SyncedColumn("bothWays", .boolean)),
             Field(.flag, SyncedColumn(CardKey.flagNote, .text), SyncedColumn(CardKey.flaggedAt, .time)) {
@@ -150,6 +151,23 @@ struct SyncedTable: Sendable {
         marksRowsFromAnotherDevice: false,
         check: { id, db in _ = try TagChange(row: try tableRow(id, of: "tagChange", in: db)) })
 
+    /// A rename or a deletion of a deck, which never changes: it comes in
+    /// whole, a deletion with the cards it deleted, and is applied as it
+    /// does (`DeckChanges.swift`).
+    static let deckChanges = SyncedTable(
+        name: "deckChange", syncedRow: { .deckChange($0) },
+        fields: [],
+        fixedColumns: [
+            SyncedColumn("deck", .text), SyncedColumn("newName", .text), SyncedColumn("madeAt", .time),
+            SyncedColumn("deletedCards", .bytes),
+        ],
+        marksRowsFromAnotherDevice: false,
+        check: { id, db in
+            let row = try tableRow(id, of: "deckChange", in: db)
+            _ = try DeckChange(row: row)
+            _ = try DeckChange.cardsDeleted(in: row)
+        })
+
     /// Whether the table has a row with this ID unique across devices.
     func holdsRow(with uuid: UUID, in db: Database) throws -> Bool {
         try Bool.fetchOne(
@@ -189,7 +207,7 @@ struct SyncedTable: Sendable {
                 holdsSomething: field.columns.contains { record.value(of: $0.key) != nil })
             let local = FieldChange(
                 changedAt: localTimes[field.syncedField],
-                holdsSomething: field.columns.contains { !(stored[$0.name] as DatabaseValue).isNull })
+                holdsSomething: try field.columns.contains { try $0.holdsSomething(in: stored) })
             guard incoming.wins(over: local) else {
                 continue
             }
@@ -279,11 +297,17 @@ struct SyncedColumn: Sendable {
     /// What the column holds, and so how the record holds it.
     enum Kind: Sendable, Equatable {
         case text
+        /// Text the row keeps empty for nothing, as a card keeps Default as
+        /// its deck, which the record holds as nothing, so that a record from
+        /// before the column, which lacks it, holds what the row would.
+        case textOrEmpty
         /// True or false, which the record holds as 1 or 0.
         case boolean
         case integer
         /// A number with a fraction.
         case real
+        /// Bytes, which the record holds as they are.
+        case bytes
         /// A time, which the record holds as whole milliseconds since 1970.
         case time
         /// A time that only moves forward, as `time`: a row takes the later
@@ -303,18 +327,32 @@ struct SyncedColumn: Sendable {
         self.kind = kind
     }
 
+    /// Whether the column of `row`, of the table, holds something, which the
+    /// record holds too.
+    func holdsSomething(in row: Row) throws -> Bool {
+        switch kind {
+        case .textOrEmpty: try row.decode(forColumn: name) as String != ""
+        default: !(row[name] as DatabaseValue).isNull
+        }
+    }
+
     /// The value the record holds for the column of `row`, of the table, or
     /// nil for none.
     func value(in row: Row, in db: Database) throws -> ICloudValue? {
         switch kind {
         case .text:
             return (try row.decode(forColumn: name) as String?).map(ICloudValue.string)
+        case .textOrEmpty:
+            let text: String = try row.decode(forColumn: name)
+            return text.isEmpty ? nil : .string(text)
         case .boolean:
             return (try row.decode(forColumn: name) as Bool?).map { .int($0 ? 1 : 0) }
         case .integer:
             return (try row.decode(forColumn: name) as Int64?).map(ICloudValue.int)
         case .real:
             return (try row.decode(forColumn: name) as Double?).map(ICloudValue.double)
+        case .bytes:
+            return (try row.decode(forColumn: name) as Data?).map(ICloudValue.bytes)
         case .time, .laterTime:
             return (try row.decode(forColumn: name) as Date?).map { .int($0.wholeMilliseconds) }
         case .link(let table):
@@ -334,9 +372,11 @@ struct SyncedColumn: Sendable {
     /// holds something else than the column does.
     func databaseValue(in record: ICloudRecord, in db: Database) throws -> DatabaseValue? {
         switch (kind, record.value(of: key)) {
+        case (.textOrEmpty, nil):
+            return "".databaseValue
         case (_, nil):
             return .null
-        case (.text, .string(let text)?):
+        case (.text, .string(let text)?), (.textOrEmpty, .string(let text)?):
             return text.databaseValue
         case (.boolean, .int(let number)?) where number == 0 || number == 1:
             return (number == 1).databaseValue
@@ -346,6 +386,8 @@ struct SyncedColumn: Sendable {
             return number.databaseValue
         case (.real, .int(let number)?):
             return Double(number).databaseValue
+        case (.bytes, .bytes(let bytes)?):
+            return bytes.databaseValue
         case (.time, .int(let milliseconds)?), (.laterTime, .int(let milliseconds)?):
             return Date(wholeMilliseconds: milliseconds).databaseValue
         case (.link(let table), .string(let name)?):
