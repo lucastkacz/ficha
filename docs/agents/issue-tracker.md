@@ -36,6 +36,24 @@ A ticket is all one agent can build in one fresh context without compacting: up 
 - A spec splits into tickets only past that size, and its tickets land together, on one branch behind one PR (`/implement-spec`, in `CLAUDE.md`).
 - A spec that needs Lucas at his Mac partway, such as a hand check before the next tickets can start, splits there into **stages**, one PR each, and the breakdown names each ticket's stage.
 
+## Hand checks
+
+What only Lucas can check by hand on his Mac waits in one open issue, labeled `ready-for-human` and `mac`, whose title starts with `Hand checks`:
+
+```
+gh issue list --state open --label ready-for-human --search 'in:title "Hand checks"' --json number,title,body,comments
+```
+
+Each check is a comment of its own, since an issue's body holds only 65,536 characters, and the body's **The checks** lists them, one task-list line each, under the part of Ficha it checks. When none is open, the next check opens one like the last one, which the same command finds with `--state closed --limit 1`: its title, its labels, its opening paragraphs as far as they still hold, and the check's own line alone under **The checks**. A PR whose change needs Lucas's hands adds each of its checks as soon as it opens, since a check names its PR:
+
+1. Post each check as a comment of its own on that issue (`gh issue comment <n> --body-file <file>`), written as the checks already there are: a heading with its name in Lucas's words, the issue and the PR it came from, what the PR couldn't try, numbered steps, and a task list of when it's done that ends with "Anything that felt off is written here."
+2. Read the body afresh, add a line for each check, written as the lines already there are, and write the body back (`gh issue edit <n> --body-file <file>`).
+3. Add the links to the checks' comments to the PR's body (`gh pr edit <pr> --body-file <file>`).
+
+Lucas tells a session how a check went, and that session ticks it: it reads the body afresh, ticks the check's line and writes the body back, then posts what he said as a comment that links the check's. A check that found a bug stays unticked until the fix is on `main` and Lucas checks again, and the session takes the bug as a hand test's, as Shipping in `CLAUDE.md` says. Once every line is ticked, the session closes the issue (`gh issue close <n> --reason completed`).
+
+The iPhone's checks keep issues of their own until the iPhone starts.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
