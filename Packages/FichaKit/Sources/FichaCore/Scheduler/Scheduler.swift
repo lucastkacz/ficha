@@ -31,8 +31,8 @@ public struct Scheduler: Sendable, Equatable {
     /// a relearning step of 1 hour, a desired retention of 90%, a longest
     /// interval of 36,500 days and FSRS-6's default parameters.
     public static let standard = Scheduler(
-        checkedLearningSteps: [.seconds(60 * 60), .seconds(4 * 60 * 60)], relearningSteps: [.seconds(60 * 60)],
-        desiredRetention: 0.9, longestIntervalInDays: 36_500, parameters: [])
+        checkedLearningSteps: [.hours(1), .hours(4)], relearningSteps: [.hours(1)], desiredRetention: 0.9,
+        longestIntervalInDays: 36_500, parameters: [])
 
     /// These settings, which are known to be valid.
     private init(
@@ -68,7 +68,8 @@ public struct Scheduler: Sendable, Equatable {
     /// Whether these are valid learning or relearning steps: each from 10
     /// minutes to less than a day, each longer than the one before, or none.
     private static func areValidSteps(_ steps: [Duration]) -> Bool {
-        steps.allSatisfy { (.seconds(10 * 60)..<oneDay).contains($0) } && zip(steps, steps.dropFirst()).allSatisfy(<)
+        steps.allSatisfy { (Duration.minutes(10)..<Duration.days(1)).contains($0) }
+            && zip(steps, steps.dropFirst()).allSatisfy(<)
     }
 }
 
@@ -79,23 +80,24 @@ extension Scheduler {
     /// device works out the same standing. Without entries it's new.
     ///
     /// Each review moves the way as
-    /// `outcome(of:at:after:given:fuzzFactor:)` says, and updates its memory
-    /// with fsrs-rs, after the days since its last review, rounded to the
-    /// nearest whole day. A first view, from before the scheduler, counts as
-    /// a review rated again.
+    /// `stageAndInterval(rating:from:lastInterval:intervals:)` says, and
+    /// updates its memory with fsrs-rs, after the days since its last review,
+    /// rounded to the nearest whole day. A first view, from before the
+    /// scheduler, counts as a review rated again.
     ///
     /// The way waits the interval its last entry set, from when it was
     /// answered: so a change to these settings leaves its due time alone
     /// until its next review. A review keeps the interval its device's
-    /// preview gave it when it answered the entry replayed just before it,
-    /// or the entry before it when it names none or one the log doesn't
-    /// have; it leaves the way where the rules under these settings put it
-    /// when they give that same interval, and otherwise where its interval
-    /// says it went, as the settings were when it was recorded: on the step
-    /// its rating moves the way to, for an interval under a day, which may be
-    /// a step these settings no longer have, or graduated. A review that
-    /// kept none, or answered another entry, which its device knew before
-    /// another device's entry joined the log, gets the interval these
+    /// preview gave it only when it answered the entry replayed just before
+    /// it: the entry it names, or, naming none, as a new way's first review
+    /// does, none, as the way's first entry. It leaves the way where the
+    /// rules under these settings put it when they give that same interval,
+    /// and otherwise where its interval says it went, as the settings were
+    /// when it was recorded: graduated, for whole days, and for any other
+    /// interval, on the step its rating moves the way onto, which may be a
+    /// step these settings no longer have. A review that kept none, or
+    /// answered another entry, or one the log doesn't hold, as when its
+    /// device didn't know of another device's entry, gets the interval these
     /// settings work out, with the same fuzz on every device, so that a good
     /// rated on one device never erases an again rated on another.
     ///
@@ -122,10 +124,10 @@ extension Scheduler {
         -> IntervalPreview
     {
         let replay = try WayReplay(of: entries, with: self)
-        let next = try replay.nextStates(at: time)
-        let factor = replay.fuzzFactor(ofReviewOf: cardWay)
+        let intervals = try replay.graduatedIntervals(ofReviewOf: cardWay, at: time)
         let interval = { (rating: Rating) in
-            outcome(of: rating, at: replay.stage, after: replay.interval, given: next, fuzzFactor: factor).interval
+            stageAndInterval(rating: rating, from: replay.stage, lastInterval: replay.interval, intervals: intervals)
+                .interval
         }
         return IntervalPreview(
             again: interval(.again), hard: interval(.hard), good: interval(.good), easy: interval(.easy))
@@ -138,7 +140,7 @@ extension Scheduler {
         guard let memory = standing.memory else {
             return nil
         }
-        let days = max(0, time.timeIntervalSince(memory.lastReview) / oneDay.timeInterval)
+        let days = max(0, time.days(since: memory.lastReview))
         let state = MemoryState(stability: memory.stability, difficulty: memory.difficulty)
         return try callingFSRS { () throws(FSRSError) in try fsrs().retrievability(of: state, daysElapsed: Float(days))
         }
@@ -207,15 +209,5 @@ func callingFSRS<Value>(_ work: () throws(FSRSError) -> Value) throws(Scheduling
         return try work()
     } catch {
         throw .fsrsFailed(error.description)
-    }
-}
-
-/// A day, which a graduated interval counts whole.
-let oneDay = Duration.seconds(24 * 60 * 60)
-
-extension Duration {
-    /// This span in seconds, as Foundation counts time.
-    var timeInterval: TimeInterval {
-        self / .seconds(1)
     }
 }

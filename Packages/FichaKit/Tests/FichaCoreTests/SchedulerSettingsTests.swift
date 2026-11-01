@@ -7,14 +7,20 @@ import Testing
 struct SchedulerSettingsTests {
     @Test("steps from 10 minutes to less than a day, each longer than the one before, or none, are valid")
     func validSteps() {
-        for steps in [[], [minutes(10)], [hours(1), hours(4)], [minutes(10), hours(23), .seconds(24 * 60 * 60 - 1)]] {
+        let valid: [[Duration]] = [
+            [], [.minutes(10)], [.hours(1), .hours(4)], [.minutes(10), .hours(23), .days(1) - .seconds(1)],
+        ]
+        for steps in valid {
             #expect(stepsAreValid(steps))
         }
     }
 
     @Test("a step under 10 minutes, of a day or more, or no longer than the one before isn't valid")
     func invalidSteps() {
-        for steps in [[minutes(9)], [days(1)], [hours(4), hours(1)], [hours(1), hours(1)], [.zero]] {
+        let invalid: [[Duration]] = [
+            [.minutes(9)], [.days(1)], [.hours(4), .hours(1)], [.hours(1), .hours(1)], [.zero],
+        ]
+        for steps in invalid {
             #expect(!stepsAreValid(steps))
         }
     }

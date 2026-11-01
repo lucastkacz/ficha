@@ -10,7 +10,7 @@ public struct Ladder: Sendable, Equatable {
     /// The ladder Ficha starts with: 1 hour, 4 hours, 2 days, 5 days, 12
     /// days, 30 days and 75 days.
     public static let standard = Ladder(
-        checkedWaits: [hours(1), hours(4), days(2), days(5), days(12), days(30), days(75)])
+        checkedWaits: [.hours(1), .hours(4), .days(2), .days(5), .days(12), .days(30), .days(75)])
 
     /// The ladder with these waits, which are known to be one at least, each
     /// longer than the one before.
@@ -40,18 +40,17 @@ public struct Ladder: Sendable, Equatable {
     /// ladder no longer has that one (ADR 0013). Another device's first view
     /// after that changes nothing. Then good moves it up one step, as easy
     /// does, hard keeps it on its step and again sends it back to the first.
-    /// The last step
-    /// repeats for good. After each review, the card waits its step's wait
-    /// from when Lucas answered. A review ahead only counts when it's an
-    /// again: hard and good leave the card's step and due time as they were
-    /// (ADR 0002). Each review answered the entry it names, or the entry
-    /// replayed before it, as on one device, when it names none or one the
-    /// log doesn't have. A good that answered an entry replayed before the
-    /// good that last moved the card up counts as ahead too: another device
-    /// rated the same wait before it knew of that one, so one wait never
-    /// climbs two steps. And a review its device took for one ahead counts
-    /// as on time when an entry that device didn't know of had made the card
-    /// due by then.
+    /// The last step repeats for good. After each review, the card waits its
+    /// step's wait from when Lucas answered. A review ahead only counts when
+    /// it's an again: hard and good leave the card's step and due time as
+    /// they were (ADR 0002). Each review answered the entry it names, or the
+    /// entry replayed before it, as on one device, when it names none or one
+    /// the log doesn't have. A good that answered an entry replayed before
+    /// the good that last moved the card up counts as ahead too: another
+    /// device rated the same wait before it knew of that one, so one wait
+    /// never climbs two steps. And a review its device took for one ahead
+    /// counts as on time when an entry that device didn't know of had made
+    /// the card due by then.
     public func standing(after entries: [ReviewLogEntry]) throws(UnexpectedReviewLog) -> LadderStanding {
         let entries = entries.sorted { $0.isReplayed(before: $1) }
         let positions = Dictionary(
@@ -130,7 +129,7 @@ public struct Ladder: Sendable, Equatable {
         guard case .onLadder(let step, _) = standing else {
             return false
         }
-        return waits[step] >= days(30)
+        return waits[step] >= .days(30)
     }
 }
 
@@ -227,14 +226,4 @@ private struct Replay {
 /// the first: the ladder can't tell where the card stands.
 public struct UnexpectedReviewLog: Error, Equatable {
     public let cardID: Int64
-}
-
-/// A span of whole hours.
-private func hours(_ count: Int64) -> Duration {
-    .seconds(count * 60 * 60)
-}
-
-/// A span of whole days.
-private func days(_ count: Int64) -> Duration {
-    .seconds(count * 24 * 60 * 60)
 }

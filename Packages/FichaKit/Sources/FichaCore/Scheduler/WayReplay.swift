@@ -30,9 +30,6 @@ struct WayReplay {
         self.scheduler = scheduler
         fsrs = try callingFSRS { () throws(FSRSError) in try scheduler.fsrs() }
         self.entries = entries.sorted { $0.precedes($1) }
-        let positions = Dictionary(
-            self.entries.indices.compactMap { position in self.entries[position].uuid.map { ($0, position) } },
-            uniquingKeysWith: { first, _ in first })
         for (position, entry) in self.entries.enumerated() {
             switch entry.kind {
             case .placement(let placement):
@@ -40,8 +37,9 @@ struct WayReplay {
             case .firstView:
                 try review(.again, of: entry, at: position, keeping: nil)
             case .review(let rating):
-                let answered = entry.answeredEntry.flatMap { positions[$0] } ?? position - 1
-                try review(rating, of: entry, at: position, keeping: answered == position - 1 ? entry.interval : nil)
+                try review(
+                    rating, of: entry, at: position,
+                    keeping: answersTheEntryBefore(entry, at: position) ? entry.interval : nil)
             }
         }
     }
@@ -59,32 +57,43 @@ struct WayReplay {
         return .started(stage, interval: interval, due: due, memory: memory)
     }
 
-    /// What fsrs-rs works out for each rating of a review of the way at
-    /// `time`: from its memory, or as a new card's without one, after the
-    /// days since its last review, rounded to the nearest whole day.
-    func nextStates(at time: Date) throws(SchedulingError) -> NextStates {
-        let days = memory.map { max(0, Int((time.timeIntervalSince($0.lastReview) / oneDay.timeInterval).rounded())) }
-        return try callingFSRS { () throws(FSRSError) in
+    /// What the graduated intervals of the next review of `cardWay`, at
+    /// `time`, come from, after the way's entries.
+    func graduatedIntervals(ofReviewOf cardWay: CardWay, at time: Date) throws(SchedulingError)
+        -> GraduatedIntervals
+    {
+        try graduatedIntervals(ofReviewAt: entries.count, of: cardWay, at: time)
+    }
+
+    /// What the graduated intervals of a review of `cardWay` at `position` in
+    /// the replay, at `time`, come from: what fsrs-rs works out for each
+    /// rating, from the way's memory, or as a new card's without one, after
+    /// the days since its last review, rounded to the nearest whole day; and
+    /// the fuzz factor, seeded by the way's first entry, or by the card's id
+    /// for the way's first review, which has no entry before it.
+    private func graduatedIntervals(ofReviewAt position: Int, of cardWay: CardWay, at time: Date)
+        throws(SchedulingError) -> GraduatedIntervals
+    {
+        let days = memory.map { max(0, Int(time.days(since: $0.lastReview).rounded())) }
+        let next = try callingFSRS { () throws(FSRSError) in
             try fsrs.nextStates(
                 from: memory?.state, desiredRetention: Float(scheduler.desiredRetention), daysElapsed: days ?? 0)
         }
+        let card: FuzzSeedCard =
+            if position > 0, let first = entries[0].uuid { .firstEntry(first) } else { .cardID(cardWay.cardID) }
+        return GraduatedIntervals(
+            next: next, fuzzFactor: fuzzFactor(of: card, way: cardWay.way, reviewsBefore: reviews),
+            longestIntervalInDays: scheduler.longestIntervalInDays)
     }
 
-    /// The fuzz factor of the next review of `cardWay`, after the way's
-    /// entries.
-    func fuzzFactor(ofReviewOf cardWay: CardWay) -> Double {
-        FichaCore.fuzzFactor(
-            of: card(before: entries.count, id: cardWay.cardID), way: cardWay.way, reviewsBefore: reviews)
-    }
-
-    /// What names the card with the id `cardID` in the fuzz's seed of a
-    /// review at `position` in the replay: the way's first entry, unless the
-    /// review is the first.
-    private func card(before position: Int, id cardID: Int64) -> FuzzCard {
-        guard position > 0, let first = entries[0].uuid else {
-            return .cardID(cardID)
+    /// Whether `review`, at `position` in the replay, answered the entry
+    /// replayed just before it: the entry it names, or, naming none, as a
+    /// review of a new way does, none, as the way's first entry.
+    private func answersTheEntryBefore(_ review: ReviewLogEntry, at position: Int) -> Bool {
+        guard let answered = review.answeredEntry else {
+            return position == 0
         }
-        return .firstEntry(first)
+        return position > 0 && entries[position - 1].uuid == answered
     }
 
     /// Moves the way as `entry`, a review at `position` in the replay rated
@@ -92,29 +101,28 @@ struct WayReplay {
     private mutating func review(_ rating: Rating, of entry: ReviewLogEntry, at position: Int, keeping kept: Duration?)
         throws(SchedulingError)
     {
-        let next = try nextStates(at: entry.answeredAt)
-        let factor = FichaCore.fuzzFactor(
-            of: card(before: position, id: entry.cardID), way: entry.way, reviewsBefore: reviews)
-        let worked = scheduler.outcome(of: rating, at: stage, after: interval, given: next, fuzzFactor: factor)
-        let outcome =
+        let intervals = try graduatedIntervals(ofReviewAt: position, of: entry.cardWay, at: entry.answeredAt)
+        let workedOut = scheduler.stageAndInterval(
+            rating: rating, from: stage, lastInterval: interval, intervals: intervals)
+        let moved =
             try kept.map { kept throws(SchedulingError) in
-                try self.outcome(of: rating, keeping: kept, workedOut: worked, cardID: entry.cardID)
-            } ?? worked
-        stage = outcome.stage
-        interval = outcome.interval
+                try stageAndInterval(rating: rating, keeping: kept, workedOut: workedOut, cardID: entry.cardID)
+            } ?? workedOut
+        stage = moved.stage
+        interval = moved.interval
         due = entry.answeredAt.adding(interval)
-        memory = (next[rating].memoryState, entry.answeredAt)
+        memory = (intervals.next[rating].memoryState, entry.answeredAt)
         reviews += 1
     }
 
-    /// Where a review rated `rating` that kept the interval `kept` moved the
+    /// Where a review rated `rating` that kept the interval `kept` left the
     /// way: where `workedOut`, the rules under the scheduler's settings, put
     /// it when they give that interval, and otherwise where the interval
     /// says it went, as the settings were when the review was recorded:
-    /// graduated, for a day or more, and for less, on the step the rating
-    /// moves it to from its stage.
-    private func outcome(of rating: Rating, keeping kept: Duration, workedOut: Outcome, cardID: Int64)
-        throws(SchedulingError) -> Outcome
+    /// graduated, for whole days, and for any other interval, on the step
+    /// `Rating.move(from:)` moves it onto from its stage.
+    private func stageAndInterval(rating: Rating, keeping kept: Duration, workedOut: StageAndInterval, cardID: Int64)
+        throws(SchedulingError) -> StageAndInterval
     {
         guard kept > .zero else {
             throw .unexpectedReviewLog(cardID: cardID)
@@ -122,31 +130,20 @@ struct WayReplay {
         if kept == workedOut.interval {
             return workedOut
         }
-        if kept >= oneDay {
-            return Outcome(stage: .graduated, interval: kept)
+        // A graduated interval is always whole days, and a step's wait is
+        // whole days in one case alone: steps are under a day, and only hard
+        // on a single step waits longer than a step, 1.5 times as long,
+        // which is a day for a step of exactly 16 hours. So only that wait,
+        // once the settings changed, reads as graduated.
+        if kept.isWholeDays {
+            return StageAndInterval(stage: .graduated, interval: kept)
         }
-        let stage: WayStanding.Stage
-        switch (self.stage, rating) {
-        case (nil, .again), (.learning, .again), (nil, .hard):
-            stage = .learning(step: 0)
-        case (.learning(let step), .hard):
-            stage = .learning(step: step)
-        case (nil, .good):
-            stage = .learning(step: 1)
-        case (.learning(let step), .good):
-            stage = .learning(step: step + 1)
-        case (.graduated, .again), (.relearning, .again):
-            stage = .relearning(step: 0)
-        case (.relearning(let step), .hard):
-            stage = .relearning(step: step)
-        case (.relearning(let step), .good):
-            stage = .relearning(step: step + 1)
-        case (_, .easy), (.graduated, .hard), (.graduated, .good):
+        guard case .onto(let step) = rating.move(from: stage) else {
             // Easy always graduates a way, and a graduated way's hard and
-            // good keep it graduated: none sets an interval under a day.
+            // good keep it graduated: none waits a step's interval.
             throw .unexpectedReviewLog(cardID: cardID)
         }
-        return Outcome(stage: stage, interval: kept)
+        return StageAndInterval(stage: step, interval: kept)
     }
 
     /// Moves the way as `placement`, which an import gave the card with the
@@ -155,15 +152,14 @@ struct WayReplay {
         guard let placed = placement.interval, placed >= .zero else {
             throw .unexpectedReviewLog(cardID: cardID)
         }
-        switch (placed >= oneDay, reviews) {
+        switch (placed >= .days(1), reviews) {
         case (true, 0):
             guard let ease = placement.ease, ease.isFinite, ease > 0 else {
                 throw .unexpectedReviewLog(cardID: cardID)
             }
             let state = try callingFSRS { () throws(FSRSError) in
                 try fsrs.memoryState(
-                    sm2Interval: Float(placed.timeInterval / oneDay.timeInterval), ease: Float(ease),
-                    sm2Retention: sm2Retention)
+                    sm2Interval: Float(placed.inDays), ease: Float(ease), sm2Retention: ankiDefaultHistoricalRetention)
             }
             memory = (state, placement.due.adding(.zero - placed))
             stage = .graduated
@@ -182,10 +178,14 @@ struct WayReplay {
     }
 }
 
-/// The retention SM-2 spaced a card Anki brings without reviews for, which
-/// its memory starts from: Anki's historical retention, 90% unless its user
-/// changed it, which Ficha doesn't read.
-private let sm2Retention: Float = 0.9
+/// Anki's historical retention as it ships it, 90%: the retention it takes
+/// SM-2 to have aimed at for a card it brings with an interval and an ease
+/// but no reviews, from which fsrs-rs starts the card's memory
+/// (`memory_state_from_sm2`). It's Anki's default deck options'
+/// (`historical_retention: 0.9` in `rslib/src/deckconfig/mod.rs`), which
+/// Anki passes to fsrs-rs in `rslib/src/scheduler/fsrs/memory_state.rs`;
+/// its user can change it, which a placement doesn't carry yet.
+private let ankiDefaultHistoricalRetention: Float = 0.9
 
 // The order the scheduler replays a way's log in lives here, beside the
 // replay, where the merge gate watches the scheduler.

@@ -6,6 +6,9 @@ import Foundation
 // card 1's front-first way, as recording an answer and an import will write
 // them.
 
+// Spans of time in seconds, as dates count them: `start + 4 * hour`. A span
+// the scheduler keeps, such as a step or an interval, is a `Duration`, which
+// `.minutes(_:)`, `.hours(_:)` and `.days(_:)` below give.
 let minute: TimeInterval = 60
 let hour: TimeInterval = 60 * minute
 let day: TimeInterval = 24 * hour
@@ -14,19 +17,25 @@ let start = Date(timeIntervalSince1970: 1_760_000_000)
 /// Card 1's front-first way, whose log the tests replay.
 let wayOne = CardWay(cardID: 1, way: .frontFirst)
 
-/// A span of whole minutes.
-func minutes(_ count: Int64) -> Duration {
-    .seconds(count * 60)
-}
+/// Card 1's front-first way as an import from Anki brings it graduated: its
+/// interval 10 days, due at the tests' start.
+let graduated = placement(interval: .days(10), due: start, at: start - 10 * day)
 
-/// A span of whole hours.
-func hours(_ count: Int64) -> Duration {
-    .seconds(count * 60 * 60)
-}
+extension Duration {
+    /// A span of whole minutes.
+    static func minutes(_ count: Int64) -> Duration {
+        .seconds(count * 60)
+    }
 
-/// A span of whole days.
-func days(_ count: Int64) -> Duration {
-    .seconds(count * 24 * 60 * 60)
+    /// A span of whole hours.
+    static func hours(_ count: Int64) -> Duration {
+        .seconds(count * 60 * 60)
+    }
+
+    /// A span of whole days.
+    static func days(_ count: Int64) -> Duration {
+        .seconds(count * 24 * 60 * 60)
+    }
 }
 
 /// The standard scheduler, but for the settings given.
@@ -51,7 +60,7 @@ struct InvalidSettings: Error {}
 
 /// A review of the card with the id `cardID`, front first unless `way` says
 /// otherwise, rated `rating` at `time`, keeping `interval`, when it kept one,
-/// answering `answeredEntry`, or the entry before it when it names none,
+/// answering `answeredEntry`, or none, as a new way's first review does,
 /// with an ID of its own that the same review always gets, so that the
 /// fuzz the scheduler seeds with it is the same in every run, or `uuid`.
 func review(
@@ -60,7 +69,7 @@ func review(
 ) -> ReviewLogEntry {
     ReviewLogEntry(
         cardID: cardID, way: way, kind: .review(rating), answeredAt: time, responseTime: .seconds(3),
-        trigger: .reviewNow, uuid: uuid ?? fixedID(at: time, kind: Rating.allRatings.firstIndex(of: rating) ?? 0),
+        trigger: .reviewNow, uuid: uuid ?? fixedID(at: time, kind: Rating.allCases.firstIndex(of: rating) ?? 0),
         answeredEntry: answeredEntry, interval: interval)
 }
 
@@ -75,11 +84,6 @@ func fixedID(at time: Date, kind: Int) -> UUID {
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
             bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
         ))
-}
-
-extension Rating {
-    /// The four ratings, again's first.
-    static let allRatings: [Rating] = [.again, .hard, .good, .easy]
 }
 
 /// `log`, card 1's front-first way's, with a review rated `rating` at `time`
@@ -115,6 +119,6 @@ extension WayStanding {
 extension IntervalPreview {
     /// Each rating's interval in whole days, again's first.
     var days: [Int64] {
-        [again, hard, good, easy].map { $0.components.seconds / Int64(day) }
+        Rating.allCases.map { self[$0].components.seconds / Int64(day) }
     }
 }

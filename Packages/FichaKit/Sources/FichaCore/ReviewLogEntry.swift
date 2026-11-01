@@ -44,7 +44,9 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// the last entry of its way that the device knew when Lucas rated the
     /// card, which two devices' reviews of one wait share. Nil for a first
     /// view or a placement, which answer none, and for a review from before
-    /// Ficha kept it, which answered the entry before it.
+    /// Ficha kept it, which the ladder reads as answering the entry before
+    /// it. The scheduler reads a review that names none as a new way's first,
+    /// which answered no entry (#404).
     public let answeredEntry: UUID?
     /// For a review, the interval it set, which the way waits from when
     /// Lucas answered, as the scheduler's preview gave it for the rating:

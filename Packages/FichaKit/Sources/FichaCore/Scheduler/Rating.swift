@@ -1,6 +1,7 @@
-/// How well Lucas says he knew a card in a review: Anki's four ratings. Each
-/// raw value is how the review log names it.
-public enum Rating: String, Sendable {
+/// How well Lucas says he knew a card in a review: Anki's four ratings, in
+/// the order of Anki's buttons, again's first. Each raw value is how the
+/// review log names it.
+public enum Rating: String, Sendable, CaseIterable {
     /// He didn't know it: the ladder sends the card back to the first step,
     /// and the scheduler to the first learning or relearning step.
     case again

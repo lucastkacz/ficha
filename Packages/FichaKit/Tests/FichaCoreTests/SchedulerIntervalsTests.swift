@@ -28,25 +28,26 @@ struct SchedulerIntervalsTests {
         #expect(memory.lastReview == time)
     }
 
-    @Test("a new way's first good gives it fsrs-rs's memory for a new card rated good")
-    func memoryAfterANewWaysGood() throws {
-        let memory = try #require(try Scheduler.standard.standing(after: answering(.good, at: start, after: [])).memory)
-
-        // `FSRS::next_states`'s example, for a new card with the default
-        // parameters.
-        #expect(memory.stability == 2.3065)
-        #expect(memory.difficulty == 2.118104)
-    }
-
     @Test(
-        "with no learning steps, a new way's intervals are fsrs-rs's for the default parameters at 90%, in whole days")
+        "with no learning steps, a new way's intervals are fsrs-rs's for the default parameters at 90%, 0.212, 1.2931, 2.3065 and 8.2956 days, kept in whole days"
+    )
     func newWaysIntervalsWithoutSteps() throws {
         let scheduler = try scheduler(learningSteps: [])
 
+        let memories = try Rating.allCases.map { rating in
+            try #require(try scheduler.standing(after: answering(rating, at: start, after: [], on: scheduler)).memory)
+        }
         let preview = try scheduler.preview(of: wayOne, after: [], at: start)
 
-        // `FSRS::next_states`'s example: 0.212, 1.2931, 2.3065 and 8.2956
-        // days. Again's rounds to none, and a graduated interval is a day at
+        // `FSRS::next_states`'s example, for a new card with the default
+        // parameters at 90%, in fsrs-rs's `src/inference.rs`: each rating's
+        // stability, difficulty and interval. The replay keeps whole days, so
+        // fsrs-rs's interval before rounding shows in the memory: at 90% it's
+        // the stability itself (`next_interval` in fsrs-rs's `src/model.rs`),
+        // as the example's intervals are.
+        #expect(memories.map(\.stability) == [0.212, 1.2931, 2.3065, 8.2956])
+        #expect(memories.map(\.difficulty) == [6.4133, 5.1121707, 2.118104, 1.0])
+        // Again's rounds to none, and a graduated interval is a day at
         // least; easy's falls in Anki's fuzz around 8 days, from 6 to 10.
         #expect(preview.days.prefix(3) == [1, 1, 2])
         #expect((6...10).contains(preview.days[3]))
@@ -54,12 +55,12 @@ struct SchedulerIntervalsTests {
 
     @Test("a placement starts a graduated way from Anki's interval and ease, as fsrs-rs starts a card from SM-2's")
     func aPlacementStartsAGraduatedWay() throws {
-        let placed = placement(interval: days(10), ease: 2.5, due: start, at: start - 3 * day)
+        let placed = placement(interval: .days(10), ease: 2.5, due: start, at: start - 3 * day)
 
         let standing = try Scheduler.standard.standing(after: [placed])
 
         #expect(standing.stage == .graduated)
-        #expect(standing.interval == days(10))
+        #expect(standing.interval == .days(10))
         #expect(standing.due == start)
         let memory = try #require(standing.memory)
         // `test_memory_from_sm2`'s first case, within its tolerance.
@@ -71,9 +72,7 @@ struct SchedulerIntervalsTests {
 
     @Test("a way's retrievability is 100% at its last review and 90% once its stability's days have passed")
     func retrievability() throws {
-        let standing = try Scheduler.standard.standing(after: [
-            placement(interval: days(10), due: start, at: start - 3 * day)
-        ])
+        let standing = try Scheduler.standard.standing(after: [graduated])
         let memory = try #require(standing.memory)
 
         let atLastReview = try #require(try Scheduler.standard.retrievability(of: standing, at: memory.lastReview))
@@ -89,9 +88,9 @@ struct SchedulerIntervalsTests {
     @Test("a graduated way's hard, good and easy stay a day apart, even when FSRS's intervals all round to none")
     func hardGoodAndEasyADayApart() throws {
         let scheduler = try scheduler(learningSteps: [], desiredRetention: 0.99)
-        let graduated = try answering(.hard, at: start, after: [], on: scheduler)
+        let graduatedByHard = try answering(.hard, at: start, after: [], on: scheduler)
 
-        let preview = try scheduler.preview(of: wayOne, after: graduated, at: start + day)
+        let preview = try scheduler.preview(of: wayOne, after: graduatedByHard, at: start + day)
 
         // At 99%, a day after a new card's hard, FSRS's hard, good and easy
         // are 0.22, 0.31 and 0.51 days.
@@ -101,9 +100,9 @@ struct SchedulerIntervalsTests {
     @Test("the longest interval caps a graduated way's hard, good and easy")
     func theLongestIntervalCaps() throws {
         let scheduler = try scheduler(longestIntervalInDays: 10)
-        let graduated = [placement(interval: days(30), due: start, at: start - 30 * day)]
+        let atThirtyDays = placement(interval: .days(30), due: start, at: start - 30 * day)
 
-        let preview = try scheduler.preview(of: wayOne, after: graduated, at: start)
+        let preview = try scheduler.preview(of: wayOne, after: [atThirtyDays], at: start)
 
         // FSRS gives a card 30 days after its last review weeks more.
         #expect(preview.days[1] <= 10)
@@ -128,12 +127,11 @@ struct SchedulerIntervalsTests {
 
     @Test("the interval a review keeps is the one its preview gave, and one that kept none gets the same")
     func thePreviewIsWhatAReviewKeeps() throws {
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
-        let preview = try Scheduler.standard.preview(of: wayOne, after: graduated, at: start)
+        let preview = try Scheduler.standard.preview(of: wayOne, after: [graduated], at: start)
 
-        for rating in Rating.allRatings {
-            let kept = try Scheduler.standard.standing(after: answering(rating, at: start, after: graduated))
-            let workedOut = try Scheduler.standard.standing(after: graduated + [review(rating, at: start)])
+        for rating in Rating.allCases {
+            let kept = try Scheduler.standard.standing(after: answering(rating, at: start, after: [graduated]))
+            let workedOut = try Scheduler.standard.standing(after: [graduated, review(rating, at: start)])
 
             #expect(kept.interval == preview[rating])
             #expect(kept.due == start.adding(preview[rating]))
@@ -157,10 +155,8 @@ struct SchedulerIntervalsTests {
 
     @Test("a late review counts the time the card really waited, and lengthens the interval more than one on time")
     func aLateReview() throws {
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
-
-        let onTime = try Scheduler.standard.standing(after: answering(.good, at: start, after: graduated))
-        let late = try Scheduler.standard.standing(after: answering(.good, at: start + 20 * day, after: graduated))
+        let onTime = try Scheduler.standard.standing(after: answering(.good, at: start, after: [graduated]))
+        let late = try Scheduler.standard.standing(after: answering(.good, at: start + 20 * day, after: [graduated]))
 
         let onTimeStability = try #require(onTime.memory?.stability)
         let lateStability = try #require(late.memory?.stability)
@@ -170,11 +166,10 @@ struct SchedulerIntervalsTests {
 
     @Test("a review ahead counts, and lengthens the interval less than one on time")
     func aReviewAhead() throws {
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
-        let placedStability = try #require(try Scheduler.standard.standing(after: graduated).memory?.stability)
+        let placedStability = try #require(try Scheduler.standard.standing(after: [graduated]).memory?.stability)
 
-        let onTime = try Scheduler.standard.standing(after: answering(.good, at: start, after: graduated))
-        let ahead = try Scheduler.standard.standing(after: answering(.good, at: start - 7 * day, after: graduated))
+        let onTime = try Scheduler.standard.standing(after: answering(.good, at: start, after: [graduated]))
+        let ahead = try Scheduler.standard.standing(after: answering(.good, at: start - 7 * day, after: [graduated]))
 
         let onTimeStability = try #require(onTime.memory?.stability)
         let aheadStability = try #require(ahead.memory?.stability)

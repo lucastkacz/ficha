@@ -6,20 +6,16 @@ import Testing
 /// (ADR 0017), an import's placements, older entries, a change to the
 /// settings, and entries it can't follow.
 struct SchedulerLogTests {
-    /// A way an import from Anki brought graduated, its interval 10 days,
-    /// due at the tests' start.
-    let graduated = placement(interval: days(10), due: start, at: start - 10 * day)
-
     // Once Ficha syncs, a card's review log joins what the Mac and the iPhone
     // each recorded without a connection (ADR 0017): here each rated the
-    // interval the placement started.
+    // interval the graduated placement started.
     @Test(
         "an again on one device and a good the other rated at the same moment leave the way in relearning, in any order"
     )
     func againAndGoodAtTheSameMoment() throws {
-        let onTheMac = try answering(.again, at: start, after: [graduated]).last
-        let onTheIPhone = try answering(.good, at: start, after: [graduated]).last
-        let entries = [graduated] + [onTheMac, onTheIPhone].compactMap { $0 }
+        let onTheMac = try #require(try answering(.again, at: start, after: [graduated]).last)
+        let onTheIPhone = try #require(try answering(.good, at: start, after: [graduated]).last)
+        let entries = [graduated, onTheMac, onTheIPhone]
 
         let standing = try Scheduler.standard.standing(after: entries)
 
@@ -32,10 +28,10 @@ struct SchedulerLogTests {
         "a good one device rated before it knew of another device's again, a moment later, leaves the way in relearning"
     )
     func aGoodBeforeAnotherDevicesAgain() throws {
-        let onTheIPhone = try answering(.good, at: start - minute, after: [graduated]).last
-        let onTheMac = try answering(.again, at: start, after: [graduated]).last
+        let onTheIPhone = try #require(try answering(.good, at: start - minute, after: [graduated]).last)
+        let onTheMac = try #require(try answering(.again, at: start, after: [graduated]).last)
 
-        let standing = try Scheduler.standard.standing(after: [graduated] + [onTheIPhone, onTheMac].compactMap { $0 })
+        let standing = try Scheduler.standard.standing(after: [graduated, onTheIPhone, onTheMac])
 
         #expect(standing.stage == .relearning(step: 0))
         #expect(standing.due == start + hour)
@@ -79,6 +75,43 @@ struct SchedulerLogTests {
     }
 
     @Test(
+        "two devices' first reviews of a new way, easy on one and good or hard on the other, leave it where the later one puts it, in either order"
+    )
+    func twoDevicesFirstReviewsOfANewWay() throws {
+        for (onTheMac, onTheIPhone) in [(Rating.easy, Rating.good), (.good, .easy), (.easy, .hard), (.hard, .easy)] {
+            let first = try #require(try answering(onTheMac, at: start, after: []).last)
+            let later = start + minute
+            let second = try #require(try answering(onTheIPhone, at: later, after: []).last)
+
+            let standing = try Scheduler.standard.standing(after: [first, second])
+
+            // Neither knew of the other, so the later review gets the
+            // interval its rating sets after the earlier one: easy graduates
+            // the way, and a graduated way's good or hard keeps it graduated.
+            let afterTheFirst = try Scheduler.standard.preview(of: wayOne, after: [first], at: later)
+            #expect(standing.stage == .graduated)
+            #expect(standing.interval == afterTheFirst[onTheIPhone])
+            #expect(standing.due == later.adding(afterTheFirst[onTheIPhone]))
+        }
+    }
+
+    @Test(
+        "a review that answered an entry the log doesn't hold, or none after the way's first entry, gets its interval worked out again"
+    )
+    func aReviewThatAnsweredAnotherEntry() throws {
+        let preview = try Scheduler.standard.preview(of: wayOne, after: [graduated], at: start)
+        let unknown = fixedID(at: start - day, kind: 9)
+
+        for answered in [unknown, nil] {
+            let kept = review(.good, at: start, keeping: .days(99), answering: answered)
+
+            let standing = try Scheduler.standard.standing(after: [graduated, kept])
+
+            #expect(standing.interval == preview.good)
+        }
+    }
+
+    @Test(
         "every device works out the same interval for a review it works out again, though each knows the card by its own id"
     )
     func everyDeviceWorksOutTheSameInterval() throws {
@@ -94,7 +127,7 @@ struct SchedulerLogTests {
 
     @Test("a placement under a day starts the way on the first learning step, due when Anki had it due")
     func aPlacementOfALearningCard() throws {
-        let placed = placement(interval: minutes(10), ease: nil, due: start + 5 * minute, at: start)
+        let placed = placement(interval: .minutes(10), ease: nil, due: start + 5 * minute, at: start)
 
         let standing = try Scheduler.standard.standing(after: [placed])
         let good = try Scheduler.standard.standing(after: answering(.good, at: start + 5 * minute, after: [placed]))
@@ -108,18 +141,20 @@ struct SchedulerLogTests {
     @Test(
         "a placement after imported reviews keeps the memory they gave the way, and the interval and due date Anki had")
     func aPlacementAfterImportedReviews() throws {
-        // Anki's reviews, which keep its intervals and answer the review
-        // before them: 10 minutes, a step it was learning on, then 1, 3 and 8
-        // days.
-        let imported = [
-            review(.again, at: start, keeping: minutes(10)),
-            review(.good, at: start + 10 * minute, keeping: days(1)),
-            review(.good, at: start + day, keeping: days(3)),
-            review(.good, at: start + 4 * day, keeping: days(8)),
+        // Anki's reviews, which keep its intervals, each answering the review
+        // before it, and the first none: 10 minutes, a step it was learning
+        // on, then 1, 3 and 8 days.
+        var imported: [ReviewLogEntry] = []
+        let history: [(Rating, Date, Duration)] = [
+            (.again, start, .minutes(10)), (.good, start + 10 * minute, .days(1)), (.good, start + day, .days(3)),
+            (.good, start + 4 * day, .days(8)),
         ]
+        for (rating, time, interval) in history {
+            imported.append(review(rating, at: time, keeping: interval, answering: imported.last?.uuid))
+        }
         let importedAt = start + 6 * day
         // Its Set Due Date moved the card later than its last review set.
-        let placed = placement(interval: days(8), ease: 2.5, due: importedAt + 9 * day, at: importedAt)
+        let placed = placement(interval: .days(8), ease: 2.5, due: importedAt + 9 * day, at: importedAt)
 
         let reviewed = try Scheduler.standard.standing(after: imported)
         let standing = try Scheduler.standard.standing(after: imported + [placed])
@@ -127,7 +162,7 @@ struct SchedulerLogTests {
         #expect(reviewed.stage == .graduated)
         #expect(reviewed.due == start + 12 * day)
         #expect(standing.stage == .graduated)
-        #expect(standing.interval == days(8))
+        #expect(standing.interval == .days(8))
         #expect(standing.due == importedAt + 9 * day)
         #expect(standing.memory == reviewed.memory)
     }
@@ -137,7 +172,8 @@ struct SchedulerLogTests {
         let learning = try answering(.good, at: start, after: [])
         let reviewed = try answering(.good, at: start, after: [graduated])
         let changed = try scheduler(
-            learningSteps: [hours(2), hours(8)], relearningSteps: [], desiredRetention: 0.8, longestIntervalInDays: 100)
+            learningSteps: [.hours(2), .hours(8)], relearningSteps: [], desiredRetention: 0.8,
+            longestIntervalInDays: 100)
 
         for log in [learning, reviewed] {
             let before = try Scheduler.standard.standing(after: log)
@@ -147,9 +183,25 @@ struct SchedulerLogTests {
         }
         // From their next review on, the change applies.
         let later = start + 4 * hour
-        #expect(try changed.preview(of: wayOne, after: learning, at: later).hard == hours(8))
-        #expect(try Scheduler.standard.preview(of: wayOne, after: learning, at: later).hard == hours(4))
-        #expect(try changed.preview(of: wayOne, after: reviewed, at: start + 30 * day).again >= days(1))
+        #expect(try changed.preview(of: wayOne, after: learning, at: later).hard == .hours(8))
+        #expect(try Scheduler.standard.preview(of: wayOne, after: learning, at: later).hard == .hours(4))
+        #expect(try changed.preview(of: wayOne, after: reviewed, at: start + 30 * day).again >= .days(1))
+    }
+
+    @Test(
+        "a hard on a single learning step of 20 hours, which waits more than a day, leaves the way on that step after the steps change"
+    )
+    func aLongHardAfterTheStepsChange() throws {
+        let oneLongStep = try scheduler(learningSteps: [.hours(20)])
+        let log = try answering(.hard, at: start, after: [], on: oneLongStep)
+
+        let standing = try Scheduler.standard.standing(after: log)
+
+        // 1.5 times the step: 30 hours, which isn't whole days, as a
+        // graduated interval always is.
+        #expect(standing.stage == .learning(step: 0))
+        #expect(standing.interval == .hours(30))
+        #expect(standing.due == start + 30 * hour)
     }
 
     @Test("a first view, from before the scheduler, counts as a review rated again")
@@ -174,10 +226,10 @@ struct SchedulerLogTests {
             try Scheduler.standard.standing(after: [placement(interval: nil, due: start, at: start)])
         }
         #expect(throws: unexpected) {
-            try Scheduler.standard.standing(after: [placement(interval: days(10), ease: nil, due: start, at: start)])
+            try Scheduler.standard.standing(after: [placement(interval: .days(10), ease: nil, due: start, at: start)])
         }
         #expect(throws: unexpected) {
-            try Scheduler.standard.standing(after: [review(.easy, at: start, keeping: hours(1))])
+            try Scheduler.standard.standing(after: [review(.easy, at: start, keeping: .hours(1))])
         }
     }
 }

@@ -12,121 +12,145 @@ import Foundation
 // rounds such a wait to whole days, since Anki's cards fall due by the day and
 // Ficha's at a time of day.
 
-/// Where a rating moves a way, and the interval it waits from then.
-struct Outcome: Equatable {
+/// Where a review leaves a way, and the interval it waits from then.
+struct StageAndInterval: Equatable {
     let stage: WayStanding.Stage
     let interval: Duration
 }
 
+/// Where a rating moves a way among its learning or relearning steps, by
+/// their indices alone, whatever steps the settings have.
+enum StepMove: Equatable {
+    /// Onto this learning or relearning step, which the settings may not
+    /// have: past their last one, or with none, the way leaves its steps.
+    case onto(WayStanding.Stage)
+    /// Out of its steps, or, for a graduated way, still out of them.
+    case outOfTheSteps
+}
+
+extension Rating {
+    /// Where this rating moves a way at `stage`, or a new way, which counts
+    /// as one on the first learning step, when it's nil: again back to the
+    /// first step, or, for a graduated way, a lapse, to the first relearning
+    /// step; hard onto the step it's on; good onto the next; and easy out of
+    /// the steps, as a graduated way's hard and good keep it out of them. The
+    /// steps the settings have decide the rest: how long each step waits,
+    /// and that one past their last takes the way out of them.
+    func move(from stage: WayStanding.Stage?) -> StepMove {
+        switch (stage ?? .learning(step: 0), self) {
+        case (.learning, .again): .onto(.learning(step: 0))
+        case (.relearning, .again), (.graduated, .again): .onto(.relearning(step: 0))
+        case (.learning(let step), .hard): .onto(.learning(step: step))
+        case (.relearning(let step), .hard): .onto(.relearning(step: step))
+        case (.learning(let step), .good): .onto(.learning(step: step + 1))
+        case (.relearning(let step), .good): .onto(.relearning(step: step + 1))
+        case (_, .easy), (.graduated, .hard), (.graduated, .good): .outOfTheSteps
+        }
+    }
+}
+
 extension Scheduler {
     /// Where `rating` moves a way at `stage`, or a new way when it's nil,
-    /// whose last entry set `interval`, given the memory and interval fsrs-rs
-    /// works out for each rating, with `fuzzFactor`, from 0 up to 1, picking
-    /// where in Anki's range around it a graduated interval falls.
+    /// whose last entry set `lastInterval`, and the interval it waits from
+    /// then: onto a step, as `Rating.move(from:)` says, when these settings
+    /// have it, counting one they no longer have as their last, and
+    /// otherwise graduated, with the interval `intervals` gives it.
     ///
-    /// A new way goes as one on the first learning step. In a learning or
-    /// relearning step, again goes back to the first step, hard repeats the
-    /// step, or, on the first, waits halfway to the second, or 1.5 times the
-    /// step when there's only one, good moves to the next step, or graduates
-    /// after the last, and easy graduates. A step these settings no longer
-    /// have counts as the last, and with no steps at all any rating
-    /// graduates. A graduated way's again is a lapse, to the first
-    /// relearning step, or to FSRS's interval after it when there are none;
-    /// hard, good and easy get FSRS's interval for them.
-    func outcome(
-        of rating: Rating, at stage: WayStanding.Stage?, after interval: Duration, given next: NextStates,
-        fuzzFactor: Double
-    ) -> Outcome {
-        switch stage {
-        case nil:
-            outcome(of: rating, onStep: 0, of: learningSteps, given: next, fuzzFactor: fuzzFactor) {
-                .learning(step: $0)
-            }
-        case .learning(let step):
-            outcome(of: rating, onStep: step, of: learningSteps, given: next, fuzzFactor: fuzzFactor) {
-                .learning(step: $0)
-            }
-        case .relearning(let step):
-            outcome(of: rating, onStep: step, of: relearningSteps, given: next, fuzzFactor: fuzzFactor) {
-                .relearning(step: $0)
-            }
-        case .graduated:
-            graduatedOutcome(
-                of: rating, after: Int((interval.timeInterval / oneDay.timeInterval).rounded()), given: next,
-                fuzzFactor: fuzzFactor)
+    /// A step waits its own interval, but for hard on the first, which waits
+    /// halfway to the second, or 1.5 times the step when there's only one.
+    /// So with no steps at all, any rating graduates a new way.
+    func stageAndInterval(
+        rating: Rating, from stage: WayStanding.Stage?, lastInterval: Duration, intervals: GraduatedIntervals
+    ) -> StageAndInterval {
+        let stage = stage.map(onAStepTheseSettingsHave)
+        if case .onto(let step) = rating.move(from: stage), let wait = wait(of: rating, on: step) {
+            return StageAndInterval(stage: step, interval: wait)
         }
-    }
-
-    /// Where `rating` moves a way on `step` of `steps`, its learning or
-    /// relearning steps, which `stage` names its stage on.
-    private func outcome(
-        of rating: Rating, onStep step: Int, of steps: [Duration], given next: NextStates, fuzzFactor: Double,
-        stagedAs stage: (Int) -> WayStanding.Stage
-    ) -> Outcome {
-        guard !steps.isEmpty else {
-            return graduation(with: rating, given: next, fuzzFactor: fuzzFactor)
-        }
-        let current = min(step, steps.count - 1)
-        switch rating {
-        case .again:
-            return Outcome(stage: stage(0), interval: steps[0])
-        case .hard:
-            return Outcome(stage: stage(current), interval: current == 0 ? hardOnFirstStep(of: steps) : steps[current])
-        case .good where current + 1 < steps.count:
-            return Outcome(stage: stage(current + 1), interval: steps[current + 1])
-        case .good, .easy:
-            return graduation(with: rating, given: next, fuzzFactor: fuzzFactor)
-        }
-    }
-
-    /// How long hard on the first of `steps` waits, as Anki keeps it apart
-    /// from again: halfway to the second step, or 1.5 times the step when
-    /// there's only one.
-    private func hardOnFirstStep(of steps: [Duration]) -> Duration {
-        steps.count > 1 ? (steps[0] + steps[1]) / 2 : steps[0] * 3 / 2
-    }
-
-    /// A way leaving its steps with `rating`: FSRS's interval for it, rounded
-    /// to whole days, at least one, and fuzzed; for easy, at least a day
-    /// longer than good would have been.
-    private func graduation(with rating: Rating, given next: NextStates, fuzzFactor: Double) -> Outcome {
         let days =
-            switch rating {
-            case .again, .hard, .good:
-                fuzzed(wholeDays(of: next[rating].interval), atLeast: 1, by: fuzzFactor)
-            case .easy:
-                fuzzed(
-                    wholeDays(of: next.easy.interval),
-                    atLeast: fuzzed(Double(next.good.interval), atLeast: 1, by: fuzzFactor) + 1, by: fuzzFactor)
-            }
-        return Outcome(stage: .graduated, interval: oneDay * days)
+            stage == .graduated
+            ? intervals.ofGraduatedWay(rating, after: Int(lastInterval.inDays.rounded()))
+            : intervals.leavingTheSteps(rating)
+        return StageAndInterval(stage: .graduated, interval: .days(Int64(days)))
     }
 
-    /// Where `rating` moves a graduated way whose last interval was
-    /// `previous` days: hard, good and easy each get FSRS's interval in whole
-    /// days, fuzzed, good at least a day longer than hard and easy at least
-    /// a day longer than good, and none shorter than Anki's least for it.
-    private func graduatedOutcome(of rating: Rating, after previous: Int, given next: NextStates, fuzzFactor: Double)
-        -> Outcome
-    {
-        if rating == .again, let firstStep = relearningSteps.first {
-            return Outcome(stage: .relearning(step: 0), interval: firstStep)
+    /// `stage`, or the last of these settings' steps when it's on a step they
+    /// no longer have, as after they changed.
+    private func onAStepTheseSettingsHave(_ stage: WayStanding.Stage) -> WayStanding.Stage {
+        switch stage {
+        case .learning(let step) where step >= learningSteps.count && !learningSteps.isEmpty:
+            .learning(step: learningSteps.count - 1)
+        case .relearning(let step) where step >= relearningSteps.count && !relearningSteps.isEmpty:
+            .relearning(step: relearningSteps.count - 1)
+        case .learning, .relearning, .graduated:
+            stage
         }
+    }
+
+    /// How long a way that `rating` moved onto `stage`'s step waits there, or
+    /// nil when these settings don't have that step: the step's interval, or,
+    /// for hard on the first, which Anki keeps apart from again, halfway to
+    /// the second step, or 1.5 times the step when there's only one.
+    private func wait(of rating: Rating, on stage: WayStanding.Stage) -> Duration? {
+        let steps: [Duration]
+        let step: Int
+        switch stage {
+        case .learning(let index): (steps, step) = (learningSteps, index)
+        case .relearning(let index): (steps, step) = (relearningSteps, index)
+        case .graduated: return nil
+        }
+        guard steps.indices.contains(step) else {
+            return nil
+        }
+        guard rating == .hard, step == 0 else {
+            return steps[step]
+        }
+        return steps.count > 1 ? (steps[0] + steps[1]) / 2 : steps[0] * 3 / 2
+    }
+}
+
+/// What a review's graduated intervals come from, and how Anki works them out
+/// in whole days: `next`, what fsrs-rs works out for each rating, the memory
+/// it leaves and its interval; rounded, from a day to the longest interval,
+/// `longestIntervalInDays`; and fuzzed by `fuzzFactor`, from 0 up to 1, which
+/// picks where in Anki's range around each interval it falls.
+struct GraduatedIntervals {
+    let next: NextStates
+    let fuzzFactor: Double
+    let longestIntervalInDays: Int
+
+    /// The days a way leaving its learning or relearning steps with `rating`
+    /// waits: FSRS's interval for it, rounded, a day at least, and fuzzed;
+    /// for easy, at least a day longer than good would have been.
+    func leavingTheSteps(_ rating: Rating) -> Int {
+        switch rating {
+        case .again, .hard, .good:
+            fuzzed(wholeDays(of: next[rating].interval), atLeast: 1)
+        case .easy:
+            fuzzed(wholeDays(of: next.easy.interval), atLeast: fuzzed(Double(next.good.interval), atLeast: 1) + 1)
+        }
+    }
+
+    /// The days a graduated way whose last interval was `previous` days waits
+    /// after `rating`. Again, a lapse when there are no relearning steps,
+    /// gets FSRS's interval rounded, a day at least, and up to the longest
+    /// interval, without the fuzz, as Anki's `answer_again` in `review.rs`
+    /// gives it: Anki fuzzes such an interval only when a card leaves its
+    /// relearning steps (`failing_review_interval`). Hard, good and easy each
+    /// get FSRS's interval in whole days, fuzzed, good at least a day longer
+    /// than hard and easy at least a day longer than good, and none shorter
+    /// than Anki's least for it.
+    func ofGraduatedWay(_ rating: Rating, after previous: Int) -> Int {
         let (hardDays, goodDays, easyDays) = (
             Double(next.hard.interval), Double(next.good.interval), Double(next.easy.interval)
         )
-        let hard = fuzzed(hardDays, atLeast: max(1, leastInterval(for: hardDays, after: previous)), by: fuzzFactor)
-        let good = fuzzed(
-            goodDays, atLeast: max(hard + 1, leastInterval(for: goodDays, after: previous)), by: fuzzFactor)
-        let days =
-            switch rating {
-            case .again: fuzzed(wholeDays(of: next.again.interval), atLeast: 1, by: fuzzFactor)
-            case .hard: hard
-            case .good: good
-            case .easy:
-                fuzzed(easyDays, atLeast: max(good + 1, leastInterval(for: easyDays, after: previous)), by: fuzzFactor)
-            }
-        return Outcome(stage: .graduated, interval: oneDay * days)
+        let hard = fuzzed(hardDays, atLeast: max(1, leastInterval(for: hardDays, after: previous)))
+        let good = fuzzed(goodDays, atLeast: max(hard + 1, leastInterval(for: goodDays, after: previous)))
+        return switch rating {
+        case .again: min(Int(wholeDays(of: next.again.interval)), longestIntervalInDays)
+        case .hard: hard
+        case .good: good
+        case .easy: fuzzed(easyDays, atLeast: max(good + 1, leastInterval(for: easyDays, after: previous)))
+        }
     }
 
     /// Anki's least interval, in days, for a graduated way's hard, good or
@@ -148,9 +172,9 @@ extension Scheduler {
     }
 
     /// An interval of `days` in whole days, at least `minimum` and at most
-    /// the longest interval, fuzzed as Anki fuzzes it: picked by
-    /// `fuzzFactor`, from 0 up to 1, from `fuzzRange(of:atLeast:)`.
-    private func fuzzed(_ days: Double, atLeast minimum: Int, by fuzzFactor: Double) -> Int {
+    /// the longest interval, fuzzed as Anki fuzzes it: picked by the fuzz
+    /// factor from `fuzzRange(of:atLeast:)`.
+    private func fuzzed(_ days: Double, atLeast minimum: Int) -> Int {
         let range = fuzzRange(of: days, atLeast: minimum)
         return range.lowerBound + Int((fuzzFactor * Double(range.count)).rounded(.down))
     }
@@ -204,13 +228,14 @@ extension NextStates {
 /// it out again. The card is named by its way's first entry's ID unique
 /// across devices, since its id differs on each, or, for a way's first
 /// review, which has no entry before it, by its id on the device that
-/// recorded it, which keeps its interval.
+/// recorded it, which keeps its interval: FichaCore knows a card by no name
+/// that's the same on every device.
 ///
 /// The seed's numbers go through SplitMix64's mixing function (Steele, Lea
 /// and Flood, 2014), integer arithmetic alone, so every device, run and
 /// version of Swift gives the same factor: Swift's `Hasher` is seeded anew
 /// in each run, and Foundation has no seeded generator.
-func fuzzFactor(of card: FuzzCard, way: Way, reviewsBefore reviews: Int) -> Double {
+func fuzzFactor(of card: FuzzSeedCard, way: Way, reviewsBefore reviews: Int) -> Double {
     let wayNumber: UInt64 =
         switch way {
         case .frontFirst: 0
@@ -223,7 +248,7 @@ func fuzzFactor(of card: FuzzCard, way: Way, reviewsBefore reviews: Int) -> Doub
 }
 
 /// What names a card in the fuzz's seed.
-enum FuzzCard {
+enum FuzzSeedCard {
     /// Its way's first entry, by its ID unique across devices.
     case firstEntry(UUID)
     /// The card, by its id on this device.

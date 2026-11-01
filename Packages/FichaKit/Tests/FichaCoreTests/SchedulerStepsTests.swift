@@ -18,11 +18,11 @@ struct SchedulerStepsTests {
         let hard = try Scheduler.standard.standing(after: answering(.hard, at: start, after: []))
 
         #expect(again.stage == .learning(step: 0))
-        #expect(again.interval == hours(1))
+        #expect(again.interval == .hours(1))
         #expect(again.due == start + hour)
         // Halfway between 1 hour and 4 hours.
         #expect(hard.stage == .learning(step: 0))
-        #expect(hard.interval == minutes(150))
+        #expect(hard.interval == .minutes(150))
         #expect(hard.due == start + 150 * minute)
     }
 
@@ -32,7 +32,7 @@ struct SchedulerStepsTests {
         let easy = try Scheduler.standard.standing(after: answering(.easy, at: start, after: []))
 
         #expect(good.stage == .learning(step: 1))
-        #expect(good.interval == hours(4))
+        #expect(good.interval == .hours(4))
         #expect(easy.stage == .graduated)
         #expect(try #require(easy.graduatedDays) >= 1)
     }
@@ -43,12 +43,12 @@ struct SchedulerStepsTests {
         let onFirstStep = try answering(.again, at: start, after: [])
         let later = start + hour
 
-        let standing = try [Rating.again, .hard, .good, .easy].map { rating in
+        let standing = try Rating.allCases.map { rating in
             try Scheduler.standard.standing(after: answering(rating, at: later, after: onFirstStep))
         }
 
         #expect(standing.map(\.stage) == [.learning(step: 0), .learning(step: 0), .learning(step: 1), .graduated])
-        #expect(standing.prefix(3).map(\.interval) == [hours(1), minutes(150), hours(4)])
+        #expect(standing.prefix(3).map(\.interval) == [.hours(1), .minutes(150), .hours(4)])
         #expect(standing.map(\.due).prefix(3) == [later + hour, later + 150 * minute, later + 4 * hour])
     }
 
@@ -57,12 +57,12 @@ struct SchedulerStepsTests {
         let onLastStep = try answering(.good, at: start, after: [])
         let later = start + 4 * hour
 
-        let standing = try [Rating.again, .hard, .good, .easy].map { rating in
+        let standing = try Rating.allCases.map { rating in
             try Scheduler.standard.standing(after: answering(rating, at: later, after: onLastStep))
         }
 
         #expect(standing.map(\.stage) == [.learning(step: 0), .learning(step: 1), .graduated, .graduated])
-        #expect(standing.prefix(2).map(\.interval) == [hours(1), hours(4)])
+        #expect(standing.prefix(2).map(\.interval) == [.hours(1), .hours(4)])
         // FSRS's good and easy for a card rated good, then good again the
         // same day, are days apart once rounded.
         let good = try #require(standing[2].graduatedDays)
@@ -73,14 +73,12 @@ struct SchedulerStepsTests {
 
     @Test("again on a graduated way is a lapse, to the relearning step; hard, good and easy keep it graduated")
     func eachRatingOfAGraduatedWay() throws {
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
-
-        let standing = try [Rating.again, .hard, .good, .easy].map { rating in
-            try Scheduler.standard.standing(after: answering(rating, at: start, after: graduated))
+        let standing = try Rating.allCases.map { rating in
+            try Scheduler.standard.standing(after: answering(rating, at: start, after: [graduated]))
         }
 
         #expect(standing.map(\.stage) == [.relearning(step: 0), .graduated, .graduated, .graduated])
-        #expect(standing[0].interval == hours(1))
+        #expect(standing[0].interval == .hours(1))
         #expect(standing[0].due == start + hour)
         let passing = try standing.dropFirst().map { try #require($0.graduatedDays) }
         #expect(passing == passing.sorted())
@@ -91,44 +89,42 @@ struct SchedulerStepsTests {
         "on the one relearning step, again repeats it, hard waits 1.5 times as long, and good and easy graduate the way"
     )
     func eachRatingOnTheOneRelearningStep() throws {
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
-        let lapsed = try answering(.again, at: start, after: graduated)
+        let lapsed = try answering(.again, at: start, after: [graduated])
         let later = start + hour
 
-        let standing = try [Rating.again, .hard, .good, .easy].map { rating in
+        let standing = try Rating.allCases.map { rating in
             try Scheduler.standard.standing(after: answering(rating, at: later, after: lapsed))
         }
 
         #expect(standing.map(\.stage) == [.relearning(step: 0), .relearning(step: 0), .graduated, .graduated])
-        #expect(standing.prefix(2).map(\.interval) == [hours(1), minutes(90)])
+        #expect(standing.prefix(2).map(\.interval) == [.hours(1), .minutes(90)])
         #expect(try #require(standing[3].graduatedDays) > #require(standing[2].graduatedDays))
     }
 
     @Test("with two relearning steps, hard on the first waits halfway to the second, and good moves to the second")
     func twoRelearningSteps() throws {
-        let scheduler = try scheduler(relearningSteps: [hours(1), hours(4)])
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
-        let lapsed = try answering(.again, at: start, after: graduated, on: scheduler)
+        let scheduler = try scheduler(relearningSteps: [.hours(1), .hours(4)])
+        let lapsed = try answering(.again, at: start, after: [graduated], on: scheduler)
         let later = start + hour
 
         let hard = try scheduler.standing(after: answering(.hard, at: later, after: lapsed, on: scheduler))
         let good = try scheduler.standing(after: answering(.good, at: later, after: lapsed, on: scheduler))
 
         #expect(hard.stage == .relearning(step: 0))
-        #expect(hard.interval == minutes(150))
+        #expect(hard.interval == .minutes(150))
         #expect(good.stage == .relearning(step: 1))
-        #expect(good.interval == hours(4))
+        #expect(good.interval == .hours(4))
     }
 
     @Test("with one learning step, hard on it waits 1.5 times as long, and good graduates a new way")
     func oneLearningStep() throws {
-        let scheduler = try scheduler(learningSteps: [hours(2)])
+        let scheduler = try scheduler(learningSteps: [.hours(2)])
 
         let hard = try scheduler.standing(after: answering(.hard, at: start, after: [], on: scheduler))
         let good = try scheduler.standing(after: answering(.good, at: start, after: [], on: scheduler))
 
         #expect(hard.stage == .learning(step: 0))
-        #expect(hard.interval == hours(3))
+        #expect(hard.interval == .hours(3))
         #expect(good.stage == .graduated)
     }
 
@@ -136,29 +132,45 @@ struct SchedulerStepsTests {
     func noLearningSteps() throws {
         let scheduler = try scheduler(learningSteps: [])
 
-        let standing = try [Rating.again, .hard, .good, .easy].map { rating in
+        let standing = try Rating.allCases.map { rating in
             try scheduler.standing(after: answering(rating, at: start, after: [], on: scheduler))
         }
 
         #expect(standing.allSatisfy { $0.stage == .graduated })
     }
 
-    @Test("with no relearning steps, a lapse goes straight to FSRS's interval after it, a day at least")
+    @Test(
+        "with no relearning steps, a lapse goes straight to FSRS's interval after it, rounded, without the fuzz, whatever seeds it"
+    )
     func noRelearningSteps() throws {
         let scheduler = try scheduler(relearningSteps: [])
-        let graduated = [placement(interval: days(10), due: start, at: start - 10 * day)]
+        // A card Anki had at 1,000 days, which FSRS gives some 9 days after a
+        // lapse, where the fuzz would spread them over several days. Each
+        // placement's moment gives it its own ID, which seeds the fuzz of the
+        // review after it.
+        let placements = (1...50).map { placedAt in
+            placement(interval: .days(1_000), due: start, at: start - Double(placedAt) * minute)
+        }
 
-        let lapsed = try scheduler.standing(after: answering(.again, at: start, after: graduated, on: scheduler))
+        let lapses = try placements.map { placed in
+            try scheduler.standing(after: answering(.again, at: start, after: [placed], on: scheduler))
+        }
 
-        #expect(lapsed.stage == .graduated)
-        #expect(try #require(lapsed.graduatedDays) >= 1)
-        #expect(try #require(lapsed.graduatedDays) < 10)
+        // As Anki's `answer_again` in `rslib/src/scheduler/states/review.rs`
+        // gives it: FSRS's interval, rounded, a day at least, and not fuzzed,
+        // since `failing_review_interval` leaves the fuzz for a card leaving
+        // relearning. At 90%, FSRS's interval is the stability (`next_interval`
+        // in fsrs-rs's `src/model.rs`).
+        let stability = try #require(lapses.first?.memory?.stability)
+        #expect(stability > 2.5)
+        #expect(lapses.allSatisfy { $0.stage == .graduated })
+        #expect(Set(lapses.map(\.graduatedDays)) == [Int64(stability.rounded())])
     }
 
     @Test(
         "a way on a learning step the steps no longer have stays on it, due as it was, and counts as on the last step")
     func aStepThatNoLongerExists() throws {
-        let threeSteps = try scheduler(learningSteps: [hours(1), hours(4), hours(8)])
+        let threeSteps = try scheduler(learningSteps: [.hours(1), .hours(4), .hours(8)])
         let onThirdStep = try answering(
             .good, at: start + 4 * hour, after: answering(.good, at: start, after: [], on: threeSteps), on: threeSteps)
         let later = start + 12 * hour
@@ -172,6 +184,6 @@ struct SchedulerStepsTests {
         #expect(standing.due == start + 12 * hour)
         // The standard steps' last is the second, of 4 hours.
         #expect(rated.map(\.stage) == [.learning(step: 0), .learning(step: 1), .graduated])
-        #expect(rated.prefix(2).map(\.interval) == [hours(1), hours(4)])
+        #expect(rated.prefix(2).map(\.interval) == [.hours(1), .hours(4)])
     }
 }
