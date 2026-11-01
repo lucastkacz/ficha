@@ -401,6 +401,32 @@ struct CardsWindowStateTests {
         #expect(try shownOneWay.reviewLog?.get().map(\.entry.way) == [.frontFirst])
     }
 
+    // From FSRS-6's default parameters, fsrs-rs 6.6.2's `DEFAULT_PARAMETERS`
+    // (`src/inference.rs`), as Anki's Card Info shows them: a new way's first
+    // review rated good starts its stability at w[2], 2.3065 days, and its
+    // difficulty at w[4] − e^(w[5] × 2) + 1 = 6.4133 − e^1.6668 + 1 = 2.1181,
+    // which Anki shows as (2.1181 − 1) / 9, 12.4%; and once its stability's
+    // days have gone by, the chance of remembering it is 90%, as FSRS
+    // defines stability.
+    @Test("a reviewed way's detail has its stability, difficulty and retrievability, and a new way's has none")
+    func aReviewedWaysDetailHasItsMemoryAndANewWaysHasNone() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.review(serendipia, .good)
+        time.advance(by: 2.3065 * days(1))
+        var window = openWindow()
+
+        window.select([serendipia.id])
+        let shown = try #require(window.shownCard).row
+        let frontFirst = try #require(shown.frontFirst.memory)
+
+        #expect(abs(frontFirst.stabilityInDays - 2.3065) < 0.0001)
+        #expect(abs(frontFirst.difficulty - 0.1242) < 0.0001)
+        #expect(abs(frontFirst.retrievability - 0.9) < 0.0001)
+        #expect(shown.backFirst?.standing == .new)
+        #expect(shown.backFirst?.memory == nil)
+    }
+
     @Test("Flag is offered only for a single card in Lucas's reviews")
     func flagIsOfferedOnlyForASingleCardInReviews() throws {
         let serendipia = try approveCard("serendipia", in: engine)

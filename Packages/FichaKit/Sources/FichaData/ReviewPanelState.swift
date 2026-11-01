@@ -137,6 +137,10 @@ public struct ReviewPanelState: Sendable {
     private var cardShownAt = Duration.zero
     /// Whether the card Lucas is on shows its lower side: he flipped it.
     private var isFlipped = false
+    /// The interval each rating would set for the card Lucas is on, as the
+    /// scheduler worked them out when its lower side showed, and when, or
+    /// nil until it shows, or when they couldn't be worked out.
+    private var shownIntervals: (preview: IntervalPreview, at: Date)?
     /// The note Lucas is writing to flag the card he's on, while he writes
     /// it.
     private var flagging: Flagging?
@@ -225,6 +229,21 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
+    /// The interval each of the four ratings would set for the card Lucas
+    /// is on, which the panel's buttons show once its lower side shows, as
+    /// Anki's do, and which his rating keeps (#404): worked out as the lower
+    /// side showed, so that what a button showed is what the card gets,
+    /// however long he takes. Nil while the panel shows anything else, or
+    /// when the scheduler couldn't work them out, as when it can't follow
+    /// the card's review log: then the buttons show none, and a rating
+    /// fails, saying why.
+    public var intervals: IntervalPreview? {
+        guard case .bothSides = content else {
+            return nil
+        }
+        return shownIntervals?.preview
+    }
+
     /// Whether "See more" has cards to bring, now that Lucas went through
     /// every card, or review now brought none.
     public var canSeeMore: Bool {
@@ -303,7 +322,26 @@ public struct ReviewPanelState: Sendable {
     public mutating func flip() {
         guard case .upperSide = content else { return }
         isFlipped = true
+        showIntervals()
         touch()
+    }
+
+    /// Works out the interval each rating would set for the card Lucas is
+    /// on, now, while its lower side shows, for its buttons to show and his
+    /// rating to keep, or none otherwise. When the scheduler can't work them
+    /// out, the buttons show none: his rating then fails the same way, and
+    /// the panel says why.
+    private mutating func showIntervals() {
+        guard showsLowerSide, let current else {
+            shownIntervals = nil
+            return
+        }
+        let now = engine.now
+        do throws(EngineError) {
+            shownIntervals = (try engine.intervals(of: current.cardWay, at: now, settings: settings), now)
+        } catch {
+            shownIntervals = nil
+        }
     }
 
     /// Rates the way of the card Lucas reviews, once its lower side shows,
@@ -470,7 +508,9 @@ public struct ReviewPanelState: Sendable {
 
     /// Records Lucas's answer to the current card in the review log, with how
     /// long he took, and moves on to the next card: in a review ahead, as one.
-    /// When the engine says a rating of again made the card forgotten often,
+    /// Once the card's lower side showed, a review keeps the interval the
+    /// panel offered for its rating (`intervals`). When the engine says a
+    /// rating of again made the card forgotten often,
     /// the panel stays on it instead, flagging it, with the note written as
     /// how many times he forgot it the way it showed, and the card's time
     /// stopped at his answer. The panel's buttons answer through
@@ -480,7 +520,7 @@ public struct ReviewPanelState: Sendable {
         guard outcome == nil, let answering = current else { return }
         let forgottenOften = try engine.record(
             kind, of: answering.card.id, way: answering.way, responseTime: responseTime, trigger: trigger,
-            settings: settings, reviewingAhead: answering.isAhead)
+            settings: settings, reviewingAhead: answering.isAhead, intervalsWorkedOutAt: shownIntervals?.at)
         // Also when the panel stays on the card, to offer to flag it.
         playingSound = nil
         guard let forgottenOften else {
@@ -566,6 +606,7 @@ public struct ReviewPanelState: Sendable {
         followUpsOnCard = last.followUps
         moreCards = []
         isFlipped = last.showedLowerSide
+        showIntervals()
         startTiming(from: last.timeOnCard)
         touch()
     }
@@ -598,6 +639,7 @@ public struct ReviewPanelState: Sendable {
         showSounds()
         followUpsOnCard = []
         isFlipped = false
+        shownIntervals = nil
         flagging = nil
         asking = nil
         startTiming()

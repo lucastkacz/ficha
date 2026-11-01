@@ -48,6 +48,33 @@ struct CardNotificationTests {
             ])
     }
 
+    // Anki's four, as the Mac's review panel offers them (#404): again on a
+    // card on the first learning step keeps it there, hard waits halfway to
+    // the second step, good moves it there, and easy graduates it.
+    @Test("a card notification offers four actions, again, hard, good and easy, each of which answers its card")
+    func aCardNotificationOffersFourActions() throws {
+        let cards = try ["ubuntu", "serendipia", "petricor", "Schadenfreude"].map { front in
+            try meetCard(front, dueAt: try at(10, 0))
+        }
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 1))
+        for (card, rating) in zip(cards, NotifiedAppearance.ratings) {
+            _ = try engine.answerFromNotification(.review(rating), of: card.id, in: appearance, settings: settings)
+        }
+
+        #expect(NotifiedAppearance.ratings == [.again, .hard, .good, .easy])
+        #expect(
+            try cards.map { try engine.standing(of: $0.id, with: settings.scheduler).stageAndDue?.stage } == [
+                .learning(step: 0), .learning(step: 0), .learning(step: 1), .graduated,
+            ])
+        #expect(
+            try cards.map { try engine.standing(of: $0.id, with: settings.scheduler).interval }.prefix(3) == [
+                .seconds(hours(1)), .seconds(minutes(150)), .seconds(hours(4)),
+            ])
+    }
+
     @Test("the next card of an appearance is its next one still due, skipping one Lucas rated or buried meanwhile")
     func theNextCardSkipsOnesRatedOrBuriedMeanwhile() throws {
         let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))

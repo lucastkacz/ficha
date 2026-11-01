@@ -144,6 +144,51 @@ struct ReviewPanelTests {
         #expect(panel.mayHaveKeyboard)
     }
 
+    // As Anki records the intervals its buttons showed, the review keeps the
+    // ones the panel worked out as the card flipped, also when Lucas answers
+    // after the time since the card's last review went past half a day more,
+    // which rounds FSRS's days up.
+    @Test("the intervals the panel offers for a new card and for a graduated one are the intervals the review keeps")
+    func theReviewKeepsTheIntervalsThePanelOffers() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.climb(ubuntu, goods: 2, movingForward: time)
+        // Due a whole number of days after its last review.
+        let due = try #require(try engine.standing(of: ubuntu.id, with: settings.scheduler).due)
+        time.move(to: due + hours(12) - minutes(1))
+        var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia), .review(ubuntu)], settings: settings)
+
+        let beforeTheFlip = panel.intervals
+        panel.flip()
+        let offeredForTheNewCard = try #require(panel.intervals)
+        panel.rate(.easy)
+        panel.flip()
+        let offeredForTheGraduatedCard = try #require(panel.intervals)
+        let ubuntusLog = try engine.reviewLog().filter { $0.cardID == ubuntu.id }
+        time.advance(by: minutes(2))
+        panel.rate(.hard)
+
+        #expect(beforeTheFlip == nil)
+        // The learning steps' 1 hour and 4 hours, and hard on the first
+        // step halfway between them.
+        #expect(
+            [offeredForTheNewCard.again, offeredForTheNewCard.hard, offeredForTheNewCard.good] == [
+                .seconds(hours(1)), .seconds(minutes(150)), .seconds(hours(4)),
+            ])
+        // Easy graduates it.
+        #expect(offeredForTheNewCard.easy >= .seconds(days(1)))
+        #expect(
+            try engine.reviewLog().suffix(2).map(\.interval) == [
+                offeredForTheNewCard.easy, offeredForTheGraduatedCard.hard,
+            ])
+        // At the answer, the days since ubuntu's last review round up, so
+        // its intervals there would differ.
+        #expect(
+            try settings.scheduler.preview(
+                of: CardWay(cardID: ubuntu.id, way: .frontFirst), after: ubuntusLog, at: time.now)
+                != offeredForTheGraduatedCard)
+    }
+
     @Test(
         "writing a flag's note leaves its time out of the card's response time, and cancelling it goes on from where it waited"
     )
