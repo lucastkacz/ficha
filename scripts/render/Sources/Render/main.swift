@@ -683,8 +683,7 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
 
 /// The app's model on the sample cards, once the sample Anki package came in
 /// with its progress, and four days later, the card of the femur, which came
-/// in with Anki's reviews of it and their interval of 10 days, was reviewed
-/// with Know it, on time.
+/// in with Anki's interval of 10 days, was reviewed with Know it, on time.
 func ankiImportedModel() throws -> AppModel {
     let (engine, time) = try sampleEngine(at: .inMemory)
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
