@@ -17,7 +17,7 @@ struct DecksTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("every card starts in Default, which the decks list while it holds cards, buried ones too")

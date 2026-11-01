@@ -18,7 +18,7 @@ struct CardReviewLogTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test(
@@ -67,6 +67,27 @@ struct CardReviewLogTests {
         let graduated = Array(log.map(\.interval).dropFirst(2))
         #expect(graduated.count == 5)
         #expect(zip(graduated, graduated.dropFirst()).allSatisfy { $0 < $1 })
+    }
+
+    // An entry's ID seeds the fuzz of its way's graduated intervals (#404),
+    // so the engine takes it from its ID source, and these tests from one
+    // that counts, the same on every run.
+    @Test(
+        "the review log's entries take their IDs from the engine's ID source, so the same reviews with the same IDs graduate a card with the same intervals"
+    )
+    func entriesTakeTheirIDsFromTheEnginesSource() throws {
+        var logs: [[ReviewLogRow]] = []
+        for _ in 0..<2 {
+            let time = ManualTimeSource(now: try morning(of: 14, in: calendar))
+            let engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
+            let serendipia = try approveCard("serendipia", in: engine)
+            try engine.climb(serendipia, goods: 6, movingForward: time)
+            logs.append(try engine.reviewLogRows(of: serendipia.id, with: scheduler))
+        }
+
+        let ids = CountingIDSource()
+        #expect(logs.first?.map(\.entry.uuid) == (0..<7).map { _ in ids.newID() })
+        #expect(logs.first?.map(\.interval) == logs.last?.map(\.interval))
     }
 
     @Test("a card's reviews ahead are in its review log, marked ahead, and an again ahead sends it to relearn")
@@ -222,6 +243,6 @@ extension Engine {
     /// Adds `entry` to the review log as it comes from another device: at
     /// the end, and without recording it to send.
     fileprivate func receive(_ entry: ReviewLogEntry) throws {
-        try writeWithoutRecording { db in try insert(entry, in: db) }
+        try writeWithoutRecording { db in try insert(entry, ids: ids, in: db) }
     }
 }

@@ -14,7 +14,7 @@ struct CardsWindowTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("the Cards window lists every card but the buried ones, flagged ones with their flag")
@@ -152,14 +152,12 @@ struct CardsWindowTests {
     @Test("New, Due and Learned list the cards in Lucas's reviews only, as the menu counts them")
     func newDueAndLearnedListCardsInReviews() throws {
         let settings = ReviewSettings.defaults
-        // Learned: graduated, waiting 21 days or more. The buried one climbs
-        // first: a climb moves the time on, which FSRS's fuzz can take past
-        // the day the other one is due.
+        // Learned: graduated, waiting 21 days or more.
+        let ojala = try approveCard("ojalá", in: engine)
+        try engine.climbUntilLearned(ojala, movingForward: time)
         let nunca = try approveCard("nunca", in: engine)
         try engine.climbUntilLearned(nunca, movingForward: time)
         try engine.bury(nunca.id)
-        let ojala = try approveCard("ojalá", in: engine)
-        try engine.climbUntilLearned(ojala, movingForward: time)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.meet(ubuntu)
         let quizas = try approveCard("quizás", in: engine)

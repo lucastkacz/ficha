@@ -16,7 +16,7 @@ struct UndoTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("undoing a rating puts the card back where it stood, and the panel shows it again")

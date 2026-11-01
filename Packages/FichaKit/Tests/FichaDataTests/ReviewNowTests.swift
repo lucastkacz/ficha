@@ -13,7 +13,7 @@ struct ReviewNowTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("a new card comes in review now as a new card, front first, for its first review")

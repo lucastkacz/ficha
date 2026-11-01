@@ -27,6 +27,10 @@ public struct Engine: Sendable {
     /// The data folder the database is in, or nil when it's in memory.
     let dataFolder: URL?
     let time: any TimeSource
+    /// Where the review log's entries the engine writes get their IDs
+    /// unique across devices: random ones, except in tests and the render
+    /// tool.
+    let ids: any IDSource
     /// The Mac's calendar, whose days the new cards are counted by.
     let calendar: Calendar
     /// Where the images on cards are kept: the Images folder beside the
@@ -48,8 +52,10 @@ public struct Engine: Sendable {
     /// that an older version of Ficha left, it saves a copy before an update
     /// in the Backups folder, where it first moves those that versions before
     /// backups left next to the database. A database that a newer version
-    /// migrated is refused, and left as it was. Days start at midnight by
-    /// `calendar`: the Mac's, except in tests. A refine session's files come
+    /// migrated is refused, and left as it was. The review log's entries
+    /// it writes get their IDs from `ids`, random ones except in tests. Days
+    /// start at midnight by `calendar`: the Mac's, except in tests. A refine
+    /// session's files come
     /// from `downloads` alone, the Downloads folder, when it's given, and from
     /// anywhere when it isn't. An import draws its SVGs with a drawer
     /// `newSVGDrawer` makes, in the app its XPC service, and without one, as
@@ -57,6 +63,7 @@ public struct Engine: Sendable {
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
+        ids: any IDSource = RandomIDSource(),
         calendar: Calendar = .autoupdatingCurrent,
         refineFilesOnlyIn downloads: URL? = nil,
         drawingSVGsWith newSVGDrawer: (@Sendable () -> any SVGDrawer)? = nil
@@ -84,13 +91,13 @@ public struct Engine: Sendable {
                 return pool
             }
             self.init(
-                database: pool, in: folder, time: time, calendar: calendar, refineFilesOnlyIn: downloads,
+                database: pool, in: folder, time: time, ids: ids, calendar: calendar, refineFilesOnlyIn: downloads,
                 drawingSVGsWith: newSVGDrawer)
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
             try migrate(queue, savingACopyIn: nil, at: time.now)
             self.init(
-                database: queue, in: nil, time: time, calendar: calendar, refineFilesOnlyIn: downloads,
+                database: queue, in: nil, time: time, ids: ids, calendar: calendar, refineFilesOnlyIn: downloads,
                 drawingSVGsWith: newSVGDrawer)
         }
     }
@@ -114,7 +121,8 @@ public struct Engine: Sendable {
             return nil
         }
         self.init(
-            database: pool, in: folder, time: time, calendar: calendar, refineFilesOnlyIn: nil, drawingSVGsWith: nil)
+            database: pool, in: folder, time: time, ids: RandomIDSource(), calendar: calendar, refineFilesOnlyIn: nil,
+            drawingSVGsWith: nil)
     }
 
     /// An engine on `database`, which is in the data folder `folder`, with
@@ -124,6 +132,7 @@ public struct Engine: Sendable {
         database: any DatabaseWriter,
         in folder: URL?,
         time: any TimeSource,
+        ids: any IDSource,
         calendar: Calendar,
         refineFilesOnlyIn downloads: URL?,
         drawingSVGsWith newSVGDrawer: (@Sendable () -> any SVGDrawer)?
@@ -141,6 +150,7 @@ public struct Engine: Sendable {
             sounds = .memory(FilesInMemory())
         }
         self.time = time
+        self.ids = ids
         self.calendar = calendar
         refineFilesOnlyIn = downloads
         self.newSVGDrawer = newSVGDrawer

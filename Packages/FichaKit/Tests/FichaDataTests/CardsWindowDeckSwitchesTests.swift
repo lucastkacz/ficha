@@ -16,7 +16,7 @@ struct CardsWindowDeckSwitchesTests {
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     // Arte is set aside, so Arte::Pintura sits inside a set-aside deck, and

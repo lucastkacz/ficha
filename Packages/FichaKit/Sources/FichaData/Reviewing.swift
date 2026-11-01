@@ -70,7 +70,7 @@ extension Engine {
             try recordAnswer(
                 kind, of: CardWay(cardID: cardID, way: way), at: answeredAt, responseTime: responseTime,
                 trigger: trigger, settings: settings, reviewingAhead: reviewingAhead, intervalsWorkedOutAt: previewedAt,
-                in: db)
+                ids: ids, in: db)
         }
     }
 
@@ -170,7 +170,8 @@ func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogE
 /// and returns whether the card is now forgotten often that way, or throws
 /// when the way can't take the answer. A review keeps the interval its
 /// rating would set as the scheduler works it out at `previewedAt`, when the
-/// review panel showed it, or else at `answeredAt`. A back-first way takes
+/// review panel showed it, or else at `answeredAt`, and its ID comes from
+/// `ids`. A back-first way takes
 /// it also when the card no longer goes both ways, as when Lucas switched it
 /// off while the review panel showed that way: the way keeps its progress
 /// for when it's switched on again.
@@ -184,6 +185,7 @@ func recordAnswer(
     settings: ReviewSettings,
     reviewingAhead: Bool,
     intervalsWorkedOutAt previewedAt: Date? = nil,
+    ids: any IDSource,
     in db: Database
 ) throws -> ForgottenOften? {
     let lookAhead = trigger.lookAhead(in: settings)
@@ -209,9 +211,9 @@ func recordAnswer(
     // earlier one. A new way's first review answers none.
     let answer = ReviewLogEntry(
         cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt, responseTime: responseTime,
-        trigger: trigger, isAhead: isAhead, uuid: UUID(), answeredEntry: wayLog.max { $0.precedes($1) }?.uuid,
+        trigger: trigger, isAhead: isAhead, uuid: ids.newID(), answeredEntry: wayLog.max { $0.precedes($1) }?.uuid,
         interval: try scheduler.preview(of: answered, after: wayLog, at: previewedAt ?? answeredAt)[rating])
-    try insert(answer, in: db)
+    try insert(answer, ids: ids, in: db)
     return try settings.forgottenOften(after: log + [answer], editedAt: card.editedAt)
 }
 
@@ -235,10 +237,11 @@ private func deleteLastEntry(of cardWay: CardWay, in db: Database) throws {
 }
 
 /// Adds an entry at the end of the review log, with its ID unique across
-/// devices, or a new one when it has none yet, the entry it answered, and the
-/// interval it set, in seconds: a review's own, or a placement's, with its
-/// due time and ease. A review keeps one: the table refuses it without.
-func insert(_ entry: ReviewLogEntry, in db: Database) throws {
+/// devices, or a new one from `ids` when it has none yet, the entry it
+/// answered, and the interval it set, in seconds: a review's own, or a
+/// placement's, with its due time and ease. A review keeps one: the table
+/// refuses it without.
+func insert(_ entry: ReviewLogEntry, ids: any IDSource, in db: Database) throws {
     let columns = entry.kind.columns
     try db.execute(
         sql: """
@@ -248,7 +251,7 @@ func insert(_ entry: ReviewLogEntry, in db: Database) throws {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
-            (entry.uuid ?? UUID()).uuidString, entry.cardID, entry.way.rawValue, columns.kind, columns.rating,
+            (entry.uuid ?? ids.newID()).uuidString, entry.cardID, entry.way.rawValue, columns.kind, columns.rating,
             columns.due, columns.ease, entry.answeredAt, entry.responseTime.map(\.timeInterval),
             entry.trigger?.rawValue, entry.isAhead, entry.answeredEntry?.uuidString,
             (columns.interval ?? entry.interval).map(\.timeInterval),

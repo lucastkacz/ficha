@@ -20,7 +20,7 @@ final class ImportingTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 21, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 

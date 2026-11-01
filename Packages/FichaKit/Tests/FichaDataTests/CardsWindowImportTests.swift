@@ -19,7 +19,7 @@ final class CardsWindowImportTests {
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 

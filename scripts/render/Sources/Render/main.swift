@@ -503,8 +503,8 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// flag on its front and the Sun of May and a sound on its back, and two new
 /// cards made by hand, with no type and no capture. The time it's on stays
 /// where the twelve days left it. FSRS fuzzes each interval by the review
-/// log's ids, which each run makes anew, so a graduated card's interval and
-/// due time change by a day or so from one run to the next.
+/// log's IDs, which count up from the same first on every run, so every
+/// run's graduated intervals and due times are the same.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -515,7 +515,7 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
         throw RenderError(description: "Couldn't make the sample's start date.")
     }
     let time = ManualTimeSource(now: start)
-    let engine = try Engine(location: location, time: time, calendar: calendar)
+    let engine = try Engine(location: location, time: time, ids: CountingIDSource(), calendar: calendar)
     let settings = ReviewSettings.defaults
     try SampleCards.load(into: engine)
     let cards = try engine.cards()

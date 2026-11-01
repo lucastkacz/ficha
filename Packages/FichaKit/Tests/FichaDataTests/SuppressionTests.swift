@@ -16,7 +16,7 @@ struct SuppressionTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         serendipia = try approveCard("serendipia", in: engine)
         try engine.meet(serendipia)
         time.advance(by: hours(1))

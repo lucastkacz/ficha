@@ -522,17 +522,17 @@ extension Engine {
     /// comes from: for each of its ways, the review log its reviews there
     /// and where it stood make, as
     /// `ImportedProgress.log(of:importedAt:with:newID:)` says, with
-    /// `scheduler`, the user's settings, and IDs random as every entry's,
-    /// unless it's new there; and a burial when it was suspended there, as
+    /// `scheduler`, the user's settings, and IDs from the engine's source,
+    /// as every entry's, unless it's new there; and a burial when it was suspended there, as
     /// its front-first way says.
     private func bring(
         _ card: ImportedCard, to cardID: Int64, at importedAt: Date, with scheduler: Scheduler, in db: Database
     ) throws {
         for (way, progress) in [(Way.frontFirst, card.progress), (.backFirst, card.backFirstProgress)] {
             let log = try progress?.log(
-                of: CardWay(cardID: cardID, way: way), importedAt: importedAt, with: scheduler, newID: UUID.init)
+                of: CardWay(cardID: cardID, way: way), importedAt: importedAt, with: scheduler, newID: ids.newID)
             for entry in log ?? [] {
-                try insert(entry, in: db)
+                try insert(entry, ids: ids, in: db)
             }
         }
         if card.progress?.isSuspended == true {

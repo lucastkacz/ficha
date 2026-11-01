@@ -17,7 +17,7 @@ struct CardsWindowAllTagsTests {
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     // arte::barroco and geografía have a color, filosofía an emoji,

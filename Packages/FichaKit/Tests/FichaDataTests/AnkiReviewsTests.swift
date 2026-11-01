@@ -29,7 +29,7 @@ final class AnkiReviewsTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 23, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 

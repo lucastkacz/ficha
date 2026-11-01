@@ -21,8 +21,12 @@ final class DeckChangesSyncTests {
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 21, in: calendar))
-        mac = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
-        iPhone = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
+        mac = try Device(
+            Engine(location: .inMemory, time: time, ids: CountingIDSource(device: 1), calendar: calendar),
+            syncingThrough: iCloud)
+        iPhone = try Device(
+            Engine(location: .inMemory, time: time, ids: CountingIDSource(device: 2), calendar: calendar),
+            syncingThrough: iCloud)
     }
 
     // Only Idiomas syncs, so La Gioconda stays on the iPhone; Arte is orange,
