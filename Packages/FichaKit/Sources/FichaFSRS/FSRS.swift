@@ -41,7 +41,7 @@ public struct FSRS: Sendable, Equatable {
         var next = FichaFsrsNextStates()
         try check(
             ficha_fsrs_next_states(
-                crateParameters, memoryState != nil, FichaFsrsMemoryState(memoryState ?? .none),
+                crateParameters, memoryState != nil, FichaFsrsMemoryState(memoryState ?? .newCardPlaceholder),
                 desiredRetention, days, &next))
         return NextStates(
             again: NextState(next.again), hard: NextState(next.hard), good: NextState(next.good),
@@ -92,8 +92,9 @@ public struct MemoryState: Sendable, Equatable {
         self.difficulty = difficulty
     }
 
-    /// No memory, which the crate reads for a new card.
-    fileprivate static let none = MemoryState(stability: 0, difficulty: 0)
+    /// What a call passes in place of a new card's memory state, which it
+    /// doesn't have: the crate ignores it, as it's told there's none.
+    fileprivate static let newCardPlaceholder = MemoryState(stability: 0, difficulty: 0)
 }
 
 /// A card's memory after a rating, and the interval FSRS gives it then.
@@ -124,15 +125,38 @@ public struct NextStates: Sendable, Equatable {
 }
 
 /// Why fsrs-rs couldn't work something out.
-public enum FSRSError: Error, Equatable {
+public enum FSRSError: Error, Equatable, CustomStringConvertible {
     /// The parameters aren't 21 finite numbers.
     case invalidParameters
     /// A memory state, retention or number of days that fsrs-rs can't work
-    /// with, which gave a result that isn't a finite number.
+    /// with: a negative number of days, or numbers that gave a result that
+    /// isn't a finite number.
     case invalidInput
     /// fsrs-rs failed in a way Ficha doesn't expect, or panicked, which our
     /// crate caught before it reached Swift: a bug in fsrs-rs or in the crate.
     case unexpected
+
+    public var description: String {
+        switch self {
+        case .invalidParameters:
+            """
+            fsrs-rs can't schedule with these parameters, which aren't the 21 finite numbers FSRS-6 takes: schedule \
+            with FSRS-6's default parameters, FSRS.defaultParameters(), instead.
+            """
+        case .invalidInput:
+            """
+            fsrs-rs can't work with the numbers it was given, a memory state, an SM-2 interval and ease, a retention \
+            or a number of days: the days are negative, or the numbers give a result that isn't a finite number. \
+            Check where they came from, the card's reviews or the settings.
+            """
+        case .unexpected:
+            """
+            fsrs-rs failed in a way Ficha doesn't expect, or panicked, which Ficha's crate caught before it reached \
+            Swift: a bug in fsrs-rs or in the crate, in Packages/FichaKit/Rust. Report it with the numbers the call \
+            was given.
+            """
+        }
+    }
 }
 
 /// Throws the error for a call's status, unless the call worked.

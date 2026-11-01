@@ -63,7 +63,10 @@ trap 'rm -f "$messages"' EXIT
   echo "Cargo couldn't build fsrs-rs, as it says above: fix the crate in $crate, or, when the toolchain is missing, run make bootstrap." >&2
   exit 1
 }
-target_folder=$(cd "$crate" && cargo metadata --locked --format-version 1 --no-deps | jq -r .target_directory)
+target_folder=$(cd "$crate" && cargo metadata --locked --format-version 1 --no-deps | jq -r .target_directory) || {
+  echo "Cargo built fsrs-rs, but cargo metadata couldn't say where, as it says above: run make fsrs again, and if it fails the same way, check the crate's Cargo.toml and .cargo/config.toml in $crate, which it reads." >&2
+  exit 1
+}
 header_folder=$(jq -r 'select(.reason == "build-script-executed" and (.package_id | contains("ficha-fsrs"))) | .out_dir' "$messages" | head -n 1)
 [[ -f $header_folder/ficha_fsrs.h ]] || {
   echo "Cargo built fsrs-rs, but its messages name no header that build.rs wrote: check that build.rs still writes ficha_fsrs.h to OUT_DIR." >&2
@@ -84,7 +87,10 @@ library() {
   for target in "$@"; do
     libraries+=("$target_folder/$target/release/libficha_fsrs.a")
   done
-  lipo -create "${libraries[@]}" -output "$work/$platform/libficha_fsrs.a"
+  lipo -create "${libraries[@]}" -output "$work/$platform/libficha_fsrs.a" || {
+    echo "lipo couldn't join the libraries Cargo built for $platform ($*), as it says above: check that $crate/Cargo.toml still builds a static library named ficha_fsrs, whose libficha_fsrs.a this script joins, and run make fsrs again." >&2
+    exit 1
+  }
 }
 library macos "${mac[@]}"
 library ios "${iphone[@]}"
@@ -94,7 +100,10 @@ cp "$header_folder/ficha_fsrs.h" "$crate/module.modulemap" "$work/include/$modul
 xcodebuild -create-xcframework -output "$work/$module.xcframework" \
   -library "$work/macos/libficha_fsrs.a" -headers "$work/include" \
   -library "$work/ios/libficha_fsrs.a" -headers "$work/include" \
-  -library "$work/ios-simulator/libficha_fsrs.a" -headers "$work/include" >/dev/null
+  -library "$work/ios-simulator/libficha_fsrs.a" -headers "$work/include" >/dev/null || {
+  echo "xcodebuild couldn't make the XCFramework from the libraries Cargo built, as it says above: check that the selected Xcode (xcode-select -p) is the one .xcode-version names, which make xcode-check checks, and run make fsrs again." >&2
+  exit 1
+}
 
 rm -rf "$xcframework"
 mv "$work/$module.xcframework" "$xcframework"

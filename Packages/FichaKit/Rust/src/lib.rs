@@ -80,7 +80,7 @@ pub unsafe extern "C" fn ficha_fsrs_default_parameters(
 ) -> FichaFsrsStatus {
     // SAFETY: the caller's promise, which the function's documentation states.
     unsafe {
-        answer(result, || {
+        catch_panic_and_write(result, || {
             Ok(FichaFsrsParameters {
                 values: fsrs::DEFAULT_PARAMETERS,
             })
@@ -108,7 +108,7 @@ pub unsafe extern "C" fn ficha_fsrs_next_states(
 ) -> FichaFsrsStatus {
     // SAFETY: the caller's promise, which the function's documentation states.
     unsafe {
-        answer(result, || {
+        catch_panic_and_write(result, || {
             let fsrs = model(parameters)?;
             let current = has_memory_state.then_some(MemoryState::from(memory_state));
             let next = fsrs
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn ficha_fsrs_memory_state_from_sm2(
 ) -> FichaFsrsStatus {
     // SAFETY: the caller's promise, which the function's documentation states.
     unsafe {
-        answer(result, || {
+        catch_panic_and_write(result, || {
             let memory_state = model(parameters)?
                 .memory_state_from_sm2(ease, interval, sm2_retention)
                 .map_err(status)?;
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn ficha_fsrs_current_retrievability(
 ) -> FichaFsrsStatus {
     // SAFETY: the caller's promise, which the function's documentation states.
     unsafe {
-        answer(result, || {
+        catch_panic_and_write(result, || {
             let parameters = fsrs::check_and_fill_parameters(&parameters.values).map_err(status)?;
             let decay = parameters[FICHA_FSRS_PARAMETER_COUNT - 1];
             let retrievability =
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn ficha_fsrs_current_retrievability(
 /// # Safety
 ///
 /// `result` is null, or points to memory for a `T` that the call may write.
-unsafe fn answer<T>(
+unsafe fn catch_panic_and_write<T>(
     result: *mut T,
     work: impl FnOnce() -> Result<T, FichaFsrsStatus> + UnwindSafe,
 ) -> FichaFsrsStatus {

@@ -74,6 +74,11 @@ jobs:
         ~/.cargo/git/db
         Packages/FichaKit/Frameworks
         .build/cargo/debug
+      # Where rustup keeps the toolchain that rust-toolchain.toml pins: a
+      # folder of its own, which holds that toolchain alone, so its cache
+      # leaves out the stable toolchain the image keeps in ~/.rustup.
+      # RUSTUP_HOME is rustup's documented way to move it.
+      RUSTUP_HOME: ${{ github.workspace }}/.build/rustup
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -119,15 +124,32 @@ jobs:
           echo "::error::Downloading the iOS platform failed $attempts times, $delay seconds apart: re-run the job."
           exit 1
       - name: Install the tools
-        # The ones `make bootstrap` installs on a Mac, which the image doesn't
-        # ship, rustup among them, as on the Mac.
+        # The ones `make bootstrap` installs on a Mac. The image ships rustup
+        # already, through Homebrew as on the Mac, so brew leaves it as it is;
+        # it stays in the list for an image that drops it.
         run: brew install xcodegen shellcheck actionlint rustup
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      - name: Restore the Rust toolchain
+        # The toolchain rustup installed for rust-toolchain.toml, which a run
+        # on main saved, keyed by that file: so a run downloads it only after
+        # the pin moves. The image's own toolchain can't stand in for it:
+        # rustup installs it as stable, a toolchain apart from the pinned
+        # version's even when both are the same release. No restore keys: a
+        # moved pin starts from no cache, rather than carry the old toolchain
+        # into the new one. Caching rustup's folder is our own; Cargo's book
+        # lists only Cargo's.
+        id: rustup-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RUSTUP_HOME }}
+          key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Packages/FichaKit/Rust/rust-toolchain.toml') }}
       - name: Install the Rust toolchain
         # The one Packages/FichaKit/Rust/rust-toolchain.toml pins, with its
         # targets and its rustfmt and clippy, as `make bootstrap` installs it.
+        # When the step above restored it, rustup finds it whole and
+        # downloads nothing.
         run: make rust-toolchain
       - name: Name the runner's image
         # The SDK's compiled modules in the derived data record each SDK file's
@@ -191,3 +213,10 @@ jobs:
         with:
           path: ${{ env.RUST_BUILDS }}
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+      - name: Save the Rust toolchain
+        # After a run on main, unless the cache had its key already.
+        if: github.ref == 'refs/heads/main' && steps.rustup-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RUSTUP_HOME }}
+          key: ${{ steps.rustup-cache.outputs.cache-primary-key }}

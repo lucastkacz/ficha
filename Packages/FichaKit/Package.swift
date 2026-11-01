@@ -107,8 +107,8 @@ let package = Package(
             dependencies: ["FichaCore"],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
-        // The one test that calls fsrs-rs through FichaFSRS, against
-        // fsrs-rs's own expected values.
+        // The tests that call fsrs-rs through FichaFSRS: against fsrs-rs's own
+        // expected values, and with parameters it can't work with.
         .testTarget(
             name: "FichaFSRSTests",
             dependencies: ["FichaFSRS"],

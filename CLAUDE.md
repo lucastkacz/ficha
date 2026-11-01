@@ -69,7 +69,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, rules, the plugin, the `/refine` skill and the subagents' types. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
-- `scripts/`: the hook tests, the render tools, and the cleanup after a merge with its tests.
+- `scripts/`: the hook tests, the render tools, the build of fsrs-rs's XCFramework (`make fsrs`), and the cleanup after a merge with its tests.
 
 ## Commands
 

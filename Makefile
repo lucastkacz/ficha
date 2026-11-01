@@ -38,8 +38,14 @@ bootstrap: ## Install the tools the build and the lint need, and the Rust toolch
 	@command -v rustup >/dev/null || brew install rustup
 	$(MAKE) rust-toolchain
 
+.PHONY: rustup
+rustup: ## Fail unless rustup, which runs the Rust toolchain that rust-toolchain.toml pins, is installed.
+	@command -v rustup >/dev/null || { \
+		echo "There's no rustup, which runs the Rust toolchain that $(RUST)/rust-toolchain.toml pins: run make bootstrap, which installs both." >&2; \
+		exit 1; }
+
 .PHONY: rust-toolchain
-rust-toolchain: ## Install the Rust toolchain that rust-toolchain.toml pins, with its targets, as CI does too.
+rust-toolchain: rustup ## Install the Rust toolchain that rust-toolchain.toml pins, with its targets, as CI does too.
 	cd $(RUST) && rustup toolchain install
 
 # The XCFramework, which git ignores, and which every target that builds
@@ -69,7 +75,7 @@ SHELL_SCRIPTS := .claude/hooks/*.sh scripts/*.sh
 
 .PHONY: lint
 CHECKS += lint
-lint: ## Check the Swift code's and our crate's formatting and style, and lint the shell scripts and the workflows.
+lint: rustup ## Check the Swift code's and our crate's formatting and style, and lint the shell scripts and the workflows.
 	swift format lint --strict --recursive --parallel $(SWIFT_SOURCES)
 	cd $(RUST) && cargo fmt --check
 	cd $(RUST) && cargo clippy --locked --quiet -- --deny warnings
@@ -77,7 +83,7 @@ lint: ## Check the Swift code's and our crate's formatting and style, and lint t
 	actionlint
 
 .PHONY: fmt
-fmt: ## Format the Swift code and our crate in place.
+fmt: rustup ## Format the Swift code and our crate in place.
 	swift format --in-place --recursive --parallel $(SWIFT_SOURCES)
 	cd $(RUST) && cargo fmt
 

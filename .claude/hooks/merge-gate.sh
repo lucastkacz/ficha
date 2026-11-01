@@ -51,12 +51,13 @@ risky_paths=(
   # The package's manifest, and the versions it pins.
   'Packages/FichaKit/Package\.swift'
   'Packages/FichaKit/Package\.resolved'
-  # Our crate's manifest, the versions its lock pins, fsrs-rs's among them,
-  # whose upgrade can change intervals, and the Rust toolchain that builds it
-  # (ADR 0026).
-  'Packages/FichaKit/Rust/Cargo\.toml'
-  'Packages/FichaKit/Rust/Cargo\.lock'
-  'Packages/FichaKit/Rust/rust-toolchain\.toml'
+  # FSRS's arithmetic, which spaces every card, and its build (ADR 0026): our
+  # crate, whole, with the functions that call fsrs-rs, its manifest, the
+  # versions its lock pins, fsrs-rs's among them, whose upgrade can change
+  # intervals, the Rust toolchain and the configuration that build it; and
+  # the Swift that wraps the crate for FichaCore.
+  'Packages/FichaKit/Rust/'
+  'Packages/FichaKit/Sources/FichaFSRS/'
   # The database schema and its migrations, which all live in FichaData/Schema*.
   'Packages/FichaKit/Sources/FichaData/Schema'
   # The one way in to the cards that show up, those in Lucas's reviews, and
