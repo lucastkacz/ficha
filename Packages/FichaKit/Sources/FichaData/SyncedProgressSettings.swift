@@ -147,18 +147,19 @@ private func storedProgressSettings(in db: Database) throws -> ProgressSettings?
 /// comes in with Ficha's defaults, if it isn't there yet, and then takes
 /// them, so that what differs from Ficha's counts as changed.
 private func storeProgressSettings(_ settings: ProgressSettings, in db: Database) throws {
-    let columns = progressFields.map(\.rawValue)
     if try storedProgressSettings(in: db) == nil {
+        let fichas = try StoredProgressSettings(ReviewSettings.defaults.progress).columnValues
         try db.execute(
             sql: """
-                INSERT INTO progressSettings (id, \(columns.joined(separator: ", ")))
-                VALUES (1, \(columns.map { _ in "?" }.joined(separator: ", ")))
+                INSERT INTO progressSettings (id, \(fichas.map(\.field.rawValue).joined(separator: ", ")))
+                VALUES (1, \(fichas.map { _ in "?" }.joined(separator: ", ")))
                 """,
-            arguments: StatementArguments(try StoredProgressSettings(ReviewSettings.defaults.progress).columnValues))
+            arguments: StatementArguments(fichas.map(\.value)))
     }
+    let values = try StoredProgressSettings(settings).columnValues
     try db.execute(
-        sql: "UPDATE progressSettings SET \(columns.map { "\($0) = ?" }.joined(separator: ", "))",
-        arguments: StatementArguments(try StoredProgressSettings(settings).columnValues))
+        sql: "UPDATE progressSettings SET \(values.map { "\($0.field.rawValue) = ?" }.joined(separator: ", "))",
+        arguments: StatementArguments(values.map(\.value)))
 }
 
 /// The settings that decide a card's progress as the database's row and the
@@ -226,11 +227,15 @@ private struct StoredProgressSettings {
         fsrsParameters = try record.optionalText(SyncedField.fsrsParameters.rawValue) ?? fichas.fsrsParameters
     }
 
-    /// The values of the row's columns, in the order of `progressFields`.
-    var columnValues: [(any DatabaseValueConvertible)?] {
+    /// The value of each of the row's columns, beside the field that names
+    /// the column, so that each statement takes its columns and its values
+    /// from the same pairs.
+    var columnValues: [(field: SyncedField, value: (any DatabaseValueConvertible)?)] {
         [
-            ladder, newCardsPerDay, forgottenOftenAfter, learningSteps, relearningSteps, desiredRetention,
-            longestIntervalInDays, fsrsParameters,
+            (.ladder, ladder), (.newCardsPerDay, newCardsPerDay), (.forgottenOftenAfter, forgottenOftenAfter),
+            (.learningSteps, learningSteps), (.relearningSteps, relearningSteps),
+            (.desiredRetention, desiredRetention), (.longestIntervalInDays, longestIntervalInDays),
+            (.fsrsParameters, fsrsParameters),
         ]
     }
 
