@@ -117,5 +117,21 @@ final class SettingsTabViewController: NSTabViewController {
         if let tab = SettingsTab(of: tabViewItem) {
             Preferences.settingsTab = tab
         }
+        keepTheKeyboardOutOfTheSchedulingTab()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        keepTheKeyboardOutOfTheSchedulingTab()
+    }
+
+    /// Leaves the keyboard with the window when the Scheduling tab shows, as
+    /// Settings opens on it or Lucas picks it: AppKit gives it to the tab's
+    /// Longest interval field, Settings' only text field, with its number
+    /// selected, where a stray keystroke would change a setting that syncs.
+    /// A click or Tab puts it there.
+    private func keepTheKeyboardOutOfTheSchedulingTab() {
+        guard SettingsTab(of: tabView.selectedTabViewItem) == .scheduling else { return }
+        view.window?.makeFirstResponder(nil)
     }
 }
