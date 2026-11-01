@@ -29,47 +29,120 @@ func ladderPlacement(onStep step: Int, of waits: [Int64]) -> (interval: Duration
     return (wait, wait >= .seconds(24 * 60 * 60) ? ankiStartingEase : nil)
 }
 
-/// The scheduling settings the review log is carried over with, by the
-/// migration and on arrival alike: Ficha's, whatever the device's settings
-/// are, so every device carries over the log they share alike, as #407 asks.
-let carryOverScheduler = Scheduler.standard
+/// The kind and rating, as the review log's columns and records name them,
+/// of an entry that a version of Ficha before FSRS kept, as this version
+/// keeps it: a first view, which put a new way on the ladder's first step,
+/// becomes a review rated again, which puts it on the first learning step,
+/// as the scheduler reads a new way's first review; a review and a
+/// placement keep their own.
+func carriedOver(kind: String, rating: String?) -> (kind: String, rating: String?) {
+    kind == "firstView" ? ("review", Rating.again.rawValue) : (kind, rating)
+}
 
-/// `record`, the review log's entry with this ID from iCloud, which the
-/// device doesn't hold yet, as this version of Ficha keeps it, when a
-/// version before FSRS sent it: its first view becomes a review rated again,
-/// as the scheduler reads one; its placement on a step of the ladder holds
-/// that step's interval and ease on the ladder Ficha shipped, since the
-/// device's isn't known; and its review without an interval holds the one
-/// the scheduler works out for it with `carryOverScheduler`, from where it
-/// falls in its way's log, answering the entry before it there, or none as
-/// the way's first, as the migration carries over a review. A record whose
-/// card the device doesn't hold yet comes back with what it can be given
-/// without it, to wait for the card and be carried over then.
-func carriedOver(_ record: ICloudRecord, as uuid: UUID, in db: Database) throws -> ICloudRecord {
+/// The scheduling settings the review log is carried over with, by the
+/// migration and on arrival alike, whatever the device's are, so that every
+/// device carries over the log they share alike: Ficha's as FSRS came
+/// (#407), written out here, so that a later change to Ficha's own leaves
+/// them alone. Learning steps of 1 hour and 4 hours, a relearning step of 1
+/// hour, a desired retention of 90%, a longest interval of 36,500 days, and
+/// FSRS-6's 21 default parameters as fsrs-rs 6.6.2 has them
+/// (`DEFAULT_PARAMETERS` in its `src/inference.rs`), so that a later fsrs-rs
+/// leaves them alone too. The replay itself, Anki's step rules and fsrs-rs's
+/// arithmetic (`Scheduler.keepingIntervals(of:)`), is live code: a change to
+/// either changes what a device that migrates, or takes an older device's
+/// entry, after it carries over.
+func carryOverScheduler() throws -> Scheduler {
+    guard
+        let scheduler = Scheduler(
+            learningSteps: [.seconds(3_600), .seconds(14_400)], relearningSteps: [.seconds(3_600)],
+            desiredRetention: 0.9, longestIntervalInDays: 36_500,
+            parameters: [
+                0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835, 0.0614,
+                0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
+            ])
+    else {
+        throw unreadable("The settings the review log is carried over with aren't valid: fix carryOverScheduler()")
+    }
+    return scheduler
+}
+
+/// One way's entries, `wayLog`, in any order, in the order the scheduler
+/// replays them, with the reviews among them that `carriedOver` names by
+/// their IDs carried over: each, whatever interval and answered entry it
+/// held, answering the entry replayed just before it, or none as the way's
+/// first, and keeping the interval the replay gives it there with
+/// `carryOverScheduler()`, so that the scheduler keeps it, and a later change
+/// to the device's settings leaves the way's due time alone (#404). The
+/// other entries stay as they are, and the replay follows them as any
+/// device's does.
+func carryingOver(_ carriedOver: Set<UUID>, in wayLog: [ReviewLogEntry]) throws -> [ReviewLogEntry] {
+    let unkept = wayLog.map { entry in
+        guard let uuid = entry.uuid, carriedOver.contains(uuid) else {
+            return entry
+        }
+        return ReviewLogEntry(
+            cardID: entry.cardID, way: entry.way, kind: entry.kind, answeredAt: entry.answeredAt,
+            responseTime: entry.responseTime, trigger: entry.trigger, isAhead: entry.isAhead, uuid: uuid)
+    }
+    return try carryOverScheduler().keepingIntervals(of: unkept)
+}
+
+/// Applies `record`, the review log's entry with this ID from iCloud, as
+/// `SyncedTable.reviewLog` applies it, an entry new to the device carried
+/// over first when a version of Ficha before FSRS sent it: its first view as
+/// a review rated again, its placement on a step of the ladder with that
+/// step's interval and ease on the ladder Ficha shipped, since the sending
+/// device's isn't known, and its review without an interval as a review the
+/// carry-over gives one, among the entries of its way the device holds, and
+/// marks as carried over. iCloud gives a way's entries in any order (ADR
+/// 0017), so every entry new to the device has its way's carried-over
+/// reviews carried over again (`carryingOver(_:in:)`): whichever came first,
+/// each ends up answering the entry before it, with the interval the
+/// carry-over gives it there, as the migration carries over a review.
+/// Returns false, changing nothing, when the entry's card isn't here yet,
+/// for it to wait.
+func applyReviewLogEntry(_ record: ICloudRecord, as uuid: UUID, in db: Database) throws -> Bool {
+    guard try !SyncedTable.reviewLog.holdsRow(with: uuid, in: db) else {
+        return try SyncedTable.reviewLog.apply(record, toRowWith: uuid, in: db)
+    }
     var fields = record.fields
     // The ladder's step, which no column keeps any longer.
     fields["step"] = nil
-    switch try record.optionalText("kind") {
-    case "firstView":
-        fields["kind"] = ICloudValue.string("review")
-        fields["rating"] = ICloudValue.string(Rating.again.rawValue)
-    case "placement" where record.value(of: "interval") == nil:
+    let (kind, rating) = carriedOver(kind: try record.text("kind"), rating: try record.optionalText("rating"))
+    fields["kind"] = ICloudValue.string(kind)
+    fields["rating"] = rating.map(ICloudValue.string)
+    let isCarriedOver = kind == "review" && record.value(of: "interval") == nil
+    if kind == "placement", record.value(of: "interval") == nil {
         guard case .int(let step)? = record.value(of: "step") else {
             throw unreadable("A placement from iCloud has neither its interval nor its step on the ladder")
         }
         let placed = ladderPlacement(onStep: Int(clamping: step), of: shippedLadderWaits)
         fields["interval"] = ICloudValue.double(placed.interval.timeInterval)
         fields["ease"] = placed.ease.map(ICloudValue.double)
-    default:
-        break
     }
     let carried = ICloudRecord(id: record.id, type: record.type, fields: fields, systemFields: record.systemFields)
-    guard try carried.optionalText("kind") == "review", carried.value(of: "interval") == nil else {
-        return carried
+    guard
+        try SyncedTable.reviewLog.apply(
+            isCarriedOver ? try givenItsInterval(carried, as: uuid, in: db) : carried, toRowWith: uuid, in: db)
+    else {
+        return false
     }
-    guard let cardName = try carried.optionalText("card"), let cardUUID = UUID(uuidString: cardName),
-        let wayName = try carried.optionalText("way"), let way = Way(rawValue: wayName),
-        let rating = Rating(rawValue: try carried.text("rating")), let answeredAt = try carried.time("answeredAt")
+    if isCarriedOver {
+        try db.execute(sql: "UPDATE reviewLog SET isCarriedOver = 1 WHERE uuid = ?", arguments: [uuid.uuidString])
+    }
+    try carryOverAgain(theWayOf: uuid, in: db)
+    return true
+}
+
+/// `review`, a review with this ID from iCloud that holds no interval, which
+/// the device doesn't hold yet, given the interval the carry-over gives it,
+/// and the entry it answers, among the entries of its way the device holds,
+/// as `carryingOver(_:in:)` says; or as it is, when the device doesn't hold
+/// its card yet, to wait for it.
+private func givenItsInterval(_ review: ICloudRecord, as uuid: UUID, in db: Database) throws -> ICloudRecord {
+    guard let cardName = try review.optionalText("card"), let cardUUID = UUID(uuidString: cardName),
+        let wayName = try review.optionalText("way"), let way = Way(rawValue: wayName),
+        let rating = Rating(rawValue: try review.text("rating")), let answeredAt = try review.time("answeredAt")
     else {
         throw unreadable("A review from iCloud lacks its card, its way, its rating or when it was answered")
     }
@@ -77,22 +150,80 @@ func carriedOver(_ record: ICloudRecord, as uuid: UUID, in db: Database) throws 
         let cardID = try Int64.fetchOne(
             db, sql: "SELECT id FROM card WHERE uuid = ?", arguments: [cardUUID.uuidString])
     else {
-        return carried
+        return review
     }
-    let review = ReviewLogEntry(
+    let held = try wayLog(of: CardWay(cardID: cardID, way: way), in: db)
+    let entry = ReviewLogEntry(
         cardID: cardID, way: way, kind: .review(rating), answeredAt: answeredAt, responseTime: nil, trigger: nil,
         uuid: uuid)
-    let wayLog = try logEntries(ofExisting: cardID, in: db).filter { $0.way == way }
-    let replayed: [ReviewLogEntry]
-    do {
-        replayed = try carryOverScheduler.keepingIntervals(of: wayLog + [review])
-    } catch {
-        throw unreadable("A review from iCloud can't be given its interval: \(error.description)")
-    }
-    guard let kept = replayed.first(where: { $0.uuid == uuid }), let interval = kept.interval else {
+    guard
+        let carried = try carryingOverOnArrival(held.carriedOver.union([uuid]), in: held.entries + [entry])
+            .first(where: { $0.uuid == uuid }),
+        let interval = carried.interval
+    else {
         throw unreadable("A review from iCloud can't be given its interval")
     }
+    var fields = review.fields
     fields["interval"] = ICloudValue.double(interval.timeInterval)
-    fields["answeredEntry"] = kept.answeredEntry.map { ICloudValue.string($0.uuidString) }
-    return ICloudRecord(id: record.id, type: record.type, fields: fields, systemFields: record.systemFields)
+    fields["answeredEntry"] = carried.answeredEntry.map { ICloudValue.string($0.uuidString) }
+    return ICloudRecord(id: review.id, type: review.type, fields: fields, systemFields: review.systemFields)
+}
+
+/// Carries over again, as `carryingOver(_:in:)` says, the reviews that were
+/// carried over of the way of the review log's entry with this ID, which
+/// just joined it: one that comes before them in the replay changes the
+/// entry each answers, or the interval it's spaced from, and the way's first
+/// entry seeds the fuzz of every review after it.
+private func carryOverAgain(theWayOf uuid: UUID, in db: Database) throws {
+    guard
+        let joined = try Row.fetchOne(db, sql: "SELECT * FROM reviewLog WHERE uuid = ?", arguments: [uuid.uuidString])
+            .map(ReviewLogEntry.init(row:))
+    else {
+        throw unreadable("A review log entry from iCloud isn't there once applied")
+    }
+    let held = try wayLog(of: CardWay(cardID: joined.cardID, way: joined.way), in: db)
+    guard !held.carriedOver.isEmpty else {
+        return
+    }
+    for review in try carryingOverOnArrival(held.carriedOver, in: held.entries) {
+        guard let id = review.uuid, held.carriedOver.contains(id) else {
+            continue
+        }
+        try db.execute(
+            sql: "UPDATE reviewLog SET interval = ?, answeredEntryUuid = ? WHERE uuid = ?",
+            arguments: [review.interval?.timeInterval, review.answeredEntry?.uuidString, id.uuidString])
+    }
+}
+
+/// `carryingOver(_:in:)`, whose failure says the entry from iCloud can't be
+/// read here, so that it waits, and the log says why.
+private func carryingOverOnArrival(_ carriedOver: Set<UUID>, in wayLog: [ReviewLogEntry]) throws
+    -> [ReviewLogEntry]
+{
+    do {
+        return try carryingOver(carriedOver, in: wayLog)
+    } catch let error as SchedulingError {
+        throw unreadable("A review log entry from iCloud can't be carried over: \(error.description)")
+    }
+}
+
+/// The entries of `cardWay`, one way of a card the device holds, in the
+/// review log, in the order the device recorded them, and the IDs of the
+/// reviews among them that were carried over.
+private func wayLog(of cardWay: CardWay, in db: Database) throws -> (
+    entries: [ReviewLogEntry], carriedOver: Set<UUID>
+) {
+    let rows = try Row.fetchAll(
+        db, sql: "SELECT * FROM reviewLog WHERE cardId = ? AND way = ? ORDER BY id",
+        arguments: [cardWay.cardID, cardWay.way.rawValue])
+    var entries: [ReviewLogEntry] = []
+    var carriedOver: Set<UUID> = []
+    for row in rows {
+        let entry = try ReviewLogEntry(row: row)
+        entries.append(entry)
+        if try row.decode(forColumn: "isCarriedOver") as Bool, let uuid = entry.uuid {
+            carriedOver.insert(uuid)
+        }
+    }
+    return (entries, carriedOver)
 }

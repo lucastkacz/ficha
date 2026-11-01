@@ -175,8 +175,8 @@ extension Scheduler {
     /// replay keeps that interval, and a later change to these settings
     /// leaves the way's due time alone (#404). The other entries stay as they
     /// are. The migration that brought the scheduler gives every review it
-    /// carried over its interval so, and sync a review that comes without
-    /// one from an older version of Ficha.
+    /// carried over its interval so, and sync each review an older version of
+    /// Ficha sent without one, again whenever an entry of its way comes.
     public func keepingIntervals(of entries: [ReviewLogEntry]) throws(SchedulingError) -> [ReviewLogEntry] {
         try WayReplay(of: entries, with: self).keepingIntervals
     }

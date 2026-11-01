@@ -260,8 +260,8 @@ final class SyncTests {
     // a first review rated again, and each review with the interval the
     // scheduler gives it. iCloud gives them in any order, here the latest
     // first, as the fake does, and all before their card: a review that
-    // comes before the entry it answered is spaced again by the replay once
-    // that entry comes, so both devices space the card alike.
+    // comes before the entry it answered is carried over again as that entry
+    // comes, so both devices hold the log alike.
     @Test("a first view and reviews without an interval, from an older Ficha, are carried over as they arrive")
     func recordsFromAnOlderFichaAreCarriedOverOnArrival() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -289,9 +289,90 @@ final class SyncTests {
         #expect(onTheIPhone.map(\.entry.kind) == [.review(.again), .review(.good), .review(.good)])
         #expect(onTheIPhone.map(\.entry.uuid) == onTheMac.map(\.entry.uuid))
         #expect(onTheIPhone.map(\.interval) == onTheMac.map(\.interval))
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
         #expect(
             try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler)
                 == mac.engine.standing(of: ubuntu.id, with: scheduler))
+    }
+
+    // The iPhone holds the card when an older Ficha's entries come, each
+    // carried over as it arrives. Whichever comes first, each review ends up
+    // answering the entry before it, with the interval the carry-over gives
+    // it there, as the migration carries over the Mac's: the Mac recorded
+    // them with Ficha's settings, which the carry-over uses.
+    @Test(
+        "an older Ficha's log carried over as it arrives ends up as the migration carries it over, in any order",
+        arguments: [[2, 1, 0], [0, 1, 2], [1, 2, 0], [0, 2, 1]])
+    func anOlderFichasLogIsCarriedOverInAnyOrder(arrival: [Int]) async throws {
+        let ubuntu = try await receiveAnOlderFichasLog(goods: 2, arrivingInOrder: arrival)
+
+        let log = try iPhone.logAsSeen()
+        #expect(log == (try mac.logAsSeen()))
+        #expect(log.map(\.answeredEntry) == [nil] + log.dropLast().map(\.uuid))
+        #expect(
+            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: .standard)
+                == mac.engine.standing(of: ubuntu.id, with: .standard))
+    }
+
+    // The new cards a day count a new way's first review, which answers no
+    // entry: ubuntu's three entries, which came latest first, make one, so a
+    // second new card still comes today.
+    @Test("a card an older Ficha's log brings counts once toward the new cards a day")
+    func aCardFromAnOlderFichaCountsOnceTowardTheNewCardsADay() async throws {
+        try await receiveAnOlderFichasLog(goods: 2, arrivingInOrder: [2, 1, 0])
+        let petricor = try iPhone.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        var settings = ReviewSettings.defaults
+        settings.newCardsPerDay = 2
+
+        #expect(try iPhone.engine.reviewNow(settings) == [.new(petricor)])
+    }
+
+    // Each review an older Ficha sent keeps the interval the carry-over gave
+    // it, since it answers the entry before it: settings with other steps, a
+    // lower retention, under which ubuntu's last good would wait 19 days in
+    // place of 2, and a shorter longest interval leave it due when it was.
+    @Test("a change to the scheduling settings leaves an older Ficha's reviews, carried over as they arrive, due alike")
+    func aSettingsChangeLeavesCarriedOverReviewsDueAlike() async throws {
+        let ubuntu = try await receiveAnOlderFichasLog(goods: 3, arrivingInOrder: [3, 2, 1, 0])
+        let changed = try #require(
+            Scheduler.standard.replacing(
+                learningSteps: [.seconds(minutes(30)), .seconds(hours(2))], relearningSteps: [.seconds(minutes(20))],
+                desiredRetention: 0.7, longestIntervalInDays: 365, parameters: []))
+
+        #expect(
+            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: changed).due
+                == mac.engine.standing(of: ubuntu.id, with: .standard).due)
+    }
+
+    /// Has a card reach the iPhone, and then the review log the Mac gives it,
+    /// met and rated good `goods` times, each when due, as a device still on
+    /// a Ficha before FSRS sends it (#407): each entry without the interval
+    /// it set, and the first review, which answers no entry, as a first view.
+    /// The entries arrive in `order`, each by when it was answered, counted
+    /// from 0. Returns the card, as the Mac holds it.
+    @discardableResult
+    private func receiveAnOlderFichasLog(goods: Int, arrivingInOrder order: [Int]) async throws -> Card {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try mac.engine.climb(ubuntu, goods: goods, movingForward: time)
+        try await mac.syncNow()
+        let entries = try iCloud.records.filter { $0.type == SyncedRow.RecordType.reviewLogEntry.rawValue }
+            .sorted { try $0.time("answeredAt") ?? .distantPast < $1.time("answeredAt") ?? .distantPast }
+        // The fake gives a zone's records newest first.
+        for position in order.reversed() {
+            let entry = entries[position]
+            var fields = entry.fields
+            fields["interval"] = .some(nil)
+            if entry.value(of: "answeredEntry") == nil {
+                fields["kind"] = .string("firstView")
+                fields["rating"] = .some(nil)
+            }
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+        try await iPhone.syncNow()
+        return ubuntu
     }
 
     @Test("a review rated easy is kept as easy, and reaches the other device as easy")

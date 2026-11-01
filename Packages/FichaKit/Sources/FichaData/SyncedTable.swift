@@ -98,7 +98,10 @@ struct SyncedTable: Sendable {
 
     /// An entry of the review log, which never changes: the entries of two
     /// devices join, and each card's ways are worked out from them all (ADR
-    /// 0017).
+    /// 0017). But a review a version of Ficha before FSRS recorded takes its
+    /// interval and the entry it answers again as its way's entries come, on
+    /// each device that carried it over, which marks it so, a mark the record
+    /// doesn't hold (`applyReviewLogEntry(_:as:in:)`).
     static let reviewLog = SyncedTable(
         name: "reviewLog", syncedRow: { .reviewLogEntry($0) },
         fields: [],
@@ -123,7 +126,7 @@ struct SyncedTable: Sendable {
             SyncedColumn("answeredEntryUuid", key: "answeredEntry", .text),
             // A review's or a placement's interval, in seconds, which an
             // entry from a Ficha before FSRS comes without, and is given as
-            // it comes in (`carriedOver(_:as:in:)`).
+            // it comes in (`applyReviewLogEntry(_:as:in:)`).
             SyncedColumn("interval", .real),
         ],
         marksRowsFromAnotherDevice: true,

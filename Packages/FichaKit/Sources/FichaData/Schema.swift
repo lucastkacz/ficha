@@ -1588,27 +1588,29 @@ enum Schema {
             // the review log is carried over to the scheduler's. A first view
             // becomes a review rated again, which puts the way on the first
             // learning step, as the first view put it on the ladder's first
-            // step. A placement, which an import gave on a step of the
-            // ladder, holds that step's wait as its interval, on the ladder
-            // the settings held, or on the one Ficha shipped while they held
-            // none, and, for a wait of a day or more, Anki's starting ease,
-            // since the ladder kept none (`ladderPlacement(onStep:of:)`). And
-            // every review holds the interval the scheduler gives it,
-            // replaying its way's log with Ficha's settings, as #407 asks,
-            // whatever the database's are (`carryOverScheduler`), answering
-            // the entry replayed before it, or none as the way's first, so
-            // that the scheduler keeps it: none keeps the interval it held,
-            // which since "v32 the scheduler's settings and each review's
-            // interval" was the ladder's wait, one the scheduler may not
-            // set. The replay is the scheduler's as this version of Ficha has
-            // it (`Scheduler.keepingIntervals(of:)`), so every device carries
-            // over the log they share alike, as it carries over an older
-            // device's entry on arrival.
+            // step (`carriedOver(kind:rating:)`). A placement, which an import
+            // gave on a step of the ladder, holds that step's wait as its
+            // interval, on the ladder the settings held, or on the one Ficha
+            // shipped while they held none, and, for a wait of a day or more,
+            // Anki's starting ease, since the ladder kept none
+            // (`ladderPlacement(onStep:of:)`). And every review holds the
+            // interval the scheduler gives it, replaying its way's log with
+            // Ficha's settings as FSRS came, written out, whatever the
+            // database's are, answering the entry replayed before it, or none
+            // as the way's first, so that the scheduler keeps it
+            // (`carryingOver(_:in:)`): none keeps the interval it held, which
+            // since "v32 the scheduler's settings and each review's interval"
+            // was the ladder's wait, one the scheduler may not set. Each is
+            // marked as carried over, on this device alone, so that an older
+            // device's entry that comes from iCloud later, and falls before
+            // it, carries it over again, as sync carries over that entry
+            // (`applyReviewLogEntry(_:as:in:)`). The replay is the scheduler's
+            // as this version of Ficha has it, so every device carries over
+            // the log they share alike.
             let ladderWaits =
                 try String.fetchOne(db, sql: "SELECT ladder FROM progressSettings").map { text in
                     try JSONDecoder().decode([Int64].self, from: Data(text.utf8))
                 } ?? shippedLadderWaits
-            let scheduler = carryOverScheduler
             let rows = try Row.fetchAll(db, sql: "SELECT * FROM reviewLog ORDER BY id")
             var entries: [ReviewLogEntry] = []
             for row in rows {
@@ -1619,12 +1621,9 @@ enum Schema {
                     throw unreadable("Card \(cardID) has a review log entry that went an unknown way, or isn't a UUID")
                 }
                 let answeredAt: Date = try row.decode(forColumn: "answeredAt")
-                switch (try row.decode(forColumn: "kind") as String, try row.decode(forColumn: "rating") as String?) {
-                case ("firstView", _):
-                    entries.append(
-                        ReviewLogEntry(
-                            cardID: cardID, way: way, kind: .review(.again), answeredAt: answeredAt,
-                            responseTime: nil, trigger: nil, uuid: uuid))
+                let kindAndRating = carriedOver(
+                    kind: try row.decode(forColumn: "kind"), rating: try row.decode(forColumn: "rating"))
+                switch kindAndRating {
                 case ("review", let ratingName?):
                     guard let rating = Rating(rawValue: ratingName) else {
                         throw unreadable("Card \(cardID) has a review in its review log of an unknown rating")
@@ -1642,9 +1641,13 @@ enum Schema {
                     throw unreadable("Card \(cardID) has a review log entry of an unknown kind")
                 }
             }
+            let reviews = Set(
+                entries.compactMap { entry in
+                    if case .review = entry.kind { entry.uuid } else { nil }
+                })
             var carried: [UUID: ReviewLogEntry] = [:]
             for wayLog in Dictionary(grouping: entries, by: { CardWay(cardID: $0.cardID, way: $0.way) }).values {
-                for entry in try scheduler.keepingIntervals(of: wayLog) {
+                for entry in try carryingOver(reviews, in: wayLog) {
                     if let uuid = entry.uuid {
                         carried[uuid] = entry
                     }
@@ -1659,7 +1662,8 @@ enum Schema {
             // review's more than none, a placement's none or more; and a
             // placement its ease, when Anki gave one. A review an import
             // brings from Anki's history (#409) has no trigger, as a
-            // placement has none.
+            // placement has none. A review is marked when it was carried
+            // over, which no record sends.
             let uuid = """
                 (hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' \
                 || substr('89AB', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' \
@@ -1686,6 +1690,8 @@ enum Schema {
                 table.column("answeredEntryUuid", .text)
                     .check(sql: "answeredEntryUuid IS NULL OR kind = 'review'")
                 table.column("isFromAnotherDevice", .boolean).notNull().defaults(to: false)
+                table.column("isCarriedOver", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isCarriedOver = 0 OR kind = 'review'")
                 table.check(
                     sql: """
                         (kind = 'review' AND rating IN ('again', 'hard', 'good', 'easy') AND interval > 0)
@@ -1718,15 +1724,15 @@ enum Schema {
                     sql: """
                         INSERT INTO new_reviewLog (
                             id, uuid, cardId, kind, rating, due, interval, ease, answeredAt, responseTime, trigger,
-                            isAhead, way, answeredEntryUuid, isFromAnotherDevice)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            isAhead, way, answeredEntryUuid, isFromAnotherDevice, isCarriedOver)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                     arguments: [
                         row["id"] as DatabaseValue, uuidName, row["cardId"] as DatabaseValue, kind, rating,
                         row["due"] as DatabaseValue, interval.timeInterval, ease, row["answeredAt"] as DatabaseValue,
                         row["responseTime"] as DatabaseValue, row["trigger"] as DatabaseValue,
                         row["isAhead"] as DatabaseValue, row["way"] as DatabaseValue, entry.answeredEntry?.uuidString,
-                        row["isFromAnotherDevice"] as DatabaseValue,
+                        row["isFromAnotherDevice"] as DatabaseValue, kind == "review",
                     ])
             }
             try db.drop(table: "reviewLog")
