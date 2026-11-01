@@ -520,14 +520,17 @@ extension Engine {
     /// Gives the card with the id `cardID`, which is coming in new to Ficha
     /// at `importedAt` as `card`, the progress it brings from the app it
     /// comes from: for each of its ways, the review log its reviews there
-    /// and where it stood make, as `ImportedProgress.log(of:importedAt:with:)`
-    /// says, with `scheduler`, the user's settings, unless it's new there;
-    /// and a burial when it was suspended there, as its front-first way says.
+    /// and where it stood make, as
+    /// `ImportedProgress.log(of:importedAt:with:newID:)` says, with
+    /// `scheduler`, the user's settings, and IDs random as every entry's,
+    /// unless it's new there; and a burial when it was suspended there, as
+    /// its front-first way says.
     private func bring(
         _ card: ImportedCard, to cardID: Int64, at importedAt: Date, with scheduler: Scheduler, in db: Database
     ) throws {
         for (way, progress) in [(Way.frontFirst, card.progress), (.backFirst, card.backFirstProgress)] {
-            let log = try progress?.log(of: CardWay(cardID: cardID, way: way), importedAt: importedAt, with: scheduler)
+            let log = try progress?.log(
+                of: CardWay(cardID: cardID, way: way), importedAt: importedAt, with: scheduler, newID: UUID.init)
             for entry in log ?? [] {
                 try insert(entry, in: db)
             }

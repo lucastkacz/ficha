@@ -92,6 +92,11 @@ private enum AnkiQueue: Int {
     case buriedByTheUser = -3
 }
 
+/// Anki's starting ease, 2.5 for 250%, which it gives a card that has none
+/// (`INITIAL_EASE_FACTOR` in `rslib/src/scheduler/states/review.rs`, and
+/// `initial_ease` in `rslib/src/deckconfig/mod.rs`).
+private let ankiStartingEase = 2.5
+
 /// What an entry of Anki's `revlog` records, its `type` (`RevlogReviewKind`
 /// in `rslib/src/revlog/mod.rs`).
 private enum AnkiRevlogKind: Int64 {
@@ -220,14 +225,16 @@ extension AnkiCollection {
         // Reviews without the card's learning steps start from the interval
         // the first of them set, in days, a day at least, as Anki's FSRS
         // takes it (`first_user_grade.interval.max(1)` in `memory_state.rs`),
-        // and the ease it left: Anki's starting one, 2.5, when it kept none,
-        // and when it kept FSRS's difficulty there, from 100 to 1100, which
-        // Anki puts in the memory it starts, and a placement doesn't hold.
+        // and the ease it left: Anki's starting one when it kept none, and
+        // when it kept FSRS's difficulty there, a factor of 1100 or less,
+        // which Anki tells by an ease of 1.1 or less and puts in the memory
+        // it starts (`first_review.ease_factor <= 1.1` in `memory_state.rs`),
+        // and a placement doesn't hold.
         let factor = entries[first].row.factor
         let interval = Duration.days(max(1, entries[first].row.interval))
         let placement = Placement(
             interval: interval, due: start.answeredAt.adding(interval),
-            ease: factor > 1100 ? Double(factor) / 1000 : 2.5)
+            ease: factor > 1100 ? Double(factor) / 1000 : ankiStartingEase)
         return (ImportedStart(answeredAt: start.answeredAt, placement: placement), Array(reviews.dropFirst()))
     }
 
@@ -260,11 +267,9 @@ extension AnkiCollection {
     }
 
     /// The ease of `card`, a review card, as a multiplier, such as 2.5 for
-    /// its factor of 2500, or Anki's starting ease, 2.5, when it has none
-    /// (`INITIAL_EASE_FACTOR` in `rslib/src/scheduler/states/review.rs`, and
-    /// `initial_ease` in `rslib/src/deckconfig/mod.rs`).
+    /// its factor of 2500, or Anki's starting ease when it has none.
     private func ease(of card: AnkiCard) -> Double {
-        card.factor > 0 ? Double(card.factor) / 1000 : 2.5
+        card.factor > 0 ? Double(card.factor) / 1000 : ankiStartingEase
     }
 
     /// When a card Anki is learning is due, from its `due`: a time in

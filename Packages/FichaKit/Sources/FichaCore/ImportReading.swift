@@ -110,7 +110,7 @@ public struct ImportedCard: Sendable, Equatable {
 
 /// Where a card stood in the app a file comes from, such as Anki, and the
 /// reviews that brought it there, which an import that brings progress gives
-/// it (ADR 0013, #404): `log(of:importedAt:with:)` says how.
+/// it (ADR 0013, #404): `log(of:importedAt:with:newID:)` says how.
 public struct ImportedProgress: Sendable, Equatable {
     /// How far along it was.
     public enum Stage: Sendable, Equatable {

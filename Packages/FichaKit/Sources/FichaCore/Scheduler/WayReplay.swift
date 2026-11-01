@@ -42,8 +42,12 @@ struct WayReplay {
 
     /// Replays `entry`, one of the way's that comes after every entry
     /// replayed so far, in the order `ReviewLogEntry.precedes(_:)` gives, as
-    /// an import replays the log it gives a way while it writes it.
+    /// an import replays the log it gives a way while it writes it; or throws
+    /// when it doesn't come after them, as the same entry twice doesn't.
     mutating func replay(_ entry: ReviewLogEntry) throws(SchedulingError) {
+        if let last = entries.last, !last.precedes(entry) {
+            throw .unexpectedReviewLog(cardID: entry.cardID)
+        }
         let position = entries.count
         entries.append(entry)
         switch entry.kind {

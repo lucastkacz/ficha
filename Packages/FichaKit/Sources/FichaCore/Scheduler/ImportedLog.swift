@@ -10,7 +10,8 @@ extension ImportedProgress {
     /// The entries an import that brings this progress gives the review log
     /// of `cardWay`, a way of a card that comes in new to Ficha at
     /// `importedAt`, in the order `scheduler`, the user's settings, replays
-    /// them, each with its ID unique across devices: none for a new card.
+    /// them, each with the ID unique across devices `newID` gives it next:
+    /// none for a new card.
     ///
     /// Each of its reviews comes in with its moment, its rating and its
     /// response time, with no trigger, answering the entry before it, so that
@@ -39,41 +40,42 @@ extension ImportedProgress {
     ///
     /// Throws when fsrs-rs fails, or the scheduler can't follow the
     /// placement: a graduated one whose ease isn't above zero.
-    public func log(of cardWay: CardWay, importedAt: Date, with scheduler: Scheduler) throws(SchedulingError)
-        -> [ReviewLogEntry]
+    public func log(of cardWay: CardWay, importedAt: Date, with scheduler: Scheduler, newID: () -> UUID)
+        throws(SchedulingError) -> [ReviewLogEntry]
     {
         if case .new = stage {
             return []
         }
         var replay = try WayReplay(of: [], with: scheduler)
-        var log: [ReviewLogEntry] = []
+        var last: ReviewLogEntry?
         if let start {
             let entry = ReviewLogEntry(
-                placing: cardWay.cardID, way: cardWay.way, on: start.placement, at: start.answeredAt, uuid: UUID())
+                placing: cardWay.cardID, way: cardWay.way, on: start.placement, at: start.answeredAt, uuid: newID())
             try replay.replay(entry)
-            log.append(entry)
+            last = entry
         }
         for review in reviews {
-            let answered = log.last?.uuid
-            let kept = review.keptInterval(after: replay.stage)
             let entry = ReviewLogEntry(
                 cardID: cardWay.cardID, way: cardWay.way, kind: .review(review.rating), answeredAt: review.answeredAt,
-                responseTime: review.responseTime, trigger: nil, uuid: UUID(), answeredEntry: answered, interval: kept)
+                responseTime: review.responseTime, trigger: nil, uuid: newID(), answeredEntry: last?.uuid,
+                interval: review.keptInterval(after: replay.stage))
             try replay.replay(entry)
-            log.append(kept == nil ? entry.answering(answered, keeping: replay.interval) : entry)
+            last = entry
         }
+        // A review that kept no interval keeps the one the replay gave it.
+        var log = replay.keepingIntervals
         if let placement = placement(after: replay.standing) {
-            let afterTheReviews = log.last.map { $0.answeredAt.addingTimeInterval(0.001) } ?? importedAt
+            let afterTheReviews = last.map { $0.answeredAt.adding(.milliseconds(1)) } ?? importedAt
             log.append(
                 ReviewLogEntry(
                     placing: cardWay.cardID, way: cardWay.way, on: placement, at: max(importedAt, afterTheReviews),
-                    uuid: UUID()))
+                    uuid: newID()))
         }
         return log
     }
 
     /// The placement that follows the card's reviews, which leave its way at
-    /// `standing`, as `log(of:importedAt:with:)` says, or nil
+    /// `standing`, as `log(of:importedAt:with:newID:)` says, or nil
     /// when they leave it where the card stood.
     private func placement(after standing: WayStanding) -> Placement? {
         let isOnAStep =

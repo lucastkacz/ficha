@@ -244,10 +244,11 @@ struct SchedulerLogTests {
     }
 
     @Test(
-        "a placement with an interval below none, a graduated one without an ease, or an easy that kept less than a day can't be followed"
+        "a placement with an interval below none, a graduated one without an ease, an easy that kept less than a day, or the same entry twice can't be followed"
     )
     func entriesThatCantBeFollowed() throws {
         let unexpected = SchedulingError.unexpectedReviewLog(cardID: 1)
+        let good = review(.good, at: start)
 
         #expect(throws: unexpected) {
             try Scheduler.standard.standing(after: [placement(interval: .seconds(-1), due: start, at: start)])
@@ -257,6 +258,9 @@ struct SchedulerLogTests {
         }
         #expect(throws: unexpected) {
             try Scheduler.standard.standing(after: [review(.easy, at: start, keeping: .hours(1))])
+        }
+        #expect(throws: unexpected) {
+            try Scheduler.standard.standing(after: [good, good])
         }
     }
 }
