@@ -22,10 +22,15 @@ private let ankiStartingEase = 2.5
 /// `waits`, in whole seconds, as the ladder read it: the step's wait, or the
 /// last step's when the ladder no longer has that one, or the shipped
 /// ladder's when `waits` holds none; and, for a wait of a day or more, which
-/// the scheduler reads as graduated, Anki's starting ease.
-func ladderPlacement(onStep step: Int, of waits: [Int64]) -> (interval: Duration, ease: Double?) {
+/// the scheduler reads as graduated, Anki's starting ease. Nil for a step
+/// below the first, 0, which the ladder refused, as the review log's check
+/// did from "v14 placements in the review log" on.
+func ladderPlacement(onStep step: Int64, of waits: [Int64]) -> (interval: Duration, ease: Double?)? {
+    guard step >= 0 else {
+        return nil
+    }
     let waits = waits.isEmpty ? shippedLadderWaits : waits
-    let wait = Duration.seconds(waits[min(max(step, 0), waits.count - 1)])
+    let wait = Duration.seconds(waits[Int(min(step, Int64(waits.count - 1)))])
     return (wait, wait >= .seconds(24 * 60 * 60) ? ankiStartingEase : nil)
 }
 
@@ -113,10 +118,11 @@ func applyReviewLogEntry(_ record: ICloudRecord, as uuid: UUID, in db: Database)
     fields["rating"] = rating.map(ICloudValue.string)
     let isCarriedOver = kind == "review" && record.value(of: "interval") == nil
     if kind == "placement", record.value(of: "interval") == nil {
-        guard case .int(let step)? = record.value(of: "step") else {
-            throw unreadable("A placement from iCloud has neither its interval nor its step on the ladder")
+        guard case .int(let step)? = record.value(of: "step"),
+            let placed = ladderPlacement(onStep: step, of: shippedLadderWaits)
+        else {
+            throw unreadable("A placement from iCloud has neither its interval nor a step on the ladder")
         }
-        let placed = ladderPlacement(onStep: Int(clamping: step), of: shippedLadderWaits)
         fields["interval"] = ICloudValue.double(placed.interval.timeInterval)
         fields["ease"] = placed.ease.map(ICloudValue.double)
     }

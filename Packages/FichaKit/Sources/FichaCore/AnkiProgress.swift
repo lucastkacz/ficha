@@ -118,8 +118,9 @@ extension AnkiCollection {
     /// days as dates in `calendar`, the user's, and the reviews among
     /// `entries`, its entries of the revlog, that Anki's FSRS reads, as
     /// `importedReviews(of:endingOnAStep:)` says; or a problem when its type
-    /// isn't one Anki has, a date can't be made, or an entry's type, or a
-    /// review's button or interval, isn't one Anki gives.
+    /// isn't one Anki has, its interval in review isn't one Anki gives, a
+    /// day at least, a date can't be made, or an entry's type, or a review's
+    /// button or interval, isn't one Anki gives.
     ///
     /// A card in a filtered deck stands as it would back in its home deck,
     /// as Anki puts it when it empties the deck: its home deck's due when
@@ -149,8 +150,9 @@ extension AnkiCollection {
         case .review where !isInFilteredDeck && (queue == .learning || queue == .learningAcrossDays):
             stage = .learning(due: try learningDue(due, in: calendar))
         case .review:
+            // Anki keeps a card in review a day apart at least.
             let (seconds, overflows) = card.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
-            guard !overflows else {
+            guard card.interval >= 1, !overflows else {
                 throw AnkiCollectionProblem("Card \(card.id) has an interval of \(card.interval) days")
             }
             stage = .review(interval: .seconds(seconds), ease: ease(of: card), due: .on(try day(due, in: calendar)))

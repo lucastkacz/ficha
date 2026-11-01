@@ -484,6 +484,36 @@ final class SyncTests {
                 == graduated(due: try october(26, at: 4)))
     }
 
+    // The ladder's steps counted from 0, as its table's check kept them.
+    @Test("a placement on a step below the ladder's first, from an older Ficha, waits, as the ladder refused it")
+    func aPlacementBelowTheLaddersFirstStepWaits() async throws {
+        try await importOnTheMac([
+            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
+            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        ])
+        try await mac.syncNow()
+        for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
+            var fields = entry.fields
+            fields["step"] = .int(entry.value(of: "interval") == .double(days(10)) ? -1 : 3)
+            fields["interval"] = .some(nil)
+            fields["ease"] = .some(nil)
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+
+        try await iPhone.syncNow()
+        try await iPhone.syncNow()
+
+        let corazon = try iPhone.engine.card(fronted: "corazón")
+        let pulmon = try iPhone.engine.card(fronted: "pulmón")
+        let log = try iPhone.engine.reviewLog()
+        #expect(log.filter { $0.cardID == corazon.id }.isEmpty)
+        #expect(
+            log.filter { $0.cardID == pulmon.id }.map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(5)), due: try october(26, at: 4), ease: 2.5))
+            ])
+    }
+
     /// Imports on the Mac an Anki package with `notes`, bringing their
     /// progress. The package's collection was created on 1 October 2026 at 4
     /// in the morning, so Anki's day 30 is 31 October.

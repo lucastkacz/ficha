@@ -136,6 +136,23 @@ final class AnkiProgressTests {
         #expect(try engine.standing(of: femur.id, with: scheduler).interval == .seconds(days(400)))
     }
 
+    // Anki gives a card in review an interval of a day at least.
+    @Test(
+        "a package with a card in review whose interval is under a day can't be read", arguments: schemas, [0, -3])
+    func aReviewCardUnderADayCantBeRead(format: AnkiPackage.Format, interval: Int) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["fémur", "thighbone"], progress: .review(due: 25, interval: interval))
+            ])
+        let file = folder.appending(path: "Fémur.apkg")
+        try package.write(to: file)
+
+        await #expect(throws: EngineError.unreadableFile("Fémur.apkg", .unreadableAnkiPackage)) {
+            try await engine.previewImport(of: file)
+        }
+    }
+
     // Anki 2.0 kept a relearning card as a review card in a learning queue,
     // which Anki relabels as relearning when it imports such a package.
     @Test(

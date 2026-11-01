@@ -1633,7 +1633,10 @@ enum Schema {
                             cardID: cardID, way: way, kind: .review(rating), answeredAt: answeredAt,
                             responseTime: nil, trigger: nil, uuid: uuid))
                 case ("placement", _):
-                    let placed = ladderPlacement(onStep: try row.decode(forColumn: "step"), of: ladderWaits)
+                    guard let placed = ladderPlacement(onStep: try row.decode(forColumn: "step"), of: ladderWaits)
+                    else {
+                        throw unreadable("Card \(cardID) has a placement below the ladder's first step")
+                    }
                     let placement = Placement(
                         interval: placed.interval, due: try row.decode(forColumn: "due"), ease: placed.ease)
                     entries.append(ReviewLogEntry(placing: cardID, way: way, on: placement, at: answeredAt, uuid: uuid))
