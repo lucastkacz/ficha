@@ -41,9 +41,13 @@ nonisolated extension ColumnOrder {
 /// by its column's name, so the window opens in the order Lucas left it in.
 nonisolated struct CardRowOrder: ColumnOrder, Codable {
     /// A column the table sorts by. Its raw value is how the preferences keep
-    /// the order, and its table column's customization ID, so it never
-    /// changes. Every column of the table is one, since the preferences keep
-    /// whether each of these shows, and no other column's.
+    /// the order, and its table column's customization ID, so it changes only
+    /// when the column becomes another, as Step became Interval: then a
+    /// layout kept from before shows it as a new column, and an order kept
+    /// by the old one can't be read, so the table lists the newest cards
+    /// first, as `Preferences.cardsSortOrder` says. Every column of the
+    /// table is one, since the preferences keep whether each of these shows,
+    /// and no other column's.
     enum Column: String, Codable, CaseIterable {
         /// When Lucas approved the card, and then, for cards approved
         /// together, the order he approved them in.
@@ -52,14 +56,15 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         /// Cards with images first, then those with sounds, then those with
         /// both, and cards of text alone after the others.
         case media
-        /// By the front-first way's interval, new cards first: the Interval
-        /// column, which was the ladder's Step column, so its raw value stays.
-        case step
+        /// By the front-first way's interval, new cards first. It took the
+        /// place of the ladder's Step column (#404) with an ID of its own, so
+        /// a layout kept from before shows it as it would a new column.
+        case interval
         /// When the front-first way is due.
         case due
         /// By the back-first way's interval, new ones first, as Interval
-        /// does: the Back-first interval column, which was Back-first step.
-        case backFirstStep
+        /// does, in Back-first step's place.
+        case backFirstInterval
         /// When the back-first way is due, as Due does.
         case backFirstDue
         /// By what the Type column says, alphabetically, and cards with no
@@ -97,12 +102,12 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
             ordered(lhs.card.front.localizedStandardCompare(rhs.card.front))
         case .media:
             ordered(lhs.media, rhs.media, by: compared)
-        case .step:
-            ordered(lhs.frontFirst.intervalOrZero, rhs.frontFirst.intervalOrZero)
+        case .interval:
+            ordered(lhs.frontFirst.intervalToSortBy, rhs.frontFirst.intervalToSortBy)
         case .due:
             ordered(lhs.frontFirst.due, rhs.frontFirst.due) { $0.compare($1) }
-        case .backFirstStep:
-            ordered(lhs.backFirst?.intervalOrZero, rhs.backFirst?.intervalOrZero, by: compared)
+        case .backFirstInterval:
+            ordered(lhs.backFirst?.intervalToSortBy, rhs.backFirst?.intervalToSortBy, by: compared)
         case .backFirstDue:
             ordered(lhs.backFirst?.due, rhs.backFirst?.due) { $0.compare($1) }
         case .type:
@@ -116,15 +121,6 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .edited:
             ordered(lhs.card.editedAt, rhs.card.editedAt) { $0.compare($1) }
         }
-    }
-}
-
-extension WayProgress {
-    /// The way's interval, or zero while it's new, so that a new way sorts
-    /// before every interval, tied with a placement's zero, which an import
-    /// gives a card Anki was learning.
-    nonisolated fileprivate var intervalOrZero: Duration {
-        interval ?? .zero
     }
 }
 

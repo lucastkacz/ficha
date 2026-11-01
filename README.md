@@ -29,13 +29,13 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
   <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Don't know, Sort of and Know it.">
 </p>
 
-A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did: 1 for "Don't know", 2 for "Sort of" or 3 for "Know it", which Space says too, as in Anki. It takes a few seconds, and every button has its key, so you never need the mouse. A card you haven't met yet comes the same way, marked "New": try to remember its back too, even if you can't yet, and rate it like any other.
+A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did with Anki's four buttons: 1 for "Again", 2 for "Hard", 3 for "Good", which Space says too, or 4 for "Easy". Above each one is how long the card would wait if you pressed it, as in Anki. It takes a few seconds, and every button has its key, so you never need the mouse. A card you haven't met yet comes the same way, marked "New": try to remember its back too, even if you can't yet, and rate it like any other.
 
 A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first it's marked "New" too.
 
 A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the lower side's once you've turned it over, or the upper side's when the lower one has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
 
-When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Don't know" to it once it has left its learning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. ⌘Z undoes the last thing you did, and then the one before.
+When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Again" to it once it has left its learning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. ⌘Z undoes the last thing you did, and then the one before.
 
 ## Why each card waits its own time
 
@@ -46,10 +46,10 @@ Ficha spaces each card as Anki does, with FSRS, Anki's modern scheduler, worked 
 ```mermaid
 flowchart LR
     new["New"] --> l1["1 hour"] --> l2["4 hours"] --> g["Days, more each time you know it"]
-    g -- "Don't know" --> r["1 hour"] --> g
+    g -- "Again" --> r["1 hour"] --> g
 ```
 
-A new card goes through two learning steps. "Know it" moves it to the next one, "Sort of" waits a little more before it comes back, and "Don't know" sends it back to the first. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 9 times out of 10, so a card you know well waits longer each time, and one you find hard comes back sooner. "Don't know" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
+A new card goes through two learning steps. "Good" moves it to the next one, "Hard" waits a little more before it comes back, "Again" sends it back to the first, and "Easy" graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 9 times out of 10, so a card you know well waits longer each time, and one you find hard comes back sooner. "Again" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
 
 The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Scheduling tab.
 

@@ -385,7 +385,7 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "after the eighth “Don't know”, the panel stays on the card, flagging it with the note “Forgotten 8 times”, which Lucas can add to, and Return flags it and moves on"
+        "after the eighth “Again”, the panel stays on the card, flagging it with the note “Forgotten 8 times”, which Lucas can add to, and Return flags it and moves on"
     )
     func theEighthAgainOffersToFlagTheCard() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
@@ -437,7 +437,7 @@ struct ReviewPanelTests {
         #expect(panel.note == "Forgotten 8 times")
     }
 
-    @Test("Esc on the offer to flag a card leaves it in the reviews, its “Don't know” recorded, and moves on")
+    @Test("Esc on the offer to flag a card leaves it in the reviews, its “Again” recorded, and moves on")
     func cancellingTheOfferMovesOnWithoutFlagging() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -456,7 +456,7 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "one ⌘Z after the offer undoes the flag and the “Don't know”, and shows the card's back again, its time going on from the answer; rating it again offers again"
+        "one ⌘Z after the offer undoes the flag and the “Again”, and shows the card's back again, its time going on from the answer; rating it again offers again"
     )
     func undoAfterTheOfferUndoesTheFlagAndTheRating() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
@@ -499,7 +499,7 @@ struct ReviewPanelTests {
         #expect(try engine.reviewLog().last?.kind == .review(.again))
     }
 
-    @Test("a “Don't know” under the number, or with the offer turned off, moves on without offering to flag the card")
+    @Test("an “Again” under the number, or with the offer turned off, moves on without offering to flag the card")
     func noOfferBelowTheNumberOrWhenTurnedOff() throws {
         var turnedOff = settings
         turnedOff.forgottenOftenAfter = nil
@@ -858,8 +858,8 @@ struct ReviewPanelTests {
         #expect(panel.playingSound?.name == (leaving == .undo ? la : nil))
     }
 
-    @Test("a “Don't know” stops the sound also when the panel stays on the card, to offer to flag it")
-    func dontKnowStopsTheSoundAsThePanelOffersToFlag() async throws {
+    @Test("an “Again” stops the sound also when the panel stays on the card, to offer to flag it")
+    func againStopsTheSoundAsThePanelOffersToFlag() async throws {
         let la = try await addTone(440, to: engine)
         let aria = try wordCard("aria", frontSound: la)
         try engine.lapse(aria, times: 7, movingForward: time)

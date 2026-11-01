@@ -105,7 +105,7 @@ final class SyncTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }
 
-    @Test("a side edited on another device restarts a card's count of “Don't know” answers, as an edit here does")
+    @Test("a side edited on another device restarts a card's count of “Again” answers, as an edit here does")
     func aSideEditedOnAnotherDeviceRestartsTheForgottenOftenCount() async throws {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = 2

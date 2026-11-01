@@ -165,7 +165,7 @@ struct AppearancesSettings: View {
 
 /// The Review panel tab of Settings: how the panel behaves when it shows up
 /// on its own, and whether it offers to flag a card forgotten often, after
-/// how many “Don't know”.
+/// how many “Again” once it left its learning steps.
 struct ReviewPanelSettings: View {
     @Bindable var model: AppModel
 
@@ -215,7 +215,7 @@ struct ReviewPanelSettings: View {
                 Text(
                     "Offer to flag a card you forget often",
                     comment:
-                        "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Don't know” to, so it gets fixed."
+                        "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Again” to once it left its learning steps, so it gets fixed."
                 )
                 Text(
                     "So it gets fixed. Ficha never flags a card on its own.",
@@ -227,16 +227,20 @@ struct ReviewPanelSettings: View {
                     Text(
                         "After forgetting it \(number.wrappedValue) times",
                         comment:
-                            "Settings, under Review panel: how many “Don't know” answers to one of a card's ways, since its front or back last changed, bring the offer to flag it."
+                            "Settings, under Review panel: how many “Again” answers to one of a card's ways once it left its learning steps, since its front or back last changed, bring the offer to flag it."
                     )
                 }
             }
         } footer: {
             Text(
                 """
-                Each “Don't know” counts, since the card's front or back last changed. If you don't flag it, the \
-                panel offers again after half as many more.
-                """)
+                Each “Again” counts once the card has left its learning steps, since its front or back last \
+                changed. If you don't flag it, the panel offers again after half as many more.
+                """,
+                comment: """
+                    Settings, under Review panel: below the offer to flag a card forgotten often. “Again” is the \
+                    review panel's button, as Anki names it.
+                    """)
         }
     }
 

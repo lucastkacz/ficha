@@ -130,8 +130,18 @@ enum Window: String {
     /// The review panel on a new card in Ciencias › Psicología, a deck inside
     /// Ciencias, whose color and emoji it shows, with its three tags, drawn
     /// on a gradient in a window, since the panel's own has nothing behind
-    /// its Liquid Glass below the desktop picture.
+    /// its Liquid Glass below the desktop picture. `--key space` flips it,
+    /// showing the four buttons with their intervals.
     case panelCard = "panel-card"
+    /// The same on the sample's graduated card that waits longest, once it's
+    /// due, which `--key space` flips, showing the intervals of days or months
+    /// the four buttons would set.
+    case panelReview = "panel-review"
+    /// The Cards window with a sample card that goes both ways selected, its
+    /// back-first way met and climbed since, its detail scrolled to its end,
+    /// below both ways' interval, due time, stability, difficulty and
+    /// retrievability: its chart, with a line for each way, and its key.
+    case cardsBothWays = "cards-both-ways"
 }
 
 /// What the tool was asked to draw.
@@ -486,8 +496,8 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 
 /// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
-/// the first day, rated Know it, Don't know or Sort of, sixteen of them
-/// graduated since at different paces, two after a lapse, and four still in
+/// the first day, rated Good, Again or Hard, sixteen of them graduated since
+/// at different paces, two rated Easy and two after a lapse, and four still in
 /// their learning steps, one flagged with a note and one buried, and the
 /// rest new, with a capture waiting in the inbox; and then a new card with a
 /// flag on its front and the Sun of May and a sound on its back, and two new
@@ -535,7 +545,8 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(0..<16, .good)
     try review(16..<18, .hard)
     time.advance(by: hours(2 * 24))
-    try review(0..<12, .good)
+    try review(0..<10, .good)
+    try review(10..<12, .easy)
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
     try review(0..<16, .good)
@@ -683,7 +694,7 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
 
 /// The app's model on the sample cards, once the sample Anki package came in
 /// with its progress, and four days later, the card of the femur, which came
-/// in with Anki's interval of 10 days, was reviewed with Know it, on time.
+/// in with Anki's interval of 10 days, was reviewed with Good, on time.
 func ankiImportedModel() throws -> AppModel {
     let (engine, time) = try sampleEngine(at: .inMemory)
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
@@ -921,6 +932,30 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
             description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
     }
     sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
+}
+
+/// Scrolls the detail of the Cards window `window`, once it shows, to its
+/// end, where a card's chart and its key show below the rows of its ways,
+/// for the same reason as `scrollSidebarToEnd(of:)`.
+func scrollDetailToEnd(of window: NSWindow) throws {
+    // The sidebar and the table scroll too: the detail is the one on the right.
+    let detail = scrollViews(in: window.contentView).max {
+        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
+    }
+    guard let detail, let document = detail.documentView else {
+        throw RenderError(description: "The Cards window shows no detail to scroll: fix scrollDetailToEnd(of:).")
+    }
+    let clip = detail.contentView
+    let end = document.isFlipped ? max(0, document.bounds.height - clip.bounds.height) : 0
+    clip.scroll(to: NSPoint(x: clip.bounds.minX, y: end))
+    detail.reflectScrolledClipView(clip)
+}
+
+/// The scroll views in `view` and the views inside it.
+func scrollViews(in view: NSView?) -> [NSScrollView] {
+    guard let view else { return [] }
+    if let scrollView = view as? NSScrollView { return [scrollView] }
+    return view.subviews.flatMap(scrollViews(in:))
 }
 
 /// The outline views in `view` and the views inside it.
@@ -1210,6 +1245,15 @@ func model(for name: Window) throws -> AppModel {
         let engine = try sampleEngine(at: .inMemory).engine
         try giveSampleDecksLooks(in: engine)
         return try AppModel(engine: engine)
+    case .panelReview:
+        let (engine, time) = try sampleEngine(at: .inMemory)
+        try giveSampleDecksLooks(in: engine)
+        guard let due = try longestWaitingSampleCard(in: engine).frontFirst.due else {
+            throw RenderError(description: "The sample's graduated card that waits longest has no due time.")
+        }
+        time.advance(by: due.timeIntervalSince(time.now))
+        return try AppModel(engine: engine)
+    case .cardsBothWays: return try bothWaysModel()
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
@@ -1421,17 +1465,71 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         mac.focusChanged(holdsBack: true)
         return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
     case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
+    case .panelReview:
+        return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).card.front) {
+            .review($0)
+        }
+    case .cardsBothWays:
+        var state = model.openCardsWindow()
+        state.read(with: state.scheduler)
+        guard case .success(.cards(let rows)) = state.listing,
+            let bothWays = rows.first(where: { $0.backFirst != nil })
+        else {
+            throw RenderError(description: "No sample card goes both ways: fix bothWaysModel().")
+        }
+        state.select([bothWays.id])
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
     }
 }
 
-/// The review panel on the sample's new card whose front is `front`, as an
-/// appearance brings it, on a gradient in a window, so that its Liquid Glass
-/// has something to show through, as the README's pictures draw it.
-func panelWindow(model: AppModel, on front: String) throws -> NSWindow {
+/// The row of the sample's graduated card in the reviews that waits longest,
+/// front first, as the Cards window lists it.
+func longestWaitingSampleCard(in engine: Engine) throws -> CardRow {
+    let rows = try engine.cardRows(in: .all, with: ReviewSettings.defaults.scheduler)
+    guard
+        let longest = rows.filter({ $0.frontFirst.standing.stage == .graduated && $0.frontFirst.due != nil }).max(by: {
+            $0.frontFirst.intervalToSortBy < $1.frontFirst.intervalToSortBy
+        })
+    else {
+        throw RenderError(description: "No sample card graduated: fix sampleEngine(at:).")
+    }
+    return longest
+}
+
+/// The app's model on the sample cards, once the card of serendipia, which
+/// graduated front first, goes both ways, and its back-first way was met,
+/// rated Again, and then Good when due, which puts it on the second learning
+/// step.
+func bothWaysModel() throws -> AppModel {
+    let (engine, time) = try sampleEngine(at: .inMemory)
+    let settings = ReviewSettings.defaults
+    guard let card = try engine.cards().first(where: { $0.front == "serendipia" }) else {
+        throw RenderError(description: "No sample card's front is “serendipia”: fix SampleCards.swift.")
+    }
+    try engine.setBothWays(true, of: [card.id])
+    try engine.record(
+        .review(.again), of: card.id, way: .backFirst, responseTime: .seconds(9), trigger: .reviewNow,
+        settings: settings)
+    time.advance(by: hours(1))
+    try engine.record(
+        .review(.good), of: card.id, way: .backFirst, responseTime: .seconds(5), trigger: .reviewNow,
+        settings: settings)
+    return try AppModel(engine: engine)
+}
+
+/// The review panel on the sample's card whose front is `front`, as an
+/// appearance brings it, new unless `panelCard` says otherwise, on a gradient
+/// in a window, so that its Liquid Glass has something to show through, as
+/// the README's pictures draw it.
+func panelWindow(
+    model: AppModel, on front: String, as panelCard: (Card) -> PanelCard = { .new($0) }
+) throws -> NSWindow {
     guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
         throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
     }
-    let panel = model.startAppearance(with: [.new(card)])
+    let panel = model.startAppearance(with: [panelCard(card)])
     let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -1817,6 +1915,10 @@ do {
     // which a click in the sidebar can't reach there.
     if [.cardsTags, .cardsTypes].contains(name) {
         try scrollSidebarToEnd(of: window)
+        try wait(0.5)
+    }
+    if name == .cardsBothWays {
+        try scrollDetailToEnd(of: window)
         try wait(0.5)
     }
     for action in request.actions {
