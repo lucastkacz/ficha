@@ -1,8 +1,7 @@
 import Foundation
 
-// Where an Anki card stands in Anki, and the reviews of its history that
-// brought it there, as an import that brings its progress reads them (ADR
-// 0013, #409). The columns' meanings follow Anki's source,
+// Where an Anki card stands in Anki, and Anki's reviews of it that brought it
+// there, as an import that brings its progress reads them (ADR 0013, #409). The columns' meanings follow Anki's source,
 // `rslib/src/card/mod.rs` and `rslib/src/revlog/mod.rs`; how Anki counts its
 // days, `rslib/src/scheduler/timing.rs`; how its importer moves a card's due
 // day into the collection it imports into,
@@ -93,8 +92,8 @@ private enum AnkiQueue: Int {
     case buriedByTheUser = -3
 }
 
-/// What an entry of an Anki card's review history records, its `type`
-/// (`RevlogReviewKind` in `rslib/src/revlog/mod.rs`).
+/// What an entry of Anki's `revlog` records, its `type` (`RevlogReviewKind`
+/// in `rslib/src/revlog/mod.rs`).
 private enum AnkiRevlogKind: Int64 {
     case learning = 0
     case review = 1
@@ -110,20 +109,20 @@ private enum AnkiRevlogKind: Int64 {
 
 extension AnkiCollection {
     /// Where `card` stands in Anki, as an import brings it, with its due
-    /// days as dates in `calendar`, the user's, and the reviews of
-    /// `history`, its review history, that Anki's FSRS reads, as
-    /// `importedHistory(of:)` says; or a problem when its type isn't one Anki
-    /// has, a date can't be made, or a review's button or interval isn't one
-    /// Anki gives.
+    /// days as dates in `calendar`, the user's, and the reviews among
+    /// `entries`, its entries of the revlog, that Anki's FSRS reads, as
+    /// `importedReviews(of:endingOnAStep:)` says; or a problem when its type
+    /// isn't one Anki has, a date can't be made, or an entry's type, or a
+    /// review's button or interval, isn't one Anki gives.
     ///
     /// A card in a filtered deck stands as it would back in its home deck,
     /// as Anki puts it when it empties the deck: its home deck's due when
     /// it kept one, and the queue its type gives it unless it's suspended or
     /// buried. A review card in Anki 2.0's learning queues is being
     /// relearned, as Anki relabels it when it imports a package of its v1
-    /// scheduler. A new card brings no history, as after a reset, whose
-    /// reviews Anki no longer reads.
-    func progress(of card: AnkiCard, history: [AnkiRevlogEntry], in calendar: Calendar)
+    /// scheduler. A new card brings no reviews, as after a reset, before
+    /// which Anki no longer reads them.
+    func progress(of card: AnkiCard, revlog entries: [AnkiRevlogEntry], in calendar: Calendar)
         throws(AnkiCollectionProblem) -> ImportedProgress
     {
         guard let type = AnkiCardType(rawValue: card.type) else {
@@ -138,7 +137,7 @@ extension AnkiCollection {
         let stage: ImportedProgress.Stage
         switch type {
         case .new:
-            return ImportedProgress(stage: .new, isSuspended: isSuspended, history: .none)
+            return ImportedProgress(stage: .new, isSuspended: isSuspended, start: nil, reviews: [])
         case .learning, .relearning:
             stage = .learning(due: try learningDue(due, in: calendar))
         case .review where !isInFilteredDeck && (queue == .learning || queue == .learningAcrossDays):
@@ -151,24 +150,24 @@ extension AnkiCollection {
             stage = .review(interval: .seconds(seconds), ease: ease(of: card), due: .on(try day(due, in: calendar)))
         }
         let isOnAStep = if case .learning = stage { true } else { false }
-        return ImportedProgress(
-            stage: stage, isSuspended: isSuspended, history: try importedHistory(of: history, endingOnAStep: isOnAStep))
+        let (start, reviews) = try importedReviews(of: entries, endingOnAStep: isOnAStep)
+        return ImportedProgress(stage: stage, isSuspended: isSuspended, start: start, reviews: reviews)
     }
 
-    /// The reviews of `entries`, a card's review history, that Anki's FSRS
-    /// reads to work out the card's memory (`reviews_for_fsrs` in
+    /// The reviews among `entries`, a card's entries of the revlog, that
+    /// Anki's FSRS reads to work out the card's memory (`reviews_for_fsrs` in
     /// `rslib/src/scheduler/fsrs/params.rs`, and `fsrs_item_for_memory_state`
     /// in `memory_state.rs`, without a deck's "Ignore cards reviewed before",
     /// which Ficha doesn't read): the reviews from the first of its last run
-    /// of learning steps, or, in a history without them, from its first
-    /// review with an interval of a day or more, which becomes the history's
-    /// start, with the interval and ease it set, as Anki starts FSRS from
-    /// them; in either case after the card's last reset, and none when it had
-    /// no review since. Reviews with a button only, so Set Due Date, resets
-    /// and FSRS's rescheduling stay out, and so does cramming in a filtered
-    /// deck with rescheduling off, which changes nothing. On Anki 2.0's
-    /// scheduler, a learning or relearning step's 2 and 3 are good and easy,
-    /// as Anki reads them once it upgrades such a collection
+    /// of learning steps, or, when Anki kept none, from its first review with
+    /// an interval of a day or more, which becomes their start, with the
+    /// interval and ease it set, as Anki starts FSRS from them; in either case
+    /// after the card's last reset, and none when it had no review since.
+    /// Reviews with a button only, so Set Due Date, resets and FSRS's
+    /// rescheduling stay out, and so does cramming in a filtered deck with
+    /// rescheduling off, which changes nothing. On Anki 2.0's scheduler, a
+    /// learning or relearning step's 2 and 3 are good and easy, as Anki reads
+    /// them once it upgrades such a collection
     /// (`rslib/src/storage/revlog/v2_upgrade.sql`).
     ///
     /// Each review left the card graduated when the next one is of a
@@ -179,8 +178,8 @@ extension AnkiCollection {
     /// (`RevlogEntryPartial::new` in `rslib/src/scheduler/answering/
     /// revlog.rs`, and `maybe_as_days` in `states/interval_kind.rs`), so only
     /// the card's next review tells them apart.
-    private func importedHistory(of entries: [AnkiRevlogEntry], endingOnAStep: Bool)
-        throws(AnkiCollectionProblem) -> ImportedHistory
+    private func importedReviews(of entries: [AnkiRevlogEntry], endingOnAStep: Bool)
+        throws(AnkiCollectionProblem) -> (start: ImportedStart?, reviews: [ImportedReview])
     {
         let entries = try entries.sorted { $0.id < $1.id }.map { row throws(AnkiCollectionProblem) in
             try TypedRevlogEntry(row)
@@ -196,7 +195,7 @@ extension AnkiCollection {
                 firstOfTheLastLearningSteps = index
             } else if entry.isReset {
                 guard firstOfTheLastLearningSteps != nil || firstInterdayReview != nil else {
-                    return .none
+                    return (nil, [])
                 }
                 break
             } else if firstOfTheLastLearningSteps != nil {
@@ -206,7 +205,7 @@ extension AnkiCollection {
             }
         }
         guard let first = firstOfTheLastLearningSteps ?? firstInterdayReview else {
-            return .none
+            return (nil, [])
         }
         let rated = entries[first...].filter { $0.hasButton && !$0.isCramming }
         let reviews = try rated.indices.map { index throws(AnkiCollectionProblem) in
@@ -216,10 +215,10 @@ extension AnkiCollection {
                 leavingItGraduated: next < rated.count ? rated[next].isOfAGraduatedCard : !endingOnAStep)
         }
         guard firstOfTheLastLearningSteps == nil, let start = reviews.first else {
-            return ImportedHistory(start: nil, reviews: reviews)
+            return (nil, reviews)
         }
-        // A history that lacks its learning steps starts from the interval
-        // its first review set, in days, a day at least, as Anki's FSRS
+        // Reviews without the card's learning steps start from the interval
+        // the first of them set, in days, a day at least, as Anki's FSRS
         // takes it (`first_user_grade.interval.max(1)` in `memory_state.rs`),
         // and the ease it left: Anki's starting one, 2.5, when it kept none,
         // and when it kept FSRS's difficulty there, from 100 to 1100, which
@@ -229,11 +228,10 @@ extension AnkiCollection {
         let placement = Placement(
             interval: interval, due: start.answeredAt.adding(interval),
             ease: factor > 1100 ? Double(factor) / 1000 : 2.5)
-        return ImportedHistory(
-            start: ImportedStart(at: start.answeredAt, placement: placement), reviews: Array(reviews.dropFirst()))
+        return (ImportedStart(answeredAt: start.answeredAt, placement: placement), Array(reviews.dropFirst()))
     }
 
-    /// `entry`, an entry of a card's review history with a button, as an
+    /// `entry`, an entry of Anki's `revlog` with a button, as an
     /// import brings it, graduated when it's `leavingItGraduated` and its
     /// interval is in days, as no step's in seconds is; or a problem when its
     /// button or its interval isn't one Anki gives.
@@ -329,8 +327,8 @@ extension AnkiCollection {
     }
 }
 
-/// An entry of an Anki card's review history, its `revlog` row, with what
-/// it records read from its `type`.
+/// An Anki card's entry in Anki's `revlog`, with what it records read from
+/// its `type`.
 private struct TypedRevlogEntry {
     let row: AnkiRevlogEntry
     let kind: AnkiRevlogKind
@@ -339,7 +337,7 @@ private struct TypedRevlogEntry {
     /// writes, which Anki reads as a learning step, and Ficha doesn't guess.
     init(_ row: AnkiRevlogEntry) throws(AnkiCollectionProblem) {
         guard let kind = AnkiRevlogKind(rawValue: row.kind) else {
-            throw AnkiCollectionProblem("Card \(row.cardID) has an entry in its history of the type \(row.kind)")
+            throw AnkiCollectionProblem("Card \(row.cardID) has a revlog entry of the type \(row.kind)")
         }
         self.row = row
         self.kind = kind

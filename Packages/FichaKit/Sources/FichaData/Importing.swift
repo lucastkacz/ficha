@@ -217,7 +217,8 @@ public struct ImportChoices: Sendable, Equatable {
         /// Every card comes in new, and in the user's reviews.
         case leftOut
         /// Each card that comes in new to Ficha comes in where it stood, each
-        /// of its ways with the reviews Anki's FSRS reads as its history: one
+        /// of its ways with those of Anki's reviews of it that Anki's FSRS
+        /// reads: one
         /// in review graduated, with its interval, one being learned on its
         /// learning steps, both due when they were due there, and a new one
         /// new; a suspended one comes in buried. A card of the user's that a

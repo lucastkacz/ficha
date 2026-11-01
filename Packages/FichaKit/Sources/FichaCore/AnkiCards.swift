@@ -21,7 +21,7 @@ extension AnkiCollection {
     /// for Default's own cards; it proposes its note's tags, an underscore
     /// in them standing for a space, and brings where it
     /// stands in Anki, its due days as dates in `calendar`, the user's, and
-    /// the reviews of its history that brought it there, for an import that
+    /// Anki's reviews of it that brought it there, for an import that
     /// brings progress. But the two cards of a note whose note
     /// type makes a reversed card, when both come in, make one card that
     /// goes both ways: the first card, where it comes and in its deck, with
@@ -41,12 +41,17 @@ extension AnkiCollection {
         sha1: (String) -> String
     ) async throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
-        let histories = Dictionary(grouping: revlog, by: \.cardID)
+        // Each card reads only its own entries of the revlog, so the entries
+        // of a card the package doesn't hold stay out, read or not, as
+        // Anki's importer adds only those of the cards it imports
+        // (`import_revlog` in `rslib/src/import_export/package/apkg/import/
+        // cards.rs`).
+        let revlogs = Dictionary(grouping: revlog, by: \.cardID)
         let renderings = try self.cards.sorted(by: isImportedBefore).map { card throws(AnkiCollectionProblem) in
             (
                 card: card,
                 rendering: try rendering(
-                    card, history: histories[card.id] ?? [], in: calendar, images: images, sha1: sha1,
+                    card, revlog: revlogs[card.id] ?? [], in: calendar, images: images, sha1: sha1,
                     templates: &templates)
             )
         }
@@ -97,14 +102,15 @@ extension AnkiCollection {
         return ImportReading(cards: cards, leftOut: leftOut)
     }
 
-    /// `card` rendered, with where it stands in Anki and the reviews of
-    /// `history`, its review history, that brought it there, its due days as
-    /// dates in `calendar`, and its sides read without their sounds, with
-    /// their images as `images` finds them, or Anki's pictures of their
+    /// `card` rendered, with where it stands in Anki and the reviews among
+    /// `entries`, its entries of the revlog, that brought it there, its due
+    /// days as dates in `calendar`, and its sides read without their sounds,
+    /// with their images as `images` finds them, or Anki's pictures of their
     /// formulas, named after the digest `sha1` gives; or why it stays out.
     /// Its template is parsed once for every card in `templates`.
     private func rendering(
-        _ card: AnkiCard, history: [AnkiRevlogEntry], in calendar: Calendar, images: (String) -> ImageLookup,
+        _ card: AnkiCard, revlog entries: [AnkiRevlogEntry], in calendar: Calendar,
+        images: (String) -> ImageLookup,
         sha1: (String) -> String, templates: inout [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>]
     ) throws(AnkiCollectionProblem) -> Rendering {
         guard let note = notes[card.noteID] else {
@@ -174,7 +180,7 @@ extension AnkiCollection {
         }
         return .rendered(
             RenderedAnkiCard(
-                progress: try progress(of: card, history: history, in: calendar),
+                progress: try progress(of: card, revlog: entries, in: calendar),
                 front: AnkiSide(html: sides.front, playing: sides.frontSounds, images: images, sha1: sha1),
                 back: AnkiSide(html: sides.back, playing: sides.backSounds, images: images, sha1: sha1),
                 tags: tags(of: note), deck: deckName(of: deck), makesReversedCards: noteType.makesReversedCards))

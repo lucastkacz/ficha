@@ -207,8 +207,8 @@ private func readCollection(_ data: Data) throws -> AnkiCollection {
 
 /// The collection in `db`, an Anki database at schema 11: its note types and
 /// decks are JSON in its one `col` row (`rslib/src/notetype/schema11.rs`,
-/// `rslib/src/decks/schema11.rs`), and its notes, cards and review history
-/// are in tables.
+/// `rslib/src/decks/schema11.rs`), and its notes, cards and revlog are in
+/// tables.
 private func schema11Collection(in db: Database) throws -> AnkiCollection {
     guard let col = try Row.fetchOne(db, sql: "SELECT crt, conf, models, decks FROM col") else {
         throw unreadable("An Anki package's collection has no col row")
@@ -279,8 +279,8 @@ func ankiCards(in db: Database) throws -> [AnkiCard] {
     }
 }
 
-/// The review history of an Anki database, every card's, from its `revlog`
-/// table, which schema 11 and schema 18 share.
+/// Every entry an Anki database logged of its cards, their reviews among
+/// them, from its `revlog` table, which schema 11 and schema 18 share.
 func ankiRevlog(in db: Database) throws -> [AnkiRevlogEntry] {
     try Row.fetchAll(db, sql: "SELECT id, cid, ease, ivl, factor, time, type FROM revlog").map { row in
         AnkiRevlogEntry(

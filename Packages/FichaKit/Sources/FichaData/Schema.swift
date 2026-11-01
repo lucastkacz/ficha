@@ -1491,7 +1491,7 @@ enum Schema {
                     """)
 
             // Each review keeps the interval it set (#404), in seconds, as
-            // Anki's history keeps it, which syncs with it: the way waits it
+            // Anki's revlog keeps it, which syncs with it: the way waits it
             // from when the user answered. A first view and a placement keep
             // none, and neither does a review from before this migration. A
             // review's rating can be easy, Anki's fourth. A column can't join
@@ -1660,9 +1660,9 @@ enum Schema {
             // index and its triggers, which dropping it drops. The ladder's
             // step goes. Every entry holds its interval, in seconds: a
             // review's more than none, a placement's none or more; and a
-            // placement its ease, when Anki gave one. A review an import
-            // brings from Anki's history (#409) has no trigger, as a
-            // placement has none. A review is marked when it was carried
+            // placement its ease, when Anki gave one. One of Anki's reviews,
+            // which an import brings (#409), has no trigger, as a placement
+            // has none. A review is marked when it was carried
             // over, which no record sends.
             let uuid = """
                 (hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' \

@@ -127,14 +127,22 @@ public struct ImportedProgress: Sendable, Equatable {
     /// Whether it was taken out of reviews for good there, as Anki suspends
     /// a card: it comes in buried, with its progress.
     public let isSuspended: Bool
-    /// Its reviews there that the app's scheduler reads, oldest first: none
-    /// for a new card.
-    public let history: ImportedHistory
+    /// Where its reviews there start from when the app kept none of the
+    /// card's first ones, as Anki tells by their lack of learning steps: the
+    /// interval and ease the first review it kept left the card with, at that
+    /// review's moment, from which FSRS starts the card's memory, as Anki
+    /// does; or nil when the app kept the card's first reviews, or none.
+    public let start: ImportedStart?
+    /// Its reviews there that the app's scheduler reads, oldest first, after
+    /// `start` when there's one: none for a new card, or one the app kept no
+    /// reviews of.
+    public let reviews: [ImportedReview]
 
-    public init(stage: Stage, isSuspended: Bool, history: ImportedHistory) {
+    public init(stage: Stage, isSuspended: Bool, start: ImportedStart?, reviews: [ImportedReview]) {
         self.stage = stage
         self.isSuspended = isSuspended
-        self.history = history
+        self.start = start
+        self.reviews = reviews
     }
 }
 
@@ -167,49 +175,28 @@ public enum ImportedDue: Sendable, Equatable {
     }
 }
 
-/// The reviews of a card's history in the app it comes from that an import
-/// brings, oldest first, as the app's scheduler reads them (#409).
-public struct ImportedHistory: Sendable, Equatable {
-    /// Where the reviews start from when the history lacks the card's first
-    /// ones, as Anki tells a history without its learning steps: the
-    /// interval and ease the first review it holds left the card with, at
-    /// that review's moment, from which FSRS starts the card's memory, as
-    /// Anki does; or nil for a history from the card's first review, or
-    /// none.
-    public let start: ImportedStart?
-    /// The reviews, after `start` when there's one.
-    public let reviews: [ImportedReview]
-
-    /// No history: a new card's, or one the app kept none of.
-    public static let none = ImportedHistory(start: nil, reviews: [])
-
-    public init(start: ImportedStart?, reviews: [ImportedReview]) {
-        self.start = start
-        self.reviews = reviews
-    }
-}
-
-/// The point an imported history without the card's first reviews starts
-/// from: `placement`, at `at`.
+/// The point a card's reviews in the app it comes from start from, when the
+/// app kept none of the card's first ones: `placement`, at `answeredAt`, the
+/// moment of the first review it kept.
 public struct ImportedStart: Sendable, Equatable {
-    public let at: Date
+    public let answeredAt: Date
     public let placement: Placement
 
-    public init(at: Date, placement: Placement) {
-        self.at = at
+    public init(answeredAt: Date, placement: Placement) {
+        self.answeredAt = answeredAt
         self.placement = placement
     }
 }
 
-/// A review of a card's history in the app it comes from.
+/// A review of a card in the app it comes from, which an import brings
+/// (#409).
 public struct ImportedReview: Sendable, Equatable {
     public let answeredAt: Date
     public let rating: Rating
     /// The interval it set there: zero when the app kept none.
     public let interval: Duration
-    /// Whether it left the card graduated there, as Anki keeps an interval
-    /// in days, rather than on a learning or relearning step, as it keeps one
-    /// in seconds.
+    /// Whether it left the card graduated there, rather than on a learning
+    /// or relearning step.
     public let graduated: Bool
     /// How long the answer took, or nil when nothing measured it.
     public let responseTime: Duration?

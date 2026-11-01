@@ -10,9 +10,11 @@ private let schemas: [AnkiPackage.Format] = [.supportOlderAnkiVersions, .current
 
 /// Tests on bringing an Anki deck's progress (ADR 0013): where each card
 /// stands once the import is done, with the default scheduling settings
-/// (#404), a card Anki was reviewing graduated, with its interval and ease,
-/// and one it was learning on the first learning step, from packages the
-/// tests write in a folder of their own, into an engine in
+/// (#404), a card that comes without Anki's reviews of it, which
+/// `AnkiReviewsTests` brings, graduated, with its interval and ease, when
+/// Anki was reviewing it, and on the first learning step when Anki was
+/// learning it, from packages the tests write in a folder of their own,
+/// into an engine in
 /// memory on a Mac in Buenos Aires, on 23 October 2026. The packages'
 /// collections were created on 1 October 2026 at 4 in the morning there, so
 /// Anki's day 30 is 31 October, and it starts at 4 in the morning, Anki's
@@ -136,8 +138,10 @@ final class AnkiProgressTests {
 
     // Anki 2.0 kept a relearning card as a review card in a learning queue,
     // which Anki relabels as relearning when it imports such a package.
-    @Test("a card in learning comes in on the first learning step, due when Anki said", arguments: schemas)
-    func aLearningCardComesInOnTheFirstLearningStep(format: AnkiPackage.Format) async throws {
+    @Test(
+        "a card in learning without Anki's reviews of it comes in on the first learning step, due when Anki said",
+        arguments: schemas)
+    func aLearningCardWithoutAnkisReviewsComesInOnTheFirstLearningStep(format: AnkiPackage.Format) async throws {
         let tenPast = try october(23, at: 9, minute: 10)
         let package = AnkiPackage(
             format: format,

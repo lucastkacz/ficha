@@ -7,7 +7,7 @@ internal import GRDB
 // are in tables of their own, with protobuf blobs (`rslib/src/storage/
 // notetype/`, `rslib/src/storage/deck/`, `proto/anki/notetypes.proto`),
 // where schema 11 kept them as JSON in its one `col` row. Its notes, cards
-// and review history are in schema 11's tables. Their `name` columns are
+// and revlog are in schema 11's tables. Their `name` columns are
 // declared with Anki's own collation, `COLLATE unicase`, so SQL here never
 // filters or sorts on them: the collation registered under that name only
 // stands in for Anki's.

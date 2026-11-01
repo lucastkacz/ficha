@@ -28,7 +28,7 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// it, and for a placement, which no one answered.
     public let responseTime: Duration?
     /// What brought the card, or nil for a placement, which nothing brought,
-    /// and for a review an import brings from another app's history (#409).
+    /// and for another app's review, which an import brings (#409).
     public let trigger: Trigger?
     /// Whether it was a review ahead: of a way that wasn't due yet, which
     /// Lucas asked for, as the device that recorded it saw it then, for the

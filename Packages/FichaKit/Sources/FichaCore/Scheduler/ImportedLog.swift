@@ -1,10 +1,10 @@
 import Foundation
 
 // The review log an import that brings a card's progress from another app,
-// such as Anki, gives each of the card's ways (#409): the reviews of its
-// history, which the scheduler replays as it replays the user's own, and a
+// such as Anki, gives each of the card's ways (#409): the app's reviews of
+// it, which the scheduler replays as it replays the user's own, and a
 // placement where they leave the way elsewhere than the app had it, as after
-// Anki's Set Due Date, which its history doesn't replay.
+// Anki's Set Due Date, which no review replays.
 
 extension ImportedProgress {
     /// The entries an import that brings this progress gives the review log
@@ -12,18 +12,18 @@ extension ImportedProgress {
     /// `importedAt`, in the order `scheduler`, the user's settings, replays
     /// them, each with its ID unique across devices: none for a new card.
     ///
-    /// Each review of its history comes in with its moment, its rating and
-    /// its response time, with no trigger, answering the entry before it, so
-    /// that only the first, of a history from the card's first review, is a
-    /// new way's first review. It keeps the interval it set there when the
+    /// Each of its reviews comes in with its moment, its rating and its
+    /// response time, with no trigger, answering the entry before it, so that
+    /// only the first, when the app kept the card's first review, is a new
+    /// way's first review. It keeps the interval it set there when the
     /// scheduler reads that interval as the app meant it: a graduated one, in
     /// whole days, and a step's wait, onto the step its rating moves the way
     /// to. Any other, an interval of zero, a step's wait of whole days, which
     /// the scheduler reads as graduated since Ficha's steps last less than a
     /// day, or a step's wait after a rating that takes the way out of its
-    /// steps, keeps the interval `scheduler` works out for its rating. A
-    /// history without the card's first reviews starts from its placement at
-    /// the moment of the first review it holds.
+    /// steps, keeps the interval `scheduler` works out for its rating. When
+    /// the app kept none of the card's first reviews, they start from the
+    /// placement of `start`, at the moment of the first it kept.
     ///
     /// A placement then holds the interval, due time and ease the card had
     /// there whenever the reviews leave the way elsewhere, or there are none:
@@ -47,13 +47,13 @@ extension ImportedProgress {
         }
         var replay = try WayReplay(of: [], with: scheduler)
         var log: [ReviewLogEntry] = []
-        if let start = history.start {
+        if let start {
             let entry = ReviewLogEntry(
-                placing: cardWay.cardID, way: cardWay.way, on: start.placement, at: start.at, uuid: UUID())
+                placing: cardWay.cardID, way: cardWay.way, on: start.placement, at: start.answeredAt, uuid: UUID())
             try replay.replay(entry)
             log.append(entry)
         }
-        for review in history.reviews {
+        for review in reviews {
             let answered = log.last?.uuid
             let kept = review.keptInterval(after: replay.stage)
             let entry = ReviewLogEntry(
@@ -72,8 +72,8 @@ extension ImportedProgress {
         return log
     }
 
-    /// The placement that follows the reviews of the card's history, which
-    /// leave its way at `standing`, as `log(of:importedAt:with:)` says, or nil
+    /// The placement that follows the card's reviews, which leave its way at
+    /// `standing`, as `log(of:importedAt:with:)` says, or nil
     /// when they leave it where the card stood.
     private func placement(after standing: WayStanding) -> Placement? {
         let isOnAStep =

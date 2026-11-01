@@ -3,26 +3,26 @@ import FichaData
 import Foundation
 import Testing
 
-/// A package of each schema Anki writes: schema 11, whose cards and history
+/// A package of each schema Anki writes: schema 11, whose cards and revlog
 /// sit beside its configuration's JSON, and schema 18.
 private let schemas: [AnkiPackage.Format] = [.supportOlderAnkiVersions, .current]
 
-/// Tests on bringing an Anki card's review history with its progress (#409):
-/// its reviews, with their ratings and intervals, which FSRS goes over, and
-/// a placement where Anki's due date differs from what they set. From
+/// Tests on bringing Anki's reviews of a card with its progress (#409), with
+/// their ratings and intervals, which FSRS goes over, and a placement where
+/// Anki's due date differs from what they set. From
 /// packages the tests write in a folder of their own, into an engine in
 /// memory on a Mac in Buenos Aires, on 23 October 2026 at 9 in the morning.
 /// The packages' collections were created on 1 October 2026 at 4 in the
 /// morning there, so Anki's day 30 is 31 October, from 4 in the morning,
 /// Anki's rollover hour, to 4 in the morning the next day.
-final class AnkiHistoryTests {
+final class AnkiReviewsTests {
     let calendar: Calendar
     let time: ManualTimeSource
     let engine: Engine
     let scheduler = ReviewSettings.defaults.scheduler
     /// A folder of the test's own, for the packages it imports.
     let folder = URL.temporaryDirectory.appending(
-        path: "FichaAnkiHistoryTests-\(UUID().uuidString)",
+        path: "FichaAnkiReviewsTests-\(UUID().uuidString)",
         directoryHint: .isDirectory
     )
 
@@ -88,7 +88,7 @@ final class AnkiHistoryTests {
         "a card's reviews come in with Anki's ratings and intervals, due when Anki had it due, whatever the user's settings",
         arguments: schemas)
     func reviewsComeInWithTheirRatingsAndIntervals(format: AnkiPackage.Format) async throws {
-        let history = [
+        let revlog = [
             AnkiRevlogEntry(at: try october(2, at: 10), button: 3, interval: -600, kind: .learning),
             AnkiRevlogEntry(at: try october(2, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
             AnkiRevlogEntry(at: try october(3, at: 10, minute: 15), button: 2, interval: 2, kind: .review),
@@ -101,7 +101,7 @@ final class AnkiHistoryTests {
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 25),
-                    history: history)
+                    revlog: revlog)
             ])
         let otherSettings = try #require(
             Scheduler(
@@ -137,7 +137,7 @@ final class AnkiHistoryTests {
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["riñón", "kidney"], progress: .review(due: 25, interval: 20),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(2, at: 10), button: 3, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(2, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
@@ -149,7 +149,7 @@ final class AnkiHistoryTests {
                     ]),
                 AnkiNote(
                     type: .basic, fields: ["bazo", "spleen"], progress: .review(due: 22, interval: 12),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(2, at: 11), button: 3, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(2, at: 11, minute: 10), button: 3, interval: 1, kind: .learning),
@@ -191,7 +191,7 @@ final class AnkiHistoryTests {
 
     // Anki's learning steps here are its default, 1 and 10 minutes. Its
     // scheduler before v3 put a card on a learning step due a few minutes
-    // after the step's wait, which its history doesn't keep.
+    // after the step's wait, which its revlog doesn't keep.
     @Test(
         "a card Anki was learning or relearning goes on with its steps, due when Anki had it due", arguments: schemas)
     func aLearningCardGoesOnWithItsSteps(format: AnkiPackage.Format) async throws {
@@ -201,7 +201,7 @@ final class AnkiHistoryTests {
                 AnkiNote(
                     type: .basic, fields: ["perro", "dog"],
                     progress: .learning(dueAt: Int64(try october(23, at: 9, minute: 3).timeIntervalSince1970)),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(
                             at: try october(23, at: 8, minute: 52), button: 1, interval: -60, kind: .learning),
                         AnkiRevlogEntry(
@@ -210,14 +210,14 @@ final class AnkiHistoryTests {
                 AnkiNote(
                     type: .basic, fields: ["casa", "house"],
                     progress: .learning(dueAt: Int64(try october(23, at: 9, minute: 4).timeIntervalSince1970)),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(
                             at: try october(23, at: 8, minute: 50), button: 3, interval: -600, kind: .learning)
                     ]),
                 AnkiNote(
                     type: .basic, fields: ["gato", "cat"],
                     progress: .relearning(dueAt: Int64(try october(23, at: 9, minute: 5).timeIntervalSince1970)),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(20, at: 10), button: 3, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(20, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
@@ -252,21 +252,21 @@ final class AnkiHistoryTests {
         #expect(try standing(of: "perro") == learning(step: 1, due: try october(23, at: 13, minute: 3)))
     }
 
-    @Test("a reversed card's history comes in as its back-first way's", arguments: schemas)
-    func aReversedCardsHistoryComesInAsItsBackFirstWays(format: AnkiPackage.Format) async throws {
+    @Test("Anki's reviews of a reversed card come in as its back-first way's", arguments: schemas)
+    func ankisReviewsOfAReversedCardComeInAsItsBackFirstWays(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
                 AnkiNote(
                     type: .basicAndReversed, fields: ["corazón", "heart"], progress: .review(due: 29, interval: 10),
                     reversedCard: (.review(due: 25, interval: 5), .asItsTypeSays),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(2, at: 10), button: 3, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(2, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
                         AnkiRevlogEntry(at: try october(20, at: 10), button: 3, interval: 10, kind: .review),
                     ],
-                    reversedCardHistory: [
+                    reversedCardRevlog: [
                         AnkiRevlogEntry(at: try october(2, at: 12), button: 3, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(2, at: 12, minute: 10), button: 4, interval: 4, kind: .learning),
@@ -297,9 +297,9 @@ final class AnkiHistoryTests {
     // and an ease of 250%, at Anki's historical retention of 90%, with a
     // stability of 10 days and a difficulty of 6.9140563.
     @Test(
-        "a card without history is placed with Anki's interval and due date, its memory started from its interval and ease",
+        "a card without Anki's reviews is placed with Anki's interval and due date, its memory started from its interval and ease",
         arguments: schemas)
-    func aCardWithoutHistoryIsPlaced(format: AnkiPackage.Format) async throws {
+    func aCardWithoutAnkisReviewsIsPlaced(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [AnkiNote(type: .basic, fields: ["fémur", "thighbone"], progress: .review(due: 30, interval: 10))])
@@ -320,19 +320,19 @@ final class AnkiHistoryTests {
         #expect(memory.lastReview == (try october(21, at: 4)))
     }
 
-    // Anki leaves a history without its learning steps when a card was set
+    // Anki keeps a card's reviews without its learning steps when it was set
     // due by hand before it was ever learned, or its first reviews are
     // gone: its FSRS starts the card from the first review it holds.
     @Test(
-        "a history without its learning steps starts from the interval and ease its first review set, as Anki's FSRS does",
+        "Anki's reviews without the card's learning steps start from the interval and ease the first of them set, as Anki's FSRS does",
         arguments: schemas)
-    func aHistoryWithoutItsLearningStepsStartsFromItsFirstReview(format: AnkiPackage.Format) async throws {
+    func reviewsWithoutTheLearningStepsStartFromTheFirst(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 26, interval: 15),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(1, at: 9), button: 0, interval: 3, kind: .manual),
                         AnkiRevlogEntry(
                             at: try october(2, at: 10), button: 3, interval: 5, factor: 2300, kind: .review),
@@ -365,7 +365,7 @@ final class AnkiHistoryTests {
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["hueso", "bone"], progress: .review(due: 14, interval: 9),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(2, at: 10), button: 2, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(2, at: 10, minute: 10), button: 3, interval: 4, kind: .learning),
@@ -384,9 +384,9 @@ final class AnkiHistoryTests {
     }
 
     // Anki's scheduler versions are 1 and 2, which its v3 scheduler keeps,
-    // and the types of its review history's entries 0 to 5.
+    // and the types of its revlog's entries 0 to 5.
     @Test(
-        "a package whose scheduler version, or the type of an entry of a card's history, is one Anki doesn't have can't be read",
+        "a package whose scheduler version, or the type of an entry Anki logged of a card, is one Anki doesn't have can't be read",
         arguments: schemas)
     func aPackageWithAnUnknownSchedulerOrEntryTypeCantBeRead(format: AnkiPackage.Format) async throws {
         let reviewed = [
@@ -397,14 +397,14 @@ final class AnkiHistoryTests {
             format: format,
             notes: [
                 AnkiNote(
-                    type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 1), history: reviewed)
+                    type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 1), revlog: reviewed)
             ], schedulerVersion: 3)
         let unknownType = AnkiPackage(
             format: format,
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["dos", "two"], progress: .review(due: 30, interval: 1),
-                    history: reviewed + [
+                    revlog: reviewed + [
                         AnkiRevlogEntry(at: try october(3, at: 10), button: 3, interval: 1, kind: .unknown)
                     ])
             ])
@@ -431,7 +431,7 @@ final class AnkiHistoryTests {
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["sístole", "systole"], progress: .learningAcrossDays(due: 22),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(22, at: 10), button: 1, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(22, at: 10, minute: 10), button: 3, interval: loggedInterval,
@@ -466,14 +466,14 @@ final class AnkiHistoryTests {
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["perro", "dog"], progress: .learningAcrossDays(due: 22),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(
                             at: try october(22, at: 23, minute: 50), button: 1, interval: -3_600, kind: .learning),
                         AnkiRevlogEntry(at: try october(23, at: 1), button: 3, interval: 1, kind: .learning),
                     ]),
                 AnkiNote(
                     type: .basic, fields: ["gato", "cat"], progress: .relearningAcrossDays(due: 22),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(20, at: 10), button: 3, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
                             at: try october(20, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
@@ -516,7 +516,7 @@ final class AnkiHistoryTests {
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["riñón", "kidney"], progress: .review(due: 22, interval: 3),
-                    history: [
+                    revlog: [
                         AnkiRevlogEntry(at: try october(18, at: 10), button: 3, interval: 1, kind: .learning),
                         AnkiRevlogEntry(at: try october(19, at: 10), button: 1, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
@@ -552,14 +552,14 @@ final class AnkiHistoryTests {
             format: format,
             notes: [
                 AnkiNote(
-                    type: .basic, fields: ["dos", "two"], progress: .review(due: 30, interval: 1), history: reviewed)
+                    type: .basic, fields: ["dos", "two"], progress: .review(due: 30, interval: 1), revlog: reviewed)
             ])
         let reset = AnkiPackage(
             format: format,
             notes: [
                 AnkiNote(
                     type: .basic, fields: ["tres", "three"],
-                    history: reviewed + [
+                    revlog: reviewed + [
                         AnkiRevlogEntry(at: try october(3, at: 8), button: 0, interval: 0, factor: 0, kind: .manual)
                     ])
             ])

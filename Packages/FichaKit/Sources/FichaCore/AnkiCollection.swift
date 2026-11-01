@@ -2,8 +2,8 @@ import Foundation
 
 /// An Anki collection, as an Anki package holds it, in plain values whatever
 /// its schema: when it was created, how it counts its days and its
-/// scheduler's version, and its note types, decks, notes, cards and their
-/// review history, with what Ficha reads of each. A package's
+/// scheduler's version, and its note types, decks, notes, cards and the
+/// entries Anki logged of them, with what Ficha reads of each. A package's
 /// reader, which knows the schema, makes it, from the JSON of schema 11 or
 /// the tables of schema 18, and `importReading(in:images:sounds:sha1:)`
 /// makes Ficha's cards of it, the same way for both. The values follow
@@ -22,7 +22,8 @@ public struct AnkiCollection: Sendable, Equatable {
     public let notes: [Int64: AnkiNote]
     /// The cards, in any order.
     public let cards: [AnkiCard]
-    /// Every card's review history, its `revlog` table, in any order.
+    /// What Anki logged of every card, its `revlog` table: its reviews, and
+    /// the entries no button made, in any order.
     public let revlog: [AnkiRevlogEntry]
     /// The version of Anki's scheduler its configuration says it's on.
     public let schedulerVersion: AnkiSchedulerVersion
@@ -293,9 +294,9 @@ public struct AnkiCard: Sendable, Equatable {
     }
 }
 
-/// An entry of a card's review history in an Anki collection, with the
-/// columns of Anki's `revlog` table an import reads, as Anki stores them
-/// (`rslib/src/revlog/mod.rs`).
+/// An entry Anki logged of a card in an Anki collection, a review or one no
+/// button made, with the columns of Anki's `revlog` table an import reads,
+/// as Anki stores them (`rslib/src/revlog/mod.rs`).
 public struct AnkiRevlogEntry: Sendable, Equatable {
     /// `id`: when it happened, in milliseconds since 1970.
     public let id: Int64

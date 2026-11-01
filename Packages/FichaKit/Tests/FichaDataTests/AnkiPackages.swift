@@ -204,7 +204,16 @@ struct AnkiPackage {
                             cardID, noteID, deck, ordinal, columns.type, queue, due, columns.interval, originalDue,
                             originalDeck,
                         ])
-                    for entry in ordinal == 1 ? note.reversedCardHistory : note.history {
+                    // A revlog entry's id is unique across the collection, so
+                    // a note's third card and those after log none, rather
+                    // than its first card's again.
+                    let revlog =
+                        switch ordinal {
+                        case 0: note.revlog
+                        case 1: note.reversedCardRevlog
+                        default: [AnkiRevlogEntry]()
+                        }
+                    for entry in revlog {
                         try db.execute(
                             sql: "INSERT INTO revlog VALUES (?, ?, 0, ?, ?, 0, ?, ?, ?)",
                             arguments: [
@@ -514,11 +523,11 @@ struct AnkiNote {
     /// place of `progress` and `queue`, or nil when it stands as its first
     /// card does.
     var reversedCard: (progress: Progress, queue: Queue)? = nil
-    /// Its cards' review history in Anki, each card's rows of the `revlog`
-    /// table, but its reversed card's, its second template's.
-    var history: [AnkiRevlogEntry] = []
-    /// Its reversed card's review history in Anki.
-    var reversedCardHistory: [AnkiRevlogEntry] = []
+    /// What Anki logged of its first card, its rows of the `revlog` table.
+    var revlog: [AnkiRevlogEntry] = []
+    /// What Anki logged of its reversed card, its second template's. A
+    /// note's other cards have none.
+    var reversedCardRevlog: [AnkiRevlogEntry] = []
     /// The filtered deck its cards were moved to, or nil.
     var filteredDeck: String? = nil
     /// The template index of the note's one card, in place of those Anki
@@ -561,8 +570,8 @@ struct AnkiNote {
         ])
 }
 
-/// An entry of a card's review history in a test's Anki package, a row of
-/// its `revlog` table, as Anki writes it (`rslib/src/revlog/mod.rs`).
+/// An entry Anki logged of a card in a test's Anki package, a row of its
+/// `revlog` table, as Anki writes it (`rslib/src/revlog/mod.rs`).
 struct AnkiRevlogEntry {
     /// What the entry records, its `type`.
     enum Kind: Int {

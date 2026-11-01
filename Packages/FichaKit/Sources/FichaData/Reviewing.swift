@@ -261,8 +261,8 @@ extension ReviewLogEntry {
         switch (kind, trigger) {
         case (.placement(let placement), nil):
             self.init(placing: cardID, way: way, on: placement, at: answeredAt, uuid: uuid)
-        // A review with no trigger is one an import brings from Anki's
-        // history (#409), which nothing brought; the table allows it since
+        // A review with no trigger is one of Anki's, which an import brings
+        // (#409), and nothing brought; the table allows it since
         // "v33 the scheduler replaces the ladder".
         case (.review, _):
             let responseTime: Double? = try row.decode(forColumn: "responseTime")

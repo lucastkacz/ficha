@@ -1147,7 +1147,7 @@ func sampleAnkiCollectionSQL() throws -> String {
     // seconds after the collection's creation, its button, its `ivl` and its
     // `type`: the femur's two learning steps on 2 October, and its reviews
     // since, the last on 13 October, which set its 10 days.
-    let history: [Int: [(after: Int, button: Int, interval: Int, type: Int)]] = [
+    let revlog: [Int: [(after: Int, button: Int, interval: Int, type: Int)]] = [
         0: [
             (30 * 3_600, 3, -600, 0), (30 * 3_600 + 600, 3, 1, 0), (54 * 3_600, 3, 3, 1), (126 * 3_600, 3, 7, 1),
             (294 * 3_600, 3, 10, 1),
@@ -1188,7 +1188,7 @@ func sampleAnkiCollectionSQL() throws -> String {
                 \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
 
                 """
-            for entry in history[index] ?? [] {
+            for entry in revlog[index] ?? [] {
                 sql += """
                     INSERT INTO revlog VALUES (\((1_790_838_000 + entry.after) * 1_000), \(noteID * 10 + ordinal), 0, \
                     \(entry.button), \(entry.interval), 0, 2500, 5000, \(entry.type));
