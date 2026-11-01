@@ -383,12 +383,14 @@ final class AnkiHistoryTests {
         #expect(try standing(of: "hueso") == graduated(due: try october(15, at: 10)))
     }
 
-    // Anki's learning steps here are 10 minutes and a day, as its scheduler
-    // before v3 kept them, unfuzzed.
+    // Anki's learning steps here are 10 minutes and a day, unfuzzed. Its
+    // schedulers before v3 logged the day's step in seconds, -86,400; v3
+    // logs a step that waits past the start of Anki's next day in days, 1
+    // here, as it logs a graduation.
     @Test(
-        "a learning step of whole days, which Ficha's steps can't last, comes in as Ficha's step, due on Anki's day",
-        arguments: schemas)
-    func aLearningStepOfADayComesInAsFichasStep(format: AnkiPackage.Format) async throws {
+        "a learning step of whole days, which Ficha's steps can't last, comes in as Ficha's step, due on Anki's day, logged in seconds or in days",
+        arguments: schemas, [-86_400, 1])
+    func aLearningStepOfADayComesInAsFichasStep(format: AnkiPackage.Format, loggedInterval: Int) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -397,7 +399,8 @@ final class AnkiHistoryTests {
                     history: [
                         AnkiRevlogEntry(at: try october(22, at: 10), button: 1, interval: -600, kind: .learning),
                         AnkiRevlogEntry(
-                            at: try october(22, at: 10, minute: 10), button: 3, interval: -86_400, kind: .learning),
+                            at: try october(22, at: 10, minute: 10), button: 3, interval: loggedInterval,
+                            kind: .learning),
                     ])
             ])
 
@@ -413,6 +416,92 @@ final class AnkiHistoryTests {
                     at: time.now),
             ])
         #expect(try standing(of: "sístole") == learning(step: 1, due: try october(23, at: 4)))
+    }
+
+    // Anki's learning steps here are Ficha's, an hour and 4 hours, and its
+    // relearning step 4 hours. Anki's next day starts at 4 in the morning,
+    // so from 1 o'clock or half past either 4 hours waits past it, which
+    // Anki's v3 scheduler logs as a day.
+    @Test(
+        "a step that waits past the start of Anki's next day, which Anki logs as a day, comes in as Ficha's step",
+        arguments: schemas)
+    func aStepPastAnkisNextDayComesInAsFichasStep(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["perro", "dog"], progress: .learningAcrossDays(due: 22),
+                    history: [
+                        AnkiRevlogEntry(
+                            at: try october(22, at: 23, minute: 50), button: 1, interval: -3_600, kind: .learning),
+                        AnkiRevlogEntry(at: try october(23, at: 1), button: 3, interval: 1, kind: .learning),
+                    ]),
+                AnkiNote(
+                    type: .basic, fields: ["gato", "cat"], progress: .relearningAcrossDays(due: 22),
+                    history: [
+                        AnkiRevlogEntry(at: try october(20, at: 10), button: 3, interval: -600, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(20, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
+                        AnkiRevlogEntry(at: try october(21, at: 10), button: 3, interval: 1, kind: .review),
+                        AnkiRevlogEntry(
+                            at: try october(23, at: 1, minute: 30), button: 1, interval: 1, kind: .review),
+                    ]),
+            ])
+
+        try await importPackage(package)
+
+        let dog = try card("perro").id
+        let cat = try card("gato").id
+        #expect(
+            try log(of: "perro") == [
+                imported(.again, of: dog, at: try october(22, at: 23, minute: 50), keeping: .seconds(hours(1))),
+                imported(.good, of: dog, at: try october(23, at: 1), keeping: .seconds(hours(4))),
+            ])
+        #expect(try standing(of: "perro") == learning(step: 1, due: try october(23, at: 5)))
+        // Ficha's relearning step is an hour, so the cat is placed due when
+        // Anki had it due, on that step.
+        #expect(
+            try log(of: "gato").suffix(2) == [
+                imported(.again, of: cat, at: try october(23, at: 1, minute: 30), keeping: .seconds(hours(1))),
+                ReviewLogEntry(
+                    placing: cat, on: Placement(interval: .seconds(hours(1)), due: try october(23, at: 4)),
+                    at: time.now),
+            ])
+        #expect(try standing(of: "gato") == relearning(step: 0, due: try october(23, at: 4)))
+    }
+
+    // Anki's learning steps here are 10 minutes and a day, as in Anki's v3
+    // scheduler, which logs the day's step in days.
+    @Test(
+        "an again on a learning step of a day isn't a lapse, which Forgotten often would count",
+        arguments: schemas)
+    func anAgainOnAStepOfADayIsntALapse(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["riñón", "kidney"], progress: .review(due: 22, interval: 3),
+                    history: [
+                        AnkiRevlogEntry(at: try october(18, at: 10), button: 3, interval: 1, kind: .learning),
+                        AnkiRevlogEntry(at: try october(19, at: 10), button: 1, interval: -600, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(19, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
+                        AnkiRevlogEntry(at: try october(20, at: 10), button: 3, interval: 3, kind: .learning),
+                    ])
+            ])
+
+        try await importPackage(package)
+
+        let kidney = try card("riñón").id
+        #expect(
+            try log(of: "riñón") == [
+                imported(.good, of: kidney, at: try october(18, at: 10), keeping: .seconds(hours(4))),
+                imported(.again, of: kidney, at: try october(19, at: 10), keeping: .seconds(minutes(10))),
+                imported(.good, of: kidney, at: try october(19, at: 10, minute: 10), keeping: .seconds(hours(4))),
+                imported(.good, of: kidney, at: try october(20, at: 10), keeping: .seconds(days(3))),
+            ])
+        #expect(try scheduler.lapses(after: engine.reviewLog()).isEmpty)
+        #expect(try standing(of: "riñón") == graduated(due: try october(23, at: 10)))
     }
 
     @Test(

@@ -122,7 +122,9 @@ extension AnkiCollection {
             }
             stage = .review(interval: .seconds(seconds), ease: ease(of: card), due: .on(try day(due, in: calendar)))
         }
-        return ImportedProgress(stage: stage, isSuspended: isSuspended, history: try importedHistory(of: history))
+        let isOnAStep = if case .learning = stage { true } else { false }
+        return ImportedProgress(
+            stage: stage, isSuspended: isSuspended, history: try importedHistory(of: history, endingOnAStep: isOnAStep))
     }
 
     /// The reviews of `entries`, a card's review history, that Anki's FSRS
@@ -140,7 +142,18 @@ extension AnkiCollection {
     /// scheduler, a learning or relearning step's 2 and 3 are good and easy,
     /// as Anki reads them once it upgrades such a collection
     /// (`rslib/src/storage/revlog/v2_upgrade.sql`).
-    private func importedHistory(of entries: [AnkiRevlogEntry]) throws(AnkiCollectionProblem) -> ImportedHistory {
+    ///
+    /// Each review left the card graduated when the next one is of a
+    /// graduated card, or, for the last, when the card isn't left
+    /// `endingOnAStep`, on a learning or relearning step: Anki logs an
+    /// interval in days both for a graduation and, since its v3 scheduler,
+    /// for a step that waits past the start of its next day
+    /// (`RevlogEntryPartial::new` in `rslib/src/scheduler/answering/
+    /// revlog.rs`, and `maybe_as_days` in `states/interval_kind.rs`), so only
+    /// the card's next review tells them apart.
+    private func importedHistory(of entries: [AnkiRevlogEntry], endingOnAStep: Bool)
+        throws(AnkiCollectionProblem) -> ImportedHistory
+    {
         let entries = entries.sorted { $0.id < $1.id }
         var firstOfTheLastLearningSteps: Int?
         var firstInterdayReview: Int?
@@ -165,30 +178,38 @@ extension AnkiCollection {
         guard let first = firstOfTheLastLearningSteps ?? firstInterdayReview else {
             return .none
         }
-        let reviews = try entries[first...].filter { $0.hasButton && !$0.isCramming }.map {
-            entry throws(AnkiCollectionProblem) in try importedReview(of: entry)
+        let rated = entries[first...].filter { $0.hasButton && !$0.isCramming }
+        let reviews = try rated.indices.map { index throws(AnkiCollectionProblem) in
+            let next = index + 1
+            return try importedReview(
+                of: rated[index],
+                leavingItGraduated: next < rated.count ? rated[next].isOfAGraduatedCard : !endingOnAStep)
         }
         guard firstOfTheLastLearningSteps == nil, let start = reviews.first else {
             return ImportedHistory(start: nil, reviews: reviews)
         }
         // A history that lacks its learning steps starts from the interval
-        // its first review set, a day at least, and the ease it left: Anki's
-        // starting one, 2.5, when it kept none, and when it kept FSRS's
-        // difficulty there, from 100 to 1100, which Anki puts in the memory
-        // it starts, and a placement doesn't hold.
+        // its first review set, in days, a day at least, as Anki's FSRS
+        // takes it (`first_user_grade.interval.max(1)` in `memory_state.rs`),
+        // and the ease it left: Anki's starting one, 2.5, when it kept none,
+        // and when it kept FSRS's difficulty there, from 100 to 1100, which
+        // Anki puts in the memory it starts, and a placement doesn't hold.
         let factor = entries[first].factor
-        let interval = start.graduated ? start.interval : Duration.seconds(24 * 60 * 60)
+        let interval = Duration.days(max(1, entries[first].interval))
         let placement = Placement(
-            interval: interval, due: start.answeredAt.addingTimeInterval(interval.timeInterval),
+            interval: interval, due: start.answeredAt.adding(interval),
             ease: factor > 1100 ? Double(factor) / 1000 : 2.5)
         return ImportedHistory(
             start: ImportedStart(at: start.answeredAt, placement: placement), reviews: Array(reviews.dropFirst()))
     }
 
     /// `entry`, an entry of a card's review history with a button, as an
-    /// import brings it, or a problem when its button or its interval isn't
-    /// one Anki gives.
-    private func importedReview(of entry: AnkiRevlogEntry) throws(AnkiCollectionProblem) -> ImportedReview {
+    /// import brings it, graduated when it's `leavingItGraduated` and its
+    /// interval is in days, as no step's in seconds is; or a problem when its
+    /// button or its interval isn't one Anki gives.
+    private func importedReview(of entry: AnkiRevlogEntry, leavingItGraduated: Bool)
+        throws(AnkiCollectionProblem) -> ImportedReview
+    {
         let isStep = entry.kind == AnkiRevlogKind.learning.rawValue || entry.kind == AnkiRevlogKind.relearning.rawValue
         let button =
             schedulerVersion == 1 && isStep && (entry.button == 2 || entry.button == 3)
@@ -206,7 +227,7 @@ extension AnkiCollection {
         }
         return ImportedReview(
             answeredAt: Date(timeIntervalSince1970: TimeInterval(entry.id) / 1000), rating: rating,
-            interval: .seconds(seconds), graduated: entry.interval > 0,
+            interval: .seconds(seconds), graduated: leavingItGraduated && entry.interval > 0,
             responseTime: entry.milliseconds > 0 ? .milliseconds(entry.milliseconds) : nil)
     }
 
@@ -290,6 +311,15 @@ extension AnkiRevlogEntry {
     /// (`is_cramming`).
     fileprivate var isCramming: Bool {
         kind == AnkiRevlogKind.filtered.rawValue && factor == 0
+    }
+
+    /// Whether it's a review of a graduated card, out of its learning and
+    /// relearning steps: of the type Review, or Filtered, for a card Anki
+    /// showed early in a filtered deck, as Anki gives an entry the type of
+    /// where the card stood before it (`revlog_kind` of the current state, in
+    /// `RevlogEntryPartial::new`).
+    fileprivate var isOfAGraduatedCard: Bool {
+        kind == AnkiRevlogKind.review.rawValue || kind == AnkiRevlogKind.filtered.rawValue
     }
 
     /// Whether it's a reset of the card to new, a manual entry Anki tells
