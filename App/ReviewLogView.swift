@@ -82,7 +82,7 @@ struct ReviewLogView: View {
                 AxisGridLine()
                 AxisValueLabel {
                     if let days = value.as(Double.self) {
-                        Text(intervalText(.seconds(days * Self.secondsInADay)))
+                        Text(intervalText(Duration(days: days)))
                     }
                 }
             }
@@ -92,9 +92,6 @@ struct ReviewLogView: View {
 
     /// What Lucas can answer, in the order the chart's key names them.
     private static let answers: [ReviewLogEntry.Kind] = [.review(.again), .review(.hard), .review(.good)]
-
-    /// The seconds in a day, which the chart's intervals are counted in.
-    fileprivate static let secondsInADay: Double = 24 * 60 * 60
 
     /// Whether the card has an entry that went back first, so that the chart
     /// draws each way's line apart and names them in its key.
@@ -247,9 +244,11 @@ private struct ResponseTime: View {
 
 extension ReviewLogRow {
     /// The interval the entry's way waited after it, in days, as the chart
-    /// plots it.
+    /// plots it: a minute at least, below the shortest learning step, since a
+    /// logarithmic scale has no zero, and Swift Charts traps on one, which a
+    /// placement an import gives a card Anki was learning holds.
     fileprivate var days: Double {
-        interval.timeInterval / ReviewLogView.secondsInADay
+        max(interval, .seconds(60)).inDays
     }
 
     /// The entry's point in the chart, as VoiceOver names it: what the user
