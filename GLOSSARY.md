@@ -121,7 +121,7 @@ _Avoid_: answer, attempt, study
 
 **Rating**:
 How well the user says they knew a card in a review, with Anki's four buttons and names: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't.
-_Avoid_: grade, score, ease, "Don't know", "Sort of", "Know it"
+_Avoid_: grade, score, ease
 
 **Review log**:
 Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and an import's reviews from Anki, or the interval and due time it gave a card that came without them. A card's progress and due time are worked out from it.
@@ -189,14 +189,14 @@ _Avoid_: algorithm, formula, ladder
 
 **Interval**:
 How long a card waits after a review before it's due again, which that review set: a learning or relearning step, or the days FSRS gave a graduated card.
-_Avoid_: wait, delay, step
+_Avoid_: wait, delay
 
 **Learning steps**:
-The short waits, each under a day, a new card goes through before it graduates: 1 hour and 4 hours, or as the user sets them.
-_Avoid_: ladder, first steps
+The short intervals, each under a day, a new card goes through before it graduates: 1 hour and 4 hours, or as the user sets them.
+_Avoid_: first steps
 
 **Relearning steps**:
-The short waits a graduated card goes through after a lapse, before it graduates again: 1 hour, or as the user sets them.
+The short intervals a graduated card goes through after a lapse, before it graduates again: 1 hour, or as the user sets them.
 
 **Graduate**:
 A card leaving its learning or relearning steps, so that FSRS spaces it in days from then on.
@@ -210,18 +210,17 @@ How likely the user wants to be to remember a card when it comes due: 90%, or as
 _Avoid_: target, success rate
 
 **Stability**:
-How many days it takes the user's chance of remembering a card to fall to 90%, as FSRS estimates it from the card's reviews.
+How long the user's memory of a card lasts, as FSRS estimates it from the card's reviews: the days it takes their chance of remembering it to fall to 90%, whatever their desired retention.
 
 **Difficulty**:
-How hard a card is for the user, from 1 to 10, as FSRS estimates it from their ratings.
-_Avoid_: ease
+How hard a card is for the user, as FSRS estimates it from their ratings.
 
 **Retrievability**:
 How likely the user is to remember a card right now, as FSRS estimates it.
 _Avoid_: recall, memory
 
 **Settings that decide progress**:
-The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, and after how many lapses a card is forgotten often. One set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
+The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, and after how many lapses a card is forgotten often, one set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
 _Avoid_: synced settings, review settings, preset
 
 **Due**:
