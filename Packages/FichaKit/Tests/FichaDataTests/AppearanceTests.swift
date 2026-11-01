@@ -81,10 +81,11 @@ struct AppearanceTests {
         }
     }
 
-    @Test("the cards an appearance brings along take their place by step, as review now's cards do")
-    func cardsBroughtAlongTakeTheirPlaceByStep() throws {
-        // petricor climbs to the second step, due at 14:00, and ubuntu waits
-        // on the first, due at 14:10.
+    @Test("the cards an appearance brings along come shortest interval first, as review now's cards do")
+    func cardsBroughtAlongComeShortestIntervalFirst() throws {
+        // petricor moves to the second learning step, of 4 hours, due at
+        // 14:00, and ubuntu waits the first's hour, due at 14:10, so it comes
+        // first.
         let petricor = try meetCard("petricor", dueAt: try at(10, 0))
         time.move(to: try at(10, 0))
         try engine.review(petricor, .good)

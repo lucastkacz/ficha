@@ -583,7 +583,7 @@ extension ImportedCard {
     /// brings progress or not: as the file says, but one way when the
     /// import brings progress and the app the file comes from suspended its
     /// back-first way alone, as Anki suspends a note's reversed card, whose
-    /// step it keeps (ADR 0016). Its front-first way suspended, it comes in
+    /// progress it keeps (ADR 0016). Its front-first way suspended, it comes in
     /// buried, both ways.
     func goesBothWays(bringingProgress: Bool) -> Bool {
         guard bringingProgress, backFirstProgress?.isSuspended == true else {

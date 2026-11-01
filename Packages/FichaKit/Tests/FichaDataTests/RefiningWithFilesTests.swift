@@ -143,7 +143,8 @@ final class RefiningWithFilesTests {
     }
 
     @Test(
-        "approving an expansion keeps its card's step and the images and sounds it leaves out, and puts those it gives")
+        "approving an expansion keeps its card's progress and the images and sounds it leaves out, and puts those it gives"
+    )
     func approvingAnExpansionKeepsTheFilesItLeavesOut() async throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))

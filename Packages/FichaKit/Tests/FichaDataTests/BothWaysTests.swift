@@ -18,7 +18,9 @@ struct BothWaysTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    @Test("a new card goes one way, and Both ways turns on and off for one card or several at once, on their steps")
+    @Test(
+        "a new card goes one way, and Both ways turns on and off for one card or several at once, keeping their progress"
+    )
     func bothWaysTurnsOnAndOffForOneCardOrSeveral() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)

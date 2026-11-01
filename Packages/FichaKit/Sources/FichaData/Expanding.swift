@@ -30,7 +30,7 @@ extension Engine {
     /// Approves an expansion in the inbox: replaces its card's content with
     /// `content`, which a refine session drafted from the card and the
     /// expansion and Lucas approved, and takes the expansion out of the inbox.
-    /// The card stays on the step its review log puts it on, and keeps its
+    /// The card stays where its review log puts it, and keeps its
     /// images and sounds, as a draft that leaves them out does
     /// (`approveExpansion(_:into:)` with a `CardDraft`); a new front or back
     /// keeps when it changed. Returns the card.

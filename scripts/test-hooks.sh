@@ -82,7 +82,7 @@ echo '{"number":14,"labels":[],"changedFiles":1,"files":[{"path":"CLAUDE.md"}]}'
 echo '{"number":15,"labels":[],"changedFiles":1,"files":[{"path":"Makefile"}]}' >"$tmp/gh/pr-15.json"
 echo '{"number":16,"labels":[],"changedFiles":101,"files":[{"path":"App/FichaApp.swift"}]}' >"$tmp/gh/pr-16.json"
 echo '{"number":17,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaData/Schema.swift"}]}' >"$tmp/gh/pr-17.json"
-echo '{"number":18,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/Scheduler/Ladder.swift"}]}' >"$tmp/gh/pr-18.json"
+echo '{"number":18,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/Scheduler/Scheduler.swift"}]}' >"$tmp/gh/pr-18.json"
 echo '{"number":19,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/ReviewNow.swift"}]}' >"$tmp/gh/pr-19.json"
 echo '{"number":20,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/AppearancePlanner.swift"}]}' >"$tmp/gh/pr-20.json"
 echo '{"number":21,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaData/CardsInReviews.swift"}]}' >"$tmp/gh/pr-21.json"

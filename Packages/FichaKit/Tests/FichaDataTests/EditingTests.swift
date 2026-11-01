@@ -19,9 +19,9 @@ struct EditingTests {
     }
 
     @Test("an edit changes a card's content and keeps its progress, its due time and its review log")
-    func anEditKeepsTheCardsStep() throws {
-        // serendipia climbs to the third step, 2 days, and Lucas edits it
-        // before it's due.
+    func anEditKeepsTheCardsProgress() throws {
+        // serendipia graduates with two goods, due a day later, and Lucas
+        // edits it before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)

@@ -144,7 +144,8 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// card; for an Anki package, its notes' tags. The user renames each tag,
 /// or clears it to leave it out. An Anki package's cards come in where Anki
 /// had them while Bring progress is ticked (ADR 0013), and how many of them
-/// land on a step goes in the line under the title. Import imports them.
+/// come with their progress goes in the line under the title. Import
+/// imports them.
 /// While it reads the file or imports, it says so beside a spinner. A
 /// preview taller than the window scrolls between the title and the
 /// buttons. Last, it says what the import did. `CardsWindowState` holds the
@@ -481,8 +482,9 @@ struct ImportSheet: View {
             .toggleStyle(.checkbox)
             Text(
                 """
-                Cards Anki was learning or reviewing land on the step nearest their interval, due when Anki said, \
-                and suspended cards come in buried. Unticked, every card comes in new.
+                Cards Anki was reviewing keep their interval and due date, those it was learning start on the \
+                first learning step, due when Anki said, and suspended cards come in buried. Unticked, every card \
+                comes in new.
                 """,
                 comment: "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
             )

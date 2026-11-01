@@ -174,8 +174,8 @@ struct PriorityDecksTests {
         #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia].map { PanelCard.review($0) })
     }
 
-    @Test("each card's step and due time are the same with or without priority decks")
-    func priorityDecksChangeNoStepOrDueTime() throws {
+    @Test("each card's progress and due time are the same with or without priority decks")
+    func priorityDecksChangeNoProgressOrDueTime() throws {
         let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", in: engine)

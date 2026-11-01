@@ -153,7 +153,7 @@ enum Preferences {
     }
 
     /// The Cards window's table columns: which ones show, as Lucas left them,
-    /// at first the table's own, Front, Media, Step and Due, in the table's
+    /// at first the table's own, Front, Media, Interval and Due, in the table's
     /// order and at its widths. SwiftUI keeps their order and widths too,
     /// which aren't kept here, nor read back from a version before #391: a
     /// width saved in a wider pane, which the table gave its columns as the

@@ -6,7 +6,7 @@ import Testing
 /// Tests on renaming decks (ADR 0024), which moves them too, as a deck's
 /// whole name carries the decks it sits inside, as Anki does: a deck renamed
 /// takes the decks inside it and their cards along, each card keeping its
-/// step, its review log and its tags, and a deck renamed onto one that
+/// progress, its review log and its tags, and a deck renamed onto one that
 /// exists joins it. On the default scheduler; they start at 9 in the morning in
 /// Buenos Aires, when active hours start.
 struct RenamingDecksTests {

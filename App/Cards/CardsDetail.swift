@@ -494,7 +494,7 @@ struct FlagAndBurial: View {
                     // goes back to Lucas's reviews is FichaData's to say, and
                     // the burial shows below.
                     Text(
-                        "Saving fixes it, and it keeps its step.",
+                        "Saving fixes it, and it keeps its progress.",
                         comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
                     )
                     .font(.callout)

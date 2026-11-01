@@ -63,7 +63,7 @@ risky_paths=(
   # The one way in to the cards that show up, those in Lucas's reviews, and
   # which cards take an answer.
   'Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift'
-  # The scheduler, which moves cards on the ladder, says where a card stands:
+  # The scheduler, which spaces each review with FSRS, says where a card stands:
   # in Lucas's reviews, waiting in the inbox, buried, or set aside by its deck
   # or a deck it sits inside, and keeps the cards in his reviews for the
   # planners to pick from.

@@ -131,7 +131,7 @@ struct SetDeckAsideCommand: EngineCommand {
         abstract: "Set a deck aside, or with --off stop setting it aside, and print the deck.",
         discussion: """
             A set-aside deck's cards, and those of the decks inside it, are out of your reviews for now; they keep \
-            their steps. A priority deck set aside is no longer one.
+            their progress. A priority deck set aside is no longer one.
             """
     )
 

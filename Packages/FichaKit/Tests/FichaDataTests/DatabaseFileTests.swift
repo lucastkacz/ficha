@@ -131,7 +131,7 @@ final class DatabaseFileTests {
 
     // The card table is made again for cards without a type or a capture.
     @Test(
-        "a database from before cards without a type or a capture migrates with every card's type, capture, step and review log as they were"
+        "a database from before cards without a type or a capture migrates with every card's type, capture, progress and review log as they were"
     )
     func cardsKeepEverythingThroughTheMigrationToOptionalTypes() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -187,7 +187,7 @@ final class DatabaseFileTests {
     }
 
     @Test(
-        "a database from before Both ways migrates with every card going one way, and its step, due time and review log as they were"
+        "a database from before Both ways migrates with every card going one way, and its progress, due time and review log as they were"
     )
     func aDatabaseFromBeforeBothWaysMigratesWithEveryCardGoingOneWay() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

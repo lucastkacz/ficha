@@ -114,7 +114,7 @@ struct CardsWindowDecksTests {
     }
 
     @Test(
-        "Change Deck… asks with the deck tree, Default in it, on the deck the cards all live in, and Move moves them, keeping their step"
+        "Change Deck… asks with the deck tree, Default in it, on the deck the cards all live in, and Move moves them, keeping their progress"
     )
     func changeDeckMovesTheCards() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))

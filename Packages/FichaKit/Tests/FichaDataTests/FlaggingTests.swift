@@ -117,7 +117,7 @@ struct FlaggingTests {
     }
 
     @Test("fixing a flagged card changes its content and brings it back to Lucas's reviews as it stood")
-    func fixingBringsTheCardBackToItsStep() throws {
+    func fixingBringsTheCardBackAsItStood() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
@@ -191,7 +191,7 @@ struct FlaggingTests {
 
     // The review panel's ⌘Z unflags a card Lucas flagged there.
     @Test("unflagging a flagged card keeps its content and brings it back to Lucas's reviews as it stood")
-    func unflaggingBringsTheCardBackToItsStep() throws {
+    func unflaggingBringsTheCardBackAsItStood() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)

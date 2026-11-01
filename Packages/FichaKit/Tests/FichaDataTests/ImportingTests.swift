@@ -380,9 +380,9 @@ final class ImportingTests {
     }
 
     @Test(
-        "repeated cards are updated with everything the file gives them but their front, keeping their step and review log"
+        "repeated cards are updated with everything the file gives them but their front, keeping their progress and review log"
     )
-    func repeatedCardsAreUpdatedKeepingTheirStepAndReviewLog() async throws {
+    func repeatedCardsAreUpdatedKeepingTheirProgressAndReviewLog() async throws {
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"], source: "Un libro"), in: engine)
         let petricor = try approve(

@@ -172,7 +172,8 @@ struct SettingAsideTests {
     }
 
     @Test(
-        "stopping setting a deck aside brings its cards back on their step, with the cards that came due meanwhile due")
+        "stopping setting a deck aside brings its cards back where they stood, with the cards that came due meanwhile due"
+    )
     func stoppingSettingADeckAsideBringsItsCardsBack() throws {
         // eudaimonía gets to the second step, which waits 4 hours, and
         // ataraxia is new.
@@ -193,7 +194,7 @@ struct SettingAsideTests {
     }
 
     @Test(
-        "setting a deck aside takes both ways of its cards out of reviews, and stopping brings both back on their steps"
+        "setting a deck aside takes both ways of its cards out of reviews, and stopping brings both back where they stood"
     )
     func settingADeckAsideTakesOutBothWays() throws {
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")

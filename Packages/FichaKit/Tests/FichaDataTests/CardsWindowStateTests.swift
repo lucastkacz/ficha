@@ -340,7 +340,7 @@ struct CardsWindowStateTests {
         #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
     }
 
-    // The Back-first step and Back-first due columns show `backFirst`, and
+    // The Back-first interval and Back-first due columns show `backFirst`, and
     // sort by it, empty ones last, in the app's `CardRowOrder`, since a
     // table's order stays in the app.
     @Test(

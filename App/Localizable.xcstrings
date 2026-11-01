@@ -1058,7 +1058,7 @@
     "Cards" : {
       "comment" : "A column of the Cards window's All Tags: how many cards carry the tag, or a tag inside it.\nThe Cards window's title."
     },
-    "Cards Anki was learning or reviewing land on the step nearest their interval, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
+    "Cards Anki was reviewing keep their interval and due date, those it was learning start on the first learning step, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
       "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
     },
     "Cards per appearance" : {
@@ -2497,7 +2497,7 @@
     "Saved" : {
       "comment" : "Settings, under Backups: the column of when a copy was saved."
     },
-    "Saving fixes it, and it keeps its step." : {
+    "Saving fixes it, and it keeps its progress." : {
       "comment" : "In the Cards window, under Lucas's note on a flagged card, while he edits it."
     },
     "Scheduling" : {

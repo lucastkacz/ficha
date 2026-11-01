@@ -243,8 +243,8 @@ struct ReviewPanelTests {
         time.advance(by: hours(1))
         try engine.setEmoji(Emoji("⚖️"), of: "derecho")
         try engine.setColor(.orange, of: "física")
-        // Now "Poder" is due, and "Poder constituyente", on the third step, is
-        // the closest to being due, for a review ahead.
+        // Now "Poder" is due, and "Poder constituyente", graduated, is the
+        // closest to being due, for a review ahead.
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.content == .upperSide(poder))
         #expect(panel.tags == [CardTag(name: "física", color: .orange), CardTag(name: "ciencia")])

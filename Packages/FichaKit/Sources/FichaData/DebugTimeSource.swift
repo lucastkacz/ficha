@@ -11,8 +11,8 @@ import Synchronization
 public final class DebugTimeSource: TimeSource {
     /// How far Ficha Dev's debug tools move time forward at a time, on the Mac
     /// and on the iPhone: from 10 minutes, how long an untouched review panel
-    /// stays open on the Mac, to the 30-day step, from which a card is
-    /// learned.
+    /// stays open on the Mac, to 30 days, past the 21-day interval from which
+    /// a card is learned.
     public static let steps: [Duration] = [
         .seconds(10 * 60), .seconds(60 * 60), .seconds(24 * 60 * 60), .seconds(7 * 24 * 60 * 60),
         .seconds(30 * 24 * 60 * 60),

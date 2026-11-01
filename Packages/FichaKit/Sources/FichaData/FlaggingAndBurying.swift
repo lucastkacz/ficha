@@ -26,8 +26,8 @@ extension Engine {
 
     /// Fixes a flagged card in the inbox with `content`, as a refine session
     /// drafted it and Lucas approved it: the card leaves the inbox and goes
-    /// back to his reviews, on the step its review log puts it on, unless its
-    /// deck, or a deck it sits inside, is set aside. It keeps its images and sounds, as a draft
+    /// back to his reviews, where its review log puts it, unless its deck, or
+    /// a deck it sits inside, is set aside. It keeps its images and sounds, as a draft
     /// that leaves them out does (`fix(_:with:)` with a `CardDraft`); a new
     /// front or back keeps when it changed. Returns the card.
     @discardableResult
@@ -57,8 +57,8 @@ extension Engine {
     }
 
     /// Unflags a flagged card in the inbox: its flag goes and its content
-    /// stays, and it goes back to Lucas's reviews, on the step its review log
-    /// puts it on, unless its deck, or a deck it sits inside, is set aside.
+    /// stays, and it goes back to Lucas's reviews, where its review log puts
+    /// it, unless its deck, or a deck it sits inside, is set aside.
     /// The review panel's ⌘Z unflags a card Lucas flagged there. Returns the
     /// card.
     @discardableResult
@@ -90,8 +90,8 @@ extension Engine {
     }
 
     /// Unburies a card: it goes back to where it was before Lucas buried it,
-    /// his reviews or the inbox, on the step its review log puts it on, or
-    /// it's set aside when its deck, or a deck its deck sits inside, is.
+    /// his reviews or the inbox, where its review log puts it, or it's set
+    /// aside when its deck, or a deck its deck sits inside, is.
     /// Returns the card.
     @discardableResult
     public func unbury(_ cardID: Int64) throws(EngineError) -> Card {
