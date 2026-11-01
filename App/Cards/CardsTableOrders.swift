@@ -98,11 +98,11 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .media:
             ordered(lhs.media, rhs.media, by: compared)
         case .step:
-            ordered(lhs.frontFirst.intervalOrNone, rhs.frontFirst.intervalOrNone)
+            ordered(lhs.frontFirst.intervalOrZero, rhs.frontFirst.intervalOrZero)
         case .due:
             ordered(lhs.frontFirst.due, rhs.frontFirst.due) { $0.compare($1) }
         case .backFirstStep:
-            ordered(lhs.backFirst?.intervalOrNone, rhs.backFirst?.intervalOrNone, by: compared)
+            ordered(lhs.backFirst?.intervalOrZero, rhs.backFirst?.intervalOrZero, by: compared)
         case .backFirstDue:
             ordered(lhs.backFirst?.due, rhs.backFirst?.due) { $0.compare($1) }
         case .type:
@@ -120,8 +120,10 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
 }
 
 extension WayProgress {
-    /// The way's interval, or none while it's new, before every interval.
-    nonisolated fileprivate var intervalOrNone: Duration {
+    /// The way's interval, or zero while it's new, so that a new way sorts
+    /// before every interval, tied with a placement's zero, which an import
+    /// gives a card Anki was learning.
+    nonisolated fileprivate var intervalOrZero: Duration {
         interval ?? .zero
     }
 }

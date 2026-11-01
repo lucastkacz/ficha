@@ -173,7 +173,8 @@ private func givenItsInterval(_ review: ICloudRecord, as uuid: UUID, in db: Data
 /// carried over of the way of the review log's entry with this ID, which
 /// just joined it: one that comes before them in the replay changes the
 /// entry each answers, or the interval it's spaced from, and the way's first
-/// entry seeds the fuzz of every review after it.
+/// entry seeds the fuzz of every review after it. Only the reviews it changes
+/// are written.
 private func carryOverAgain(theWayOf uuid: UUID, in db: Database) throws {
     guard
         let joined = try Row.fetchOne(db, sql: "SELECT * FROM reviewLog WHERE uuid = ?", arguments: [uuid.uuidString])
@@ -186,7 +187,7 @@ private func carryOverAgain(theWayOf uuid: UUID, in db: Database) throws {
         return
     }
     for review in try carryingOverOnArrival(held.carriedOver, in: held.entries) {
-        guard let id = review.uuid, held.carriedOver.contains(id) else {
+        guard let id = review.uuid, held.carriedOver.contains(id), !held.entries.contains(review) else {
             continue
         }
         try db.execute(

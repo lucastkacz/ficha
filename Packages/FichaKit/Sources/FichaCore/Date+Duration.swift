@@ -38,8 +38,13 @@ extension Duration {
         return Double(seconds) + Double(attoseconds) / 1e18
     }
 
+    /// A span of `count` days, with their fraction.
+    public init(days count: Double) {
+        self = .seconds(count * Double(secondsInADay))
+    }
+
     /// This span in days, with their fraction.
-    var inDays: Double {
+    public var inDays: Double {
         self / .days(1)
     }
 
