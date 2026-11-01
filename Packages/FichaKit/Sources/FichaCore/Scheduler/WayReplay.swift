@@ -240,9 +240,17 @@ struct WayReplay {
 /// its user can change it, which a placement doesn't carry yet.
 private let ankiDefaultHistoricalRetention: Float = 0.9
 
-// The order the scheduler replays a way's log in lives here, beside the
-// replay, where the merge gate watches the scheduler.
+// The order the scheduler replays a way's log in, and the rules it reads
+// its entries and their times by, live here, beside the replay, where the
+// merge gate watches the scheduler.
 extension ReviewLogEntry {
+    /// Whether it's a new way's first review, which answered no entry, as
+    /// the replay reads a review that names none: the new cards a day count
+    /// these.
+    var isFirstReview: Bool {
+        if case .review = kind { answeredEntry == nil } else { false }
+    }
+
     /// Whether this entry comes before `other` as the scheduler replays a
     /// way's log, in an order worked out from the entries alone, so that
     /// every device replays a log that joins two devices' entries alike,
@@ -266,5 +274,25 @@ extension ReviewLogEntry.Kind {
         case .placement: 0
         case .review(let rating): 1 + rating.orderAtTheSameMoment
         }
+    }
+}
+
+extension Date {
+    /// The days from `earlier` to this time, with their fraction, negative
+    /// when `earlier` comes after it, as the scheduler counts the time since
+    /// a way's last review for fsrs-rs.
+    func days(since earlier: Date) -> Double {
+        timeIntervalSince(earlier) / Duration.days(1).timeInterval
+    }
+}
+
+extension Duration {
+    /// Whether this span is a whole number of days, one at least, as a
+    /// graduated interval always is: how the replay and an import tell an
+    /// interval that graduated a way from a step's, as
+    /// `stageAndInterval(rating:keeping:workedOut:cardID:)` says.
+    var isWholeDays: Bool {
+        let (seconds, attoseconds) = components
+        return seconds >= secondsInADay && seconds % secondsInADay == 0 && attoseconds == 0
     }
 }

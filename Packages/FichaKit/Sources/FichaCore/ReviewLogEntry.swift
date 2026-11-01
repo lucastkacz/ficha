@@ -103,12 +103,6 @@ public struct ReviewLogEntry: Sendable, Equatable {
         CardWay(cardID: cardID, way: way)
     }
 
-    /// Whether it's a new way's first review, which answered no entry: the
-    /// new cards a day count these.
-    var isFirstReview: Bool {
-        if case .review = kind { answeredEntry == nil } else { false }
-    }
-
     /// This entry, answering `answeredEntry` and keeping `interval`, as the
     /// scheduler keeps a review it gave its interval.
     func answering(_ answeredEntry: UUID?, keeping interval: Duration) -> ReviewLogEntry {
