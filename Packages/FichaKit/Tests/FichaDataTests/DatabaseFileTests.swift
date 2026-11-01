@@ -557,6 +557,28 @@ final class DatabaseFileTests {
         #expect(try engine.reviewLog() == log)
     }
 
+    // Two devices answered serendipia at the same moment, again on one and
+    // good on the other, and the again was written first: the migration
+    // carries them over in the order the scheduler replays them, good before
+    // again, so the again has the last word, as the replay gives it.
+    @Test(
+        "a database from before the scheduler replaced the ladder carries two reviews of one moment over in the scheduler's order, again last"
+    )
+    func twoReviewsOfOneMomentAreCarriedOverInTheSchedulersOrder() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let before = time.now - days(1)
+        try saveDatabaseWithTwoReviewsOfOneMoment(at: folder.appending(path: "Ficha.sqlite"), at: before)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let log = try engine.reviewLog()
+        #expect(log.map(\.kind) == [.review(.again), .review(.again), .review(.good)])
+        #expect(log.map(\.interval) == [.seconds(hours(1)), .seconds(hours(1)), .seconds(hours(4))])
+        #expect(log.map(\.answeredEntry) == [nil, log[2].uuid, log[0].uuid])
+        #expect(
+            try engine.standing(of: 1, with: .standard).stageAndDue == learning(step: 0, due: before + hours(2)))
+    }
+
     // The review log's table, made again, has its trigger as an entry is
     // deleted made again too: serendipia's review ahead, which the old
     // table's sent, leaves the other devices' logs as it leaves this one's.
@@ -868,6 +890,31 @@ func saveDatabaseBeforeTheSchedulerReplacedTheLadder(at file: URL, at time: Date
             arguments: [
                 time, time, time, time, time + minutes(10), time + days(4), time, time + days(4),
             ])
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before the scheduler replaced
+/// the ladder, through the schema's migrations up to the one before it, with
+/// sync on and nothing waiting to be sent: serendipia, met at `time`, and an
+/// hour later rated again on another device and good on this one at the
+/// same moment, the again written first.
+func saveDatabaseWithTwoReviewsOfOneMoment(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v32 the scheduler's settings and each review's interval")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?);
+                INSERT INTO reviewLog (cardId, kind, rating, answeredAt, responseTime, trigger, isFromAnotherDevice)
+                VALUES (1, 'firstView', NULL, ?, 8, 'reviewNow', 0),
+                    (1, 'review', 'again', ?, 3, 'reviewNow', 1),
+                    (1, 'review', 'good', ?, 2, 'appearance', 0);
+                """,
+            arguments: [time, time, time + hours(1), time + hours(1)])
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()

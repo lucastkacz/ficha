@@ -375,6 +375,127 @@ final class SyncTests {
         return ubuntu
     }
 
+    // The Mac's update carried over serendipia's first view and its good 10
+    // minutes later. Then a hard from the iPhone, still on a Ficha before
+    // FSRS, comes, given 5 minutes after the first view: the good, which
+    // the migration carried over, now answers the hard, and waits the
+    // second learning step's 4 hours after it, as both would have been
+    // carried over had the hard come before the update.
+    @Test("a review the migration carried over is carried over again when an older Ficha's review comes before it")
+    func aReviewTheMigrationCarriedOverIsCarriedOverAgain() async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let before = time.now - days(1)
+        try saveDatabaseBeforeTheSchedulerReplacedTheLadder(at: folder.appending(path: "Ficha.sqlite"), at: before)
+        let macFromBefore = try Device(
+            Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
+        try macFromBefore.turnSyncOn()
+        try await macFromBefore.syncNow()
+        let serendipia = try macFromBefore.engine.card(fronted: "serendipia")
+        let firstView = try #require(try macFromBefore.engine.reviewLog().first { $0.cardID == serendipia.id })
+        let card = try #require(
+            iCloud.records.first {
+                $0.type == SyncedRow.RecordType.card.rawValue && $0.value(of: "front") == .string("serendipia")
+            })
+        let hard = UUID()
+        iCloud.saveFromANewerFicha(
+            ICloudRecord(
+                id: ICloudRecordID(name: hard.uuidString, zone: card.id.zone),
+                type: SyncedRow.RecordType.reviewLogEntry.rawValue,
+                fields: [
+                    "card": .string(card.id.name), "way": .string(Way.frontFirst.rawValue), "kind": .string("review"),
+                    "rating": .string(Rating.hard.rawValue),
+                    "answeredAt": .int((before + minutes(5)).wholeMilliseconds), "responseTime": .double(2),
+                    "trigger": .string(Trigger.reviewNow.rawValue), "isAhead": .int(0),
+                    "answeredEntry": .string(try #require(firstView.uuid).uuidString),
+                ],
+                systemFields: nil))
+
+        try await macFromBefore.syncNow()
+
+        let log = try macFromBefore.logAsSeen().filter { $0.way == .frontFirst }
+        #expect(log.map(\.kind) == [.review(.again), .review(.hard), .review(.good)])
+        #expect(log.map(\.answeredEntry) == [nil, firstView.uuid, hard])
+        #expect(
+            log.map(\.interval) == [.seconds(hours(1)), .seconds(hours(2) + minutes(30)), .seconds(hours(4))])
+    }
+
+    // An import that brings Anki's progress places a card Anki was reviewing
+    // every 10 days with that interval, Anki's due date and its ease.
+    @Test("a placement reaches the other device with its interval, due time and ease")
+    func aPlacementReachesTheOtherDevice() async throws {
+        try await importOnTheMac([
+            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))
+        ])
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(
+            try iPhone.logAsSeen().map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5))
+            ])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
+    // A device still on a Ficha before FSRS sends a placement on a step of
+    // its ladder, without an interval or an ease: the device that takes it
+    // gives it that step's wait on the ladder Ficha shipped, and, for a wait
+    // of a day or more, Anki's starting ease, as the migration does with the
+    // ladder Ficha shipped. corazón was on the second step, of 4 hours, and
+    // pulmón on the fourth, of 5 days.
+    @Test("a placement on a step of the ladder, from an older Ficha, is carried over as it arrives")
+    func aPlacementFromAnOlderFichaIsCarriedOverOnArrival() async throws {
+        try await importOnTheMac([
+            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
+            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        ])
+        try await mac.syncNow()
+        for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
+            var fields = entry.fields
+            fields["step"] = .int(entry.value(of: "interval") == .double(days(10)) ? 1 : 3)
+            fields["interval"] = .some(nil)
+            fields["ease"] = .some(nil)
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+
+        try await iPhone.syncNow()
+
+        let corazon = try iPhone.engine.card(fronted: "corazón")
+        let pulmon = try iPhone.engine.card(fronted: "pulmón")
+        let log = try iPhone.engine.reviewLog()
+        #expect(
+            log.filter { $0.cardID == corazon.id }.map(\.kind) == [
+                .placement(Placement(interval: .seconds(hours(4)), due: try october(31, at: 4)))
+            ])
+        #expect(
+            log.filter { $0.cardID == pulmon.id }.map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(5)), due: try october(26, at: 4), ease: 2.5))
+            ])
+        #expect(
+            try iPhone.engine.standing(of: corazon.id, with: .standard).stageAndDue
+                == learning(step: 0, due: try october(31, at: 4)))
+        #expect(
+            try iPhone.engine.standing(of: pulmon.id, with: .standard).stageAndDue
+                == graduated(due: try october(26, at: 4)))
+    }
+
+    /// Imports on the Mac an Anki package with `notes`, bringing their
+    /// progress. The package's collection was created on 1 October 2026 at 4
+    /// in the morning, so Anki's day 30 is 31 October.
+    private func importOnTheMac(_ notes: [AnkiNote]) async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "Mazo.apkg")
+        try AnkiPackage(notes: notes).write(to: file)
+        try await mac.engine.importCards(
+            mac.engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
+    }
+
+    /// `hour` o'clock on `day` October 2026, in Buenos Aires.
+    private func october(_ day: Int, at hour: Int) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour)))
+    }
+
     @Test("a review rated easy is kept as easy, and reaches the other device as easy")
     func easyIsKeptAndReachesTheOtherDevice() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))

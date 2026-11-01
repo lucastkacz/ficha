@@ -37,7 +37,7 @@ struct SchedulingTests {
         #expect(entry.interval == preview[rating])
         #expect(entry.answeredEntry == nil)
         let standing = try engine.standing(of: serendipia.id, with: scheduler)
-        #expect(standing.due == time.now + seconds(preview[rating]))
+        #expect(standing.due == time.now.adding(preview[rating]))
         switch rating {
         case .again, .hard: #expect(standing.stage == .learning(step: 0))
         case .good: #expect(standing.stage == .learning(step: 1))
@@ -118,7 +118,7 @@ struct SchedulingTests {
 
         #expect(
             try engine.standing(of: serendipia.id, with: scheduler).stageAndDue
-                == StageAndDue(stage: .relearning(step: 0), due: time.now + hours(1)))
+                == relearning(step: 0, due: time.now + hours(1)))
     }
 
     @Test("each way of a card that goes both ways is spaced on its own, and the review log says which way each went")
@@ -246,7 +246,32 @@ struct SchedulingTests {
         #expect(ahead.isAhead)
         #expect(ahead.interval == preview[rating])
         #expect(ahead.answeredEntry == log.last?.uuid)
-        #expect(try engine.standing(of: serendipia.id, with: scheduler).due == time.now + seconds(preview[rating]))
+        #expect(try engine.standing(of: serendipia.id, with: scheduler).due == time.now.adding(preview[rating]))
+    }
+
+    // A review answers the way's last entry as the scheduler replays them, by
+    // when they were answered, not the last one written: the Mac's clock,
+    // set back half an hour, times a review ahead before the good given
+    // last, which the next review answers, so it keeps its interval when
+    // the settings change.
+    @Test("a review answers the entry the scheduler replays last, not the last one written, once the clock went back")
+    func aReviewAnswersTheEntryReplayedLast() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let good = try #require(try engine.reviewLog().last?.uuid)
+        time.advance(by: -minutes(30))
+        try engine.record(
+            .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults,
+            reviewingAhead: true)
+
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+
+        let last = try #require(try engine.reviewLog().last)
+        #expect(last.answeredEntry == good)
+        let lowerRetention = try #require(scheduler.replacing(desiredRetention: 0.7))
+        #expect(
+            try engine.standing(of: serendipia.id, with: lowerRetention).due
+                == last.answeredAt.adding(try #require(last.interval)))
     }
 
     @Test("a change to the scheduling settings leaves each card due as it was, until its next review")
@@ -266,9 +291,4 @@ struct SchedulingTests {
                     == engine.standing(of: card.id, with: scheduler).due)
         }
     }
-}
-
-/// `duration` in seconds, as dates count them.
-private func seconds(_ duration: Duration) -> TimeInterval {
-    duration / .seconds(1)
 }
