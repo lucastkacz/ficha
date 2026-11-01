@@ -20,7 +20,8 @@ struct CardNotificationTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    // Nothing measures how long Lucas looked at a card notification.
+    // Nothing measures how long Lucas looked at a card notification. Good
+    // climbs serendipia from its first view to the second step's 4 hours.
     @Test(
         "a rating or a first view from a card notification goes into the review log as an appearance's, with no response time"
     )
@@ -39,7 +40,7 @@ struct CardNotificationTests {
             try engine.reviewLog().suffix(2).map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: serendipia.id, kind: .review(.good), answeredAt: try at(10, 1), responseTime: nil,
-                    trigger: .appearance),
+                    trigger: .appearance, interval: .seconds(hours(4))),
                 ReviewLogEntry(
                     cardID: ubuntu.id, kind: .firstView, answeredAt: try at(10, 2), responseTime: nil,
                     trigger: .appearance),

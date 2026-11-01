@@ -163,6 +163,11 @@ enum SyncedField: String, Sendable, CaseIterable {
     case ladder
     case newCardsPerDay
     case forgottenOftenAfter
+    case learningSteps
+    case relearningSteps
+    case desiredRetention
+    case longestIntervalInDays
+    case fsrsParameters
     /// Whether only the cards in a deck the user chose sync, named when tags
     /// were chosen, as iCloud's records keep it (ADR 0024).
     case onlyChosenTags

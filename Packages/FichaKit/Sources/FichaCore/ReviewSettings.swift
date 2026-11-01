@@ -1,12 +1,15 @@
 /// The settings that decide which cards Lucas reviews, and when, and how the
 /// review panel behaves. Each one starts as a default from the MVP spec (#4)
 /// and Lucas can change it in Settings; the app passes them to the engine as
-/// a value. Three of them decide a card's progress, the ladder, the new cards
-/// a day and the forgotten-often count, and sync, so the engine keeps them
-/// (`progress`); the rest stay each device's own.
+/// a value. Some of them decide a card's progress, the ladder, the scheduler's
+/// settings, the new cards a day and the forgotten-often count, and sync, so
+/// the engine keeps them (`progress`); the rest stay each device's own.
 public struct ReviewSettings: Sendable, Equatable {
     /// The waits a card climbs as Lucas remembers it.
     public var ladder: Ladder
+    /// The settings FSRS spaces cards with, as Anki does (#404): kept and
+    /// synced beside the ladder, which still spaces them until #407.
+    public var scheduler: Scheduler
     /// How many cards an appearance or a review now brings at most, a new one
     /// included.
     public var cardsPerAppearance: Int
@@ -47,6 +50,7 @@ public struct ReviewSettings: Sendable, Equatable {
     /// The settings Ficha starts with.
     public static let defaults = ReviewSettings(
         ladder: .standard,
+        scheduler: .standard,
         cardsPerAppearance: 5,
         newCardsPerDay: 5,
         lookAhead: .seconds(20 * 60),

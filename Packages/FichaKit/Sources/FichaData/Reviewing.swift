@@ -169,11 +169,25 @@ func recordAnswer(
         case .review: wayLog.max { $0.isReplayed(before: $1) }?.uuid
         case .firstView, .placement: nil
         }
-    let entry = ReviewLogEntry(
-        cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
-        responseTime: responseTime, trigger: trigger, isAhead: isAhead, answeredEntry: answeredEntry)
+    let answer = { (interval: Duration?) in
+        ReviewLogEntry(
+            cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
+            responseTime: responseTime, trigger: trigger, isAhead: isAhead, answeredEntry: answeredEntry,
+            interval: interval)
+    }
+    let entry = answer(try ladderWait(of: answer(nil), after: wayLog, on: settings.ladder))
     try insert(entry, in: db)
     return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
+}
+
+/// The interval a review keeps until #407 spaces cards with the scheduler:
+/// the wait of the step `ladder` leaves its way on, after `log`, the way's
+/// entries before it. Nil for a first view, which keeps none.
+private func ladderWait(of entry: ReviewLogEntry, after log: [ReviewLogEntry], on ladder: Ladder) throws -> Duration? {
+    guard case .review = entry.kind, case .onLadder(let step, _) = try ladder.standing(after: log + [entry]) else {
+        return nil
+    }
+    return ladder.waits[step]
 }
 
 /// Deletes the last entry this device recorded in the review log of
@@ -204,20 +218,22 @@ func place(_ cardID: Int64, way: Way, on placement: Placement, at placedAt: Date
 }
 
 /// Adds an entry at the end of the review log, with its ID unique across
-/// devices, or a new one when it has none yet, and the entry it answered.
+/// devices, or a new one when it has none yet, the entry it answered, and the
+/// interval it set, in seconds.
 func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let columns = entry.kind.columns
     try db.execute(
         sql: """
             INSERT INTO reviewLog (
                 uuid, cardId, way, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead,
-                answeredEntryUuid)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                answeredEntryUuid, interval)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
             (entry.uuid ?? UUID()).uuidString, entry.cardID, entry.way.rawValue, columns.kind, columns.rating,
             columns.step, columns.due, entry.answeredAt, entry.responseTime.map { $0 / .seconds(1) },
             entry.trigger?.rawValue, entry.isAhead, entry.answeredEntry?.uuidString,
+            entry.interval.map { $0 / .seconds(1) },
         ]
     )
 }
@@ -258,6 +274,7 @@ extension ReviewLogEntry {
                 throw unreadable("Card \(cardID) has a review log entry with an unknown trigger")
             }
             let responseTime: Double? = try row.decode(forColumn: "responseTime")
+            let interval: Double? = try row.decode(forColumn: "interval")
             self.init(
                 cardID: cardID,
                 way: way,
@@ -267,7 +284,8 @@ extension ReviewLogEntry {
                 trigger: trigger,
                 isAhead: try row.decode(forColumn: "isAhead"),
                 uuid: uuid,
-                answeredEntry: answeredEntry
+                answeredEntry: answeredEntry,
+                interval: interval.map { .seconds($0) }
             )
         case (.placement, _?), (.firstView, nil), (.review, nil):
             throw unreadable("Card \(cardID) has a review log entry whose trigger doesn't go with its kind")

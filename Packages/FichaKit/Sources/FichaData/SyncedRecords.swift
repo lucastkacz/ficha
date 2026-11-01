@@ -369,6 +369,19 @@ extension ICloudRecord {
         return number
     }
 
+    /// The number with a fraction the field `key` holds, or nil when it
+    /// holds nothing: a whole number reads as one too, as a column of
+    /// numbers with a fraction reads it (`SyncedColumn`).
+    func optionalNumber(_ key: String) throws -> Double? {
+        switch value(of: key) {
+        case nil: return nil
+        case .double(let number)?: return number
+        case .int(let number)?: return Double(number)
+        case .string?, .bytes?, .asset?:
+            throw unreadable("A record from iCloud holds something else where a number should be")
+        }
+    }
+
     /// The whole number the field `key` holds, or nil when it holds nothing.
     func optionalInteger(_ key: String) throws -> Int? {
         switch value(of: key) {

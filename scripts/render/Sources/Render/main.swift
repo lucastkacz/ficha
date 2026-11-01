@@ -92,8 +92,8 @@ enum Window: String {
     /// Settings, on its Review panel tab, which holds the forgotten-often
     /// count, with those settings not Ficha's.
     case reviewPanel = "review-panel"
-    /// Settings, on its Ladder tab, with those settings not Ficha's.
-    case ladder
+    /// Settings, on its Scheduling tab, with those settings not Ficha's.
+    case scheduling
     /// Settings, on its Sync tab, once the Mac synced.
     case sync
     /// Settings, on its Sync tab, on a Mac signed out of iCloud.
@@ -373,7 +373,7 @@ let usage = """
                  package), cards-anki-imported (once it came in, a card it put on a step selected),
                  cards-import-heavy (previewing a zip whose images weigh 240 MB, while sync is on), backups
                  (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
-                 or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
+                 or scheduling (Settings on those tabs, with the settings that decide progress not Ficha's), sync
                  (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
                  full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
                  in iCloud), sync-restored (off after a restore), sync-chosen-decks (syncing only the cards in
@@ -692,18 +692,24 @@ func ankiImportedModel() throws -> AppModel {
 }
 
 /// The app's model on the sample cards, whose settings that decide progress,
-/// in the database, aren't Ficha's, as another device may have left them: a
-/// ladder of five steps, from 20 minutes to 60 days, 8 new cards a day, and
-/// the offer to flag a card forgotten often after 6 reviews rated again.
+/// in the database, aren't Ficha's, as another device may have left them:
+/// learning steps of 10 minutes, 1 hour and 6 hours, a relearning step of 20
+/// minutes, a desired retention of 87%, a longest interval of 3,650 days, 8
+/// new cards a day, and the offer to flag a card forgotten often after 6
+/// reviews rated again.
 func progressSettingsModel() throws -> AppModel {
     let engine = try sampleEngine(at: .inMemory).engine
-    let day = 24 * 60
-    guard let ladder = Ladder(waits: [20, day, 4 * day, 14 * day, 60 * day].map { Duration.minutes($0) }) else {
+    guard
+        let scheduler = Scheduler(
+            learningSteps: [.minutes(10), .minutes(60), .minutes(6 * 60)], relearningSteps: [.minutes(20)],
+            desiredRetention: 0.87, longestIntervalInDays: 3_650, parameters: [])
+    else {
         throw RenderError(
-            description: "The sample's ladder has waits that don't grow step by step: fix progressSettingsModel().")
+            description: "The sample's scheduling settings break the scheduler's rules: fix progressSettingsModel().")
     }
     try engine.saveProgressSettings(
-        ProgressSettings(ladder: ladder, newCardsPerDay: 8, forgottenOftenAfter: 6),
+        ProgressSettings(
+            ladder: ReviewSettings.defaults.ladder, scheduler: scheduler, newCardsPerDay: 8, forgottenOftenAfter: 6),
         changedFrom: ReviewSettings.defaults.progress)
     return try AppModel(engine: engine)
 }
@@ -1273,7 +1279,7 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil)
         }
-    case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
+    case .appearances, .reviewPanel, .scheduling: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
     case .backups: return try AppModel(engine: try backupsEngine())
     case .backupsFailed:
@@ -1393,7 +1399,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
     case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
-    case .ladder: return settingsTabWindow(model: model, openingOn: .ladder)
+    case .scheduling: return settingsTabWindow(model: model, openingOn: .scheduling)
     case .about: return settingsTabWindow(model: model, openingOn: .about)
     case .startAtLogin:
         // The alert's own window, laid out as `runModal()` would show it,

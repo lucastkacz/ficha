@@ -71,6 +71,22 @@ public struct Scheduler: Sendable, Equatable {
         steps.allSatisfy { (Duration.minutes(10)..<Duration.days(1)).contains($0) }
             && zip(steps, steps.dropFirst()).allSatisfy(<)
     }
+
+    /// These settings, but for each that `changed` changed from `old`, which
+    /// it gives: the user changed those, and these may hold another device's
+    /// later change to the others, since each syncs on its own (ADR 0017).
+    /// Each is valid on its own, so the settings they make together are too.
+    public func taking(_ changed: Scheduler, changedFrom old: Scheduler) -> Scheduler {
+        /// `changed`'s setting at `keyPath` when it differs from `old`'s,
+        /// and these settings' otherwise.
+        func taken<Value: Equatable>(_ keyPath: KeyPath<Scheduler, Value>) -> Value {
+            changed[keyPath: keyPath] != old[keyPath: keyPath] ? changed[keyPath: keyPath] : self[keyPath: keyPath]
+        }
+        return Scheduler(
+            checkedLearningSteps: taken(\.learningSteps), relearningSteps: taken(\.relearningSteps),
+            desiredRetention: taken(\.desiredRetention), longestIntervalInDays: taken(\.longestIntervalInDays),
+            parameters: taken(\.parameters))
+    }
 }
 
 extension Scheduler {

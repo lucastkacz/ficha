@@ -120,6 +120,9 @@ struct SyncedTable: Sendable {
             // so it's no link: the ladder reads it to tell two devices'
             // answers to one wait apart.
             SyncedColumn("answeredEntryUuid", key: "answeredEntry", .text),
+            // A review's interval, in seconds, which a review from an older
+            // Ficha comes without.
+            SyncedColumn("interval", .real),
         ],
         marksRowsFromAnotherDevice: true,
         check: { id, db in _ = try ReviewLogEntry(row: try tableRow(id, of: "reviewLog", in: db)) })

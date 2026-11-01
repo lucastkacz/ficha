@@ -33,9 +33,9 @@ func content(of card: Card) -> CardContent? {
 }
 
 extension ReviewLogEntry {
-    /// The entry as it was answered or placed, without its ID unique across
-    /// devices or the entry it answered, which are random, for a test to
-    /// compare with the entries it expects.
+    /// The entry as it was answered or placed, with the interval it set,
+    /// without its ID unique across devices or the entry it answered, which
+    /// are random, for a test to compare with the entries it expects.
     var withoutIDs: ReviewLogEntry {
         switch (kind, trigger) {
         case (.placement(let placement), _):
@@ -43,7 +43,7 @@ extension ReviewLogEntry {
         case (.firstView, let trigger?), (.review, let trigger?):
             ReviewLogEntry(
                 cardID: cardID, way: way, kind: kind, answeredAt: answeredAt, responseTime: responseTime,
-                trigger: trigger, isAhead: isAhead)
+                trigger: trigger, isAhead: isAhead, interval: interval)
         case (.firstView, nil), (.review, nil):
             self
         }

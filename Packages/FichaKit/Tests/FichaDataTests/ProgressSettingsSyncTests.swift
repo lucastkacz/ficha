@@ -65,7 +65,8 @@ final class ProgressSettingsSyncTests {
         try await mac.syncNow()
 
         let latest = ProgressSettings(
-            ladder: longLadder, newCardsPerDay: 9, forgottenOftenAfter: ReviewSettings.defaults.forgottenOftenAfter)
+            ladder: longLadder, scheduler: .standard, newCardsPerDay: 9,
+            forgottenOftenAfter: ReviewSettings.defaults.forgottenOftenAfter)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
@@ -90,7 +91,8 @@ final class ProgressSettingsSyncTests {
         try await iPhone.syncNow()
 
         let latest = ProgressSettings(
-            ladder: iPhonesLadder, newCardsPerDay: 2, forgottenOftenAfter: ReviewSettings.defaults.forgottenOftenAfter)
+            ladder: iPhonesLadder, scheduler: .standard, newCardsPerDay: 2,
+            forgottenOftenAfter: ReviewSettings.defaults.forgottenOftenAfter)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
@@ -107,6 +109,88 @@ final class ProgressSettingsSyncTests {
         }
 
         #expect(received == .applied)
+        #expect(try mac.engine.progressSettings() == kept)
+    }
+
+    // The Mac sends first: of the learning steps, its earlier change, which
+    // the iPhone's later one replaces; of the relearning steps, its later
+    // change, which the iPhone's earlier one, sent after it, doesn't replace.
+    @Test(
+        "each scheduling setting changed on two devices keeps its latest change on both, whichever device sends last")
+    func eachSchedulingSettingKeepsItsLatestChange() async throws {
+        time.advance(by: minutes(1))
+        let onMac = try mac.engine.progressSettings()
+        let macsFirst = try onMac.scheduler.with(learningSteps: [.seconds(minutes(10)), .seconds(minutes(30))])
+            .with(desiredRetention: 0.8)
+        try mac.engine.saveProgressSettings(onMac.with(scheduler: macsFirst), changedFrom: onMac)
+        let onIPhone = try iPhone.engine.progressSettings()
+        let iPhonesFirst = try onIPhone.scheduler.with(relearningSteps: []).with(longestIntervalInDays: 365)
+        try iPhone.engine.saveProgressSettings(onIPhone.with(scheduler: iPhonesFirst), changedFrom: onIPhone)
+        time.advance(by: minutes(1))
+        try iPhone.engine.saveProgressSettings(
+            onIPhone.with(
+                scheduler: try iPhonesFirst.with(learningSteps: [.seconds(hours(2))]).with(parameters: customParameters)
+            ),
+            changedFrom: onIPhone.with(scheduler: iPhonesFirst))
+        try mac.engine.saveProgressSettings(
+            onMac.with(scheduler: try macsFirst.with(relearningSteps: [.seconds(minutes(30))])),
+            changedFrom: onMac.with(scheduler: macsFirst))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        let latest = try #require(
+            Scheduler(
+                learningSteps: [.seconds(hours(2))], relearningSteps: [.seconds(minutes(30))], desiredRetention: 0.8,
+                longestIntervalInDays: 365, parameters: customParameters))
+        #expect(try mac.engine.progressSettings().scheduler == latest)
+        #expect(try iPhone.engine.progressSettings().scheduler == latest)
+    }
+
+    // A Ficha from before the scheduler's settings sends its record without
+    // them, nor when they changed: the ladder it changed still comes.
+    @Test(
+        "a record from a Ficha before the scheduling settings leaves them as the device holds them, and brings the rest"
+    )
+    func aRecordFromBeforeTheSchedulingSettingsLeavesThem() throws {
+        let kept = try customProgressSettings()
+        try mac.engine.moveInProgressSettings { kept }
+        time.advance(by: minutes(1))
+        let ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
+
+        let received = try mac.engine.writeWithoutRecording { db in
+            try receive(try recordOfFichasSettings(changing: .ladder, to: ladderValue(ladder), at: time.now), in: db)
+        }
+
+        #expect(received == .applied)
+        #expect(try mac.engine.progressSettings() == kept.with(ladder: ladder))
+    }
+
+    @Test(
+        "a record whose scheduling setting breaks its rule waits, and the device keeps the settings it holds",
+        arguments: [
+            (SyncedField.learningSteps, ICloudValue.string("[300]")),
+            (.learningSteps, .string("[86400]")),
+            (.learningSteps, .string("[3600,1800]")),
+            (.relearningSteps, .string("[600,600]")),
+            (.relearningSteps, .string("[\"an hour\"]")),
+            (.desiredRetention, .double(0.69)),
+            (.desiredRetention, .double(1)),
+            (.longestIntervalInDays, .int(0)),
+            (.longestIntervalInDays, .int(36_501)),
+            (.fsrsParameters, .string("[0.212,1.2931,2.3065]")),
+            (.fsrsParameters, .string("{}")),
+        ])
+    func aRecordWhoseSchedulingSettingBreaksItsRuleWaits(field: SyncedField, value: ICloudValue) throws {
+        let kept = try customProgressSettings()
+        try mac.engine.moveInProgressSettings { kept }
+        time.advance(by: minutes(1))
+
+        let received = try mac.engine.writeWithoutRecording { db in
+            try receive(try recordOfFichasSettings(changing: field, to: value, at: time.now), in: db)
+        }
+
+        #expect(received == .waits)
         #expect(try mac.engine.progressSettings() == kept)
     }
 
@@ -127,21 +211,45 @@ final class ProgressSettingsSyncTests {
 }
 
 /// The record of Ficha's settings that decide progress, with no time for any
-/// of them, as a device that never changed them sends it.
+/// of them, as a device that never changed them sends it from a version of
+/// Ficha before the scheduler's settings, which it lacks.
 private func recordOfFichasSettingsWithNoTimes() throws -> ICloudRecord {
     let fichas = ReviewSettings.defaults.progress
-    let waits = try JSONEncoder().encode(fichas.ladder.waits.map { $0.components.seconds })
     return ICloudRecord(
         id: SyncedRow.progressSettings.recordID, type: SyncedRow.RecordType.progressSettings.rawValue,
         fields: [
-            SyncedField.ladder.rawValue: .string(String(decoding: waits, as: UTF8.self)),
+            SyncedField.ladder.rawValue: try ladderValue(fichas.ladder),
             SyncedField.newCardsPerDay.rawValue: .int(Int64(fichas.newCardsPerDay)),
             SyncedField.forgottenOftenAfter.rawValue: fichas.forgottenOftenAfter.map { .int(Int64($0)) },
         ],
         systemFields: nil)
 }
 
+/// That record, but holding `value` for `field`, which changed at `time`.
+private func recordOfFichasSettings(changing field: SyncedField, to value: ICloudValue, at time: Date) throws
+    -> ICloudRecord
+{
+    let record = try recordOfFichasSettingsWithNoTimes()
+    var fields = record.fields
+    fields[field.rawValue] = value
+    fields[field.timeKey] = .int(time.wholeMilliseconds)
+    return ICloudRecord(id: record.id, type: record.type, fields: fields, systemFields: nil)
+}
+
+/// The value of `ladder` in the settings' record: each step's wait in whole
+/// seconds, from the first step up, as a JSON array.
+private func ladderValue(_ ladder: Ladder) throws -> ICloudValue {
+    .string(String(decoding: try JSONEncoder().encode(ladder.waits.map { $0.components.seconds }), as: UTF8.self))
+}
+
 extension ProgressSettings {
+    /// These settings with `scheduler` in place of theirs.
+    fileprivate func with(scheduler: Scheduler) -> ProgressSettings {
+        var settings = self
+        settings.scheduler = scheduler
+        return settings
+    }
+
     /// These settings with `ladder` in place of theirs.
     fileprivate func with(ladder: Ladder) -> ProgressSettings {
         var settings = self
@@ -154,5 +262,22 @@ extension ProgressSettings {
         var settings = self
         settings.newCardsPerDay = newCardsPerDay
         return settings
+    }
+}
+
+extension Scheduler {
+    /// These settings with those given in place of theirs, which must keep
+    /// them valid.
+    fileprivate func with(
+        learningSteps: [Duration]? = nil, relearningSteps: [Duration]? = nil, desiredRetention: Double? = nil,
+        longestIntervalInDays: Int? = nil, parameters: [Float]? = nil
+    ) throws -> Scheduler {
+        try #require(
+            Scheduler(
+                learningSteps: learningSteps ?? self.learningSteps,
+                relearningSteps: relearningSteps ?? self.relearningSteps,
+                desiredRetention: desiredRetention ?? self.desiredRetention,
+                longestIntervalInDays: longestIntervalInDays ?? self.longestIntervalInDays,
+                parameters: parameters ?? self.parameters))
     }
 }

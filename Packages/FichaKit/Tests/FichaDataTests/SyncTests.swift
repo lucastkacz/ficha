@@ -196,6 +196,38 @@ final class SyncTests {
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
     }
 
+    // Until #407, the ladder spaces cards, so a review keeps the wait of the
+    // step it leaves the card on: good climbs to the second step's 4 hours,
+    // hard stays there, and again goes back to the first step's hour.
+    @Test("each review keeps the interval it set, which reaches the other device with it")
+    func eachReviewKeepsItsInterval() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        try mac.engine.reviewWhenDue(ubuntu, .good, movingForward: time)
+        try mac.engine.reviewWhenDue(ubuntu, .hard, movingForward: time)
+        try mac.engine.reviewWhenDue(ubuntu, .again, movingForward: time)
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(
+            try mac.logAsSeen().map(\.interval) == [nil, .seconds(hours(4)), .seconds(hours(4)), .seconds(hours(1))])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
+    @Test("a review rated easy is kept as easy, and reaches the other device as easy")
+    func easyIsKeptAndReachesTheOtherDevice() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        try mac.engine.reviewWhenDue(ubuntu, .easy, movingForward: time)
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.easy)])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
     @Test("⌘Z takes back the answer given on this device, never one that came from another device since")
     func takingBackAnAnswerLeavesAnotherDevicesAlone() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -465,6 +497,7 @@ struct LogEntryAsSeen: Equatable {
     let responseTime: Duration?
     let trigger: Trigger?
     let isAhead: Bool
+    let interval: Duration?
 }
 
 extension Device {
@@ -479,8 +512,7 @@ extension Device {
         try engine.reviewLog().sorted { $0.isReplayed(before: $1) }.map {
             LogEntryAsSeen(
                 uuid: $0.uuid, answeredEntry: $0.answeredEntry, way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt,
-                responseTime: $0.responseTime,
-                trigger: $0.trigger, isAhead: $0.isAhead)
+                responseTime: $0.responseTime, trigger: $0.trigger, isAhead: $0.isAhead, interval: $0.interval)
         }
     }
 }

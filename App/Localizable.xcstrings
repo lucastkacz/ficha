@@ -818,8 +818,17 @@
     "A card needs a front." : {
       "comment" : "In the Cards window, under a card's front, when Lucas saves it blank."
     },
+    "A card you forget waits each step in turn before it graduates again. With none, it gets FSRS's interval at once." : {
+      "comment" : "Settings, under Scheduling: below the relearning steps; a card forgotten is a lapse."
+    },
+    "A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review." : {
+      "comment" : "Settings, under Scheduling: below the desired retention and the longest interval, as Anki's manual says it; a change never moves a card's due time."
+    },
     "A microphone" : {
       "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
+    },
+    "A new card waits each step in turn before it graduates. With none, its first review graduates it." : {
+      "comment" : "Settings, under Scheduling: below the learning steps."
     },
     "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
 
@@ -840,7 +849,7 @@
       "comment" : "The button of the Cards window's card form that saves the card."
     },
     "Add Step" : {
-
+      "comment" : "Settings, under Scheduling: adds a learning or relearning step at the end."
     },
     "Added" : {
       "comment" : "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."
@@ -1330,7 +1339,7 @@
       "comment" : "An alert's title in the Cards window."
     },
     "Couldn't save the change" : {
-      "comment" : "An alert's title in Settings, when a change to the ladder, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
+      "comment" : "An alert's title in Settings, when a change to the scheduling settings, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
     },
     "Couldn't save your answer" : {
 
@@ -1554,6 +1563,9 @@
         }
       }
     },
+    "Desired retention" : {
+      "comment" : "Settings, under Scheduling: how likely the user wants to be to remember a card when it's due."
+    },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
     },
@@ -1594,9 +1606,6 @@
       "comment" : "A column of the Cards window's All Tags: how many of the tag's cards are due now.\nA column of the Cards window: when the card is due.\nAn item of the Cards window's sidebar: the cards due now.\nIn the Cards window's detail: when the card is due."
     },
     "Each “Don't know” counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
-
-    },
-    "Each time you know a card, it climbs a step and waits that long to be due again. A change re-times every card from its history, and a card beyond a shorter ladder's end sits on its last step." : {
 
     },
     "Easy" : {
@@ -1765,6 +1774,17 @@
         }
       }
     },
+    "From %@ to %@" : {
+      "comment" : "Settings, under Scheduling: below the desired retention, the least and the most it can be.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "From %1$@ to %2$@"
+          }
+        }
+      }
+    },
     "Front" : {
       "comment" : "A column of the Cards window: the card's front.\nIn the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
     },
@@ -1864,6 +1884,9 @@
     "Importing…" : {
       "comment" : "In the Import sheet, beside a spinner, while it imports the cards."
     },
+    "In days, up to %@" : {
+      "comment" : "Settings, under Scheduling: below the longest interval, its unit and the most it can be."
+    },
     "In use: %@" : {
       "comment" : "What a detector sees in Diagnostics."
     },
@@ -1954,9 +1977,6 @@
     "Know it" : {
       "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
     },
-    "Ladder" : {
-      "comment" : "A tab of the Settings window."
-    },
     "Last backup" : {
       "comment" : "Settings, under Backups: when the last backup was saved."
     },
@@ -1974,6 +1994,9 @@
     },
     "Learned" : {
       "comment" : "An item of the Cards window's sidebar: the learned cards."
+    },
+    "Learning steps" : {
+      "comment" : "Settings, under Scheduling: the header of the learning steps."
     },
     "Leave Out “%@”" : {
       "comment" : "The Import sheet's button that leaves out a tag, which shows a minus, with the tag's whole name, like “Medicina › Anatomía”.\nThe tooltip of the Import sheet's button that leaves out a tag, with the tag's whole name, like “Medicina › Anatomía”."
@@ -2056,6 +2079,9 @@
     },
     "List only the deck's cards tagged %@" : {
       "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
+    },
+    "Longest interval" : {
+      "comment" : "Settings, under Scheduling: the longest a card can wait after a review, in days."
     },
     "macOS didn't let %@ start at login (%@). Try again, or add it in System Settings > General > Login Items." : {
       "localizations" : {
@@ -2416,6 +2442,9 @@
     "Red" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Relearning steps" : {
+      "comment" : "Settings, under Scheduling: the header of the relearning steps."
+    },
     "Remove Image" : {
       "comment" : "The button that removes the image on a side of a card."
     },
@@ -2429,7 +2458,7 @@
       "comment" : "The tooltip of the button that removes the sound on a side of a card."
     },
     "Remove Step %lld" : {
-      "comment" : "Settings: removes a step of the ladder."
+      "comment" : "Settings, under Scheduling: removes a learning or relearning step."
     },
     "Rename “%@”" : {
       "comment" : "The title of the Cards window's sheet that renames a deck, with the deck's whole name.\nThe title of the Cards window's sheet that renames a tag, with the tag's whole name."
@@ -2484,6 +2513,9 @@
     },
     "Saving fixes it, and it keeps its step." : {
       "comment" : "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+    },
+    "Scheduling" : {
+      "comment" : "A tab of the Settings window: when cards come back, as Anki's deck options set it."
     },
     "See more" : {
 
@@ -2573,7 +2605,7 @@
       "comment" : "A column of the Cards window: the card's step on the ladder, and its wait.\nFor VoiceOver, the Cards window's chart: the card's step after each entry.\nIn the Cards window's detail: the card's step on the ladder, and its wait."
     },
     "Step %lld" : {
-      "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings: a step of the ladder, counted from 1."
+      "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings, under Scheduling: a learning or relearning step, counted from 1."
     },
     "Stop Sound" : {
       "comment" : "The button that stops the sound of a card's side as it plays.\nThe tooltip of the button that stops the sound of a card's side as it plays."

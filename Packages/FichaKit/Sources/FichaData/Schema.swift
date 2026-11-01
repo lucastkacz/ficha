@@ -1442,6 +1442,144 @@ enum Schema {
                         """)
             }
         }
+        migrator.registerMigration("v32 the scheduler's settings and each review's interval") { db in
+            // The settings FSRS spaces cards with, as Anki does (#404),
+            // which decide a card's progress beside the ladder and sync as
+            // the others do: the learning steps and the relearning steps,
+            // each step's interval in whole seconds, from the first, as a
+            // JSON array, as the ladder is, or an empty one for none; the
+            // desired retention, a fraction from 0.70 to 0.99; the longest
+            // interval, in days; and FSRS's parameters, a JSON array of the
+            // 21 numbers in fsrs-rs's order, each the exact value of its
+            // 32-bit float, or an empty one for FSRS-6's defaults. Each
+            // column comes in with Ficha's default, which a row already
+            // there takes too, as no change: adding columns keeps the table.
+            try db.alter(table: "progressSettings") { table in
+                table.add(column: "learningSteps", .text).notNull().defaults(to: "[3600,14400]")
+                table.add(column: "relearningSteps", .text).notNull().defaults(to: "[3600]")
+                table.add(column: "desiredRetention", .double).notNull().defaults(to: 0.9)
+                table.add(column: "longestIntervalInDays", .integer).notNull().defaults(to: 36_500)
+                table.add(column: "fsrsParameters", .text).notNull().defaults(to: "[]")
+            }
+            // Each is a field of the settings' record, as `SyncedField`
+            // names it, of which the latest change wins: the trigger of "v23
+            // the settings that decide progress", made again with them.
+            let settingsFields = [
+                "ladder", "newCardsPerDay", "forgottenOftenAfter", "learningSteps", "relearningSteps",
+                "desiredRetention", "longestIntervalInDays", "fsrsParameters",
+            ]
+            let changedSettingsFields = settingsFields.map {
+                "SELECT '\($0)' AS field WHERE OLD.\($0) IS NOT NEW.\($0)"
+            }
+            .joined(separator: " UNION ALL ")
+            let anySettingChanged = settingsFields.map { "OLD.\($0) IS NOT NEW.\($0)" }.joined(separator: " OR ")
+            try db.execute(
+                sql: """
+                    DROP TRIGGER sync_progressSettings_updated;
+                    CREATE TRIGGER sync_progressSettings_updated AFTER UPDATE ON progressSettings
+                    WHEN (SELECT recordsChanges FROM syncWrite) AND (\(anySettingChanged)) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'progressSettings', 'progressSettings', field, (SELECT at FROM syncWrite)
+                    FROM (\(changedSettingsFields)) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'progressSettings' AND recordName = 'progressSettings';
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'progressSettings', 'progressSettings', 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    """)
+
+            // Each review keeps the interval it set (#404), in seconds, as
+            // Anki's history keeps it, which syncs with it: the way waits it
+            // from when the user answered. A first view and a placement keep
+            // none, and neither does a review from before this migration. A
+            // review's rating can be easy, Anki's fourth. A column can't join
+            // the table's checks, so the table is made again, as "v20 IDs
+            // unique across devices" made it, with every row as it was, and
+            // its last id, which no entry gets again; and so are its index
+            // and its triggers, which dropping it drops: that of "v21 changes
+            // recorded to sync" as an entry comes in, and that of "v31 decks"
+            // as one is deleted. Its rows' IDs keep their default, a random
+            // UUID, as "v20 IDs unique across devices" writes it.
+            let uuid = """
+                (hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' \
+                || substr('89AB', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' \
+                || hex(randomblob(6)))
+                """
+            let lastID = try Int64.fetchOne(db, sql: "SELECT seq FROM sqlite_sequence WHERE name = 'reviewLog'")
+            try db.create(table: "new_reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique().defaults(sql: uuid)
+                // Its index comes once the table has its name.
+                table.belongsTo("card", indexed: false).notNull()
+                table.column("kind", .text).notNull()
+                table.column("rating", .text)
+                table.column("step", .integer)
+                table.column("due", .datetime)
+                table.column("answeredAt", .datetime).notNull()
+                table.column("responseTime", .double)
+                table.column("trigger", .text)
+                table.column("isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+                table.column("way", .text).notNull().defaults(to: "frontFirst")
+                    .check(sql: "way IN ('frontFirst', 'backFirst')")
+                table.column("answeredEntryUuid", .text)
+                    .check(sql: "answeredEntryUuid IS NULL OR kind = 'review'")
+                table.column("isFromAnotherDevice", .boolean).notNull().defaults(to: false)
+                table.column("interval", .double)
+                    .check(sql: "interval IS NULL OR (kind = 'review' AND interval > 0)")
+                table.check(
+                    sql: """
+                        (kind = 'firstView' AND rating IS NULL)
+                        OR (kind = 'review' AND rating IN ('again', 'hard', 'good', 'easy'))
+                        OR (kind = 'placement' AND rating IS NULL)
+                        """
+                )
+                table.check(sql: "(kind = 'placement') = (step IS NOT NULL)")
+                table.check(sql: "step IS NULL OR step >= 0")
+                table.check(sql: "(kind = 'placement') = (due IS NOT NULL)")
+                table.check(sql: "(kind = 'placement') = (trigger IS NULL)")
+                table.check(sql: "kind <> 'placement' OR responseTime IS NULL")
+            }
+            let copied =
+                "id, uuid, cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead, way, "
+                + "answeredEntryUuid, isFromAnotherDevice"
+            try db.execute(sql: "INSERT INTO new_reviewLog (\(copied)) SELECT \(copied) FROM reviewLog")
+            try db.drop(table: "reviewLog")
+            try db.rename(table: "new_reviewLog", to: "reviewLog")
+            try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
+            if let lastID {
+                try db.execute(
+                    sql: """
+                        DELETE FROM sqlite_sequence WHERE name = 'reviewLog';
+                        INSERT INTO sqlite_sequence (name, seq) VALUES ('reviewLog', ?);
+                        """,
+                    arguments: [lastID])
+            }
+            /// Whether the card whose deck is `deck` syncs, as "v31 decks"
+            /// says.
+            func cardSyncs(deck: String) -> String {
+                """
+                (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
+                    SELECT 1 FROM deck AS chosen WHERE chosen.chosenToSync AND (chosen.name = \(deck)
+                        OR (chosen.name <> '' AND substr(\(deck), 1, length(chosen.name) + 2) = chosen.name || '::'))))
+                """
+            }
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_reviewLog_inserted AFTER INSERT ON reviewLog WHEN \(recording) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'reviewLogEntry' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'reviewLogEntry', NEW.uuid, 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    CREATE TRIGGER sync_reviewLog_deleted AFTER DELETE ON reviewLog BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'reviewLogEntry' AND recordName = OLD.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'reviewLogEntry', OLD.uuid, 1 WHERE \(recording)
+                        AND EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(deck: "card.deck")));
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

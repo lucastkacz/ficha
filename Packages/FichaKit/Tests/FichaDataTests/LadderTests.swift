@@ -74,7 +74,10 @@ struct LadderTests {
         #expect(try engine.standing(of: serendipia.id, on: ladder) == .onLadder(step: 6, due: time.now + days(75)))
     }
 
-    @Test("every first view and review goes into the review log, with its time, trigger, response time and rating")
+    // Hard keeps the card on the first step, so the review keeps its hour.
+    @Test(
+        "every first view and review goes into the review log, with its time, trigger, response time and rating, and a review with its interval"
+    )
     func firstViewsAndReviewsGoIntoTheReviewLog() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let firstViewTime = time.now
@@ -94,7 +97,7 @@ struct LadderTests {
                     trigger: .reviewNow),
                 ReviewLogEntry(
                     cardID: serendipia.id, kind: .review(.hard), answeredAt: firstViewTime + hours(1),
-                    responseTime: .milliseconds(2_500), trigger: .reviewNow),
+                    responseTime: .milliseconds(2_500), trigger: .reviewNow, interval: .seconds(hours(1))),
             ]
         )
     }

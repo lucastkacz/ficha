@@ -421,6 +421,58 @@ final class DatabaseFileTests {
         #expect(try engine.changesToSend().map(\.row.recordType) == [.deck, .card])
     }
 
+    // The settings' table gains a column for each scheduling setting, and
+    // the review log's is made again, as no column can join its checks:
+    // both keep their triggers, so what changes after syncs, and their
+    // migration sends nothing.
+    @Test(
+        "a database from before the scheduling settings migrates with its settings and review log as they were, Ficha's scheduling settings, and no interval for any review"
+    )
+    func aDatabaseFromBeforeTheSchedulingSettingsKeepsItsSettingsAndLog() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let before = time.now - days(1)
+        try saveDatabaseBeforeSchedulingSettings(at: folder.appending(path: "Ficha.sqlite"), at: before)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let movedIn = try #require(Ladder(waits: [.seconds(minutes(10)), .seconds(hours(6)), .seconds(days(3))]))
+        let settings = ProgressSettings(
+            ladder: movedIn, scheduler: .standard, newCardsPerDay: 12, forgottenOftenAfter: 4)
+        #expect(try engine.progressSettings() == settings)
+        #expect(
+            try engine.reviewLog().map(\.withoutIDs) == [
+                ReviewLogEntry(
+                    cardID: 1, kind: .firstView, answeredAt: before, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.good), answeredAt: before + minutes(10), responseTime: .seconds(3),
+                    trigger: .appearance),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.hard), answeredAt: before + hours(1), responseTime: nil,
+                    trigger: .appearance, isAhead: true),
+                ReviewLogEntry(placing: 2, way: .backFirst, on: Placement(step: 2, due: before + days(4)), at: before),
+            ])
+        #expect(try engine.changesToSend().isEmpty)
+
+        var withRetention = settings
+        withRetention.scheduler = try #require(
+            Scheduler(
+                learningSteps: settings.scheduler.learningSteps, relearningSteps: settings.scheduler.relearningSteps,
+                desiredRetention: 0.95, longestIntervalInDays: settings.scheduler.longestIntervalInDays,
+                parameters: []))
+        try engine.saveProgressSettings(withRetention, changedFrom: settings)
+        var reviewSettings = ReviewSettings.defaults
+        reviewSettings.progress = withRetention
+        try engine.record(
+            .review(.easy), of: 1, responseTime: .seconds(2), trigger: .reviewNow, settings: reviewSettings)
+        let easy = try #require(try engine.reviewLog().last)
+        #expect(easy.kind == .review(.easy))
+        #expect(easy.interval == .seconds(days(3)))
+        let waiting = try engine.changesToSend()
+        #expect(waiting.map(\.row) == [.progressSettings, .reviewLogEntry(try #require(easy.uuid))])
+        #expect(waiting.first?.fieldTimes == [.desiredRetention: time.now])
+    }
+
     // Ficha Dev's sample cards, and an agent's scratch run, load into a new
     // database, which then syncs them.
     @Test("a new database starts with sync on and every card syncing, the sample cards loaded into it too")
@@ -644,6 +696,39 @@ func saveDatabaseBeforeDecks(at file: URL, at time: Date) throws {
                     ('lenguaje', NULL, NULL, NULL, 1);
                 """,
             arguments: [time, time])
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before the scheduling
+/// settings, through the schema's migrations up to the one before them, with
+/// sync on and nothing waiting to be sent: the settings that decide progress
+/// the app moved in, a ladder of 10 minutes, 6 hours and 3 days, 12 new cards
+/// a day and the offer to flag a card after 4 agains; serendipia, met at
+/// `time`, rated good 10 minutes later from an appearance, and hard ahead an
+/// hour after that from a card notification; and ubuntu, going both ways,
+/// placed back first by an import on the third step, due 4 days later.
+func saveDatabaseBeforeSchedulingSettings(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v31 decks")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO progressSettings (id, ladder, newCardsPerDay, forgottenOftenAfter)
+                VALUES (1, '[600,21600,259200]', 12, 4);
+                INSERT INTO card (id, type, front, back, tags, createdAt, bothWays)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?, 0),
+                    (2, 'concept', 'ubuntu', 'Soy porque somos.', '[]', ?, 1);
+                INSERT INTO reviewLog
+                    (cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead, way)
+                VALUES (1, 'firstView', NULL, NULL, NULL, ?, 8.25, 'reviewNow', 0, 'frontFirst'),
+                    (1, 'review', 'good', NULL, NULL, ?, 3, 'appearance', 0, 'frontFirst'),
+                    (1, 'review', 'hard', NULL, NULL, ?, NULL, 'appearance', 1, 'frontFirst'),
+                    (2, 'placement', NULL, 2, ?, ?, NULL, NULL, 0, 'backFirst');
+                """,
+            arguments: [time, time, time, time + minutes(10), time + hours(1), time + days(4), time])
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()
