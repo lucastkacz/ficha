@@ -73,6 +73,17 @@ extension Scheduler {
         return StageAndInterval(stage: .graduated, interval: .days(Int64(days)))
     }
 
+    /// The interval of the learning or relearning step `stage` is on,
+    /// counting one these settings no longer have as their last, or nil when
+    /// they have no such steps, or `stage` is graduated.
+    func interval(ofStep stage: WayStanding.Stage) -> Duration? {
+        switch onAStepTheseSettingsHave(stage) {
+        case .learning(let step): learningSteps.indices.contains(step) ? learningSteps[step] : nil
+        case .relearning(let step): relearningSteps.indices.contains(step) ? relearningSteps[step] : nil
+        case .graduated: nil
+        }
+    }
+
     /// `stage`, or the last of these settings' steps when it's on a step they
     /// no longer have, as after they changed.
     private func onAStepTheseSettingsHave(_ stage: WayStanding.Stage) -> WayStanding.Stage {

@@ -179,6 +179,27 @@ struct WayReplay {
         return StageAndInterval(stage: step, interval: kept)
     }
 
+    /// The step a placement of less than a day, which keeps the way in its
+    /// steps, puts it on after the way's entries: the first learning step,
+    /// for a way with no reviews; the step its reviews left it on; or, when
+    /// they graduated it, as when the app the card comes from has more steps
+    /// than these settings, the last learning step, or, once it lapsed, the
+    /// last relearning step, as a step that no longer exists counts as the
+    /// last.
+    var stepOfAPlacement: WayStanding.Stage {
+        guard reviews > 0, let stage else {
+            return .learning(step: 0)
+        }
+        switch stage {
+        case .learning, .relearning:
+            return stage
+        case .graduated:
+            return lapses.isEmpty
+                ? .learning(step: max(0, scheduler.learningSteps.count - 1))
+                : .relearning(step: max(0, scheduler.relearningSteps.count - 1))
+        }
+    }
+
     /// Moves the way as `placement`, which an import gave the card with the
     /// id `cardID`, does.
     private mutating func place(_ placement: Placement, of cardID: Int64) throws(SchedulingError) {
@@ -199,13 +220,11 @@ struct WayReplay {
             stage = .graduated
         case (false, 0):
             memory = nil
-            stage = .learning(step: 0)
+            stage = stepOfAPlacement
         case (true, _):
             stage = .graduated
         case (false, _):
-            if stage == .graduated {
-                stage = .relearning(step: 0)
-            }
+            stage = stepOfAPlacement
         }
         interval = placed
         due = placement.due

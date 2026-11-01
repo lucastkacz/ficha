@@ -80,10 +80,10 @@ public struct WayProgress: Sendable, Equatable {
         case new
         /// That it's in its learning steps, whatever the step's interval,
         /// as Anki's Browse says "(learning)" there: an import's placement
-        /// of a card Anki was learning, whose interval is zero, too. Ways in
-        /// their learning steps sort by that interval among themselves, and
-        /// before every other interval, as Anki's Browse sorts them with an
-        /// interval of zero.
+        /// of a card Anki was learning too, whose interval is none when the
+        /// settings have no learning steps. Ways in their learning steps
+        /// sort by that interval among themselves, and before every other
+        /// interval, as Anki's Browse sorts them with an interval of zero.
         case learning(Duration)
         /// Its interval: graduated, in days, or in its relearning steps,
         /// the step's.

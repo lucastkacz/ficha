@@ -505,6 +505,62 @@ final class AnkiReviewsTests {
         #expect(try standing(of: "gato") == relearning(step: 0, due: try october(23, at: 4)))
     }
 
+    // Anki's learning steps here are 1, 10 and 60 minutes, and its relearning
+    // steps 10 and 60 minutes, one more than Ficha's each. The last of each
+    // waits past 4 in the morning, the start of Anki's next day, so Anki's v3
+    // scheduler logs it as a day, and Ficha's replay, which gives such a step
+    // the interval its own steps give it, graduates the card: Ficha has no
+    // step past its last.
+    @Test(
+        "a card Anki had on a step past Ficha's last comes in on Ficha's last learning step, or its last relearning step once it lapsed, due when Anki had it due",
+        arguments: schemas)
+    func aStepPastFichasLastComesInAsItsLastStep(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["hígado", "liver"], progress: .learningAcrossDays(due: 22),
+                    revlog: [
+                        AnkiRevlogEntry(at: try october(23, at: 3), button: 1, interval: -60, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(23, at: 3, minute: 1), button: 3, interval: -600, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(23, at: 3, minute: 11), button: 3, interval: 1, kind: .learning),
+                    ]),
+                AnkiNote(
+                    type: .basic, fields: ["páncreas", "pancreas"], progress: .relearningAcrossDays(due: 22),
+                    revlog: [
+                        AnkiRevlogEntry(at: try october(20, at: 10), button: 3, interval: -600, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(20, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
+                        AnkiRevlogEntry(at: try october(21, at: 10), button: 3, interval: 2, kind: .review),
+                        AnkiRevlogEntry(
+                            at: try october(23, at: 3, minute: 2), button: 1, interval: -600, kind: .review),
+                        AnkiRevlogEntry(
+                            at: try october(23, at: 3, minute: 12), button: 3, interval: 1, kind: .relearning),
+                    ]),
+            ])
+
+        try await importPackage(package)
+
+        let liver = try card("hígado").id
+        let pancreas = try card("páncreas").id
+        let intervalColumns = try engine.cardRows(in: .all, with: scheduler).map(\.frontFirst.intervalColumn)
+        #expect(
+            try log(of: "hígado").last
+                == ReviewLogEntry(
+                    placing: liver, on: Placement(interval: .seconds(hours(4)), due: try october(23, at: 4)),
+                    at: time.now))
+        #expect(try standing(of: "hígado") == learning(step: 1, due: try october(23, at: 4)))
+        #expect(
+            try log(of: "páncreas").last
+                == ReviewLogEntry(
+                    placing: pancreas, on: Placement(interval: .seconds(hours(1)), due: try october(23, at: 4)),
+                    at: time.now))
+        #expect(try standing(of: "páncreas") == relearning(step: 0, due: try october(23, at: 4)))
+        #expect(intervalColumns == [.learning(.seconds(hours(4))), .interval(.seconds(hours(1)))])
+    }
+
     // Anki's learning steps here are 10 minutes and a day, as in Anki's v3
     // scheduler, which logs the day's step in days.
     @Test(

@@ -305,7 +305,8 @@ extension ReviewLogRow {
     /// The interval the entry's way waited after it, in days, as the chart
     /// plots it: a minute at least, below the shortest learning step, since a
     /// logarithmic scale has no zero, and Swift Charts traps on one, which a
-    /// placement an import gives a card Anki was learning holds.
+    /// placement an import gives a card Anki was learning holds when the
+    /// settings have no learning steps.
     fileprivate var days: Double {
         max(interval, .seconds(60)).inDays
     }

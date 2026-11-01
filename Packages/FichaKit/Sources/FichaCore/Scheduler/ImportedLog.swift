@@ -30,13 +30,17 @@ extension ImportedProgress {
     /// there whenever the reviews leave the way elsewhere, or there are none:
     /// for a card in review, not graduated with its interval, or not due when
     /// it was due there; for a card on a learning or relearning step, not on
-    /// a step, or not due then. A card on a step comes with the wait of the
-    /// step its reviews leave it on, when it's less than a day, as Ficha's
-    /// steps are, and with none otherwise: without reviews, it starts on the
-    /// first learning step, and after reviews that graduated it, it goes onto
-    /// the first relearning step. The placement comes at `importedAt`, or a
-    /// millisecond after the last review, the finest Anki keeps, when the
-    /// app's clock put that review later.
+    /// a step, or not due then. A card on a step goes on with Ficha's steps:
+    /// without reviews, on the first learning step; on the step its reviews
+    /// leave it on; and after reviews that graduated it, as when the app has
+    /// more steps than Ficha, on the last learning step, or, once they
+    /// lapsed it, the last relearning step, as a step that no longer exists
+    /// counts as the last. It comes with that step's interval, or the one its
+    /// reviews set there, when it's less than a day, as Ficha's steps are;
+    /// when the settings have no such step, a card its reviews graduated
+    /// stays graduated, with the interval they set. The placement comes at `importedAt`, or a millisecond after the last
+    /// review, the finest Anki keeps, when the app's clock put that review
+    /// later.
     ///
     /// Throws when fsrs-rs fails, or the scheduler can't follow the
     /// placement: a graduated one whose ease isn't above zero.
@@ -64,7 +68,7 @@ extension ImportedProgress {
         }
         // A review that kept no interval keeps the one the replay gave it.
         var log = replay.keepingIntervals
-        if let placement = placement(after: replay.standing) {
+        if let placement = placement(after: replay, with: scheduler) {
             let afterTheReviews = last.map { $0.answeredAt.adding(.milliseconds(1)) } ?? importedAt
             log.append(
                 ReviewLogEntry(
@@ -74,10 +78,11 @@ extension ImportedProgress {
         return log
     }
 
-    /// The placement that follows the card's reviews, which leave its way at
-    /// `standing`, as `log(of:importedAt:with:newID:)` says, or nil
-    /// when they leave it where the card stood.
-    private func placement(after standing: WayStanding) -> Placement? {
+    /// The placement that follows the card's reviews, `replay` with
+    /// `scheduler`, as `log(of:importedAt:with:newID:)` says, or nil when
+    /// they leave its way where the card stood.
+    private func placement(after replay: WayReplay, with scheduler: Scheduler) -> Placement? {
+        let standing = replay.standing
         let isOnAStep =
             switch standing.stage {
             case .learning?, .relearning?: true
@@ -91,14 +96,36 @@ extension ImportedProgress {
             guard !isOnAStep || !isDueThen(due) else {
                 return nil
             }
-            let wait = standing.interval.flatMap { isOnAStep && $0 < .days(1) ? $0 : nil }
-            return Placement(interval: wait ?? .zero, due: due.time)
+            return Placement(interval: intervalOnAStep(after: replay, with: scheduler), due: due.time)
         case .review(let interval, let ease, let due):
             guard standing.stage != .graduated || standing.interval != interval || !isDueThen(due) else {
                 return nil
             }
             return Placement(interval: interval, due: due.time, ease: ease)
         }
+    }
+
+    /// The interval of a placement that keeps the way of a card the app had
+    /// on a step in its steps, after the card's reviews, `replay` with
+    /// `scheduler`: the interval they set, when they left the way on a step
+    /// for less than a day, as Ficha's steps last; otherwise the interval of
+    /// the step the placement puts it on, as `WayReplay.stepOfAPlacement`
+    /// says. When the settings have no such step, a way the reviews
+    /// graduated keeps the interval they set, of a day or more, which leaves
+    /// it graduated, as the settings would, and any other gets none.
+    private func intervalOnAStep(after replay: WayReplay, with scheduler: Scheduler) -> Duration {
+        let set = replay.interval
+        switch replay.stage {
+        case .learning?, .relearning?:
+            if set < .days(1) {
+                return set
+            }
+        case .graduated?:
+            return scheduler.interval(ofStep: replay.stepOfAPlacement) ?? set
+        case nil:
+            break
+        }
+        return scheduler.interval(ofStep: replay.stepOfAPlacement) ?? .zero
     }
 }
 
