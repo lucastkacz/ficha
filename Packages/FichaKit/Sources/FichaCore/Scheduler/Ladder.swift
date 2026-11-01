@@ -38,8 +38,9 @@ public struct Ladder: Sendable, Equatable {
     /// placement, which an import gave it in place of a first view, on the
     /// placement's step until its due time, or on the last step when the
     /// ladder no longer has that one (ADR 0013). Another device's first view
-    /// after that changes nothing. Then good moves it up one step, hard keeps
-    /// it on its step and again sends it back to the first. The last step
+    /// after that changes nothing. Then good moves it up one step, as easy
+    /// does, hard keeps it on its step and again sends it back to the first.
+    /// The last step
     /// repeats for good. After each review, the card waits its step's wait
     /// from when Lucas answered. A review ahead only counts when it's an
     /// again: hard and good leave the card's step and due time as they were
@@ -143,9 +144,10 @@ extension ReviewLogEntry {
     /// first, since only they start a way, and reviews after them, each in
     /// the order Lucas answered them. At the same moment, a first view comes
     /// before a placement, a lower step's placement first, and of two
-    /// reviews, good before hard and hard before again, so that a "Don't
-    /// know" rated at the same moment as a "Know it" on another device has
-    /// the last word. Entries that tie on all of this move the way alike.
+    /// reviews, easy before good, good before hard and hard before again, so
+    /// that a "Don't know" rated at the same moment as a "Know it" on another
+    /// device has the last word. Entries that tie on all of this move the way
+    /// alike.
     public func isReplayed(before other: ReviewLogEntry) -> Bool {
         if kind.startsAWay != other.kind.startsAWay {
             return kind.startsAWay
@@ -159,8 +161,7 @@ extension ReviewLogEntry {
         case (.placement(let placement), .placement(let otherPlacement)):
             return (placement.step, placement.due) < (otherPlacement.step, otherPlacement.due)
         case (.review(let rating), .review(let otherRating)):
-            // Good comes before hard and again, and hard before again.
-            return rating != otherRating && (rating == .good || otherRating == .again)
+            return rating.orderAtTheSameMoment < otherRating.orderAtTheSameMoment
         default:
             return false
         }
@@ -206,7 +207,7 @@ private struct Replay {
             guard !ahead else {
                 return
             }
-        case .good:
+        case .good, .easy:
             guard !ahead, !answeredAClimbedWait else {
                 return
             }

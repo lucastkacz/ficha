@@ -105,8 +105,7 @@ struct CardStandingTests {
     }
 }
 
-private let hour: TimeInterval = 60 * 60
-private let day: TimeInterval = 24 * hour
-private let start = Date(timeIntervalSince1970: 1_760_000_000)
+// The hour, the day and the start these tests count from are the scheduler's
+// tests', in SchedulerFixtures.swift.
 private let flag = Flag(note: "Falta un ejemplo", flaggedAt: start.addingTimeInterval(-3_600))
 private let buriedAt = start.addingTimeInterval(-60)

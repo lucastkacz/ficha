@@ -1599,6 +1599,9 @@
     "Each time you know a card, it climbs a step and waits that long to be due again. A change re-times every card from its history, and a card beyond a shorter ladder's end sits on its last step." : {
 
     },
+    "Easy" : {
+      "comment" : "A rating, Anki's fourth: Lucas knew the card at once. The Cards window's review log shows it."
+    },
     "Edit" : {
       "comment" : "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
     },

@@ -46,11 +46,18 @@ public struct ReviewLogEntry: Sendable, Equatable {
     /// view or a placement, which answer none, and for a review from before
     /// Ficha kept it, which answered the entry before it.
     public let answeredEntry: UUID?
+    /// For a review, the interval it set, which the way waits from when
+    /// Lucas answered, as the scheduler's preview gave it for the rating:
+    /// the scheduler keeps it, so a change to the settings leaves the way's
+    /// due time alone until its next review (#404). Nil for a first view or
+    /// a placement, and for a review from before Ficha kept it, which gets
+    /// the one the scheduler works out.
+    public let interval: Duration?
 
     /// An answer: a first view or a review of the card with the id `cardID`,
     /// the way it went, front first unless it's said to go back first, which
     /// `trigger` brought, kept as `uuid` once the review log keeps it, and,
-    /// for a review, answering `answeredEntry`.
+    /// for a review, answering `answeredEntry` and keeping `interval`.
     public init(
         cardID: Int64,
         way: Way = .frontFirst,
@@ -60,7 +67,8 @@ public struct ReviewLogEntry: Sendable, Equatable {
         trigger: Trigger,
         isAhead: Bool = false,
         uuid: UUID? = nil,
-        answeredEntry: UUID? = nil
+        answeredEntry: UUID? = nil,
+        interval: Duration? = nil
     ) {
         self.cardID = cardID
         self.way = way
@@ -71,6 +79,7 @@ public struct ReviewLogEntry: Sendable, Equatable {
         self.isAhead = isAhead
         self.uuid = uuid
         self.answeredEntry = answeredEntry
+        self.interval = interval
     }
 
     /// The entry of `placement`, which an import gives the card with the id
@@ -89,6 +98,7 @@ public struct ReviewLogEntry: Sendable, Equatable {
         isAhead = false
         self.uuid = uuid
         answeredEntry = nil
+        interval = nil
     }
 
     /// The card's way it went.
@@ -99,13 +109,26 @@ public struct ReviewLogEntry: Sendable, Equatable {
 
 /// Where an import that brings a card's progress from another app, such as
 /// Anki, places it on the ladder, in place of a first view (ADR 0013): on
-/// `step`, counted from 0, the first step, due at `due`.
+/// `step`, counted from 0, the first step, due at `due`. For the scheduler
+/// it holds the card's interval there and Anki's ease, in place of a step:
+/// it starts a way the import brings without reviews, or follows its
+/// imported reviews to keep the due date Anki gave it (#404).
 public struct Placement: Sendable, Equatable {
     public let step: Int
     public let due: Date
+    /// The card's interval in the other app, which the scheduler reads: a
+    /// day or more for a card it had graduated, and less for one it was
+    /// learning. Nil for a placement on the ladder alone.
+    public let interval: Duration?
+    /// The card's ease in Anki, such as 2.5 for 250%, from which the
+    /// scheduler starts the memory of a graduated card that comes without
+    /// reviews. Nil when Anki gave none, as for a card it was learning.
+    public let ease: Double?
 
-    public init(step: Int, due: Date) {
+    public init(step: Int, due: Date, interval: Duration? = nil, ease: Double? = nil) {
         self.step = step
         self.due = due
+        self.interval = interval
+        self.ease = ease
     }
 }

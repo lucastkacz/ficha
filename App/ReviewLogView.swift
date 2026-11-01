@@ -311,8 +311,9 @@ extension Way {
 
 extension ReviewLogEntry.Kind {
     /// What the user answered, as the review log names it in the Cards window:
-    /// "First view", or the rating as the review panel's buttons name it; or
-    /// "Imported", for the placement an import put the card on its step with.
+    /// "First view", or the rating as the review panel's buttons name it, and
+    /// "Easy", which no button gives yet; or "Imported", for the placement an
+    /// import put the card on its step with.
     fileprivate var name: String {
         switch self {
         case .firstView:
@@ -337,12 +338,17 @@ extension ReviewLogEntry.Kind {
             String(
                 localized: "Know it",
                 comment: "A rating, as the review panel's button names it and the Cards window's review log shows it.")
+        case .review(.easy):
+            String(
+                localized: "Easy",
+                comment:
+                    "A rating, Anki's fourth: Lucas knew the card at once. The Cards window's review log shows it.")
         }
     }
 
     /// The color of what Lucas answered: neutral for a first view, and red,
-    /// orange and green for "Don't know", "Sort of" and "Know it"; and blue
-    /// for a placement.
+    /// orange, green and blue for "Don't know", "Sort of", "Know it" and
+    /// "Easy", as Anki colors its ratings; and blue for a placement too.
     fileprivate var color: Color {
         switch self {
         case .firstView: .gray
@@ -350,6 +356,7 @@ extension ReviewLogEntry.Kind {
         case .review(.again): .red
         case .review(.hard): .orange
         case .review(.good): .green
+        case .review(.easy): .blue
         }
     }
 }
