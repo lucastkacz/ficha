@@ -4,7 +4,7 @@ import Foundation
 /// the way review now would start with, or when the next one comes.
 public enum NextWay: Sendable, Equatable {
     /// The way review now would start with: the first due way, or else the
-    /// new way, for its first view.
+    /// new way, for its first review.
     case waiting(CardWay, isNew: Bool)
     /// No way waits, and the next one comes at this time.
     case comesAt(Date)
@@ -49,8 +49,8 @@ extension ReviewSettings {
         cards: CardsInReviews,
         from now: Date,
         calendar: Calendar
-    ) throws(UnexpectedReviewLog) -> NextWayTimeline {
-        let standings = try cards.standings(on: ladder)
+    ) throws(SchedulingError) -> NextWayTimeline {
+        let standings = try cards.standings(with: scheduler)
         let newWaysWait = standings.contains { $0.standing == .new } && bringsNewCard(after: 0, metToday: 0)
         let changes = WidgetChanges(
             dueTimes: standings.compactMap(\.standing.due),
@@ -60,7 +60,7 @@ extension ReviewSettings {
             if let due = picked.reviews.first {
                 return .waiting(due, isNew: false)
             }
-            if let new = picked.firstView {
+            if let new = picked.newWay {
                 return .waiting(new, isNew: true)
             }
             return changes.first(after: time).map(NextWay.comesAt) ?? .noneComing
@@ -90,7 +90,7 @@ extension ReviewSettings {
 /// day, since the timeline has him rate nothing, so the days after it change
 /// nothing.
 private struct WidgetChanges {
-    /// When each way on the ladder is due, in order, each time once.
+    /// When each started way is due, in order, each time once.
     let dueTimes: [Date]
     /// The next midnight, when new ways wait, or nil.
     let nextDay: Date?

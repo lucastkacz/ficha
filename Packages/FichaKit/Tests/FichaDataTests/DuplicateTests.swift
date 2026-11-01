@@ -168,8 +168,8 @@ struct DuplicateTests {
     func approvingAnExpansionChangesItsCard() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        let standingBefore = try engine.standing(of: serendipia.id, on: ReviewSettings.defaults.ladder)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        let standingBefore = try engine.standing(of: serendipia.id, with: ReviewSettings.defaults.scheduler)
         let expansion = try engine.expand(text: "serendipia", note: "También es una película", source: nil)
 
         let expanded = try engine.approveExpansion(
@@ -185,7 +185,7 @@ struct DuplicateTests {
         #expect(expanded.back == "Un hallazgo valioso que se da por casualidad. También, una película de 2001.")
         #expect(expanded.tags == ["lenguaje", "cine"])
         #expect(try engine.cards() == [expanded])
-        #expect(try engine.standing(of: serendipia.id, on: ReviewSettings.defaults.ladder) == standingBefore)
+        #expect(try engine.standing(of: serendipia.id, with: ReviewSettings.defaults.scheduler) == standingBefore)
         let inbox = try engine.inbox()
         #expect(inbox.expansions.isEmpty)
         #expect(inbox.captures.isEmpty)

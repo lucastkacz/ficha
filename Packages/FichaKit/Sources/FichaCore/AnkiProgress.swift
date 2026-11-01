@@ -96,9 +96,17 @@ extension AnkiCollection {
             guard !overflows else {
                 throw AnkiCollectionProblem("Card \(card.id) has an interval of \(card.interval) days")
             }
-            stage = .review(interval: .seconds(seconds), due: try start(ofDay: due, in: calendar))
+            stage = .review(interval: .seconds(seconds), ease: ease(of: card), due: try start(ofDay: due, in: calendar))
         }
         return ImportedProgress(stage: stage, isSuspended: isSuspended)
+    }
+
+    /// The ease of `card`, a review card, as a multiplier, such as 2.5 for
+    /// its factor of 2500, or Anki's starting ease, 2.5, when it has none
+    /// (`INITIAL_EASE_FACTOR` in `rslib/src/scheduler/states/review.rs`, and
+    /// `initial_ease` in `rslib/src/deckconfig/mod.rs`).
+    private func ease(of card: AnkiCard) -> Double {
+        card.factor > 0 ? Double(card.factor) / 1000 : 2.5
     }
 
     /// When a card Anki is learning is due, from its `due`: a time in

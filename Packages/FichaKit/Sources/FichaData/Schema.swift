@@ -1,3 +1,5 @@
+import FichaCore
+import Foundation
 internal import GRDB
 
 /// The database's schema, built by versioned migrations in order. A migration
@@ -1578,6 +1580,222 @@ enum Schema {
                     SELECT 'reviewLogEntry', OLD.uuid, 1 WHERE \(recording)
                         AND EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(deck: "card.deck")));
                     END;
+                    """)
+        }
+        migrator.registerMigration("v33 the scheduler replaces the ladder") { db in
+            // FSRS spaces every review (#404), and the ladder goes, with the
+            // first view: a new way's first answer is a review. Each entry of
+            // the review log is carried over to the scheduler's. A first view
+            // becomes a review rated again, which puts the way on the first
+            // learning step, as the first view put it on the ladder's first
+            // step. A placement, which an import gave on a step of the
+            // ladder, holds that step's wait as its interval, on the ladder
+            // the settings held, or on the one Ficha shipped while they held
+            // none, and, for a wait of a day or more, Anki's starting ease,
+            // since the ladder kept none (`ladderPlacement(onStep:of:)`). And
+            // every review holds the interval the scheduler gives it,
+            // replaying its way's log with Ficha's settings, as #407 asks,
+            // whatever the database's are (`carryOverScheduler`), answering
+            // the entry replayed before it, or none as the way's first, so
+            // that the scheduler keeps it: none keeps the interval it held,
+            // which since "v32 the scheduler's settings and each review's
+            // interval" was the ladder's wait, one the scheduler may not
+            // set. The replay is the scheduler's as this version of Ficha has
+            // it (`Scheduler.keepingIntervals(of:)`), so every device carries
+            // over the log they share alike, as it carries over an older
+            // device's entry on arrival.
+            let ladderWaits =
+                try String.fetchOne(db, sql: "SELECT ladder FROM progressSettings").map { text in
+                    try JSONDecoder().decode([Int64].self, from: Data(text.utf8))
+                } ?? shippedLadderWaits
+            let scheduler = carryOverScheduler
+            let rows = try Row.fetchAll(db, sql: "SELECT * FROM reviewLog ORDER BY id")
+            var entries: [ReviewLogEntry] = []
+            for row in rows {
+                let cardID: Int64 = try row.decode(forColumn: "cardId")
+                let uuidName: String = try row.decode(forColumn: "uuid")
+                guard let way = Way(rawValue: try row.decode(forColumn: "way")), let uuid = UUID(uuidString: uuidName)
+                else {
+                    throw unreadable("Card \(cardID) has a review log entry that went an unknown way, or isn't a UUID")
+                }
+                let answeredAt: Date = try row.decode(forColumn: "answeredAt")
+                switch (try row.decode(forColumn: "kind") as String, try row.decode(forColumn: "rating") as String?) {
+                case ("firstView", _):
+                    entries.append(
+                        ReviewLogEntry(
+                            cardID: cardID, way: way, kind: .review(.again), answeredAt: answeredAt,
+                            responseTime: nil, trigger: nil, uuid: uuid))
+                case ("review", let ratingName?):
+                    guard let rating = Rating(rawValue: ratingName) else {
+                        throw unreadable("Card \(cardID) has a review in its review log of an unknown rating")
+                    }
+                    entries.append(
+                        ReviewLogEntry(
+                            cardID: cardID, way: way, kind: .review(rating), answeredAt: answeredAt,
+                            responseTime: nil, trigger: nil, uuid: uuid))
+                case ("placement", _):
+                    let placed = ladderPlacement(onStep: try row.decode(forColumn: "step"), of: ladderWaits)
+                    let placement = Placement(
+                        interval: placed.interval, due: try row.decode(forColumn: "due"), ease: placed.ease)
+                    entries.append(ReviewLogEntry(placing: cardID, way: way, on: placement, at: answeredAt, uuid: uuid))
+                default:
+                    throw unreadable("Card \(cardID) has a review log entry of an unknown kind")
+                }
+            }
+            var carried: [UUID: ReviewLogEntry] = [:]
+            for wayLog in Dictionary(grouping: entries, by: { CardWay(cardID: $0.cardID, way: $0.way) }).values {
+                for entry in try scheduler.keepingIntervals(of: wayLog) {
+                    if let uuid = entry.uuid {
+                        carried[uuid] = entry
+                    }
+                }
+            }
+
+            // The table is made again, as "v32 the scheduler's settings and
+            // each review's interval" made it, with every row carried over,
+            // and its last id, which no entry gets again; and so are its
+            // index and its triggers, which dropping it drops. The ladder's
+            // step goes. Every entry holds its interval, in seconds: a
+            // review's more than none, a placement's none or more; and a
+            // placement its ease, when Anki gave one. A review an import
+            // brings from Anki's history (#409) has no trigger, as a
+            // placement has none.
+            let uuid = """
+                (hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' \
+                || substr('89AB', 1 + (random() & 3), 1) || substr(hex(randomblob(2)), 2) || '-' \
+                || hex(randomblob(6)))
+                """
+            let lastID = try Int64.fetchOne(db, sql: "SELECT seq FROM sqlite_sequence WHERE name = 'reviewLog'")
+            try db.create(table: "new_reviewLog") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("uuid", .text).notNull().unique().defaults(sql: uuid)
+                // Its index comes once the table has its name.
+                table.belongsTo("card", indexed: false).notNull()
+                table.column("kind", .text).notNull()
+                table.column("rating", .text)
+                table.column("due", .datetime)
+                table.column("interval", .double).notNull()
+                table.column("ease", .double)
+                table.column("answeredAt", .datetime).notNull()
+                table.column("responseTime", .double)
+                table.column("trigger", .text)
+                table.column("isAhead", .boolean).notNull().defaults(to: false)
+                    .check(sql: "isAhead = 0 OR kind = 'review'")
+                table.column("way", .text).notNull().defaults(to: "frontFirst")
+                    .check(sql: "way IN ('frontFirst', 'backFirst')")
+                table.column("answeredEntryUuid", .text)
+                    .check(sql: "answeredEntryUuid IS NULL OR kind = 'review'")
+                table.column("isFromAnotherDevice", .boolean).notNull().defaults(to: false)
+                table.check(
+                    sql: """
+                        (kind = 'review' AND rating IN ('again', 'hard', 'good', 'easy') AND interval > 0)
+                        OR (kind = 'placement' AND rating IS NULL AND interval >= 0)
+                        """
+                )
+                table.check(sql: "(kind = 'placement') = (due IS NOT NULL)")
+                table.check(sql: "ease IS NULL OR (kind = 'placement' AND ease > 0)")
+                table.check(sql: "kind <> 'placement' OR (trigger IS NULL AND responseTime IS NULL)")
+            }
+            for row in rows {
+                let uuidName: String = try row.decode(forColumn: "uuid")
+                guard let entry = UUID(uuidString: uuidName).flatMap({ carried[$0] }) else {
+                    throw unreadable("A review log entry, \(uuidName), wasn't carried over")
+                }
+                let kind: String
+                let rating: String?
+                let interval: Duration?
+                let ease: Double?
+                switch entry.kind {
+                case .review(let answered):
+                    (kind, rating, interval, ease) = ("review", answered.rawValue, entry.interval, nil)
+                case .placement(let placement):
+                    (kind, rating, interval, ease) = ("placement", nil, placement.interval, placement.ease)
+                }
+                guard let interval else {
+                    throw unreadable("A review log entry, \(uuidName), wasn't given its interval")
+                }
+                try db.execute(
+                    sql: """
+                        INSERT INTO new_reviewLog (
+                            id, uuid, cardId, kind, rating, due, interval, ease, answeredAt, responseTime, trigger,
+                            isAhead, way, answeredEntryUuid, isFromAnotherDevice)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                    arguments: [
+                        row["id"] as DatabaseValue, uuidName, row["cardId"] as DatabaseValue, kind, rating,
+                        row["due"] as DatabaseValue, interval.timeInterval, ease, row["answeredAt"] as DatabaseValue,
+                        row["responseTime"] as DatabaseValue, row["trigger"] as DatabaseValue,
+                        row["isAhead"] as DatabaseValue, row["way"] as DatabaseValue, entry.answeredEntry?.uuidString,
+                        row["isFromAnotherDevice"] as DatabaseValue,
+                    ])
+            }
+            try db.drop(table: "reviewLog")
+            try db.rename(table: "new_reviewLog", to: "reviewLog")
+            try db.create(index: "reviewLog_on_cardId", on: "reviewLog", columns: ["cardId"])
+            if let lastID {
+                try db.execute(
+                    sql: """
+                        DELETE FROM sqlite_sequence WHERE name = 'reviewLog';
+                        INSERT INTO sqlite_sequence (name, seq) VALUES ('reviewLog', ?);
+                        """,
+                    arguments: [lastID])
+            }
+            /// Whether the card whose deck is `deck` syncs, as "v31 decks"
+            /// says.
+            func cardSyncs(deck: String) -> String {
+                """
+                (NOT (SELECT onlyChosenTags FROM syncChoice) OR EXISTS (
+                    SELECT 1 FROM deck AS chosen WHERE chosen.chosenToSync AND (chosen.name = \(deck)
+                        OR (chosen.name <> '' AND substr(\(deck), 1, length(chosen.name) + 2) = chosen.name || '::'))))
+                """
+            }
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_reviewLog_inserted AFTER INSERT ON reviewLog WHEN \(recording) BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'reviewLogEntry' AND recordName = NEW.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'reviewLogEntry', NEW.uuid, 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    CREATE TRIGGER sync_reviewLog_deleted AFTER DELETE ON reviewLog BEGIN
+                    DELETE FROM syncPending WHERE recordType = 'reviewLogEntry' AND recordName = OLD.uuid;
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'reviewLogEntry', OLD.uuid, 1 WHERE \(recording)
+                        AND EXISTS (SELECT 1 FROM card WHERE card.id = OLD.cardId AND \(cardSyncs(deck: "card.deck")));
+                    END;
+                    """)
+
+            // The settings lose the ladder, and so does their trigger, made
+            // again as "v32 the scheduler's settings and each review's
+            // interval" made it, without it. The time its field last
+            // changed goes too: the record that a Ficha before FSRS sent
+            // keeps the ladder in iCloud, unread.
+            try db.execute(sql: "DROP TRIGGER sync_progressSettings_updated")
+            try db.alter(table: "progressSettings") { table in
+                table.drop(column: "ladder")
+            }
+            let settingsFields = [
+                "newCardsPerDay", "forgottenOftenAfter", "learningSteps", "relearningSteps", "desiredRetention",
+                "longestIntervalInDays", "fsrsParameters",
+            ]
+            let changedSettingsFields = settingsFields.map {
+                "SELECT '\($0)' AS field WHERE OLD.\($0) IS NOT NEW.\($0)"
+            }
+            .joined(separator: " UNION ALL ")
+            let anySettingChanged = settingsFields.map { "OLD.\($0) IS NOT NEW.\($0)" }.joined(separator: " OR ")
+            try db.execute(
+                sql: """
+                    CREATE TRIGGER sync_progressSettings_updated AFTER UPDATE ON progressSettings
+                    WHEN (SELECT recordsChanges FROM syncWrite) AND (\(anySettingChanged)) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'progressSettings', 'progressSettings', field, (SELECT at FROM syncWrite)
+                    FROM (\(changedSettingsFields)) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'progressSettings' AND recordName = 'progressSettings';
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'progressSettings', 'progressSettings', 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    DELETE FROM syncFieldTime WHERE recordType = 'progressSettings' AND field = 'ladder';
                     """)
         }
         return migrator

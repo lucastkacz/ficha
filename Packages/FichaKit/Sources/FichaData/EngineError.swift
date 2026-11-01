@@ -36,19 +36,13 @@ public enum EngineError: Error, Equatable {
     case noFileOnSide(Int64, FileKind, CardSide)
     /// There's no card with this id: it was deleted, or it never existed.
     case cardNotFound(Int64)
-    /// The card with this id already had its first view, or an import placed
-    /// it on a step, so it can't have a first view.
-    case cardNotNew(Int64)
-    /// The card with this id is still new, so it can't be reviewed before its
-    /// first view.
-    case cardStillNew(Int64)
     /// The card with this id isn't due yet, so it can't be reviewed.
     case cardNotDue(Int64)
     /// The card with this id isn't one of the cards its appearance brought,
     /// so its answer from a card notification can't be recorded.
     case cardNotInAppearance(Int64)
     /// A placement was recorded as an answer to the card with this id, and
-    /// refused: only an import places a card on a step, as it comes in.
+    /// refused: only an import places a card, as it comes in.
     case placementIsNotAnAnswer(Int64)
     /// The card with this id is flagged, so it waits in the inbox: it can't be
     /// answered or flagged again until it's fixed.
@@ -127,11 +121,13 @@ public enum EngineError: Error, Equatable {
     /// id was approved or discarded outside the panel, as a refine session or
     /// the Cards window can, so ⌘Z can't take it back. The card didn't change.
     case cannotUndoFollowUp(Int64)
-    /// The review log of the card with this id has reviews but neither a
-    /// first view nor a placement, or a placement that doesn't start it or is
-    /// on a step below the first, so it isn't known where the card stands.
-    /// The engine logs it.
+    /// The review log of the card with this id has an entry the scheduler
+    /// can't follow, as `SchedulingError.unexpectedReviewLog` says, so it
+    /// isn't known where the card stands. The engine logs it.
     case unreadableReviewLog(Int64)
+    /// fsrs-rs, which works out when cards are due, failed, which it never
+    /// should. The engine logs why.
+    case schedulerFailed
     /// SQLite couldn't open, read or write the database. The engine logs why.
     case storage
     /// There's no copy with this name in the Backups folder, so it can't be
@@ -266,13 +262,6 @@ extension EngineError: LocalizedError {
             String(
                 localized:
                     "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
-        case .cardNotNew(let id):
-            String(
-                localized:
-                    "Card \(id) isn't new: it already had its first view, or came in on a step. \(reopenReviewNow)")
-        case .cardStillNew(let id):
-            String(
-                localized: "Card \(id) is new: it needs its first view before it can be reviewed. \(reopenReviewNow)")
         case .cardNotDue(let id):
             String(localized: "Card \(id) isn't due yet, so it can't be reviewed. \(reopenReviewNow)")
         case .cardNotInAppearance(let id):
@@ -285,8 +274,8 @@ extension EngineError: LocalizedError {
         case .placementIsNotAnAnswer(let id):
             String(
                 localized: """
-                    Card \(id) can't be placed on a step as an answer: only an import places a card. Nothing was \
-                    recorded. Report it.
+                    Card \(id) can't be placed as an answer: only an import places a card. Nothing was recorded. \
+                    Report it.
                     """
             )
         case .cardFlagged(let id):
@@ -425,8 +414,15 @@ extension EngineError: LocalizedError {
         case .unreadableReviewLog(let id):
             String(
                 localized: """
-                    Ficha can't make sense of the review log of card \(id), so it doesn't know which step the card \
-                    is on. Your cards are still saved: report it.
+                    Ficha can't make sense of the review log of card \(id), so it doesn't know when the card is \
+                    due. Your cards are still saved: report it.
+                    """
+            )
+        case .schedulerFailed:
+            String(
+                localized: """
+                    Ficha couldn't work out when your cards are due. Your cards are still saved: try again, and if \
+                    it keeps happening, report it.
                     """
             )
         case .storage:
@@ -647,8 +643,6 @@ extension EngineError {
     init(refused answer: RefusedAnswer, cardID: Int64) {
         self =
             switch answer {
-            case .notNew: .cardNotNew(cardID)
-            case .stillNew: .cardStillNew(cardID)
             case .notDue: .cardNotDue(cardID)
             case .notAnAnswer: .placementIsNotAnAnswer(cardID)
             }

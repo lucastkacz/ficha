@@ -25,7 +25,7 @@ struct ReviewPanelTests {
     @Test("a panel left untouched for 10 minutes closes on its own, which counts as a snooze")
     func anUntouchedPanelClosesOnItsOwn() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         time.advance(by: minutes(10) - 1)
         panel.closeIfUntouched()
@@ -35,13 +35,13 @@ struct ReviewPanelTests {
 
         #expect(panel.outcome == .autoClosed)
         #expect(try engine.appearanceLog().map(\.outcome) == [.autoClosed])
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .new)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == .new)
     }
 
     @Test("doing something in the panel keeps it open for another 10 minutes")
     func touchingThePanelKeepsItOpen() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         time.advance(by: minutes(5))
         panel.touch()
@@ -62,7 +62,7 @@ struct ReviewPanelTests {
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         time.advance(by: 8)
 
-        try panel.answer(.firstView, responseTime: .seconds(8))
+        try panel.answer(.review(.again), responseTime: .seconds(8))
         #expect(panel.current == nil)
         #expect(panel.outcome == nil)
         panel.close(.byLucas)
@@ -74,8 +74,8 @@ struct ReviewPanelTests {
             ]
         )
         #expect(
-            try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 0, due: start + 8 + hours(1))
-        )
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == learning(step: 0, due: start + 8 + hours(1)))
     }
 
     @Test("closed with cards left, the panel is snoozed, and the cards Lucas didn't answer stay as they were")
@@ -92,13 +92,13 @@ struct ReviewPanelTests {
 
         #expect(panel.outcome == .snoozed)
         #expect(try engine.appearanceLog().map(\.outcome) == [.snoozed])
-        #expect(try engine.standing(of: petricor.id, on: settings.ladder).isDue(at: time.now))
+        #expect(try engine.standing(of: petricor.id, with: settings.scheduler).isDue(at: time.now))
     }
 
     @Test("an appearance's panel takes the keyboard once Lucas has been idle for 5 seconds, and only once")
     func anAppearanceTakesTheKeyboardOnceIdle() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
         #expect(!panel.mayHaveKeyboard)
 
         let takesItBeforeFiveSeconds = panel.takesKeyboard(on: FakeMac(idleTime: .milliseconds(4_999)))
@@ -115,7 +115,7 @@ struct ReviewPanelTests {
     @Test("an appearance's panel doesn't take the keyboard when the Mac doesn't say how long Lucas has been idle")
     func anAppearanceWaitsForTheIdleTime() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         let takesIt = panel.takesKeyboard(on: FakeMac(idleTime: nil))
 
@@ -126,7 +126,7 @@ struct ReviewPanelTests {
     @Test("once Lucas clicks an appearance's panel, it has the keyboard and doesn't take it again on its own")
     func clickingThePanelGivesItTheKeyboard() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         panel.clicked()
         let takesItOnItsOwn = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(60)))
@@ -176,7 +176,7 @@ struct ReviewPanelTests {
 
         #expect(panel.failure?.action == .bury)
         #expect(panel.failure?.error == .cardNotFound(serendipia.id))
-        #expect(panel.content == .firstView(serendipia))
+        #expect(panel.content == .upperSide(serendipia, isNew: true))
         panel.dismissFailure()
         #expect(panel.failure == nil)
     }
@@ -187,20 +187,22 @@ struct ReviewPanelTests {
     func answeringACardSetAsideMeanwhileFailsAsABuriedOneDoes() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveInDeck("ubuntu", deck: "Filosofía", in: engine)
-        var buriedPanel = try engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
-        var setAsidePanel = try engine.openPanel(.reviewNow, with: [.firstView(ubuntu)], settings: settings)
+        var buriedPanel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
+        var setAsidePanel = try engine.openPanel(.reviewNow, with: [.new(ubuntu)], settings: settings)
         try engine.bury(serendipia.id)
         try engine.setAside(deck: "Filosofía")
 
-        buriedPanel.endFirstView()
-        setAsidePanel.endFirstView()
+        buriedPanel.flip()
+        buriedPanel.rate(.again)
+        setAsidePanel.flip()
+        setAsidePanel.rate(.again)
 
         #expect(buriedPanel.failure?.action == .answer)
         #expect(buriedPanel.failure?.error == .cardBuried(serendipia.id))
         #expect(setAsidePanel.failure?.action == .answer)
         #expect(setAsidePanel.failure?.error == .cardSetAside(ubuntu.id, decks: ["Filosofía"]))
-        #expect(buriedPanel.content == .firstView(serendipia))
-        #expect(setAsidePanel.content == .firstView(ubuntu))
+        #expect(buriedPanel.content == .bothSides(serendipia, isNew: true))
+        #expect(setAsidePanel.content == .bothSides(ubuntu, isNew: true))
         #expect(try engine.reviewLog().isEmpty)
     }
 
@@ -219,7 +221,7 @@ struct ReviewPanelTests {
 
         let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
-        #expect(panel.content == .firstView(mayo))
+        #expect(panel.content == .upperSide(mayo, isNew: true))
         #expect(
             panel.tags == [
                 CardTag(name: "historia", color: .green),
@@ -236,7 +238,7 @@ struct ReviewPanelTests {
         let poder = try approve(
             card(.concept, front: "Poder", back: "Trabajo por unidad de tiempo.", tags: ["física", "ciencia"]),
             in: engine)
-        try engine.climb(constituyente, to: 2, movingForward: time)
+        try engine.climb(constituyente, goods: 2, movingForward: time)
         try engine.meet(poder)
         time.advance(by: hours(1))
         try engine.setEmoji(Emoji("⚖️"), of: "derecho")
@@ -261,7 +263,7 @@ struct ReviewPanelTests {
 
         let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
-        #expect(panel.content == .firstView(serendipia))
+        #expect(panel.content == .upperSide(serendipia, isNew: true))
         #expect(panel.tags.isEmpty)
     }
 
@@ -278,17 +280,19 @@ struct ReviewPanelTests {
         try engine.setEmoji(Emoji("🇦🇷"), ofDeck: "Historia::Argentina")
 
         var panel = try engine.openPanel(
-            .appearance, with: [.firstView(mayo), .firstView(petricor)], settings: settings)
+            .appearance, with: [.new(mayo), .new(petricor)], settings: settings)
 
-        #expect(panel.content == .firstView(mayo))
+        #expect(panel.content == .upperSide(mayo, isNew: true))
         #expect(
             panel.deck
                 == Deck(name: "Historia::Argentina", emoji: "🇦🇷", inheritedColor: .blue, inheritedEmoji: "📜"))
         #expect(panel.tags == [CardTag(name: "política")])
-        panel.endFirstView()
-        #expect(panel.content == .firstView(petricor))
+        panel.flip()
+        panel.rate(.good)
+        #expect(panel.content == .upperSide(petricor, isNew: true))
         #expect(panel.deck == Deck(name: Deck.defaultName))
-        panel.endFirstView()
+        panel.flip()
+        panel.rate(.good)
         #expect(panel.deck == nil)
     }
 
@@ -329,7 +333,8 @@ struct ReviewPanelTests {
 
         clock.advance(by: .seconds(8))
         time.advance(by: hours(3))
-        panel.endFirstView()
+        panel.flip()
+        panel.rate(.good)
 
         #expect(try engine.reviewLog().map(\.responseTime) == [.seconds(8)])
     }
@@ -353,22 +358,23 @@ struct ReviewPanelTests {
         #expect(!panel.offersToFlag)
         #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Forgotten 8 times. Falta un ejemplo."])
         #expect(try engine.reviewLog().last?.kind == .review(.again))
-        #expect(try engine.reviewLog().filter { $0.cardID == cards[0].id }.count == 9)
+        // Its first review, two goods, and seven lapses, each relearned with
+        // a good, before the eighth.
+        #expect(try engine.reviewLog().filter { $0.cardID == cards[0].id }.count == 1 + 2 + 7 * 2 + 1)
     }
 
     @Test(
-        "with seven “Don't know” each way, the eighth back first offers to flag the card with the note “Forgotten 8 times back first”, and the eighth front first with “Forgotten 8 times”"
+        "with seven lapses each way, the eighth back first offers to flag the card with the note “Forgotten 8 times back first”, and the eighth front first with “Forgotten 8 times”"
     )
     func theEighthAgainOfEachWayOffersToFlagTheCard() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let bothWays = try engine.setBothWays(true, of: [ubuntu.id])
-        try engine.meet(ubuntu)
-        try engine.meet(ubuntu, way: .backFirst)
-        for _ in 1...7 {
-            try engine.reviewWhenDue(ubuntu, .again, way: .backFirst, movingForward: time)
-            try engine.reviewWhenDue(ubuntu, .again, movingForward: time)
+        try engine.lapse(ubuntu, times: 7, movingForward: time)
+        try engine.lapse(ubuntu, times: 7, way: .backFirst, movingForward: time)
+        let dues = try [Way.frontFirst, .backFirst].map { way in
+            try #require(try engine.standing(of: ubuntu.id, way: way, with: settings.scheduler).due)
         }
-        time.advance(by: hours(1))
+        time.move(to: try #require(dues.max()))
         var panel = try engine.openPanel(
             .reviewNow, with: [.review(bothWays[0], .backFirst), .review(bothWays[0])], settings: settings)
 
@@ -399,7 +405,8 @@ struct ReviewPanelTests {
         #expect(!panel.offersToFlag)
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(
-            try engine.standing(of: cards[0].id, on: settings.ladder) == .onLadder(step: 0, due: time.now + hours(1)))
+            try engine.standing(of: cards[0].id, with: settings.scheduler).stageAndDue
+                == relearning(step: 0, due: time.now + hours(1)))
         #expect(try engine.reviewNow(settings) == [.review(cards[1])])
     }
 
@@ -408,7 +415,7 @@ struct ReviewPanelTests {
     )
     func undoAfterTheOfferUndoesTheFlagAndTheRating() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
-        let standing = try engine.standing(of: cards[0].id, on: settings.ladder)
+        let standing = try engine.standing(of: cards[0].id, with: settings.scheduler)
         let log = try engine.reviewLog()
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
         clock.advance(by: .seconds(4))
@@ -420,7 +427,7 @@ struct ReviewPanelTests {
         panel.undoLastCard()
         #expect(panel.content == .bothSides(cards[0]))
         #expect(try engine.inbox().flaggedCards.isEmpty)
-        #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: cards[0].id, with: settings.scheduler) == standing)
         #expect(try engine.reviewLog() == log)
         #expect(!panel.canUndo)
         clock.advance(by: .seconds(1))
@@ -477,7 +484,7 @@ struct ReviewPanelTests {
         #expect(panel.outcome == .finished)
         #expect(try engine.appearanceLog().isEmpty)
         let serendipia = try approveCard("serendipia", in: engine)
-        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.firstView(serendipia)]))
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.new(serendipia)]))
     }
 
     @Test(
@@ -575,30 +582,49 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "a back-first first view shows the back alone, marked new, then the front under it once flipped, and Got it puts only that way on the ladder"
-    )
-    func aBackFirstFirstViewFlipsBeforeGotIt() throws {
+        "a new card shows its front alone, marked new, then its back under it once flipped, to rate with any of the four ratings",
+        arguments: Rating.allCases)
+    func aNewCardShowsItsFrontFirst(rating: Rating) throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
-        try engine.meet(serendipia)
-        let frontFirst = try engine.standing(of: serendipia.id, on: settings.ladder)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         let beforeTheFlip = panel.content
-        panel.endFirstView()
+        panel.rate(rating)
         let logBeforeTheFlip = try engine.reviewLog()
         panel.flip()
         let afterTheFlip = panel.content
-        panel.endFirstView()
+        panel.rate(rating)
+
+        #expect(beforeTheFlip == .upperSide(serendipia, isNew: true))
+        #expect(logBeforeTheFlip.isEmpty)
+        #expect(afterTheFlip == .bothSides(serendipia, isNew: true))
+        #expect(panel.current == nil)
+        #expect(try engine.reviewLog().map(\.kind) == [.review(rating)])
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) != .new)
+    }
+
+    @Test(
+        "a new back-first way shows the back alone, marked new, then the front under it once flipped, and its rating moves only that way"
+    )
+    func aNewBackFirstWayFlipsBeforeItsRating() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let bothWays = try engine.setBothWays(true, of: [serendipia.id])
+        try engine.meet(serendipia)
+        let frontFirst = try engine.standing(of: serendipia.id, with: settings.scheduler)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+
+        let beforeTheFlip = panel.content
+        panel.flip()
+        let afterTheFlip = panel.content
+        panel.rate(.again)
 
         #expect(beforeTheFlip == .upperSide(bothWays[0], .backFirst, isNew: true))
-        #expect(logBeforeTheFlip.count == 1)
-        #expect(afterTheFlip == .firstView(bothWays[0], .backFirst))
+        #expect(afterTheFlip == .bothSides(bothWays[0], .backFirst, isNew: true))
         #expect(panel.current == nil)
         #expect(
-            try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
-                == .onLadder(step: 0, due: time.now + hours(1)))
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == frontFirst)
+            try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler).stageAndDue
+                == learning(step: 0, due: time.now + hours(1)))
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == frontFirst)
     }
 
     @Test(
@@ -619,9 +645,11 @@ struct ReviewPanelTests {
         #expect(beforeTheFlip == .upperSide(bothWays[0], .backFirst))
         #expect(afterTheFlip == .bothSides(bothWays[0], .backFirst))
         #expect(
-            try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
-                == .onLadder(step: 1, due: time.now + hours(4)))
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 0, due: time.now))
+            try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler).stageAndDue
+                == learning(step: 1, due: time.now + hours(4)))
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == learning(step: 0, due: time.now))
     }
 
     @Test(
@@ -668,18 +696,23 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "in a first view, which shows the whole card, R plays the back's sound, or the front's when the back has none")
-    func rPlaysTheBacksSoundInAFirstView() async throws {
+        "a new card, which shows its front alone, R plays the front's sound, and once flipped the back's, or the front's when the back has none"
+    )
+    func rPlaysTheFrontsSoundOnANewCard() async throws {
         let la = try await addTone(440, to: engine)
         let mi = try await addTone(330, to: engine)
         let coloratura = try wordCard("coloratura", frontSound: la, backSound: mi)
         let aria = try wordCard("aria", frontSound: la)
-        var withBoth = try engine.openPanel(.reviewNow, with: [.firstView(coloratura)], settings: settings)
-        var withFront = try engine.openPanel(.reviewNow, with: [.firstView(aria)], settings: settings)
+        var withBoth = try engine.openPanel(.reviewNow, with: [.new(coloratura)], settings: settings)
+        var withFront = try engine.openPanel(.reviewNow, with: [.new(aria)], settings: settings)
 
+        let rBeforeTheFlip = withBoth.sideForR
+        withBoth.flip()
+        withFront.flip()
         withBoth.playOrStopSound()
         withFront.playOrStopSound()
 
+        #expect(rBeforeTheFlip == .front)
         #expect(withBoth.playingSound?.side == .back)
         #expect(withFront.playingSound?.side == .front)
     }
@@ -784,11 +817,8 @@ struct ReviewPanelTests {
     func dontKnowStopsTheSoundAsThePanelOffersToFlag() async throws {
         let la = try await addTone(440, to: engine)
         let aria = try wordCard("aria", frontSound: la)
-        try engine.meet(aria)
-        for _ in 1...7 {
-            try engine.reviewWhenDue(aria, .again, movingForward: time)
-        }
-        time.advance(by: hours(1))
+        try engine.lapse(aria, times: 7, movingForward: time)
+        time.move(to: try #require(try engine.standing(of: aria.id, with: settings.scheduler).due))
         var panel = try engine.openPanel(.reviewNow, with: [.review(aria)], settings: settings)
 
         panel.playOrStopSound(on: .front)
@@ -839,22 +869,24 @@ struct ReviewPanelTests {
         return created
     }
 
-    /// Approves a word card with the front `forgotten`, meets it and rates it
-    /// again in seven reviews, one under the default number of a card
-    /// forgotten often, and then approves and meets a card for each of
-    /// `others`, so that they all come due an hour later, when this moves the
-    /// time. Review now brings them in that order.
+    /// Approves a word card with the front `forgotten`, graduates it and
+    /// makes it lapse seven times, one under the default number of a card
+    /// forgotten often, and approves a card for each of `others`, graduated
+    /// with three goods, so a longer interval, and moves the time until they
+    /// are all due. Review now brings them in that order: the shortest
+    /// interval first.
     private func dueCards(forgottenSevenTimes forgotten: String, then others: String...) throws -> [Card] {
         let forgottenCard = try approveCard(forgotten, in: engine)
-        try engine.meet(forgottenCard)
-        for _ in 1...7 {
-            try engine.reviewWhenDue(forgottenCard, .again, movingForward: time)
-        }
         let otherCards = try others.map { try approveCard($0, in: engine) }
+        try engine.lapse(forgottenCard, times: 7, movingForward: time)
         for card in otherCards {
-            try engine.meet(card)
+            try engine.climb(card, goods: 3, movingForward: time)
         }
-        time.advance(by: hours(1))
-        return [forgottenCard] + otherCards
+        let cards = [forgottenCard] + otherCards
+        let dues = try cards.map { card in
+            try #require(try engine.standing(of: card.id, with: settings.scheduler).due)
+        }
+        time.move(to: try #require(dues.max()))
+        return cards
     }
 }

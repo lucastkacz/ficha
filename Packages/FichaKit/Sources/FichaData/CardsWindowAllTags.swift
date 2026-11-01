@@ -133,8 +133,8 @@ extension CardsWindowState {
         tagShownFromAllTags != nil && editing == nil
     }
 
-    /// All Tags' rows out of `counted`, every tag read with its counts on the
-    /// window's ladder, as its search and its sort leave them.
+    /// All Tags' rows out of `counted`, every tag read with its counts by the
+    /// window's scheduling settings, as its search and its sort leave them.
     func allTagsRows(of counted: [CountedTag]) -> [AllTagsRow] {
         Self.allTagsRows(of: counted, search: hasSearch ? search : "", sort: allTagsSort)
     }
@@ -207,7 +207,7 @@ extension CardsWindowState {
         let sort = AllTagsSort(column: column, isAscending: isAscending)
         guard sort != allTagsSort else { return }
         allTagsSort = sort
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Whether All Tags' tag named `tag` shows the tags inside it: once Lucas
@@ -262,7 +262,7 @@ extension CardsWindowState {
         allTagsSearch = search
         search = ""
         tagShownFromAllTags = tag
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Lists the cards of the one tag selected in All Tags, in its place, as
@@ -279,7 +279,7 @@ extension CardsWindowState {
         guard canGoBack else { return }
         tagShownFromAllTags = nil
         search = allTagsSearch
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Asks whether to delete `tags`, those of them the window offers, each
@@ -325,7 +325,7 @@ extension CardsWindowState {
         guard counted else { return }
         if unused.isEmpty {
             // A card got one meanwhile: no longer offered.
-            read(on: ladder)
+            read(with: scheduler)
         } else {
             question = .clearUnusedTags(unused)
         }
@@ -338,7 +338,7 @@ extension CardsWindowState {
         question = nil
         let done = perform(.clearUnusedTags) { engine throws(EngineError) in try engine.clearUnusedTags() }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 
@@ -385,7 +385,7 @@ extension CardsWindowState {
             openTags.formUnion(TagPath.lineage(of: parent))
             tagsClosedInSearch.subtract(TagPath.lineage(of: parent))
         }
-        read(on: ladder)
+        read(with: scheduler)
         return true
     }
 }

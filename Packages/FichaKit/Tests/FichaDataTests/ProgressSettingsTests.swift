@@ -6,9 +6,9 @@ import Testing
 @testable import FichaData
 
 /// Tests on the settings that decide a card's progress in the database: the
-/// ladder, the new cards a day and the forgotten-often count, which the app
-/// kept in its preferences before they synced (#315), and the scheduler's
-/// settings beside them (#404).
+/// new cards a day and the forgotten-often count, which the app kept in its
+/// preferences before they synced (#315), and the scheduler's settings
+/// beside them (#404).
 final class ProgressSettingsTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     /// A data folder of the test's own, for an app and the CLI to share.
@@ -128,14 +128,11 @@ func saveDatabaseBeforeProgressSettings(at file: URL) throws {
         DatabaseQueue(path: file.path(percentEncoded: false)), upTo: "v22 what this device knows of iCloud")
 }
 
-/// Settings that decide progress, made up, none of them Ficha's: a ladder of
-/// three steps, 10 minutes, 6 hours and 3 days; the scheduler's
-/// `customScheduler()`; 12 new cards a day; and the offer to flag a card
-/// forgotten often after 4 reviews rated again.
+/// Settings that decide progress, made up, none of them Ficha's: the
+/// scheduler's `customScheduler()`; 12 new cards a day; and the offer to
+/// flag a card forgotten often after 4 lapses.
 func customProgressSettings() throws -> ProgressSettings {
-    ProgressSettings(
-        ladder: try #require(Ladder(waits: [.seconds(minutes(10)), .seconds(hours(6)), .seconds(days(3))])),
-        scheduler: try customScheduler(), newCardsPerDay: 12, forgottenOftenAfter: 4)
+    ProgressSettings(scheduler: try customScheduler(), newCardsPerDay: 12, forgottenOftenAfter: 4)
 }
 
 /// Scheduling settings made up, none of them Ficha's: learning steps of 10

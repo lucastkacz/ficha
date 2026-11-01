@@ -305,10 +305,10 @@ struct PrintedTags {
     /// The pinned tags, in their order.
     let pinned: [PrintedTag]
 
-    /// The tags `engine` holds now, each with its counts on the engine's
-    /// ladder, read together.
+    /// The tags `engine` holds now, each with its counts by the engine's
+    /// scheduling settings, read together.
     init(of engine: Engine) throws {
-        let counted = try engine.countedTags(on: engine.progressSettings().ladder)
+        let counted = try engine.countedTags(with: engine.progressSettings().scheduler)
         let pinnedNames = counted.map(\.tag).pinnedInOrder.map(\.name)
         let tags = counted.map { counted in
             let (tag, count) = (counted.tag, counted.counts)

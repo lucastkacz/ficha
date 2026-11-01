@@ -276,7 +276,7 @@ final class ImportingTests {
             card(.word, front: "serendipia", back: "Un hallazgo."), bothWays: true)
         let petricor = try engine.create(card(.word, front: "petricor", back: "Un olor."))
         try engine.meet(serendipia)
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
         let withColumn = try file(
             "Con columna.txt",
             """
@@ -297,7 +297,7 @@ final class ImportingTests {
         #expect(cards.map(\.id) == [serendipia.id, petricor.id])
         #expect(cards.map(\.back) == ["Un hallazgo por casualidad.", "El olor de la lluvia."])
         #expect(cards.map(\.bothWays) == [false, true])
-        #expect(try engine.standing(of: serendipia.id, on: ladder) != .new)
+        #expect(try engine.standing(of: serendipia.id, with: scheduler) != .new)
     }
 
     @Test("unreadable lines are listed with their numbers and reasons, and the rest come in")
@@ -387,10 +387,10 @@ final class ImportingTests {
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"], source: "Un libro"), in: engine)
         let petricor = try approve(
             card(.concept, front: "petricor", back: "Un olor.", tags: ["lenguaje"], source: "Wikipedia"), in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
         try engine.meet(petricor)
-        let ladder = ReviewSettings.defaults.ladder
-        let standings = try [serendipia, petricor].map { try engine.standing(of: $0.id, on: ladder) }
+        let scheduler = ReviewSettings.defaults.scheduler
+        let standings = try [serendipia, petricor].map { try engine.standing(of: $0.id, with: scheduler) }
         let reviewLog = try engine.reviewLog()
         let file = try file(
             "Palabras.txt",
@@ -416,7 +416,7 @@ final class ImportingTests {
         // serendipia had the proposed tag as "palabras", which it keeps.
         #expect(cards.map(\.tags) == [["vocabulario", "palabras"], ["lenguaje", "Palabras"], ["Palabras"]])
         #expect(cards.map(\.source) == [nil, "Wikipedia", nil])
-        #expect(try [serendipia, petricor].map { try engine.standing(of: $0.id, on: ladder) } == standings)
+        #expect(try [serendipia, petricor].map { try engine.standing(of: $0.id, with: scheduler) } == standings)
         #expect(try engine.reviewLog() == reviewLog)
     }
 
@@ -476,7 +476,7 @@ final class ImportingTests {
 
         var firstViews: [String] = []
         for _ in 0..<3 {
-            for case .firstView(let card, _) in try engine.reviewNow(.defaults) {
+            for case .new(let card, _) in try engine.reviewNow(.defaults) {
                 firstViews.append(card.front)
                 try engine.meet(card)
             }

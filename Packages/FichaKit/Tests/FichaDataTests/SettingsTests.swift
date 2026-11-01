@@ -17,37 +17,30 @@ struct SettingsTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    // The review log is the source of truth (ADR 0002), so a new ladder
-    // applies to every card at once, without losing its progress.
-    @Test("a changed ladder re-times every card from its history")
-    func aChangedLadderReTimesTheCards() throws {
+    // As in Anki, a change to the steps keeps when each card is due, and
+    // spaces its reviews from then on (#404).
+    @Test("changed learning steps keep a card's due time, and space its next review")
+    func changedLearningStepsSpaceTheNextReview() throws {
         var settings = ReviewSettings.defaults
-        settings.ladder = try #require(Ladder(waits: [.seconds(minutes(30)), .seconds(hours(3)), .seconds(days(1))]))
+        settings.scheduler = try #require(
+            Scheduler(
+                learningSteps: [.seconds(minutes(30)), .seconds(hours(3))], relearningSteps: [.seconds(hours(1))],
+                desiredRetention: 0.9, longestIntervalInDays: 36_500, parameters: []))
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        let reviewedAt = time.now
+        // With the default steps, so due an hour later.
+        try engine.meet(serendipia)
+        let dueAfterItsFirstReview = try engine.standing(of: serendipia.id, with: settings.scheduler).due
 
-        time.move(to: reviewedAt + days(1))
+        time.advance(by: hours(1))
+        let appearance = try engine.checkAppearance(settings, mac: FakeMac())
+        try engine.record(
+            .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
 
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 2, due: time.now))
-        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.review(serendipia)]))
-        #expect(try engine.progress(settings).due == 1)
-    }
-
-    @Test("after the ladder is shortened, a card beyond its end sits on its last step")
-    func aShortenedLadderKeepsTheCardOnItsLastStep() throws {
-        var settings = ReviewSettings.defaults
-        settings.ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1)), .seconds(days(3))]))
-        let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 5, movingForward: time)
-        #expect(try engine.progress(.defaults).learned == 1)
-        let reviewedAt = time.now
-
-        time.move(to: reviewedAt + days(3))
-
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 2, due: time.now))
-        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.review(serendipia)]))
-        #expect(try engine.progress(settings).learned == 0)
+        #expect(dueAfterItsFirstReview == time.now)
+        #expect(appearance == .show([.review(serendipia)]))
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == learning(step: 1, due: time.now + hours(3)))
     }
 
     @Test("a suppression Lucas turned off neither holds appearances back nor makes them wait once it ends")
@@ -61,8 +54,8 @@ struct SettingsTests {
         let duringAVideoInFullScreen = try engine.checkAppearance(
             settings, mac: FakeMac(suppressions: [.video, .fullScreen]))
 
-        #expect(duringAVideo == .show([.firstView(serendipia)]))
-        #expect(afterAVideo == .show([.firstView(serendipia)]))
+        #expect(duringAVideo == .show([.new(serendipia)]))
+        #expect(afterAVideo == .show([.new(serendipia)]))
         #expect(duringAVideoInFullScreen == .notNow(.suppressed(.fullScreen)))
     }
 
@@ -127,14 +120,14 @@ struct SettingsTests {
 
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.outsideActiveHours))
         time.move(to: try at(22, 0))
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
         panel.close(.byLucas)
         time.advance(by: minutes(10) - 1)
         #expect(
             try engine.checkAppearance(settings, mac: FakeMac())
                 == .notNow(.tooSoonAfterLastOne(until: try at(22, 10))))
         time.advance(by: 1)
-        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.firstView(serendipia)]))
+        #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show([.new(serendipia)]))
     }
 
     @Test("an appearance waits as long after a suppression ends, or the Mac wakes, as the settings say")
@@ -151,7 +144,7 @@ struct SettingsTests {
             try engine.checkAppearance(settings, mac: afterTheMeeting)
                 == .notNow(.tooSoonAfterSuppression(until: try at(9, 5))))
         time.advance(by: 1)
-        #expect(try engine.checkAppearance(settings, mac: afterTheMeeting) == .show([.firstView(serendipia)]))
+        #expect(try engine.checkAppearance(settings, mac: afterTheMeeting) == .show([.new(serendipia)]))
         #expect(
             try engine.checkAppearance(settings, mac: afterWaking) == .notNow(.tooSoonAfterWaking(until: try at(9, 10)))
         )
@@ -163,7 +156,7 @@ struct SettingsTests {
         settings.autoClose = .seconds(minutes(3))
         settings.focusMode = .always
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         let takesItWhileLucasTypes = panel.takesKeyboard(on: FakeMac(idleTime: .zero))
         time.advance(by: minutes(3))
@@ -178,7 +171,7 @@ struct SettingsTests {
         var settings = ReviewSettings.defaults
         settings.idleBeforeTakingKeyboard = .seconds(2)
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         let takesItAfterASecond = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(1)))
         let takesItAfterTwoSeconds = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(2)))
@@ -188,13 +181,13 @@ struct SettingsTests {
     }
 
     @Test(
-        "a card is forgotten often after as many “Don't know” as the settings say, and again every half of that, rounded down"
+        "a card is forgotten often after as many lapses as the settings say, and again every half of that, rounded down"
     )
     func forgottenOftenComesFromTheSettings() throws {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = 5
         let ubuntu = try approveCard("ubuntu", in: engine)
-        try engine.meet(ubuntu)
+        try engine.climb(ubuntu, goods: 2, movingForward: time)
 
         let saidSo = try (1...10).map { _ in try forget(ubuntu, with: settings)?.times }
 
@@ -206,20 +199,25 @@ struct SettingsTests {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = nil
         let ubuntu = try approveCard("ubuntu", in: engine)
-        try engine.meet(ubuntu)
+        try engine.climb(ubuntu, goods: 2, movingForward: time)
 
         let saidSo = try (1...16).map { _ in try forget(ubuntu, with: settings) }
 
         #expect(saidSo.allSatisfy { $0 == nil })
     }
 
-    /// Moves the time forward until `card` is due, rates it again with
-    /// `settings`, as the review panel does, and returns whether it's now
-    /// forgotten often.
+    /// Moves the time forward until `card`, graduated, is due, rates it again
+    /// with `settings`, as the review panel does, a lapse, and then good when
+    /// it's due again, which graduates it again, and returns whether the
+    /// lapse made it forgotten often.
     private func forget(_ card: Card, with settings: ReviewSettings) throws -> ForgottenOften? {
-        time.move(to: try #require(try engine.standing(of: card.id, on: settings.ladder).due))
-        return try engine.record(
+        time.move(to: try #require(try engine.standing(of: card.id, with: settings.scheduler).due))
+        let forgotten = try engine.record(
             .review(.again), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+        time.move(to: try #require(try engine.standing(of: card.id, with: settings.scheduler).due))
+        try engine.record(
+            .review(.good), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
+        return forgotten
     }
 
     /// Approves a card with this front and meets it, an hour before `due`, so

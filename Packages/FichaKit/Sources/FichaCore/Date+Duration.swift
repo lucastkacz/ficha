@@ -29,9 +29,13 @@ extension Duration {
         .seconds(count * secondsInADay)
     }
 
-    /// This span in seconds, as Foundation counts time.
-    var timeInterval: TimeInterval {
-        self / .seconds(1)
+    /// This span in seconds, as Foundation counts time, and as the database
+    /// and iCloud keep an interval: exactly, for a span of whole seconds,
+    /// which dividing it by a second isn't for one of days, whose
+    /// attoseconds a double can't hold.
+    public var timeInterval: TimeInterval {
+        let (seconds, attoseconds) = components
+        return Double(seconds) + Double(attoseconds) / 1e18
     }
 
     /// This span in days, with their fraction.

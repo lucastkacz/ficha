@@ -21,7 +21,7 @@ struct FixCommand: EngineCommand {
             top, or doesn't; left out, the card keeps its own. deck moves the card to that deck; left out, it \
             stays in its own.
 
-            Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, on its step, \
+            Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, with its progress, \
             unless its deck, or a deck it sits inside, is set aside, and the command prints it.
             """
     )

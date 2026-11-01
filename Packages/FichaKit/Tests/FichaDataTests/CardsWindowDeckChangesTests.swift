@@ -12,7 +12,7 @@ import Testing
 final class CardsWindowDeckChangesTests {
     let time: ManualTimeSource
     let calendar: Calendar
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
     /// A data folder of the test's own, which the app and the CLI share.
     let folder = URL.temporaryDirectory.appending(
         path: "FichaDataTests-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -38,8 +38,8 @@ final class CardsWindowDeckChangesTests {
         let cli = try Engine(location: .folder(folder), time: time, calendar: calendar)
         let gioconda = try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: app)
         try approveInDeck("Coliseo", deck: "Historia", in: app)
-        var window = app.openCardsWindow(on: ladder, lastDeckAddedTo: "Arte::Pintura")
-        window.read(on: ladder)
+        var window = app.openCardsWindow(with: scheduler, lastDeckAddedTo: "Arte::Pintura")
+        window.read(with: scheduler)
         window.choose(.cards(.deck("Arte")))
         window.setDeckOpen(false, "Arte")
         window.openNewCardForm()
@@ -50,7 +50,7 @@ final class CardsWindowDeckChangesTests {
         window.startEditing()
 
         try cli.renameDeck("Arte", to: "Cultura::Arte")
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.sidebarItem == .cards(.deck("Cultura::Arte")))
         #expect(!window.isDeckOpen("Cultura::Arte"))
@@ -81,8 +81,8 @@ final class CardsWindowDeckChangesTests {
         try approveInDeck("petricor", in: app)
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: app)
         let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: app)
-        var window = app.openCardsWindow(on: ladder, lastDeckAddedTo: "Arte::Pintura")
-        window.read(on: ladder)
+        var window = app.openCardsWindow(with: scheduler, lastDeckAddedTo: "Arte::Pintura")
+        window.read(with: scheduler)
         window.openNewCardForm()
         var draft = try #require(window.cardForm?.draft)
         draft.front.text = "petricor"
@@ -93,7 +93,7 @@ final class CardsWindowDeckChangesTests {
         window.setDeckInEditor("Arte::Escultura")
 
         try cli.deleteDeck("Arte")
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.editedDeck == Deck.defaultName)
         #expect(window.lastDeckAddedTo == Deck.defaultName)
@@ -119,8 +119,8 @@ final class CardsWindowDeckChangesTests {
         try approveInDeck("La Gioconda", deck: "Arte", in: mac.engine)
         let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: mac.engine)
         try await syncBoth(mac, iPhone)
-        var window = mac.engine.openCardsWindow(on: ladder, lastDeckAddedTo: "Idiomas::Inglés")
-        window.read(on: ladder)
+        var window = mac.engine.openCardsWindow(with: scheduler, lastDeckAddedTo: "Idiomas::Inglés")
+        window.read(with: scheduler)
         window.openNewCardForm()
         window.select([coliseo.id])
         window.startEditing()
@@ -130,7 +130,7 @@ final class CardsWindowDeckChangesTests {
         try iPhone.engine.renameDeck("Idiomas", to: "Lenguas")
         try iPhone.engine.deleteDeck("Arte")
         try await syncBoth(mac, iPhone)
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.cardForm?.draft.deck == "Lenguas::Inglés")
         #expect(window.lastDeckAddedTo == "Lenguas::Inglés")
@@ -152,7 +152,7 @@ final class CardsWindowDeckChangesTests {
             Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
         try approveInDeck("La Gioconda", deck: "Arte", in: mac.engine)
         try await syncBoth(mac, iPhone)
-        var window = mac.engine.openCardsWindow(on: ladder)
+        var window = mac.engine.openCardsWindow(with: scheduler)
         window.choose(.cards(.deck("Arte")))
         window.openNewCardForm()
 
@@ -161,9 +161,9 @@ final class CardsWindowDeckChangesTests {
         time.advance(by: minutes(1))
         try mac.engine.makeDeck(named: "Cultura")
         try mac.engine.renameDeck("Cultura", to: "Humanidades")
-        window.read(on: ladder)
+        window.read(with: scheduler)
         try await syncBoth(mac, iPhone)
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(try mac.engine.cards().map(\.deck) == ["Humanidades"])
         #expect(window.cardForm?.draft.deck == "Humanidades")

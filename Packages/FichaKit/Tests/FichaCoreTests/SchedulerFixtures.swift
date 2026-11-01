@@ -100,9 +100,9 @@ func answering(
 
 /// Card 1's front-first way's placement, as an import from Anki gives it at
 /// `time`: due at `due`, with Anki's interval and ease.
-func placement(interval: Duration?, ease: Double? = 2.5, due: Date, at time: Date) -> ReviewLogEntry {
+func placement(interval: Duration, ease: Double? = 2.5, due: Date, at time: Date) -> ReviewLogEntry {
     ReviewLogEntry(
-        placing: 1, on: Placement(step: 0, due: due, interval: interval, ease: ease), at: time,
+        placing: 1, on: Placement(interval: interval, due: due, ease: ease), at: time,
         uuid: fixedID(at: time, kind: 4))
 }
 

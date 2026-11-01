@@ -37,9 +37,9 @@ struct CreatingTests {
         #expect(created.captureID == nil)
         #expect(created.createdAt == time.now)
         #expect(created.standing == .inReviews)
-        #expect(try engine.standing(of: created.id, on: ReviewSettings.defaults.ladder) == .new)
+        #expect(try engine.standing(of: created.id, with: ReviewSettings.defaults.scheduler) == .new)
         #expect(try engine.inbox().captures.isEmpty)
-        #expect(try engine.reviewNow(.defaults) == [.firstView(created)])
+        #expect(try engine.reviewNow(.defaults) == [.new(created)])
     }
 
     // As the Cards window's form opened from a capture makes them: the capture
@@ -53,7 +53,7 @@ struct CreatingTests {
 
         #expect(created.captureID == capture.id)
         #expect(try engine.inbox().captures == [capture])
-        #expect(try engine.reviewNow(.defaults) == [.firstView(created)])
+        #expect(try engine.reviewNow(.defaults) == [.new(created)])
     }
 
     @Test("a card can't be created from a capture that isn't in the inbox, and none is saved")

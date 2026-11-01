@@ -4,8 +4,9 @@ import Foundation
 /// out from that way's entries in the review log (#404): new until its first
 /// review, or until an import places it, and then in a learning step,
 /// graduated or in a relearning step, waiting its interval from its last
-/// entry until it's due. A flagged, buried or set-aside card keeps it;
-/// `CardStanding` says whether the card is in Lucas's reviews.
+/// entry until it's due. A flagged, buried or set-aside card keeps it, so it
+/// comes back as it was; `CardStanding` says whether the card is in Lucas's
+/// reviews.
 public enum WayStanding: Sendable, Equatable {
     /// It has no entries: it hasn't had its first review, nor been placed by
     /// an import.
@@ -80,4 +81,59 @@ extension WayStanding {
         }
         return memory
     }
+
+    /// Whether the way is due at `time`: started, with its interval over.
+    public func isDue(at time: Date) -> Bool {
+        guard let due else {
+            return false
+        }
+        return due <= time
+    }
+
+    /// Whether the way is learned: graduated with an interval of 21 days or
+    /// more, as Anki counts a card mature. The menu counts these cards, by
+    /// their front-first way, and the Cards window lists them.
+    public var isLearned: Bool {
+        guard stage == .graduated, let interval else {
+            return false
+        }
+        return interval >= .days(21)
+    }
+
+    /// Checks that Lucas can answer the way with `kind` at `time`: a review
+    /// of a new way, whatever its rating, or of one that's due, or due within
+    /// `lookAhead`, as when an appearance brings it along. A placement is
+    /// never an answer: only an import places a card.
+    public func check(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration)
+        throws(RefusedAnswer)
+    {
+        switch (kind, self) {
+        case (.review, .new):
+            return
+        case (.review, .started):
+            guard isDue(at: time.adding(lookAhead)) else {
+                throw .notDue
+            }
+        case (.placement, _):
+            throw .notAnAnswer
+        }
+    }
+
+    /// Whether answering the way with `kind` at `time` is a review ahead: a
+    /// review of a started way that isn't due yet, not even within
+    /// `lookAhead`.
+    public func isReviewAhead(_ kind: ReviewLogEntry.Kind, at time: Date, lookingAhead lookAhead: Duration) -> Bool {
+        guard case .review = kind, case .started = self else {
+            return false
+        }
+        return !isDue(at: time.adding(lookAhead))
+    }
+}
+
+/// Why an answer can't go into a card's review log.
+public enum RefusedAnswer: Error, Equatable {
+    /// A review, for a way that isn't due yet.
+    case notDue
+    /// A placement, which only an import gives a card, as it comes in.
+    case notAnAnswer
 }

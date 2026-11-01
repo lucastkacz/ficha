@@ -12,7 +12,7 @@ import Testing
 struct RenamingDecksTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -29,9 +29,9 @@ struct RenamingDecksTests {
         try approveInDeck("La Piedad", deck: "Arte", in: engine)
         try approveInDeck("Coliseo", deck: "Historia", in: engine)
         try engine.makeDeck(named: "Arte::Escultura")
-        try engine.climb(gioconda, to: 2, movingForward: time)
+        try engine.climb(gioconda, goods: 2, movingForward: time)
         let log = try engine.reviewLog()
-        let standing = try engine.standing(of: gioconda.id, on: ladder)
+        let standing = try engine.standing(of: gioconda.id, with: scheduler)
 
         #expect(try engine.renameDeck("Arte", to: " Cultura :: Artes ") == "Cultura::Artes")
 
@@ -45,7 +45,7 @@ struct RenamingDecksTests {
             ])
         #expect(try engine.cards().map(\.tags) == [["italia"], [], []])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.standing(of: gioconda.id, on: ladder) == standing)
+        #expect(try engine.standing(of: gioconda.id, with: scheduler) == standing)
     }
 
     // Arte::Pintura is purple, set aside and chosen to sync; Pinturas is

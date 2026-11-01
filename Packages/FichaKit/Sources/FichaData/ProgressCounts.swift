@@ -5,7 +5,7 @@ public struct ProgressCounts: Sendable, Equatable {
     /// both ways counts once for each way that's due.
     public let due: Int
     /// How many cards in his reviews he learned: those whose front-first way
-    /// is on a step that waits 30 days or more.
+    /// graduated with an interval of 21 days or more.
     public let learned: Int
     /// How many captures and flagged cards wait in the inbox.
     public let inInbox: Int

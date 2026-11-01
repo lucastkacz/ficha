@@ -126,7 +126,7 @@ struct UpcomingAppearanceTests {
 
         let next = try engine.upcomingAppearances(settings).first
 
-        #expect(next == UpcomingAppearance(time: try at(9, 0, day: 15), cards: [.firstView(sunkCost)]))
+        #expect(next == UpcomingAppearance(time: try at(9, 0, day: 15), cards: [.new(sunkCost)]))
     }
 
     // iOS keeps at most 64 notifications pending for an app (#97).

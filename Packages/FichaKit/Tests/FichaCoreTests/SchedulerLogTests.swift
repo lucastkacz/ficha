@@ -204,26 +204,53 @@ struct SchedulerLogTests {
         #expect(standing.due == start + 30 * hour)
     }
 
-    @Test("a first view, from before the scheduler, counts as a review rated again")
-    func aFirstViewCountsAsAgain() throws {
-        let firstView = ReviewLogEntry(
-            cardID: 1, kind: .firstView, answeredAt: start, responseTime: .seconds(5), trigger: .appearance,
-            uuid: fixedID(at: start, kind: 5))
+    @Test(
+        "a log whose reviews kept no interval, as before the scheduler, comes out with each review keeping the one it sets, answering the entry before it"
+    )
+    func aLogKeepsTheIntervalsItSets() throws {
+        let log = [
+            graduated, review(.good, at: start + 2 * hour), review(.again, at: start + 12 * day),
+            review(.good, at: start + 12 * day + hour),
+        ]
 
-        let standing = try Scheduler.standard.standing(after: [firstView])
-        let again = try Scheduler.standard.standing(after: answering(.again, at: start, after: []))
+        let kept = try Scheduler.standard.keepingIntervals(of: log.reversed())
 
-        #expect(standing == again)
+        #expect(kept.map(\.uuid) == log.map(\.uuid))
+        #expect(kept.map(\.answeredEntry) == [nil] + log.dropLast().map(\.uuid))
+        var replayed: [ReviewLogEntry] = []
+        for entry in kept {
+            replayed.append(entry)
+            #expect(entry.interval ?? .zero > .zero || entry == graduated)
+            if case .review = entry.kind {
+                #expect(try Scheduler.standard.standing(after: replayed).interval == entry.interval)
+            }
+        }
+        // Kept, the intervals hold once the settings change.
+        let longer = try scheduler(learningSteps: [.hours(2), .hours(8)], relearningSteps: [.hours(3)])
+        #expect(try longer.standing(after: kept) == Scheduler.standard.standing(after: kept))
+    }
+
+    @Test("a way's lapses are its agains while graduated, not those of a way still learning or relearning")
+    func lapsesAreAgainsOfAGraduatedWay() throws {
+        let learningAgain = review(.again, at: start - 20 * day)
+        let lapse = review(.again, at: start + hour)
+        let relearningAgain = review(.again, at: start + 2 * hour)
+        let log = [
+            learningAgain, graduated, lapse, relearningAgain, review(.good, at: start + 3 * hour),
+            review(.good, at: start + 2 * day),
+        ]
+
+        #expect(try Scheduler.standard.lapses(after: log) == [lapse])
     }
 
     @Test(
-        "a placement without an interval, a graduated one without an ease, or an easy that kept less than a day can't be followed"
+        "a placement with an interval below none, a graduated one without an ease, or an easy that kept less than a day can't be followed"
     )
     func entriesThatCantBeFollowed() throws {
         let unexpected = SchedulingError.unexpectedReviewLog(cardID: 1)
 
         #expect(throws: unexpected) {
-            try Scheduler.standard.standing(after: [placement(interval: nil, due: start, at: start)])
+            try Scheduler.standard.standing(after: [placement(interval: .seconds(-1), due: start, at: start)])
         }
         #expect(throws: unexpected) {
             try Scheduler.standard.standing(after: [placement(interval: .days(10), ease: nil, due: start, at: start)])

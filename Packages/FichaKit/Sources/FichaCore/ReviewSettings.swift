@@ -1,14 +1,11 @@
 /// The settings that decide which cards Lucas reviews, and when, and how the
 /// review panel behaves. Each one starts as a default from the MVP spec (#4)
 /// and Lucas can change it in Settings; the app passes them to the engine as
-/// a value. Some of them decide a card's progress, the ladder, the scheduler's
-/// settings, the new cards a day and the forgotten-often count, and sync, so
-/// the engine keeps them (`progress`); the rest stay each device's own.
+/// a value. Some of them decide a card's progress, the scheduler's settings,
+/// the new cards a day and the forgotten-often count, and sync, so the engine
+/// keeps them (`progress`); the rest stay each device's own.
 public struct ReviewSettings: Sendable, Equatable {
-    /// The waits a card climbs as Lucas remembers it.
-    public var ladder: Ladder
-    /// The settings FSRS spaces cards with, as Anki does (#404): kept and
-    /// synced beside the ladder, which still spaces them until #407.
+    /// The settings FSRS spaces cards with, as Anki does (#404).
     public var scheduler: Scheduler
     /// How many cards an appearance or a review now brings at most, a new one
     /// included.
@@ -42,14 +39,14 @@ public struct ReviewSettings: Sendable, Equatable {
     /// How long Lucas must be idle before the review panel takes the
     /// keyboard, in the once-idle focus mode.
     public var idleBeforeTakingKeyboard: Duration
-    /// How many reviews of one of a card's ways Lucas rates again in, since
-    /// its front or back last changed, before the review panel offers to
-    /// flag it as forgotten often, at least 1, or nil when it never offers.
+    /// How many lapses of one of a card's ways, agains while it was
+    /// graduated, since its front or back last changed, before the review
+    /// panel offers to flag it as forgotten often, at least 1, or nil when it
+    /// never offers.
     public var forgottenOftenAfter: Int?
 
     /// The settings Ficha starts with.
     public static let defaults = ReviewSettings(
-        ladder: .standard,
         scheduler: .standard,
         cardsPerAppearance: 5,
         newCardsPerDay: 5,

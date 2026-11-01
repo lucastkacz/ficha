@@ -12,7 +12,7 @@ struct DecksTests {
     let calendar: Calendar
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         calendar = try buenosAiresCalendar()
@@ -54,16 +54,16 @@ struct DecksTests {
     func changeDeckKeepsEverythingElse() throws {
         let ubuntu = try engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
-        try engine.climb(ubuntu, to: 2, movingForward: time)
+        try engine.climb(ubuntu, goods: 2, movingForward: time)
         let log = try engine.reviewLog()
-        let standing = try engine.standing(of: ubuntu.id, on: ladder)
+        let standing = try engine.standing(of: ubuntu.id, with: scheduler)
 
         try engine.changeDeck(of: [ubuntu.id, petricor.id], to: " Filosofía :: África ")
 
         #expect(try engine.cards().map(\.deck) == ["Filosofía::África", "Filosofía::África"])
         #expect(try engine.cards().map(\.tags) == [["filosofía"], []])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.standing(of: ubuntu.id, on: ladder) == standing)
+        #expect(try engine.standing(of: ubuntu.id, with: scheduler) == standing)
         #expect(try engine.decks().map(\.name) == ["Filosofía", "Filosofía::África"])
 
         try engine.changeDeck(of: [petricor.id], to: Deck.defaultName)
@@ -97,9 +97,9 @@ struct DecksTests {
         try engine.changeDeck(of: [fuga.id], to: "Artes")
         try engine.bury(guernica.id)
 
-        #expect(try engine.cardRows(in: .deck("Arte"), on: ladder).map(\.card.front) == ["La Gioconda", "La Piedad"])
-        #expect(try engine.cardRows(in: .deck("Arte::Pintura"), on: ladder).map(\.card.front) == ["La Gioconda"])
-        #expect(try engine.cardRows(in: .deck("Artes"), on: ladder).map(\.card.front) == ["fuga"])
+        #expect(try engine.cardRows(in: .deck("Arte"), with: scheduler).map(\.card.front) == ["La Gioconda", "La Piedad"])
+        #expect(try engine.cardRows(in: .deck("Arte::Pintura"), with: scheduler).map(\.card.front) == ["La Gioconda"])
+        #expect(try engine.cardRows(in: .deck("Artes"), with: scheduler).map(\.card.front) == ["fuga"])
     }
 
     // Arte::Escultura has no card; Default holds the one left there.
@@ -119,7 +119,7 @@ struct DecksTests {
         try engine.makeDeck(named: "Arte::Escultura")
         time.advance(by: days(1))
 
-        let counted = try engine.countedDecks(on: ladder)
+        let counted = try engine.countedDecks(with: scheduler)
 
         #expect(counted.map(\.deck.name) == [Deck.defaultName, "Arte", "Arte::Escultura", "Arte::Pintura", "Música"])
         #expect(

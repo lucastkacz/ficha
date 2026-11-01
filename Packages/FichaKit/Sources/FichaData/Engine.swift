@@ -438,20 +438,20 @@ func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) throws -
 }
 
 /// Runs work on the database. The engine's own errors pass through as they
-/// are; when a card's review log can't be followed, or SQLite fails, it logs
-/// why and throws the engine's error, whose message Lucas can read.
+/// are; when the scheduler can't follow a card's review log or fsrs-rs
+/// fails, or SQLite fails, it logs why and throws the engine's error, whose
+/// message Lucas can read.
 func reportingStorageErrors<Value>(_ work: () throws -> Value) throws(EngineError) -> Value {
     do {
         return try work()
     } catch let error as EngineError {
         throw error
-    } catch let error as UnexpectedReviewLog {
-        logger.error(
-            """
-            Card \(error.cardID)'s review log has reviews but no first view or placement to start them, \
-            or a placement that doesn't start it or is on a step below the first
-            """)
-        throw .unreadableReviewLog(error.cardID)
+    } catch let error as SchedulingError {
+        logger.error("\(error.description)")
+        switch error {
+        case .unexpectedReviewLog(let cardID): throw .unreadableReviewLog(cardID)
+        case .fsrsFailed: throw .schedulerFailed
+        }
     } catch {
         logger.error("The database failed: \(String(describing: error))")
         throw .storage

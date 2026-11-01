@@ -41,10 +41,9 @@ extension ReviewPanelState {
     /// The side whose sound R plays or stops, while a sound plays when Lucas
     /// asks, or nil when the card has none: the side whose sound plays,
     /// which R stops, or else the lower side's once it shows, on a flipped
-    /// card or in a first view that shows it whole, or the upper side's when
-    /// the lower one has none or doesn't show. Front first, the lower side is
-    /// the back, and back first, the front. A sound that couldn't be read
-    /// counts as none.
+    /// card, or the upper side's when the lower one has none or doesn't
+    /// show. Front first, the lower side is the back, and back first, the
+    /// front. A sound that couldn't be read counts as none.
     public var sideForR: CardSide? {
         guard canPlaySounds, let way = current?.way else { return nil }
         if let playingSound {

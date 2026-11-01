@@ -9,7 +9,7 @@ import Testing
 /// them, their own or the nearest parent's, on the default ladder.
 struct CardsWindowDeckLooksTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -83,8 +83,8 @@ struct CardsWindowDeckLooksTests {
     }
 
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

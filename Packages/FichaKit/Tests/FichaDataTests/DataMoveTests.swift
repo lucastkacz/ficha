@@ -47,7 +47,7 @@ final class DataMoveTests {
             card(
                 .word, front: "hornero", back: "Un pájaro que hace su nido de barro.", frontImage: bird, backSound: la),
             in: engine)
-        try engine.climb(hornero, to: 2, movingForward: time)
+        try engine.climb(hornero, goods: 2, movingForward: time)
         try approveCard("serendipia", in: engine)
         try engine.newCapture("¿Por qué el cielo es azul?", source: "Una charla")
         let backup = try engine.backUpNow(.defaults)

@@ -23,6 +23,12 @@ struct WayReplay {
     private var memory: (state: MemoryState, lastReview: Date)?
     /// How many reviews the way had.
     private var reviews = 0
+    /// The reviews that were lapses, agains of the way while it was
+    /// graduated, in the order they're replayed.
+    private(set) var lapses: [ReviewLogEntry] = []
+    /// The interval each review left the way waiting, by its position in the
+    /// replay.
+    private var intervalsSet: [Int: Duration] = [:]
 
     /// `entries`, one way's, in any order, replayed with `scheduler`'s
     /// settings.
@@ -34,13 +40,24 @@ struct WayReplay {
             switch entry.kind {
             case .placement(let placement):
                 try place(placement, of: entry.cardID)
-            case .firstView:
-                try review(.again, of: entry, at: position, keeping: nil)
             case .review(let rating):
                 try review(
                     rating, of: entry, at: position,
                     keeping: answersTheEntryBefore(entry, at: position) ? entry.interval : nil)
             }
+        }
+    }
+
+    /// The way's entries, in the order they're replayed, each review that
+    /// kept no interval keeping the one it set, answering the entry before
+    /// it, or none as the way's first, as `Scheduler.keepingIntervals(of:)`
+    /// says.
+    var keepingIntervals: [ReviewLogEntry] {
+        entries.enumerated().map { position, entry in
+            guard case .review = entry.kind, entry.interval == nil, let interval = intervalsSet[position] else {
+                return entry
+            }
+            return entry.answering(position > 0 ? entries[position - 1].uuid : nil, keeping: interval)
         }
     }
 
@@ -108,8 +125,12 @@ struct WayReplay {
             try kept.map { kept throws(SchedulingError) in
                 try stageAndInterval(rating: rating, keeping: kept, workedOut: workedOut, cardID: entry.cardID)
             } ?? workedOut
+        if rating == .again, stage == .graduated {
+            lapses.append(entry)
+        }
         stage = moved.stage
         interval = moved.interval
+        intervalsSet[position] = interval
         due = entry.answeredAt.adding(interval)
         memory = (intervals.next[rating].memoryState, entry.answeredAt)
         reviews += 1
@@ -149,7 +170,8 @@ struct WayReplay {
     /// Moves the way as `placement`, which an import gave the card with the
     /// id `cardID`, does.
     private mutating func place(_ placement: Placement, of cardID: Int64) throws(SchedulingError) {
-        guard let placed = placement.interval, placed >= .zero else {
+        let placed = placement.interval
+        guard placed >= .zero else {
             throw .unexpectedReviewLog(cardID: cardID)
         }
         switch (placed >= .days(1), reviews) {
@@ -197,8 +219,8 @@ extension ReviewLogEntry {
     /// answered, and, at the same moment, a placement before a review, and
     /// of two reviews, easy before good, good before hard and hard before
     /// again, so that again, rated at the same moment on another device, has
-    /// the last word. A first view counts as a review rated again. Entries
-    /// that tie on all of this go in the order of their IDs.
+    /// the last word. Entries that tie on all of this go in the order of
+    /// their IDs.
     public func precedes(_ other: ReviewLogEntry) -> Bool {
         (answeredAt, kind.orderAtTheSameMoment, uuid?.uuidString ?? "")
             < (other.answeredAt, other.kind.orderAtTheSameMoment, other.uuid?.uuidString ?? "")
@@ -212,7 +234,6 @@ extension ReviewLogEntry.Kind {
         switch self {
         case .placement: 0
         case .review(let rating): 1 + rating.orderAtTheSameMoment
-        case .firstView: 1 + Rating.again.orderAtTheSameMoment
         }
     }
 }

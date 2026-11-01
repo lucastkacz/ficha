@@ -262,14 +262,15 @@ func ankiNotes(in db: Database) throws -> [Int64: AnkiNote] {
 /// and schema 18 share.
 func ankiCards(in db: Database) throws -> [AnkiCard] {
     try Row.fetchAll(
-        db, sql: "SELECT id, nid, did, odid, ord, type, queue, due, ivl, odue, flags FROM cards"
+        db, sql: "SELECT id, nid, did, odid, ord, type, queue, due, ivl, factor, odue, flags FROM cards"
     ).map { row in
         AnkiCard(
             id: try row.decode(forColumn: "id"), noteID: try row.decode(forColumn: "nid"),
             deckID: try row.decode(forColumn: "did"), originalDeckID: try row.decode(forColumn: "odid"),
             templateIndex: try row.decode(forColumn: "ord"), type: try row.decode(forColumn: "type"),
             queue: try row.decode(forColumn: "queue"), due: try row.decode(forColumn: "due"),
-            interval: try row.decode(forColumn: "ivl"), originalDue: try row.decode(forColumn: "odue"),
+            interval: try row.decode(forColumn: "ivl"), factor: try row.decode(forColumn: "factor"),
+            originalDue: try row.decode(forColumn: "odue"),
             flags: try row.decode(forColumn: "flags"))
     }
 }

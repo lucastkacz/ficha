@@ -31,7 +31,7 @@ struct SettingAsideTests {
         let ubuntu = try approveCard("ubuntu", deck: "Lenguaje")
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
         try approveCard("ataraxia", deck: "Filosofía")
-        try engine.climb(eudaimonia, to: 5, movingForward: time)
+        try engine.climb(eudaimonia, goods: 5, movingForward: time)
         try engine.meet(ubuntu)
         time.advance(by: days(30))
 
@@ -118,8 +118,8 @@ struct SettingAsideTests {
     func aCardMovedIntoASetAsideDeckLeavesReviews() throws {
         let serendipia = try approveCard("serendipia")
         let coliseo = try approveCard("Coliseo")
-        try engine.climb(serendipia, to: 1, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.setAside(deck: "Historia")
 
         let mayo = try approveCard("Revolución de Mayo", deck: "Historia")
@@ -132,8 +132,8 @@ struct SettingAsideTests {
         #expect(try engine.reviewNow(settings).isEmpty)
         try engine.changeDeck(of: [serendipia.id, coliseo.id], to: Deck.defaultName)
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews, .setAside(by: ["Historia"])])
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
-        #expect(try engine.reviewNow(settings) == [.review(serendipia), .firstView(coliseo)])
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
+        #expect(try engine.reviewNow(settings) == [.review(serendipia), .new(coliseo)])
     }
 
     // Historia::Roma became a priority deck before Historia was set aside,
@@ -162,7 +162,7 @@ struct SettingAsideTests {
         try engine.setAside(deck: Deck.defaultName)
 
         #expect(try engine.cards().map(\.standing) == [.setAside(by: [Deck.defaultName]), .inReviews])
-        #expect(try engine.reviewNow(settings) == [.firstView(gioconda)])
+        #expect(try engine.reviewNow(settings) == [.new(gioconda)])
         #expect(throws: EngineError.cardSetAside(petricor.id, decks: [Deck.defaultName])) {
             try engine.meet(petricor)
         }
@@ -177,16 +177,16 @@ struct SettingAsideTests {
         // ataraxia is new.
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
         let ataraxia = try approveCard("ataraxia", deck: "Filosofía")
-        try engine.climb(eudaimonia, to: 1, movingForward: time)
-        let standing = try engine.standing(of: eudaimonia.id, on: settings.ladder)
+        try engine.climb(eudaimonia, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: eudaimonia.id, with: settings.scheduler)
         try engine.setAside(deck: "Filosofía")
         time.advance(by: days(2))
         #expect(try engine.reviewNow(settings).isEmpty)
 
         try engine.stopSettingAside(deck: "Filosofía")
 
-        #expect(try engine.standing(of: eudaimonia.id, on: settings.ladder) == standing)
-        #expect(try engine.reviewNow(settings) == [.review(eudaimonia), .firstView(ataraxia)])
+        #expect(try engine.standing(of: eudaimonia.id, with: settings.scheduler) == standing)
+        #expect(try engine.reviewNow(settings) == [.review(eudaimonia), .new(ataraxia)])
         #expect(try engine.progress(settings).due == 1)
         #expect(try engine.reviewLog().map(\.cardID) == [eudaimonia.id, eudaimonia.id])
     }
@@ -323,7 +323,7 @@ struct SettingAsideTests {
         }
 
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews, .inReviews])
-        #expect(try engine.reviewNow(settings) == [.firstView(ubuntu)])
+        #expect(try engine.reviewNow(settings) == [.new(ubuntu)])
         try engine.meet(ubuntu)
         try engine.meet(eudaimonia)
         try engine.meet(petricor)

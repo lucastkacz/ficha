@@ -116,21 +116,40 @@ public struct ImportedProgress: Sendable, Equatable {
         /// It hadn't been studied yet: it comes in new.
         case new
         /// It was being learned, or relearned after a lapse, due at `due`:
-        /// it comes in on the first step, due then.
+        /// it comes in on its first learning step, due then.
         case learning(due: Date)
-        /// It was in review, every `interval`, due at `due`: it comes in on
-        /// the step whose wait is nearest the interval, due then.
-        case review(interval: Duration, due: Date)
+        /// It was in review, every `interval`, with `ease` as Anki's ease,
+        /// such as 2.5 for 250%, due at `due`: it comes in graduated, with
+        /// that interval and ease, due then.
+        case review(interval: Duration, ease: Double, due: Date)
     }
 
     public let stage: Stage
     /// Whether it was taken out of reviews for good there, as Anki suspends
-    /// a card: it comes in buried, on its step.
+    /// a card: it comes in buried, with its progress.
     public let isSuspended: Bool
 
     public init(stage: Stage, isSuspended: Bool) {
         self.stage = stage
         self.isSuspended = isSuspended
+    }
+}
+
+extension ImportedProgress.Stage {
+    /// The placement an import that brings a card's progress gives it, as it
+    /// stood there (ADR 0013): a card being learned with no interval, so on
+    /// its first learning step, and one in review with its interval and ease,
+    /// each due when it was due there. Nil for a new card, which comes in
+    /// new.
+    public var placement: Placement? {
+        switch self {
+        case .new:
+            nil
+        case .learning(let due):
+            Placement(interval: .zero, due: due)
+        case .review(let interval, let ease, let due):
+            Placement(interval: interval, due: due, ease: ease)
+        }
     }
 }
 

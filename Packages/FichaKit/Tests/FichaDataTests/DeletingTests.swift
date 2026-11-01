@@ -27,7 +27,7 @@ struct DeletingTests {
         try engine.meet(serendipia)
         try engine.meet(ojala)
         try engine.bury(ubuntu.id)
-        let standing = try engine.standing(of: ojala.id, on: settings.ladder)
+        let standing = try engine.standing(of: ojala.id, with: settings.scheduler)
         time.advance(by: hours(1))
 
         let deleted = try engine.delete([serendipia.id, ubuntu.id])
@@ -35,9 +35,9 @@ struct DeletingTests {
         #expect(deleted.map(\.front) == ["serendipia", "ubuntu"])
         #expect(try engine.cards() == [ojala])
         #expect(try engine.reviewLog().map(\.cardID) == [ojala.id])
-        #expect(try engine.standing(of: ojala.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: ojala.id, with: settings.scheduler) == standing)
         #expect(throws: EngineError.cardNotFound(serendipia.id)) {
-            try engine.standing(of: serendipia.id, on: settings.ladder)
+            try engine.standing(of: serendipia.id, with: settings.scheduler)
         }
         #expect(try engine.reviewNow(settings) == [.review(ojala)])
     }
@@ -66,16 +66,16 @@ struct DeletingTests {
 
     @Test("the menu's counts leave the deleted cards out: a due one, a learned one and a flagged one")
     func theMenusCountsLeaveTheDeletedCardsOut() throws {
-        // serendipia gets to the 30-day step, from which a card is learned,
-        // and comes due there, as ubuntu does on the first step. ojalá is
+        // serendipia gets learned, graduated to wait 21 days or more, and
+        // comes due, as ubuntu does on the first learning step. ojalá is
         // flagged.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 5, movingForward: time)
+        try engine.climbUntilLearned(serendipia, movingForward: time)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)
         try engine.meet(ubuntu)
         try engine.flag(ojala.id, note: note("Falta un ejemplo"))
-        time.advance(by: days(30))
+        time.move(to: try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due))
         let before = try engine.progress(settings)
 
         try engine.delete([serendipia.id, ojala.id])

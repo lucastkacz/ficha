@@ -10,7 +10,7 @@ struct CardsWindowStateTests {
     let calendar: Calendar
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         calendar = try buenosAiresCalendar()
@@ -21,8 +21,8 @@ struct CardsWindowStateTests {
     /// Opens the Cards window and reads Lucas's cards, as the window does
     /// once it listens for the reasons to read them again.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 
@@ -36,7 +36,7 @@ struct CardsWindowStateTests {
         #expect(window.listedCardIDs == [mayo.id])
 
         try engine.delete([mayo.id])
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.sidebarItem == .cards(.all))
         #expect(window.tags.isEmpty)
@@ -54,7 +54,7 @@ struct CardsWindowStateTests {
         window.choose(.cards(.deck("Historia")))
 
         try engine.delete([mayo.id])
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.deckRows.map(\.id) == [Deck.defaultName, "Historia"])
         #expect(window.menu(forDeck: "Historia")?.isSetAsideTicked == true)
@@ -111,7 +111,7 @@ struct CardsWindowStateTests {
         // and comes due there; ataraxia is new.
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", tags: ["ética"], in: engine)
         let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", tags: ["ética"], in: engine)
-        try engine.climb(eudaimonia, to: 5, movingForward: time)
+        try engine.climb(eudaimonia, goods: 5, movingForward: time)
         time.advance(by: days(30))
         var window = openWindow()
         window.chooseSetAside(onDeck: "Filosofía")
@@ -158,7 +158,7 @@ struct CardsWindowStateTests {
     @Test("selecting a flagged card in the inbox shows the card, with its review log, and offers what a card offers")
     func aFlaggedCardInTheInboxShowsAsTheCard() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
-        try engine.climb(ubuntu, to: 1, movingForward: time)
+        try engine.climb(ubuntu, goods: 1, movingForward: time)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         try engine.newCapture("¿Por qué bostezamos?")
         var window = openWindow()
@@ -169,7 +169,7 @@ struct CardsWindowStateTests {
         let shown = try #require(window.shownCard)
         #expect(window.selectedRows.map(\.id) == [ubuntu.id])
         #expect(shown.row.id == ubuntu.id)
-        #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.firstView, .review(.good)])
+        #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.review(.again), .review(.good)])
         #expect(window.actions == [.edit, .bury, .changeDeck, .delete])
     }
 
@@ -255,7 +255,7 @@ struct CardsWindowStateTests {
         let toDiscard = try #require(edited?.capture)
         window.discard(toDiscard)
         // As the window does once the engine says the inbox changed.
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(editing == .capture(followUp))
         #expect(edited?.capture.text == "¿Cómo se eligen los jueces de la Corte?")
@@ -360,7 +360,7 @@ struct CardsWindowStateTests {
         time.advance(by: minutes(10))
         try engine.meet(serendipia, way: .backFirst)
         let metBackFirstAt = time.now
-        window.read(on: ladder)
+        window.read(with: scheduler)
         let metBackFirst = try #require(window.listedCardRows).map(\.backFirst?.standing)
         window.turnOffBothWays()
         let turnedOff = try #require(window.listedCardRows).map(\.backFirst)
@@ -368,7 +368,8 @@ struct CardsWindowStateTests {
 
         #expect(before == [nil, nil, nil])
         #expect(turnedOn == [.new, .new, nil])
-        #expect(metBackFirst == [.onLadder(step: 0, due: metBackFirstAt + hours(1)), .new, nil])
+        #expect(metBackFirst.map { $0?.stageAndDue } == [learning(step: 0, due: metBackFirstAt + hours(1)), nil, nil])
+        #expect(metBackFirst.map { $0 == .new } == [false, true, false])
         #expect(turnedOff == [nil, nil, nil])
         #expect(
             try #require(window.listedCardRows).map(\.backFirst?.due) == [metBackFirstAt + hours(1), nil, nil])
@@ -392,9 +393,9 @@ struct CardsWindowStateTests {
         window.select([ubuntu.id])
         let shownOneWay = try #require(window.shownCard)
 
-        #expect(shownBothWays.row.frontFirst.standing == .onLadder(step: 1, due: time.now + hours(4)))
+        #expect(shownBothWays.row.frontFirst.standing.stageAndDue == learning(step: 1, due: time.now + hours(4)))
         #expect(shownBothWays.row.backFirst?.dueColumn == .due(time.now + minutes(10)))
-        #expect(shownBothWays.row.backFirst?.step == 0)
+        #expect(shownBothWays.row.backFirst?.interval == .seconds(hours(1)))
         #expect(try shownBothWays.reviewLog?.get().map(\.entry.way) == [.frontFirst, .backFirst, .frontFirst])
         #expect(shownOneWay.row.backFirst == nil)
         #expect(try shownOneWay.reviewLog?.get().map(\.entry.way) == [.frontFirst])
@@ -483,11 +484,11 @@ struct CardsWindowStateTests {
         var window = openWindow()
         #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
         let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
-        window.read(on: ladder)
+        window.read(with: scheduler)
         window.choose(.cards(.noType))
 
         try engine.edit(petricor.id, with: card(.word, front: "petricor", back: "El olor de la lluvia."))
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
         #expect(window.sidebarItem == .cards(.all))

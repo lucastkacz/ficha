@@ -3,15 +3,16 @@ import Foundation
 internal import GRDB
 
 // The settings that decide a card's progress, in the database (#315): the
-// ladder, the scheduler's settings (#404), the new cards a day and the
-// forgotten-often count, in one row, which syncs as one record named by its
-// type (ADR 0017). Each setting keeps its latest change, as a tag's color
-// does, so a change on one device and another on a second one both survive:
-// each of the scheduler's too, the learning steps, the relearning steps, the
-// desired retention, the longest interval and FSRS's parameters. Each holds
-// a whole value, a list of steps or of parameters included, which is valid on
-// its own, so settings that take some from one device and the rest from
-// another are always valid. No row means Ficha's.
+// scheduler's settings (#404), the new cards a day and the forgotten-often
+// count, in one row, which syncs as one record named by its type (ADR 0017).
+// Each setting keeps its latest change, as a tag's color does, so a change on
+// one device and another on a second one both survive: each of the
+// scheduler's too, the learning steps, the relearning steps, the desired
+// retention, the longest interval and FSRS's parameters. Each holds a whole
+// value, a list of steps or of parameters included, which is valid on its
+// own, so settings that take some from one device and the rest from another
+// are always valid. No row means Ficha's. The ladder that a version of Ficha
+// before FSRS kept in the record stays there, unread.
 
 extension Engine {
     /// The settings that decide a card's progress, as the database holds
@@ -78,7 +79,7 @@ extension Engine {
 /// it last changed. Each is the key of its value in the settings' record too,
 /// and the name of the column that holds it.
 private let progressFields: [SyncedField] = [
-    .ladder, .newCardsPerDay, .forgottenOftenAfter, .learningSteps, .relearningSteps, .desiredRetention,
+    .newCardsPerDay, .forgottenOftenAfter, .learningSteps, .relearningSteps, .desiredRetention,
     .longestIntervalInDays, .fsrsParameters,
 ]
 
@@ -108,7 +109,6 @@ func applyProgressSettings(_ record: ICloudRecord, in db: Database) throws -> Bo
                 settings[keyPath: keyPath] = theirs[keyPath: keyPath]
             }
         }
-        take(.ladder, \.ladder)
         take(.newCardsPerDay, \.newCardsPerDay)
         take(.forgottenOftenAfter, \.forgottenOftenAfter)
         take(.learningSteps, \.learningSteps)
@@ -165,14 +165,11 @@ private func storeProgressSettings(_ settings: ProgressSettings, in db: Database
 /// The settings that decide a card's progress as the database's row and the
 /// settings' record keep them, each under its field's name.
 private struct StoredProgressSettings {
-    /// The ladder's waits, each in whole seconds, from the first step up, as
-    /// a JSON array.
-    var ladder: String
     var newCardsPerDay: Int
     /// Nil when the review panel never offers to flag a card.
     var forgottenOftenAfter: Int?
     /// Each learning step's interval in whole seconds, from the first, as a
-    /// JSON array, as the ladder's waits are: an empty one for none.
+    /// JSON array: an empty one for none.
     var learningSteps: String
     /// Each relearning step's interval, as the learning steps are.
     var relearningSteps: String
@@ -186,7 +183,6 @@ private struct StoredProgressSettings {
 
     /// `settings`, as they're kept.
     init(_ settings: ProgressSettings) throws {
-        ladder = try jsonText(settings.ladder.waits.map(\.components.seconds))
         newCardsPerDay = settings.newCardsPerDay
         forgottenOftenAfter = settings.forgottenOftenAfter
         learningSteps = try jsonText(settings.scheduler.learningSteps.map(\.components.seconds))
@@ -199,7 +195,6 @@ private struct StoredProgressSettings {
 
     /// The settings the database's row holds.
     init(row: Row) throws {
-        ladder = try row.decode(forColumn: SyncedField.ladder.rawValue)
         newCardsPerDay = try row.decode(forColumn: SyncedField.newCardsPerDay.rawValue)
         forgottenOftenAfter = try row.decode(forColumn: SyncedField.forgottenOftenAfter.rawValue)
         learningSteps = try row.decode(forColumn: SyncedField.learningSteps.rawValue)
@@ -215,7 +210,6 @@ private struct StoredProgressSettings {
     /// device's own (`FieldChange`).
     init(record: ICloudRecord) throws {
         let fichas = try StoredProgressSettings(ReviewSettings.defaults.progress)
-        ladder = try record.text(SyncedField.ladder.rawValue)
         newCardsPerDay = try record.integer(SyncedField.newCardsPerDay.rawValue)
         forgottenOftenAfter = try record.optionalInteger(SyncedField.forgottenOftenAfter.rawValue)
         learningSteps = try record.optionalText(SyncedField.learningSteps.rawValue) ?? fichas.learningSteps
@@ -232,7 +226,7 @@ private struct StoredProgressSettings {
     /// from the same pairs.
     var columnValues: [(field: SyncedField, value: (any DatabaseValueConvertible)?)] {
         [
-            (.ladder, ladder), (.newCardsPerDay, newCardsPerDay), (.forgottenOftenAfter, forgottenOftenAfter),
+            (.newCardsPerDay, newCardsPerDay), (.forgottenOftenAfter, forgottenOftenAfter),
             (.learningSteps, learningSteps), (.relearningSteps, relearningSteps),
             (.desiredRetention, desiredRetention), (.longestIntervalInDays, longestIntervalInDays),
             (.fsrsParameters, fsrsParameters),
@@ -242,7 +236,6 @@ private struct StoredProgressSettings {
     /// The values of the record's fields, each under its key.
     var recordValues: [String: ICloudValue?] {
         [
-            SyncedField.ladder.rawValue: .string(ladder),
             SyncedField.newCardsPerDay.rawValue: .int(Int64(newCardsPerDay)),
             SyncedField.forgottenOftenAfter.rawValue: forgottenOftenAfter.map { .int(Int64($0)) },
             SyncedField.learningSteps.rawValue: .string(learningSteps),
@@ -254,16 +247,12 @@ private struct StoredProgressSettings {
     }
 
     /// The settings that decide a card's progress these values make, or an
-    /// error when they don't make them: a ladder; scheduling settings by
-    /// `Scheduler`'s rules, steps from 10 minutes to less than a day, each
-    /// longer than the one before, or none, a desired retention from 0.70
-    /// to 0.99, a longest interval from 1 to 36,500 days, and 21 parameters
-    /// or none; at least 0 new cards a day; and a forgotten-often count of 1
-    /// at least, or none.
+    /// error when they don't make them: scheduling settings by `Scheduler`'s
+    /// rules, steps from 10 minutes to less than a day, each longer than the
+    /// one before, or none, a desired retention from 0.70 to 0.99, a longest
+    /// interval from 1 to 36,500 days, and 21 parameters or none; at least 0
+    /// new cards a day; and a forgotten-often count of 1 at least, or none.
     func checked() throws -> ProgressSettings {
-        guard let ladder = Ladder(waits: try wholeSeconds(in: ladder)) else {
-            throw unreadable("The settings that decide progress have waits that don't make a ladder")
-        }
         let parameters = try JSONDecoder().decode([Double].self, from: Data(fsrsParameters.utf8))
         guard
             let scheduler = Scheduler(
@@ -278,8 +267,7 @@ private struct StoredProgressSettings {
             throw unreadable("The settings that decide progress have a count below its least")
         }
         return ProgressSettings(
-            ladder: ladder, scheduler: scheduler, newCardsPerDay: newCardsPerDay,
-            forgottenOftenAfter: forgottenOftenAfter)
+            scheduler: scheduler, newCardsPerDay: newCardsPerDay, forgottenOftenAfter: forgottenOftenAfter)
     }
 }
 

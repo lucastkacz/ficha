@@ -11,7 +11,7 @@ import Testing
 struct CardsWindowDeckSwitchesTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -82,7 +82,7 @@ struct CardsWindowDeckSwitchesTests {
         var window = openWindow()
         window.chooseSetAside(onDeck: Deck.defaultName)
         try engine.changeDeck(of: [petricor.id], to: "Arte")
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         let setAside = window.deckRows.outline
         let menu = window.menu(forDeck: Deck.defaultName)
@@ -164,8 +164,8 @@ struct CardsWindowDeckSwitchesTests {
 
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

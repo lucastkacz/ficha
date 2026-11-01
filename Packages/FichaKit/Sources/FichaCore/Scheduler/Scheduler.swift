@@ -109,8 +109,7 @@ extension Scheduler {
     /// Each review moves the way as
     /// `stageAndInterval(rating:from:lastInterval:intervals:)` says, and
     /// updates its memory with fsrs-rs, after the days since its last review,
-    /// rounded to the nearest whole day. A first view, from before the
-    /// scheduler, counts as a review rated again.
+    /// rounded to the nearest whole day.
     ///
     /// The way waits the interval its last entry set, from when it was
     /// answered: so a change to these settings leaves its due time alone
@@ -137,10 +136,49 @@ extension Scheduler {
     /// placement's due time.
     ///
     /// Throws when fsrs-rs fails, or when an entry can't be followed: a
-    /// placement without an interval, or without an ease for a graduated
-    /// way, or a review that kept an interval its rating can't set.
+    /// placement with a negative interval, or without an ease for a
+    /// graduated way, or a review that kept an interval its rating can't set.
     public func standing(after entries: [ReviewLogEntry]) throws(SchedulingError) -> WayStanding {
         try WayReplay(of: entries, with: self).standing
+    }
+
+    /// Where each of `ways` stands, in the order given, after the review
+    /// log's entries, in any order: each way after its own.
+    func standings(of ways: [CardWay], after log: [ReviewLogEntry]) throws(SchedulingError)
+        -> [(way: CardWay, standing: WayStanding)]
+    {
+        let entries = Dictionary(grouping: log, by: \.cardWay)
+        return try ways.map { way throws(SchedulingError) in (way, try standing(after: entries[way] ?? [])) }
+    }
+
+    /// How many of the ways of `cards` are due at `now`, and how many of the
+    /// cards are learned: their front-first way graduated with an interval of
+    /// 21 days or more, so that switching Both ways on changes nothing there.
+    public func counts(of cards: CardsInReviews, at now: Date) throws(SchedulingError) -> (due: Int, learned: Int) {
+        let standings = try cards.standings(with: self)
+        let frontFirst = standings.filter { cardWay, _ in cardWay.way == .frontFirst }.map(\.standing)
+        return (standings.count { $0.standing.isDue(at: now) }, frontFirst.count(where: \.isLearned))
+    }
+
+    /// The reviews among one way's `entries`, in any order, that were lapses:
+    /// agains of the way while it was graduated, as Anki counts a card's
+    /// lapses, in the order they're replayed. A new way's agains, in its
+    /// learning steps, and a relearning way's are none.
+    public func lapses(after entries: [ReviewLogEntry]) throws(SchedulingError) -> [ReviewLogEntry] {
+        try WayReplay(of: entries, with: self).lapses
+    }
+
+    /// One way's `entries`, in any order, in the order they're replayed, as
+    /// the review log keeps them from now on: each review that kept no
+    /// interval keeping the one the replay gives it, and answering the entry
+    /// replayed just before it, or none as the way's first entry, so that the
+    /// replay keeps that interval, and a later change to these settings
+    /// leaves the way's due time alone (#404). The other entries stay as they
+    /// are. The migration that brought the scheduler gives every review it
+    /// carried over its interval so, and sync a review that comes without
+    /// one from an older version of Ficha.
+    public func keepingIntervals(of entries: [ReviewLogEntry]) throws(SchedulingError) -> [ReviewLogEntry] {
+        try WayReplay(of: entries, with: self).keepingIntervals
     }
 
     /// The interval each rating would set for a review of `cardWay`, whose
@@ -208,9 +246,9 @@ public struct IntervalPreview: Sendable, Equatable {
 /// Why the scheduler couldn't work out where a way stands.
 public enum SchedulingError: Error, Equatable, CustomStringConvertible {
     /// The review log of the card with this id has an entry the scheduler
-    /// can't follow: a placement without an interval, or without an ease for
-    /// a graduated way, or a review that kept an interval its rating can't
-    /// set.
+    /// can't follow: a placement with a negative interval, or without an
+    /// ease for a graduated way, or a review that kept an interval its rating
+    /// can't set.
     case unexpectedReviewLog(cardID: Int64)
     /// fsrs-rs couldn't work out a memory, an interval or a retrievability,
     /// as this says.
@@ -220,8 +258,8 @@ public enum SchedulingError: Error, Equatable, CustomStringConvertible {
         switch self {
         case .unexpectedReviewLog(let cardID):
             """
-            Card \(cardID)'s review log has an entry the scheduler can't follow: a placement without an interval, \
-            or without an ease for a graduated card, or a review that kept an interval its rating can't set. \
+            Card \(cardID)'s review log has an entry the scheduler can't follow: a placement with a negative \
+            interval, or without an ease for a graduated card, or a review that kept an interval its rating can't set. \
             Check what wrote it: the import, or the device that recorded the review.
             """
         case .fsrsFailed(let description):

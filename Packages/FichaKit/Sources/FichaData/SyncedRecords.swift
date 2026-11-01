@@ -117,7 +117,12 @@ private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) t
     switch row {
     case .card(let id): try SyncedTable.cards.apply(record, toRowWith: id, in: db)
     case .capture(let id): try SyncedTable.captures.apply(record, toRowWith: id, in: db)
-    case .reviewLogEntry(let id): try SyncedTable.reviewLog.apply(record, toRowWith: id, in: db)
+    case .reviewLogEntry(let id):
+        // An entry from a version of Ficha before FSRS comes in carried over
+        // to the scheduler's, as the migration carried over this device's.
+        try SyncedTable.reviewLog.apply(
+            try SyncedTable.reviewLog.holdsRow(with: id, in: db) ? record : try carriedOver(record, as: id, in: db),
+            toRowWith: id, in: db)
     case .tag(let name): try applyTag(record, named: name, in: db)
     case .progressSettings: try applyProgressSettings(record, in: db)
     case .syncChoice: try applySyncChoice(record, in: db)

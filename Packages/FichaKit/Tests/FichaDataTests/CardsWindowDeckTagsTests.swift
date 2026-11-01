@@ -10,7 +10,7 @@ import Testing
 /// deck's cards that carry it, on the default ladder.
 struct CardsWindowDeckTagsTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -164,8 +164,8 @@ struct CardsWindowDeckTagsTests {
     }
 
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

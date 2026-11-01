@@ -33,7 +33,7 @@ final class ProgressSettingsSyncTests {
 
         time.advance(by: minutes(1))
         var changed = kept
-        changed.ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
+        changed.newCardsPerDay = 3
         changed.forgottenOftenAfter = nil
         try iPhone.engine.saveProgressSettings(changed, changedFrom: kept)
         try await iPhone.syncNow()
@@ -42,37 +42,33 @@ final class ProgressSettingsSyncTests {
         #expect(try mac.engine.progressSettings() == changed)
     }
 
-    // The Mac sends first: of the ladder, its earlier change, which the
-    // iPhone's later one replaces; of the new cards a day, its later change,
-    // which the iPhone's earlier one, sent after it, doesn't replace.
+    // The Mac sends first: of the forgotten-often count, its earlier change,
+    // which the iPhone's later one replaces; of the new cards a day, its
+    // later change, which the iPhone's earlier one, sent after it, doesn't
+    // replace.
     @Test("each setting changed on two devices keeps its latest change on both, whichever device sends last")
     func eachSettingKeepsItsLatestChange() async throws {
-        let shortLadder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
-        let longLadder = try #require(Ladder(waits: [.seconds(hours(4)), .seconds(days(7)), .seconds(days(60))]))
-
         time.advance(by: minutes(1))
         var onMac = try mac.engine.progressSettings()
-        try mac.engine.saveProgressSettings(onMac.with(ladder: shortLadder), changedFrom: onMac)
-        onMac.ladder = shortLadder
+        try mac.engine.saveProgressSettings(onMac.with(forgottenOftenAfter: 4), changedFrom: onMac)
+        onMac.forgottenOftenAfter = 4
         var onIPhone = try iPhone.engine.progressSettings()
         try iPhone.engine.saveProgressSettings(onIPhone.with(newCardsPerDay: 2), changedFrom: onIPhone)
         onIPhone.newCardsPerDay = 2
         time.advance(by: minutes(1))
-        try iPhone.engine.saveProgressSettings(onIPhone.with(ladder: longLadder), changedFrom: onIPhone)
+        try iPhone.engine.saveProgressSettings(onIPhone.with(forgottenOftenAfter: 12), changedFrom: onIPhone)
         try mac.engine.saveProgressSettings(onMac.with(newCardsPerDay: 9), changedFrom: onMac)
         try await mac.syncNow()
         try await iPhone.syncNow()
         try await mac.syncNow()
 
-        let latest = ProgressSettings(
-            ladder: longLadder, scheduler: .standard, newCardsPerDay: 9,
-            forgottenOftenAfter: ReviewSettings.defaults.forgottenOftenAfter)
+        let latest = ProgressSettings(scheduler: .standard, newCardsPerDay: 9, forgottenOftenAfter: 12)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
 
-    // The Mac's Settings read the settings before the iPhone's ladder came,
-    // and still show the ladder it had.
+    // The Mac's Settings read the settings before the iPhone's count came,
+    // and still show the count it had.
     @Test(
         "a change in Settings to one setting keeps another device's later change to another, which Settings hadn't read"
     )
@@ -80,8 +76,7 @@ final class ProgressSettingsSyncTests {
         let shownOnMac = try mac.engine.progressSettings()
         time.advance(by: minutes(1))
         let onIPhone = try iPhone.engine.progressSettings()
-        let iPhonesLadder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
-        try iPhone.engine.saveProgressSettings(onIPhone.with(ladder: iPhonesLadder), changedFrom: onIPhone)
+        try iPhone.engine.saveProgressSettings(onIPhone.with(forgottenOftenAfter: 12), changedFrom: onIPhone)
         try await iPhone.syncNow()
         try await mac.syncNow()
 
@@ -90,9 +85,7 @@ final class ProgressSettingsSyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        let latest = ProgressSettings(
-            ladder: iPhonesLadder, scheduler: .standard, newCardsPerDay: 2,
-            forgottenOftenAfter: ReviewSettings.defaults.forgottenOftenAfter)
+        let latest = ProgressSettings(scheduler: .standard, newCardsPerDay: 2, forgottenOftenAfter: 12)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
@@ -149,22 +142,27 @@ final class ProgressSettingsSyncTests {
     }
 
     // A Ficha from before the scheduler's settings sends its record without
-    // them, nor when they changed: the ladder it changed still comes.
+    // them, nor when they changed, and with its ladder, which no setting
+    // reads any more (#407): the new cards a day it changed still come.
     @Test(
-        "a record from a Ficha before the scheduling settings leaves them as the device holds them, and brings the rest"
+        "a record from a Ficha before the scheduling settings leaves them as the device holds them, and brings the rest but its ladder"
     )
     func aRecordFromBeforeTheSchedulingSettingsLeavesThem() throws {
         let kept = try customProgressSettings()
         try mac.engine.moveInProgressSettings { kept }
         time.advance(by: minutes(1))
-        let ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
+        let changed = try recordOfFichasSettings(changing: .newCardsPerDay, to: .int(3), at: time.now)
+        var fields = changed.fields
+        fields["ladder"] = .string("[3600,86400]")
+        fields["ladderChangedAt"] = .int(time.now.wholeMilliseconds)
+        let record = ICloudRecord(id: changed.id, type: changed.type, fields: fields, systemFields: nil)
 
         let received = try mac.engine.writeWithoutRecording { db in
-            try receive(try recordOfFichasSettings(changing: .ladder, to: ladderValue(ladder), at: time.now), in: db)
+            try receive(record, in: db)
         }
 
         #expect(received == .applied)
-        #expect(try mac.engine.progressSettings() == kept.with(ladder: ladder))
+        #expect(try mac.engine.progressSettings() == kept.with(newCardsPerDay: 3))
     }
 
     @Test(
@@ -213,13 +211,14 @@ final class ProgressSettingsSyncTests {
 
 /// The record of Ficha's settings that decide progress, with no time for any
 /// of them, as a device that never changed them sends it from a version of
-/// Ficha before the scheduler's settings, which it lacks.
+/// Ficha before the scheduler's settings, which it lacks, with the ladder it
+/// shipped.
 private func recordOfFichasSettingsWithNoTimes() throws -> ICloudRecord {
     let fichas = ReviewSettings.defaults.progress
     return ICloudRecord(
         id: SyncedRow.progressSettings.recordID, type: SyncedRow.RecordType.progressSettings.rawValue,
         fields: [
-            SyncedField.ladder.rawValue: try ladderValue(fichas.ladder),
+            "ladder": .string("[3600,14400,172800,432000,1036800,2592000,6480000]"),
             SyncedField.newCardsPerDay.rawValue: .int(Int64(fichas.newCardsPerDay)),
             SyncedField.forgottenOftenAfter.rawValue: fichas.forgottenOftenAfter.map { .int(Int64($0)) },
         ],
@@ -237,12 +236,6 @@ private func recordOfFichasSettings(changing field: SyncedField, to value: IClou
     return ICloudRecord(id: record.id, type: record.type, fields: fields, systemFields: nil)
 }
 
-/// The value of `ladder` in the settings' record: each step's wait in whole
-/// seconds, from the first step up, as a JSON array.
-private func ladderValue(_ ladder: Ladder) throws -> ICloudValue {
-    .string(String(decoding: try JSONEncoder().encode(ladder.waits.map { $0.components.seconds }), as: UTF8.self))
-}
-
 extension ProgressSettings {
     /// These settings with `scheduler` in place of theirs.
     fileprivate func with(scheduler: Scheduler) -> ProgressSettings {
@@ -251,10 +244,10 @@ extension ProgressSettings {
         return settings
     }
 
-    /// These settings with `ladder` in place of theirs.
-    fileprivate func with(ladder: Ladder) -> ProgressSettings {
+    /// These settings with `forgottenOftenAfter` in place of theirs.
+    fileprivate func with(forgottenOftenAfter: Int?) -> ProgressSettings {
         var settings = self
-        settings.ladder = ladder
+        settings.forgottenOftenAfter = forgottenOftenAfter
         return settings
     }
 

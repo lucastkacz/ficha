@@ -32,7 +32,7 @@ struct AppearanceTests {
     func aNewCardIsEnoughWithNothingDue() throws {
         let serendipia = try approveCard("serendipia", in: engine)
 
-        #expect(try appearance() == .show([.firstView(serendipia)]))
+        #expect(try appearance() == .show([.new(serendipia)]))
     }
 
     @Test("an appearance brings along the cards due within the next 20 minutes, and not those due later")
@@ -59,7 +59,7 @@ struct AppearanceTests {
         try engine.record(
             .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
 
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: try at(14, 0)))
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue == learning(step: 1, due: try at(14, 0)))
         #expect(throws: EngineError.cardNotDue(petricor.id)) {
             try engine.record(
                 .review(.good), of: petricor.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
@@ -171,13 +171,13 @@ struct AppearanceTests {
             try engine.meet(card)
         }
         var panel = try openAppearance()
-        #expect(panel.cards == [.firstView(ockham)])
+        #expect(panel.cards == [.new(ockham)])
 
         time.move(to: try at(9, 5))
         panel.close(.byLucas)
 
         time.move(to: try at(9, 35))
-        #expect(try appearance() == .show([.firstView(ockham)]))
+        #expect(try appearance() == .show([.new(ockham)]))
     }
 
     // 21:00 in Buenos Aires is already the next day in UTC.
@@ -199,20 +199,20 @@ struct AppearanceTests {
         for card in met {
             try engine.review(card, .good)
         }
-        #expect(try appearance() == .show([.firstView(sunkCost)]))
+        #expect(try appearance() == .show([.new(sunkCost)]))
     }
 
     @Test("every appearance and review now goes into the appearance log, with its trigger, times and outcome")
     func appearancesAndReviewNowsGoIntoTheAppearanceLog() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         time.move(to: try at(10, 0))
-        var snoozed = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var snoozed = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
         time.move(to: try at(10, 3))
         snoozed.close(.byLucas)
         time.move(to: try at(11, 18))
-        var finished = try engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
+        var finished = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
         time.move(to: try at(11, 20))
-        try finished.answer(.firstView, responseTime: .seconds(90))
+        try finished.answer(.review(.again), responseTime: .seconds(90))
         finished.close(.byLucas)
         time.move(to: try at(12, 0))
         var autoClosed = try engine.openPanel(.appearance, with: [.review(serendipia)], settings: settings)

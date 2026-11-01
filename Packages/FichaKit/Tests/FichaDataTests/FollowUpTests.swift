@@ -169,14 +169,15 @@ struct FollowUpTests {
         time.advance(by: hours(1))
         let log = try engine.reviewLog()
         var panel = try engine.openPanel(
-            .reviewNow, with: [.firstView(petricor), .review(ubuntu)], settings: settings, clock: clock)
+            .reviewNow, with: [.new(petricor), .review(ubuntu)], settings: settings, clock: clock)
 
         panel.startAsking()
         panel.write(question: "¿Quién inventó la palabra?")
         panel.finishAsking()
-        #expect(panel.content == .firstView(petricor))
+        #expect(panel.content == .upperSide(petricor, isNew: true))
         #expect(try engine.reviewLog() == log)
-        panel.endFirstView()
+        panel.flip()
+        panel.rate(.good)
         panel.startAsking()
         panel.write(question: "¿De qué idioma viene?")
         panel.finishAsking()
@@ -225,7 +226,7 @@ struct FollowUpTests {
         #expect(!panel.questionAsksSomething)
         panel.finishAsking()
 
-        #expect(panel.content == .asking(ubuntu, showsLowerSide: true))
+        #expect(panel.content == .asking(ubuntu, showsLowerSide: false))
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(try engine.inbox().captures.isEmpty)
     }
@@ -308,7 +309,7 @@ struct FollowUpTests {
 
         #expect(panel.failure?.action == .ask)
         #expect(panel.failure?.error == .cardNotFound(ubuntu.id))
-        #expect(panel.content == .asking(ubuntu, showsLowerSide: true))
+        #expect(panel.content == .asking(ubuntu, showsLowerSide: false))
         #expect(panel.question == "¿De qué idioma viene?")
         #expect(try engine.inbox().captures.isEmpty)
     }

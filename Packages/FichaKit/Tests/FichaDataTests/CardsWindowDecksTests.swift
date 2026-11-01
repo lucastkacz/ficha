@@ -10,7 +10,7 @@ import Testing
 struct CardsWindowDecksTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -65,7 +65,7 @@ struct CardsWindowDecksTests {
         window.choose(.cards(.deck(Deck.defaultName)))
         let defaults = window.listedCardIDs
         try engine.changeDeck(of: [petricor.id], to: "Lenguaje")
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(arte == [gioconda.id, pieta.id])
         #expect(defaults == [petricor.id])
@@ -80,7 +80,7 @@ struct CardsWindowDecksTests {
         let atFirst = window.isDeckOpen("Arte")
 
         window.setDeckOpen(false, "Arte")
-        window.read(on: ladder)
+        window.read(with: scheduler)
         let closed = window.isDeckOpen("Arte")
         window.setDeckOpen(true, "Arte")
 
@@ -104,7 +104,7 @@ struct CardsWindowDecksTests {
         let withABuriedOne = window.actions
         window.choose(.cards(.all))
         try engine.unbury(ubuntu.id)
-        window.read(on: ladder)
+        window.read(with: scheduler)
         window.select([petricor.id, ubuntu.id])
 
         #expect(!withNone.contains(.changeDeck))
@@ -124,7 +124,7 @@ struct CardsWindowDecksTests {
         try engine.changeDeck(of: [gioconda.id, pieta.id], to: "Arte")
         try engine.makeDeck(named: "Arte::Escultura")
         time.advance(by: days(1))
-        let standing = try engine.standing(of: gioconda.id, on: ladder)
+        let standing = try engine.standing(of: gioconda.id, with: scheduler)
         var window = openWindow()
         window.select([gioconda.id, pieta.id])
 
@@ -139,7 +139,7 @@ struct CardsWindowDecksTests {
         #expect(window.question == nil)
         #expect(window.failure == nil)
         #expect(try engine.cards().map(\.deck) == ["Arte::Escultura", "Arte::Escultura"])
-        #expect(try engine.standing(of: gioconda.id, on: ladder) == standing)
+        #expect(try engine.standing(of: gioconda.id, with: scheduler) == standing)
         #expect(window.deckRows.outline == ["Arte 2", "  Escultura 2"])
     }
 
@@ -207,8 +207,8 @@ struct CardsWindowDecksTests {
 
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

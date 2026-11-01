@@ -66,7 +66,7 @@ extension CardsWindowState {
     public mutating func chooseDeckTag(_ tag: String) {
         guard deckTags.contains(where: { $0.id == tag }) else { return }
         chosenDeckTag = chosenDeckTag == tag ? nil : tag
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Reads the tags of the deck the sidebar chose, or none while it chose

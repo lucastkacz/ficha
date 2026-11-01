@@ -164,8 +164,11 @@ final class SyncTests {
     }
 
     // Each answer comes at a time that isn't a whole millisecond, as a real
-    // clock's does: both devices must still order the joined log alike.
-    @Test("reviews made offline on both devices join, and two answers to one wait climb one step on both")
+    // clock's does: both devices must still order the joined log alike. The
+    // iPhone's good answered the first review, as the Mac's did, so it's
+    // spaced again after the Mac's: a good on the last learning step, which
+    // graduates the card.
+    @Test("reviews made offline on both devices join, and the card stands alike on both after them")
     func reviewsMadeOfflineJoin() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         time.advance(by: 0.123_456_7)
@@ -173,11 +176,11 @@ final class SyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
         let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu")
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
         mac.iCloud.isOffline = true
         iPhone.iCloud.isOffline = true
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ladder).due) + 0.234_567_8)
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: scheduler).due) + 0.234_567_8)
         try mac.engine.review(ubuntu, .good)
         time.advance(by: minutes(30) + 0.000_432_1)
         try iPhone.engine.review(ubuntuOnIPhone, .good)
@@ -188,17 +191,16 @@ final class SyncTests {
         try await iPhone.syncNow()
         try await mac.syncNow()
 
-        let onMac = try mac.engine.standing(of: ubuntu.id, on: ladder)
-        let macsGood = try #require(try mac.logAsSeen().first { $0.kind == .review(.good) })
-        #expect(onMac == .onLadder(step: 1, due: macsGood.answeredAt + hours(4)))
-        #expect(try iPhone.engine.standing(of: ubuntuOnIPhone.id, on: ladder) == onMac)
-        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.good), .review(.good)])
+        let onMac = try mac.engine.standing(of: ubuntu.id, with: scheduler)
+        #expect(onMac.stage == .graduated)
+        #expect(try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler) == onMac)
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.good), .review(.good)])
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
     }
 
-    // Until #407, the ladder spaces cards, so a review keeps the wait of the
-    // step it leaves the card on: good climbs to the second step's 4 hours,
-    // hard stays there, and again goes back to the first step's hour.
+    // A new card's again waits the first learning step's hour, good the
+    // second step's 4 hours, hard repeats that step, and again goes back to
+    // the first step's hour.
     @Test("each review keeps the interval it set, which reaches the other device with it")
     func eachReviewKeepsItsInterval() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -211,7 +213,9 @@ final class SyncTests {
         try await iPhone.syncNow()
 
         #expect(
-            try mac.logAsSeen().map(\.interval) == [nil, .seconds(hours(4)), .seconds(hours(4)), .seconds(hours(1))])
+            try mac.logAsSeen().map(\.interval) == [
+                .seconds(hours(1)), .seconds(hours(4)), .seconds(hours(4)), .seconds(hours(1)),
+            ])
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
     }
 
@@ -224,7 +228,7 @@ final class SyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.easy)])
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.easy)])
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
     }
 
@@ -234,7 +238,7 @@ final class SyncTests {
         try mac.engine.meet(ubuntu)
         try await mac.syncNow()
         try await iPhone.syncNow()
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ReviewSettings.defaults.ladder).due))
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: ReviewSettings.defaults.scheduler).due))
         try mac.engine.review(ubuntu, .again)
         time.advance(by: minutes(1))
         try iPhone.engine.review(iPhone.engine.card(fronted: "ubuntu"), .good)
@@ -243,21 +247,26 @@ final class SyncTests {
 
         try mac.engine.takeBackAnswer(of: ubuntu.id, way: .frontFirst)
 
-        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.good)])
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.good)])
     }
 
     // The iPhone gets the Mac's three entries in one go, in iCloud's order,
-    // and then the Mac's again after its own good, which came later.
-    @Test("the Cards window lists a review log joined from two devices in the order it happened, each with its step")
+    // and then the Mac's again after its own good, which came later. The
+    // Mac's again keeps its relearning step's hour, and the iPhone's good,
+    // which answered the review before it, is spaced again after the again:
+    // a good on the last relearning step, which graduates the card again.
+    @Test(
+        "the Cards window lists a review log joined from two devices in the order it happened, each with its interval, alike on both"
+    )
     func theCardsWindowListsAJoinedLogInOrder() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        try mac.engine.climb(ubuntu, to: 2, movingForward: time)
+        try mac.engine.climb(ubuntu, goods: 2, movingForward: time)
         try await mac.syncNow()
         try await iPhone.syncNow()
         let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu")
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ladder).due))
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: scheduler).due))
         try mac.engine.review(ubuntu, .again)
         time.advance(by: minutes(10))
         try iPhone.engine.review(ubuntuOnIPhone, .good)
@@ -265,12 +274,20 @@ final class SyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
+        var intervalsOnEach: [[Duration]] = []
         for (device, cardID) in [(mac, ubuntu.id), (iPhone, ubuntuOnIPhone.id)] {
-            let rows = try device.engine.reviewLogRows(of: cardID, on: ladder)
+            let rows = try device.engine.reviewLogRows(of: cardID, with: scheduler)
             #expect(
-                rows.map(\.entry.kind) == [.firstView, .review(.good), .review(.good), .review(.again), .review(.good)])
-            #expect(rows.map(\.step) == [0, 1, 2, 0, 1])
+                rows.map(\.entry.kind) == [
+                    .review(.again), .review(.good), .review(.good), .review(.again), .review(.good),
+                ])
+            intervalsOnEach.append(rows.map(\.interval))
         }
+        let intervals = try #require(intervalsOnEach.first)
+        #expect(intervalsOnEach.last == intervals)
+        #expect(intervals.map { $0 >= .seconds(days(1)) } == [false, false, true, false, true])
+        #expect(
+            [intervals[0], intervals[1], intervals[3]] == [.seconds(hours(1)), .seconds(hours(4)), .seconds(hours(1))])
     }
 
     @Test("what each device had before they first synced joins on both, and nothing is lost")
@@ -284,7 +301,7 @@ final class SyncTests {
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo por azar.", tags: ["filosofía"]), in: iPhone.engine)
         try iPhone.engine.setEmoji(Emoji("🦉"), of: "filosofía")
-        try iPhone.engine.climb(serendipia, to: 1, movingForward: time)
+        try iPhone.engine.climb(serendipia, goods: 1, movingForward: time)
         try iPhone.engine.newCapture("saudade", note: "De una canción")
 
         try await mac.syncNow()
@@ -507,9 +524,9 @@ extension Device {
         try engine.cards().sorted { $0.front < $1.front }.map(\.asSeen)
     }
 
-    /// Its review log, in the order the ladder replays it.
+    /// Its review log, in the order the scheduler replays it.
     func logAsSeen() throws -> [LogEntryAsSeen] {
-        try engine.reviewLog().sorted { $0.isReplayed(before: $1) }.map {
+        try engine.reviewLog().sorted { $0.precedes($1) }.map {
             LogEntryAsSeen(
                 uuid: $0.uuid, answeredEntry: $0.answeredEntry, way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt,
                 responseTime: $0.responseTime, trigger: $0.trigger, isAhead: $0.isAhead, interval: $0.interval)

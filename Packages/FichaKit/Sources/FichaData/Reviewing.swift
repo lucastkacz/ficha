@@ -4,10 +4,11 @@ internal import GRDB
 
 extension Engine {
     /// The cards review now brings, each the way it shows, in the order the
-    /// review panel shows them: the due ways, lowest step first and then the
-    /// longest overdue, and then a new way, when there's room and Lucas
-    /// hasn't met the day's new cards yet. A click on the widget starts it
-    /// with `first`, the card the widget showed, while review now brings it.
+    /// review panel shows them: the due ways, shortest interval first and
+    /// then the longest overdue, and then a new way, when there's room and
+    /// Lucas hasn't met the day's new cards yet. A click on the widget starts
+    /// it with `first`, the card the widget showed, while review now brings
+    /// it.
     public func reviewNow(_ settings: ReviewSettings, startingWith first: CardWay? = nil) throws(EngineError)
         -> [PanelCard]
     {
@@ -21,18 +22,19 @@ extension Engine {
     }
 
     /// Records Lucas's answer to one of the ways of a card in his reviews,
-    /// front first unless it's said to go back first, in the review log: the
-    /// end of its first view, which puts that way on the ladder's first step,
-    /// or a review with his rating, which moves that way on the ladder of
-    /// `settings`. Each way moves on its own (ADR 0016). A first view is only
-    /// for a new way, and a review only for a due one, or, in an appearance,
-    /// for one due within the look-ahead, which it brings along. When Lucas
-    /// asked to review ahead, a review of a way that isn't due yet goes into
-    /// the log as a review ahead, of which only again counts; one of a way
-    /// that came due by then is on time. It returns how many times he forgot
-    /// the card that way when a rating of again makes it forgotten often, as
-    /// `settings` say, each way counted apart, for the review panel to offer
-    /// to flag it, or nil.
+    /// front first unless it's said to go back first, in the review log: a
+    /// review with his rating, which moves that way as the scheduler of
+    /// `settings` says, keeping the interval its preview gives the rating.
+    /// Each way moves on its own (ADR 0016). A new way takes any rating, in
+    /// its first review, and a started way a review once it's due, or, in an
+    /// appearance, once it's due within the look-ahead, which it brings
+    /// along. When Lucas asked to review ahead, a review of a way that isn't
+    /// due yet goes into the log marked as ahead, and counts as FSRS reckons
+    /// it, from the time the way really waited; one of a way that came due by
+    /// then is on time. It returns how many times he forgot the card that way
+    /// when a lapse, a rating of again of a graduated way, makes it forgotten
+    /// often, as `settings` say, each way counted apart, for the review panel
+    /// to offer to flag it, or nil.
     @discardableResult
     public func record(
         _ kind: ReviewLogEntry.Kind,
@@ -70,7 +72,7 @@ extension Engine {
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in
-            let counts = try settings.ladder.counts(of: cardsThatShowUp(in: db).inReviews, at: now)
+            let counts = try settings.scheduler.counts(of: cardsThatShowUp(in: db).inReviews, at: now)
             return ProgressCounts(
                 due: counts.due, learned: counts.learned,
                 inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsWaiting(in: db).count)
@@ -93,22 +95,22 @@ extension Engine {
         }
     }
 
-    /// Every first view, review and placement, in the order this device
-    /// recorded them: those another device synced come when they came,
-    /// which needn't be when they happened.
+    /// Every review and placement, in the order this device recorded them:
+    /// those another device synced come when they came, which needn't be
+    /// when they happened.
     public func reviewLog() throws(EngineError) -> [ReviewLogEntry] {
         try read(logEntries(in:))
     }
 
-    /// Where one of a card's ways stands on `ladder`, front first unless it's
-    /// said to go back first: new, or on a step until it's due, worked out
-    /// from that way's review log, also while the card is flagged, buried or
-    /// set aside, or doesn't go both ways.
-    public func standing(of cardID: Int64, way: Way = .frontFirst, on ladder: Ladder) throws(EngineError)
-        -> LadderStanding
+    /// Where one of a card's ways stands with `scheduler`'s settings, front
+    /// first unless it's said to go back first: new, or waiting its interval
+    /// until it's due, worked out from that way's review log, also while the
+    /// card is flagged, buried or set aside, or doesn't go both ways.
+    public func standing(of cardID: Int64, way: Way = .frontFirst, with scheduler: Scheduler) throws(EngineError)
+        -> WayStanding
     {
         try read { db in
-            try ladder.standing(after: logEntries(ofExisting: cardID, in: db).filter { $0.way == way })
+            try scheduler.standing(after: logEntries(ofExisting: cardID, in: db).filter { $0.way == way })
         }
     }
 }
@@ -152,7 +154,8 @@ func recordAnswer(
     let card = try cardInReviews(answered.cardID, in: db)
     let log = try logEntries(ofExisting: answered.cardID, in: db)
     let wayLog = log.filter { $0.way == answered.way }
-    let standing = try settings.ladder.standing(after: wayLog)
+    let scheduler = settings.scheduler
+    let standing = try scheduler.standing(after: wayLog)
     let isAhead = reviewingAhead && standing.isReviewAhead(kind, at: answeredAt, lookingAhead: lookAhead)
     if !isAhead {
         do throws(RefusedAnswer) {
@@ -161,38 +164,19 @@ func recordAnswer(
             throw EngineError(refused: error, cardID: answered.cardID)
         }
     }
-    // A review answers the way's last entry, which its wait came from: the
-    // last the ladder replays, by when it was answered, not the last written,
-    // which another device's or a clock set back can make an earlier one.
-    let answeredEntry: UUID? =
-        switch kind {
-        case .review: wayLog.max { $0.isReplayed(before: $1) }?.uuid
-        case .firstView, .placement: nil
-        }
-    /// The answer's entry, keeping `interval`.
-    func entry(keeping interval: Duration?) -> ReviewLogEntry {
-        ReviewLogEntry(
-            cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
-            responseTime: responseTime, trigger: trigger, isAhead: isAhead, answeredEntry: answeredEntry,
-            interval: interval)
+    guard case .review(let rating) = kind else {
+        throw EngineError(refused: .notAnAnswer, cardID: answered.cardID)
     }
-    let answer = entry(keeping: try ladderWait(after: entry(keeping: nil), following: wayLog, on: settings.ladder))
+    // A review answers the way's last entry, which its interval came from:
+    // the last the scheduler replays, by when it was answered, not the last
+    // written, which another device's or a clock set back can make an
+    // earlier one. A new way's first review answers none.
+    let answer = ReviewLogEntry(
+        cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt, responseTime: responseTime,
+        trigger: trigger, isAhead: isAhead, uuid: UUID(), answeredEntry: wayLog.max { $0.precedes($1) }?.uuid,
+        interval: try scheduler.preview(of: answered, after: wayLog, at: answeredAt)[rating])
     try insert(answer, in: db)
-    return settings.forgottenOften(after: log + [answer], editedAt: card.editedAt)
-}
-
-/// The interval `entry` keeps until #407 spaces cards with the scheduler: how
-/// long `ladder` has its way wait after it, after `log`, the way's entries
-/// before it, from when it was answered to the way's due time, which a review
-/// ahead the ladder doesn't move leaves as it was. Nil for a first view,
-/// which keeps none.
-private func ladderWait(after entry: ReviewLogEntry, following log: [ReviewLogEntry], on ladder: Ladder) throws
-    -> Duration?
-{
-    guard case .review = entry.kind, case .onLadder(_, let due) = try ladder.standing(after: log + [entry]) else {
-        return nil
-    }
-    return .seconds(due.timeIntervalSince(entry.answeredAt))
+    return try settings.forgottenOften(after: log + [answer], editedAt: card.editedAt)
 }
 
 /// Deletes the last entry this device recorded in the review log of
@@ -216,29 +200,30 @@ private func deleteLastEntry(of cardWay: CardWay, in db: Database) throws {
 
 /// Adds `placement` to the review log of the card with this id, for `way`,
 /// which an import brings in at `placedAt` with its progress from another
-/// app, in place of a first view (ADR 0013). The way has no entry yet: the
-/// card is coming in in the same write.
+/// app (ADR 0013). The way has no entry yet: the card is coming in in the
+/// same write.
 func place(_ cardID: Int64, way: Way, on placement: Placement, at placedAt: Date, in db: Database) throws {
     try insert(ReviewLogEntry(placing: cardID, way: way, on: placement, at: placedAt), in: db)
 }
 
 /// Adds an entry at the end of the review log, with its ID unique across
 /// devices, or a new one when it has none yet, the entry it answered, and the
-/// interval it set, in seconds.
+/// interval it set, in seconds: a review's own, or a placement's, with its
+/// due time and ease. A review keeps one: the table refuses it without.
 func insert(_ entry: ReviewLogEntry, in db: Database) throws {
     let columns = entry.kind.columns
     try db.execute(
         sql: """
             INSERT INTO reviewLog (
-                uuid, cardId, way, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead,
+                uuid, cardId, way, kind, rating, due, ease, answeredAt, responseTime, trigger, isAhead,
                 answeredEntryUuid, interval)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         arguments: [
             (entry.uuid ?? UUID()).uuidString, entry.cardID, entry.way.rawValue, columns.kind, columns.rating,
-            columns.step, columns.due, entry.answeredAt, entry.responseTime.map { $0 / .seconds(1) },
+            columns.due, columns.ease, entry.answeredAt, entry.responseTime.map(\.timeInterval),
             entry.trigger?.rawValue, entry.isAhead, entry.answeredEntry?.uuidString,
-            entry.interval.map { $0 / .seconds(1) },
+            (columns.interval ?? entry.interval).map(\.timeInterval),
         ]
     )
 }
@@ -250,12 +235,16 @@ extension ReviewLogEntry {
         guard let way = Way(rawValue: try row.decode(forColumn: "way")) else {
             throw unreadable("Card \(cardID) has a review log entry that went an unknown way")
         }
+        let interval: Double? = try row.decode(forColumn: "interval")
         guard
             let kind = Kind(
                 kind: try row.decode(forColumn: "kind"), rating: try row.decode(forColumn: "rating"),
-                step: try row.decode(forColumn: "step"), due: try row.decode(forColumn: "due"))
+                interval: interval.map { .seconds($0) }, due: try row.decode(forColumn: "due"),
+                ease: try row.decode(forColumn: "ease"))
         else {
-            throw unreadable("Card \(cardID) has a review log entry of an unknown kind, rating or step")
+            throw unreadable(
+                "Card \(cardID) has a review log entry of an unknown kind or rating, or a placement without its interval or due time"
+            )
         }
         let answeredAt: Date = try row.decode(forColumn: "answeredAt")
         let uuidName: String = try row.decode(forColumn: "uuid")
@@ -271,15 +260,17 @@ extension ReviewLogEntry {
             return answeredEntry
         }
         let triggerName: String? = try row.decode(forColumn: "trigger")
-        switch (kind, triggerName) {
-        case (.placement(let placement), nil):
-            self.init(placing: cardID, way: way, on: placement, at: answeredAt, uuid: uuid)
-        case (.firstView, let triggerName?), (.review, let triggerName?):
-            guard let trigger = Trigger(rawValue: triggerName) else {
+        let trigger = try triggerName.map { name in
+            guard let trigger = Trigger(rawValue: name) else {
                 throw unreadable("Card \(cardID) has a review log entry with an unknown trigger")
             }
+            return trigger
+        }
+        switch (kind, trigger) {
+        case (.placement(let placement), nil):
+            self.init(placing: cardID, way: way, on: placement, at: answeredAt, uuid: uuid)
+        case (.review, _):
             let responseTime: Double? = try row.decode(forColumn: "responseTime")
-            let interval: Double? = try row.decode(forColumn: "interval")
             self.init(
                 cardID: cardID,
                 way: way,
@@ -292,39 +283,41 @@ extension ReviewLogEntry {
                 answeredEntry: answeredEntry,
                 interval: interval.map { .seconds($0) }
             )
-        case (.placement, _?), (.firstView, nil), (.review, nil):
-            throw unreadable("Card \(cardID) has a review log entry whose trigger doesn't go with its kind")
+        case (.placement, _?):
+            throw unreadable("Card \(cardID) has a placement in its review log with a trigger")
         }
     }
 }
 
 extension ReviewLogEntry.Kind {
     /// The kind of entry that the `reviewLog` table's `kind`, `rating`,
-    /// `step` and `due` columns name, or nil when this version of Ficha
-    /// doesn't know it.
-    fileprivate init?(kind: String, rating: String?, step: Int?, due: Date?) {
-        switch (kind, rating, step, due) {
-        case ("firstView", nil, nil, nil):
-            self = .firstView
-        case ("review", let rating?, nil, nil):
-            guard let rating = Rating(rawValue: rating) else {
+    /// `interval`, `due` and `ease` columns name, or nil when this version
+    /// of Ficha doesn't know it, or a placement lacks its interval or due
+    /// time.
+    fileprivate init?(kind: String, rating: String?, interval: Duration?, due: Date?, ease: Double?) {
+        switch (kind, rating, due) {
+        case ("review", let rating?, nil):
+            guard let rating = Rating(rawValue: rating), ease == nil else {
                 return nil
             }
             self = .review(rating)
-        case ("placement", nil, let step?, let due?):
-            self = .placement(Placement(step: step, due: due))
+        case ("placement", nil, let due?):
+            guard let interval else {
+                return nil
+            }
+            self = .placement(Placement(interval: interval, due: due, ease: ease))
         default:
             return nil
         }
     }
 
-    /// The values of the `reviewLog` table's `kind`, `rating`, `step` and
-    /// `due` columns that name this kind of entry.
-    fileprivate var columns: (kind: String, rating: String?, step: Int?, due: Date?) {
+    /// The values of the `reviewLog` table's `kind`, `rating`, `due` and
+    /// `ease` columns that name this kind of entry, and, for a placement,
+    /// its `interval`: a review's is the entry's own.
+    fileprivate var columns: (kind: String, rating: String?, due: Date?, ease: Double?, interval: Duration?) {
         switch self {
-        case .firstView: ("firstView", nil, nil, nil)
-        case .review(let rating): ("review", rating.rawValue, nil, nil)
-        case .placement(let placement): ("placement", nil, placement.step, placement.due)
+        case .review(let rating): ("review", rating.rawValue, nil, nil, nil)
+        case .placement(let placement): ("placement", nil, placement.due, placement.ease, placement.interval)
         }
     }
 }

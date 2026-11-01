@@ -342,7 +342,7 @@ final class ChangesToSyncTests {
 
         let afterImport = try await engine.recordedAsync {
             try await engine.importCards(
-                engine.previewImport(of: file), choosing: ImportChoices(progress: .brought(onto: .standard)))
+                engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
         }
 
         let log = try engine.reviewLog()

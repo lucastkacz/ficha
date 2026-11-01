@@ -69,7 +69,7 @@ struct WidgetTests {
 
         let shown = try engine.widgetTimeline(WidgetSettings(settings), engineAheadBy: .zero).entries.first?.content
 
-        #expect(try engine.reviewNow(settings) == [.firstView(ubuntu)])
+        #expect(try engine.reviewNow(settings) == [.new(ubuntu)])
         #expect(
             shown
                 == .card(
@@ -135,7 +135,7 @@ struct WidgetTests {
         let met = try approveCard("serendipia", in: engine)
         let new = try approveCard("ubuntu", in: engine)
         // Met this morning, and due again in 2 days.
-        try engine.climb(met, to: 2, movingForward: time)
+        try engine.climb(met, goods: 2, movingForward: time)
         let midnight = try #require(calendar.dateInterval(of: .day, for: time.now)?.end)
 
         #expect(
@@ -154,7 +154,7 @@ struct WidgetTests {
     func entriesAreFiveMinutesApart() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(ubuntu, to: 1, movingForward: time)
+        try engine.climb(ubuntu, goods: 1, movingForward: time)
         // Due a minute after ubuntu, on a lower step, so it comes first then.
         let ubuntuDue = try dueTime(of: ubuntu)
         time.move(to: ubuntuDue - hours(1) + minutes(1))
@@ -194,7 +194,7 @@ struct WidgetTests {
 
         #expect(
             try engine.reviewNow(.defaults, startingWith: CardWay(cardID: ubuntu.id, way: .frontFirst))
-                == [.firstView(ubuntu), .review(serendipia)])
+                == [.new(ubuntu), .review(serendipia)])
     }
 
     @Test("a click on a card review now no longer brings, as one reviewed meanwhile, starts review now as usual")
@@ -221,11 +221,12 @@ struct WidgetTests {
         let widgetsCard = CardWay(cardID: ubuntu.id, way: .frontFirst)
 
         let onItsCard = panel.givesWay(toAReviewNowStartingWith: widgetsCard)
-        panel.endFirstView()
+        panel.flip()
+        panel.rate(.good)
         let atItsEnd = panel.givesWay(toAReviewNowStartingWith: widgetsCard)
         let atItsEndWithNoCard = panel.givesWay(toAReviewNowStartingWith: nil)
 
-        #expect(panel.cards == [.firstView(serendipia)])
+        #expect(panel.cards == [.new(serendipia)])
         #expect(!onItsCard)
         #expect(atItsEnd)
         #expect(!atItsEndWithNoCard)
@@ -337,7 +338,7 @@ struct WidgetTests {
 
     /// When `card`'s front-first way is due, on the default ladder.
     private func dueTime(of card: Card) throws -> Date {
-        try #require(try engine.standing(of: card.id, on: ReviewSettings.defaults.ladder).due)
+        try #require(try engine.standing(of: card.id, with: ReviewSettings.defaults.scheduler).due)
     }
 }
 

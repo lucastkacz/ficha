@@ -159,8 +159,8 @@ enum SyncedField: String, Sendable, CaseIterable {
     case chosenToSync
     /// The tag's place among the pinned tags, while it's pinned.
     case pin
-    // The settings that decide progress, each on its own.
-    case ladder
+    // The settings that decide progress, each on its own. The ladder's, which
+    // a version of Ficha before FSRS sent (#404), is read no more.
     case newCardsPerDay
     case forgottenOftenAfter
     case learningSteps

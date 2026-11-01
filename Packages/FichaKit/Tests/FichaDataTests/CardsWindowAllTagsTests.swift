@@ -12,7 +12,7 @@ import Testing
 struct CardsWindowAllTagsTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -483,7 +483,7 @@ struct CardsWindowAllTagsTests {
         window.showCards(of: "economía")
 
         try engine.deleteTags(["economía"])
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.shownTag == nil)
         #expect(window.allTagsRows?.outline == [])
@@ -492,8 +492,8 @@ struct CardsWindowAllTagsTests {
     /// Opens the Cards window and reads Lucas's cards, as the window does
     /// once it listens for the reasons to read them again.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 

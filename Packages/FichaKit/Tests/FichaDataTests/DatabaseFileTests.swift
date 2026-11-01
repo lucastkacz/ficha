@@ -87,6 +87,9 @@ final class DatabaseFileTests {
 
     // The review log's table is made again for answers from card
     // notifications, which have no response time.
+    // Its first view comes in as the first review, rated again, that took
+    // its place (#407), and each review with the interval the scheduler
+    // gives it: hard on the first learning step waits halfway to the second.
     @Test("a database from before card notifications migrates, and its review log keeps every entry as it was")
     func reviewLogKeepsItsEntriesThroughTheMigration() throws {
         try saveDatabaseBeforeCardNotifications()
@@ -96,14 +99,15 @@ final class DatabaseFileTests {
         #expect(
             try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
-                    cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
-                    trigger: .reviewNow),
+                    cardID: 1, kind: .review(.again), answeredAt: time.now, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow, interval: .seconds(hours(1))),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.hard), answeredAt: time.now + hours(1),
-                    responseTime: .milliseconds(2_500), trigger: .appearance),
+                    responseTime: .milliseconds(2_500), trigger: .appearance, interval: .seconds(hours(2) + minutes(30))
+                ),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.good), answeredAt: time.now + hours(2), responseTime: .seconds(4),
-                    trigger: .reviewNow, isAhead: true),
+                    trigger: .reviewNow, isAhead: true, interval: .seconds(hours(4))),
             ])
     }
 
@@ -120,8 +124,8 @@ final class DatabaseFileTests {
                 .buried(at: time.now, flag: nil),
             ])
         #expect(
-            try engine.standing(of: 1, on: ReviewSettings.defaults.ladder)
-                == .onLadder(step: 0, due: time.now + hours(1)))
+            try engine.standing(of: 1, with: ReviewSettings.defaults.scheduler).stageAndDue
+                == learning(step: 0, due: time.now + hours(1)))
         #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje")])
     }
 
@@ -142,36 +146,43 @@ final class DatabaseFileTests {
 
     // The review log's table is made again for placements, which have no
     // trigger.
-    @Test("a database from before placements migrates with every card's step, due time and review log as they were")
-    func cardsKeepTheirStepsThroughTheMigrationToPlacements() throws {
+    @Test(
+        "a database from before placements migrates with every card's review log as it was, each card standing as its log says"
+    )
+    func cardsKeepTheirLogsThroughTheMigrationToPlacements() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforePlacements(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
         let engine = try Engine(location: .folder(folder), time: time)
 
-        // serendipia: its first view, good an hour later, then a review ahead
-        // that doesn't count: the second step, four hours from the good.
-        #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
+        // serendipia: its first view, good an hour later, then good ahead on
+        // the second learning step, which graduates it, as any review would.
+        let serendipia = try engine.standing(of: 1, with: scheduler)
+        let graduatedInterval = try #require(serendipia.interval)
+        #expect(serendipia.stage == .graduated)
+        #expect(graduatedInterval >= .seconds(days(1)))
         // ubuntu: its first view, from a card notification, then again.
-        #expect(try engine.standing(of: 2, on: ladder) == .onLadder(step: 0, due: time.now + hours(3)))
-        #expect(try engine.standing(of: 3, on: ladder) == .new)
+        #expect(
+            try engine.standing(of: 2, with: scheduler).stageAndDue == learning(step: 0, due: time.now + hours(3)))
+        #expect(try engine.standing(of: 3, with: scheduler) == .new)
         #expect(
             try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
-                    cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
-                    trigger: .reviewNow),
+                    cardID: 1, kind: .review(.again), answeredAt: time.now, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow, interval: .seconds(hours(1))),
                 ReviewLogEntry(
-                    cardID: 2, kind: .firstView, answeredAt: time.now, responseTime: nil, trigger: .appearance),
+                    cardID: 2, kind: .review(.again), answeredAt: time.now, responseTime: nil, trigger: .appearance,
+                    interval: .seconds(hours(1))),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.good), answeredAt: time.now + hours(1), responseTime: .seconds(3),
-                    trigger: .appearance),
+                    trigger: .appearance, interval: .seconds(hours(4))),
                 ReviewLogEntry(
                     cardID: 2, kind: .review(.again), answeredAt: time.now + hours(2), responseTime: .seconds(5),
-                    trigger: .reviewNow),
+                    trigger: .reviewNow, interval: .seconds(hours(1))),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.good), answeredAt: time.now + hours(3), responseTime: .seconds(2),
-                    trigger: .reviewNow, isAhead: true),
+                    trigger: .reviewNow, isAhead: true, interval: graduatedInterval),
             ])
     }
 
@@ -181,7 +192,7 @@ final class DatabaseFileTests {
     func aDatabaseFromBeforeBothWaysMigratesWithEveryCardGoingOneWay() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforeBothWays(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
         let engine = try Engine(location: .folder(folder), time: time)
 
@@ -189,17 +200,18 @@ final class DatabaseFileTests {
         #expect(cards.map(\.front) == ["serendipia", "ubuntu"])
         #expect(cards.map(\.bothWays) == [false, false])
         // serendipia: its first view, then good an hour later: the second
-        // step, four hours from the good.
-        #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
-        #expect(try engine.standing(of: 2, on: ladder) == .new)
+        // learning step, four hours from the good.
+        #expect(
+            try engine.standing(of: 1, with: scheduler).stageAndDue == learning(step: 1, due: time.now + hours(5)))
+        #expect(try engine.standing(of: 2, with: scheduler) == .new)
         #expect(
             try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
-                    cardID: 1, kind: .firstView, answeredAt: time.now, responseTime: .milliseconds(8_250),
-                    trigger: .reviewNow),
+                    cardID: 1, kind: .review(.again), answeredAt: time.now, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow, interval: .seconds(hours(1))),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.good), answeredAt: time.now + hours(1), responseTime: .seconds(3),
-                    trigger: .appearance),
+                    trigger: .appearance, interval: .seconds(hours(4))),
             ])
     }
 
@@ -209,13 +221,14 @@ final class DatabaseFileTests {
     func aDatabaseFromBeforeWaysMigratesWithEveryEntryFrontFirst() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforeWays(at: folder.appending(path: "Ficha.sqlite"), at: time.now)
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
         let engine = try Engine(location: .folder(folder), time: time)
 
         #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .frontFirst])
-        #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time.now + hours(5)))
-        #expect(try engine.standing(of: 1, way: .backFirst, on: ladder) == .new)
+        #expect(
+            try engine.standing(of: 1, with: scheduler).stageAndDue == learning(step: 1, due: time.now + hours(5)))
+        #expect(try engine.standing(of: 1, way: .backFirst, with: scheduler) == .new)
         #expect(try engine.reviewNow(.defaults).map(\.way) == [.backFirst])
     }
 
@@ -332,11 +345,11 @@ final class DatabaseFileTests {
         try saveDatabaseBeforeTagsInsideTags(
             at: folder.appending(path: "Ficha.sqlite"),
             tagging: [["::historia"], ["economía::"], ["economía :: Argentina"], ["economía::mundial"]], at: time.now)
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
         let engine = try Engine(location: .folder(folder), time: time)
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         window.choose(.allTags)
 
         #expect(
@@ -347,7 +360,7 @@ final class DatabaseFileTests {
             window.allTagsRows?.outline == [
                 "::historia", "economía", "  mundial", "economía :: Argentina", "economía::",
             ])
-        #expect(try engine.cardRows(in: .tag("economía"), on: ladder).map(\.card.front) == ["economía::mundial"])
+        #expect(try engine.cardRows(in: .tag("economía"), with: scheduler).map(\.card.front) == ["economía::mundial"])
     }
 
     // A card's type column kept the four's raw values; a user type's ID goes
@@ -424,9 +437,11 @@ final class DatabaseFileTests {
     // The settings' table gains a column for each scheduling setting, and
     // the review log's is made again, as no column can join its checks:
     // both keep their triggers, so what changes after syncs, and their
-    // migration sends nothing.
+    // migration sends nothing. Then the scheduler replaces the ladder
+    // (#407): the placement holds the wait of its step on the ladder the
+    // settings held, and each review the interval the scheduler gives it.
     @Test(
-        "a database from before the scheduling settings migrates with its settings and review log as they were, Ficha's scheduling settings, and no interval for any review"
+        "a database from before the scheduling settings migrates with its settings, but its ladder, and its review log as they were, Ficha's scheduling settings, and each review's interval"
     )
     func aDatabaseFromBeforeTheSchedulingSettingsKeepsItsSettingsAndLog() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -435,22 +450,22 @@ final class DatabaseFileTests {
 
         let engine = try Engine(location: .folder(folder), time: time)
 
-        let movedIn = try #require(Ladder(waits: [.seconds(minutes(10)), .seconds(hours(6)), .seconds(days(3))]))
-        let settings = ProgressSettings(
-            ladder: movedIn, scheduler: .standard, newCardsPerDay: 12, forgottenOftenAfter: 4)
+        let settings = ProgressSettings(scheduler: .standard, newCardsPerDay: 12, forgottenOftenAfter: 4)
         #expect(try engine.progressSettings() == settings)
         #expect(
             try engine.reviewLog().map(\.withoutIDs) == [
                 ReviewLogEntry(
-                    cardID: 1, kind: .firstView, answeredAt: before, responseTime: .milliseconds(8_250),
-                    trigger: .reviewNow),
+                    cardID: 1, kind: .review(.again), answeredAt: before, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow, interval: .seconds(hours(1))),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.good), answeredAt: before + minutes(10), responseTime: .seconds(3),
-                    trigger: .appearance),
+                    trigger: .appearance, interval: .seconds(hours(4))),
                 ReviewLogEntry(
                     cardID: 1, kind: .review(.hard), answeredAt: before + hours(1), responseTime: nil,
-                    trigger: .appearance, isAhead: true),
-                ReviewLogEntry(placing: 2, way: .backFirst, on: Placement(step: 2, due: before + days(4)), at: before),
+                    trigger: .appearance, isAhead: true, interval: .seconds(hours(4))),
+                ReviewLogEntry(
+                    placing: 2, way: .backFirst,
+                    on: Placement(interval: .seconds(days(3)), due: before + days(4), ease: 2.5), at: before),
             ])
         #expect(try engine.changesToSend().isEmpty)
 
@@ -463,10 +478,83 @@ final class DatabaseFileTests {
             .review(.easy), of: 1, responseTime: .seconds(2), trigger: .reviewNow, settings: reviewSettings)
         let easy = try #require(try engine.reviewLog().last)
         #expect(easy.kind == .review(.easy))
-        #expect(easy.interval == .seconds(days(3)))
+        #expect(try #require(easy.interval) >= .seconds(days(1)))
         let waiting = try engine.changesToSend()
         #expect(waiting.map(\.row) == [.progressSettings, .reviewLogEntry(try #require(easy.uuid))])
         #expect(waiting.first?.fieldTimes == [.desiredRetention: time.now])
+    }
+
+    // FSRS spaces every review (#407): each way's log is replayed with
+    // Ficha's scheduling settings, whatever the database held, so every
+    // review keeps the interval it gets, answering the entry before it, as on
+    // any other device. The ladder, and when it changed, go; a copy from
+    // before the update comes in carried over alike.
+    @Test(
+        "a database from before the scheduler replaced the ladder migrates with each entry carried over: first views as agains, placements with their step's wait, each review with its interval and the entry it answered"
+    )
+    func aDatabaseFromBeforeTheSchedulerCarriesItsLogOver() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let before = time.now - days(5)
+        try saveDatabaseBeforeTheSchedulerReplacedTheLadder(at: folder.appending(path: "Ficha.sqlite"), at: before)
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let stored = try #require(
+            Scheduler(
+                learningSteps: [.seconds(minutes(10)), .seconds(hours(1))], relearningSteps: [.seconds(minutes(30))],
+                desiredRetention: 0.9, longestIntervalInDays: 36_500, parameters: []))
+        #expect(
+            try engine.progressSettings()
+                == ProgressSettings(scheduler: stored, newCardsPerDay: 12, forgottenOftenAfter: 4))
+        let log = try engine.reviewLog()
+        let serendipia = log.filter { $0.cardID == 1 }
+        let ubuntu = log.filter { $0.cardID == 2 }
+        // serendipia: its first view, now again on Ficha's first learning
+        // step, of an hour, and not the 10 minutes of the settings the
+        // database held; then good, on the second, of 4 hours, which the
+        // review keeps under those settings too.
+        #expect(
+            serendipia.map(\.withoutIDs) == [
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.again), answeredAt: before, responseTime: .milliseconds(8_250),
+                    trigger: .reviewNow, interval: .seconds(hours(1))),
+                ReviewLogEntry(
+                    cardID: 1, kind: .review(.good), answeredAt: before + minutes(10), responseTime: .seconds(3),
+                    trigger: .appearance, interval: .seconds(hours(4))),
+            ])
+        #expect(serendipia.map(\.answeredEntry) == [nil, serendipia.first?.uuid])
+        // ubuntu, back first: placed on the ladder's third step, of 3 days,
+        // with Anki's starting ease, then good once due, which keeps it
+        // graduated.
+        #expect(
+            ubuntu.first?.withoutIDs
+                == ReviewLogEntry(
+                    placing: 2, way: .backFirst,
+                    on: Placement(interval: .seconds(days(3)), due: before + days(4), ease: 2.5), at: before))
+        #expect(ubuntu.map(\.answeredEntry) == [nil, ubuntu.first?.uuid])
+        #expect(try #require(ubuntu.last?.interval) >= .seconds(days(1)))
+        #expect(
+            try engine.standing(of: 1, with: stored).stageAndDue
+                == learning(step: 1, due: before + minutes(10) + hours(4)))
+        #expect(try engine.standing(of: 2, way: .backFirst, with: stored).stage == .graduated)
+        #expect(try engine.changesToSend().isEmpty)
+        var readOnly = Configuration()
+        readOnly.readonly = true
+        let (settingsColumns, ladderTimes) = try DatabaseQueue(
+            path: path(of: "Ficha.sqlite"), configuration: readOnly
+        ).read { db in
+            (
+                try db.columns(in: "progressSettings").map(\.name),
+                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM syncFieldTime WHERE field = 'ladder'")
+            )
+        }
+        #expect(!settingsColumns.contains("ladder"))
+        #expect(ladderTimes == 0)
+
+        let beforeUpdate = try #require(try engine.copies().first { $0.kind == .beforeUpdate })
+        try engine.restore(beforeUpdate.name)
+
+        #expect(try engine.reviewLog() == log)
     }
 
     // The review log's table, made again, has its trigger as an entry is
@@ -740,6 +828,46 @@ func saveDatabaseBeforeSchedulingSettings(at file: URL, at time: Date) throws {
                     (2, 'placement', NULL, 2, ?, ?, NULL, NULL, 0, 'backFirst');
                 """,
             arguments: [time, time, time, time + minutes(10), time + hours(1), time + days(4), time])
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before the scheduler replaced
+/// the ladder, through the schema's migrations up to the one before it, with
+/// sync on and nothing waiting to be sent: settings with a ladder of 10
+/// minutes, 6 hours and 3 days, changed at `time`, learning steps of 10
+/// minutes and an hour, a relearning step of 30 minutes, 12 new cards a day
+/// and the offer to flag a card after 4 agains; serendipia, met at `time`,
+/// and rated good 10 minutes later from an appearance, which kept the
+/// ladder's 4 hours as its interval; and ubuntu, going both ways, placed back
+/// first by an import on the third step, due 4 days later, and rated good
+/// then.
+func saveDatabaseBeforeTheSchedulerReplacedTheLadder(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v32 the scheduler's settings and each review's interval")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO progressSettings
+                    (id, ladder, newCardsPerDay, forgottenOftenAfter, learningSteps, relearningSteps)
+                VALUES (1, '[600,21600,259200]', 12, 4, '[600,3600]', '[1800]');
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                VALUES ('progressSettings', 'progressSettings', 'ladder', ?);
+                INSERT INTO card (id, type, front, back, tags, createdAt, bothWays)
+                VALUES (1, 'word', 'serendipia', 'Un hallazgo por casualidad.', '[]', ?, 0),
+                    (2, 'concept', 'ubuntu', 'Soy porque somos.', '[]', ?, 1);
+                INSERT INTO reviewLog
+                    (cardId, kind, rating, step, due, answeredAt, responseTime, trigger, isAhead, way, interval)
+                VALUES (1, 'firstView', NULL, NULL, NULL, ?, 8.25, 'reviewNow', 0, 'frontFirst', NULL),
+                    (1, 'review', 'good', NULL, NULL, ?, 3, 'appearance', 0, 'frontFirst', 14400),
+                    (2, 'placement', NULL, 2, ?, ?, NULL, NULL, 0, 'backFirst', NULL),
+                    (2, 'review', 'good', NULL, NULL, ?, 2, 'reviewNow', 0, 'backFirst', 1036800);
+                """,
+            arguments: [
+                time, time, time, time, time + minutes(10), time + days(4), time, time + days(4),
+            ])
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()
@@ -1050,24 +1178,28 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 id: 3, text: "ubuntu, en zulú", note: "Del proverbio", source: "Una charla", createdAt: time,
                 expandsCardID: 2, followsUpCardID: nil)
         ])
+    // The placement holds the wait of its step on the ladder Ficha shipped,
+    // as the database held no other (#407).
     #expect(
         try engine.reviewLog().map(\.withoutIDs) == [
             ReviewLogEntry(
-                cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
-                trigger: .reviewNow),
+                cardID: 1, kind: .review(.again), answeredAt: time, responseTime: .milliseconds(8_250),
+                trigger: .reviewNow, interval: .seconds(hours(1))),
             ReviewLogEntry(
                 cardID: 1, kind: .review(.good), answeredAt: time + hours(1), responseTime: .seconds(3),
-                trigger: .appearance),
+                trigger: .appearance, interval: .seconds(hours(4))),
             ReviewLogEntry(
                 cardID: 1, kind: .review(.hard), answeredAt: time + hours(2), responseTime: nil,
-                trigger: .appearance, isAhead: true),
-            ReviewLogEntry(placing: 2, way: .backFirst, on: Placement(step: 2, due: time + days(4)), at: time),
+                trigger: .appearance, isAhead: true, interval: .seconds(hours(4))),
+            ReviewLogEntry(
+                placing: 2, way: .backFirst, on: Placement(interval: .seconds(days(2)), due: time + days(4), ease: 2.5),
+                at: time),
         ])
-    // Each entry has an ID of its own, and no review says which entry it
-    // answered, so it answered the one before it.
+    // Each entry has an ID of its own, and each review answers the entry
+    // before it, as the scheduler carried them over (#407).
     let log = try engine.reviewLog()
     #expect(Set(log.compactMap(\.uuid)).count == 4)
-    #expect(log.allSatisfy { $0.answeredEntry == nil })
+    #expect(log.map(\.answeredEntry) == [nil, log[0].uuid, log[1].uuid, nil])
     // The ids of the card and the capture deleted before aren't given again.
     #expect(try engine.create(card(nil, front: "ataraxia", back: "Serenidad.")).id == 4)
     #expect(try engine.newCapture("eudaimonía").id == 5)
@@ -1090,22 +1222,23 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
         cards.map(\.standing) == [
             .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time)), .buried(at: time, flag: nil),
         ])
-    let ladder = ReviewSettings.defaults.ladder
-    // Its first view, then good an hour later: the second step, which waits
-    // four hours.
-    #expect(try engine.standing(of: 1, on: ladder) == .onLadder(step: 1, due: time + hours(5)))
-    #expect(try engine.standing(of: 2, on: ladder) == .new)
-    #expect(try engine.standing(of: 3, on: ladder) == .onLadder(step: 0, due: time + hours(1)))
+    let scheduler = ReviewSettings.defaults.scheduler
+    // Its first view, then good an hour later: the second learning step,
+    // which waits four hours.
+    #expect(try engine.standing(of: 1, with: scheduler).stageAndDue == learning(step: 1, due: time + hours(5)))
+    #expect(try engine.standing(of: 2, with: scheduler) == .new)
+    #expect(try engine.standing(of: 3, with: scheduler).stageAndDue == learning(step: 0, due: time + hours(1)))
     #expect(
         try engine.reviewLog().map(\.withoutIDs) == [
             ReviewLogEntry(
-                cardID: 1, kind: .firstView, answeredAt: time, responseTime: .milliseconds(8_250),
-                trigger: .reviewNow),
+                cardID: 1, kind: .review(.again), answeredAt: time, responseTime: .milliseconds(8_250),
+                trigger: .reviewNow, interval: .seconds(hours(1))),
             ReviewLogEntry(
                 cardID: 1, kind: .review(.good), answeredAt: time + hours(1), responseTime: nil,
-                trigger: .appearance),
+                trigger: .appearance, interval: .seconds(hours(4))),
             ReviewLogEntry(
-                cardID: 3, kind: .firstView, answeredAt: time, responseTime: .seconds(6), trigger: .appearance),
+                cardID: 3, kind: .review(.again), answeredAt: time, responseTime: .seconds(6), trigger: .appearance,
+                interval: .seconds(hours(1))),
         ])
     #expect(try engine.inbox().expansions.map(\.card.id) == [1])
     #expect(try engine.inbox().followUps.isEmpty)

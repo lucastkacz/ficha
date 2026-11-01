@@ -219,10 +219,10 @@ final class DeletionWinsTests {
     @Test(
         "an answer taken back on one device after it synced leaves the other's review log, and the card's step with it")
     func anAnswerTakenBackLeavesTheOtherLog() async throws {
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         try mac.engine.meet(ubuntu)
-        let afterTheFirstView = try mac.engine.standing(of: ubuntu.id, on: ladder)
+        let afterTheFirstView = try mac.engine.standing(of: ubuntu.id, with: scheduler)
         try mac.engine.reviewWhenDue(ubuntu, .good, movingForward: time)
         try await mac.syncNow()
         try await iPhone.syncNow()
@@ -231,9 +231,9 @@ final class DeletionWinsTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        #expect(try iPhone.logAsSeen().map(\.kind) == [.firstView])
+        #expect(try iPhone.logAsSeen().map(\.kind) == [.review(.again)])
         #expect(
-            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, on: ladder) == afterTheFirstView)
+            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: scheduler) == afterTheFirstView)
     }
 
     // What the Mac heard of its records from the first account means nothing
@@ -284,7 +284,7 @@ final class DeletionWinsTests {
         #expect(try macOnDisk.engine.keptImages().isEmpty)
         try macOnDisk.engine.restore(backup.name)
         #expect(try macOnDisk.engine.cards() == [hornero])
-        #expect(try macOnDisk.engine.reviewLog().map(\.kind) == [.firstView])
+        #expect(try macOnDisk.engine.reviewLog().map(\.kind) == [.review(.again)])
         #expect(try macOnDisk.engine.keptImages() == [bird])
     }
 }

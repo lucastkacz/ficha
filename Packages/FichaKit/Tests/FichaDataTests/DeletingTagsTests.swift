@@ -109,7 +109,7 @@ struct DeletingTagsTests {
     // a color alone.
     @Test("each tag counts the cards it lists, those inside it too but buried ones, and those due in the reviews")
     func cardsAndDuePerTag() throws {
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
         try engine.meet(try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"]))
         let ficciones = try approveCard("Ficciones", tags: ["literatura"])
         try engine.meet(ficciones)
@@ -123,7 +123,7 @@ struct DeletingTagsTests {
         try engine.setColor(.blue, of: "música")
         time.advance(by: hours(2))
 
-        let counted = try engine.countedTags(on: ladder)
+        let counted = try engine.countedTags(with: scheduler)
 
         #expect(counted.map(\.tag) == (try engine.allTags()))
         #expect(

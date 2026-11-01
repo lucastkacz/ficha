@@ -37,16 +37,51 @@ extension ReviewLogEntry {
     /// without its ID unique across devices or the entry it answered, which
     /// are random, for a test to compare with the entries it expects.
     var withoutIDs: ReviewLogEntry {
-        switch (kind, trigger) {
-        case (.placement(let placement), _):
+        switch kind {
+        case .placement(let placement):
             ReviewLogEntry(placing: cardID, way: way, on: placement, at: answeredAt)
-        case (.firstView, let trigger?), (.review, let trigger?):
+        case .review:
             ReviewLogEntry(
                 cardID: cardID, way: way, kind: kind, answeredAt: answeredAt, responseTime: responseTime,
                 trigger: trigger, isAhead: isAhead, interval: interval)
-        case (.firstView, nil), (.review, nil):
-            self
         }
+    }
+}
+
+/// Where a way stands, as a test compares it: its stage and when it's due,
+/// without its interval and memory, which FSRS works out.
+struct StageAndDue: Equatable, CustomStringConvertible {
+    let stage: WayStanding.Stage
+    let due: Date
+
+    var description: String {
+        "\(stage) due \(due)"
+    }
+}
+
+/// A way on learning step `step`, counted from 0, due at `due`.
+func learning(step: Int, due: Date) -> StageAndDue {
+    StageAndDue(stage: .learning(step: step), due: due)
+}
+
+/// A way graduated, due at `due`.
+func graduated(due: Date) -> StageAndDue {
+    StageAndDue(stage: .graduated, due: due)
+}
+
+/// A way that lapsed, on relearning step `step`, counted from 0, due at
+/// `due`.
+func relearning(step: Int, due: Date) -> StageAndDue {
+    StageAndDue(stage: .relearning(step: step), due: due)
+}
+
+extension WayStanding {
+    /// Its stage and when it's due, or nil while it's new.
+    var stageAndDue: StageAndDue? {
+        guard let stage, let due else {
+            return nil
+        }
+        return StageAndDue(stage: stage, due: due)
     }
 }
 
@@ -78,12 +113,13 @@ extension Engine {
         try #require(try capture(text: text, note: note, source: source).saved)
     }
 
-    /// Records the first view of a card's new way, front first unless the
-    /// test says otherwise, as the review panel does when Lucas ends it, from
-    /// review now.
+    /// Records the first review of a card's new way, front first unless the
+    /// test says otherwise, rated again, as the review panel does when Lucas
+    /// rates it, from review now: the way stands on the first learning step,
+    /// due an hour later.
     func meet(_ card: Card, way: Way = .frontFirst) throws {
         try record(
-            .firstView, of: card.id, way: way, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
+            .review(.again), of: card.id, way: way, responseTime: .seconds(8), trigger: .reviewNow, settings: .defaults)
     }
 
     /// Records a review of a card's due way, front first unless the test
@@ -95,23 +131,51 @@ extension Engine {
             settings: .defaults)
     }
 
-    /// Puts a card's new way, front first unless the test says otherwise, on
-    /// `step` of the default ladder: its first view now, and then good each
-    /// time it's due, moving `time` forward to it.
-    func climb(_ card: Card, to step: Int, way: Way = .frontFirst, movingForward time: ManualTimeSource) throws {
+    /// Moves a card's new way, front first unless the test says otherwise,
+    /// on with the default settings: meets it now, and then rates it good
+    /// `goods` times, each time it's due, moving `time` forward to it. One
+    /// good puts it on the second learning step, due 4 hours later, and two
+    /// graduate it.
+    func climb(_ card: Card, goods: Int, way: Way = .frontFirst, movingForward time: ManualTimeSource) throws {
         try meet(card, way: way)
-        for _ in 0..<step {
+        for _ in 0..<goods {
             try reviewWhenDue(card, .good, way: way, movingForward: time)
         }
     }
 
-    /// Moves `time` forward until a card's way on the default ladder, front
-    /// first unless the test says otherwise, is due, and reviews it with
+    /// Climbs a card's way, front first unless the test says otherwise, from
+    /// new if it is, with good each time it's due, moving `time` forward to
+    /// it, until it's learned: graduated with an interval of 21 days or
+    /// more, with the default settings.
+    func climbUntilLearned(_ card: Card, way: Way = .frontFirst, movingForward time: ManualTimeSource) throws {
+        let scheduler = ReviewSettings.defaults.scheduler
+        if try standing(of: card.id, way: way, with: scheduler) == .new {
+            try meet(card, way: way)
+        }
+        while try !standing(of: card.id, way: way, with: scheduler).isLearned {
+            try reviewWhenDue(card, .good, way: way, movingForward: time)
+        }
+    }
+
+    /// Graduates a new card's way, front first unless the test says
+    /// otherwise, with two goods, and then makes it lapse `times` times, each
+    /// an again when it's due and a good when it's due again, so it stays
+    /// graduated, moving `time` forward to each.
+    func lapse(_ card: Card, times: Int, way: Way = .frontFirst, movingForward time: ManualTimeSource) throws {
+        try climb(card, goods: 2, way: way, movingForward: time)
+        for _ in 0..<times {
+            try reviewWhenDue(card, .again, way: way, movingForward: time)
+            try reviewWhenDue(card, .good, way: way, movingForward: time)
+        }
+    }
+
+    /// Moves `time` forward until a card's way, front first unless the test
+    /// says otherwise, is due with the default settings, and reviews it with
     /// `rating`.
     func reviewWhenDue(
         _ card: Card, _ rating: Rating, way: Way = .frontFirst, movingForward time: ManualTimeSource
     ) throws {
-        time.move(to: try #require(try standing(of: card.id, way: way, on: ReviewSettings.defaults.ladder).due))
+        time.move(to: try #require(try standing(of: card.id, way: way, with: ReviewSettings.defaults.scheduler).due))
         try review(card, rating, way: way)
     }
 

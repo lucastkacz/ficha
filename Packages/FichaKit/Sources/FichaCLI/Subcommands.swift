@@ -99,7 +99,7 @@ struct BuryCommand: EngineCommand {
 struct UnburyCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "unbury",
-        abstract: "Unbury a card: put it back in your reviews, on its step, and print the card.",
+        abstract: "Unbury a card: put it back in your reviews, with its progress, and print the card.",
         discussion: """
             A card that was flagged when it was buried goes back to the inbox instead, with its note, and one in \
             a set-aside deck stays set aside.

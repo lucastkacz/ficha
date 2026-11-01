@@ -72,7 +72,7 @@ final class ExportingTests {
         let flagged = try approve(
             card(.concept, front: "ubuntu", back: "Soy porque somos.", source: "Desmond Tutu"), in: engine)
         let buried = try approve(card(.word, front: "petricor", back: "El olor de la lluvia."), in: engine)
-        try engine.climb(climbed, to: 3, movingForward: time)
+        try engine.climb(climbed, goods: 3, movingForward: time)
         try engine.meet(flagged)
         try engine.flag(flagged.id, note: note("Falta de qué idioma es."))
         try engine.bury(buried.id)

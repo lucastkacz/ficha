@@ -107,8 +107,9 @@ struct SyncedTable: Sendable {
             SyncedColumn("way", .text),
             SyncedColumn("kind", .text),
             SyncedColumn("rating", .text),
-            SyncedColumn("step", .integer),
             SyncedColumn("due", .time),
+            // A placement's ease, as Anki had it.
+            SyncedColumn("ease", .real),
             // As this device holds it, to the millisecond, so that every
             // device replays the joined log alike.
             SyncedColumn("answeredAt", .time),
@@ -117,11 +118,12 @@ struct SyncedTable: Sendable {
             // As the device that answered decided it, never worked out again.
             SyncedColumn("isAhead", .boolean),
             // The UUID of the entry a review answered, which can come later,
-            // so it's no link: the ladder reads it to tell two devices'
-            // answers to one wait apart.
+            // so it's no link: the scheduler keeps a review's interval only
+            // when it answered the entry replayed just before it.
             SyncedColumn("answeredEntryUuid", key: "answeredEntry", .text),
-            // A review's interval, in seconds, which a review from an older
-            // Ficha comes without.
+            // A review's or a placement's interval, in seconds, which an
+            // entry from a Ficha before FSRS comes without, and is given as
+            // it comes in (`carriedOver(_:as:in:)`).
             SyncedColumn("interval", .real),
         ],
         marksRowsFromAnotherDevice: true,

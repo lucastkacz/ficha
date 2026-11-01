@@ -21,9 +21,10 @@ struct CardNotificationTests {
     }
 
     // Nothing measures how long Lucas looked at a card notification. Good
-    // climbs serendipia from its first view to the second step's 4 hours.
+    // moves serendipia from its first review to the second learning step's
+    // 4 hours, and again puts ubuntu, a new card, on the first's hour.
     @Test(
-        "a rating or a first view from a card notification goes into the review log as an appearance's, with no response time"
+        "a rating from a card notification, a new card's first review too, goes into the review log as an appearance's, with no response time"
     )
     func answersFromCardNotificationsGoIntoTheReviewLog() throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
@@ -34,7 +35,7 @@ struct CardNotificationTests {
         time.move(to: try at(10, 1))
         _ = try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
         time.move(to: try at(10, 2))
-        _ = try engine.answerFromNotification(.firstView, of: ubuntu.id, in: appearance, settings: settings)
+        _ = try engine.answerFromNotification(.review(.again), of: ubuntu.id, in: appearance, settings: settings)
 
         #expect(
             try engine.reviewLog().suffix(2).map(\.withoutIDs) == [
@@ -42,8 +43,8 @@ struct CardNotificationTests {
                     cardID: serendipia.id, kind: .review(.good), answeredAt: try at(10, 1), responseTime: nil,
                     trigger: .appearance, interval: .seconds(hours(4))),
                 ReviewLogEntry(
-                    cardID: ubuntu.id, kind: .firstView, answeredAt: try at(10, 2), responseTime: nil,
-                    trigger: .appearance),
+                    cardID: ubuntu.id, kind: .review(.again), answeredAt: try at(10, 2), responseTime: nil,
+                    trigger: .appearance, interval: .seconds(hours(1))),
             ])
     }
 

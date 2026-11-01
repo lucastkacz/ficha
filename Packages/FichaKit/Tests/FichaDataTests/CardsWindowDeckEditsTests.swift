@@ -11,7 +11,7 @@ import Testing
 struct CardsWindowDeckEditsTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -126,8 +126,8 @@ struct CardsWindowDeckEditsTests {
     func deletingADeckTheFieldsHold() throws {
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        var window = engine.openCardsWindow(on: ladder, lastDeckAddedTo: "Arte::Pintura")
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: "Arte::Pintura")
+        window.read(with: scheduler)
         window.choose(.cards(.deck("Historia")))
         window.openNewCardForm()
         var draft = try #require(window.cardForm?.draft)
@@ -240,8 +240,8 @@ struct CardsWindowDeckEditsTests {
 
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

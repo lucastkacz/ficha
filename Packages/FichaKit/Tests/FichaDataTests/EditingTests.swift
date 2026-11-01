@@ -23,8 +23,8 @@ struct EditingTests {
         // serendipia climbs to the third step, 2 days, and Lucas edits it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         let log = try engine.reviewLog()
         time.advance(by: hours(1))
 
@@ -44,7 +44,7 @@ struct EditingTests {
         #expect(edited.captureID == serendipia.captureID)
         #expect(try engine.cards() == [edited])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         time.move(to: try #require(standing.due))
         #expect(try engine.reviewNow(settings) == [.review(edited)])
     }
@@ -56,8 +56,8 @@ struct EditingTests {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 1, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
         time.advance(by: hours(1))
 
@@ -71,7 +71,7 @@ struct EditingTests {
         #expect(edited == serendipia)
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(try engine.progress(settings).inInbox == 0)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         time.move(to: try #require(standing.due))
         #expect(try engine.reviewNow(settings) == [.review(edited)])
     }

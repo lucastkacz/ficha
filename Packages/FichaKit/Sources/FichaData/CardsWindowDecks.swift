@@ -246,7 +246,7 @@ extension CardsWindowState {
         -> Bool
     {
         guard perform(action, work) else { return false }
-        read(on: ladder)
+        read(with: scheduler)
         return true
     }
 
@@ -382,7 +382,7 @@ extension CardsWindowState {
         }
         if done {
             question = nil
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 

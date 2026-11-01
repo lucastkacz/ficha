@@ -54,7 +54,7 @@ public struct ImportPreview: Sendable, Equatable {
     /// duplicate rule, as the user's cards were when the file was read.
     public let repeatedCount: Int
     /// How many of the file's cards that repeat none of the user's an
-    /// import that brings progress puts on a step: an Anki package's cards
+    /// import that brings progress places: an Anki package's cards
     /// that Anki was reviewing or learning (ADR 0013).
     public let placedCount: Int
     /// How many of the file's cards that repeat none of the user's are made
@@ -205,7 +205,7 @@ public struct ImportChoices: Sendable, Equatable {
     /// What happens to a card of the file that repeats one of the user's.
     public enum RepeatedCards: Sendable, Equatable {
         /// The user's card takes everything the file gives it but its front,
-        /// and keeps its step and review log, as an edit does.
+        /// and keeps its progress and review log, as an edit does.
         case update
         /// The user's card stays as it is, and the file's doesn't come in.
         case skip
@@ -217,12 +217,11 @@ public struct ImportChoices: Sendable, Equatable {
         /// Every card comes in new, and in the user's reviews.
         case leftOut
         /// Each card that comes in new to Ficha comes in where it stood:
-        /// one in review on the step of `ladder`, the user's, nearest its
-        /// interval, one being learned on the first step, both due when they
-        /// were due there, and a new one new; a suspended one comes in
-        /// buried. A card of the user's that a repeated card updates keeps
-        /// its own progress.
-        case brought(onto: Ladder)
+        /// one in review graduated, with its interval and ease, one being
+        /// learned on the first learning step, both due when they were due
+        /// there, and a new one new; a suspended one comes in buried. A card
+        /// of the user's that a repeated card updates keeps its own progress.
+        case brought
     }
 
     /// The name the user gave each deck the preview proposes that they
@@ -433,7 +432,7 @@ extension Engine {
 
     /// Imports the cards `preview` read, as the user chose: each card that
     /// repeats none of the user's comes in as new, in the file's order, so
-    /// new cards come up for their first view in that order; each one that
+    /// new cards come up for their first review in that order; each one that
     /// repeats a card of the user's updates it or is skipped. A card goes
     /// both ways as the file says, and an updated one keeps its own Both ways
     /// when the file says nothing of it. A card that comes in new comes into
@@ -488,8 +487,8 @@ extension Engine {
                             try card.content(as: type, adding: addedTags(card)), deck: try decks.deck(of: card),
                             bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
                             at: importedAt, in: db)
-                        if case .brought(let ladder) = choices.progress {
-                            try bring(card, to: cardID, onto: ladder, at: importedAt, in: db)
+                        if choices.bringsProgress {
+                            try bring(card, to: cardID, at: importedAt, in: db)
                         }
                         added += 1
                     case (let repeated?, .update):
@@ -517,14 +516,13 @@ extension Engine {
 
     /// Gives the card with the id `cardID`, which is coming in new to Ficha
     /// at `importedAt` as `card`, the progress it brings from the app it
-    /// comes from: for each of its ways, a placement on `ladder`, the first
-    /// entry of that way's review log, unless it's new there; and a burial
-    /// when it was suspended there, as its front-first way says.
-    private func bring(
-        _ card: ImportedCard, to cardID: Int64, onto ladder: Ladder, at importedAt: Date, in db: Database
-    ) throws {
+    /// comes from: for each of its ways, a placement with its interval, due
+    /// time and ease there, the first entry of that way's review log, unless
+    /// it's new there; and a burial when it was suspended there, as its
+    /// front-first way says.
+    private func bring(_ card: ImportedCard, to cardID: Int64, at importedAt: Date, in db: Database) throws {
         for (way, progress) in [(Way.frontFirst, card.progress), (.backFirst, card.backFirstProgress)] {
-            if let placement = progress.flatMap({ ladder.placement(of: $0.stage) }) {
+            if let placement = progress?.stage.placement {
                 try place(cardID, way: way, on: placement, at: importedAt, in: db)
             }
         }

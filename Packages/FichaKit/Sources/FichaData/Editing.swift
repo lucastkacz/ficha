@@ -5,9 +5,9 @@ internal import GRDB
 extension Engine {
     /// Edits a card, as Lucas does in the Cards window: replaces its content
     /// with `content`, its images and sounds included, which Ficha already
-    /// keeps, and keeps its review log, and so its step and due time, when he
-    /// approved it and the capture it came from. Editing a flagged card fixes
-    /// it: its flag goes, and it's back in his reviews, on its step, unless
+    /// keeps, and keeps its review log, and so its interval and due time,
+    /// when he approved it and the capture it came from. Editing a flagged card fixes
+    /// it: its flag goes, and it's back in his reviews, where it stood, unless
     /// it's buried, since an edited card stays buried. An edit that changes
     /// its front or back keeps when. An image or a sound it no longer has
     /// goes, unless another card uses it. `deck` moves it to that deck, as

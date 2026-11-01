@@ -260,7 +260,7 @@ final class SelectiveSyncTests {
 
         for device in [mac, iPhone] {
             #expect(try device.cardsAsSeen() == asSeen)
-            #expect(try device.logAsSeen().map(\.kind) == [.firstView])
+            #expect(try device.logAsSeen().map(\.kind) == [.review(.again)])
             #expect(try device.engine.keptImages() == [bird])
             #expect(try device.engine.changesToSend().isEmpty)
         }
@@ -422,9 +422,9 @@ final class SelectiveSyncTests {
         time.advance(by: minutes(1))
         try mac.engine.setChosenToSync(false, ofDeck: "Zulú")
         try await syncBoth()
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ladder).due))
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: scheduler).due))
         try mac.engine.review(ubuntu, .good)
         time.advance(by: minutes(30))
         try iPhone.engine.review(ubuntuOnIPhone, .good)
@@ -437,12 +437,12 @@ final class SelectiveSyncTests {
         try iPhone.engine.setChosenToSync(true, ofDeck: "Zulú")
         try await syncBoth(times: 3)
 
-        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.good), .review(.good)])
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.good), .review(.good)])
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
         #expect(
-            try iPhone.engine.standing(of: ubuntuOnIPhone.id, on: ladder)
-                == mac.engine.standing(of: ubuntu.id, on: ladder))
+            try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler)
+                == mac.engine.standing(of: ubuntu.id, with: scheduler))
         #expect(records(ofType: .card).allSatisfy { !$0.hasLeft && $0.value(of: "front") == .string("ubuntu") })
     }
 
@@ -548,8 +548,9 @@ final class SelectiveSyncTests {
         ]
         // `ficha decks` lists every deck, as the Sync tab does, for a refine
         // session to draft into and choose from.
-        let iPhoneLadder = try iPhone.engine.progressSettings().ladder
-        #expect(try iPhone.engine.countedDecks(on: iPhoneLadder, asTheSyncTabLists: true).map(\.deck.name) == every)
+        let iPhoneScheduler = try iPhone.engine.progressSettings().scheduler
+        #expect(
+            try iPhone.engine.countedDecks(with: iPhoneScheduler, asTheSyncTabLists: true).map(\.deck.name) == every)
 
         try iPhone.engine.syncOnlyChosenDecks(false)
         try await syncBoth()

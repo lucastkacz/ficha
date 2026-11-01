@@ -240,6 +240,9 @@ public struct AnkiCard: Sendable, Equatable {
     public let due: Int64
     /// `ivl`: its interval, in days.
     public let interval: Int64
+    /// `factor`: its ease in thousandths, such as 2500 for 250%, or 0 for a
+    /// card that has none yet, as a new one.
+    public let factor: Int64
     /// `odue`: its `due` in its home deck while it's in a filtered deck, or
     /// 0.
     public let originalDue: Int64
@@ -248,7 +251,7 @@ public struct AnkiCard: Sendable, Equatable {
 
     public init(
         id: Int64, noteID: Int64, deckID: Int64, originalDeckID: Int64, templateIndex: Int, type: Int, queue: Int,
-        due: Int64, interval: Int64, originalDue: Int64, flags: Int
+        due: Int64, interval: Int64, factor: Int64, originalDue: Int64, flags: Int
     ) {
         self.id = id
         self.noteID = noteID
@@ -259,6 +262,7 @@ public struct AnkiCard: Sendable, Equatable {
         self.queue = queue
         self.due = due
         self.interval = interval
+        self.factor = factor
         self.originalDue = originalDue
         self.flags = flags
     }

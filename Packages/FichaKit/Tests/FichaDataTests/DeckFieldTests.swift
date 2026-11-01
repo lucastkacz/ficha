@@ -10,7 +10,7 @@ import Testing
 struct DeckFieldTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         engine = try Engine(location: .inMemory, time: time)
@@ -138,7 +138,7 @@ struct DeckFieldTests {
             card(.concept, front: "La Gioconda", back: "De Leonardo.", tags: ["renacimiento"]), deck: "Arte")
         try engine.makeDeck(named: "Arte::Pintura")
         try engine.meet(gioconda)
-        let standing = try engine.standing(of: gioconda.id, on: ladder)
+        let standing = try engine.standing(of: gioconda.id, with: scheduler)
         let edited = try card(.concept, front: "La Gioconda", back: "De Leonardo da Vinci.", tags: ["renacimiento"])
         var window = openWindow()
         window.select([gioconda.id])
@@ -164,7 +164,7 @@ struct DeckFieldTests {
         #expect(window.editing == nil)
         #expect(window.failure == nil)
         #expect(try engine.cards().map(\.deck) == ["Museos::Louvre"])
-        #expect(try engine.standing(of: gioconda.id, on: ladder) == standing)
+        #expect(try engine.standing(of: gioconda.id, with: scheduler) == standing)
     }
 
     @Test(
@@ -217,8 +217,8 @@ struct DeckFieldTests {
     /// The window as it opens, on All cards, with the cards read, remembering
     /// `lastDeckAddedTo` as the deck the last card was added to.
     private func openWindow(lastDeckAddedTo: String = Deck.defaultName) -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder, lastDeckAddedTo: lastDeckAddedTo)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: lastDeckAddedTo)
+        window.read(with: scheduler)
         return window
     }
 }
