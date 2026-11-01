@@ -144,6 +144,65 @@ struct ReviewPanelTests {
         #expect(panel.mayHaveKeyboard)
     }
 
+    // As Anki records the intervals its buttons showed, the review keeps the
+    // ones the panel worked out as the card flipped, also when Lucas answers
+    // after the time since the card's last review went past half a day more,
+    // which rounds FSRS's days up.
+    @Test("the intervals the panel offers for a new card and for a graduated one are the intervals the review keeps")
+    func theReviewKeepsTheIntervalsThePanelOffers() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.climb(ubuntu, goods: 2, movingForward: time)
+        // Due a whole number of days after its last review.
+        let due = try #require(try engine.standing(of: ubuntu.id, with: settings.scheduler).due)
+        time.move(to: due + hours(12) - minutes(1))
+        var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia), .review(ubuntu)], settings: settings)
+
+        let beforeTheFlip = panel.intervals
+        panel.flip()
+        let offeredForTheNewCard = try #require(panel.intervals)
+        panel.rate(.easy)
+        panel.flip()
+        let offeredForTheGraduatedCard = try #require(panel.intervals)
+        let ubuntusLog = try engine.reviewLog().filter { $0.cardID == ubuntu.id }
+        time.advance(by: minutes(2))
+        panel.rate(.hard)
+
+        #expect(beforeTheFlip == nil)
+        // The learning steps' 1 hour and 4 hours, and hard on the first
+        // step halfway between them.
+        #expect(
+            [offeredForTheNewCard.again, offeredForTheNewCard.hard, offeredForTheNewCard.good] == [
+                .seconds(hours(1)), .seconds(minutes(150)), .seconds(hours(4)),
+            ])
+        // Easy graduates it.
+        #expect(offeredForTheNewCard.easy >= .seconds(days(1)))
+        #expect(
+            try engine.reviewLog().suffix(2).map(\.interval) == [
+                offeredForTheNewCard.easy, offeredForTheGraduatedCard.hard,
+            ])
+        // At the answer, the days since ubuntu's last review round up, so
+        // its intervals there would differ.
+        #expect(
+            try settings.scheduler.preview(
+                of: CardWay(cardID: ubuntu.id, way: .frontFirst), after: ubuntusLog, at: time.now)
+                != offeredForTheGraduatedCard)
+    }
+
+    // As when the Cards window deleted the card while the panel showed it.
+    @Test("when the panel can't work out a flipped card's intervals, its buttons show none, and it says why")
+    func thePanelSaysWhyItCantWorkOutTheIntervals() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
+
+        _ = try engine.delete([serendipia.id])
+        panel.flip()
+
+        #expect(panel.intervals == nil)
+        #expect(panel.failure?.action == .workOutIntervals)
+        #expect(panel.failure?.error == .cardNotFound(serendipia.id))
+    }
+
     @Test(
         "writing a flag's note leaves its time out of the card's response time, and cancelling it goes on from where it waited"
     )
@@ -340,7 +399,7 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "after the eighth “Don't know”, the panel stays on the card, flagging it with the note “Forgotten 8 times”, which Lucas can add to, and Return flags it and moves on"
+        "after the eighth “Again”, the panel stays on the card, flagging it with the note “Forgotten 8 times”, which Lucas can add to, and Return flags it and moves on"
     )
     func theEighthAgainOffersToFlagTheCard() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
@@ -392,7 +451,7 @@ struct ReviewPanelTests {
         #expect(panel.note == "Forgotten 8 times")
     }
 
-    @Test("Esc on the offer to flag a card leaves it in the reviews, its “Don't know” recorded, and moves on")
+    @Test("Esc on the offer to flag a card leaves it in the reviews, its “Again” recorded, and moves on")
     func cancellingTheOfferMovesOnWithoutFlagging() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -411,7 +470,7 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "one ⌘Z after the offer undoes the flag and the “Don't know”, and shows the card's back again, its time going on from the answer; rating it again offers again"
+        "one ⌘Z after the offer undoes the flag and the “Again”, and shows the card's back again, its time going on from the answer; rating it again offers again"
     )
     func undoAfterTheOfferUndoesTheFlagAndTheRating() throws {
         let cards = try dueCards(forgottenSevenTimes: "ubuntu", then: "petricor")
@@ -454,7 +513,7 @@ struct ReviewPanelTests {
         #expect(try engine.reviewLog().last?.kind == .review(.again))
     }
 
-    @Test("a “Don't know” under the number, or with the offer turned off, moves on without offering to flag the card")
+    @Test("an “Again” under the number, or with the offer turned off, moves on without offering to flag the card")
     func noOfferBelowTheNumberOrWhenTurnedOff() throws {
         var turnedOff = settings
         turnedOff.forgottenOftenAfter = nil
@@ -813,8 +872,8 @@ struct ReviewPanelTests {
         #expect(panel.playingSound?.name == (leaving == .undo ? la : nil))
     }
 
-    @Test("a “Don't know” stops the sound also when the panel stays on the card, to offer to flag it")
-    func dontKnowStopsTheSoundAsThePanelOffersToFlag() async throws {
+    @Test("an “Again” stops the sound also when the panel stays on the card, to offer to flag it")
+    func againStopsTheSoundAsThePanelOffersToFlag() async throws {
         let la = try await addTone(440, to: engine)
         let aria = try wordCard("aria", frontSound: la)
         try engine.lapse(aria, times: 7, movingForward: time)

@@ -58,7 +58,7 @@ struct SeeMoreTests {
                 == graduated(due: time.now.adding(interval)))
     }
 
-    @Test("a card's back-first way comes to review ahead as its front-first way does, and \"Don't know\" moves only it")
+    @Test("a card's back-first way comes to review ahead as its front-first way does, and \"Again\" moves only it")
     func backFirstWaysComeToReviewAhead() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])

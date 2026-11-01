@@ -6,10 +6,12 @@ import SwiftUI
 /// appearance brought, one at a time, each with its upper side on top and,
 /// once flipped, its lower side under it. A card shows front first, or, when
 /// it goes both ways, back first too, with the back on top and a "Back first"
-/// mark. Every action has a key and a button: Space flips a card, 1, 2 and 3
-/// rate it, and Space again rates it Know it too, as Space answers Good in
-/// Anki, a new card's first review too, which shows front first like any
-/// card, with a "New" badge, A asks a question about the card, which waits in the inbox as
+/// mark. Every action has a key and a button: Space flips a card, 1, 2, 3
+/// and 4 rate it with Anki's four buttons, Again, Hard, Good and Easy, each
+/// with the interval it would set above it, as in Anki, and Space again rates
+/// it Good, as Space answers in Anki, a new card's first review too, which
+/// shows front first like any card, with a "New" badge, A asks a question
+/// about the card, which waits in the inbox as
 /// a follow-up, M flags it with a note, E buries it, ⌘Z undoes the last thing
 /// Lucas did, and Esc closes the panel, which snoozes an appearance. A side
 /// with a sound has a ▶ under its text, which plays it and shows ■ while it
@@ -38,16 +40,17 @@ struct ReviewPanelView: View {
             String(
                 localized: "Forgotten \(forgotten.times) times",
                 comment: """
-                    The note the review panel offers to flag a card with, once the user answered “Don't know” to it \
-                    this many times front first since its front or back last changed. They can add to it.
+                    The note the review panel offers to flag a card with, once the user answered “Again” to it this \
+                    many times front first while it was graduated, out of its learning and relearning steps, since \
+                    its front or back last changed: Anki's lapses. They can add to it.
                     """)
         case .backFirst:
             String(
                 localized: "Forgotten \(forgotten.times) times back first",
                 comment: """
-                    The note the review panel offers to flag a card with, once the user answered “Don't know” to it \
-                    this many times back first, its back shown on top, since its front or back last changed. They \
-                    can add to it.
+                    The note the review panel offers to flag a card with, once the user answered “Again” to it this \
+                    many times back first, its back shown on top, while it was graduated, out of its learning and \
+                    relearning steps, since its front or back last changed: Anki's lapses. They can add to it.
                     """)
         }
     }
@@ -162,6 +165,8 @@ struct ReviewPanelView: View {
         case .ask: Failure(title: "Couldn't save your question", message: error.messageInReviewPanel)
         case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
         case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
+        case .workOutIntervals:
+            Failure(title: "Couldn't work out the buttons' intervals", message: error.messageInReviewPanel)
         }
     }
 
@@ -213,10 +218,11 @@ struct ReviewPanelView: View {
             sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
                 topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
             }
-            HStack {
-                ratingButton("Don't know", key: "1", rating: .again, in: panel)
-                ratingButton("Sort of", key: "2", rating: .hard, in: panel)
-                ratingButton("Know it", key: "3", rating: .good, in: panel)
+            HStack(alignment: .bottom) {
+                // In Anki's order, again's first, on 1 to 4.
+                ForEach(Array(zip(Rating.allCases, "1234")), id: \.0) { rating, key in
+                    ratingButton(rating, key: key, in: panel)
+                }
             }
             .background {
                 // Space too, as it answers Good in Anki once the answer
@@ -226,7 +232,7 @@ struct ReviewPanelView: View {
                 Button {
                     rate(.good, in: panel)
                 } label: {
-                    Text("Know it")
+                    Text(Rating.good.name)
                 }
                 .keyboardShortcut(.space, modifiers: [])
                 .hidden()
@@ -283,9 +289,16 @@ struct ReviewPanelView: View {
 
     /// What a review ahead does, under the offer to review ahead.
     private var aheadExplanation: some View {
-        Text("A review ahead brings the cards closest to being due. Only “Don't know” moves them.")
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+        Text(
+            """
+            A review ahead brings the cards closest to being due. It counts, and lengthens a card's interval less \
+            the earlier it comes.
+            """,
+            comment:
+                "Under the review panel's offer to review ahead, when no card is due: what a review ahead does, as FSRS counts it."
+        )
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// The panel's first line, and the buttons at its end.
@@ -677,17 +690,28 @@ struct ReviewPanelView: View {
         .disabled(!panel.state.canPlaySounds)
     }
 
-    private func ratingButton(
-        _ title: LocalizedStringKey, key: Character, rating: Rating, in panel: ReviewPanelModel
-    ) -> some View {
-        Button {
-            rate(rating, in: panel)
-        } label: {
-            KeyLabel(title: Text(title), key: String(key))
-                .frame(maxWidth: .infinity)
+    /// The button that rates the card `rating`, named as Anki names it, with
+    /// its key, and the interval it would set above it, small, as Anki shows
+    /// it, which VoiceOver reads after its name, in words.
+    private func ratingButton(_ rating: Rating, key: Character, in panel: ReviewPanelModel) -> some View {
+        let interval = panel.state.intervals?[rating]
+        return VStack(spacing: 4) {
+            Text(interval.map(intervalText) ?? "")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .accessibilityHidden(true)
+            Button {
+                rate(rating, in: panel)
+            } label: {
+                KeyLabel(title: Text(rating.name), key: String(key))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .keyboardShortcut(KeyEquivalent(key), modifiers: [])
+            .accessibilityValue(interval.map(spokenIntervalText) ?? "")
         }
-        .buttonStyle(.bordered)
-        .keyboardShortcut(KeyEquivalent(key), modifiers: [])
+        .frame(maxWidth: .infinity)
     }
 
     /// Rates the card the panel shows `rating`. When the rating makes the
@@ -706,7 +730,7 @@ struct ReviewPanelView: View {
 
 /// The badge of a review ahead, on the card the review panel brings before
 /// it's due and beside the review in the Cards window's review log, with a
-/// tooltip on what a review ahead moves.
+/// tooltip on what a review ahead does.
 struct AheadBadge: View {
     var body: some View {
         Text(
@@ -719,7 +743,10 @@ struct AheadBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
-        .help(Text("A review ahead: only “Don't know” moves the card."))
+        .help(
+            Text(
+                "A review ahead: it counts, and lengthens the card's interval less the earlier it comes.",
+                comment: "The tooltip of the Ahead badge, in the review panel and the Cards window's review log."))
     }
 }
 

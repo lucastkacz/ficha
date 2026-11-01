@@ -45,11 +45,44 @@ extension Engine {
         settings: ReviewSettings,
         reviewingAhead: Bool = false
     ) throws(EngineError) -> ForgottenOften? {
+        try record(
+            kind, of: cardID, way: way, responseTime: responseTime, trigger: trigger, settings: settings,
+            reviewingAhead: reviewingAhead, intervalsWorkedOutAt: nil)
+    }
+
+    /// Records Lucas's answer as `record(_:of:way:responseTime:trigger:settings:reviewingAhead:)`
+    /// does, a review keeping the interval its rating would set as the
+    /// scheduler works it out at `previewedAt`, when the review panel showed
+    /// the intervals on its buttons (`ReviewPanelState.intervals`), or at the
+    /// answer when it's nil.
+    func record(
+        _ kind: ReviewLogEntry.Kind,
+        of cardID: Int64,
+        way: Way,
+        responseTime: Duration,
+        trigger: Trigger,
+        settings: ReviewSettings,
+        reviewingAhead: Bool,
+        intervalsWorkedOutAt previewedAt: Date?
+    ) throws(EngineError) -> ForgottenOften? {
         let answeredAt = time.now
         return try write { db in
             try recordAnswer(
                 kind, of: CardWay(cardID: cardID, way: way), at: answeredAt, responseTime: responseTime,
-                trigger: trigger, settings: settings, reviewingAhead: reviewingAhead, in: db)
+                trigger: trigger, settings: settings, reviewingAhead: reviewingAhead, intervalsWorkedOutAt: previewedAt,
+                in: db)
+        }
+    }
+
+    /// The interval each rating would set for a review of `cardWay`, a way
+    /// of a card, at `time`, as the scheduler of `settings` works it out
+    /// from that way's review log.
+    func intervals(of cardWay: CardWay, at time: Date, settings: ReviewSettings) throws(EngineError)
+        -> IntervalPreview
+    {
+        try read { db in
+            let wayLog = try logEntries(ofExisting: cardWay.cardID, in: db).filter { $0.way == cardWay.way }
+            return try settings.scheduler.preview(of: cardWay, after: wayLog, at: time)
         }
     }
 
@@ -135,10 +168,12 @@ func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogE
 /// reviews, given at `answeredAt`, at the end of the review log, as
 /// `Engine.record` says, with how long he took when something measured it,
 /// and returns whether the card is now forgotten often that way, or throws
-/// when the way can't take the answer. A back-first way takes it also when
-/// the card no longer goes both ways, as when Lucas switched it off while the
-/// review panel showed that way: the way keeps its progress for when it's
-/// switched on again.
+/// when the way can't take the answer. A review keeps the interval its
+/// rating would set as the scheduler works it out at `previewedAt`, when the
+/// review panel showed it, or else at `answeredAt`. A back-first way takes
+/// it also when the card no longer goes both ways, as when Lucas switched it
+/// off while the review panel showed that way: the way keeps its progress
+/// for when it's switched on again.
 @discardableResult
 func recordAnswer(
     _ kind: ReviewLogEntry.Kind,
@@ -148,6 +183,7 @@ func recordAnswer(
     trigger: Trigger,
     settings: ReviewSettings,
     reviewingAhead: Bool,
+    intervalsWorkedOutAt previewedAt: Date? = nil,
     in db: Database
 ) throws -> ForgottenOften? {
     let lookAhead = trigger.lookAhead(in: settings)
@@ -174,7 +210,7 @@ func recordAnswer(
     let answer = ReviewLogEntry(
         cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt, responseTime: responseTime,
         trigger: trigger, isAhead: isAhead, uuid: UUID(), answeredEntry: wayLog.max { $0.precedes($1) }?.uuid,
-        interval: try scheduler.preview(of: answered, after: wayLog, at: answeredAt)[rating])
+        interval: try scheduler.preview(of: answered, after: wayLog, at: previewedAt ?? answeredAt)[rating])
     try insert(answer, in: db)
     return try settings.forgottenOften(after: log + [answer], editedAt: card.editedAt)
 }

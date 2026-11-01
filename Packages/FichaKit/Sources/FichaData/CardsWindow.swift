@@ -59,12 +59,46 @@ public struct WayProgress: Sendable, Equatable {
     /// log. A flagged, buried or set-aside card keeps it, and `cardStanding`
     /// says whether the card is in Lucas's reviews.
     public let standing: WayStanding
+    /// What FSRS knows of how well Lucas remembers the way, as the window
+    /// read it, or nil while it's new, or while an import placed it in its
+    /// learning steps without reviews.
+    public let memory: WayMemory?
     /// Where the card stands, both ways together.
     let cardStanding: CardStanding
 
     /// How long the way waits after its last entry, or nil while it's new.
     public var interval: Duration? {
         standing.interval
+    }
+
+    /// What the Interval column, or the Back-first interval column, and the
+    /// detail's Interval rows say of the way, as Anki's Browse says it, in
+    /// the order the columns sort ways, shortest first: new ways, then those
+    /// in their learning steps, then every other by its interval.
+    public enum IntervalColumn: Sendable, Comparable {
+        /// That it's new.
+        case new
+        /// That it's in its learning steps, whatever the step's interval,
+        /// as Anki's Browse says "(learning)" there: an import's placement
+        /// of a card Anki was learning, whose interval is zero, too. Ways in
+        /// their learning steps sort by that interval among themselves, and
+        /// before every other interval, as Anki's Browse sorts them with an
+        /// interval of zero.
+        case learning(Duration)
+        /// Its interval: graduated, in days, or in its relearning steps,
+        /// the step's.
+        case interval(Duration)
+    }
+
+    /// What the Interval columns and the detail's Interval rows say of the
+    /// way.
+    public var intervalColumn: IntervalColumn {
+        switch standing {
+        case .new: .new
+        case .started(.learning, let interval, _, _): .learning(interval)
+        case .started(.graduated, let interval, _, _), .started(.relearning, let interval, _, _):
+            .interval(interval)
+        }
     }
 
     /// When the way is due, as the Cards window says it: nil while it's new,
@@ -116,6 +150,23 @@ public struct WayProgress: Sendable, Equatable {
     var isLearned: Bool {
         cardStanding.isLearned(given: standing)
     }
+}
+
+/// What FSRS knows of how well Lucas remembers one of a card's ways, as a
+/// card's detail shows it, as Anki's Card Info does: why the way shows up
+/// when it does: FSRS's memory state, its stability and difficulty, as
+/// fsrs-rs's `MemoryState` and `WayStanding.Memory` name them, and the
+/// retrievability they give.
+public struct WayMemory: Sendable, Equatable {
+    /// How long the way's memory lasts: the days it takes the chance of
+    /// remembering it to fall to 90%, FSRS's stability.
+    public let stabilityInDays: Double
+    /// How hard the way is, from 0 to 1, as Anki shows FSRS's difficulty
+    /// as a percentage (`WayStanding.Memory.difficultyAsAnkiShowsIt`).
+    public let difficulty: Double
+    /// The chance of remembering the way when the window read it, from 0 to
+    /// 1, FSRS's retrievability.
+    public let retrievability: Double
 }
 
 /// An entry of a card's review log as the Cards window shows it under the
@@ -326,7 +377,7 @@ func cardRows(
     let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
     let ownTags = try OwnTags(in: db)
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
-        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], with: scheduler)
+        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], with: scheduler, at: now)
     }
     .filter { group.holds($0, at: now) }
 }
@@ -387,16 +438,17 @@ extension CardRow {
     /// The row of `card`, whose tags have what `ownTags` says of their own,
     /// after `entries`, its review log's, in any order: last seen either way,
     /// when Lucas last answered it, and each way standing as `scheduler`
-    /// replays its log, its back-first way only while the card goes both
-    /// ways.
+    /// replays its log, with its memory at `now`, its back-first way only
+    /// while the card goes both ways.
     fileprivate init(
-        card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], with scheduler: Scheduler
+        card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
     ) throws(SchedulingError) {
         self.card = card
         tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
-        frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler)
-        backFirst = card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, with: scheduler) : nil
+        frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler, at: now)
+        backFirst =
+            card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, with: scheduler, at: now) : nil
         lastSeen =
             entries.filter { entry in
                 if case .placement = entry.kind { false } else { true }
@@ -407,11 +459,21 @@ extension CardRow {
 
 extension WayProgress {
     /// Where `card`'s `way` stands as `scheduler` replays its entries out of
-    /// `entries`, the card's review log's, in any order.
+    /// `entries`, the card's review log's, in any order, with its memory at
+    /// `now`.
     fileprivate init(
-        _ way: Way, of card: Card, after entries: [ReviewLogEntry], with scheduler: Scheduler
+        _ way: Way, of card: Card, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
     ) throws(SchedulingError) {
-        standing = try scheduler.standing(after: entries.filter { $0.way == way })
+        let standing = try scheduler.standing(after: entries.filter { $0.way == way })
+        self.standing = standing
         cardStanding = card.standing
+        // The scheduler reads a retrievability whenever the way has a memory.
+        memory = try scheduler.retrievability(of: standing, at: now).flatMap { retrievability in
+            standing.memory.map { memory in
+                WayMemory(
+                    stabilityInDays: Double(memory.stability), difficulty: Double(memory.difficultyAsAnkiShowsIt),
+                    retrievability: Double(retrievability))
+            }
+        }
     }
 }

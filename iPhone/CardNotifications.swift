@@ -319,31 +319,53 @@ private func content(of card: PanelCard, in appearance: NotifiedAppearance) -> U
 
 /// The card notifications' category, with its buttons, which answer the card
 /// in the background, without unlocking the iPhone: they rate it, a new card
-/// as a due one, each named by its rating's raw value. It asks iOS to tell
-/// the app when Lucas swipes one away.
+/// as a due one, with Anki's four ratings, in their order, as the Mac's
+/// review panel offers them, each named as the panel names it and identified
+/// by its raw value. It asks iOS to tell the app when Lucas swipes one away.
 private func categories() -> Set<UNNotificationCategory> {
     let review = UNNotificationCategory(
         identifier: Identifiers.review,
-        actions: [
-            UNNotificationAction(
-                identifier: Rating.again.rawValue,
-                title: String(
-                    localized: "Don't know", comment: "A card notification's button: Lucas didn't know the card."),
-                options: []),
-            UNNotificationAction(
-                identifier: Rating.hard.rawValue,
-                title: String(
-                    localized: "Sort of", comment: "A card notification's button: Lucas sort of knew the card."),
-                options: []),
-            UNNotificationAction(
-                identifier: Rating.good.rawValue,
-                title: String(
-                    localized: "Know it", comment: "A card notification's button: Lucas knew the card."),
-                options: []),
-        ],
+        actions: Rating.allCases.map { rating in
+            UNNotificationAction(identifier: rating.rawValue, title: title(of: rating), options: [])
+        },
         intentIdentifiers: [],
         options: [.customDismissAction])
     return [review]
+}
+
+/// The title of a card notification's button that rates the card `rating`:
+/// Anki's name for it, as on the Mac's review panel.
+private func title(of rating: Rating) -> String {
+    switch rating {
+    case .again:
+        String(
+            localized: "Again",
+            comment: """
+                A card notification's button, Anki's first: Lucas didn't know the card. Anki's own name for it, \
+                “Otra vez” in Spanish, as on the Mac.
+                """)
+    case .hard:
+        String(
+            localized: "Hard",
+            comment: """
+                A card notification's button, Anki's second: Lucas knew the card with effort. Anki's own name for \
+                it, “Difícil” in Spanish, as on the Mac.
+                """)
+    case .good:
+        String(
+            localized: "Good",
+            comment: """
+                A card notification's button, Anki's third: Lucas knew the card. Anki's own name for it, “Bien” in \
+                Spanish, as on the Mac.
+                """)
+    case .easy:
+        String(
+            localized: "Easy",
+            comment: """
+                A card notification's button, Anki's fourth: Lucas knew the card at once. Anki's own name for it, \
+                “Fácil” in Spanish, as on the Mac.
+                """)
+    }
 }
 
 /// The answer a card notification's button gives: a review with its rating,

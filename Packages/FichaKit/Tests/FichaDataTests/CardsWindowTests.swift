@@ -107,15 +107,59 @@ struct CardsWindowTests {
         #expect(rows.map(\.lastSeen) == [time.now, metAt, nil, metAt])
     }
 
+    // As Anki's Browse says "(learning)" for every card in its learning
+    // steps, and the interval of a relearning one, and sorts learning cards
+    // before every interval, as their interval there is zero. The Interval
+    // and Back-first interval columns sort by it in the app's
+    // `CardRowOrder`, since a table's order stays in the app.
+    @Test(
+        "the Interval column says a way is new, or learning whatever its step's interval, or else its interval, and sorts new ways first, then learning ones, then the rest by interval"
+    )
+    func theIntervalColumnSaysLearningAndSortsByInterval() throws {
+        let ojala = try approveCard("ojalá", in: engine)
+        let petricor = try approveCard("petricor", in: engine)
+        let nunca = try approveCard("nunca", in: engine)
+        try approveCard("serendipia", in: engine)
+        let ubuntu = try approveCard("ubuntu", in: engine)
+        try engine.setBothWays(true, of: [ojala.id, petricor.id, ubuntu.id])
+        // ojalá waits 21 days or more front first, and is new back first.
+        try engine.climbUntilLearned(ojala, movingForward: time)
+        // nunca graduated and lapsed: it's on the relearning step, 1 hour.
+        try engine.climb(nunca, goods: 2, movingForward: time)
+        try engine.reviewWhenDue(nunca, .again, movingForward: time)
+        // ubuntu is on the first learning step, 1 hour, both ways.
+        try engine.meet(ubuntu)
+        try engine.meet(ubuntu, way: .backFirst)
+        // petricor is on the second, 4 hours, both ways.
+        try engine.climb(petricor, goods: 1, movingForward: time)
+        try engine.climb(petricor, goods: 1, way: .backFirst, movingForward: time)
+
+        let rows = try engine.cardRows(in: .all, with: ReviewSettings.defaults.scheduler)
+        let frontFirst = rows.sorted(using: KeyPathComparator(\.frontFirst.intervalColumn))
+        let backFirst = rows.compactMap { row in
+            row.backFirst.map { (front: row.card.front, says: $0.intervalColumn) }
+        }
+        .sorted { $0.says < $1.says }
+
+        #expect(frontFirst.map(\.card.front) == ["serendipia", "ubuntu", "petricor", "nunca", "ojalá"])
+        #expect(
+            frontFirst.prefix(4).map(\.frontFirst.intervalColumn) == [
+                .new, .learning(.seconds(hours(1))), .learning(.seconds(hours(4))), .interval(.seconds(hours(1))),
+            ])
+        #expect(backFirst.map(\.front) == ["ojalá", "ubuntu", "petricor"])
+    }
+
     @Test("New, Due and Learned list the cards in Lucas's reviews only, as the menu counts them")
     func newDueAndLearnedListCardsInReviews() throws {
         let settings = ReviewSettings.defaults
-        // Learned: graduated, waiting 21 days or more.
-        let ojala = try approveCard("ojalá", in: engine)
-        try engine.climbUntilLearned(ojala, movingForward: time)
+        // Learned: graduated, waiting 21 days or more. The buried one climbs
+        // first: a climb moves the time on, which FSRS's fuzz can take past
+        // the day the other one is due.
         let nunca = try approveCard("nunca", in: engine)
         try engine.climbUntilLearned(nunca, movingForward: time)
         try engine.bury(nunca.id)
+        let ojala = try approveCard("ojalá", in: engine)
+        try engine.climbUntilLearned(ojala, movingForward: time)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.meet(ubuntu)
         let quizas = try approveCard("quizás", in: engine)

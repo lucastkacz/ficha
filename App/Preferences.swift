@@ -222,9 +222,8 @@ enum Preferences {
         case autoClose = "AutoCloseMinutes"
         case focusMode = "FocusMode"
         case idleBeforeTakingKeyboard = "IdleBeforeTakingKeyboardSeconds"
-        /// How many reviews of one of a card's ways rated again make it
-        /// forgotten often, or 0 when the review panel never offers to flag
-        /// it.
+        /// How many lapses of one of a card's ways make it forgotten often,
+        /// or 0 when the review panel never offers to flag it.
         case forgottenOftenAfter = "ForgottenOftenAfter"
         /// The raw value of how often Ficha backs up on its own.
         case backupFrequency = "BackupFrequency"
@@ -349,11 +348,11 @@ private enum StoredShortcut {
 }
 
 /// The offer to flag a card forgotten often, as the preferences stored it
-/// before it synced: the number of reviews of one of a card's ways rated
-/// again that brings it, or 0 when it's off.
+/// before it synced: the number of lapses of one of a card's ways that
+/// brings it, or 0 when it's off.
 private struct StoredOffer {
-    /// How many reviews of one of a card's ways rated again bring the offer,
-    /// or nil when it's off.
+    /// How many lapses of one of a card's ways bring the offer, or nil when
+    /// it's off.
     let timesForgotten: Int?
 
     /// The offer `stored` says, or nil unless it's 0 or a number from 1 up.

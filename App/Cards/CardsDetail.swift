@@ -217,28 +217,72 @@ struct CardDetail: View {
         }
     }
 
-    /// Where the card stands: its interval, and when it's due, front first,
-    /// and back first too when it goes both ways, as the table's columns name
+    /// Where the card stands, and why it shows up when it does, as Anki's
+    /// Card Info says: its interval, when it's due, and its stability,
+    /// difficulty and retrievability once it has them, front first, and
+    /// back first too when it goes both ways, as the table's columns name
     /// them; when Lucas last saw it and when he approved it.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             wayRows(
                 row.frontFirst,
-                interval: Text(
-                    "Interval",
-                    comment: "In the Cards window's detail: how long the card waits after its last review."),
-                due: Text("Due", comment: "In the Cards window's detail: when the card is due."))
+                labels: WayLabels(
+                    interval: Text(
+                        "Interval",
+                        comment: "In the Cards window's detail: how long the card waits after its last review."),
+                    due: Text("Due", comment: "In the Cards window's detail: when the card is due."),
+                    stability: Text(
+                        "Stability",
+                        comment: """
+                            In the Cards window's detail, as Anki's Card Info says it: FSRS's stability, how many days \
+                            it takes the chance of remembering the card to fall to 90%.
+                            """),
+                    difficulty: Text(
+                        "Difficulty",
+                        comment: """
+                            In the Cards window's detail, as Anki's Card Info says it: FSRS's difficulty, how hard the \
+                            card is to remember, as a percentage.
+                            """),
+                    retrievability: Text(
+                        "Retrievability",
+                        comment: """
+                            In the Cards window's detail, as Anki's Card Info says it: FSRS's retrievability, the \
+                            chance of remembering the card now.
+                            """)))
             if let backFirst = row.backFirst {
                 wayRows(
                     backFirst,
-                    interval: Text(
-                        "Back-first interval",
-                        comment:
-                            "In the Cards window's detail: how long a card that goes both ways waits after its last review back first."
-                    ),
-                    due: Text(
-                        "Back-first due",
-                        comment: "In the Cards window's detail: when a card that goes both ways is due back first."))
+                    labels: WayLabels(
+                        interval: Text(
+                            "Back-first interval",
+                            comment:
+                                "In the Cards window's detail: how long a card that goes both ways waits after its last review back first."
+                        ),
+                        due: Text(
+                            "Back-first due",
+                            comment: "In the Cards window's detail: when a card that goes both ways is due back first."
+                        ),
+                        stability: Text(
+                            "Back-first stability",
+                            comment: """
+                                In the Cards window's detail, for a card that goes both ways: FSRS's stability back \
+                                first, as Anki's Card Info says it, how many days it takes the chance of remembering \
+                                the card back first to fall to 90%.
+                                """),
+                        difficulty: Text(
+                            "Back-first difficulty",
+                            comment: """
+                                In the Cards window's detail, for a card that goes both ways: FSRS's difficulty back \
+                                first, as Anki's Card Info says it, how hard the card is to remember back first, as a \
+                                percentage.
+                                """),
+                        retrievability: Text(
+                            "Back-first retrievability",
+                            comment: """
+                                In the Cards window's detail, for a card that goes both ways: FSRS's retrievability \
+                                back first, as Anki's Card Info says it, the chance of remembering the card back \
+                                first now.
+                                """)))
             }
             if let lastSeen = row.lastSeen {
                 GridRow {
@@ -258,23 +302,52 @@ struct CardDetail: View {
         }
     }
 
-    /// Where one of the card's ways stands, in two rows of the grid labeled
-    /// `intervalLabel` and `dueLabel`: its interval, and when it's due, while
-    /// it has a due time.
+    /// What the rows of one of the card's ways are labeled.
+    private struct WayLabels {
+        let interval: Text
+        let due: Text
+        let stability: Text
+        let difficulty: Text
+        let retrievability: Text
+    }
+
+    /// Where one of the card's ways stands, in rows of the grid labeled as
+    /// `labels` say: its interval, as the Interval column says it, when it's
+    /// due, while it has a due time, and, once FSRS has a memory of it, its
+    /// stability, in days, its
+    /// difficulty, as a percentage, and its retrievability, the chance of
+    /// remembering it now, as a percentage too, as Anki's Card Info shows
+    /// them, and as VoiceOver reads them, with their units.
     @ViewBuilder
-    private func wayRows(_ way: WayProgress, interval intervalLabel: Text, due dueLabel: Text) -> some View {
+    private func wayRows(_ way: WayProgress, labels: WayLabels) -> some View {
         GridRow {
-            gridLabel(intervalLabel)
-            Text(intervalText(way))
+            gridLabel(labels.interval)
+            WayIntervalText(way: way)
         }
         if let due = way.due {
             GridRow {
-                gridLabel(dueLabel)
+                gridLabel(labels.due)
                 HStack(spacing: 6) {
                     Text(dueText(way, at: now))
                     Text(due.formatted(date: .abbreviated, time: .shortened))
                         .foregroundStyle(.secondary)
                 }
+            }
+        }
+        if let memory = way.memory {
+            GridRow {
+                gridLabel(labels.stability)
+                Text(
+                    Duration(days: memory.stabilityInDays).formatted(
+                        .units(allowed: [.days], width: .wide, fractionalPart: .show(length: 1))))
+            }
+            GridRow {
+                gridLabel(labels.difficulty)
+                Text(memory.difficulty.formatted(.percent.precision(.fractionLength(0))))
+            }
+            GridRow {
+                gridLabel(labels.retrievability)
+                Text(memory.retrievability.formatted(.percent.precision(.fractionLength(0))))
             }
         }
     }
@@ -534,23 +607,35 @@ func gridLabel(_ text: Text) -> some View {
         .gridColumnAlignment(.trailing)
 }
 
-/// How long one of a card's ways waits after its last review, like "5d" or
-/// "2h 30m", or "New" before its first review.
-func intervalText(_ way: WayProgress) -> String {
-    guard let interval = way.interval else {
-        return String(
-            localized: "New",
-            comment:
-                "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
-        )
-    }
-    return intervalText(interval)
-}
+/// What one of a card's ways says in the Interval columns and the detail's
+/// Interval rows, as Anki's Browse says it: how long it waits after its last
+/// review, like "5d", "2h 30m" or "1.5mo", which VoiceOver reads in words;
+/// "New" before its first review; or "Learning" while it's in its learning
+/// steps, whatever the step's interval, as Anki's Browse says "(learning)".
+struct WayIntervalText: View {
+    let way: WayProgress
 
-/// An interval as the Cards window shows it, in days, hours and minutes,
-/// like "5d" or "2h 30m".
-func intervalText(_ interval: Duration) -> String {
-    interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
+    var body: some View {
+        switch way.intervalColumn {
+        case .new:
+            Text(
+                "New",
+                comment:
+                    "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
+            )
+        case .learning:
+            Text(
+                "Learning",
+                comment: """
+                    In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
+                    steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
+                    says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
+                    """)
+        case .interval(let interval):
+            Text(intervalText(interval))
+                .accessibilityLabel(spokenIntervalText(interval))
+        }
+    }
 }
 
 /// When one of a card's ways is due, counted from `now`: "now" once it's

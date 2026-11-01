@@ -1255,12 +1255,12 @@ struct CardsView: View {
                     Text(
                         "Interval",
                         comment: "A column of the Cards window: how long the card waits after its last review."),
-                    sortUsing: CardRowOrder(.step)
+                    sortUsing: CardRowOrder(.interval)
                 ) { row in
-                    Text(intervalText(row.frontFirst))
+                    WayIntervalText(way: row.frontFirst)
                 }
                 .width(min: 56, ideal: 64, max: 100)
-                .customizationID(CardRowOrder.Column.step.rawValue)
+                .customizationID(CardRowOrder.Column.interval.rawValue)
                 TableColumn(
                     Text("Due", comment: "A column of the Cards window: when the card is due."),
                     sortUsing: CardRowOrder(.due)
@@ -1275,13 +1275,15 @@ struct CardsView: View {
                         comment:
                             "A column of the Cards window: how long a card that goes both ways waits after its last review back first."
                     ),
-                    sortUsing: CardRowOrder(.backFirstStep)
+                    sortUsing: CardRowOrder(.backFirstInterval)
                 ) { row in
                     // Blank for a card that goes one way.
-                    Text(row.backFirst.map(intervalText) ?? "")
+                    if let backFirst = row.backFirst {
+                        WayIntervalText(way: backFirst)
+                    }
                 }
                 .width(min: 56, ideal: 120, max: 150)
-                .customizationID(CardRowOrder.Column.backFirstStep.rawValue)
+                .customizationID(CardRowOrder.Column.backFirstInterval.rawValue)
                 .defaultVisibility(.hidden)
                 TableColumn(
                     Text(
