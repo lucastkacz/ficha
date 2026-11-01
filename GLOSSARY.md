@@ -22,7 +22,7 @@ The side of a card the user turns to after trying to remember it, except back fi
 _Avoid_: answer, solution
 
 **Both ways**:
-A card the user also reviews back first, which each card can be set to. Each way has its own progress, as a card of its own would: its own first view, ladder step, due time and reviews.
+A card the user also reviews back first, which each card can be set to. Each way has its own progress, as a card of its own would: its own reviews, interval and due time.
 _Avoid_: reverse, reversed card, sibling
 
 **Back first**:
@@ -79,7 +79,7 @@ Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an 
 _Avoid_: merge, append
 
 **Expansion**:
-A capture in the inbox attached to the card it repeats. Approving it gives that card new content, and the card keeps its step.
+A capture in the inbox attached to the card it repeats. Approving it gives that card new content, and the card keeps its progress.
 
 **Follow-up**:
 A capture the user jots down in the review panel about the card in front of them, tied to that card, such as a question it raised. Approving it creates new cards, as any capture does, and leaves that card as it is.
@@ -120,15 +120,11 @@ One pass over one card: the user sees its front, or back first its back, flips i
 _Avoid_: answer, attempt, study
 
 **Rating**:
-How well the user says they knew a card in a review: again, hard or good, which the app's buttons call "Don't know", "Sort of" and "Know it".
+How well the user says they knew a card in a review, with Anki's four buttons and names: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't.
 _Avoid_: grade, score, ease
 
-**First view**:
-The first time the user sees a card, before it's on the ladder: whole, or back first its back, and its front once they flip it. It isn't a review.
-_Avoid_: introduction, first review, learning step
-
 **Review log**:
-Every first view and review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the wait a review answered, and how long they took, except from a card notification; and the step an import placed a card on, when it came with its progress. A card's step and due time are worked out from it.
+Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and an import's reviews from Anki, or the interval and due time it gave a card that came without them. A card's progress and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
@@ -148,7 +144,7 @@ Sending a card back to the inbox with a note on what to fix. It stays out of rev
 _Avoid_: mark, report
 
 **Forgotten often**:
-A card the user rated again, "Don't know", in eight reviews in all, or as many as they set, since its front or back last changed, counting each way apart. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
+A card with eight lapses, or as many as the user set, since its front or back last changed, counting each way apart. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
 _Avoid_: leech, hard card
 
 **Bury**:
@@ -156,7 +152,7 @@ Taking a card the user no longer wants out of reviews for good, and out of the i
 _Avoid_: archive, suspend
 
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck; or in the user's reviews, new or on a ladder step until it's due. Out of their reviews, a card keeps its step, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck; or in the user's reviews: new, in its learning or relearning steps, or graduated, until it's due. Out of their reviews, a card keeps its progress, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
@@ -170,7 +166,7 @@ The place in the Cards window that holds every tag, pinned or not, as a tree.
 _Avoid_: tags page, tag manager, tag browser
 
 **Edit**:
-Changing the content of a card or a capture. A card keeps its step and its review log.
+Changing the content of a card or a capture. A card keeps its progress and its review log.
 _Avoid_: modify, update
 
 **Delete**:
@@ -178,7 +174,7 @@ Taking a card out of Ficha for good, with its review log, which burying keeps. A
 _Avoid_: remove, erase
 
 **Import**:
-Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a package exported from Anki, its cards in Anki's decks and with Anki's tags, and with their progress unless the user leaves it out.
+Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a package exported from Anki, its cards in Anki's decks and with Anki's tags, and with their progress and Anki's reviews of them unless the user leaves them out.
 _Avoid_: load, refine
 
 **Export**:
@@ -187,32 +183,56 @@ _Avoid_: backup, share
 
 ### Spacing
 
-**Ladder**:
-The fixed sequence of waits a card climbs as the user remembers it.
-_Avoid_: schedule, intervals, boxes
+**FSRS**:
+How Ficha spaces a card once it graduates, as Anki does: from the card's reviews it estimates how likely the user is to remember it, and has it wait until that falls to the desired retention.
+_Avoid_: algorithm, formula, ladder
 
-**Ladder step**:
-A card's place on the ladder, which sets how long it waits before it's due again.
-_Avoid_: box, level, interval
+**Interval**:
+How long a card waits after a review before it's due again, which that review set: a learning or relearning step, or the days FSRS gave a graduated card.
+_Avoid_: wait, delay
 
-**Step statistics**:
-How the user rated the reviews that answered the wait a ladder step has now, other than reviews ahead: how many there were, and how many were "Know it", "Sort of" and "Don't know".
-_Avoid_: retention, success rate, stats
+**Learning steps**:
+The short intervals, each under a day, a new card goes through before it graduates: 1 hour and 4 hours, or as the user sets them.
+_Avoid_: first steps
+
+**Relearning steps**:
+The short intervals a graduated card goes through after a lapse, before it graduates again: 1 hour, or as the user sets them.
+
+**Graduate**:
+A card leaving its learning or relearning steps, so that FSRS spaces it in days from then on.
+
+**Lapse**:
+A review rated again of a graduated card: the user forgot what they had learned.
+_Avoid_: failure, miss
+
+**Desired retention**:
+How likely the user wants to be to remember a card when it comes due: 90%, or as they set it.
+_Avoid_: target, success rate
+
+**Stability**:
+How long the user's memory of a card lasts, as FSRS estimates it from the card's reviews: the days it takes their chance of remembering it to fall to 90%, whatever their desired retention.
+
+**Difficulty**:
+How hard a card is for the user, as FSRS estimates it from their ratings.
+
+**Retrievability**:
+How likely the user is to remember a card right now, as FSRS estimates it.
+_Avoid_: recall, memory
 
 **Settings that decide progress**:
-The ladder, how many new cards a day the user meets, and after how many "Don't know" a card is forgotten often. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
-_Avoid_: synced settings, review settings
+The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, and after how many lapses a card is forgotten often, one set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
+_Avoid_: synced settings, review settings, preset
 
 **Due**:
-A card on the ladder whose wait is over.
+A card whose interval is over.
 _Avoid_: pending, ready
 
 **New**:
-A card that isn't on the ladder yet: it hasn't had its first view, nor come in on a step with an import.
+A card the user hasn't reviewed yet, and that no import brought with its progress.
 _Avoid_: unseen, fresh
 
 **Learned**:
-A card whose step waits 30 days or more.
+A graduated card whose interval is 21 days or more, what Anki calls mature.
 _Avoid_: mastered, known, mature
 
 ### Appearances
@@ -222,7 +242,7 @@ A time Ficha shows up on its own, with the cards that are due or about to be: th
 _Avoid_: session, prompt, popup, presentation
 
 **Card notification**:
-A notification on the iPhone with one card of an appearance, and the buttons to go through it: a new card whole, for its first view, or a due card's front, or back first its back, and the other side when the user presses and holds it, to rate it.
+A notification on the iPhone with one card of an appearance, and the buttons to go through it: the card's front, or back first its back, and the other side when the user presses and holds it, to rate it.
 _Avoid_: alert, push, banner
 
 **Look-ahead**:
