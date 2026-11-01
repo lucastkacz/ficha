@@ -7,7 +7,8 @@ import Testing
 
 /// Tests on the settings that decide a card's progress in the database: the
 /// ladder, the new cards a day and the forgotten-often count, which the app
-/// kept in its preferences before they synced (#315).
+/// kept in its preferences before they synced (#315), and the scheduler's
+/// settings beside them (#404).
 final class ProgressSettingsTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     /// A data folder of the test's own, for an app and the CLI to share.
