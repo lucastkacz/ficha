@@ -34,6 +34,15 @@ public struct Scheduler: Sendable, Equatable {
         checkedLearningSteps: [.hours(1), .hours(4)], relearningSteps: [.hours(1)], desiredRetention: 0.9,
         longestIntervalInDays: 36_500, parameters: [])
 
+    /// The intervals a learning or relearning step can have: from 10 minutes
+    /// to less than a day.
+    public static let stepIntervals: Range<Duration> = Duration.minutes(10)..<Duration.days(1)
+    /// The desired retentions the scheduler takes, as Anki allows them.
+    public static let desiredRetentions: ClosedRange<Double> = 0.70...0.99
+    /// The longest intervals the scheduler takes, in days, as Anki allows
+    /// them.
+    public static let longestIntervalsInDays: ClosedRange<Int> = 1...36_500
+
     /// These settings, which are known to be valid.
     private init(
         checkedLearningSteps learningSteps: [Duration], relearningSteps: [Duration], desiredRetention: Double,
@@ -47,15 +56,18 @@ public struct Scheduler: Sendable, Equatable {
     }
 
     /// These settings, or nil unless each is valid, as each property says:
-    /// steps from 10 minutes to less than a day, each longer than the one
-    /// before, or none; a desired retention from 0.70 to 0.99; a longest
-    /// interval from 1 to 36,500 days; and 21 finite parameters, or none.
+    /// steps within `stepIntervals`, from 10 minutes to less than a day, each
+    /// longer than the one before, or none; a desired retention within
+    /// `desiredRetentions`, from 0.70 to 0.99; a longest interval within
+    /// `longestIntervalsInDays`, from 1 to 36,500 days; and 21 finite
+    /// parameters, or none.
     public init?(
         learningSteps: [Duration], relearningSteps: [Duration], desiredRetention: Double, longestIntervalInDays: Int,
         parameters: [Float]
     ) {
         guard Self.areValidSteps(learningSteps), Self.areValidSteps(relearningSteps),
-            (0.70...0.99).contains(desiredRetention), (1...36_500).contains(longestIntervalInDays),
+            Self.desiredRetentions.contains(desiredRetention),
+            Self.longestIntervalsInDays.contains(longestIntervalInDays),
             parameters.isEmpty || (parameters.count == 21 && parameters.allSatisfy(\.isFinite))
         else {
             return nil
@@ -65,11 +77,10 @@ public struct Scheduler: Sendable, Equatable {
             longestIntervalInDays: longestIntervalInDays, parameters: parameters)
     }
 
-    /// Whether these are valid learning or relearning steps: each from 10
-    /// minutes to less than a day, each longer than the one before, or none.
+    /// Whether these are valid learning or relearning steps: each within
+    /// `stepIntervals`, each longer than the one before, or none.
     private static func areValidSteps(_ steps: [Duration]) -> Bool {
-        steps.allSatisfy { (Duration.minutes(10)..<Duration.days(1)).contains($0) }
-            && zip(steps, steps.dropFirst()).allSatisfy(<)
+        steps.allSatisfy(stepIntervals.contains) && zip(steps, steps.dropFirst()).allSatisfy(<)
     }
 
     /// These settings, but for each that `changed` changed from `old`, which

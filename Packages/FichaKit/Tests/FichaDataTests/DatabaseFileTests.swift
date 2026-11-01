@@ -455,11 +455,7 @@ final class DatabaseFileTests {
         #expect(try engine.changesToSend().isEmpty)
 
         var withRetention = settings
-        withRetention.scheduler = try #require(
-            Scheduler(
-                learningSteps: settings.scheduler.learningSteps, relearningSteps: settings.scheduler.relearningSteps,
-                desiredRetention: 0.95, longestIntervalInDays: settings.scheduler.longestIntervalInDays,
-                parameters: []))
+        withRetention.scheduler = try #require(settings.scheduler.replacing(desiredRetention: 0.95))
         try engine.saveProgressSettings(withRetention, changedFrom: settings)
         var reviewSettings = ReviewSettings.defaults
         reviewSettings.progress = withRetention

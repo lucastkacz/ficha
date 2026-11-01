@@ -255,20 +255,16 @@ struct ReviewPanelSettings: View {
 /// Anki's deck options hold them (#404). The learning and relearning steps
 /// are each picked from a list that keeps a step longer than the one before
 /// it and shorter than the one after it, and the desired retention and the
-/// longest interval stay within what the scheduler takes, so every change
-/// Lucas makes is one the engine can use. FSRS's parameters stay out of
-/// sight until Optimize (ADR 0025). A change applies from each card's next
-/// review.
+/// longest interval stay within what the scheduler takes, as `Scheduler`'s
+/// changes decide, so every change Lucas makes is one the engine can use.
+/// FSRS's parameters stay out of sight until Optimize (ADR 0025). A change
+/// applies from each card's next review.
 struct SchedulingSettings: View {
     @Binding var scheduler: Scheduler
 
     var body: some View {
         Section {
-            StepsSettings(
-                list: .learning,
-                steps: Binding(
-                    get: { scheduler.learningSteps },
-                    set: { steps in change { $0.replacing(learningSteps: steps) } }))
+            StepsSettings(list: .learning, scheduler: $scheduler)
         } header: {
             Text("Learning steps", comment: "Settings, under Scheduling: the header of the learning steps.")
         } footer: {
@@ -277,11 +273,7 @@ struct SchedulingSettings: View {
                 comment: "Settings, under Scheduling: below the learning steps.")
         }
         Section {
-            StepsSettings(
-                list: .relearning,
-                steps: Binding(
-                    get: { scheduler.relearningSteps },
-                    set: { steps in change { $0.replacing(relearningSteps: steps) } }))
+            StepsSettings(list: .relearning, scheduler: $scheduler)
         } header: {
             Text("Relearning steps", comment: "Settings, under Scheduling: the header of the relearning steps.")
         } footer: {
@@ -297,7 +289,7 @@ struct SchedulingSettings: View {
                 HStack {
                     Text(scheduler.desiredRetention, format: .percent.precision(.fractionLength(0)))
                         .monospacedDigit()
-                    Stepper(value: retentionPercent, in: retentionPercents) {
+                    Stepper(value: retention, in: Scheduler.desiredRetentions, step: 0.01) {
                         desiredRetention
                     }
                     .labelsHidden()
@@ -306,7 +298,7 @@ struct SchedulingSettings: View {
             } label: {
                 desiredRetention
                 Text(
-                    "From \(Double(retentionPercents.lowerBound) / 100, format: .percent) to \(Double(retentionPercents.upperBound) / 100, format: .percent)",
+                    "From \(Scheduler.desiredRetentions.lowerBound, format: .percent) to \(Scheduler.desiredRetentions.upperBound, format: .percent)",
                     comment:
                         "Settings, under Scheduling: below the desired retention, the least and the most it can be.")
             }
@@ -319,7 +311,7 @@ struct SchedulingSettings: View {
                     .multilineTextAlignment(.trailing)
                     .monospacedDigit()
                     .frame(width: 64)
-                    Stepper(value: longestInterval, in: longestIntervals) {
+                    Stepper(value: longestInterval, in: Scheduler.longestIntervalsInDays) {
                         longestIntervalLabel
                     }
                     .labelsHidden()
@@ -327,7 +319,7 @@ struct SchedulingSettings: View {
             } label: {
                 longestIntervalLabel
                 Text(
-                    "In days, up to \(longestIntervals.upperBound, format: .number)",
+                    "In days, up to \(Scheduler.longestIntervalsInDays.upperBound, format: .number)",
                     comment: "Settings, under Scheduling: below the longest interval, its unit and the most it can be.")
             }
         } footer: {
@@ -357,14 +349,11 @@ struct SchedulingSettings: View {
             comment: "Settings, under Scheduling: the longest a card can wait after a review, in days.")
     }
 
-    /// The desired retention as a whole percentage.
-    private var retentionPercent: Binding<Int> {
+    /// The desired retention, which Settings steps a percent at a time.
+    private var retention: Binding<Double> {
         Binding(
-            get: { Int((scheduler.desiredRetention * 100).rounded()) },
-            set: { percent in
-                let clamped = min(max(percent, retentionPercents.lowerBound), retentionPercents.upperBound)
-                change { $0.replacing(desiredRetention: Double(clamped) / 100) }
-            })
+            get: { scheduler.desiredRetention },
+            set: { retention in change(&scheduler) { $0.changingDesiredRetention(to: retention) } })
     }
 
     /// The longest interval, in days, which a number typed past its bounds
@@ -372,31 +361,15 @@ struct SchedulingSettings: View {
     private var longestInterval: Binding<Int> {
         Binding(
             get: { scheduler.longestIntervalInDays },
-            set: { days in
-                let clamped = min(max(days, longestIntervals.lowerBound), longestIntervals.upperBound)
-                change { $0.replacing(longestIntervalInDays: clamped) }
-            })
-    }
-
-    /// Changes the settings to what `edit` makes of them, unless it makes
-    /// none.
-    private func change(_ edit: (Scheduler) -> Scheduler?) {
-        if let changed = edit(scheduler) {
-            scheduler = changed
-        }
+            set: { days in change(&scheduler) { $0.changingLongestInterval(toDays: days) } })
     }
 }
 
-/// The desired retentions the scheduler takes, as whole percentages, as Anki
-/// allows them.
-private let retentionPercents = 70...99
-/// The longest intervals the scheduler takes, in days, as Anki allows them.
-private let longestIntervals = 1...36_500
-
-/// The learning steps or the relearning steps.
-private enum StepsList {
-    case learning
-    case relearning
+/// Changes `scheduler` to what `edit` makes of it, unless it makes none.
+private func change(_ scheduler: inout Scheduler, with edit: (Scheduler) -> Scheduler?) {
+    if let changed = edit(scheduler) {
+        scheduler = changed
+    }
 }
 
 /// A step's row in Settings' Scheduling tab: the step's place in its list,
@@ -405,11 +378,11 @@ private enum StepsList {
 /// two lists' rows and draws them in the wrong sections.
 private struct StepRow: Identifiable {
     struct ID: Hashable {
-        let list: StepsList
+        let list: Scheduler.StepList
         let index: Int
     }
 
-    let list: StepsList
+    let list: Scheduler.StepList
     let index: Int
     let interval: Duration
 
@@ -417,33 +390,29 @@ private struct StepRow: Identifiable {
 }
 
 /// The rows of a list of steps in Settings' Scheduling tab, the learning
-/// steps or the relearning steps, each picked from a list that keeps it
-/// longer than the step before it and shorter than the one after it, then a
-/// button that adds one. A list may have none.
+/// steps or the relearning steps, each picked from the intervals `Scheduler`
+/// offers it, then a button that adds one. A list may have none.
 private struct StepsSettings: View {
     /// Which steps they are.
-    let list: StepsList
-    /// The steps, which take only valid ones.
-    @Binding var steps: [Duration]
+    let list: Scheduler.StepList
+    /// The settings that hold them.
+    @Binding var scheduler: Scheduler
 
     var body: some View {
-        ForEach(steps.enumerated().map { StepRow(list: list, index: $0.offset, interval: $0.element) }) { row in
+        ForEach(scheduler.steps(list).enumerated().map { StepRow(list: list, index: $0.offset, interval: $0.element) })
+        { row in
             let index = row.index
             let interval = row.interval
             HStack {
                 Picker(selection: step(index, lasting: interval)) {
-                    spans(stepIntervals.filter { fits($0, at: index) }, including: interval)
+                    spans(scheduler.intervals(forStep: index, of: list), including: interval)
                 } label: {
                     Text(
                         "Step \(index + 1)",
                         comment: "Settings, under Scheduling: a learning or relearning step, counted from 1.")
                 }
                 Button {
-                    change { steps in
-                        if steps.indices.contains(index) {
-                            steps.remove(at: index)
-                        }
-                    }
+                    change(&scheduler) { $0.removingStep(index, of: list) }
                 } label: {
                     Label {
                         Text(
@@ -458,13 +427,11 @@ private struct StepsSettings: View {
             }
         }
         Button {
-            if let next = nextStep {
-                change { $0.append(next) }
-            }
+            change(&scheduler) { $0.addingStep(to: list) }
         } label: {
             Text("Add Step", comment: "Settings, under Scheduling: adds a learning or relearning step at the end.")
         }
-        .disabled(nextStep == nil)
+        .disabled(scheduler.addingStep(to: list) == nil)
     }
 
     /// The interval of the step at `index`, which lasts `interval` as its row
@@ -473,51 +440,7 @@ private struct StepsSettings: View {
     private func step(_ index: Int, lasting interval: Duration) -> Binding<Duration> {
         Binding(
             get: { interval },
-            set: { newInterval in
-                change { steps in
-                    if steps.indices.contains(index) {
-                        steps[index] = newInterval
-                    }
-                }
-            })
-    }
-
-    /// Whether `interval` fits the step at `index`: longer than the step
-    /// before it and shorter than the one after it.
-    private func fits(_ interval: Duration, at index: Int) -> Bool {
-        (index == 0 || steps[index - 1] < interval) && (index == steps.count - 1 || interval < steps[index + 1])
-    }
-
-    /// The interval a new last step gets: the first in the list after the
-    /// last step's, or nil when there's none; 1 hour, the first step of
-    /// Ficha's, when there are no steps.
-    private var nextStep: Duration? {
-        guard let last = steps.last else {
-            return .minutes(60)
-        }
-        return stepIntervals.first { $0 > last }
-    }
-
-    /// Changes the steps with `edit`.
-    private func change(_ edit: (inout [Duration]) -> Void) {
-        var changed = steps
-        edit(&changed)
-        steps = changed
-    }
-}
-
-extension Scheduler {
-    /// These settings with those given in place of theirs, or nil unless that
-    /// leaves them valid.
-    fileprivate func replacing(
-        learningSteps: [Duration]? = nil, relearningSteps: [Duration]? = nil, desiredRetention: Double? = nil,
-        longestIntervalInDays: Int? = nil
-    ) -> Scheduler? {
-        Scheduler(
-            learningSteps: learningSteps ?? self.learningSteps,
-            relearningSteps: relearningSteps ?? self.relearningSteps,
-            desiredRetention: desiredRetention ?? self.desiredRetention,
-            longestIntervalInDays: longestIntervalInDays ?? self.longestIntervalInDays, parameters: parameters)
+            set: { newInterval in change(&scheduler) { $0.changingStep(index, of: list, to: newInterval) } })
     }
 }
 
@@ -653,7 +576,3 @@ private let waitsAfterWaking: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(Duration.
 private let idleTimes: [Duration] = [1, 2, 3, 5, 10, 15, 30].map { .seconds($0) }
 /// The waits after a suppression to pick from.
 private let waitsAfterSuppression: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(Duration.minutes)
-/// The learning and relearning steps to pick from: from 10 minutes to less
-/// than a day, as the scheduler takes them, Ficha's own among them.
-private let stepIntervals: [Duration] =
-    [10, 15, 20, 30, 45].map(Duration.minutes) + [1, 2, 3, 4, 6, 8, 12].map { Duration.minutes($0 * 60) }

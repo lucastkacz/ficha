@@ -120,20 +120,21 @@ final class ProgressSettingsSyncTests {
     func eachSchedulingSettingKeepsItsLatestChange() async throws {
         time.advance(by: minutes(1))
         let onMac = try mac.engine.progressSettings()
-        let macsFirst = try onMac.scheduler.with(learningSteps: [.seconds(minutes(10)), .seconds(minutes(30))])
-            .with(desiredRetention: 0.8)
+        let macsFirst = try #require(
+            onMac.scheduler.replacing(
+                learningSteps: [.seconds(minutes(10)), .seconds(minutes(30))], desiredRetention: 0.8))
         try mac.engine.saveProgressSettings(onMac.with(scheduler: macsFirst), changedFrom: onMac)
         let onIPhone = try iPhone.engine.progressSettings()
-        let iPhonesFirst = try onIPhone.scheduler.with(relearningSteps: []).with(longestIntervalInDays: 365)
+        let iPhonesFirst = try #require(onIPhone.scheduler.replacing(relearningSteps: [], longestIntervalInDays: 365))
         try iPhone.engine.saveProgressSettings(onIPhone.with(scheduler: iPhonesFirst), changedFrom: onIPhone)
         time.advance(by: minutes(1))
         try iPhone.engine.saveProgressSettings(
             onIPhone.with(
-                scheduler: try iPhonesFirst.with(learningSteps: [.seconds(hours(2))]).with(parameters: customParameters)
-            ),
+                scheduler: try #require(
+                    iPhonesFirst.replacing(learningSteps: [.seconds(hours(2))], parameters: customParameters))),
             changedFrom: onIPhone.with(scheduler: iPhonesFirst))
         try mac.engine.saveProgressSettings(
-            onMac.with(scheduler: try macsFirst.with(relearningSteps: [.seconds(minutes(30))])),
+            onMac.with(scheduler: try #require(macsFirst.replacing(relearningSteps: [.seconds(minutes(30))]))),
             changedFrom: onMac.with(scheduler: macsFirst))
         try await mac.syncNow()
         try await iPhone.syncNow()
@@ -262,22 +263,5 @@ extension ProgressSettings {
         var settings = self
         settings.newCardsPerDay = newCardsPerDay
         return settings
-    }
-}
-
-extension Scheduler {
-    /// These settings with those given in place of theirs, which must keep
-    /// them valid.
-    fileprivate func with(
-        learningSteps: [Duration]? = nil, relearningSteps: [Duration]? = nil, desiredRetention: Double? = nil,
-        longestIntervalInDays: Int? = nil, parameters: [Float]? = nil
-    ) throws -> Scheduler {
-        try #require(
-            Scheduler(
-                learningSteps: learningSteps ?? self.learningSteps,
-                relearningSteps: relearningSteps ?? self.relearningSteps,
-                desiredRetention: desiredRetention ?? self.desiredRetention,
-                longestIntervalInDays: longestIntervalInDays ?? self.longestIntervalInDays,
-                parameters: parameters ?? self.parameters))
     }
 }
