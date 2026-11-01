@@ -458,11 +458,11 @@ struct ImportSheet: View {
             Text(
                 "\(count) new cards come in, at the pace of your new cards per day.",
                 comment: "In the Import sheet's preview, with how many new cards the file brings.")
-        case .newAndPlaced(let new, let placed)?:
+        case .newAndWithProgress(let new, let withProgress)?:
             Text(
-                "\(new) new cards come in, at the pace of your new cards per day, and \(placed) with their progress, as Anki had them.",
+                "\(new) new cards come in, at the pace of your new cards per day, and \(withProgress) with their progress and Anki's reviews, due when Anki had them due.",
                 comment:
-                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with the interval and due date Anki had them at."
+                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due."
             )
         case nil:
             Text(verbatim: "")
@@ -482,9 +482,9 @@ struct ImportSheet: View {
             .toggleStyle(.checkbox)
             Text(
                 """
-                Cards Anki was reviewing keep their interval and due date, those it was learning start on the \
-                first learning step, due when Anki said, and suspended cards come in buried. Unticked, every card \
-                comes in new.
+                Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due \
+                date, those it was learning go on with your learning steps, due when Anki said, and suspended \
+                cards come in buried. Unticked, every card comes in new.
                 """,
                 comment: "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
             )

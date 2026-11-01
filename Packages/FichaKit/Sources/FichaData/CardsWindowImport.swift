@@ -128,21 +128,23 @@ extension CardsWindowState {
         public enum CardsComingIn: Sendable, Equatable {
             /// This many, new, at the pace of the user's new cards per day.
             case new(Int)
-            /// This many new, and this many placed where Anki had them.
-            case newAndPlaced(new: Int, placed: Int)
+            /// This many new, and this many with their progress and Anki's
+            /// reviews, due when Anki had them due.
+            case newAndWithProgress(new: Int, withProgress: Int)
         }
 
         /// How many of the file's cards come in, while the sheet shows a
         /// preview: those new to Ficha, and while Bring progress is ticked
-        /// and some of them are placed where Anki had them, how many are.
+        /// and some of them come with their progress, how many do.
         public var cardsComingIn: CardsComingIn? {
             guard let preview else {
                 return nil
             }
-            guard importBringsProgress, preview.placedCount > 0 else {
+            guard importBringsProgress, preview.withProgressCount > 0 else {
                 return .new(preview.newCount)
             }
-            return .newAndPlaced(new: preview.newCount - preview.placedCount, placed: preview.placedCount)
+            return .newAndWithProgress(
+                new: preview.newCount - preview.withProgressCount, withProgress: preview.withProgressCount)
         }
 
         /// How many of the file's cards come in going both ways made of two

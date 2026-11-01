@@ -681,13 +681,13 @@
         }
       }
     },
-    "%lld new cards come in, at the pace of your new cards per day, and %lld with their progress, as Anki had them." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with the interval and due date Anki had them at.",
+    "%lld new cards come in, at the pace of your new cards per day, and %lld with their progress and Anki's reviews, due when Anki had them due." : {
+      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@new@, at the pace of your new cards per day, and %2$lld with their progress, as Anki had them."
+            "value" : "%#@new@, at the pace of your new cards per day, and %2$lld with their progress and Anki's reviews, due when Anki had them due."
           },
           "substitutions" : {
             "new" : {
@@ -1058,7 +1058,7 @@
     "Cards" : {
       "comment" : "A column of the Cards window's All Tags: how many cards carry the tag, or a tag inside it.\nThe Cards window's title."
     },
-    "Cards Anki was reviewing keep their interval and due date, those it was learning start on the first learning step, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
+    "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
       "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
     },
     "Cards per appearance" : {

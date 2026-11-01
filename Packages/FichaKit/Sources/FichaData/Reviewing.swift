@@ -198,14 +198,6 @@ private func deleteLastEntry(of cardWay: CardWay, in db: Database) throws {
     }
 }
 
-/// Adds `placement` to the review log of the card with this id, for `way`,
-/// which an import brings in at `placedAt` with its progress from another
-/// app (ADR 0013). The way has no entry yet: the card is coming in in the
-/// same write.
-func place(_ cardID: Int64, way: Way, on placement: Placement, at placedAt: Date, in db: Database) throws {
-    try insert(ReviewLogEntry(placing: cardID, way: way, on: placement, at: placedAt), in: db)
-}
-
 /// Adds an entry at the end of the review log, with its ID unique across
 /// devices, or a new one when it has none yet, the entry it answered, and the
 /// interval it set, in seconds: a review's own, or a placement's, with its

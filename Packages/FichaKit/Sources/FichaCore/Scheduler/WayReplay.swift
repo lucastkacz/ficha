@@ -9,8 +9,8 @@ import Foundation
 struct WayReplay {
     private let scheduler: Scheduler
     private let fsrs: FSRS
-    /// The way's entries, in the order they're replayed.
-    private let entries: [ReviewLogEntry]
+    /// The way's entries replayed so far, in the order they're replayed.
+    private var entries: [ReviewLogEntry] = []
     /// Where the way is, or nil while it's new.
     private(set) var stage: WayStanding.Stage?
     /// The interval the way's last entry set.
@@ -35,16 +35,24 @@ struct WayReplay {
     init(of entries: [ReviewLogEntry], with scheduler: Scheduler) throws(SchedulingError) {
         self.scheduler = scheduler
         fsrs = try callingFSRS { () throws(FSRSError) in try scheduler.fsrs() }
-        self.entries = entries.sorted { $0.precedes($1) }
-        for (position, entry) in self.entries.enumerated() {
-            switch entry.kind {
-            case .placement(let placement):
-                try place(placement, of: entry.cardID)
-            case .review(let rating):
-                try review(
-                    rating, of: entry, at: position,
-                    keeping: answersTheEntryBefore(entry, at: position) ? entry.interval : nil)
-            }
+        for entry in entries.sorted(by: { $0.precedes($1) }) {
+            try replay(entry)
+        }
+    }
+
+    /// Replays `entry`, one of the way's that comes after every entry
+    /// replayed so far, in the order `ReviewLogEntry.precedes(_:)` gives, as
+    /// an import replays the log it gives a way while it writes it.
+    mutating func replay(_ entry: ReviewLogEntry) throws(SchedulingError) {
+        let position = entries.count
+        entries.append(entry)
+        switch entry.kind {
+        case .placement(let placement):
+            try place(placement, of: entry.cardID)
+        case .review(let rating):
+            try review(
+                rating, of: entry, at: position,
+                keeping: answersTheEntryBefore(entry, at: position) ? entry.interval : nil)
         }
     }
 

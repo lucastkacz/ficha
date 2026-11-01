@@ -315,7 +315,7 @@ final class AnkiProgressTests {
     }
 
     @Test(
-        "the Import sheet offers Bring progress for an Anki package, ticked, with how many cards come in placed, and unticked brings them in new",
+        "the Import sheet offers Bring progress for an Anki package, ticked, with how many cards come in with their progress, and unticked brings them in new",
         arguments: schemas)
     func theImportSheetOffersToBringProgress(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -349,7 +349,7 @@ final class AnkiProgressTests {
         #expect(importing.offersProgress)
         #expect(importing.bringsProgress)
         // The repeated card keeps its own progress, so it isn't counted.
-        #expect(importing.cardsComingIn == .newAndPlaced(new: 1, placed: 2))
+        #expect(importing.cardsComingIn == .newAndWithProgress(new: 1, withProgress: 2))
         #expect(untickedBrings == false)
         #expect(untickedCardsComingIn == .new(3))
         #expect(try engine.cards().dropFirst().map(\.front) == ["tres", "uno", "dos"])

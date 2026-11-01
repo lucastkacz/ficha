@@ -661,8 +661,8 @@ func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws 
 /// The Cards window's state partway through importing an Anki package, as
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
-/// Anki tags, two cards Anki was reviewing, which Bring progress brings in
-/// with Anki's interval, a card the sample cards have, a card with two images on its front,
+/// Anki tags, two cards Anki had progress on, which Bring progress brings in
+/// with Anki's reviews and due dates, a card the sample cards have, a card with two images on its front,
 /// of which the first comes in, and a card whose back is only a sound, one
 /// whose front is only an image the package lacks and an Image Occlusion
 /// note, which stay out. The file goes once it's read.
@@ -683,7 +683,8 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
 
 /// The app's model on the sample cards, once the sample Anki package came in
 /// with its progress, and four days later, the card of the femur, which came
-/// in with Anki's interval of 10 days, was reviewed with Know it, on time.
+/// in with Anki's reviews of it and their interval of 10 days, was reviewed
+/// with Know it, on time.
 func ankiImportedModel() throws -> AppModel {
     let (engine, time) = try sampleEngine(at: .inMemory)
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
@@ -1091,7 +1092,8 @@ func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
 /// at 4 in the morning in Buenos Aires, its Basic, Cloze and Image Occlusion
 /// note types, a deck of medicine with two subdecks, and the notes, with
 /// their cards: the femur's in review, every 10 days, due on Anki's day 22,
-/// 23 October; the systole's relearning, due on day 20, 21 October; and the
+/// 23 October, with Anki's reviews of it; the systole's relearning, due on
+/// day 20, 21 October, with none; and the
 /// rest new, among them one in Default whose front shows the flag and the
 /// Sun of May, of which the first comes in, and one whose front is only an
 /// image the package lacks.
@@ -1142,6 +1144,16 @@ func sampleAnkiCollectionSQL() throws -> String {
     // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
     // by the notes' places above: in review, and relearning across days.
     let progress: [Int: (type: Int, queue: Int, due: Int, interval: Int)] = [0: (2, 2, 22, 10), 5: (3, 3, 20, 1)]
+    // Anki's reviews of the cards, by the notes' places above, each its
+    // seconds after the collection's creation, its button, its `ivl` and its
+    // `type`: the femur's two learning steps on 2 October, and its reviews
+    // since, the last on 13 October, which set its 10 days.
+    let history: [Int: [(after: Int, button: Int, interval: Int, type: Int)]] = [
+        0: [
+            (30 * 3_600, 3, -600, 0), (30 * 3_600 + 600, 3, 1, 0), (54 * 3_600, 3, 3, 1), (126 * 3_600, 3, 7, 1),
+            (294 * 3_600, 3, 10, 1),
+        ]
+    ]
     var sql = """
         CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
           ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
@@ -1154,6 +1166,9 @@ func sampleAnkiCollectionSQL() throws -> String {
           due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
           lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
           flags integer NOT NULL, data text NOT NULL);
+        CREATE TABLE revlog (id integer PRIMARY KEY, cid integer NOT NULL, usn integer NOT NULL, ease integer NOT NULL,
+          ivl integer NOT NULL, lastIvl integer NOT NULL, factor integer NOT NULL, time integer NOT NULL,
+          type integer NOT NULL);
         INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2,"creationOffset":180}', \
         \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
 
@@ -1174,6 +1189,13 @@ func sampleAnkiCollectionSQL() throws -> String {
                 \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
 
                 """
+            for entry in history[index] ?? [] {
+                sql += """
+                    INSERT INTO revlog VALUES (\((1_790_838_000 + entry.after) * 1_000), \(noteID * 10 + ordinal), 0, \
+                    \(entry.button), \(entry.interval), 0, 2500, 5000, \(entry.type));
+
+                    """
+            }
         }
     }
     return sql

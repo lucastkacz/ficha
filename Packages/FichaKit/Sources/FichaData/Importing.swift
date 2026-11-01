@@ -53,10 +53,10 @@ public struct ImportPreview: Sendable, Equatable {
     /// How many of the file's cards repeat one of the user's, by the
     /// duplicate rule, as the user's cards were when the file was read.
     public let repeatedCount: Int
-    /// How many of the file's cards that repeat none of the user's an
-    /// import that brings progress places: an Anki package's cards
-    /// that Anki was reviewing or learning (ADR 0013).
-    public let placedCount: Int
+    /// How many of the file's cards that repeat none of the user's come with
+    /// their progress, and Anki's reviews, in an import that brings it: an
+    /// Anki package's cards that Anki was reviewing or learning (ADR 0013).
+    public let withProgressCount: Int
     /// How many of the file's cards that repeat none of the user's are made
     /// of two of its cards, one for each way, and come in going both ways
     /// with an import that leaves progress out: an Anki package's notes that
@@ -216,11 +216,12 @@ public struct ImportChoices: Sendable, Equatable {
     public enum Progress: Sendable, Equatable {
         /// Every card comes in new, and in the user's reviews.
         case leftOut
-        /// Each card that comes in new to Ficha comes in where it stood:
-        /// one in review graduated, with its interval and ease, one being
-        /// learned on the first learning step, both due when they were due
-        /// there, and a new one new; a suspended one comes in buried. A card
-        /// of the user's that a repeated card updates keeps its own progress.
+        /// Each card that comes in new to Ficha comes in where it stood, each
+        /// of its ways with the reviews Anki's FSRS reads as its history: one
+        /// in review graduated, with its interval, one being learned on its
+        /// learning steps, both due when they were due there, and a new one
+        /// new; a suspended one comes in buried. A card of the user's that a
+        /// repeated card updates keeps its own progress.
         case brought
     }
 
@@ -400,7 +401,7 @@ extension Engine {
         let sounds = sounds.filter { referredSounds.contains($0.key) }
         let proposedTags = reading.cards.flatMap(\.proposedTags).uniqued()
         let newCards = zip(reading.cards, repeated).filter { $1 == nil }.map(\.0)
-        let placedCount = zip(reading.cards, repeated).count { card, repeated in
+        let withProgressCount = zip(reading.cards, repeated).count { card, repeated in
             switch (card.progress?.stage, repeated) {
             case (.learning?, nil), (.review?, nil): true
             case (.new?, _), (nil, _), (_, _?): false
@@ -422,7 +423,7 @@ extension Engine {
             leftOut: reading.leftOut, proposedTags: proposedTags,
             proposedDecks: TagPath.sortedAsTree(TagPath.lineages(of: newCards.compactMap(\.deck))),
             newCardsWithoutDeck: newCards.count { $0.deck == nil }, repeatedCount: repeated.count { $0 != nil },
-            placedCount: placedCount,
+            withProgressCount: withProgressCount,
             reversedNoteCount: newReversedNotes.count { $0.goesBothWays(bringingProgress: false) },
             reversedNoteCountBringingProgress: newReversedNotes.count { $0.goesBothWays(bringingProgress: true) },
             filesGoingUp: ImportPreview.FilesGoingUp(
@@ -479,6 +480,7 @@ extension Engine {
                 var (added, updated, skipped) = (0, 0, 0)
                 var letGo = (images: Set<ImageName>(), sounds: Set<SoundName>())
                 var types = try CardTypesByName(in: db)
+                let scheduler = try FichaData.progressSettings(in: db).scheduler
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
@@ -488,7 +490,7 @@ extension Engine {
                             bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
                             at: importedAt, in: db)
                         if choices.bringsProgress {
-                            try bring(card, to: cardID, at: importedAt, in: db)
+                            try bring(card, to: cardID, at: importedAt, with: scheduler, in: db)
                         }
                         added += 1
                     case (let repeated?, .update):
@@ -516,14 +518,17 @@ extension Engine {
 
     /// Gives the card with the id `cardID`, which is coming in new to Ficha
     /// at `importedAt` as `card`, the progress it brings from the app it
-    /// comes from: for each of its ways, a placement with its interval, due
-    /// time and ease there, the first entry of that way's review log, unless
-    /// it's new there; and a burial when it was suspended there, as its
-    /// front-first way says.
-    private func bring(_ card: ImportedCard, to cardID: Int64, at importedAt: Date, in db: Database) throws {
+    /// comes from: for each of its ways, the review log its reviews there
+    /// and where it stood make, as `ImportedProgress.log(of:importedAt:with:)`
+    /// says, with `scheduler`, the user's settings, unless it's new there;
+    /// and a burial when it was suspended there, as its front-first way says.
+    private func bring(
+        _ card: ImportedCard, to cardID: Int64, at importedAt: Date, with scheduler: Scheduler, in db: Database
+    ) throws {
         for (way, progress) in [(Way.frontFirst, card.progress), (.backFirst, card.backFirstProgress)] {
-            if let placement = progress?.stage.placement {
-                try place(cardID, way: way, on: placement, at: importedAt, in: db)
+            let log = try progress?.log(of: CardWay(cardID: cardID, way: way), importedAt: importedAt, with: scheduler)
+            for entry in log ?? [] {
+                try insert(entry, in: db)
             }
         }
         if card.progress?.isSuspended == true {

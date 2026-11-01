@@ -207,7 +207,8 @@ private func readCollection(_ data: Data) throws -> AnkiCollection {
 
 /// The collection in `db`, an Anki database at schema 11: its note types and
 /// decks are JSON in its one `col` row (`rslib/src/notetype/schema11.rs`,
-/// `rslib/src/decks/schema11.rs`), and its notes and cards are in tables.
+/// `rslib/src/decks/schema11.rs`), and its notes, cards and review history
+/// are in tables.
 private func schema11Collection(in db: Database) throws -> AnkiCollection {
     guard let col = try Row.fetchOne(db, sql: "SELECT crt, conf, models, decks FROM col") else {
         throw unreadable("An Anki package's collection has no col row")
@@ -217,9 +218,10 @@ private func schema11Collection(in db: Database) throws -> AnkiCollection {
     let noteTypes = try JSONDecoder().decode([String: Schema11NoteType].self, from: Data(models.utf8))
     let decksJSON: String = try col.decode(forColumn: "decks")
     let decks = try JSONDecoder().decode([String: Schema11Deck].self, from: Data(decksJSON.utf8))
+    let configuration = try AnkiConfiguration(conf: conf)
     return AnkiCollection(
         creationTime: try col.decode(forColumn: "crt"),
-        daySettings: try ankiDaySettings(inConf: conf),
+        daySettings: configuration.daySettings,
         noteTypes: try Dictionary(
             uniqueKeysWithValues: noteTypes.map { id, noteType in (try ankiID(id), try noteType.noteType()) }),
         decks: try Dictionary(
@@ -227,7 +229,9 @@ private func schema11Collection(in db: Database) throws -> AnkiCollection {
                 (try ankiID(id), AnkiDeck(name: deck.name.components(separatedBy: "::")))
             }),
         notes: try ankiNotes(in: db),
-        cards: try ankiCards(in: db))
+        cards: try ankiCards(in: db),
+        revlog: try ankiRevlog(in: db),
+        schedulerVersion: configuration.schedulerVersion)
 }
 
 /// The id `key`, a key of schema 11's JSON, holds.
@@ -272,6 +276,18 @@ func ankiCards(in db: Database) throws -> [AnkiCard] {
             interval: try row.decode(forColumn: "ivl"), factor: try row.decode(forColumn: "factor"),
             originalDue: try row.decode(forColumn: "odue"),
             flags: try row.decode(forColumn: "flags"))
+    }
+}
+
+/// The review history of an Anki database, every card's, from its `revlog`
+/// table, which schema 11 and schema 18 share.
+func ankiRevlog(in db: Database) throws -> [AnkiRevlogEntry] {
+    try Row.fetchAll(db, sql: "SELECT id, cid, ease, ivl, factor, time, type FROM revlog").map { row in
+        AnkiRevlogEntry(
+            id: try row.decode(forColumn: "id"), cardID: try row.decode(forColumn: "cid"),
+            button: try row.decode(forColumn: "ease"), interval: try row.decode(forColumn: "ivl"),
+            factor: try row.decode(forColumn: "factor"), milliseconds: try row.decode(forColumn: "time"),
+            kind: try row.decode(forColumn: "type"))
     }
 }
 
