@@ -41,9 +41,9 @@ extension AnkiCollection {
         sha1: (String) -> String
     ) async throws(AnkiCollectionProblem) -> ImportReading {
         var templates: [TemplateKey: Result<ParsedTemplates, AnkiTemplateError>] = [:]
-        // Each card reads only its own entries of the revlog, so the entries
-        // of a card the package doesn't hold stay out, read or not, as
-        // Anki's importer adds only those of the cards it imports
+        // Each card reads only its own entries of the revlog, so those of a
+        // card the package doesn't hold stay out, unread, as Anki's
+        // importer adds only those of the cards it imports
         // (`import_revlog` in `rslib/src/import_export/package/apkg/import/
         // cards.rs`).
         let revlogs = Dictionary(grouping: revlog, by: \.cardID)

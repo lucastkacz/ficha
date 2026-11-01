@@ -1,7 +1,8 @@
 import Foundation
 
 // Where an Anki card stands in Anki, and Anki's reviews of it that brought it
-// there, as an import that brings its progress reads them (ADR 0013, #409). The columns' meanings follow Anki's source,
+// there, as an import that brings its progress reads them (ADR 0013, #409).
+// The columns' meanings follow Anki's source,
 // `rslib/src/card/mod.rs` and `rslib/src/revlog/mod.rs`; how Anki counts its
 // days, `rslib/src/scheduler/timing.rs`; how its importer moves a card's due
 // day into the collection it imports into,
