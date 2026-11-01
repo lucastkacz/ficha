@@ -1,0 +1,30 @@
+# Our crate, the only Rust of ours: it exports the few functions of fsrs-rs,
+# Anki's FSRS library, that Ficha calls, as a C interface of plain values,
+# whose header cbindgen writes as the crate builds. `make fsrs` builds it into
+# the XCFramework that FichaKit's FichaFSRS wraps in Swift (ADR 0026).
+[package]
+name = "ficha-fsrs"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+# Pinned exactly, at the version Anki ships: a new one can change intervals,
+# so upgrading it is a risk:high pull request of its own, as Cargo.lock is.
+fsrs = "=6.6.2"
+
+[build-dependencies]
+# Writes the C header from this crate's source as it builds, pinned so the
+# header comes out the same on every Mac.
+cbindgen = { version = "=0.29.4", default-features = false }
+
+# One object for the whole library, fsrs-rs and Rust's standard library
+# included, with only what our functions reach: a smaller XCFramework, which
+# CI caches, and less for each app's link to read.
+[profile.release]
+lto = true
+codegen-units = 1

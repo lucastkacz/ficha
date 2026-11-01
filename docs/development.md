@@ -7,7 +7,7 @@ How to build Ficha, try a change and work on it, one section for each task. The 
 Requires macOS 26 and the Xcode that [`.xcode-version`](../.xcode-version) names, the one CI runs, so a `make check` that passes on your Mac passes on CI too. `make check` stops first when your Mac's Xcode is another one, as when the App Store updates it on its own. To move to a newer Xcode, update your Mac's Xcode and the file together. The iPhone app also needs that Xcode's iOS platform (Xcode › Settings › Components).
 
 ```bash
-make bootstrap   # installs XcodeGen, shellcheck and actionlint
+make bootstrap   # installs XcodeGen, shellcheck, actionlint and rustup, and the Rust toolchain
 make run         # builds and opens Ficha Dev, the development app
 make upload      # from main: uploads the real Ficha to TestFlight, signed with your team
 ```
@@ -80,6 +80,22 @@ make upload
 - To check what the sandbox lets each part reach, read the archive's entitlements: `codesign -d --entitlements - .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app`, and the same for its `Contents/Helpers/ficha`, `Contents/PlugIns/FichaWidget.appex` and `Contents/XPCServices/SVGDrawer.xpc`. Only the SVG drawer holds `com.apple.security.network.client`.
 
 Archiving and exporting with `xcodebuild`, and the keys of `ExportOptions.plist`, are Apple's documented way (`xcodebuild -help` lists them). The check that `make upload` runs from GitHub's `main`, and the build number from git, are our own.
+
+## fsrs-rs, built from Rust
+
+FSRS's arithmetic comes from fsrs-rs, the Rust library Anki ships, pinned to 6.6.2 ([ADR 0026](adr/0026-fsrs-from-fsrs-rs.md)). Our crate, in `Packages/FichaKit/Rust/`, the only Rust of ours, exports the few functions Ficha calls as a C interface, whose header cbindgen writes as the crate builds (`build.rs`). `make fsrs` builds it into `Packages/FichaKit/Frameworks/CFichaFSRS.xcframework`, which git ignores: a static library for the Mac, for Apple silicon and Intel, one for an iPhone, and one for its simulator, on Apple silicon and Intel too, with the header and its module map. FichaKit links it as the binary target `CFichaFSRS`, `FichaFSRS` wraps it in Swift, and FichaCore imports `FichaFSRS`.
+
+- Every target that builds FichaKit runs `make fsrs` first: `make test`, `make project`, and so every Xcode build, `make render-build` and `make render`. It builds only when one of the crate's files, `Cargo.lock` and `rust-toolchain.toml` among them, or `scripts/build-fsrs.sh` changed since it last built, which a digest of them beside the XCFramework, `CFichaFSRS.digest`, records. Otherwise it takes a fraction of a second, so a second `make check` doesn't build fsrs-rs again.
+- In a new worktree, run `make fsrs`, or `make test`, which runs it, before the first `swift test`: without the XCFramework, SwiftPM stops with "does not contain a binary artifact". The same goes for Xcode: `make project` builds it before you open `Ficha.xcodeproj`.
+- Cargo builds in the worktree's `.build/cargo`, as the crate's `.cargo/config.toml` says, and keeps the crates it downloads in `~/.cargo`, which every worktree shares. A cold build of all five targets, with the crates downloaded, took 18 seconds on Lucas's Mac, an Apple M5 with 10 cores, and one after a change to the crate 4 seconds. Worktrees don't share Cargo's build folder: a cold build costs that little, and two worktrees building into one folder could each take the other's library. That choice is our own.
+- `rust-toolchain.toml` pins Rust, with the five targets, rustfmt and clippy. `make bootstrap` installs rustup through Homebrew, which keeps it off the `PATH` (it's keg-only), and the toolchain, through `make rust-toolchain`. The `Makefile` puts rustup's folder on the `PATH` for its recipes; to run `cargo` by hand, add `$(brew --prefix rustup)/bin` to yours, and run it from the crate's folder, where rustup reads the pin.
+- `.cargo/config.toml` also sets the deployment targets the libraries are built for, the apps'. rustc doesn't tell Cargo it reads them, so after changing them, delete `.build/cargo`.
+- `make lint` checks the crate's formatting with rustfmt and lints it with clippy, warnings as errors, and `make fmt` formats it.
+- CI installs rustup and the toolchain the same way, and caches Cargo's downloads, the XCFramework with its digest, and clippy's build, keyed by the crate's files and `scripts/build-fsrs.sh`, as "Restore fsrs-rs's build" in `.github/workflows/check.yml` says. A run on `main` saves them, as it saves the builds, so a pull request that changes no Rust doesn't build fsrs-rs.
+- `Packages/FichaKit/Rust/THIRD-PARTY-NOTICES.txt` keeps the notices of fsrs-rs and the crates it brings, for the App Store release ([#160](https://github.com/lucastkacz/ficha/issues/160)). Rust's standard library, which the library holds too, keeps its notices in the toolchain, as `share/doc/rust/COPYRIGHT-library.html`.
+- Upgrading fsrs-rs, or anything in `Cargo.lock`, is a risk:high pull request, since a new version can change intervals: change the pin in `Cargo.toml`, run `cargo update --package fsrs` from the crate's folder, which updates the lock, and run `make check`, whose test of fsrs-rs's expected values (`FSRSTests`) fails when they changed. Then write the notices again, from the crate's folder, with cargo-about, which `cargo install --locked --features cli cargo-about@0.9.3` installs: `cargo about generate --locked --fail about.hbs --output-file THIRD-PARTY-NOTICES.txt`. Dependabot proposes the upgrades monthly.
+
+The build follows Rust's, cbindgen's and Apple's documented ways: a static library behind a C header, the libraries of each platform joined with `lipo`, the XCFramework made with `xcodebuild -create-xcframework` and linked as a SwiftPM binary target, `rust-toolchain.toml` as rustup documents it, Cargo's downloads cached as Cargo's book lists them, and the notices gathered with cargo-about. The digest, the module map in a folder of the module's name, which keeps it apart in Xcode's copy of every XCFramework's headers, and Cargo's build folder in `.build` are our own.
 
 ## On the iPhone
 

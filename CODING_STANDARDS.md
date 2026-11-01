@@ -1,6 +1,6 @@
 # Coding standards
 
-How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and CI say when they fail, how the docs keep up with the files they describe, and how the documents agents read are written. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`), and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
+How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and CI say when they fail, how the docs keep up with the files they describe, and how the documents agents read are written. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`), rustfmt and clippy check our Rust crate, with warnings as errors, and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
 
 ## Language and concurrency
 
@@ -11,7 +11,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 ## Layers
 
-- `FichaCore` holds the logic as pure functions and value types. It imports only Foundation and the standard library's modules (such as `Synchronization`): no AppKit, SwiftUI, GRDB or OS services.
+- `FichaCore` holds the logic as pure functions and value types. It imports Foundation, the standard library's modules (such as `Synchronization`) and `FichaFSRS`, which wraps fsrs-rs's arithmetic for it (ADR 0026), and nothing else: no AppKit, SwiftUI, GRDB or OS services.
 - Storage, the CLI and the app stay thin at the edges and call into `FichaCore`.
 - The app stays thin in its windows too: what a window decides lives in `FichaData`, in a `Sendable` state shaped like `ReviewPanelState`. The engine opens it, its operations call the engine and change it, and `swift test` tests it through that interface against an engine in memory.
   - What a window decides is what it lists, what is selected, what it shows, what it offers, what it asks before acting, and what happens when the user acts, such as narrowing a table to a search, offering Bury only when none of the selected cards is buried, or recording which action failed.
@@ -66,6 +66,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 ## Dependencies
 
 - Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed. The render tool (`scripts/render`) takes its dependencies through FichaKit's pins, so its own `Package.resolved` stays out.
+- Our Rust crate's (`Packages/FichaKit/Rust`) are pinned the same way: each direct dependency to an exact version (`=6.6.2`) in `Cargo.toml`, with `Cargo.lock` committed, and every Cargo command that builds or lints it runs with `--locked`.
 - A new dependency needs an ADR in `docs/adr/` and makes the PR `risk:high`.
 
 ## Scripts, hooks, the Makefile and CI

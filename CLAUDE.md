@@ -63,7 +63,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 ## Map
 
-- `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards. `FichaICloud`, the only part that loads CloudKit, is linked by the Mac app alone.
+- `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards. `FichaICloud`, the only part that loads CloudKit, is linked by the Mac app alone. `Rust/`, our crate, builds fsrs-rs into the XCFramework that `FichaFSRS` wraps for `FichaCore` (ADR 0026).
 - `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
 - `iPhone/`: the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, and the real Ficha on the Mac sign with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
@@ -75,6 +75,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 
 - `make check`: everything CI runs, and warnings are errors. The `Makefile`'s `CHECKS +=` lines list its steps.
 - `make fmt`, `make test`, `make build`, `make run` (build and open the app), `make bootstrap` (installs the tools the build and the lint need).
+- `make fsrs`: builds fsrs-rs's XCFramework when the Rust changed. In a new worktree, run it before the first `swift test`.
 - `make build-iphone`: Ficha Dev for the simulator. To run it there, read its logs, tell whether it crashed or reach its data, see "In the simulator" in `docs/development.md`.
 - `make render ARGS="cards"`: an app window as a PNG, drawn below the desktop picture, so it shows nothing and takes neither the mouse nor the keyboard, and needs no OK from Lucas. "A window's picture" in `docs/development.md` explains it.
 - `make render-iphone`: the iPhone app's opening screen as PNGs, light and dark, from a simulator of its own that it boots without the Simulator app and deletes after, so it needs no OK from Lucas either. "The iPhone's screen" in `docs/development.md` explains it.

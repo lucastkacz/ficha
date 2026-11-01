@@ -7,6 +7,8 @@ DerivedData/
 xcuserdata/
 # The render tool's: FichaKit's own pins its dependencies, which Dependabot updates
 scripts/render/Package.resolved
+# fsrs-rs's XCFramework, which `make fsrs` builds from source (ADR 0026)
+Packages/FichaKit/Frameworks/
 
 # Lucas's cards live in ~/Library/Group Containers/<TeamID>.com.lucastkacz.ficha/Ficha, never in the repo
 *.sqlite

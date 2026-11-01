@@ -1,0 +1,8 @@
+// The crate's C interface as a module, which FichaFSRS imports: the
+// XCFramework keeps it with the header in a folder of the module's name, so
+// that Xcode, which copies every XCFramework's headers into one folder, keeps
+// it apart from another's.
+module CFichaFSRS {
+    header "ficha_fsrs.h"
+    export *
+}

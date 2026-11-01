@@ -51,6 +51,12 @@ risky_paths=(
   # The package's manifest, and the versions it pins.
   'Packages/FichaKit/Package\.swift'
   'Packages/FichaKit/Package\.resolved'
+  # Our crate's manifest, the versions its lock pins, fsrs-rs's among them,
+  # whose upgrade can change intervals, and the Rust toolchain that builds it
+  # (ADR 0026).
+  'Packages/FichaKit/Rust/Cargo\.toml'
+  'Packages/FichaKit/Rust/Cargo\.lock'
+  'Packages/FichaKit/Rust/rust-toolchain\.toml'
   # The database schema and its migrations, which all live in FichaData/Schema*.
   'Packages/FichaKit/Sources/FichaData/Schema'
   # The one way in to the cards that show up, those in Lucas's reviews, and

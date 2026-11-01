@@ -66,6 +66,14 @@ jobs:
         Packages/FichaKit/.build
         scripts/render/.build
         .build/DerivedData
+      # What fsrs-rs's build leaves (ADR 0026), cached apart from the builds:
+      # the step that restores it says why.
+      RUST_BUILDS: |
+        ~/.cargo/registry/index
+        ~/.cargo/registry/cache
+        ~/.cargo/git/db
+        Packages/FichaKit/Frameworks
+        .build/cargo/debug
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -111,11 +119,16 @@ jobs:
           echo "::error::Downloading the iOS platform failed $attempts times, $delay seconds apart: re-run the job."
           exit 1
       - name: Install the tools
-        # The ones `make bootstrap` installs on a Mac, which the image doesn't ship.
-        run: brew install xcodegen shellcheck actionlint
+        # The ones `make bootstrap` installs on a Mac, which the image doesn't
+        # ship, rustup among them, as on the Mac.
+        run: brew install xcodegen shellcheck actionlint rustup
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      - name: Install the Rust toolchain
+        # The one Packages/FichaKit/Rust/rust-toolchain.toml pins, with its
+        # targets and its rustfmt and clippy, as `make bootstrap` installs it.
+        run: make rust-toolchain
       - name: Name the runner's image
         # The SDK's compiled modules in the derived data record each SDK file's
         # modification time, and Xcode refuses one whose files changed (#277).
@@ -148,6 +161,20 @@ jobs:
         with:
           path: ${{ env.BUILDS }}
           key: builds-${{ steps.image.outputs.name }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
+      - name: Restore fsrs-rs's build
+        # Cargo's downloads, as Cargo's book lists them for a CI cache, the
+        # XCFramework with the digest that `make fsrs` compares, and clippy's
+        # build, keyed by the crate, its lock and rust-toolchain.toml among its
+        # files, and the script that builds it: so a run that changes no Rust
+        # builds no fsrs-rs, whatever the image, which Rust's builds don't
+        # depend on. Saved by runs on main alone, as the builds are. A run
+        # that changed the Rust starts from the newest one, for its downloads.
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RUST_BUILDS }}
+          key: rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Packages/FichaKit/Rust/**', 'scripts/build-fsrs.sh') }}
+          restore-keys: rust-${{ runner.os }}-${{ runner.arch }}-
       - run: make check
       - name: Save the builds
         # After a run on main, unless the cache had them already: a key, once
@@ -157,3 +184,10 @@ jobs:
         with:
           path: ${{ env.BUILDS }}
           key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Save fsrs-rs's build
+        # After a run on main, unless the cache had its key already.
+        if: github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RUST_BUILDS }}
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
