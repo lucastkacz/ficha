@@ -43,6 +43,34 @@ public struct AnkiDaySettings: Sendable, Equatable {
     }
 }
 
+/// The version of Anki's scheduler an Anki collection is on, as its
+/// configuration's `schedVer` says (`SchedulerVersion` in
+/// `rslib/src/config/mod.rs`): the key Anki 2.0 left out, which schema 11
+/// keeps in `col.conf` and schema 18 in its `config` table.
+public enum AnkiSchedulerVersion: Int, Sendable, Equatable {
+    /// Anki 2.0's scheduler, which gave a card in learning steps three
+    /// buttons: again, good and easy.
+    case v1 = 1
+    /// Anki 2.1's v2 scheduler, and its v3 scheduler, which keeps this
+    /// version and turns itself on with another key.
+    case v2 = 2
+
+    /// The version `schedVer` names: v1 when the configuration has none, as
+    /// Anki takes it (`scheduler_version`), or a problem when it names one
+    /// Anki doesn't have, which Anki takes for v1 too, and Ficha doesn't
+    /// guess.
+    public init(schedVer: Int?) throws(AnkiCollectionProblem) {
+        guard let schedVer else {
+            self = .v1
+            return
+        }
+        guard let version = AnkiSchedulerVersion(rawValue: schedVer) else {
+            throw AnkiCollectionProblem("The collection's scheduler is at version \(schedVer)")
+        }
+        self = version
+    }
+}
+
 /// An Anki card's type, its `type` column (`CardType` in
 /// `rslib/src/card/mod.rs`).
 private enum AnkiCardType: Int {
@@ -154,15 +182,17 @@ extension AnkiCollection {
     private func importedHistory(of entries: [AnkiRevlogEntry], endingOnAStep: Bool)
         throws(AnkiCollectionProblem) -> ImportedHistory
     {
-        let entries = entries.sorted { $0.id < $1.id }
+        let entries = try entries.sorted { $0.id < $1.id }.map { row throws(AnkiCollectionProblem) in
+            try TypedRevlogEntry(row)
+        }
         var firstOfTheLastLearningSteps: Int?
         var firstInterdayReview: Int?
         // From the last entry back, as Anki reads them.
         for (index, entry) in entries.enumerated().reversed() where !entry.isCramming {
-            if entry.hasButton && (entry.interval >= 1 || entry.interval <= -24 * 60 * 60) {
+            if entry.hasButton && (entry.row.interval >= 1 || entry.row.interval <= -24 * 60 * 60) {
                 firstInterdayReview = index
             }
-            if entry.hasButton && entry.kind == AnkiRevlogKind.learning.rawValue {
+            if entry.hasButton && entry.kind == .learning {
                 firstOfTheLastLearningSteps = index
             } else if entry.isReset {
                 guard firstOfTheLastLearningSteps != nil || firstInterdayReview != nil else {
@@ -194,8 +224,8 @@ extension AnkiCollection {
         // and the ease it left: Anki's starting one, 2.5, when it kept none,
         // and when it kept FSRS's difficulty there, from 100 to 1100, which
         // Anki puts in the memory it starts, and a placement doesn't hold.
-        let factor = entries[first].factor
-        let interval = Duration.days(max(1, entries[first].interval))
+        let factor = entries[first].row.factor
+        let interval = Duration.days(max(1, entries[first].row.interval))
         let placement = Placement(
             interval: interval, due: start.answeredAt.adding(interval),
             ease: factor > 1100 ? Double(factor) / 1000 : 2.5)
@@ -207,28 +237,28 @@ extension AnkiCollection {
     /// import brings it, graduated when it's `leavingItGraduated` and its
     /// interval is in days, as no step's in seconds is; or a problem when its
     /// button or its interval isn't one Anki gives.
-    private func importedReview(of entry: AnkiRevlogEntry, leavingItGraduated: Bool)
+    private func importedReview(of entry: TypedRevlogEntry, leavingItGraduated: Bool)
         throws(AnkiCollectionProblem) -> ImportedReview
     {
-        let isStep = entry.kind == AnkiRevlogKind.learning.rawValue || entry.kind == AnkiRevlogKind.relearning.rawValue
+        let row = entry.row
+        let isStep = entry.kind == .learning || entry.kind == .relearning
         let button =
-            schedulerVersion == 1 && isStep && (entry.button == 2 || entry.button == 3)
-            ? entry.button + 1 : entry.button
+            schedulerVersion == .v1 && isStep && (row.button == 2 || row.button == 3) ? row.button + 1 : row.button
         let ratings: [Int64: Rating] = [1: .again, 2: .hard, 3: .good, 4: .easy]
         guard let rating = ratings[button] else {
-            throw AnkiCollectionProblem("Card \(entry.cardID) has a review with the button \(entry.button)")
+            throw AnkiCollectionProblem("Card \(row.cardID) has a review with the button \(row.button)")
         }
         let (seconds, overflows) =
-            entry.interval > 0
-            ? entry.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
-            : (0 as Int64).subtractingReportingOverflow(entry.interval)
+            row.interval > 0
+            ? row.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
+            : (0 as Int64).subtractingReportingOverflow(row.interval)
         guard !overflows else {
-            throw AnkiCollectionProblem("Card \(entry.cardID) has a review with an interval of \(entry.interval)")
+            throw AnkiCollectionProblem("Card \(row.cardID) has a review with an interval of \(row.interval)")
         }
         return ImportedReview(
-            answeredAt: Date(timeIntervalSince1970: TimeInterval(entry.id) / 1000), rating: rating,
-            interval: .seconds(seconds), graduated: leavingItGraduated && entry.interval > 0,
-            responseTime: entry.milliseconds > 0 ? .milliseconds(entry.milliseconds) : nil)
+            answeredAt: Date(timeIntervalSince1970: TimeInterval(row.id) / 1000), rating: rating,
+            interval: .seconds(seconds), graduated: leavingItGraduated && row.interval > 0,
+            responseTime: row.milliseconds > 0 ? .milliseconds(row.milliseconds) : nil)
     }
 
     /// The ease of `card`, a review card, as a multiplier, such as 2.5 for
@@ -299,18 +329,33 @@ extension AnkiCollection {
     }
 }
 
-extension AnkiRevlogEntry {
+/// An entry of an Anki card's review history, its `revlog` row, with what
+/// it records read from its `type`.
+private struct TypedRevlogEntry {
+    let row: AnkiRevlogEntry
+    let kind: AnkiRevlogKind
+
+    /// `row` with its type read, or a problem when its type isn't one Anki
+    /// writes, which Anki reads as a learning step, and Ficha doesn't guess.
+    init(_ row: AnkiRevlogEntry) throws(AnkiCollectionProblem) {
+        guard let kind = AnkiRevlogKind(rawValue: row.kind) else {
+            throw AnkiCollectionProblem("Card \(row.cardID) has an entry in its history of the type \(row.kind)")
+        }
+        self.row = row
+        self.kind = kind
+    }
+
     /// Whether a button made it: a review, and not Set Due Date, a reset or
     /// FSRS's rescheduling.
-    fileprivate var hasButton: Bool {
-        button > 0
+    var hasButton: Bool {
+        row.button > 0
     }
 
     /// Whether it's cramming, a review in a filtered deck with rescheduling
     /// off, which changes nothing, and which Anki tells by its ease of 0
     /// (`is_cramming`).
-    fileprivate var isCramming: Bool {
-        kind == AnkiRevlogKind.filtered.rawValue && factor == 0
+    var isCramming: Bool {
+        kind == .filtered && row.factor == 0
     }
 
     /// Whether it's a review of a graduated card, out of its learning and
@@ -318,13 +363,13 @@ extension AnkiRevlogEntry {
     /// showed early in a filtered deck, as Anki gives an entry the type of
     /// where the card stood before it (`revlog_kind` of the current state, in
     /// `RevlogEntryPartial::new`).
-    fileprivate var isOfAGraduatedCard: Bool {
-        kind == AnkiRevlogKind.review.rawValue || kind == AnkiRevlogKind.filtered.rawValue
+    var isOfAGraduatedCard: Bool {
+        kind == .review || kind == .filtered
     }
 
     /// Whether it's a reset of the card to new, a manual entry Anki tells
     /// from Set Due Date's by its ease of 0 (`is_reset`).
-    fileprivate var isReset: Bool {
-        kind == AnkiRevlogKind.manual.rawValue && factor == 0
+    var isReset: Bool {
+        kind == .manual && row.factor == 0
     }
 }

@@ -357,9 +357,9 @@ final class AnkiHistoryTests {
     // Anki 2.0's scheduler gave a card in learning steps three buttons:
     // again, good and easy.
     @Test(
-        "a package of Anki 2.0's scheduler brings its learning steps' second and third buttons as good and easy",
+        "a learning step's second and third buttons come in as good and easy from Anki 2.0's scheduler, which a package that doesn't say is on, and as hard and good from Anki 2.1's",
         arguments: [nil, 1, 2])
-    func anAnki20PackageBringsItsLearningButtons(schedulerVersion: Int?) async throws {
+    func learningButtonsComeInAsTheirSchedulerGaveThem(schedulerVersion: Int?) async throws {
         let package = AnkiPackage(
             format: .anki20,
             notes: [
@@ -381,6 +381,41 @@ final class AnkiHistoryTests {
         }
         #expect(ratings == (schedulerVersion == 2 ? [.hard, .good, .good] : [.good, .easy, .good]))
         #expect(try standing(of: "hueso") == graduated(due: try october(15, at: 10)))
+    }
+
+    // Anki's scheduler versions are 1 and 2, which its v3 scheduler keeps,
+    // and the types of its review history's entries 0 to 5.
+    @Test(
+        "a package whose scheduler version, or the type of an entry of a card's history, is one Anki doesn't have can't be read",
+        arguments: schemas)
+    func aPackageWithAnUnknownSchedulerOrEntryTypeCantBeRead(format: AnkiPackage.Format) async throws {
+        let reviewed = [
+            AnkiRevlogEntry(at: try october(2, at: 10), button: 3, interval: -600, kind: .learning),
+            AnkiRevlogEntry(at: try october(2, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
+        ]
+        let unknownVersion = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 1), history: reviewed)
+            ], schedulerVersion: 3)
+        let unknownType = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["dos", "two"], progress: .review(due: 30, interval: 1),
+                    history: reviewed + [
+                        AnkiRevlogEntry(at: try october(3, at: 10), button: 3, interval: 1, kind: .unknown)
+                    ])
+            ])
+
+        for (name, package) in [("Versión.apkg", unknownVersion), ("Tipo.apkg", unknownType)] {
+            let file = folder.appending(path: name)
+            try package.write(to: file)
+            await #expect(throws: EngineError.unreadableFile(name, .unreadableAnkiPackage)) {
+                try await engine.previewImport(of: file)
+            }
+        }
     }
 
     // Anki's learning steps here are 10 minutes and a day, unfuzzed. Its

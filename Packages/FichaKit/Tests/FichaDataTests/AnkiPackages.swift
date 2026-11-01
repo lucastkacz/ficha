@@ -580,6 +580,8 @@ struct AnkiRevlogEntry {
         case manual = 4
         /// FSRS rescheduling the card as its settings changed.
         case rescheduled = 5
+        /// A type Anki doesn't write, as in a damaged package.
+        case unknown = 6
     }
 
     /// When it happened: its `id`, in milliseconds since 1970, which Anki

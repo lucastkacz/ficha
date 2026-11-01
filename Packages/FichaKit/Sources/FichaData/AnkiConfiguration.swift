@@ -8,22 +8,21 @@ internal import GRDB
 // (`rslib/src/storage/config/`): schema 11 in `col.conf`, one JSON object,
 // and schema 18 in the `config` table, one row for each key, whose `val` is
 // the key's JSON value. Both give the same keys, `creationOffset` and
-// `rollover`, which `AnkiDaySettings` checks, and `schedVer`.
+// `rollover`, which `AnkiDaySettings` checks, and `schedVer`, which
+// `AnkiSchedulerVersion` checks.
 
 /// What the configuration of an Anki collection says of its days and its
 /// scheduler.
 struct AnkiConfiguration {
     let daySettings: AnkiDaySettings
-    /// Its `schedVer`, or 1 when it has none, as Anki takes it
-    /// (`scheduler_version` in `rslib/src/config/mod.rs`).
-    let schedulerVersion: Int
+    let schedulerVersion: AnkiSchedulerVersion
 
     /// The configuration of the collection whose `col.conf` is `conf`, schema
     /// 11's JSON object.
     init(conf: String) throws {
         let keys = try JSONDecoder().decode(ConfigurationKeys.self, from: Data(conf.utf8))
         daySettings = try AnkiDaySettings(creationOffset: keys.creationOffset, rollover: keys.rollover)
-        schedulerVersion = keys.schedVer ?? 1
+        schedulerVersion = try AnkiSchedulerVersion(schedVer: keys.schedVer)
     }
 
     /// The configuration of the collection in `db`, an Anki database at
@@ -40,7 +39,7 @@ struct AnkiConfiguration {
             try values[key].flatMap { try JSONDecoder().decode(Int?.self, from: $0) }
         }
         daySettings = try AnkiDaySettings(creationOffset: integer("creationOffset"), rollover: integer("rollover"))
-        schedulerVersion = try integer("schedVer") ?? 1
+        schedulerVersion = try AnkiSchedulerVersion(schedVer: integer("schedVer"))
     }
 }
 

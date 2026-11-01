@@ -24,16 +24,13 @@ public struct AnkiCollection: Sendable, Equatable {
     public let cards: [AnkiCard]
     /// Every card's review history, its `revlog` table, in any order.
     public let revlog: [AnkiRevlogEntry]
-    /// The version of Anki's scheduler its configuration says it's on, its
-    /// `schedVer`: 2 for Anki 2.1's schedulers and later, and 1 for Anki
-    /// 2.0's, which Anki takes when the configuration doesn't say
-    /// (`scheduler_version` in `rslib/src/config/mod.rs`).
-    public let schedulerVersion: Int
+    /// The version of Anki's scheduler its configuration says it's on.
+    public let schedulerVersion: AnkiSchedulerVersion
 
     public init(
         creationTime: Int64, daySettings: AnkiDaySettings, noteTypes: [Int64: AnkiNoteType],
         decks: [Int64: AnkiDeck], notes: [Int64: AnkiNote], cards: [AnkiCard], revlog: [AnkiRevlogEntry],
-        schedulerVersion: Int
+        schedulerVersion: AnkiSchedulerVersion
     ) {
         self.creationTime = creationTime
         self.daySettings = daySettings
