@@ -3,7 +3,7 @@
 Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Everything stays on your Mac.
 
 <p align="center">
-  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with three buttons below: Don't know, Sort of and Know it.">
+  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with Anki's four buttons below, Again, Hard, Good and Easy, each under how long the card would wait: 1h, 2h 30m, 4h and 2d.">
 </p>
 
 The cards in these pictures are samples, in Spanish. Yours can be in any language.
@@ -26,7 +26,7 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
 
 <p align="center">
   <img src="docs/images/card-front.png" width="49%" alt="The review panel showing only the front of a card, the quote “Caminante, no hay camino, se hace camino al andar.”, with a Flip button.">
-  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Don't know, Sort of and Know it.">
+  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Again, Hard, Good and Easy, each under how long the card would wait.">
 </p>
 
 A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did with Anki's four buttons: 1 for "Again", 2 for "Hard", 3 for "Good", which Space says too, or 4 for "Easy". Above each one is how long the card would wait if you pressed it, as in Anki. It takes a few seconds, and every button has its key, so you never need the mouse. A card you haven't met yet comes the same way, marked "New": try to remember its back too, even if you can't yet, and rate it like any other.
