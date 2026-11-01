@@ -662,8 +662,9 @@ func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws 
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
 /// Anki tags, two cards Anki had progress on, which Bring progress brings in
-/// with Anki's reviews and due dates, a card the sample cards have, a card with two images on its front,
-/// of which the first comes in, and a card whose back is only a sound, one
+/// due when Anki had them due, the femur with Anki's reviews of it, a card
+/// the sample cards have, a card with two images on its front, of which the
+/// first comes in, and a card whose back is only a sound, one
 /// whose front is only an image the package lacks and an Image Occlusion
 /// note, which stay out. The file goes once it's read.
 func ankiImportingState(of model: AppModel) throws -> CardsWindowState {

@@ -121,8 +121,8 @@ public struct ReviewLogEntry: Sendable, Equatable {
 /// The progress an import that brings a card's progress from another app,
 /// such as Anki, places it with (ADR 0013): the interval it had there, its
 /// due time, and Anki's ease. It starts a way the import brings without
-/// reviews, or follows its imported reviews to keep the due date Anki gave it
-/// (#404).
+/// reviews, or with none of its first ones, or follows its imported reviews
+/// to keep the due date Anki gave it (#404).
 public struct Placement: Sendable, Equatable {
     /// The card's interval in the other app: a day or more for a card it had
     /// graduated, and less, zero included, for one it was learning.

@@ -687,7 +687,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@new@, at the pace of your new cards per day, and %2$lld with their progress and Anki's reviews, due when Anki had them due."
+            "value" : "%#@new@, at the pace of your new cards per day, and %#@withProgress@."
           },
           "substitutions" : {
             "new" : {
@@ -705,6 +705,26 @@
                     "stringUnit" : {
                       "state" : "translated",
                       "value" : "%arg new cards come in"
+                    }
+                  }
+                }
+              }
+            },
+            "withProgress" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg with its progress and Anki's reviews, due when Anki had it due"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg with their progress and Anki's reviews, due when Anki had them due"
                     }
                   }
                 }

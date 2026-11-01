@@ -124,7 +124,7 @@ How well the user says they knew a card in a review, with Anki's four buttons an
 _Avoid_: grade, score, ease
 
 **Review log**:
-Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and an import's reviews from Anki, or the interval and due time it gave a card that came without them. A card's progress and due time are worked out from it.
+Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and an import's reviews from Anki, with the interval and due time the import gave a card where they fall short of how Anki had it: before them, when Anki kept none of the card's first reviews; after them, as after Anki's Set Due Date; or alone, when none came. A card's progress and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
