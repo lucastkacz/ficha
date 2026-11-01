@@ -336,7 +336,7 @@ struct WidgetTests {
         #expect(!looksAsItClosesUnchanged)
     }
 
-    /// When `card`'s front-first way is due, on the default ladder.
+    /// When `card`'s front-first way is due, on the default scheduler.
     private func dueTime(of card: Card) throws -> Date {
         try #require(try engine.standing(of: card.id, with: ReviewSettings.defaults.scheduler).due)
     }

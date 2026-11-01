@@ -96,8 +96,8 @@ struct SettingsTests {
         #expect(try engine.reviewNow(settings) == [])
     }
 
-    @Test("a back-first first view counts toward the settings' new cards a day, as a new card's does")
-    func backFirstFirstViewsCountTowardNewCardsPerDay() throws {
+    @Test("a back-first way's first review counts toward the settings' new cards a day, as a new card's does")
+    func backFirstFirstReviewsCountTowardNewCardsPerDay() throws {
         var settings = ReviewSettings.defaults
         settings.newCardsPerDay = 2
         let serendipia = try approveCard("serendipia", in: engine)

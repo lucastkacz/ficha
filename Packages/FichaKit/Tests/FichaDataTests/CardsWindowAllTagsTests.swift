@@ -8,7 +8,7 @@ import Testing
 /// several tags selected and acted on at once from one menu, Delete… and
 /// Clear Unused Tags with their questions, the drops onto a tag and between
 /// rows, and a tag's cards listed in All Tags' place, with Back, on the
-/// default ladder.
+/// default scheduler.
 struct CardsWindowAllTagsTests {
     let time: ManualTimeSource
     let engine: Engine

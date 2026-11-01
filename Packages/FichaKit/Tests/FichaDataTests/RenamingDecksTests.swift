@@ -7,7 +7,7 @@ import Testing
 /// whole name carries the decks it sits inside, as Anki does: a deck renamed
 /// takes the decks inside it and their cards along, each card keeping its
 /// step, its review log and its tags, and a deck renamed onto one that
-/// exists joins it. On the default ladder; they start at 9 in the morning in
+/// exists joins it. On the default scheduler; they start at 9 in the morning in
 /// Buenos Aires, when active hours start.
 struct RenamingDecksTests {
     let time: ManualTimeSource
@@ -22,7 +22,7 @@ struct RenamingDecksTests {
 
     // Arte::Escultura has no card, and Historia stays where it is.
     @Test(
-        "renaming a deck moves it with the decks inside it and their cards, each card keeping its step, its review log and its tags"
+        "renaming a deck moves it with the decks inside it and their cards, each card keeping its progress, its review log and its tags"
     )
     func renamingADeck() throws {
         let gioconda = try approveInDeck("La Gioconda", deck: "Arte::Pintura", tags: ["italia"], in: engine)

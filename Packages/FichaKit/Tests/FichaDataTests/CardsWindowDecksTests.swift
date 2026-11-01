@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on the Cards window's decks (ADR 0024): the sidebar's Decks section,
 /// choosing a deck, and Change Deck… with its sheet and New Deck…, on the
-/// default ladder. They start at 9 in the morning in Buenos Aires, when
+/// default scheduler. They start at 9 in the morning in Buenos Aires, when
 /// active hours start.
 struct CardsWindowDecksTests {
     let time: ManualTimeSource

@@ -449,7 +449,8 @@ struct ImportSheet: View {
     }
 
     /// How many cards the import brings in, as the state counts them: new
-    /// ones, and while Bring progress is ticked, those that land on a step.
+    /// ones, and while Bring progress is ticked, those that come with their
+    /// progress.
     private var cardsComingIn: Text {
         switch importing.cardsComingIn {
         case .new(let count)?:
@@ -458,9 +459,9 @@ struct ImportSheet: View {
                 comment: "In the Import sheet's preview, with how many new cards the file brings.")
         case .newAndPlaced(let new, let placed)?:
             Text(
-                "\(new) new cards come in, at the pace of your new cards per day, and \(placed) on a step, as Anki had them.",
+                "\(new) new cards come in, at the pace of your new cards per day, and \(placed) with their progress, as Anki had them.",
                 comment:
-                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of the user's ladder."
+                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with the interval and due date Anki had them at."
             )
         case nil:
             Text(verbatim: "")

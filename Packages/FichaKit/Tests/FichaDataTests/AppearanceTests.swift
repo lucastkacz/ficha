@@ -46,9 +46,9 @@ struct AppearanceTests {
         #expect(try appearance() == .show([.review(ubuntu), .review(serendipia)]))
     }
 
-    // So that a card brought along moves on the ladder as if it had waited
-    // its whole wait, while a review ahead, which Lucas asks for, doesn't
-    // (ADR 0002).
+    // So that a card brought along counts as if it had waited its whole
+    // interval, while a review ahead, which Lucas asks for, counts how long
+    // it really waited (#404).
     @Test("a card an appearance brings along before it's due is reviewed as on time, unlike one due later")
     func cardsBroughtAlongAreReviewedOnTime() throws {
         try meetCard("ubuntu", dueAt: try at(10, 0))
@@ -59,7 +59,9 @@ struct AppearanceTests {
         try engine.record(
             .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
 
-        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue == learning(step: 1, due: try at(14, 0)))
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == learning(step: 1, due: try at(14, 0)))
         #expect(throws: EngineError.cardNotDue(petricor.id)) {
             try engine.record(
                 .review(.good), of: petricor.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
@@ -161,10 +163,10 @@ struct AppearanceTests {
         #expect(try appearance() == .show([.review(serendipia)]))
     }
 
-    // A first view counts once Lucas ends it with "Got it", so a new card he
+    // A new card counts once Lucas rates its first review, so a new card he
     // snoozed comes back in the next appearance.
-    @Test("a snoozed first view doesn't count toward the day's 5 new cards")
-    func aSnoozedFirstViewDoesNotCount() throws {
+    @Test("a snoozed new card doesn't count toward the day's 5 new cards")
+    func aSnoozedNewCardDoesNotCount() throws {
         let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude"].map { try approveCard($0, in: engine) }
         let ockham = try approveCard("navaja de Ockham", in: engine)
         for card in met {

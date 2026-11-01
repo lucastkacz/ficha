@@ -217,12 +217,13 @@ final class DeletionWinsTests {
     }
 
     @Test(
-        "an answer taken back on one device after it synced leaves the other's review log, and the card's step with it")
+        "an answer taken back on one device after it synced leaves the other's review log, and the card's progress with it"
+    )
     func anAnswerTakenBackLeavesTheOtherLog() async throws {
         let scheduler = ReviewSettings.defaults.scheduler
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         try mac.engine.meet(ubuntu)
-        let afterTheFirstView = try mac.engine.standing(of: ubuntu.id, with: scheduler)
+        let afterTheFirstReview = try mac.engine.standing(of: ubuntu.id, with: scheduler)
         try mac.engine.reviewWhenDue(ubuntu, .good, movingForward: time)
         try await mac.syncNow()
         try await iPhone.syncNow()
@@ -233,7 +234,8 @@ final class DeletionWinsTests {
 
         #expect(try iPhone.logAsSeen().map(\.kind) == [.review(.again)])
         #expect(
-            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: scheduler) == afterTheFirstView)
+            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: scheduler)
+                == afterTheFirstReview)
     }
 
     // What the Mac heard of its records from the first account means nothing

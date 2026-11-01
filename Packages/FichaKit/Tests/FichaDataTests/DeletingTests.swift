@@ -20,7 +20,7 @@ struct DeletingTests {
 
     @Test("deleting cards takes them out of Ficha with their review logs, and leaves the other cards as they were")
     func deletingTakesTheCardsAndTheirReviewLogs() throws {
-        // serendipia and ojalá have their first views, and ubuntu is buried.
+        // serendipia and ojalá have their first reviews, and ubuntu is buried.
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)

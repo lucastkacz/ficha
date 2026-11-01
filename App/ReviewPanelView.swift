@@ -8,8 +8,8 @@ import SwiftUI
 /// it goes both ways, back first too, with the back on top and a "Back first"
 /// mark. Every action has a key and a button: Space flips a card, 1, 2 and 3
 /// rate it, and Space again rates it Know it too, as Space answers Good in
-/// Anki, Enter ends a first view, which Space flips first when it shows
-/// back first, A asks a question about the card, which waits in the inbox as
+/// Anki, a new card's first review too, which shows front first like any
+/// card, with a "New" badge, A asks a question about the card, which waits in the inbox as
 /// a follow-up, M flags it with a note, E buries it, ⌘Z undoes the last thing
 /// Lucas did, and Esc closes the panel, which snoozes an appearance. A side
 /// with a sound has a ▶ under its text, which plays it and shows ■ while it
@@ -192,13 +192,6 @@ struct ReviewPanelView: View {
             } buttons: {
                 closeButton(closeByLucas)
             }
-        case .firstView(let card, let way):
-            sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
-                topLine(way, isNew: true, deck: panel.state.deck, tags: panel.state.tags)
-            }
-            enterButton(Text("Got it")) {
-                panel.state.endFirstView()
-            }
         case .upperSide(let card, let way, let isNew, let isAhead):
             sides(of: card, way, showingLowerSide: false, buttons: .forTheCard, in: panel) {
                 topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
@@ -216,9 +209,9 @@ struct ReviewPanelView: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])
             }
-        case .bothSides(let card, let way, let isAhead):
+        case .bothSides(let card, let way, let isNew, let isAhead):
             sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
-                topLine(way, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
+                topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
             }
             HStack {
                 ratingButton("Don't know", key: "1", rating: .again, in: panel)
@@ -602,8 +595,8 @@ struct ReviewPanelView: View {
             .background(.tint.opacity(0.15), in: .capsule)
     }
 
-    /// The line at the top of a card: its badges, "New" on a first view,
-    /// "Ahead" on a review ahead and "Back first" when `way` is, each when it
+    /// The line at the top of a card: its badges, "New" on a new way's first
+    /// review, "Ahead" on a review ahead and "Back first" when `way` is, each when it
     /// applies, then the card's deck, and its tags, when it has some.
     @ViewBuilder
     private func topLine(
@@ -731,15 +724,15 @@ struct AheadBadge: View {
 }
 
 /// The badge of a card that shows back first, on the card the review panel
-/// shows that way and beside a first view or review that went that way in
-/// the Cards window's review log.
+/// shows that way and beside a review that went that way in the Cards
+/// window's review log.
 struct BackFirstBadge: View {
     var body: some View {
         Text(
             "Back first",
             comment: """
                 A badge on a card the review panel shows back first, its back on top and its front under it once \
-                flipped, and beside a first view or review that went that way in the Cards window's review log.
+                flipped, and beside a review that went that way in the Cards window's review log.
                 """
         )
         .font(.caption.weight(.semibold))
@@ -867,12 +860,12 @@ extension EngineError {
                 comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
-            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
+            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotDue,
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
             .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .deckSetAside, .blankDeckName,
             .defaultDeckName, .deckInsideItself, .deckInsideDefault, .defaultDeckStays, .deckNotFound, .blankTypeName,
             .builtInTypeName, .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog,
-            .storage,
+            .schedulerFailed, .storage,
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
             .notAnImageOrSound, .noFileNamed,

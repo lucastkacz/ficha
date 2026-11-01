@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 /// Tests on the Cards window's form, which creates cards: from New Card, or
-/// from a capture in the inbox with Convert to Card, on the default ladder.
+/// from a capture in the inbox with Convert to Card, on the default scheduler.
 struct CardFormTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine

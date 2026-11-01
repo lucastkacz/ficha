@@ -20,11 +20,11 @@ struct BuryingTests {
 
     @Test("a card buried in the review panel never shows up again, counts nowhere, and keeps its review log")
     func aBuriedCardNeverShowsUpAgain() throws {
-        // serendipia gets to the 30-day step, from which a card is learned,
-        // and comes due there.
+        // serendipia gets learned, graduated to wait 21 days or more, and
+        // comes due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, goods: 5, movingForward: time)
-        time.advance(by: days(30))
+        try engine.climbUntilLearned(serendipia, movingForward: time)
+        time.move(to: try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due))
         let log = try engine.reviewLog()
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 

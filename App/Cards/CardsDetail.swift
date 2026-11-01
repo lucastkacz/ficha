@@ -155,8 +155,6 @@ struct CardDetail: View {
     /// The card's review log, oldest first, or why it couldn't be read, or
     /// nil until it's read.
     let reviewLog: Result<[ReviewLogRow], EngineError>?
-    /// The ladder Lucas set, whose steps the chart spans.
-    let ladder: Ladder
     /// The ▶ and the length of a side's sound, which the window fills.
     let soundControls: (CardSide) -> SoundControls
 
@@ -204,7 +202,7 @@ struct CardDetail: View {
                 switch reviewLog {
                 case .success(let rows):
                     Divider()
-                    ReviewLogView(rows: rows, ladder: ladder)
+                    ReviewLogView(rows: rows)
                 case .failure(let error):
                     Divider()
                     Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
@@ -219,23 +217,24 @@ struct CardDetail: View {
         }
     }
 
-    /// Where the card stands: its step and wait, and when it's due, front
-    /// first, and back first too when it goes both ways, as the table's
-    /// columns name them; when Lucas last saw it and when he approved it.
+    /// Where the card stands: its interval, and when it's due, front first,
+    /// and back first too when it goes both ways, as the table's columns name
+    /// them; when Lucas last saw it and when he approved it.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             wayRows(
                 row.frontFirst,
-                step: Text(
-                    "Step", comment: "In the Cards window's detail: the card's step on the ladder, and its wait."),
+                interval: Text(
+                    "Interval",
+                    comment: "In the Cards window's detail: how long the card waits after its last review."),
                 due: Text("Due", comment: "In the Cards window's detail: when the card is due."))
             if let backFirst = row.backFirst {
                 wayRows(
                     backFirst,
-                    step: Text(
-                        "Back-first step",
+                    interval: Text(
+                        "Back-first interval",
                         comment:
-                            "In the Cards window's detail: the step on the ladder of a card that goes both ways, back first, and its wait."
+                            "In the Cards window's detail: how long a card that goes both ways waits after its last review back first."
                     ),
                     due: Text(
                         "Back-first due",
@@ -247,7 +246,7 @@ struct CardDetail: View {
                         Text(
                             "Last seen",
                             comment:
-                                "In the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+                                "In the Cards window's detail: when Lucas last reviewed the card."
                         ))
                     Text(lastSeen.formatted(date: .abbreviated, time: .shortened))
                 }
@@ -260,13 +259,13 @@ struct CardDetail: View {
     }
 
     /// Where one of the card's ways stands, in two rows of the grid labeled
-    /// `stepLabel` and `dueLabel`: its step and wait, and when it's due,
-    /// while it has a due time.
+    /// `intervalLabel` and `dueLabel`: its interval, and when it's due, while
+    /// it has a due time.
     @ViewBuilder
-    private func wayRows(_ way: WayProgress, step stepLabel: Text, due dueLabel: Text) -> some View {
+    private func wayRows(_ way: WayProgress, interval intervalLabel: Text, due dueLabel: Text) -> some View {
         GridRow {
-            gridLabel(stepLabel)
-            Text(stepText(way))
+            gridLabel(intervalLabel)
+            Text(intervalText(way))
         }
         if let due = way.due {
             GridRow {
@@ -535,22 +534,23 @@ func gridLabel(_ text: Text) -> some View {
         .gridColumnAlignment(.trailing)
 }
 
-/// The step of one of a card's ways counted from 1, as Settings counts them,
-/// with its wait, like "4 · 5d", or "New" before its first view.
-func stepText(_ way: WayProgress) -> String {
-    guard let step = way.step, let wait = way.wait else {
+/// How long one of a card's ways waits after its last review, like "5d" or
+/// "2h 30m", or "New" before its first review.
+func intervalText(_ way: WayProgress) -> String {
+    guard let interval = way.interval else {
         return String(
             localized: "New",
             comment:
-                "In the Cards window: a card that hasn't had its first view yet, or its back-first way, when it goes both ways."
+                "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
         )
     }
-    let waitText = wait.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
-    return String(
-        localized: "\(step + 1) · \(waitText)",
-        comment:
-            "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d."
-    )
+    return intervalText(interval)
+}
+
+/// An interval as the Cards window shows it, in days, hours and minutes,
+/// like "5d" or "2h 30m".
+func intervalText(_ interval: Duration) -> String {
+    interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
 }
 
 /// When one of a card's ways is due, counted from `now`: "now" once it's
@@ -579,8 +579,8 @@ func dueText(_ way: WayProgress, at now: Date) -> String {
             comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
         )
     }
-    // In the ladder's units, days, hours and minutes, as Settings shows its
-    // waits: "in 8d", never "next week".
+    // In the intervals' units, days, hours and minutes, as the Interval
+    // column shows them: "in 8d", never "next week".
     var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
     style.allowedFields = [.day, .hour, .minute]
     return style.format(now)

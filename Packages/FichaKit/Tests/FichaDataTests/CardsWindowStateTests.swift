@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on the Cards window while it's open: what it lists, shows and offers
 /// as Lucas chooses, searches and selects, and as it reads his cards again,
-/// and what it asks and does as he acts, on the default ladder.
+/// and what it asks and does as he acts, on the default scheduler.
 struct CardsWindowStateTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -107,12 +107,12 @@ struct CardsWindowStateTests {
 
     @Test("New, Due and Learned leave set-aside cards out, while All cards, the deck's group and a tag's hold them")
     func newDueAndLearnedLeaveSetAsideCardsOut() throws {
-        // eudaimonía gets to the 30-day step, from which a card is learned,
-        // and comes due there; ataraxia is new.
+        // eudaimonía gets learned, graduated to wait 21 days or more, and
+        // comes due; ataraxia is new.
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", tags: ["ética"], in: engine)
         let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", tags: ["ética"], in: engine)
-        try engine.climb(eudaimonia, goods: 5, movingForward: time)
-        time.advance(by: days(30))
+        try engine.climbUntilLearned(eudaimonia, movingForward: time)
+        time.move(to: try #require(try engine.standing(of: eudaimonia.id, with: .standard).due))
         var window = openWindow()
         window.chooseSetAside(onDeck: "Filosofía")
 
@@ -344,7 +344,7 @@ struct CardsWindowStateTests {
     // sort by it, empty ones last, in the app's `CardRowOrder`, since a
     // table's order stays in the app.
     @Test(
-        "turning Both ways on gives the selected cards a back-first way, new, and turning it off takes it from the table, keeping its step"
+        "turning Both ways on gives the selected cards a back-first way, new, and turning it off takes it from the table, keeping its progress"
     )
     func turningBothWaysOnAndOffFillsAndEmptiesTheBackFirstColumns() throws {
         let serendipia = try approveCard("serendipia", in: engine)

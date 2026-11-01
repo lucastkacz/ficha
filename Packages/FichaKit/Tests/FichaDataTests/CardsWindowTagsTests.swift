@@ -6,7 +6,7 @@ import Testing
 /// Tests on the Cards window's tags (ADR 0021, ADR 0022): the sidebar's
 /// pinned tags, which Lucas pins, unpins and drags into his own order, what
 /// choosing a tag lists, and renaming a tag with Rename…, on the default
-/// ladder. All Tags has tests of its own (`CardsWindowAllTagsTests`).
+/// scheduler. All Tags has tests of its own (`CardsWindowAllTagsTests`).
 struct CardsWindowTagsTests {
     let engine: Engine
     let scheduler = ReviewSettings.defaults.scheduler

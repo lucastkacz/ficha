@@ -138,7 +138,7 @@ struct SeeMoreTests {
         #expect(try engine.reviewLog().last?.isAhead == false)
     }
 
-    @Test("with no other card on the ladder, there's nothing more to see")
+    @Test("with no other card met, there's nothing more to see")
     func nothingMoreWithoutOtherCards() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         try approveCard("ubuntu", in: engine)
@@ -170,7 +170,7 @@ struct SeeMoreTests {
 
     // Lucas, in #14: once "See more?" keeps the panel open, a slip on the
     // last card can be undone.
-    @Test("⌘Z at the end undoes what Lucas did with the last card, a first view too, and goes back to it")
+    @Test("⌘Z at the end undoes what Lucas did with the last card, a first review too, and goes back to it")
     func undoAtTheEndGoesBackToTheLastCard() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let petricor = try approveCard("petricor", in: engine)

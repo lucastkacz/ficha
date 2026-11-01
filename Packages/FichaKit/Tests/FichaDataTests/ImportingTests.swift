@@ -468,22 +468,22 @@ final class ImportingTests {
         #expect(cards.map(\.back) == ["El ion del calcio.", "El agua."])
     }
 
-    // Once with each card's first view as new cards come up, a day apart.
-    @Test("imported new cards come up for their first view in the file's order")
+    // Once with each card's first review as new cards come up, a day apart.
+    @Test("imported new cards come up for their first review in the file's order")
     func importedNewCardsComeUpInTheFilesOrder() async throws {
         let file = try file("Orden.txt", "zeta\tLa última letra.\nalfa\tLa primera letra.\nmu\tUna del medio.\n")
         try await importFile(file)
 
-        var firstViews: [String] = []
+        var firstReviews: [String] = []
         for _ in 0..<3 {
             for case .new(let card, _) in try engine.reviewNow(.defaults) {
-                firstViews.append(card.front)
+                firstReviews.append(card.front)
                 try engine.meet(card)
             }
             time.advance(by: days(1))
         }
 
-        #expect(firstViews == ["zeta", "alfa", "mu"])
+        #expect(firstReviews == ["zeta", "alfa", "mu"])
     }
 
     @Test("a file that isn't UTF-8 text, or whose headers say what Ficha can't follow, isn't read at all")

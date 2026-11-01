@@ -6,7 +6,7 @@ import Testing
 /// Tests on the Cards window's card types of the user's own (#365): the
 /// sidebar's Types section, New Type… in the type picker of the card form and
 /// the editor, and Rename…, Emoji… and Delete… in a user type's context menu,
-/// on the default ladder.
+/// on the default scheduler.
 struct CardsWindowTypesTests {
     let engine: Engine
     let scheduler = ReviewSettings.defaults.scheduler

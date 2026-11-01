@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 /// Tests on editing in the Cards window: a card changes its content and keeps
-/// its place on the ladder, and is fixed when it's flagged; a capture in the
+/// its progress, and is fixed when it's flagged; a capture in the
 /// inbox changes its text, note and source, and stays in the inbox.
 struct EditingTests {
     let calendar: Calendar
@@ -18,7 +18,7 @@ struct EditingTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    @Test("an edit changes a card's content and keeps its step, its due time and its review log")
+    @Test("an edit changes a card's content and keeps its progress, its due time and its review log")
     func anEditKeepsTheCardsStep() throws {
         // serendipia climbs to the third step, 2 days, and Lucas edits it
         // before it's due.
@@ -51,7 +51,8 @@ struct EditingTests {
 
     // The Cards window (#87) has no button to unflag a card flagged by
     // mistake: Lucas saves it as it is.
-    @Test("editing a flagged card fixes it, even with its content unchanged: it's back on its step in Lucas's reviews")
+    @Test(
+        "editing a flagged card fixes it, even with its content unchanged: it's back where it stood in Lucas's reviews")
     func editingAFlaggedCardFixesIt() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.

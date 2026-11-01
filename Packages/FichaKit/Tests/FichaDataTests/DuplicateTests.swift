@@ -164,7 +164,7 @@ struct DuplicateTests {
         #expect(expansion.expandsCardID == approved.id)
     }
 
-    @Test("approving an expansion changes its card's content, keeps its step and takes it out of the inbox")
+    @Test("approving an expansion changes its card's content, keeps its progress and takes it out of the inbox")
     func approvingAnExpansionChangesItsCard() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let serendipia = try approveCard("serendipia", in: engine)

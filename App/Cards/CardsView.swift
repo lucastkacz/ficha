@@ -53,7 +53,7 @@ import UniformTypeIdentifiers
 /// and what happens when Lucas acts, and the view draws it. It reads the cards
 /// again whenever
 /// the engine says they changed, from the app or the `ficha` CLI, when Lucas
-/// changes the ladder in Settings, and every minute, since cards come due as
+/// changes the scheduling settings, and every minute, since cards come due as
 /// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
@@ -156,7 +156,7 @@ struct CardsView: View {
                     readCards()
                 }
             }
-            .onChange(of: model.settings.ladder) {
+            .onChange(of: model.settings.scheduler) {
                 readCards()
             }
             .onChange(of: model.debugTools?.timeShift) {
@@ -474,10 +474,10 @@ struct CardsView: View {
         .help(Text("Back to All Tags (⌘[)", comment: "The tooltip of the Cards window's Back button."))
     }
 
-    /// Reads Lucas's cards, as they are now, on the ladder he set in
-    /// Settings.
+    /// Reads Lucas's cards, as they are now, with the scheduling settings he
+    /// set.
     private func readCards() {
-        state.read(on: model.settings.ladder)
+        state.read(with: model.settings.scheduler)
     }
 
     /// Plays `playing`, the sound the window says plays, from the start, or
@@ -1252,10 +1252,12 @@ struct CardsView: View {
             // In a group, since a table's builder takes ten columns at most.
             Group {
                 TableColumn(
-                    Text("Step", comment: "A column of the Cards window: the card's step on the ladder, and its wait."),
+                    Text(
+                        "Interval",
+                        comment: "A column of the Cards window: how long the card waits after its last review."),
                     sortUsing: CardRowOrder(.step)
                 ) { row in
-                    Text(stepText(row.frontFirst))
+                    Text(intervalText(row.frontFirst))
                 }
                 .width(min: 56, ideal: 64, max: 100)
                 .customizationID(CardRowOrder.Column.step.rawValue)
@@ -1269,14 +1271,14 @@ struct CardsView: View {
                 .customizationID(CardRowOrder.Column.due.rawValue)
                 TableColumn(
                     Text(
-                        "Back-first step",
+                        "Back-first interval",
                         comment:
-                            "A column of the Cards window: the step on the ladder of a card that goes both ways, back first, and its wait."
+                            "A column of the Cards window: how long a card that goes both ways waits after its last review back first."
                     ),
                     sortUsing: CardRowOrder(.backFirstStep)
                 ) { row in
                     // Blank for a card that goes one way.
-                    Text(row.backFirst.map(stepText) ?? "")
+                    Text(row.backFirst.map(intervalText) ?? "")
                 }
                 .width(min: 56, ideal: 120, max: 150)
                 .customizationID(CardRowOrder.Column.backFirstStep.rawValue)
@@ -1332,7 +1334,7 @@ struct CardsView: View {
             TableColumn(
                 Text(
                     "Last seen",
-                    comment: "A column of the Cards window: when Lucas last saw the card, in a first view or a review."),
+                    comment: "A column of the Cards window: when Lucas last reviewed the card."),
                 sortUsing: CardRowOrder(.lastSeen)
             ) { row in
                 // Without the time, as the inbox's Added column.
@@ -1527,7 +1529,7 @@ struct CardsView: View {
                 selectionSummary(rows)
             case .card(let row, let reviewLog):
                 CardDetail(
-                    row: row, images: state.images, now: state.now, reviewLog: reviewLog, ladder: state.ladder
+                    row: row, images: state.images, now: state.now, reviewLog: reviewLog
                 ) { side in
                     SoundControls(
                         sound: row.card.sound(on: side).flatMap { state.sounds[$0] },

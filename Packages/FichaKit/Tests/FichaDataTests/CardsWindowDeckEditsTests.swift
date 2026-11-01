@@ -6,7 +6,7 @@ import Testing
 /// Tests on renaming, moving and deleting decks in the Cards window (ADR
 /// 0024): Rename… and Delete… in a deck's menu, which the Actions menu above
 /// the card list offers too, as the keyboard's way to them, and dropping
-/// cards and decks on the sidebar's decks. On the default ladder; they start
+/// cards and decks on the sidebar's decks. On the default scheduler; they start
 /// at 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckEditsTests {
     let time: ManualTimeSource

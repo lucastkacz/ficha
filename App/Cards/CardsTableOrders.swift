@@ -36,7 +36,7 @@ nonisolated extension ColumnOrder {
 
 /// How the table orders its cards: by one column, either way. Cards with
 /// nothing in the column, like a new card in Due and Last seen, or a card
-/// that goes one way in Back-first step and Back-first due, go after the
+/// that goes one way in Back-first interval and Back-first due, go after the
 /// others, whichever way the table is ordered. The app's preferences keep it
 /// by its column's name, so the window opens in the order Lucas left it in.
 nonisolated struct CardRowOrder: ColumnOrder, Codable {
@@ -52,11 +52,13 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         /// Cards with images first, then those with sounds, then those with
         /// both, and cards of text alone after the others.
         case media
-        /// By the front-first way's step, new cards first.
+        /// By the front-first way's interval, new cards first: the Interval
+        /// column, which was the ladder's Step column, so its raw value stays.
         case step
         /// When the front-first way is due.
         case due
-        /// By the back-first way's step, new ones first, as Step does.
+        /// By the back-first way's interval, new ones first, as Interval
+        /// does: the Back-first interval column, which was Back-first step.
         case backFirstStep
         /// When the back-first way is due, as Due does.
         case backFirstDue
@@ -96,11 +98,11 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .media:
             ordered(lhs.media, rhs.media, by: compared)
         case .step:
-            ordered(lhs.frontFirst.stepNumber, rhs.frontFirst.stepNumber)
+            ordered(lhs.frontFirst.intervalOrNone, rhs.frontFirst.intervalOrNone)
         case .due:
             ordered(lhs.frontFirst.due, rhs.frontFirst.due) { $0.compare($1) }
         case .backFirstStep:
-            ordered(lhs.backFirst?.stepNumber, rhs.backFirst?.stepNumber, by: compared)
+            ordered(lhs.backFirst?.intervalOrNone, rhs.backFirst?.intervalOrNone, by: compared)
         case .backFirstDue:
             ordered(lhs.backFirst?.due, rhs.backFirst?.due) { $0.compare($1) }
         case .type:
@@ -118,10 +120,9 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
 }
 
 extension WayProgress {
-    /// The way's step counted from 1, as Settings counts them, or 0 while
-    /// it's new, before the first step.
-    nonisolated fileprivate var stepNumber: Int {
-        step.map { $0 + 1 } ?? 0
+    /// The way's interval, or none while it's new, before every interval.
+    nonisolated fileprivate var intervalOrNone: Duration {
+        interval ?? .zero
     }
 }
 

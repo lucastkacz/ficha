@@ -289,7 +289,7 @@ struct CardsWindowTests {
             ])
     }
 
-    @Test("a flagged card keeps its step but has no due time, since it won't show up until it's fixed")
+    @Test("a flagged card keeps its progress but has no due time, since it won't show up until it's fixed")
     func aFlaggedCardHasNoDueTime() throws {
         let scheduler = ReviewSettings.defaults.scheduler
         let serendipia = try approveCard("serendipia", in: engine)

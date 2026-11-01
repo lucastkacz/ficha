@@ -4,9 +4,9 @@ import Foundation
 import Testing
 
 /// Tests on answering cards from their card notifications on the iPhone (ADR
-/// 0010), with the default settings: rating a card, or ending a new card's
-/// first view, which moves its appearance on to the next card, and leaving
-/// them alone or swiping them away, which snoozes it. They start at 9 in the
+/// 0010), with the default settings: rating a card, a new one as a due one,
+/// which moves its appearance on to the next card, and leaving them alone or
+/// swiping them away, which snoozes it. They start at 9 in the
 /// morning in Buenos Aires, when active hours start.
 struct CardNotificationTests {
     let calendar: Calendar

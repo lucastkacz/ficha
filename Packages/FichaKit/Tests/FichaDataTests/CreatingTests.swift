@@ -23,7 +23,8 @@ struct CreatingTests {
         #expect(try engine.cards().map(\.type) == [nil, nil, nil])
     }
 
-    @Test("a card created with no capture goes into reviews as new, and comes up for its first view like any new card")
+    @Test(
+        "a card created with no capture goes into reviews as new, and comes up for its first review like any new card")
     func aCardCreatedWithNoCaptureComesUpAsNew() throws {
         let engine = try Engine(location: .inMemory, time: time)
         time.advance(by: hours(1))

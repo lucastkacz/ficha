@@ -9,8 +9,8 @@ private nonisolated let logger = Logger(subsystem: "com.lucastkacz.ficha", categ
 
 /// The appearances the engine plans, as card notifications (ADR 0010): one
 /// for each appearance, at its time, with its first card and iOS's default
-/// sound. A new card's notification shows it whole, with "Got it", and a due
-/// card's shows its front, with its ratings. Their buttons answer the card in
+/// sound. A card's notification shows its front, with its ratings, a new
+/// card's as a due one's. Their buttons answer the card in
 /// the background, without unlocking the iPhone, and the appearance's next
 /// card comes right away, without sound, until none is left. Swiping one away
 /// snoozes its appearance, and so does leaving them alone, which the engine
@@ -298,8 +298,7 @@ private func request(
     return UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 }
 
-/// A card notification of `card`, in `appearance`: a new card whole, its
-/// front as the title and its back below it, with "Got it", or a due card's
+/// A card notification of `card`, in `appearance`: a new or due card's
 /// front, with its ratings, until pressing and holding it shows the back too
 /// (#103). Every card notification goes in one stack on the lock screen, and
 /// carries its card and its appearance for its buttons. Nil for a review
@@ -307,11 +306,7 @@ private func request(
 private func content(of card: PanelCard, in appearance: NotifiedAppearance) -> UNMutableNotificationContent? {
     let content = UNMutableNotificationContent()
     switch card {
-    case .firstView(let card, _):
-        content.title = card.front
-        content.body = card.back
-        content.categoryIdentifier = Identifiers.firstView
-    case .review(let card, _):
+    case .new(let card, _), .review(let card, _):
         content.body = card.front
         content.categoryIdentifier = Identifiers.review
     case .reviewAhead:
@@ -322,11 +317,10 @@ private func content(of card: PanelCard, in appearance: NotifiedAppearance) -> U
     return content
 }
 
-/// The card notifications' categories, each with its buttons, which answer
-/// the card in the background, without unlocking the iPhone: a due card's,
-/// whose buttons rate it, each named by its rating's raw value, and a new
-/// card's, with "Got it". Both ask iOS to tell the app when Lucas swipes one
-/// away.
+/// The card notifications' category, with its buttons, which answer the card
+/// in the background, without unlocking the iPhone: they rate it, a new card
+/// as a due one, each named by its rating's raw value. It asks iOS to tell
+/// the app when Lucas swipes one away.
 private func categories() -> Set<UNNotificationCategory> {
     let review = UNNotificationCategory(
         identifier: Identifiers.review,
@@ -334,52 +328,34 @@ private func categories() -> Set<UNNotificationCategory> {
             UNNotificationAction(
                 identifier: Rating.again.rawValue,
                 title: String(
-                    localized: "Don't know", comment: "A due card's notification's button: Lucas didn't know the card."),
+                    localized: "Don't know", comment: "A card notification's button: Lucas didn't know the card."),
                 options: []),
             UNNotificationAction(
                 identifier: Rating.hard.rawValue,
                 title: String(
-                    localized: "Sort of", comment: "A due card's notification's button: Lucas sort of knew the card."),
+                    localized: "Sort of", comment: "A card notification's button: Lucas sort of knew the card."),
                 options: []),
             UNNotificationAction(
                 identifier: Rating.good.rawValue,
                 title: String(
-                    localized: "Know it", comment: "A due card's notification's button: Lucas knew the card."),
+                    localized: "Know it", comment: "A card notification's button: Lucas knew the card."),
                 options: []),
         ],
         intentIdentifiers: [],
         options: [.customDismissAction])
-    let firstView = UNNotificationCategory(
-        identifier: Identifiers.firstView,
-        actions: [
-            UNNotificationAction(
-                identifier: Identifiers.gotIt,
-                title: String(localized: "Got it", comment: "A new card's notification's button: Lucas read the card."),
-                options: [])
-        ],
-        intentIdentifiers: [],
-        options: [.customDismissAction])
-    return [review, firstView]
+    return [review]
 }
 
 /// The answer a card notification's button gives: a review with its rating,
-/// for a button named by the rating's raw value, or the end of a new card's
-/// first view, for "Got it". Nil for any other button.
+/// for a button named by the rating's raw value. Nil for any other button.
 private func answer(ofButton identifier: String) -> ReviewLogEntry.Kind? {
-    if identifier == Identifiers.gotIt {
-        return .firstView
-    }
-    return Rating(rawValue: identifier).map { .review($0) }
+    Rating(rawValue: identifier).map { .review($0) }
 }
 
-/// The identifiers of the card notifications' categories, and of "Got it".
+/// The identifiers of the card notifications' category.
 private enum Identifiers {
-    /// A due card's notification, with its ratings.
+    /// A card's notification, new or due, with its ratings.
     static let review = "review"
-    /// A new card's notification, with "Got it".
-    static let firstView = "firstView"
-    /// "Got it", which ends a new card's first view.
-    static let gotIt = "gotIt"
 }
 
 /// What a card notification carries for its buttons, in its `userInfo`: its

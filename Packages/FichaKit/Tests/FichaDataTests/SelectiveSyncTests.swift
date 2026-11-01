@@ -162,7 +162,7 @@ final class SelectiveSyncTests {
     }
 
     // Chosen on the iPhone, which has no card in the deck: the Mac hears it,
-    // and sends its card, which never went up, with its first view and image.
+    // and sends its card, which never went up, with its first review and image.
     @Test("a card that starts syncing goes up whole, with its review log and its images")
     func aCardThatStartsSyncingGoesUpWhole() async throws {
         let bird = try mac.engine.addImage(picture(width: 800, height: 600, red: 0.8))

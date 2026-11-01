@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on images in the Cards window: the card form and the card editor
 /// put an image on a side, dragged or pasted, replace it or remove it, and
-/// the detail shows a card's images, on the default ladder.
+/// the detail shows a card's images, on the default scheduler.
 struct CardsWindowImageTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine

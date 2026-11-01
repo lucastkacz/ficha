@@ -76,7 +76,7 @@ enum Window: String {
     /// package.
     case cardsImportAnki = "cards-import-anki"
     /// The Cards window once that Anki package came in with its progress,
-    /// with a card it put on a step selected, and reviewed since.
+    /// with a card it brought Anki's interval to selected, and reviewed since.
     case cardsAnkiImported = "cards-anki-imported"
     /// The Cards window with its Import sheet showing the preview of a zip
     /// of cards whose images weigh 240 MB, while sync is on, which says they
@@ -370,7 +370,7 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
-                 package), cards-anki-imported (once it came in, a card it put on a step selected),
+                 package), cards-anki-imported (once it came in, a card it brought progress to selected),
                  cards-import-heavy (previewing a zip whose images weigh 240 MB, while sync is on), backups
                  (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
                  or scheduling (Settings on those tabs, with the settings that decide progress not Ficha's), sync
@@ -486,12 +486,15 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 
 /// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
-/// the first day and climbing at different paces, two sent back to the first
-/// step, one flagged with a note and one buried, and the rest new, with a
-/// capture waiting in the inbox; and then a new card with a flag on its front
-/// and the Sun of May and a sound on its back, and two new cards made by
-/// hand, with no type and no capture. The time it's on stays where the twelve
-/// days left it.
+/// the first day, rated Know it, Don't know or Sort of, sixteen of them
+/// graduated since at different paces, two after a lapse, and four still in
+/// their learning steps, one flagged with a note and one buried, and the
+/// rest new, with a capture waiting in the inbox; and then a new card with a
+/// flag on its front and the Sun of May and a sound on its back, and two new
+/// cards made by hand, with no type and no capture. The time it's on stays
+/// where the twelve days left it. FSRS fuzzes each interval by the review
+/// log's ids, which each run makes anew, so a graduated card's interval and
+/// due time change by a day or so from one run to the next.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -509,15 +512,23 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
 
     /// Reviews the cards in `range` that are due with `rating`.
     func review(_ range: Range<Int>, _ rating: Rating) throws {
-        for card in cards[range] where try engine.standing(of: card.id, on: settings.ladder).isDue(at: time.now) {
+        for card in cards[range] where try engine.standing(of: card.id, with: settings.scheduler).isDue(at: time.now) {
             try engine.record(
                 .review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
         }
     }
 
-    for card in cards[0..<20] {
-        try engine.record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
+    /// Meets the cards in `range`, new, rating each first review `rating`.
+    func meet(_ range: Range<Int>, _ rating: Rating) throws {
+        for card in cards[range] {
+            try engine.record(
+                .review(rating), of: card.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
+        }
     }
+
+    try meet(0..<14, .good)
+    try meet(14..<18, .again)
+    try meet(18..<20, .hard)
     time.advance(by: hours(1))
     try review(0..<18, .good)
     time.advance(by: hours(4))
@@ -527,7 +538,7 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(0..<12, .good)
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
-    try review(0..<8, .good)
+    try review(0..<16, .good)
     // A capture that waits in the inbox, for Convert to Card: the inbox lists
     // it after the flagged card, which comes later.
     let capture = try engine.capture(
@@ -650,8 +661,8 @@ func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws 
 /// The Cards window's state partway through importing an Anki package, as
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
-/// Anki tags, two cards Anki was reviewing, which Bring progress puts on a
-/// step, a card the sample cards have, a card with two images on its front,
+/// Anki tags, two cards Anki was reviewing, which Bring progress brings in
+/// with Anki's interval, a card the sample cards have, a card with two images on its front,
 /// of which the first comes in, and a card whose back is only a sound, one
 /// whose front is only an image the package lacks and an Image Occlusion
 /// note, which stay out. The file goes once it's read.
@@ -671,8 +682,8 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
 }
 
 /// The app's model on the sample cards, once the sample Anki package came in
-/// with its progress, and four days later, the card of the femur, which it
-/// put on the 12-day step, was reviewed with Know it, on time.
+/// with its progress, and four days later, the card of the femur, which came
+/// in with Anki's interval of 10 days, was reviewed with Know it, on time.
 func ankiImportedModel() throws -> AppModel {
     let (engine, time) = try sampleEngine(at: .inMemory)
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
@@ -681,8 +692,7 @@ func ankiImportedModel() throws -> AppModel {
     defer { try? FileManager.default.removeItem(at: file) }
     let settings = ReviewSettings.defaults
     _ = try engine.importCards(
-        waitFor { try await engine.previewImport(of: file) },
-        choosing: ImportChoices(progress: .brought(onto: settings.ladder)))
+        waitFor { try await engine.previewImport(of: file) }, choosing: ImportChoices(progress: .brought))
     guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
         throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
     }
@@ -696,7 +706,7 @@ func ankiImportedModel() throws -> AppModel {
 /// learning steps of 10 minutes, 1 hour and 6 hours, a relearning step of 20
 /// minutes, a desired retention of 87%, a longest interval of 3,650 days, 8
 /// new cards a day, and the offer to flag a card forgotten often after 6
-/// reviews rated again.
+/// lapses.
 func progressSettingsModel() throws -> AppModel {
     let engine = try sampleEngine(at: .inMemory).engine
     guard
@@ -708,8 +718,7 @@ func progressSettingsModel() throws -> AppModel {
             description: "The sample's scheduling settings break the scheduler's rules: fix progressSettingsModel().")
     }
     try engine.saveProgressSettings(
-        ProgressSettings(
-            ladder: ReviewSettings.defaults.ladder, scheduler: scheduler, newCardsPerDay: 8, forgottenOftenAfter: 6),
+        ProgressSettings(scheduler: scheduler, newCardsPerDay: 8, forgottenOftenAfter: 6),
         changedFrom: ReviewSettings.defaults.progress)
     return try AppModel(engine: engine)
 }
@@ -843,7 +852,7 @@ func giveSampleDecksLooks(in engine: Engine) throws {
 /// `cards-decks`, `cards-deck-tag` and `cards-delete-deck` start.
 func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
     var state = model.openCardsWindow()
-    state.read(on: state.ladder)
+    state.read(with: state.scheduler)
     state.setDeckOpen(false, "Ciencias")
     state.setDeckOpen(false, "Humanidades")
     state.choose(.cards(.deck(deck)))
@@ -884,7 +893,7 @@ func giveSampleUserTypes(in engine: Engine) throws {
 /// Chooses the user type named `name` in the sidebar of the Cards window
 /// `state`, and selects its card fronted `front`.
 func chooseUserType(_ name: String, selecting front: String, in state: inout CardsWindowState) throws {
-    state.read(on: state.ladder)
+    state.read(with: state.scheduler)
     guard let type = state.pickerTypes.first(where: { $0.userType?.name == name }) else {
         throw RenderError(
             description: "The Cards window doesn't list the type “\(name)”: fix giveSampleUserTypes(in:).")
@@ -1028,7 +1037,7 @@ func zipFiles(_ files: [URL], into file: URL, describing described: String) thro
 /// card of the femur selected, so the detail shows its review log.
 func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
     var state = model.openCardsWindow()
-    state.read(on: state.ladder)
+    state.read(with: state.scheduler)
     guard case .success(.cards(let rows)) = state.listing, let femur = rows.first(where: { $0.card.front == "fémur" })
     else {
         throw RenderError(description: "The Cards window doesn't list the sample Anki package's card of the femur.")
@@ -1364,7 +1373,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return window
     case .cardsNewDeck:
         var state = model.openCardsWindow()
-        state.read(on: state.ladder)
+        state.read(with: state.scheduler)
         state.choose(.cards(.deck("Idiomas::Español")))
         state.openNewCardForm()
         state.askForNewDeck(in: .form)
@@ -1379,7 +1388,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return window
     case .cardsNewType:
         var state = model.openCardsWindow()
-        state.read(on: state.ladder)
+        state.read(with: state.scheduler)
         state.openNewCardForm()
         state.askForNewType(in: .form)
         let window = CardsWindow(model: model)
@@ -1422,7 +1431,7 @@ func panelWindow(model: AppModel, on front: String) throws -> NSWindow {
     guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
         throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
     }
-    let panel = model.startAppearance(with: [.firstView(card)])
+    let panel = model.startAppearance(with: [.new(card)])
     let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))

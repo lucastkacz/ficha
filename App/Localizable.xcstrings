@@ -64,24 +64,13 @@
       }
     },
     "%@, back first" : {
-      "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
+      "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a review that went back first, like “Know it, back first”."
     },
     "%@'s data was deleted from iCloud. Turning sync on sends all your cards again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off. The name is the app's."
     },
     "%@'s data was deleted from iCloud. Turning sync on sends the cards in the decks you choose again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards in ticked decks sync. The name is the app's."
-    },
-    "%lld · %@" : {
-      "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld · %2$@"
-          }
-        }
-      }
     },
     "%lld cards are Image Occlusion cards, which hide parts of an image." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
@@ -692,13 +681,13 @@
         }
       }
     },
-    "%lld new cards come in, at the pace of your new cards per day, and %lld on a step, as Anki had them." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of the user's ladder.",
+    "%lld new cards come in, at the pace of your new cards per day, and %lld with their progress, as Anki had them." : {
+      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with the interval and due date Anki had them at.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@new@, at the pace of your new cards per day, and %2$lld on a step, as Anki had them."
+            "value" : "%#@new@, at the pace of your new cards per day, and %2$lld with their progress, as Anki had them."
           },
           "substitutions" : {
             "new" : {
@@ -944,7 +933,7 @@
       "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.\nIn the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
     },
     "Back first" : {
-      "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a first view or review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
+      "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
     },
     "Back to All Tags (⌘[)" : {
       "comment" : "The tooltip of the Cards window's Back button."
@@ -958,8 +947,8 @@
     "Back-first due" : {
       "comment" : "A column of the Cards window: when a card that goes both ways is due back first.\nIn the Cards window's detail: when a card that goes both ways is due back first."
     },
-    "Back-first step" : {
-      "comment" : "A column of the Cards window: the step on the ladder of a card that goes both ways, back first, and its wait.\nIn the Cards window's detail: the step on the ladder of a card that goes both ways, back first, and its wait."
+    "Back-first interval" : {
+      "comment" : "A column of the Cards window: how long a card that goes both ways waits after its last review back first.\nIn the Cards window's detail: how long a card that goes both ways waits after its last review back first."
     },
     "Backup" : {
       "comment" : "Settings, under Backups: a copy's kind, a backup."
@@ -1698,9 +1687,6 @@
     "Finished" : {
       "comment" : "How an appearance closed, in Diagnostics."
     },
-    "First view" : {
-      "comment" : "In the Cards window's review log and its chart's key: the first time Lucas saw the card."
-    },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
     },
@@ -1800,9 +1786,6 @@
     "General" : {
       "comment" : "A tab of the Settings window."
     },
-    "Got it" : {
-
-    },
     "Gray" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
@@ -1876,10 +1859,7 @@
       "comment" : "The tooltip of the Cards window's toolbar button that imports cards."
     },
     "Imported" : {
-      "comment" : "In the Cards window's review log chart's key: an import from Anki put the card on a step of the user's ladder."
-    },
-    "Imported on step %lld" : {
-      "comment" : "In the Cards window's review log: an import from Anki put the card on this step of the user's ladder, counted from 1."
+      "comment" : "In the Cards window's review log and its chart's key: an import from Anki brought the card in with its progress."
     },
     "Importing…" : {
       "comment" : "In the Import sheet, beside a spinner, while it imports the cards."
@@ -1941,6 +1921,12 @@
         }
       }
     },
+    "Interval" : {
+      "comment" : "A column of the Cards window: how long the card waits after its last review.\nFor VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
+    },
+    "Interval %@" : {
+      "comment" : "For VoiceOver, a point of the Cards window's chart: how long the card waited after Lucas's answer, like “Interval 5d”."
+    },
     "It leaves the inbox without becoming cards, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it discards a capture."
     },
@@ -1984,7 +1970,7 @@
       "comment" : "A menu item while the last backup failed, which opens Settings' Backups tab, where it says why."
     },
     "Last seen" : {
-      "comment" : "A column of the Cards window: when Lucas last saw the card, in a first view or a review.\nIn the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+      "comment" : "A column of the Cards window: when Lucas last reviewed the card.\nIn the Cards window's detail: when Lucas last reviewed the card."
     },
     "Last synced %@" : {
       "comment" : "Settings, under Sync: when this Mac last synced, with the date and time."
@@ -2180,7 +2166,7 @@
       "comment" : "Settings: the review panel never takes the keyboard on its own."
     },
     "New" : {
-      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first view yet, or its back-first way, when it goes both ways."
+      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
     },
     "New Card" : {
       "comment" : "A hidden button of the Cards window: ⌘N, which opens the card form.\nThe Cards window's toolbar button that opens the card form.\nThe title of the Cards window's card form."
@@ -2258,7 +2244,7 @@
       "comment" : "In the Cards window: no card is learned yet."
     },
     "No new cards" : {
-      "comment" : "In the Cards window: no card waits for its first view."
+      "comment" : "In the Cards window: no card waits for its first review."
     },
     "No questions" : {
       "comment" : "In the Cards window: no question card that isn't buried."
@@ -2601,11 +2587,8 @@
     "Start at login" : {
 
     },
-    "Step" : {
-      "comment" : "A column of the Cards window: the card's step on the ladder, and its wait.\nFor VoiceOver, the Cards window's chart: the card's step after each entry.\nIn the Cards window's detail: the card's step on the ladder, and its wait."
-    },
     "Step %lld" : {
-      "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings, under Scheduling: a learning or relearning step, counted from 1."
+      "comment" : "Settings, under Scheduling: a learning or relearning step, counted from 1."
     },
     "Stop Sound" : {
       "comment" : "The button that stops the sound of a card's side as it plays.\nThe tooltip of the button that stops the sound of a card's side as it plays."

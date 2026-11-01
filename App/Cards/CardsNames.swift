@@ -54,7 +54,7 @@ extension CardGroup {
         case .all:
             String(localized: "No cards", comment: "In the Cards window: no card that isn't buried.")
         case .new:
-            String(localized: "No new cards", comment: "In the Cards window: no card waits for its first view.")
+            String(localized: "No new cards", comment: "In the Cards window: no card waits for its first review.")
         case .due:
             String(localized: "No cards due", comment: "In the Cards window: no card is due now.")
         case .learned:

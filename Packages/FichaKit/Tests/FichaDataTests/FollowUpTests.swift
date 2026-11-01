@@ -160,7 +160,7 @@ struct FollowUpTests {
     }
 
     @Test(
-        "asking on a card's first view, front or back saves a follow-up without rating it, and the panel stays on the card, its side as it was"
+        "asking on a new card or a due one, front or back, saves a follow-up without rating it, and the panel stays on the card, its side as it was"
     )
     func askingStaysOnTheCard() throws {
         let petricor = try approveCard("petricor", in: engine)

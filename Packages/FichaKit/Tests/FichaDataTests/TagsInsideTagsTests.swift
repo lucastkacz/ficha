@@ -41,7 +41,8 @@ struct TagsInsideTagsTests {
             name: "economía::Argentina", emoji: "🇦🇷", inheritedColor: .green, inheritedEmoji: "📈")
         let deuda = CardTag(name: "economía::Argentina::deuda", inheritedColor: .green, inheritedEmoji: "🇦🇷")
         #expect(try engine.allTags() == [economia, argentina, deuda, CardTag(name: "lenguaje")])
-        #expect(try engine.cardRows(in: .all, with: settings.scheduler).map(\.tags) == [[deuda, CardTag(name: "lenguaje")]])
+        #expect(
+            try engine.cardRows(in: .all, with: settings.scheduler).map(\.tags) == [[deuda, CardTag(name: "lenguaje")]])
         let allTags = try engine.allTags()
         #expect(allTags.map(\.shownColor) == [.green, .green, .green, nil])
         #expect(allTags.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])

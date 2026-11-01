@@ -26,14 +26,15 @@ struct SettingAsideTests {
 
     @Test("a set-aside deck's cards leave review now, See more and the menu's counts")
     func aSetAsideDecksCardsLeaveReviewNowSeeMoreAndTheCounts() throws {
-        // eudaimonía gets to the 30-day step, from which a card is learned,
-        // ubuntu to the first step, and both come due. ataraxia is new.
+        // eudaimonía gets learned, graduated to wait 21 days or more, ubuntu
+        // goes to the first learning step, and both come due. ataraxia is
+        // new.
         let ubuntu = try approveCard("ubuntu", deck: "Lenguaje")
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
         try approveCard("ataraxia", deck: "Filosofía")
-        try engine.climb(eudaimonia, goods: 5, movingForward: time)
+        try engine.climbUntilLearned(eudaimonia, movingForward: time)
         try engine.meet(ubuntu)
-        time.advance(by: days(30))
+        time.move(to: try #require(try engine.standing(of: eudaimonia.id, with: settings.scheduler).due))
 
         try engine.setAside(deck: "Filosofía")
 
@@ -113,7 +114,7 @@ struct SettingAsideTests {
     // the deck. serendipia gets to the second step, which waits 4 hours, and
     // comes due while it's set aside.
     @Test(
-        "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back on its step, due when it was"
+        "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back where it stood, due when it was"
     )
     func aCardMovedIntoASetAsideDeckLeavesReviews() throws {
         let serendipia = try approveCard("serendipia")

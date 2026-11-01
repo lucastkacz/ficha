@@ -32,7 +32,9 @@ struct TagColorAndEmojiTests {
         let lenguaje = CardTag(name: "lenguaje")
         #expect(try engine.allTags() == [argentina, ciencia, historia, lenguaje])
         #expect(
-            try engine.cardRows(in: .all, with: scheduler).map(\.tags) == [[historia, argentina], [ciencia, lenguaje]])
+            try engine.cardRows(in: .all, with: scheduler).map(\.tags) == [
+                [historia, argentina], [ciencia, lenguaje],
+            ])
     }
 
     // The `tag` table refuses a row with nothing in it, so removing both

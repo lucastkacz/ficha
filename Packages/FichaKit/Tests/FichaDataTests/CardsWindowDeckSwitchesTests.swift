@@ -6,7 +6,7 @@ import Testing
 /// Tests on a deck's menu in the Cards window (ADR 0011, ADR 0024): Set Aside
 /// and Prioritize, for Default too, the same menu in the sidebar and in the
 /// Actions menu above the card list, which is its keyboard path, and a
-/// set-aside deck grayed in the sidebar, on the default ladder. They start at
+/// set-aside deck grayed in the sidebar, on the default scheduler. They start at
 /// 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckSwitchesTests {
     let time: ManualTimeSource

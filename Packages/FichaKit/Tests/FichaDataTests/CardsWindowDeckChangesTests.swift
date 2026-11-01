@@ -7,7 +7,7 @@ import Testing
 /// didn't make (ADR 0024): one the `ficha` CLI makes, another engine on the
 /// same database, as the app and the CLI are, or one another device made,
 /// heard in a fetch. Once the window reads the cards again, it follows each
-/// as it follows its own Rename… and Delete…. On the default ladder; they
+/// as it follows its own Rename… and Delete…. On the default scheduler; they
 /// start at 9 in the morning in Buenos Aires, when active hours start.
 final class CardsWindowDeckChangesTests {
     let time: ManualTimeSource

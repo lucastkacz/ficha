@@ -4,18 +4,15 @@ import FichaData
 import SwiftUI
 
 /// A card's review log in the Cards window's detail, under where the card
-/// stands: a chart of the step it stood on after each first view and review,
-/// and after the placement an import put it on its step with (ADR 0013),
-/// each the step of the entry's way, a line for each way, with a key, and
-/// every entry under it, the latest first, each back-first one marked. A new
-/// card says it has no reviews yet instead.
+/// stands: a chart of the interval it waited after each review, and after
+/// the placement an import brought it in with (ADR 0013), each the interval
+/// of the entry's way, a line for each way, with a key, and every entry
+/// under it, the latest first, each back-first one marked. A new card says
+/// it has no reviews yet instead.
 struct ReviewLogView: View {
-    /// The card's review log, oldest first, each entry with the step its way
-    /// stood on after it.
+    /// The card's review log, oldest first, each entry with the interval its
+    /// way waited after it.
     let rows: [ReviewLogRow]
-    /// The ladder Lucas set, whose steps the chart's vertical axis spans, all
-    /// of them, so that every card's chart reads the same.
-    let ladder: Ladder
 
     var body: some View {
         if rows.isEmpty {
@@ -32,16 +29,16 @@ struct ReviewLogView: View {
         }
     }
 
-    /// One point per entry, evenly spaced, at the step after it, counted from
-    /// 1 as Settings counts them, in the color of what Lucas answered, which
-    /// the key under the chart names. A line for each way holds its step
-    /// until its next entry: solid front first and dashed back first, which
-    /// the key names too once the card has a back-first entry. The first and
-    /// last entries' dates go under it.
+    /// One point per entry, evenly spaced, at the interval after it, in days
+    /// on a logarithmic scale, so an hour and a year both fit, in the color
+    /// of what Lucas answered, which the key under the chart names. A line
+    /// for each way holds its interval until its next entry: solid front
+    /// first and dashed back first, which the key names too once the card has
+    /// a back-first entry. The first and last entries' dates go under it.
     private var chart: some View {
         Chart(Array(rows.enumerated()), id: \.offset) { index, row in
             let line = LineMark(
-                x: .value(entryLabel, index), y: .value(stepLabel, row.stepNumber),
+                x: .value(entryLabel, index), y: .value(intervalLabel, row.days),
                 series: .value(wayLabel, row.entry.way.name)
             )
             .interpolationMethod(.stepEnd)
@@ -52,14 +49,16 @@ struct ReviewLogView: View {
             } else {
                 line
             }
-            PointMark(x: .value(entryLabel, index), y: .value(stepLabel, row.stepNumber))
+            PointMark(x: .value(entryLabel, index), y: .value(intervalLabel, row.days))
                 .foregroundStyle(by: .value(answerLabel, row.entry.kind.name))
                 .symbolSize(40)
                 .accessibilityLabel(Text(row.pointName))
                 .accessibilityValue(
                     Text(
-                        "Step \(row.stepNumber)",
-                        comment: "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer."))
+                        "Interval \(intervalText(row.interval))",
+                        comment:
+                            "For VoiceOver, a point of the Cards window's chart: how long the card waited after Lucas's answer, like “Interval 5d”."
+                    ))
         }
         .chartForegroundStyleScale(domain: keyKinds.map { $0.name }, range: keyKinds.map { $0.color })
         .chartLineStyleScale(domain: keyWays.map(\.name), range: keyWays.map(\.lineStyle))
@@ -68,9 +67,7 @@ struct ReviewLogView: View {
         // as the lines are.
         .foregroundStyle(.gray)
         .chartXScale(domain: entryDomain, range: .plotDimension(padding: 10))
-        // A ladder of one step gets the room of two, for its chart to have a
-        // height.
-        .chartYScale(domain: 1...max(steps.upperBound, 2), range: .plotDimension(padding: 8))
+        .chartYScale(range: .plotDimension(padding: 8), type: .log)
         .chartXAxis {
             AxisMarks(values: datedIndices) { value in
                 AxisValueLabel(anchor: dateAnchor(for: value)) {
@@ -81,16 +78,23 @@ struct ReviewLogView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading, values: Array(steps)) { _ in
+            AxisMarks(position: .leading) { value in
                 AxisGridLine()
-                AxisValueLabel()
+                AxisValueLabel {
+                    if let days = value.as(Double.self) {
+                        Text(intervalText(.seconds(days * Self.secondsInADay)))
+                    }
+                }
             }
         }
         .frame(height: 170)
     }
 
     /// What Lucas can answer, in the order the chart's key names them.
-    private static let answers: [ReviewLogEntry.Kind] = [.firstView, .review(.again), .review(.hard), .review(.good)]
+    private static let answers: [ReviewLogEntry.Kind] = [.review(.again), .review(.hard), .review(.good)]
+
+    /// The seconds in a day, which the chart's intervals are counted in.
+    fileprivate static let secondsInADay: Double = 24 * 60 * 60
 
     /// Whether the card has an entry that went back first, so that the chart
     /// draws each way's line apart and names them in its key.
@@ -105,18 +109,13 @@ struct ReviewLogView: View {
     }
 
     /// What the chart's key names, in its order: every answer, also those
-    /// the card hasn't had yet, after the import that put the card on its
-    /// step, when one did, which can only be its first entry.
+    /// the card hasn't had yet, after the import that brought the card in
+    /// with its progress, when one did, which can only be its first entry.
     private var keyKinds: [ReviewLogEntry.Kind] {
         guard let first = rows.first?.entry.kind, case .placement = first else {
             return Self.answers
         }
         return [first] + Self.answers
-    }
-
-    /// The ladder's steps, counted from 1 as Settings counts them.
-    private var steps: ClosedRange<Int> {
-        1...ladder.waits.count
     }
 
     /// The entries the chart spans, by their place in the review log: one
@@ -152,8 +151,10 @@ struct ReviewLogView: View {
     }
 
     /// The name of the chart's vertical values, for VoiceOver.
-    private var stepLabel: Text {
-        Text("Step", comment: "For VoiceOver, the Cards window's chart: the card's step after each entry.")
+    private var intervalLabel: Text {
+        Text(
+            "Interval",
+            comment: "For VoiceOver, the Cards window's chart: how long the card waited after each entry.")
     }
 
     /// The name of what colors the chart's points, for VoiceOver.
@@ -173,7 +174,7 @@ struct ReviewLogView: View {
 
     /// Every entry, the latest first: when Lucas answered, what he answered,
     /// marked when it was a review ahead and when it went back first, and how
-    /// long he took; or when the import put the card on its step, and which.
+    /// long he took; or when the import brought the card in.
     private var entries: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             ForEach(Array(rows.enumerated().reversed()), id: \.offset) { _, row in
@@ -183,7 +184,7 @@ struct ReviewLogView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     HStack(spacing: 6) {
                         AnswerDot(kind: row.entry.kind)
-                        Text(row.entryName)
+                        Text(row.entry.kind.name)
                         if row.entry.isAhead {
                             AheadBadge()
                         }
@@ -245,23 +246,10 @@ private struct ResponseTime: View {
 }
 
 extension ReviewLogRow {
-    /// The step the entry's way stood on after it, counted from 1 as
-    /// Settings counts them.
-    fileprivate var stepNumber: Int {
-        step + 1
-    }
-
-    /// The entry as the review log's list names it: what the user answered,
-    /// or for a placement, the step the import put the card on.
-    fileprivate var entryName: String {
-        guard case .placement = entry.kind else {
-            return entry.kind.name
-        }
-        return String(
-            localized: "Imported on step \(stepNumber)",
-            comment:
-                "In the Cards window's review log: an import from Anki put the card on this step of the user's ladder, counted from 1."
-        )
+    /// The interval the entry's way waited after it, in days, as the chart
+    /// plots it.
+    fileprivate var days: Double {
+        interval.timeInterval / ReviewLogView.secondsInADay
     }
 
     /// The entry's point in the chart, as VoiceOver names it: what the user
@@ -274,7 +262,7 @@ extension ReviewLogRow {
             String(
                 localized: "\(entry.kind.name), back first",
                 comment:
-                    "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
+                    "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a review that went back first, like “Know it, back first”."
             )
         }
     }
@@ -311,20 +299,16 @@ extension Way {
 
 extension ReviewLogEntry.Kind {
     /// What the user answered, as the review log names it in the Cards window:
-    /// "First view", or the rating as the review panel's buttons name it, and
-    /// "Easy", which no button gives yet; or "Imported", for the placement an
-    /// import put the card on its step with.
+    /// the rating as the review panel's buttons name it, and "Easy", which no
+    /// button gives yet; or "Imported", for the placement an import brought
+    /// the card in with.
     fileprivate var name: String {
         switch self {
-        case .firstView:
-            String(
-                localized: "First view",
-                comment: "In the Cards window's review log and its chart's key: the first time Lucas saw the card.")
         case .placement:
             String(
                 localized: "Imported",
                 comment:
-                    "In the Cards window's review log chart's key: an import from Anki put the card on a step of the user's ladder."
+                    "In the Cards window's review log and its chart's key: an import from Anki brought the card in with its progress."
             )
         case .review(.again):
             String(
@@ -346,12 +330,11 @@ extension ReviewLogEntry.Kind {
         }
     }
 
-    /// The color of what Lucas answered: neutral for a first view, and red,
-    /// orange, green and blue for "Don't know", "Sort of", "Know it" and
-    /// "Easy", as Anki colors its ratings; and blue for a placement too.
+    /// The color of what Lucas answered: red, orange, green and blue for
+    /// "Don't know", "Sort of", "Know it" and "Easy", as Anki colors its
+    /// ratings; and blue for a placement too.
     fileprivate var color: Color {
         switch self {
-        case .firstView: .gray
         case .placement: .blue
         case .review(.again): .red
         case .review(.hard): .orange

@@ -6,7 +6,7 @@ import Testing
 /// Tests on decks (ADR 0024): each card lives in exactly one, Default until
 /// it's moved, a deck sits inside another by its whole name, `Arte::Pintura`,
 /// and a parent holds the cards of every deck inside it, on the default
-/// ladder. They start at 9 in the morning in Buenos Aires, when active hours
+/// scheduler. They start at 9 in the morning in Buenos Aires, when active hours
 /// start.
 struct DecksTests {
     let calendar: Calendar
@@ -50,7 +50,9 @@ struct DecksTests {
         #expect(try engine.makeDeck(named: "Arte::Default") == "Arte::Default")
     }
 
-    @Test("Change Deck moves cards to a deck, each keeping its step, its review log and its tags, and back to Default")
+    @Test(
+        "Change Deck moves cards to a deck, each keeping its progress, its review log and its tags, and back to Default"
+    )
     func changeDeckKeepsEverythingElse() throws {
         let ubuntu = try engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]))
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
@@ -97,7 +99,8 @@ struct DecksTests {
         try engine.changeDeck(of: [fuga.id], to: "Artes")
         try engine.bury(guernica.id)
 
-        #expect(try engine.cardRows(in: .deck("Arte"), with: scheduler).map(\.card.front) == ["La Gioconda", "La Piedad"])
+        #expect(
+            try engine.cardRows(in: .deck("Arte"), with: scheduler).map(\.card.front) == ["La Gioconda", "La Piedad"])
         #expect(try engine.cardRows(in: .deck("Arte::Pintura"), with: scheduler).map(\.card.front) == ["La Gioconda"])
         #expect(try engine.cardRows(in: .deck("Artes"), with: scheduler).map(\.card.front) == ["fuga"])
     }

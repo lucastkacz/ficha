@@ -694,7 +694,8 @@ final class AnkiImportingTests {
 
         let cards = try engine.cards()
         #expect(cards.map(\.front) == ["tres", "three", "dos", "uno", "cuatro", "four"])
-        #expect(try cards.allSatisfy { try engine.standing(of: $0.id, with: ReviewSettings.defaults.scheduler) == .new })
+        #expect(
+            try cards.allSatisfy { try engine.standing(of: $0.id, with: ReviewSettings.defaults.scheduler) == .new })
     }
 
     @Test(

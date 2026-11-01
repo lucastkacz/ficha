@@ -47,10 +47,10 @@ enum Preferences {
 
     /// The settings that decide a card's progress as the preferences kept
     /// them before they synced, which no version writes since, for the engine
-    /// to move them into the database.
+    /// to move them into the database: the ladder they kept went with it
+    /// (#407), so the scheduler's settings are Ficha's.
     static func progressSettingsBeforeSync() -> ProgressSettings {
         var settings = ReviewSettings.defaults.progress
-        settings.ladder = read(.ladder, as: [Int].self, ladder) ?? settings.ladder
         settings.newCardsPerDay = read(.newCardsPerDay, as: Int.self) { $0 >= 0 ? $0 : nil } ?? settings.newCardsPerDay
         if let offer = read(.forgottenOftenAfter, as: Int.self, StoredOffer.init(stored:)) {
             settings.forgottenOftenAfter = offer.timesForgotten
@@ -205,11 +205,10 @@ enum Preferences {
     }
 
     /// Each setting's name in the preferences. Spans of time are stored in
-    /// whole minutes, but the idle time, in whole seconds. The ladder, the
-    /// new cards a day and the forgotten-often count are as versions before
-    /// #315 left them, only to be moved into the database.
+    /// whole minutes, but the idle time, in whole seconds. The new cards a
+    /// day and the forgotten-often count are as versions before #315 left
+    /// them, only to be moved into the database.
     private enum Key: String {
-        case ladder = "LadderMinutes"
         case cardsPerAppearance = "CardsPerAppearance"
         case newCardsPerDay = "NewCardsPerDay"
         case lookAhead = "LookAheadMinutes"
@@ -325,15 +324,6 @@ private let longest = 366 * 24 * 60
 /// A span of time in whole minutes, leaving out any seconds.
 private func wholeMinutes(_ duration: Duration) -> Int64 {
     duration.components.seconds / 60
-}
-
-/// The ladder stored as each step's wait in whole minutes, or nil unless they
-/// make one, each step up to a year.
-private func ladder(_ stored: [Int]) -> Ladder? {
-    guard stored.allSatisfy((1...longest).contains) else {
-        return nil
-    }
-    return Ladder(waits: stored.map(Duration.minutes))
 }
 
 /// The active hours stored as two numbers, the first hour and the hour after
