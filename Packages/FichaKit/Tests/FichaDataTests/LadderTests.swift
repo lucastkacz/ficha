@@ -102,6 +102,27 @@ struct LadderTests {
         )
     }
 
+    // The ladder leaves a review ahead's “Sort of” or “Know it” due when it
+    // was, so the interval it keeps is the time left until then, from which
+    // #404 works out the due time again.
+    @Test(
+        "a review ahead that leaves a card's due time as it was keeps the time left until it as its interval",
+        arguments: [Rating.hard, .good])
+    func aReviewAheadKeepsTheTimeLeftAsItsInterval(rating: Rating) throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.climb(serendipia, to: 2, movingForward: time)
+        time.advance(by: days(1) + hours(3))
+
+        try engine.record(
+            .review(rating), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults,
+            reviewingAhead: true)
+
+        let ahead = try #require(try engine.reviewLog().last)
+        #expect(ahead.isAhead)
+        #expect(ahead.interval == .seconds(days(1) - hours(3)))
+        #expect(try engine.standing(of: serendipia.id, on: ladder).due == time.now + days(1) - hours(3))
+    }
+
     @Test("each way of a card that goes both ways climbs on its own, and the review log says which way each went")
     func eachWayClimbsOnItsOwn() throws {
         let serendipia = try approveCard("serendipia", in: engine)

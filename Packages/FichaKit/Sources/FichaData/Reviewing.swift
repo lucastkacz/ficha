@@ -169,25 +169,30 @@ func recordAnswer(
         case .review: wayLog.max { $0.isReplayed(before: $1) }?.uuid
         case .firstView, .placement: nil
         }
-    let answer = { (interval: Duration?) in
+    /// The answer's entry, keeping `interval`.
+    func entry(keeping interval: Duration?) -> ReviewLogEntry {
         ReviewLogEntry(
             cardID: answered.cardID, way: answered.way, kind: kind, answeredAt: answeredAt,
             responseTime: responseTime, trigger: trigger, isAhead: isAhead, answeredEntry: answeredEntry,
             interval: interval)
     }
-    let entry = answer(try ladderWait(of: answer(nil), after: wayLog, on: settings.ladder))
-    try insert(entry, in: db)
-    return settings.forgottenOften(after: log + [entry], editedAt: card.editedAt)
+    let answer = entry(keeping: try ladderWait(after: entry(keeping: nil), following: wayLog, on: settings.ladder))
+    try insert(answer, in: db)
+    return settings.forgottenOften(after: log + [answer], editedAt: card.editedAt)
 }
 
-/// The interval a review keeps until #407 spaces cards with the scheduler:
-/// the wait of the step `ladder` leaves its way on, after `log`, the way's
-/// entries before it. Nil for a first view, which keeps none.
-private func ladderWait(of entry: ReviewLogEntry, after log: [ReviewLogEntry], on ladder: Ladder) throws -> Duration? {
-    guard case .review = entry.kind, case .onLadder(let step, _) = try ladder.standing(after: log + [entry]) else {
+/// The interval `entry` keeps until #407 spaces cards with the scheduler: how
+/// long `ladder` has its way wait after it, after `log`, the way's entries
+/// before it, from when it was answered to the way's due time, which a review
+/// ahead the ladder doesn't move leaves as it was. Nil for a first view,
+/// which keeps none.
+private func ladderWait(after entry: ReviewLogEntry, following log: [ReviewLogEntry], on ladder: Ladder) throws
+    -> Duration?
+{
+    guard case .review = entry.kind, case .onLadder(_, let due) = try ladder.standing(after: log + [entry]) else {
         return nil
     }
-    return ladder.waits[step]
+    return .seconds(due.timeIntervalSince(entry.answeredAt))
 }
 
 /// Deletes the last entry this device recorded in the review log of
