@@ -473,6 +473,21 @@ final class DatabaseFileTests {
         #expect(waiting.first?.fieldTimes == [.desiredRetention: time.now])
     }
 
+    // The review log's table, made again, has its trigger as an entry is
+    // deleted made again too: serendipia's review ahead, which the old
+    // table's sent, leaves the other devices' logs as it leaves this one's.
+    @Test("an answer taken back after a database from before the scheduling settings migrates waits as a deletion")
+    func anAnswerTakenBackAfterTheSchedulingSettingsWaitsAsADeletion() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeSchedulingSettings(at: folder.appending(path: "Ficha.sqlite"), at: time.now - days(1))
+        let engine = try Engine(location: .folder(folder), time: time)
+        let reviewAhead = try #require(try engine.reviewLog().last { $0.cardID == 1 }?.uuid)
+
+        try engine.takeBackAnswer(of: 1, way: .frontFirst)
+
+        #expect(try engine.waiting() == [Waiting(row: .reviewLogEntry(reviewAhead), kind: .deleted)])
+    }
+
     // Ficha Dev's sample cards, and an agent's scratch run, load into a new
     // database, which then syncs them.
     @Test("a new database starts with sync on and every card syncing, the sample cards loaded into it too")
