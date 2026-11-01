@@ -946,7 +946,10 @@ func scrollDetailToEnd(of window: NSWindow) throws {
         throw RenderError(description: "The Cards window shows no detail to scroll: fix scrollDetailToEnd(of:).")
     }
     let clip = detail.contentView
-    let end = document.isFlipped ? max(0, document.bounds.height - clip.bounds.height) : 0
+    // Past the bar under the detail, which insets the scroll view's end, as
+    // scrolling there does in the app.
+    let end =
+        document.isFlipped ? max(0, document.bounds.height - clip.bounds.height + detail.contentInsets.bottom) : 0
     clip.scroll(to: NSPoint(x: clip.bounds.minX, y: end))
     detail.reflectScrolledClipView(clip)
 }

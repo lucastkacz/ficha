@@ -229,9 +229,12 @@ private struct EntryInterval: View {
 /// always spans two marks at least; and the marks, at each round span in it.
 private struct IntervalScale {
     /// The round spans of time the scale can mark, in days: a minute, 10
-    /// minutes, an hour, a day, a week, a month, a year, 10 years and 100,
-    /// the longest interval Ficha gives.
-    private static let spans: [Double] = [1.0 / (24 * 60), 10.0 / (24 * 60), 1.0 / 24, 1, 7, 30, 365, 3_650, 36_500]
+    /// minutes, an hour, a day, a week, a month, a twelfth of a year as Anki
+    /// counts it, which `intervalText` labels "1mo", a year, 10 years and
+    /// 100, the longest interval Ficha gives.
+    private static let spans: [Double] = [
+        1.0 / (24 * 60), 10.0 / (24 * 60), 1.0 / 24, 1, 7, 365.0 / 12, 365, 3_650, 36_500,
+    ]
 
     /// The intervals the scale spans, in days.
     let domain: ClosedRange<Double>
