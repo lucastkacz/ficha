@@ -71,12 +71,34 @@ public struct WayProgress: Sendable, Equatable {
         standing.interval
     }
 
-    /// The way's interval as the Interval and Back-first interval columns
-    /// sort ways by it, shortest first: zero while it's new, so that a new
-    /// way comes before every interval, tied with the placement an import
-    /// gives a card Anki was learning, whose interval is zero.
-    public var intervalToSortBy: Duration {
-        interval ?? .zero
+    /// What the Interval column, or the Back-first interval column, and the
+    /// detail's Interval rows say of the way, as Anki's Browse says it, in
+    /// the order the columns sort ways, shortest first: new ways, then those
+    /// in their learning steps, then every other by its interval.
+    public enum IntervalColumn: Sendable, Comparable {
+        /// That it's new.
+        case new
+        /// That it's in its learning steps, whatever the step's interval,
+        /// as Anki's Browse says "(learning)" there: an import's placement
+        /// of a card Anki was learning, whose interval is zero, too. Ways in
+        /// their learning steps sort by that interval among themselves, and
+        /// before every other interval, as Anki's Browse sorts them with an
+        /// interval of zero.
+        case learning(Duration)
+        /// Its interval: graduated, in days, or in its relearning steps,
+        /// the step's.
+        case interval(Duration)
+    }
+
+    /// What the Interval columns and the detail's Interval rows say of the
+    /// way.
+    public var intervalColumn: IntervalColumn {
+        switch standing {
+        case .new: .new
+        case .started(.learning, let interval, _, _): .learning(interval)
+        case .started(.graduated, let interval, _, _), .started(.relearning, let interval, _, _):
+            .interval(interval)
+        }
     }
 
     /// When the way is due, as the Cards window says it: nil while it's new,
@@ -132,13 +154,15 @@ public struct WayProgress: Sendable, Equatable {
 
 /// What FSRS knows of how well Lucas remembers one of a card's ways, as a
 /// card's detail shows it, as Anki's Card Info does: why the way shows up
-/// when it does.
+/// when it does: FSRS's memory state, its stability and difficulty, as
+/// fsrs-rs's `MemoryState` and `WayStanding.Memory` name them, and the
+/// retrievability they give.
 public struct WayMemory: Sendable, Equatable {
     /// How long the way's memory lasts: the days it takes the chance of
     /// remembering it to fall to 90%, FSRS's stability.
     public let stabilityInDays: Double
-    /// How hard the way is, from 0 to 1, as Anki shows FSRS's difficulty,
-    /// from 1 to 10, as a percentage.
+    /// How hard the way is, from 0 to 1, as Anki shows FSRS's difficulty
+    /// as a percentage (`WayStanding.Memory.difficultyAsAnkiShowsIt`).
     public let difficulty: Double
     /// The chance of remembering the way when the window read it, from 0 to
     /// 1, FSRS's retrievability.
@@ -447,7 +471,7 @@ extension WayProgress {
         memory = try scheduler.retrievability(of: standing, at: now).flatMap { retrievability in
             standing.memory.map { memory in
                 WayMemory(
-                    stabilityInDays: Double(memory.stability), difficulty: Double(memory.difficulty - 1) / 9,
+                    stabilityInDays: Double(memory.stability), difficulty: Double(memory.difficultyAsAnkiShowsIt),
                     retrievability: Double(retrievability))
             }
         }

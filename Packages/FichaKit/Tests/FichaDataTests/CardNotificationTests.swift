@@ -48,11 +48,12 @@ struct CardNotificationTests {
             ])
     }
 
-    // Anki's four, as the Mac's review panel offers them (#404): again on a
-    // card on the first learning step keeps it there, hard waits halfway to
-    // the second step, good moves it there, and easy graduates it.
-    @Test("a card notification offers four actions, again, hard, good and easy, each of which answers its card")
-    func aCardNotificationOffersFourActions() throws {
+    // Anki's four, which the iPhone's category offers as the Mac's review
+    // panel does, from `Rating.allCases` (#404): again on a card on the
+    // first learning step keeps it there, hard waits halfway to the second
+    // step, good moves it there, and easy graduates it.
+    @Test("each of a card notification's four actions, again, hard, good and easy, answers its card")
+    func eachOfACardNotificationsFourActionsAnswersItsCard() throws {
         let cards = try ["ubuntu", "serendipia", "petricor", "Schadenfreude"].map { front in
             try meetCard(front, dueAt: try at(10, 0))
         }
@@ -60,11 +61,10 @@ struct CardNotificationTests {
         let appearance = try nextAppearance()
 
         time.move(to: try at(10, 1))
-        for (card, rating) in zip(cards, NotifiedAppearance.ratings) {
+        for (card, rating) in zip(cards, Rating.allCases) {
             _ = try engine.answerFromNotification(.review(rating), of: card.id, in: appearance, settings: settings)
         }
 
-        #expect(NotifiedAppearance.ratings == [.again, .hard, .good, .easy])
         #expect(
             try cards.map { try engine.standing(of: $0.id, with: settings.scheduler).stageAndDue?.stage } == [
                 .learning(step: 0), .learning(step: 0), .learning(step: 1), .graduated,

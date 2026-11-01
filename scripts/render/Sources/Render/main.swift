@@ -1248,9 +1248,7 @@ func model(for name: Window) throws -> AppModel {
     case .panelReview:
         let (engine, time) = try sampleEngine(at: .inMemory)
         try giveSampleDecksLooks(in: engine)
-        guard let due = try longestWaitingSampleCard(in: engine).frontFirst.due else {
-            throw RenderError(description: "The sample's graduated card that waits longest has no due time.")
-        }
+        let due = try longestWaitingSampleCard(in: engine).due
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
@@ -1466,7 +1464,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
     case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
     case .panelReview:
-        return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).card.front) {
+        return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).row.card.front) {
             .review($0)
         }
     case .cardsBothWays:
@@ -1485,13 +1483,13 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
 }
 
 /// The row of the sample's graduated card in the reviews that waits longest,
-/// front first, as the Cards window lists it.
-func longestWaitingSampleCard(in engine: Engine) throws -> CardRow {
+/// front first, as the Cards window lists it, and when it's due.
+func longestWaitingSampleCard(in engine: Engine) throws -> (row: CardRow, due: Date) {
     let rows = try engine.cardRows(in: .all, with: ReviewSettings.defaults.scheduler)
-    guard
-        let longest = rows.filter({ $0.frontFirst.standing.stage == .graduated && $0.frontFirst.due != nil }).max(by: {
-            $0.frontFirst.intervalToSortBy < $1.frontFirst.intervalToSortBy
-        })
+    let graduated = rows.filter { $0.frontFirst.standing.stage == .graduated }.compactMap { row in
+        row.frontFirst.due.map { (row: row, due: $0) }
+    }
+    guard let longest = graduated.max(by: { $0.row.frontFirst.intervalColumn < $1.row.frontFirst.intervalColumn })
     else {
         throw RenderError(description: "No sample card graduated: fix sampleEngine(at:).")
     }

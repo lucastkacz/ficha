@@ -189,6 +189,20 @@ struct ReviewPanelTests {
                 != offeredForTheGraduatedCard)
     }
 
+    // As when the Cards window deleted the card while the panel showed it.
+    @Test("when the panel can't work out a flipped card's intervals, its buttons show none, and it says why")
+    func thePanelSaysWhyItCantWorkOutTheIntervals() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
+
+        _ = try engine.delete([serendipia.id])
+        panel.flip()
+
+        #expect(panel.intervals == nil)
+        #expect(panel.failure?.action == .workOutIntervals)
+        #expect(panel.failure?.error == .cardNotFound(serendipia.id))
+    }
+
     @Test(
         "writing a flag's note leaves its time out of the card's response time, and cancelling it goes on from where it waited"
     )

@@ -83,6 +83,9 @@ public struct ReviewPanelState: Sendable {
         /// He went through every card, and the panel looked for more to
         /// offer.
         case lookForMore
+        /// He turned a card over, or ⌘Z showed its lower side again, and the
+        /// panel worked out the interval each of its buttons would set.
+        case workOutIntervals
     }
 
     /// What opened the panel: Lucas, with review now, or an appearance.
@@ -235,8 +238,8 @@ public struct ReviewPanelState: Sendable {
     /// side showed, so that what a button showed is what the card gets,
     /// however long he takes. Nil while the panel shows anything else, or
     /// when the scheduler couldn't work them out, as when it can't follow
-    /// the card's review log: then the buttons show none, and a rating
-    /// fails, saying why.
+    /// the card's review log: then the buttons show none, and `failure`
+    /// says why.
     public var intervals: IntervalPreview? {
         guard case .bothSides = content else {
             return nil
@@ -329,8 +332,9 @@ public struct ReviewPanelState: Sendable {
     /// Works out the interval each rating would set for the card Lucas is
     /// on, now, while its lower side shows, for its buttons to show and his
     /// rating to keep, or none otherwise. When the scheduler can't work them
-    /// out, the buttons show none: his rating then fails the same way, and
-    /// the panel says why.
+    /// out, the buttons show none, and the panel says why, as when it can't
+    /// look for more cards: a rating then keeps the interval worked out as
+    /// he answers, if it can be.
     private mutating func showIntervals() {
         guard showsLowerSide, let current else {
             shownIntervals = nil
@@ -341,6 +345,7 @@ public struct ReviewPanelState: Sendable {
             shownIntervals = (try engine.intervals(of: current.cardWay, at: now, settings: settings), now)
         } catch {
             shownIntervals = nil
+            failure = Failure(action: .workOutIntervals, error: error)
         }
     }
 

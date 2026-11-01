@@ -193,7 +193,7 @@ struct ReviewLogView: View {
                             BackFirstBadge()
                         }
                     }
-                    SetInterval(row: row)
+                    EntryInterval(row: row)
                         .gridColumnAlignment(.trailing)
                     ResponseTime(entry: row.entry)
                         .gridColumnAlignment(.trailing)
@@ -208,7 +208,7 @@ struct ReviewLogView: View {
 /// The interval a review set, in the review log's list, short, as the
 /// Interval column shows it, and in words for VoiceOver. A placement, whose
 /// due date its name says, has nothing there.
-private struct SetInterval: View {
+private struct EntryInterval: View {
     let row: ReviewLogRow
 
     var body: some View {
@@ -360,17 +360,19 @@ extension ReviewLogEntry {
 }
 
 extension ReviewLogEntry.Kind {
-    /// What the user answered, as the chart's key names it: the rating as
-    /// the review panel's buttons name it, or "Imported", for the placement
-    /// an import brought the card in with.
+    /// What the user answered, as the chart's key names it, and VoiceOver
+    /// each of the chart's points: the rating as the review panel's buttons
+    /// name it, or "Imported", for the placement an import brought the card
+    /// in with.
     fileprivate var name: String {
         switch self {
         case .placement:
             String(
                 localized: "Imported",
-                comment:
-                    "In the key of the Cards window's review log chart: an import from Anki brought the card in with its progress."
-            )
+                comment: """
+                    In the key of the Cards window's review log chart, and for VoiceOver, the name of the chart's \
+                    point: an import from Anki brought the card in with its progress.
+                    """)
         case .review(let rating):
             rating.name
         }

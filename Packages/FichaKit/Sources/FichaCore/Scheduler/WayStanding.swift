@@ -46,6 +46,13 @@ public enum WayStanding: Sendable, Equatable {
             self.difficulty = difficulty
             self.lastReview = lastReview
         }
+
+        /// How hard the way is, from 0 to 1, as Anki's Card Info shows the
+        /// difficulty, as a percentage: FSRS's 1 to 10 shifted to start at
+        /// 0, (difficulty − 1) / 9.
+        public var difficultyAsAnkiShowsIt: Float {
+            (difficulty - 1) / 9
+        }
     }
 }
 

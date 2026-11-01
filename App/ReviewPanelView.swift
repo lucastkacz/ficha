@@ -41,16 +41,16 @@ struct ReviewPanelView: View {
                 localized: "Forgotten \(forgotten.times) times",
                 comment: """
                     The note the review panel offers to flag a card with, once the user answered “Again” to it this \
-                    many times front first after it left its learning steps, since its front or back last changed. \
-                    They can add to it.
+                    many times front first while it was graduated, out of its learning and relearning steps, since \
+                    its front or back last changed: Anki's lapses. They can add to it.
                     """)
         case .backFirst:
             String(
                 localized: "Forgotten \(forgotten.times) times back first",
                 comment: """
                     The note the review panel offers to flag a card with, once the user answered “Again” to it this \
-                    many times back first, its back shown on top, after it left its learning steps, since its front \
-                    or back last changed. They can add to it.
+                    many times back first, its back shown on top, while it was graduated, out of its learning and \
+                    relearning steps, since its front or back last changed: Anki's lapses. They can add to it.
                     """)
         }
     }
@@ -165,6 +165,8 @@ struct ReviewPanelView: View {
         case .ask: Failure(title: "Couldn't save your question", message: error.messageInReviewPanel)
         case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
         case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
+        case .workOutIntervals:
+            Failure(title: "Couldn't work out the buttons' intervals", message: error.messageInReviewPanel)
         }
     }
 
@@ -745,45 +747,6 @@ struct AheadBadge: View {
             Text(
                 "A review ahead: it counts, and lengthens the card's interval less the earlier it comes.",
                 comment: "The tooltip of the Ahead badge, in the review panel and the Cards window's review log."))
-    }
-}
-
-extension Rating {
-    /// The rating, as the review panel's buttons and the Cards window's
-    /// review log name it: Anki's names for its four buttons, in each
-    /// language Anki's own.
-    var name: String {
-        switch self {
-        case .again:
-            String(
-                localized: "Again",
-                comment: """
-                    A rating, Anki's first button, as the review panel's button names it and the Cards window's \
-                    review log shows it: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish.
-                    """)
-        case .hard:
-            String(
-                localized: "Hard",
-                comment: """
-                    A rating, Anki's second button, as the review panel's button names it and the Cards window's \
-                    review log shows it: Lucas knew the card with effort. Anki's own name for it, “Difícil” in \
-                    Spanish.
-                    """)
-        case .good:
-            String(
-                localized: "Good",
-                comment: """
-                    A rating, Anki's third button, as the review panel's button names it and the Cards window's \
-                    review log shows it: Lucas knew the card. Anki's own name for it, “Bien” in Spanish.
-                    """)
-        case .easy:
-            String(
-                localized: "Easy",
-                comment: """
-                    A rating, Anki's fourth button, as the review panel's button names it and the Cards window's \
-                    review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish.
-                    """)
-        }
     }
 }
 

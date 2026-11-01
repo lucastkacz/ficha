@@ -312,8 +312,9 @@ struct CardDetail: View {
     }
 
     /// Where one of the card's ways stands, in rows of the grid labeled as
-    /// `labels` say: its interval, when it's due, while it has a due time,
-    /// and, once FSRS has a memory of it, its stability, in days, its
+    /// `labels` say: its interval, as the Interval column says it, when it's
+    /// due, while it has a due time, and, once FSRS has a memory of it, its
+    /// stability, in days, its
     /// difficulty, as a percentage, and its retrievability, the chance of
     /// remembering it now, as a percentage too, as Anki's Card Info shows
     /// them, and as VoiceOver reads them, with their units.
@@ -321,7 +322,7 @@ struct CardDetail: View {
     private func wayRows(_ way: WayProgress, labels: WayLabels) -> some View {
         GridRow {
             gridLabel(labels.interval)
-            Text(intervalText(way))
+            WayIntervalText(way: way)
         }
         if let due = way.due {
             GridRow {
@@ -606,64 +607,35 @@ func gridLabel(_ text: Text) -> some View {
         .gridColumnAlignment(.trailing)
 }
 
-/// How long one of a card's ways waits after its last review, like "5d",
-/// "2h 30m" or "1.5mo", or "New" before its first review. A way an import
-/// placed in its learning steps, as Anki was learning it, has waited no
-/// interval yet: "Learning", as Anki's Browse says "(learning)" there.
-func intervalText(_ way: WayProgress) -> String {
-    guard let interval = way.interval else {
-        return String(
-            localized: "New",
-            comment:
-                "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
-        )
-    }
-    guard interval > .zero else {
-        return String(
-            localized: "Learning",
-            comment: """
-                In the Cards window's Interval columns: a card an import from Anki brought in while Anki was still \
-                learning it, which waits no interval until its first review in Ficha, as Anki's Browse says \
-                “(learning)”.
-                """)
-    }
-    return intervalText(interval)
-}
+/// What one of a card's ways says in the Interval columns and the detail's
+/// Interval rows, as Anki's Browse says it: how long it waits after its last
+/// review, like "5d", "2h 30m" or "1.5mo", which VoiceOver reads in words;
+/// "New" before its first review; or "Learning" while it's in its learning
+/// steps, whatever the step's interval, as Anki's Browse says "(learning)".
+struct WayIntervalText: View {
+    let way: WayProgress
 
-/// An interval as the Cards window and the review panel's buttons show it,
-/// short, as Anki's buttons do: in days, hours and minutes under a month,
-/// like "5d" or "2h 30m", then in months, like "1.5mo", and from a year on in
-/// years, like "2.1y", with a decimal, a month counted as 30 days and a year
-/// as 365, as Anki counts them.
-func intervalText(_ interval: Duration) -> String {
-    let days = interval.inDays
-    guard days >= 30 else {
-        return interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
+    var body: some View {
+        switch way.intervalColumn {
+        case .new:
+            Text(
+                "New",
+                comment:
+                    "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
+            )
+        case .learning:
+            Text(
+                "Learning",
+                comment: """
+                    In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
+                    steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
+                    says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
+                    """)
+        case .interval(let interval):
+            Text(intervalText(interval))
+                .accessibilityLabel(spokenIntervalText(interval))
+        }
     }
-    let tenths = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1))
-    guard days >= 365 else {
-        return String(
-            localized: "\((days / 30).formatted(tenths))mo",
-            comment: """
-                An interval of this many months, a month counted as 30 days, with a decimal, like “1.5mo”: short, \
-                as Anki's buttons show it, in the Cards window and on the review panel's buttons. Anki's own \
-                short unit in each language.
-                """)
-    }
-    return String(
-        localized: "\((days / 365).formatted(tenths))y",
-        comment: """
-            An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as \
-            Anki's buttons show it, in the Cards window and on the review panel's buttons. Anki's own short unit \
-            in each language.
-            """)
-}
-
-/// An interval as VoiceOver reads it, in whole words: in days, hours and
-/// minutes, like "45 days" or "2 hours, 30 minutes", whatever its length,
-/// as the Mac's language says them.
-func spokenIntervalText(_ interval: Duration) -> String {
-    interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .wide))
 }
 
 /// When one of a card's ways is due, counted from `now`: "now" once it's

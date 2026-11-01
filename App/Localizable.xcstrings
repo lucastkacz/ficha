@@ -73,10 +73,10 @@
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards in ticked decks sync. The name is the app's."
     },
     "%@mo" : {
-      "comment" : "An interval of this many months, a month counted as 30 days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, in the Cards window and on the review panel's buttons. Anki's own short unit in each language."
+      "comment" : "An interval of this many months, a month counted as a twelfth of a year of 365 days, about 30.4 days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit in each language."
     },
     "%@y" : {
-      "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, in the Cards window and on the review panel's buttons. Anki's own short unit in each language."
+      "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit in each language."
     },
     "%lld cards are Image Occlusion cards, which hide parts of an image." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
@@ -853,7 +853,7 @@
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
     },
     "After forgetting it %lld times" : {
-      "comment" : "Settings, under Review panel: how many “Again” answers to one of a card's ways once it left its learning steps, since its front or back last changed, bring the offer to flag it.",
+      "comment" : "Settings, under Review panel: how many “Again” answers to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1453,6 +1453,9 @@
     "Couldn't untick Set Aside on “%@”" : {
       "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, with the deck."
     },
+    "Couldn't work out the buttons' intervals" : {
+
+    },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
@@ -1612,8 +1615,8 @@
     "Due" : {
       "comment" : "A column of the Cards window's All Tags: how many of the tag's cards are due now.\nA column of the Cards window: when the card is due.\nAn item of the Cards window's sidebar: the cards due now.\nIn the Cards window's detail: when the card is due."
     },
-    "Each “Again” counts once the card has left its learning steps, since its front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
-      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often. “Again” is the review panel's button, as Anki names it."
+    "Each “Again” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
+      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Again” is the review panel's button, as Anki names it."
     },
     "Easy" : {
       "comment" : "A rating, Anki's fourth button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
@@ -1733,7 +1736,7 @@
       "comment" : "Settings, under Backups: the folder the copies are in."
     },
     "Forgotten %lld times" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times front first after it left its learning steps, since its front or back last changed. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times front first while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1756,7 +1759,7 @@
       }
     },
     "Forgotten %lld times back first" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times back first, its back shown on top, after it left its learning steps, since its front or back last changed. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times back first, its back shown on top, while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1883,7 +1886,7 @@
       "comment" : "The tooltip of the Cards window's toolbar button that imports cards."
     },
     "Imported" : {
-      "comment" : "In the key of the Cards window's review log chart: an import from Anki brought the card in with its progress."
+      "comment" : "In the key of the Cards window's review log chart, and for VoiceOver, the name of the chart's point: an import from Anki brought the card in with its progress."
     },
     "Imported, due on %@" : {
       "comment" : "In the Cards window's review log: an import from Anki brought the card in with its progress, due on this day, as Anki had it, like “Imported, due on Oct 20, 2026”."
@@ -2006,7 +2009,7 @@
       "comment" : "An item of the Cards window's sidebar: the learned cards."
     },
     "Learning" : {
-      "comment" : "In the Cards window's Interval columns: a card an import from Anki brought in while Anki was still learning it, which waits no interval until its first review in Ficha, as Anki's Browse says “(learning)”."
+      "comment" : "In the Cards window's Interval columns and its detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
     },
     "Learning steps" : {
       "comment" : "Settings, under Scheduling: the header of the learning steps."
@@ -2337,7 +2340,7 @@
       "comment" : "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
     },
     "Offer to flag a card you forget often" : {
-      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Again” to once it left its learning steps, so it gets fixed."
+      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Again” to while it's out of its learning and relearning steps, so it gets fixed."
     },
     "OK" : {
 

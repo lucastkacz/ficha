@@ -21,11 +21,6 @@ public struct NotifiedAppearance: Sendable, Equatable {
         self.init(shownAt: upcoming.time, cardIDs: upcoming.cards.map(\.card.id))
     }
 
-    /// The ratings each of its card notifications offers, as its buttons, in
-    /// their order: Anki's four, again, hard, good and easy, as the Mac's
-    /// review panel offers them (#404).
-    public static let ratings: [Rating] = [.again, .hard, .good, .easy]
-
     /// The ways it brought, in the order their notifications show: each card
     /// front first, since card notifications don't go back first (#97).
     var ways: [CardWay] {

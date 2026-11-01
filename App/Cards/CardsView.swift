@@ -1257,7 +1257,7 @@ struct CardsView: View {
                         comment: "A column of the Cards window: how long the card waits after its last review."),
                     sortUsing: CardRowOrder(.interval)
                 ) { row in
-                    Text(intervalText(row.frontFirst))
+                    WayIntervalText(way: row.frontFirst)
                 }
                 .width(min: 56, ideal: 64, max: 100)
                 .customizationID(CardRowOrder.Column.interval.rawValue)
@@ -1278,7 +1278,9 @@ struct CardsView: View {
                     sortUsing: CardRowOrder(.backFirstInterval)
                 ) { row in
                     // Blank for a card that goes one way.
-                    Text(row.backFirst.map(intervalText) ?? "")
+                    if let backFirst = row.backFirst {
+                        WayIntervalText(way: backFirst)
+                    }
                 }
                 .width(min: 56, ideal: 120, max: 150)
                 .customizationID(CardRowOrder.Column.backFirstInterval.rawValue)
