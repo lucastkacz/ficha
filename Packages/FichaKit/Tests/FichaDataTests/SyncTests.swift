@@ -443,10 +443,10 @@ final class SyncTests {
 
     // A device still on a Ficha before FSRS sends a placement on a step of
     // its ladder, without an interval or an ease: the device that takes it
-    // gives it that step's wait on the ladder Ficha shipped, and, for a wait
-    // of a day or more, Anki's starting ease, as the migration does with the
-    // ladder Ficha shipped. corazón was on the second step, of 4 hours, and
-    // pulmón on the fourth, of 5 days.
+    // gives it that step's interval on the ladder Ficha shipped, and, for an
+    // interval of a day or more, Anki's starting ease, as the migration does
+    // with the ladder Ficha shipped. corazón was on the second step, of 4
+    // hours, and pulmón on the fourth, of 5 days.
     @Test("a placement on a step of the ladder, from an older Ficha, is carried over as it arrives")
     func aPlacementFromAnOlderFichaIsCarriedOverOnArrival() async throws {
         try await importOnTheMac([

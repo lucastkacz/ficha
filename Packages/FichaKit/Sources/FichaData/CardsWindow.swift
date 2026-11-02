@@ -449,11 +449,7 @@ extension CardRow {
         frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler, at: now)
         backFirst =
             card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, with: scheduler, at: now) : nil
-        lastSeen =
-            entries.filter { entry in
-                if case .placement = entry.kind { false } else { true }
-            }
-            .map(\.answeredAt).max()
+        lastSeen = entries.filter { !$0.isPlacement }.map(\.answeredAt).max()
     }
 }
 

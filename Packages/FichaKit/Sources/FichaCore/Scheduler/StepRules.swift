@@ -9,8 +9,8 @@ import Foundation
 // steps.rs and fuzz.rs), without its options Ficha doesn't have: FSRS's
 // short-term scheduling without steps, and the load balancer. Ficha's own:
 // hard on a single step waits 1.5 times the step even past a day, where Anki
-// rounds such a wait to whole days, since Anki's cards fall due by the day and
-// Ficha's at a time of day.
+// rounds such an interval to whole days, since Anki's cards fall due by the
+// day and Ficha's at a time of day.
 
 /// Where a review leaves a way, and the interval it waits from then.
 struct StageAndInterval: Equatable {
@@ -63,8 +63,8 @@ extension Scheduler {
         rating: Rating, from stage: WayStanding.Stage?, lastInterval: Duration, intervals: GraduatedIntervals
     ) -> StageAndInterval {
         let stage = stage.map(onAStepTheseSettingsHave)
-        if case .onto(let step) = rating.move(from: stage), let wait = wait(of: rating, on: step) {
-            return StageAndInterval(stage: step, interval: wait)
+        if case .onto(let step) = rating.move(from: stage), let onTheStep = interval(of: rating, on: step) {
+            return StageAndInterval(stage: step, interval: onTheStep)
         }
         let days =
             stage == .graduated
@@ -97,11 +97,11 @@ extension Scheduler {
         }
     }
 
-    /// How long a way that `rating` moved onto `stage`'s step waits there, or
-    /// nil when these settings don't have that step: the step's interval, or,
-    /// for hard on the first, which Anki keeps apart from again, halfway to
-    /// the second step, or 1.5 times the step when there's only one.
-    private func wait(of rating: Rating, on stage: WayStanding.Stage) -> Duration? {
+    /// The interval of a way that `rating` moved onto `stage`'s step, or nil
+    /// when these settings don't have that step: the step's own, or, for
+    /// hard on the first, which Anki keeps apart from again, halfway to the
+    /// second step, or 1.5 times the step when there's only one.
+    private func interval(of rating: Rating, on stage: WayStanding.Stage) -> Duration? {
         let steps: [Duration]
         let step: Int
         switch stage {

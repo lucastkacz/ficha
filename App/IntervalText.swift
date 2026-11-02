@@ -38,8 +38,9 @@ func spokenIntervalText(_ interval: Duration) -> String {
     interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .wide))
 }
 
-/// Anki's year, in days.
-private let daysInAYear = 365.0
+/// Anki's year, in days, as the intervals' text and the review log's chart
+/// count it.
+let daysInAYear = 365.0
 
 /// Anki's month, a twelfth of its year, in days.
-private let daysInAMonth = daysInAYear / 12
+let daysInAMonth = daysInAYear / 12

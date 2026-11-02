@@ -98,6 +98,13 @@ public struct ReviewLogEntry: Sendable, Equatable {
         interval = nil
     }
 
+    /// Whether the entry is a placement, which an import gives a card where
+    /// the other app's reviews of it start, or after them, and nobody
+    /// answered.
+    public var isPlacement: Bool {
+        if case .placement = kind { true } else { false }
+    }
+
     /// The card's way it went.
     var cardWay: CardWay {
         CardWay(cardID: cardID, way: way)

@@ -438,8 +438,9 @@ final class DatabaseFileTests {
     // the review log's is made again, as no column can join its checks:
     // both keep their triggers, so what changes after syncs, and their
     // migration sends nothing. Then the scheduler replaces the ladder
-    // (#407): the placement holds the wait of its step on the ladder the
-    // settings held, and each review the interval the scheduler gives it.
+    // (#407): the placement holds the interval of its step on the ladder
+    // the settings held, and each review the interval the scheduler gives
+    // it.
     @Test(
         "a database from before the scheduling settings migrates with its settings, but its ladder, and its review log as they were, Ficha's scheduling settings, and each review's interval"
     )
@@ -490,7 +491,7 @@ final class DatabaseFileTests {
     // any other device. The ladder, and when it changed, go; a copy from
     // before the update comes in carried over alike.
     @Test(
-        "a database from before the scheduler replaced the ladder migrates with each entry carried over: first views as agains, placements with their step's wait, each review with its interval and the entry it answered"
+        "a database from before the scheduler replaced the ladder migrates with each entry carried over: first views as agains, placements with their step's interval, each review with its interval and the entry it answered"
     )
     func aDatabaseFromBeforeTheSchedulerCarriesItsLogOver() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -1225,8 +1226,8 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 id: 3, text: "ubuntu, en zulú", note: "Del proverbio", source: "Una charla", createdAt: time,
                 expandsCardID: 2, followsUpCardID: nil)
         ])
-    // The placement holds the wait of its step on the ladder Ficha shipped,
-    // as the database held no other (#407).
+    // The placement holds the interval of its step on the ladder Ficha
+    // shipped, as the database held no other (#407).
     #expect(
         try engine.reviewLog().map(\.withoutIDs) == [
             ReviewLogEntry(

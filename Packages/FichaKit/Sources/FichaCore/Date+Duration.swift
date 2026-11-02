@@ -23,6 +23,13 @@ extension Duration {
         .seconds(count * secondsInADay)
     }
 
+    /// A span of `count` whole days, or nil when it has more seconds than
+    /// Ficha counts with, as an interval from a file may.
+    public static func days(exactly count: Int64) -> Duration? {
+        let (seconds, overflows) = count.multipliedReportingOverflow(by: secondsInADay)
+        return overflows ? nil : .seconds(seconds)
+    }
+
     /// This span in seconds, as Foundation counts time, and as the database
     /// and iCloud keep an interval: exactly, for a span of whole seconds,
     /// which dividing it by a second isn't for one of days, whose

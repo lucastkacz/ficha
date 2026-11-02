@@ -18,13 +18,13 @@ extension ImportedProgress {
     /// only the first, when the app kept the card's first review, is a new
     /// way's first review. It keeps the interval it set there when the
     /// scheduler reads that interval as the app meant it: a graduated one, in
-    /// whole days, and a step's wait, onto the step its rating moves the way
-    /// to. Any other, an interval of zero, a step's wait of whole days, which
-    /// the scheduler reads as graduated since Ficha's steps last less than a
-    /// day, or a step's wait after a rating that takes the way out of its
-    /// steps, keeps the interval `scheduler` works out for its rating. When
-    /// the app kept none of the card's first reviews, they start from the
-    /// placement of `start`, at the moment of the first it kept.
+    /// whole days, and a step's interval, onto the step its rating moves the
+    /// way to. Any other, an interval of zero, a step's interval of whole
+    /// days, which the scheduler reads as graduated since Ficha's steps last
+    /// less than a day, or a step's interval after a rating that takes the
+    /// way out of its steps, keeps the interval `scheduler` works out for its
+    /// rating. When the app kept none of the card's first reviews, they start
+    /// from the placement of `start`, at the moment of the first it kept.
     ///
     /// A placement then holds the interval, due time and ease the card had
     /// there whenever the reviews leave the way elsewhere, or there are none:
@@ -135,8 +135,8 @@ extension ImportedReview {
     /// The interval this review keeps in Ficha's log after its way stood at
     /// `stage`, or was new, for nil: its own, when the scheduler reads it as
     /// the app meant it, a graduated interval in whole days, and a step's
-    /// wait that isn't, onto the step its rating moves the way to; or nil for
-    /// any other, which keeps the one the scheduler works out.
+    /// interval that isn't, onto the step its rating moves the way to; or nil
+    /// for any other, which keeps the one the scheduler works out.
     fileprivate func keptInterval(after stage: WayStanding.Stage?) -> Duration? {
         guard interval > .zero else {
             return nil

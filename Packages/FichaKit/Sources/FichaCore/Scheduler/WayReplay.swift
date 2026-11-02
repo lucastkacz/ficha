@@ -163,11 +163,11 @@ struct WayReplay {
         if kept == workedOut.interval {
             return workedOut
         }
-        // A graduated interval is always whole days, and a step's wait is
-        // whole days in one case alone: steps are under a day, and only hard
-        // on a single step waits longer than a step, 1.5 times as long,
-        // which is a day for a step of exactly 16 hours. So only that wait,
-        // once the settings changed, reads as graduated.
+        // A graduated interval is always whole days, and a step's interval
+        // is whole days in one case alone: steps are under a day, and only
+        // hard on a single step waits longer than a step, 1.5 times as long,
+        // which is a day for a step of exactly 16 hours. So only that
+        // interval, once the settings changed, reads as graduated.
         if kept.isWholeDays {
             return StageAndInterval(stage: .graduated, interval: kept)
         }

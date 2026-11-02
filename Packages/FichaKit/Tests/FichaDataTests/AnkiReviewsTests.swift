@@ -191,7 +191,7 @@ final class AnkiReviewsTests {
 
     // Anki's learning steps here are its default, 1 and 10 minutes. Its
     // scheduler before v3 put a card on a learning step due a few minutes
-    // after the step's wait, which its revlog doesn't keep.
+    // after the step's interval, which its revlog doesn't keep.
     @Test(
         "a card Anki was learning or relearning goes on with its steps, due when Anki had it due", arguments: schemas)
     func aLearningCardGoesOnWithItsSteps(format: AnkiPackage.Format) async throws {

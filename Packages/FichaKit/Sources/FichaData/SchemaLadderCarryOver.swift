@@ -8,30 +8,33 @@ internal import GRDB
 // that still runs that version. It lives beside the migrations, where the
 // merge gate watches.
 
-/// The ladder's waits as Ficha shipped them, in whole seconds, from the first
-/// step up: 1 hour, 4 hours, 2 days, 5 days, 12 days, 30 days and 75 days,
-/// which carry over a placement whose device's ladder isn't known.
-let shippedLadderWaits: [Int64] = [3_600, 14_400, 172_800, 432_000, 1_036_800, 2_592_000, 6_480_000]
+/// The ladder's intervals as Ficha shipped them, in whole seconds, from the
+/// first step up: 1 hour, 4 hours, 2 days, 5 days, 12 days, 30 days and 75
+/// days, which carry over a placement whose device's ladder isn't known.
+let shippedLadderIntervals: [Int64] = [3_600, 14_400, 172_800, 432_000, 1_036_800, 2_592_000, 6_480_000]
 
 /// Anki's starting ease, 2.5 for 250% (`INITIAL_EASE_FACTOR` in
 /// `rslib/src/scheduler/states/review.rs`), which a placement the ladder
-/// graduated takes, since the ladder kept none.
+/// graduated takes, since the ladder kept none. A copy of the Anki import's,
+/// frozen here on purpose, as `carryOverScheduler()` freezes its settings:
+/// a later change to the import's leaves the carry-over alone, so every
+/// device carries over the log they share alike.
 private let ankiStartingEase = 2.5
 
 /// The interval and ease of a placement on step `step` of a ladder with
-/// `waits`, in whole seconds, as the ladder read it: the step's wait, or the
-/// last step's when the ladder no longer has that one, or the shipped
-/// ladder's when `waits` holds none; and, for a wait of a day or more, which
-/// the scheduler reads as graduated, Anki's starting ease. Nil for a step
-/// below the first, 0, which the ladder refused, as the review log's check
-/// did from "v14 placements in the review log" on.
-func ladderPlacement(onStep step: Int64, of waits: [Int64]) -> (interval: Duration, ease: Double?)? {
+/// `intervals`, in whole seconds, as the ladder read it: the step's
+/// interval, or the last step's when the ladder no longer has that one, or
+/// the shipped ladder's when `intervals` holds none; and, for an interval of
+/// a day or more, which the scheduler reads as graduated, Anki's starting
+/// ease. Nil for a step below the first, 0, which the ladder refused, as the
+/// review log's check did from "v14 placements in the review log" on.
+func ladderPlacement(onStep step: Int64, of intervals: [Int64]) -> (interval: Duration, ease: Double?)? {
     guard step >= 0 else {
         return nil
     }
-    let waits = waits.isEmpty ? shippedLadderWaits : waits
-    let wait = Duration.seconds(waits[Int(min(step, Int64(waits.count - 1)))])
-    return (wait, wait >= .seconds(24 * 60 * 60) ? ankiStartingEase : nil)
+    let intervals = intervals.isEmpty ? shippedLadderIntervals : intervals
+    let interval = Duration.seconds(intervals[Int(min(step, Int64(intervals.count - 1)))])
+    return (interval, interval.inDays >= 1 ? ankiStartingEase : nil)
 }
 
 /// The kind and rating, as the review log's columns and records name them,
@@ -119,7 +122,7 @@ func applyReviewLogEntry(_ record: ICloudRecord, as uuid: UUID, in db: Database)
     let isCarriedOver = kind == "review" && record.value(of: "interval") == nil
     if kind == "placement", record.value(of: "interval") == nil {
         guard case .int(let step)? = record.value(of: "step"),
-            let placed = ladderPlacement(onStep: step, of: shippedLadderWaits)
+            let placed = ladderPlacement(onStep: step, of: shippedLadderIntervals)
         else {
             throw unreadable("A placement from iCloud has neither its interval nor a step on the ladder")
         }

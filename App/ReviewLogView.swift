@@ -230,11 +230,12 @@ private struct EntryInterval: View {
 /// always spans two marks at least; and the marks, at each round span in it.
 private struct IntervalScale {
     /// The round spans of time the scale can mark, in days: a minute, 10
-    /// minutes, an hour, a day, a week, a month, a twelfth of a year as Anki
-    /// counts it, which `intervalText` labels "1mo", a year, 10 years and
-    /// 100, the longest interval Ficha gives.
+    /// minutes, an hour, a day, a week, a month and a year as Anki counts
+    /// them, which `intervalText` labels "1mo" and "1y", 10 years, and the
+    /// longest interval Ficha gives, 100 years.
     private static let spans: [Double] = [
-        1.0 / (24 * 60), 10.0 / (24 * 60), 1.0 / 24, 1, 7, 365.0 / 12, 365, 3_650, 36_500,
+        1.0 / (24 * 60), 10.0 / (24 * 60), 1.0 / 24, 1, 7, daysInAMonth, daysInAYear, 10 * daysInAYear,
+        Double(Scheduler.longestIntervalsInDays.upperBound),
     ]
 
     /// The intervals the scale spans, in days.
@@ -278,7 +279,7 @@ private struct ResponseTime: View {
     let entry: ReviewLogEntry
 
     var body: some View {
-        if case .placement = entry.kind {
+        if entry.isPlacement {
             Text(verbatim: "")
         } else if let duration = entry.responseTime {
             Text(duration.formatted(.units(allowed: [.seconds], width: .narrow)))
@@ -354,14 +355,6 @@ extension Way {
         case .frontFirst: StrokeStyle(lineWidth: 2)
         case .backFirst: StrokeStyle(lineWidth: 2, dash: [4, 3])
         }
-    }
-}
-
-extension ReviewLogEntry {
-    /// Whether the entry is a placement, which an import gives a card where
-    /// Anki's reviews of it start, or after them.
-    fileprivate var isPlacement: Bool {
-        if case .placement = kind { true } else { false }
     }
 }
 

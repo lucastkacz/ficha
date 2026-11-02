@@ -151,11 +151,10 @@ extension AnkiCollection {
             stage = .learning(due: try learningDue(due, in: calendar))
         case .review:
             // Anki keeps a card in review a day apart at least.
-            let (seconds, overflows) = card.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
-            guard card.interval >= 1, !overflows else {
+            guard card.interval >= 1, let interval = Duration.days(exactly: card.interval) else {
                 throw AnkiCollectionProblem("Card \(card.id) has an interval of \(card.interval) days")
             }
-            stage = .review(interval: .seconds(seconds), ease: ease(of: card), due: .on(try day(due, in: calendar)))
+            stage = .review(interval: interval, ease: ease(of: card), due: .on(try day(due, in: calendar)))
         }
         let isOnAStep = if case .learning = stage { true } else { false }
         let (start, reviews) = try importedReviews(of: entries, endingOnAStep: isOnAStep)
@@ -196,7 +195,7 @@ extension AnkiCollection {
         var firstInterdayReview: Int?
         // From the last entry back, as Anki reads them.
         for (index, entry) in entries.enumerated().reversed() where !entry.isCramming {
-            if entry.hasButton && (entry.row.interval >= 1 || entry.row.interval <= -24 * 60 * 60) {
+            if entry.hasButton && (entry.row.interval >= 1 || entry.row.interval <= -secondsInADay) {
                 firstInterdayReview = index
             }
             if entry.hasButton && entry.kind == .learning {
@@ -233,11 +232,14 @@ extension AnkiCollection {
         // which Anki tells by an ease of 1.1 or less and puts in the memory
         // it starts (`first_review.ease_factor <= 1.1` in `memory_state.rs`),
         // and a placement doesn't hold.
-        let factor = entries[first].row.factor
-        let interval = Duration.days(max(1, entries[first].row.interval))
+        let firstReview = entries[first].row
+        guard let interval = Duration.days(exactly: max(1, firstReview.interval)) else {
+            throw AnkiCollectionProblem(
+                "Card \(firstReview.cardID) has a review with an interval of \(firstReview.interval)")
+        }
         let placement = Placement(
             interval: interval, due: start.answeredAt.adding(interval),
-            ease: factor > 1100 ? Double(factor) / 1000 : ankiStartingEase)
+            ease: firstReview.factor > 1100 ? Double(firstReview.factor) / 1000 : ankiStartingEase)
         return (ImportedStart(answeredAt: start.answeredAt, placement: placement), Array(reviews.dropFirst()))
     }
 
@@ -256,16 +258,21 @@ extension AnkiCollection {
         guard let rating = ratings[button] else {
             throw AnkiCollectionProblem("Card \(row.cardID) has a review with the button \(row.button)")
         }
-        let (seconds, overflows) =
-            row.interval > 0
-            ? row.interval.multipliedReportingOverflow(by: 24 * 60 * 60)
-            : (0 as Int64).subtractingReportingOverflow(row.interval)
-        guard !overflows else {
+        // Anki logs an interval in days when it's positive, and in seconds,
+        // negated, otherwise.
+        let interval: Duration?
+        if row.interval > 0 {
+            interval = Duration.days(exactly: row.interval)
+        } else {
+            let (seconds, overflows) = (0 as Int64).subtractingReportingOverflow(row.interval)
+            interval = overflows ? nil : .seconds(seconds)
+        }
+        guard let interval else {
             throw AnkiCollectionProblem("Card \(row.cardID) has a review with an interval of \(row.interval)")
         }
         return ImportedReview(
             answeredAt: Date(timeIntervalSince1970: TimeInterval(row.id) / 1000), rating: rating,
-            interval: .seconds(seconds), graduated: leavingItGraduated && row.interval > 0,
+            interval: interval, graduated: leavingItGraduated && row.interval > 0,
             responseTime: row.milliseconds > 0 ? .milliseconds(row.milliseconds) : nil)
     }
 

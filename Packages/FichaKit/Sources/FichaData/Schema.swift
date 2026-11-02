@@ -1589,9 +1589,9 @@ enum Schema {
             // becomes a review rated again, which puts the way on the first
             // learning step, as the first view put it on the ladder's first
             // step (`carriedOver(kind:rating:)`). A placement, which an import
-            // gave on a step of the ladder, holds that step's wait as its
-            // interval, on the ladder the settings held, or on the one Ficha
-            // shipped while they held none, and, for a wait of a day or more,
+            // gave on a step of the ladder, holds that step's interval, on the
+            // ladder the settings held, or on the one Ficha shipped while
+            // they held none, and, for an interval of a day or more,
             // Anki's starting ease, since the ladder kept none
             // (`ladderPlacement(onStep:of:)`). And every review holds the
             // interval the scheduler gives it, replaying its way's log with
@@ -1600,17 +1600,17 @@ enum Schema {
             // as the way's first, so that the scheduler keeps it
             // (`carryingOver(_:in:)`): none keeps the interval it held, which
             // since "v32 the scheduler's settings and each review's interval"
-            // was the ladder's wait, one the scheduler may not set. Each is
+            // was the ladder's, one the scheduler may not set. Each is
             // marked as carried over, on this device alone, so that an older
             // device's entry that comes from iCloud later, and falls before
             // it, carries it over again, as sync carries over that entry
             // (`applyReviewLogEntry(_:as:in:)`). The replay is the scheduler's
             // as this version of Ficha has it, so every device carries over
             // the log they share alike.
-            let ladderWaits =
+            let ladderIntervals =
                 try String.fetchOne(db, sql: "SELECT ladder FROM progressSettings").map { text in
                     try JSONDecoder().decode([Int64].self, from: Data(text.utf8))
-                } ?? shippedLadderWaits
+                } ?? shippedLadderIntervals
             let rows = try Row.fetchAll(db, sql: "SELECT * FROM reviewLog ORDER BY id")
             var entries: [ReviewLogEntry] = []
             for row in rows {
@@ -1633,7 +1633,7 @@ enum Schema {
                             cardID: cardID, way: way, kind: .review(rating), answeredAt: answeredAt,
                             responseTime: nil, trigger: nil, uuid: uuid))
                 case ("placement", _):
-                    guard let placed = ladderPlacement(onStep: try row.decode(forColumn: "step"), of: ladderWaits)
+                    guard let placed = ladderPlacement(onStep: try row.decode(forColumn: "step"), of: ladderIntervals)
                     else {
                         throw unreadable("Card \(cardID) has a placement below the ladder's first step")
                     }
