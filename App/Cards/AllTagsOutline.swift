@@ -334,7 +334,7 @@ extension CardsWindowState.AllTagsColumn {
                 comment: "A column of the Cards window's All Tags: how many cards carry the tag, or a tag inside it.")
         case .due:
             String(
-                localized: "Due",
+                localized: "all-tags.due", defaultValue: "Due",
                 comment: "A column of the Cards window's All Tags: how many of the tag's cards are due now.")
         case .pinned:
             String(

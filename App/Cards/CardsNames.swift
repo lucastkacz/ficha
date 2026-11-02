@@ -3,7 +3,9 @@ import FichaData
 import SwiftUI
 
 extension CardGroup {
-    /// The group's name in the sidebar.
+    /// The group's name in the sidebar. New, Due, Flagged and Buried have keys
+    /// of their own, since a language can name the group apart from one card,
+    /// as Spanish does in the plural.
     var title: String {
         switch self {
         case .all:
@@ -11,15 +13,23 @@ extension CardGroup {
                 localized: "All cards",
                 comment: "An item of the Cards window's sidebar: every card but the buried ones.")
         case .new:
-            String(localized: "New", comment: "An item of the Cards window's sidebar: the cards not seen yet.")
+            String(
+                localized: "sidebar.new", defaultValue: "New",
+                comment: "An item of the Cards window's sidebar: the cards not seen yet.")
         case .due:
-            String(localized: "Due", comment: "An item of the Cards window's sidebar: the cards due now.")
+            String(
+                localized: "sidebar.due", defaultValue: "Due",
+                comment: "An item of the Cards window's sidebar: the cards due now.")
         case .learned:
             String(localized: "Learned", comment: "An item of the Cards window's sidebar: the learned cards.")
         case .flagged:
-            String(localized: "Flagged", comment: "An item of the Cards window's sidebar: the flagged cards.")
+            String(
+                localized: "sidebar.flagged", defaultValue: "Flagged",
+                comment: "An item of the Cards window's sidebar: the flagged cards.")
         case .buried:
-            String(localized: "Buried", comment: "An item of the Cards window's sidebar: the buried cards.")
+            String(
+                localized: "sidebar.buried", defaultValue: "Buried",
+                comment: "An item of the Cards window's sidebar: the buried cards.")
         case .deck(let deck):
             Deck.shownName(deck)
         case .tag(let tag):

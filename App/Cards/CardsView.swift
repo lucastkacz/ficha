@@ -465,7 +465,7 @@ struct CardsView: View {
         } label: {
             Label(
                 String(
-                    localized: "Back",
+                    localized: "toolbar.back", defaultValue: "Back",
                     comment: "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags."),
                 systemImage: "chevron.left")
         }
