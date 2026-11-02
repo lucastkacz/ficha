@@ -2,12 +2,13 @@ import FichaCore
 import Foundation
 
 /// What can go wrong in the engine. Each message says what happened and what
-/// to do about it, in English, and is looked up with `String(localized:)` in
-/// the main bundle (ADR 0009). In the app, that's the app's bundle, whose
-/// String Catalog can translate the messages. Xcode doesn't add them to it,
-/// so a translation adds them by hand, keyed by their English text. The
-/// `ficha` CLI's main bundle is its own folder in the app, Contents/Helpers,
-/// which has no catalog, so the CLI always prints them in English.
+/// to do about it, in English, and is looked up in the main bundle (ADR 0009).
+/// In the app, and in its widget, that's its own bundle, whose String Catalog
+/// translates the messages. Xcode doesn't add them to it, so each is added by
+/// hand, translated, keyed by its English text with its format specifiers,
+/// which `EngineMessagesTests` checks. The `ficha` CLI's main bundle is its
+/// own folder in the app, Contents/Helpers, which has no catalog, so the CLI
+/// always prints them in English.
 public enum EngineError: Error, Equatable {
     /// The database has migrations this version doesn't know: a newer version
     /// of Ficha migrated it, so this one refuses to open it.
@@ -195,351 +196,368 @@ public enum EngineError: Error, Equatable {
 
 extension EngineError: LocalizedError {
     public var errorDescription: String? {
+        String(localized: message)
+    }
+
+    /// The message, whose key is its English text with its format
+    /// specifiers, as the String Catalogs key it.
+    var message: LocalizedStringResource {
         switch self {
         case .migratedByNewerVersion:
-            String(
-                localized: """
-                    A newer version of Ficha changed the database, and this version won't open it, so as not to \
-                    damage your cards. Open it with the version that changed it, or a newer one.
-                    """
+            LocalizedStringResource(
+                """
+                A newer version of Ficha changed the database, and this version won't open it, so as not to \
+                damage your cards. Open it with the version that changed it, or a newer one.
+                """
             )
         case .emptyCapture:
-            String(localized: "The capture is empty: write what you want to remember.")
+            LocalizedStringResource("The capture is empty: write what you want to remember.")
         case .captureNotInInbox(let id):
-            String(
-                localized: """
-                    Capture \(id) isn't in the inbox: it was already approved or discarded, or it doesn't exist. \
-                    Check what's in the inbox.
-                    """
+            LocalizedStringResource(
+                """
+                Capture \(id) isn't in the inbox: it was already approved or discarded, or it doesn't exist. \
+                Check what's in the inbox.
+                """
             )
         case .notAnExpansion(let id):
-            String(
-                localized: "Capture \(id) doesn't expand a card. Approve it into cards, or discard it.")
+            LocalizedStringResource("Capture \(id) doesn't expand a card. Approve it into cards, or discard it.")
         case .noCards:
-            String(
-                localized:
-                    "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
+            LocalizedStringResource(
+                "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
             )
         case .blankSideOnNewCard(let position):
-            String(
-                localized: "Card [\(position)] has a blank front or back: give each side text, an image or a sound.")
+            LocalizedStringResource(
+                "Card [\(position)] has a blank front or back: give each side text, an image or a sound.")
         case .sideLeftBlank(let id):
-            String(
-                localized: """
-                    That would leave card \(id) with a blank front or back, so nothing changed: give each side text, \
-                    an image or a sound.
-                    """
+            LocalizedStringResource(
+                """
+                That would leave card \(id) with a blank front or back, so nothing changed: give each side text, \
+                an image or a sound.
+                """
             )
         case .noFileOnSide(let id, .image, .front):
-            String(
-                localized: """
-                    Card \(id) has no image on its front, so there's none to take off. `ficha cards` names each \
-                    side's image and sound.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) has no image on its front, so there's none to take off. `ficha cards` names each \
+                side's image and sound.
+                """
             )
         case .noFileOnSide(let id, .image, .back):
-            String(
-                localized: """
-                    Card \(id) has no image on its back, so there's none to take off. `ficha cards` names each \
-                    side's image and sound.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) has no image on its back, so there's none to take off. `ficha cards` names each \
+                side's image and sound.
+                """
             )
         case .noFileOnSide(let id, .sound, .front):
-            String(
-                localized: """
-                    Card \(id) has no sound on its front, so there's none to take off. `ficha cards` names each \
-                    side's image and sound.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) has no sound on its front, so there's none to take off. `ficha cards` names each \
+                side's image and sound.
+                """
             )
         case .noFileOnSide(let id, .sound, .back):
-            String(
-                localized: """
-                    Card \(id) has no sound on its back, so there's none to take off. `ficha cards` names each \
-                    side's image and sound.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) has no sound on its back, so there's none to take off. `ficha cards` names each \
+                side's image and sound.
+                """
             )
         case .cardNotFound(let id):
-            String(
-                localized:
-                    "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
+            LocalizedStringResource(
+                "There's no card with the id \(id): it was deleted, or it never existed. Check the card's id.")
         case .cardNotDue(let id):
-            String(localized: "Card \(id) isn't due yet, so it can't be reviewed. \(reopenReviewNow)")
+            LocalizedStringResource(
+                """
+                Card \(id) isn't due yet, so it can't be reviewed. Close the review panel and open “Review now” \
+                again.
+                """
+            )
         case .cardNotInAppearance(let id):
-            String(
-                localized: """
-                    Card \(id) isn't one of the cards its appearance brought, so its answer wasn't recorded. \
-                    Report it.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) isn't one of the cards its appearance brought, so its answer wasn't recorded. \
+                Report it.
+                """
             )
         case .placementIsNotAnAnswer(let id):
-            String(
-                localized: """
-                    Card \(id) can't be placed as an answer: only an import places a card. Nothing was recorded. \
-                    Report it.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) can't be placed as an answer: only an import places a card. Nothing was recorded. \
+                Report it.
+                """
             )
         case .cardFlagged(let id):
-            String(localized: "Card \(id) is flagged: it waits in the inbox to be fixed. \(reopenReviewNow)")
+            LocalizedStringResource(
+                """
+                Card \(id) is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review \
+                now” again.
+                """
+            )
         case .cardNotFlagged(let id):
-            String(
-                localized: """
-                    Card \(id) isn't flagged, so there's nothing to fix: it was already fixed, or it was never \
-                    flagged. Check what's in the inbox.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) isn't flagged, so there's nothing to fix: it was already fixed, or it was never \
+                flagged. Check what's in the inbox.
+                """
             )
         case .cardBuried(let id):
-            String(localized: "Card \(id) is buried. To bring it back, unbury it.")
+            LocalizedStringResource("Card \(id) is buried. To bring it back, unbury it.")
         case .cardNotBuried(let id):
-            String(localized: "Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
+            LocalizedStringResource("Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
         case .cardSetAside(let id, let decks) where decks.count == 1:
-            String(
-                localized: """
-                    Card \(id) is set aside with the deck “\(Deck.shownName(decks[0]))”. To bring it back, untick \
-                    Set Aside on that deck in the Cards window.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) is set aside with the deck “\(Deck.shownName(decks[0]))”. To bring it back, untick \
+                Set Aside on that deck in the Cards window.
+                """
             )
         case .cardSetAside(let id, let decks):
-            String(
-                localized: """
-                    Card \(id) is set aside with the decks \(quotedList(decks.map(Deck.shownName))). To bring it \
-                    back, untick Set Aside on each of them in the Cards window.
-                    """
+            LocalizedStringResource(
+                """
+                Card \(id) is set aside with the decks \(quotedList(decks.map(Deck.shownName))). To bring it \
+                back, untick Set Aside on each of them in the Cards window.
+                """
             )
         case .notOneEmoji:
-            String(localized: "That isn't one emoji. Pick just one, or leave the field empty for none.")
+            LocalizedStringResource("That isn't one emoji. Pick just one, or leave the field empty for none.")
         case .tagInsideItself(let tag):
-            String(
-                localized: """
-                    “\(TagPath.shown(tag))” can't go inside itself, or inside a tag inside it, so nothing changed. \
-                    Pick a tag outside it.
-                    """
+            LocalizedStringResource(
+                """
+                “\(TagPath.shown(tag))” can't go inside itself, or inside a tag inside it, so nothing changed. \
+                Pick a tag outside it.
+                """
             )
         case .blankTagName:
-            String(
-                localized: """
-                    A tag needs a name, so nothing changed. Write one, with “::” between a tag and a tag inside it, \
-                    as in “economía::Argentina”.
-                    """
+            LocalizedStringResource(
+                """
+                A tag needs a name, so nothing changed. Write one, with “::” between a tag and a tag inside it, \
+                as in “economía::Argentina”.
+                """
             )
         case .tagNotPinned(let tag):
-            String(
-                localized: """
-                    “\(TagPath.shown(tag))” isn't pinned to the sidebar, maybe since another of your devices unpinned \
-                    it, so nothing moved. Pin it first.
-                    """
+            LocalizedStringResource(
+                """
+                “\(TagPath.shown(tag))” isn't pinned to the sidebar, maybe since another of your devices unpinned \
+                it, so nothing moved. Pin it first.
+                """
             )
         case .deckSetAside(let deck):
-            String(
-                localized: """
-                    “\(Deck.shownName(deck))” is set aside, and a deck is never both set aside and a priority deck, \
-                    nor is a deck inside it, so nothing changed. Stop setting it aside first.
-                    """
+            LocalizedStringResource(
+                """
+                “\(Deck.shownName(deck))” is set aside, and a deck is never both set aside and a priority deck, \
+                nor is a deck inside it, so nothing changed. Stop setting it aside first.
+                """
             )
         case .blankDeckName:
-            String(
-                localized: """
-                    A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside \
-                    it, as in “Idiomas::Inglés”.
-                    """
+            LocalizedStringResource(
+                """
+                A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside \
+                it, as in “Idiomas::Inglés”.
+                """
             )
         case .defaultDeckName(let name):
-            String(
-                localized: """
-                    “\(name)” is Default's name, and Default holds the cards no other deck does, so nothing changed. \
-                    To move cards there, pick Default; to make a deck, write another name.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” is Default's name, and Default holds the cards no other deck does, so nothing changed. \
+                To move cards there, pick Default; to make a deck, write another name.
+                """
             )
         case .deckInsideItself(let deck):
-            String(
-                localized: """
-                    “\(Deck.shownName(deck))” can't go inside itself, or inside a deck inside it, so nothing changed. \
-                    Pick a deck outside it.
-                    """
+            LocalizedStringResource(
+                """
+                “\(Deck.shownName(deck))” can't go inside itself, or inside a deck inside it, so nothing changed. \
+                Pick a deck outside it.
+                """
             )
         case .deckInsideDefault(let deck):
-            String(
-                localized: """
-                    “\(Deck.shownName(deck))” can't go inside Default, which holds the cards no other deck does and \
-                    has no decks inside it, so nothing changed. Move it inside another deck, or to the top.
-                    """
+            LocalizedStringResource(
+                """
+                “\(Deck.shownName(deck))” can't go inside Default, which holds the cards no other deck does and \
+                has no decks inside it, so nothing changed. Move it inside another deck, or to the top.
+                """
             )
         case .defaultDeckStays:
-            String(
-                localized: """
-                    Default holds the cards no other deck does, so it can't be renamed, moved or deleted, and nothing \
-                    changed. To go on, make a deck of your own and move Default's cards there.
-                    """
+            LocalizedStringResource(
+                """
+                Default holds the cards no other deck does, so it can't be renamed, moved or deleted, and nothing \
+                changed. To go on, make a deck of your own and move Default's cards there.
+                """
             )
         case .deckNotFound(let deck):
-            String(
-                localized: """
-                    The deck “\(Deck.shownName(deck))” isn't there any more, maybe since another of your devices \
-                    renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or \
-                    pick another.
-                    """
+            LocalizedStringResource(
+                """
+                The deck “\(Deck.shownName(deck))” isn't there any more, maybe since another of your devices \
+                renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or \
+                pick another.
+                """
             )
         case .blankTypeName:
-            String(localized: "A type needs a name, so nothing changed. Write one.")
+            LocalizedStringResource("A type needs a name, so nothing changed. Write one.")
         case .builtInTypeName(let name):
-            String(
-                localized: """
-                    “\(name)” is one of the types Ficha comes with, so nothing changed. Pick that type, or write \
-                    another name.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” is one of the types Ficha comes with, so nothing changed. Pick that type, or write \
+                another name.
+                """
             )
         case .typeNameTaken(let name):
-            String(
-                localized: """
-                    You already have a type named “\(name)”, so nothing changed. Pick that type, or write another \
-                    name.
-                    """
+            LocalizedStringResource(
+                """
+                You already have a type named “\(name)”, so nothing changed. Pick that type, or write another \
+                name.
+                """
             )
         case .userTypeNotFound:
-            String(
-                localized: """
-                    That type was deleted meanwhile, maybe on another of your devices, so nothing changed. Pick \
-                    another type.
-                    """
+            LocalizedStringResource(
+                """
+                That type was deleted meanwhile, maybe on another of your devices, so nothing changed. Pick \
+                another type.
+                """
             )
         case .cannotUndo(let id):
-            String(
-                localized: "Card \(id) changed outside the review panel, so ⌘Z can't undo it. \(reopenReviewNow)")
+            LocalizedStringResource(
+                """
+                Card \(id) changed outside the review panel, so ⌘Z can't undo it. Close the review panel and open \
+                “Review now” again.
+                """
+            )
         case .cannotUndoFollowUp(let id):
-            String(
-                localized: """
-                    Your question about card \(id) was approved or discarded outside the review panel, so ⌘Z can't \
-                    take it back. If it became cards you don't want, delete them in the Cards window.
-                    """
+            LocalizedStringResource(
+                """
+                Your question about card \(id) was approved or discarded outside the review panel, so ⌘Z can't \
+                take it back. If it became cards you don't want, delete them in the Cards window.
+                """
             )
         case .unreadableReviewLog(let id):
-            String(
-                localized: """
-                    Ficha can't make sense of the review log of card \(id), so it doesn't know when the card is \
-                    due. Your cards are still saved: report it.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha can't make sense of the review log of card \(id), so it doesn't know when the card is \
+                due. Your cards are still saved: report it.
+                """
             )
         case .schedulerFailed:
-            String(
-                localized: """
-                    Ficha couldn't work out when your cards are due. Your cards are still saved: try again, and if \
-                    it keeps happening, report it.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't work out when your cards are due. Your cards are still saved: try again, and if \
+                it keeps happening, report it.
+                """
             )
         case .storage:
-            String(
-                localized: "Ficha couldn't read or save its database. Try again, and if it keeps happening, report it.")
+            LocalizedStringResource(
+                "Ficha couldn't read or save its database. Try again, and if it keeps happening, report it.")
         case .copyNotFound(let name):
-            String(
-                localized: """
-                    There's no copy named “\(name)” in Ficha's Backups folder: it was moved or deleted. Check which \
-                    copies are there.
-                    """
+            LocalizedStringResource(
+                """
+                There's no copy named “\(name)” in Ficha's Backups folder: it was moved or deleted. Check which \
+                copies are there.
+                """
             )
         case .copyMigratedByNewerVersion(let name):
-            String(
-                localized: """
-                    A newer version of Ficha saved the copy “\(name)”, and this version won't restore it, so as \
-                    not to damage your cards. Restore it with that version, or a newer one.
-                    """
+            LocalizedStringResource(
+                """
+                A newer version of Ficha saved the copy “\(name)”, and this version won't restore it, so as \
+                not to damage your cards. Restore it with that version, or a newer one.
+                """
             )
         case .backupsFolder:
-            String(
-                localized: """
-                    Ficha couldn't read or change its Backups folder. Check that the disk has room and try again, \
-                    and if it keeps happening, report it.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't read or change its Backups folder. Check that the disk has room and try again, \
+                and if it keeps happening, report it.
+                """
             )
         case .notAnImage:
-            String(
-                localized: """
-                    That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG.
-                    """
+            LocalizedStringResource(
+                """
+                That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG.
+                """
             )
         case .notASound:
-            String(
-                localized: """
-                    That holds no sound Ficha can read. Drag or paste a sound or a video with sound instead, such as \
-                    an MP3, an M4A or a MOV.
-                    """
+            LocalizedStringResource(
+                """
+                That holds no sound Ficha can read. Drag or paste a sound or a video with sound instead, such as \
+                an MP3, an M4A or a MOV.
+                """
             )
         case .soundConversion:
-            String(
-                localized: """
-                    Ficha read the sound but couldn't convert it. Check that the disk has room and try again, and if \
-                    it keeps happening, report it.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha read the sound but couldn't convert it. Check that the disk has room and try again, and if \
+                it keeps happening, report it.
+                """
             )
         case .unreadableFileForSide(let name):
-            String(
-                localized: """
-                    Ficha couldn't read “\(name)”. Check that the file is still there and that you can open it, and \
-                    try again.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't read “\(name)”. Check that the file is still there and that you can open it, and \
+                try again.
+                """
             )
         case .noSuchFile(let path):
-            String(
-                localized: """
-                    There's no file at “\(path)”. Check the path: a path that doesn't start with / or ~ starts from \
-                    the folder the command runs in.
-                    """
+            LocalizedStringResource(
+                """
+                There's no file at “\(path)”. Check the path: a path that doesn't start with / or ~ starts from \
+                the folder the command runs in.
+                """
             )
         case .fileNotInDownloads(let name):
-            String(
-                localized: """
-                    Ficha reads files only from your Downloads folder, and “\(name)” isn't in it. Copy the file to \
-                    Downloads, and give its path there.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha reads files only from your Downloads folder, and “\(name)” isn't in it. Copy the file to \
+                Downloads, and give its path there.
+                """
             )
         case .fileNotAnImage(let name):
-            String(
-                localized: """
-                    “\(name)” isn't an image Ficha can read. Give a picture as a side's image instead, such as a \
-                    JPEG or a PNG, and a sound as its sound.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” isn't an image Ficha can read. Give a picture as a side's image instead, such as a \
+                JPEG or a PNG, and a sound as its sound.
+                """
             )
         case .fileNotASound(let name):
-            String(
-                localized: """
-                    “\(name)” holds no sound Ficha can read. Give a sound or a video with sound as a side's sound \
-                    instead, such as an MP3, an M4A or a MOV, and a picture as its image.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” holds no sound Ficha can read. Give a sound or a video with sound as a side's sound \
+                instead, such as an MP3, an M4A or a MOV, and a picture as its image.
+                """
             )
         case .notAnImageOrSound(let name):
-            String(
-                localized: """
-                    “\(name)” isn't an image or a sound Ficha can read. Give a picture instead, such as a JPEG or a \
-                    PNG, or a sound or a video with sound, such as an MP3, an M4A or a MOV.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” isn't an image or a sound Ficha can read. Give a picture instead, such as a JPEG or a \
+                PNG, or a sound or a video with sound, such as an MP3, an M4A or a MOV.
+                """
             )
         case .noFileNamed(let name):
-            String(
-                localized: """
-                    Ficha holds no image or sound named “\(name)”. Give its name as `ficha cards` prints it, or the \
-                    path of a file on the Mac.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha holds no image or sound named “\(name)”. Give its name as `ficha cards` prints it, or the \
+                path of a file on the Mac.
+                """
             )
         case .imagesFolder:
-            String(
-                localized: """
-                    Ficha couldn't read or save an image in its Images folder. Check that the disk has room and try \
-                    again, and if it keeps happening, report it.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't read or save an image in its Images folder. Check that the disk has room and try \
+                again, and if it keeps happening, report it.
+                """
             )
         case .soundsFolder:
-            String(
-                localized: """
-                    Ficha couldn't read or save a sound in its Sounds folder. Check that the disk has room and try \
-                    again, and if it keeps happening, report it.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't read or save a sound in its Sounds folder. Check that the disk has room and try \
+                again, and if it keeps happening, report it.
+                """
             )
         case .unreadableFile(let name, let problem):
             problem.message(forFileNamed: name)
         case .unwritableFile(let name):
-            String(
-                localized: """
-                    Ficha couldn't save “\(name)”. Check that the disk has room and that you can save in that \
-                    folder, or choose another one, and try again.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't save “\(name)”. Check that the disk has room and that you can save in that \
+                folder, or choose another one, and try again.
+                """
             )
         }
     }
@@ -547,79 +565,79 @@ extension EngineError: LocalizedError {
 
 extension CardsFileProblem {
     /// What happened to the file named `name`, and what to do about it.
-    fileprivate func message(forFileNamed name: String) -> String {
+    fileprivate func message(forFileNamed name: String) -> LocalizedStringResource {
         switch self {
         case .cannotOpen:
-            String(localized: "Ficha couldn't open “\(name)”. Check that the file is still there, and try again.")
+            LocalizedStringResource("Ficha couldn't open “\(name)”. Check that the file is still there, and try again.")
         case .notUTF8:
-            String(
-                localized: """
-                    “\(name)” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a \
-                    spreadsheet as “CSV UTF-8”, and import that.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a \
+                spreadsheet as “CSV UTF-8”, and import that.
+                """
             )
         case .unknownSeparator(let separator):
-            String(
-                localized: """
-                    The #separator line of “\(name)” says “\(separator)”, which Ficha can't separate columns by. Make \
-                    it Tab, Comma or Semicolon, or remove it.
-                    """
+            LocalizedStringResource(
+                """
+                The #separator line of “\(name)” says “\(separator)”, which Ficha can't separate columns by. Make \
+                it Tab, Comma or Semicolon, or remove it.
+                """
             )
         case .unknownHTML(let value):
-            String(
-                localized: """
-                    The #html line of “\(name)” says “\(value)”: make it true when the file holds HTML, or false when \
-                    it doesn't.
-                    """
+            LocalizedStringResource(
+                """
+                The #html line of “\(name)” says “\(value)”: make it true when the file holds HTML, or false when \
+                it doesn't.
+                """
             )
         case .unknownColumnNumber(let header, let value):
-            String(
-                localized: """
-                    The #\(header) line of “\(name)” says “\(value)”, which isn't a column's number. Make it the \
-                    number of the column, counting the first one as 1.
-                    """
+            LocalizedStringResource(
+                """
+                The #\(header) line of “\(name)” says “\(value)”, which isn't a column's number. Make it the \
+                number of the column, counting the first one as 1.
+                """
             )
         case .missingColumn(let column):
-            String(
-                localized: """
-                    The #columns line of “\(name)” names no \(column.rawValue) column, which every card needs. Name \
-                    its columns Front, Back, Tags, Type and Source, or remove the line.
-                    """
+            LocalizedStringResource(
+                """
+                The #columns line of “\(name)” names no \(column.rawValue) column, which every card needs. Name \
+                its columns Front, Back, Tags, Type and Source, or remove the line.
+                """
             )
         case .unreadableZip:
-            String(
-                localized: """
-                    Ficha couldn't open “\(name)” as a zip: it may be damaged. Zip the text file of cards and its \
-                    images and sounds again, and import that.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't open “\(name)” as a zip: it may be damaged. Zip the text file of cards and its \
+                images and sounds again, and import that.
+                """
             )
         case .noTextFileInZip:
-            String(
-                localized: """
-                    “\(name)” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside \
-                    the images and sounds. Add it, zip them again, and import that.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside \
+                the images and sounds. Add it, zip them again, and import that.
+                """
             )
         case .severalTextFilesInZip(let files):
-            String(
-                localized: """
-                    “\(name)” holds several text files of cards, \(quotedList(files)), and Ficha imports one at a \
-                    time. Zip each with its images and sounds on its own, and import them one by one.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” holds several text files of cards, \(quotedList(files)), and Ficha imports one at a \
+                time. Zip each with its images and sounds on its own, and import them one by one.
+                """
             )
         case .unreadableAnkiPackage:
-            String(
-                localized: """
-                    Ficha couldn't read “\(name)” as an Anki package: it may be damaged. Export the deck from Anki \
-                    again, and import that.
-                    """
+            LocalizedStringResource(
+                """
+                Ficha couldn't read “\(name)” as an Anki package: it may be damaged. Export the deck from Anki \
+                again, and import that.
+                """
             )
         case .ankiPackageTooNew:
-            String(
-                localized: """
-                    “\(name)” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with \
-                    “Support older Anki versions” ticked, and import that.
-                    """
+            LocalizedStringResource(
+                """
+                “\(name)” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with \
+                “Support older Anki versions” ticked, and import that.
+                """
             )
         }
     }
@@ -629,12 +647,6 @@ extension CardsFileProblem {
 /// and “filosofía” in English.
 private func quotedList(_ words: [String]) -> String {
     words.map { "“\($0)”" }.formatted(.list(type: .and))
-}
-
-/// What to do when the review panel shows a card for an answer it can't take:
-/// start over with the cards as they are now.
-private var reopenReviewNow: String {
-    String(localized: "Close the review panel and open “Review now” again.")
 }
 
 extension EngineError {
