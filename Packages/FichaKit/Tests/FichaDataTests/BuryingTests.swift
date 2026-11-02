@@ -15,16 +15,16 @@ struct BuryingTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("a card buried in the review panel never shows up again, counts nowhere, and keeps its review log")
     func aBuriedCardNeverShowsUpAgain() throws {
-        // serendipia gets to the 30-day step, from which a card is learned,
-        // and comes due there.
+        // serendipia gets learned, graduated to wait 21 days or more, and
+        // comes due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 5, movingForward: time)
-        time.advance(by: days(30))
+        try engine.climbUntilLearned(serendipia, movingForward: time)
+        time.move(to: try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due))
         let log = try engine.reviewLog()
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
@@ -58,19 +58,19 @@ struct BuryingTests {
         #expect(try engine.reviewNow(settings) == [.review(unburied), .review(unburied, .backFirst)])
     }
 
-    @Test("an unburied card goes back to its step in Lucas's reviews, and counts again")
-    func anUnburiedCardGoesBackToItsStep() throws {
-        // serendipia gets to the 30-day step, from which a card is learned.
+    @Test("an unburied card goes back to where it stood in Lucas's reviews, and counts again")
+    func anUnburiedCardGoesBackToWhereItStood() throws {
+        // serendipia gets learned: graduated, to wait 21 days or more.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 5, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climbUntilLearned(serendipia, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.bury(serendipia.id)
-        time.advance(by: days(30))
+        time.move(to: try #require(standing.due))
 
         let unburied = try engine.unbury(serendipia.id)
 
         #expect(unburied.buriedAt == nil)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         #expect(try engine.reviewNow(settings) == [.review(unburied)])
         let progress = try engine.progress(settings)
         #expect(progress.due == 1)
@@ -158,22 +158,23 @@ struct BuryingTests {
         #expect(try engine.cards() == [serendipia, buried])
     }
 
-    @Test("unburying several cards puts each back where it was: in Lucas's reviews on its step, or in the inbox")
+    @Test(
+        "unburying several cards puts each back where it was: in Lucas's reviews where it stood, or in the inbox")
     func unburyingSeveralCardsPutsEachBack() throws {
-        // serendipia gets to the 30-day step, from which a card is learned,
-        // and ubuntu is flagged.
+        // serendipia gets learned, graduated to wait 21 days or more, and
+        // ubuntu is flagged.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 5, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climbUntilLearned(serendipia, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         try engine.bury([serendipia.id, ubuntu.id])
-        time.advance(by: days(30))
+        time.move(to: try #require(standing.due))
 
         let unburied = try engine.unbury([serendipia.id, ubuntu.id])
 
         #expect(unburied.map(\.buriedAt) == [nil, nil])
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         #expect(try engine.reviewNow(settings).map(\.card.id) == [serendipia.id])
         #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Falta un ejemplo"])
         let progress = try engine.progress(settings)

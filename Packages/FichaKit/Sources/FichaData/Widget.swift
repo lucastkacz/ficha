@@ -32,7 +32,7 @@ public struct WidgetCard: Sendable, Equatable {
     /// The card, by id, and the way review now would show it, which a click
     /// on the widget asks review now to start with.
     public let way: CardWay
-    /// Whether it's a new way, for its first view.
+    /// Whether it's a new way, for its first review.
     public let isNew: Bool
     /// The side it shows: the front front first, and the back back first.
     public let side: CardSide
@@ -311,7 +311,7 @@ extension Engine {
             guard try Table("card").fetchCount(db) > 0 else {
                 return WidgetTimeline(entries: [WidgetTimeline.Entry(date: now, content: .noCards)], refreshAt: nil)
             }
-            // The pick reads the ladder, the new cards a day and the cards per
+            // The pick reads the scheduler, the new cards a day and the cards per
             // appearance alone: Ficha's own fill in the rest, which it never
             // reads.
             var settings = ReviewSettings.defaults

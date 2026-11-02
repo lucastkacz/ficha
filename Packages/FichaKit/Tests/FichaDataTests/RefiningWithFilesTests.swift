@@ -143,14 +143,15 @@ final class RefiningWithFilesTests {
     }
 
     @Test(
-        "approving an expansion keeps its card's step and the images and sounds it leaves out, and puts those it gives")
+        "approving an expansion keeps its card's progress and the images and sounds it leaves out, and puts those it gives"
+    )
     func approvingAnExpansionKeepsTheFilesItLeavesOut() async throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let la = try await addTone(440, to: engine)
         let aria = try engine.create(card(.word, front: "aria", back: "Una canción.", frontImage: bird, backSound: la))
-        try engine.climb(aria, to: 1, movingForward: time)
-        let standing = try engine.standing(of: aria.id, on: ReviewSettings.defaults.ladder)
+        try engine.climb(aria, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: aria.id, with: ReviewSettings.defaults.scheduler)
         let expansion = try engine.expand(text: "aria", note: "De una ópera", source: nil)
         let excerpt = try file("nessun-dorma.wav", holding: tone(seconds: 1, hertz: 392))
 
@@ -162,7 +163,7 @@ final class RefiningWithFilesTests {
         #expect(approved.frontImage == bird && approved.backImage == nil)
         let nessunDorma = try #require(approved.frontSound)
         #expect(approved.backSound == la)
-        #expect(try engine.standing(of: aria.id, on: ReviewSettings.defaults.ladder) == standing)
+        #expect(try engine.standing(of: aria.id, with: ReviewSettings.defaults.scheduler) == standing)
         #expect(try engine.inbox().expansions.isEmpty)
         #expect(try engine.keptSounds() == [la, nessunDorma])
     }

@@ -6,17 +6,17 @@ import Testing
 /// Tests on a deck's menu in the Cards window (ADR 0011, ADR 0024): Set Aside
 /// and Prioritize, for Default too, the same menu in the sidebar and in the
 /// Actions menu above the card list, which is its keyboard path, and a
-/// set-aside deck grayed in the sidebar, on the default ladder. They start at
+/// set-aside deck grayed in the sidebar, on the default scheduler. They start at
 /// 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckSwitchesTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     // Arte is set aside, so Arte::Pintura sits inside a set-aside deck, and
@@ -82,7 +82,7 @@ struct CardsWindowDeckSwitchesTests {
         var window = openWindow()
         window.chooseSetAside(onDeck: Deck.defaultName)
         try engine.changeDeck(of: [petricor.id], to: "Arte")
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         let setAside = window.deckRows.outline
         let menu = window.menu(forDeck: Deck.defaultName)
@@ -164,8 +164,8 @@ struct CardsWindowDeckSwitchesTests {
 
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

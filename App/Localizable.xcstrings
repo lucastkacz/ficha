@@ -64,7 +64,7 @@
       }
     },
     "%@, back first" : {
-      "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a first view or review that went back first, like “Know it, back first”."
+      "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a review that went back first, like “Good, back first”."
     },
     "%@'s data was deleted from iCloud. Turning sync on sends all your cards again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off. The name is the app's."
@@ -72,16 +72,11 @@
     "%@'s data was deleted from iCloud. Turning sync on sends the cards in the decks you choose again." : {
       "comment" : "Settings, under Sync, after the user deleted the app's data in iCloud's settings, which turned sync off, while only the cards in ticked decks sync. The name is the app's."
     },
-    "%lld · %@" : {
-      "comment" : "In the Cards window: the card's step on the ladder, front first or back first, counted from 1, and how long it waits, like 4 · 5d.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld · %2$@"
-          }
-        }
-      }
+    "%@mo" : {
+      "comment" : "An interval of this many months, a month counted as a twelfth of a year of 365 days, about 30.4 days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit in each language."
+    },
+    "%@y" : {
+      "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit in each language."
     },
     "%lld cards are Image Occlusion cards, which hide parts of an image." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
@@ -692,13 +687,13 @@
         }
       }
     },
-    "%lld new cards come in, at the pace of your new cards per day, and %lld on a step, as Anki had them." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of the user's ladder.",
+    "%lld new cards come in, at the pace of your new cards per day, and %lld with their progress and Anki's reviews, due when Anki had them due." : {
+      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@new@, at the pace of your new cards per day, and %2$lld on a step, as Anki had them."
+            "value" : "%#@new@, at the pace of your new cards per day, and %#@withProgress@."
           },
           "substitutions" : {
             "new" : {
@@ -716,6 +711,26 @@
                     "stringUnit" : {
                       "state" : "translated",
                       "value" : "%arg new cards come in"
+                    }
+                  }
+                }
+              }
+            },
+            "withProgress" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg with its progress and Anki's reviews, due when Anki had it due"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg with their progress and Anki's reviews, due when Anki had them due"
                     }
                   }
                 }
@@ -818,14 +833,23 @@
     "A card needs a front." : {
       "comment" : "In the Cards window, under a card's front, when Lucas saves it blank."
     },
+    "A card you forget waits each step in turn before it graduates again. With none, it gets FSRS's interval at once." : {
+      "comment" : "Settings, under Scheduling: below the relearning steps; a card forgotten is a lapse."
+    },
+    "A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review." : {
+      "comment" : "Settings, under Scheduling: below the desired retention and the longest interval, as Anki's manual says it; a change never moves a card's due time."
+    },
     "A microphone" : {
       "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
     },
-    "A review ahead brings the cards closest to being due. Only “Don't know” moves them." : {
-
+    "A new card waits each step in turn before it graduates. With none, its first review graduates it." : {
+      "comment" : "Settings, under Scheduling: below the learning steps."
     },
-    "A review ahead: only “Don't know” moves the card." : {
-
+    "A review ahead brings the cards closest to being due. It counts, and lengthens a card's interval less the earlier it comes." : {
+      "comment" : "Under the review panel's offer to review ahead, when no card is due: what a review ahead does, as FSRS counts it."
+    },
+    "A review ahead: it counts, and lengthens the card's interval less the earlier it comes." : {
+      "comment" : "The tooltip of the Ahead badge, in the review panel and the Cards window's review log."
     },
     "A word, a concept, a quote or a question" : {
 
@@ -840,7 +864,7 @@
       "comment" : "The button of the Cards window's card form that saves the card."
     },
     "Add Step" : {
-
+      "comment" : "Settings, under Scheduling: adds a learning or relearning step at the end."
     },
     "Added" : {
       "comment" : "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."
@@ -849,7 +873,7 @@
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
     },
     "After forgetting it %lld times" : {
-      "comment" : "Settings, under Review panel: how many “Don't know” answers to one of a card's ways, since its front or back last changed, bring the offer to flag it.",
+      "comment" : "Settings, under Review panel: how many “Again” answers to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -873,6 +897,9 @@
     },
     "After the Mac wakes, wait" : {
       "comment" : "Settings, under Appearances: how long an appearance waits once the Mac wakes."
+    },
+    "Again" : {
+      "comment" : "A rating, Anki's first button, as the review panel's button names it and the Cards window's review log shows it: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish."
     },
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead, and beside such a review in the Cards window's review log."
@@ -935,7 +962,7 @@
       "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.\nIn the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
     },
     "Back first" : {
-      "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a first view or review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
+      "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
     },
     "Back to All Tags (⌘[)" : {
       "comment" : "The tooltip of the Cards window's Back button."
@@ -946,11 +973,20 @@
     "Back Up Now" : {
       "comment" : "Settings, under Backups: saves a backup now."
     },
+    "Back-first difficulty" : {
+      "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's difficulty back first, as Anki's Card Info says it, how hard the card is to remember back first, as a percentage."
+    },
     "Back-first due" : {
       "comment" : "A column of the Cards window: when a card that goes both ways is due back first.\nIn the Cards window's detail: when a card that goes both ways is due back first."
     },
-    "Back-first step" : {
-      "comment" : "A column of the Cards window: the step on the ladder of a card that goes both ways, back first, and its wait.\nIn the Cards window's detail: the step on the ladder of a card that goes both ways, back first, and its wait."
+    "Back-first interval" : {
+      "comment" : "A column of the Cards window: how long a card that goes both ways waits after its last review back first.\nIn the Cards window's detail: how long a card that goes both ways waits after its last review back first."
+    },
+    "Back-first retrievability" : {
+      "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's retrievability back first, as Anki's Card Info says it, the chance of remembering the card back first now."
+    },
+    "Back-first stability" : {
+      "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's stability back first, as Anki's Card Info says it, how many days it takes the chance of remembering the card back first to fall to 90%."
     },
     "Backup" : {
       "comment" : "Settings, under Backups: a copy's kind, a backup."
@@ -1060,7 +1096,7 @@
     "Cards" : {
       "comment" : "A column of the Cards window's All Tags: how many cards carry the tag, or a tag inside it.\nThe Cards window's title."
     },
-    "Cards Anki was learning or reviewing land on the step nearest their interval, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
+    "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
       "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
     },
     "Cards per appearance" : {
@@ -1330,7 +1366,7 @@
       "comment" : "An alert's title in the Cards window."
     },
     "Couldn't save the change" : {
-      "comment" : "An alert's title in Settings, when a change to the ladder, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
+      "comment" : "An alert's title in Settings, when a change to the scheduling settings, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
     },
     "Couldn't save your answer" : {
 
@@ -1436,6 +1472,9 @@
     },
     "Couldn't untick Set Aside on “%@”" : {
       "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, with the deck."
+    },
+    "Couldn't work out the buttons' intervals" : {
+
     },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
@@ -1554,8 +1593,14 @@
         }
       }
     },
+    "Desired retention" : {
+      "comment" : "Settings, under Scheduling: how likely the user wants to be to remember a card when it's due."
+    },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
+    },
+    "Difficulty" : {
+      "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's difficulty, how hard the card is to remember, as a percentage."
     },
     "Discard" : {
       "comment" : "The button that discards the capture the Cards window asks about."
@@ -1575,9 +1620,6 @@
     "Don't flag" : {
       "comment" : "The button that declines the review panel's offer to flag a card the user forgot often: the card stays in their reviews."
     },
-    "Don't know" : {
-      "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
-    },
     "Done" : {
       "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in."
     },
@@ -1593,11 +1635,11 @@
     "Due" : {
       "comment" : "A column of the Cards window's All Tags: how many of the tag's cards are due now.\nA column of the Cards window: when the card is due.\nAn item of the Cards window's sidebar: the cards due now.\nIn the Cards window's detail: when the card is due."
     },
-    "Each “Don't know” counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
-
+    "Each “Again” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
+      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Again” is the review panel's button, as Anki names it."
     },
-    "Each time you know a card, it climbs a step and waits that long to be due again. A change re-times every card from its history, and a card beyond a shorter ladder's end sits on its last step." : {
-
+    "Easy" : {
+      "comment" : "A rating, Anki's fourth button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
     },
     "Edit" : {
       "comment" : "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
@@ -1686,9 +1728,6 @@
     "Finished" : {
       "comment" : "How an appearance closed, in Diagnostics."
     },
-    "First view" : {
-      "comment" : "In the Cards window's review log and its chart's key: the first time Lucas saw the card."
-    },
     "Flag" : {
       "comment" : "The button that flags the card with the note written above it."
     },
@@ -1717,7 +1756,7 @@
       "comment" : "Settings, under Backups: the folder the copies are in."
     },
     "Forgotten %lld times" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Don't know” to it this many times front first since its front or back last changed. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times front first while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1740,7 +1779,7 @@
       }
     },
     "Forgotten %lld times back first" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Don't know” to it this many times back first, its back shown on top, since its front or back last changed. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times back first, its back shown on top, while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1762,6 +1801,17 @@
         }
       }
     },
+    "From %@ to %@" : {
+      "comment" : "Settings, under Scheduling: below the desired retention, the least and the most it can be.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "From %1$@ to %2$@"
+          }
+        }
+      }
+    },
     "Front" : {
       "comment" : "A column of the Cards window: the card's front.\nIn the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
     },
@@ -1777,14 +1827,17 @@
     "General" : {
       "comment" : "A tab of the Settings window."
     },
-    "Got it" : {
-
+    "Good" : {
+      "comment" : "A rating, Anki's third button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card. Anki's own name for it, “Bien” in Spanish."
     },
     "Gray" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Green" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "Hard" : {
+      "comment" : "A rating, Anki's second button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish."
     },
     "Held back by a Focus" : {
       "comment" : "In Diagnostics: a Focus of macOS was on, and Ficha's filter in it holds appearances back."
@@ -1853,13 +1906,16 @@
       "comment" : "The tooltip of the Cards window's toolbar button that imports cards."
     },
     "Imported" : {
-      "comment" : "In the Cards window's review log chart's key: an import from Anki put the card on a step of the user's ladder."
+      "comment" : "In the key of the Cards window's review log chart, and for VoiceOver, the name of the chart's point: an import from Anki brought the card in with its progress."
     },
-    "Imported on step %lld" : {
-      "comment" : "In the Cards window's review log: an import from Anki put the card on this step of the user's ladder, counted from 1."
+    "Imported, due on %@" : {
+      "comment" : "In the Cards window's review log: an import from Anki brought the card in with its progress, due on this day, as Anki had it, like “Imported, due on Oct 20, 2026”."
     },
     "Importing…" : {
       "comment" : "In the Import sheet, beside a spinner, while it imports the cards."
+    },
+    "In days, up to %@" : {
+      "comment" : "Settings, under Scheduling: below the longest interval, its unit and the most it can be."
     },
     "In use: %@" : {
       "comment" : "What a detector sees in Diagnostics."
@@ -1915,6 +1971,12 @@
         }
       }
     },
+    "Interval" : {
+      "comment" : "A column of the Cards window: how long the card waits after its last review.\nFor VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
+    },
+    "Interval %@" : {
+      "comment" : "For VoiceOver, a point of the Cards window's chart: how long the card waited after Lucas's answer, like “Interval 5 days”."
+    },
     "It leaves the inbox without becoming cards, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it discards a capture."
     },
@@ -1948,12 +2010,6 @@
     "Kind" : {
       "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card.\nSettings, under Backups: the column of each copy's kind."
     },
-    "Know it" : {
-      "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
-    },
-    "Ladder" : {
-      "comment" : "A tab of the Settings window."
-    },
     "Last backup" : {
       "comment" : "Settings, under Backups: when the last backup was saved."
     },
@@ -1961,7 +2017,7 @@
       "comment" : "A menu item while the last backup failed, which opens Settings' Backups tab, where it says why."
     },
     "Last seen" : {
-      "comment" : "A column of the Cards window: when Lucas last saw the card, in a first view or a review.\nIn the Cards window's detail: when Lucas last saw the card, in a first view or a review."
+      "comment" : "A column of the Cards window: when Lucas last reviewed the card.\nIn the Cards window's detail: when Lucas last reviewed the card."
     },
     "Last synced %@" : {
       "comment" : "Settings, under Sync: when this Mac last synced, with the date and time."
@@ -1971,6 +2027,12 @@
     },
     "Learned" : {
       "comment" : "An item of the Cards window's sidebar: the learned cards."
+    },
+    "Learning" : {
+      "comment" : "In the Cards window's Interval columns and its detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
+    },
+    "Learning steps" : {
+      "comment" : "Settings, under Scheduling: the header of the learning steps."
     },
     "Leave Out “%@”" : {
       "comment" : "The Import sheet's button that leaves out a tag, which shows a minus, with the tag's whole name, like “Medicina › Anatomía”.\nThe tooltip of the Import sheet's button that leaves out a tag, with the tag's whole name, like “Medicina › Anatomía”."
@@ -2053,6 +2115,9 @@
     },
     "List only the deck's cards tagged %@" : {
       "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
+    },
+    "Longest interval" : {
+      "comment" : "Settings, under Scheduling: the longest a card can wait after a review, in days."
     },
     "macOS didn't let %@ start at login (%@). Try again, or add it in System Settings > General > Login Items." : {
       "localizations" : {
@@ -2151,7 +2216,7 @@
       "comment" : "Settings: the review panel never takes the keyboard on its own."
     },
     "New" : {
-      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first view yet, or its back-first way, when it goes both ways."
+      "comment" : "A badge on a card the review panel shows for the first time.\nAn item of the Cards window's sidebar: the cards not seen yet.\nIn the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
     },
     "New Card" : {
       "comment" : "A hidden button of the Cards window: ⌘N, which opens the card form.\nThe Cards window's toolbar button that opens the card form.\nThe title of the Cards window's card form."
@@ -2229,7 +2294,7 @@
       "comment" : "In the Cards window: no card is learned yet."
     },
     "No new cards" : {
-      "comment" : "In the Cards window: no card waits for its first view."
+      "comment" : "In the Cards window: no card waits for its first review."
     },
     "No questions" : {
       "comment" : "In the Cards window: no question card that isn't buried."
@@ -2295,7 +2360,7 @@
       "comment" : "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
     },
     "Offer to flag a card you forget often" : {
-      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Don't know” to, so it gets fixed."
+      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Again” to while it's out of its learning and relearning steps, so it gets fixed."
     },
     "OK" : {
 
@@ -2413,6 +2478,9 @@
     "Red" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Relearning steps" : {
+      "comment" : "Settings, under Scheduling: the header of the relearning steps."
+    },
     "Remove Image" : {
       "comment" : "The button that removes the image on a side of a card."
     },
@@ -2426,7 +2494,7 @@
       "comment" : "The tooltip of the button that removes the sound on a side of a card."
     },
     "Remove Step %lld" : {
-      "comment" : "Settings: removes a step of the ladder."
+      "comment" : "Settings, under Scheduling: removes a learning or relearning step."
     },
     "Rename “%@”" : {
       "comment" : "The title of the Cards window's sheet that renames a deck, with the deck's whole name.\nThe title of the Cards window's sheet that renames a tag, with the tag's whole name."
@@ -2451,6 +2519,9 @@
     },
     "Restore… (⌘R)" : {
       "comment" : "The tooltip of the Backups tab's button that restores a copy."
+    },
+    "Retrievability" : {
+      "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's retrievability, the chance of remembering the card now."
     },
     "Review" : {
       "comment" : "The review panel's window title, which doesn't show: the panel has no title bar."
@@ -2479,8 +2550,11 @@
     "Saved" : {
       "comment" : "Settings, under Backups: the column of when a copy was saved."
     },
-    "Saving fixes it, and it keeps its step." : {
+    "Saving fixes it, and it keeps its progress." : {
       "comment" : "In the Cards window, under Lucas's note on a flagged card, while he edits it."
+    },
+    "Scheduling" : {
+      "comment" : "A tab of the Settings window: when cards come back, as Anki's deck options set it."
     },
     "See more" : {
 
@@ -2542,9 +2616,6 @@
     "Some settings couldn't be read" : {
 
     },
-    "Sort of" : {
-      "comment" : "A rating, as the review panel's button names it and the Cards window's review log shows it."
-    },
     "Sound" : {
       "comment" : "The Cards window, in place of a card's front that has only a sound."
     },
@@ -2560,17 +2631,17 @@
     "space" : {
       "comment" : "The Space key's name, next to the button it presses."
     },
+    "Stability" : {
+      "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's stability, how many days it takes the chance of remembering the card to fall to 90%."
+    },
     "Start at" : {
       "comment" : "Settings, under Appearances: the hour active hours start at."
     },
     "Start at login" : {
 
     },
-    "Step" : {
-      "comment" : "A column of the Cards window: the card's step on the ladder, and its wait.\nFor VoiceOver, the Cards window's chart: the card's step after each entry.\nIn the Cards window's detail: the card's step on the ladder, and its wait."
-    },
     "Step %lld" : {
-      "comment" : "For VoiceOver, a point of the Cards window's chart: the step after Lucas's answer.\nSettings: a step of the ladder, counted from 1."
+      "comment" : "Settings, under Scheduling: a learning or relearning step, counted from 1."
     },
     "Stop Sound" : {
       "comment" : "The button that stops the sound of a card's side as it plays.\nThe tooltip of the button that stops the sound of a card's side as it plays."

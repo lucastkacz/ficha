@@ -3,7 +3,7 @@
 Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Everything stays on your Mac.
 
 <p align="center">
-  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with three buttons below: Don't know, Sort of and Know it.">
+  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with Anki's four buttons below, Again, Hard, Good and Easy, each under how long the card would wait: 1h, 2h 30m, 4h and 2d.">
 </p>
 
 The cards in these pictures are samples, in Spanish. Yours can be in any language.
@@ -26,31 +26,32 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
 
 <p align="center">
   <img src="docs/images/card-front.png" width="49%" alt="The review panel showing only the front of a card, the quote “Caminante, no hay camino, se hace camino al andar.”, with a Flip button.">
-  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Don't know, Sort of and Know it.">
+  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Again, Hard, Good and Easy, each under how long the card would wait.">
 </p>
 
-A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did: 1 for "Don't know", 2 for "Sort of" or 3 for "Know it", which Space says too, as in Anki. It takes a few seconds, and every button has its key, so you never need the mouse. The first time you meet a card, it shows whole, marked "New": read it and press Enter.
+A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did with Anki's four buttons: 1 for "Again", 2 for "Hard", 3 for "Good", which Space says too, or 4 for "Easy". Above each one is how long the card would wait if you pressed it, as in Anki. It takes a few seconds, and every button has its key, so you never need the mouse. A card you haven't met yet comes the same way, marked "New": try to remember its back too, even if you can't yet, and rate it like any other.
 
-A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way climbs the ladder on its own. The first time it comes back first, turn it over with Space, read it and press Enter.
+A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first it's marked "New" too.
 
 A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the lower side's once you've turned it over, or the upper side's when the lower one has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
 
-When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Don't know" to it, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. ⌘Z undoes the last thing you did, and then the one before.
+When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Again" to it once it has graduated, outside its learning and relearning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. ⌘Z undoes the last thing you did, and then the one before.
 
 ## Why each card waits its own time
 
 Memory fades unless you go back to what you learned, and each time you recall something just as it's slipping away, it lasts longer. So reviewing a card you know well every day is wasted time, and leaving one you barely know for a month means starting over. This is spaced repetition, the idea behind many flashcard apps.
 
-Ficha spaces each card on a ladder of waits, like the Leitner system, a classic way to space flashcards:
+Ficha spaces each card as Anki does, with FSRS, Anki's modern scheduler, worked out by the same library Anki ships:
 
 ```mermaid
 flowchart LR
-    s1["1 hour"] --> s2["4 hours"] --> s3["2 days"] --> s4["5 days"] --> s5["12 days"] --> s6["30 days"] --> s7["75 days"]
+    new["New"] --> l1["1 hour"] --> l2["4 hours"] --> g["Days, more each time you know it"]
+    g -- "Again" --> r["1 hour"] --> g
 ```
 
-A new card starts on the first step. "Know it" moves it one step up, so it waits longer before it comes back. "Sort of" keeps it where it is, and "Don't know" sends it back to the first step. A card that waits 30 days or more counts as learned, and still comes back now and then, so you keep it.
+A new card goes through two learning steps. "Good" moves it to the next one, "Hard" waits a little more before it comes back, "Again" sends it back to the first, and "Easy" graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 9 times out of 10, so a card you know well waits longer each time, and one you find hard comes back sooner. "Again" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
 
-Many flashcard apps work out a different wait for each card with a formula. Ficha's ladder is simpler: you can always tell why a card shows up today. Its steps can be changed in Settings.
+The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Scheduling tab.
 
 ## Your cards
 
@@ -58,7 +59,7 @@ Ficha's Cards window lists all your cards, and it's where they come in and go ou
 
 **New Card.** Write a card yourself: its front and back, the deck it goes in, and if you like its tags, a type, where it comes from, and Both ways, so that it comes back first too. As in Anki's Add window, the deck starts as the one you're looking at in the sidebar, or else the one you last added a card to on this Mac, and New Deck… there makes another. The form stays open for the next card, and tells you when a front repeats one of your cards. Editing a card can move it to another deck too.
 
-**Import.** Bring in cards you made elsewhere: a text file with one card per line, which a spreadsheet saves, Anki exports as "Notes in Plain Text", or an AI writes, zipped with its images and sounds when its cards have any. You choose the deck its cards come into, or a "Deck" column puts each card in its own, as in the file Anki exports with "Include deck name" ticked. A "Both ways" column with any text in it makes its card go both ways, as Anki's "Add Reverse" field does. The Import sheet copies [instructions for an AI](docs/instructions-for-an-ai.md) to paste into yours, so that it writes the file for you. It also takes a deck Anki exports as a package (`.apkg`), its cards in Anki's decks and with its notes' tags, which you can rename before they come in, a deck with the decks inside it, with its images and sounds, a video's sound included, and, if you like, its progress: each card you had studied comes in on the step of your ladder nearest where Anki had it, due when Anki had it due, and the ones you had suspended come in buried. A note of Anki's "Basic (and reversed card)", or of its "Basic (optional reversed card)" with text in "Add Reverse", comes in as one card that goes both ways, each way with its own Anki card's progress; with its progress, it comes in with Both ways off when you had suspended only its reversed card. Before anything comes in, Ficha shows how many cards the file holds, which repeat yours, and which lines it couldn't read, and it saves a copy of your cards, so restoring it undoes the import.
+**Import.** Bring in cards you made elsewhere: a text file with one card per line, which a spreadsheet saves, Anki exports as "Notes in Plain Text", or an AI writes, zipped with its images and sounds when its cards have any. You choose the deck its cards come into, or a "Deck" column puts each card in its own, as in the file Anki exports with "Include deck name" ticked. A "Both ways" column with any text in it makes its card go both ways, as Anki's "Add Reverse" field does. The Import sheet copies [instructions for an AI](docs/instructions-for-an-ai.md) to paste into yours, so that it writes the file for you. It also takes a deck Anki exports as a package (`.apkg`), its cards in Anki's decks and with its notes' tags, which you can rename before they come in, a deck with the decks inside it, with its images and sounds, a video's sound included, and, if you like, its progress: each card you had studied comes in with Anki's reviews of it, so FSRS knows it as Anki did, and with the interval Anki had given it, due when Anki had it due, one Anki was still learning goes on with your learning steps, and the ones you had suspended come in buried. A note of Anki's "Basic (and reversed card)", or of its "Basic (optional reversed card)" with text in "Add Reverse", comes in as one card that goes both ways, each way with its own Anki card's progress; with its progress, it comes in with Both ways off when you had suspended only its reversed card. Before anything comes in, Ficha shows how many cards the file holds, which repeat yours, and which lines it couldn't read, and it saves a copy of your cards, so restoring it undoes the import.
 
 **Export.** Save the selected cards, a deck's cards, with those of the decks inside it, a tag's cards, with those of the tags inside it, or all of them to that same kind of file, to pass them on: another Ficha imports it, and Anki too. When a card has an image or a sound, the file goes in a zip with the images and sounds, which another Ficha imports whole. It holds what the cards say, the deck each one lives in, in a "Deck" column Anki reads too, and which ones go both ways, in a "Both ways" column that Anki can take as its "Add Reverse" field, but never your progress.
 

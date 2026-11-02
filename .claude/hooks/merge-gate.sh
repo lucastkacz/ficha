@@ -51,12 +51,19 @@ risky_paths=(
   # The package's manifest, and the versions it pins.
   'Packages/FichaKit/Package\.swift'
   'Packages/FichaKit/Package\.resolved'
+  # FSRS's arithmetic, which spaces every card, and its build (ADR 0026): our
+  # crate, whole, with the functions that call fsrs-rs, its manifest, the
+  # versions its lock pins, fsrs-rs's among them, whose upgrade can change
+  # intervals, the Rust toolchain and the configuration that build it; and
+  # the Swift that wraps the crate for FichaCore.
+  'Packages/FichaKit/Rust/'
+  'Packages/FichaKit/Sources/FichaFSRS/'
   # The database schema and its migrations, which all live in FichaData/Schema*.
   'Packages/FichaKit/Sources/FichaData/Schema'
   # The one way in to the cards that show up, those in Lucas's reviews, and
   # which cards take an answer.
   'Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift'
-  # The scheduler, which moves cards on the ladder, says where a card stands:
+  # The scheduler, which spaces each review with FSRS, says where a card stands:
   # in Lucas's reviews, waiting in the inbox, buried, or set aside by its deck
   # or a deck it sits inside, and keeps the cards in his reviews for the
   # planners to pick from.

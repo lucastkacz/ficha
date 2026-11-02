@@ -2,10 +2,11 @@ import Foundation
 
 /// Where a card stands: in Lucas's reviews, waiting in the inbox to be fixed,
 /// buried, or set aside with its deck, or a deck its deck sits inside (ADR
-/// 0024). Out of his reviews, it keeps its `LadderStanding`, so it comes back
-/// on its step when it's fixed, unburied, or its deck is no longer set aside.
+/// 0024). Out of his reviews, each of its ways keeps its `WayStanding`, so it
+/// comes back as it was when it's fixed, unburied, or its deck is no longer
+/// set aside.
 public enum CardStanding: Sendable, Equatable {
-    /// In Lucas's reviews: new, or on a ladder step until it's due.
+    /// In Lucas's reviews: new, or waiting its interval until it's due.
     case inReviews
     /// Waiting in the inbox to be fixed, as Lucas's flag says.
     case inInbox(Flag)
@@ -49,41 +50,41 @@ extension CardStanding {
     }
 }
 
-// What a card's place on the ladder means depends on where it stands: out of
-// Lucas's reviews, it keeps its step, but it won't show up.
+// What a way's standing means depends on where its card stands: out of
+// Lucas's reviews, it keeps its progress, but it won't show up.
 extension CardStanding {
-    /// When the card is due, standing on the ladder as `ladderStanding` says:
-    /// nil unless it's in Lucas's reviews and on the ladder.
-    public func due(given ladderStanding: LadderStanding) -> Date? {
+    /// When the way is due, standing as `wayStanding` says: nil unless the
+    /// card is in Lucas's reviews and the way started.
+    public func due(given wayStanding: WayStanding) -> Date? {
         guard case .inReviews = self else {
             return nil
         }
-        return ladderStanding.due
+        return wayStanding.due
     }
 
-    /// Whether the card is due at `time`, standing on the ladder as
-    /// `ladderStanding` says: in Lucas's reviews, with its wait over.
-    public func isDue(at time: Date, given ladderStanding: LadderStanding) -> Bool {
+    /// Whether the way is due at `time`, standing as `wayStanding` says: the
+    /// card in Lucas's reviews, and the way's interval over.
+    public func isDue(at time: Date, given wayStanding: WayStanding) -> Bool {
         guard case .inReviews = self else {
             return false
         }
-        return ladderStanding.isDue(at: time)
+        return wayStanding.isDue(at: time)
     }
 
-    /// Whether the card is new in Lucas's reviews, as `ladderStanding` says.
-    public func isNew(given ladderStanding: LadderStanding) -> Bool {
+    /// Whether the way is new in Lucas's reviews, as `wayStanding` says.
+    public func isNew(given wayStanding: WayStanding) -> Bool {
         guard case .inReviews = self else {
             return false
         }
-        return ladderStanding == .new
+        return wayStanding == .new
     }
 
-    /// Whether the card is learned in Lucas's reviews, standing on `ladder` as
-    /// `ladderStanding` says: on a step that waits 30 days or more.
-    public func isLearned(given ladderStanding: LadderStanding, on ladder: Ladder) -> Bool {
+    /// Whether the way is learned in Lucas's reviews, standing as
+    /// `wayStanding` says: graduated with an interval of 21 days or more.
+    public func isLearned(given wayStanding: WayStanding) -> Bool {
         guard case .inReviews = self else {
             return false
         }
-        return ladder.isLearned(ladderStanding)
+        return wayStanding.isLearned
     }
 }

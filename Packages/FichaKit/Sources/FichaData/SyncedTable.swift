@@ -98,7 +98,10 @@ struct SyncedTable: Sendable {
 
     /// An entry of the review log, which never changes: the entries of two
     /// devices join, and each card's ways are worked out from them all (ADR
-    /// 0017).
+    /// 0017). But a review a version of Ficha before FSRS recorded takes its
+    /// interval and the entry it answers again as its way's entries come, on
+    /// each device that carried it over, which marks it so, a mark the record
+    /// doesn't hold (`applyReviewLogEntry(_:as:in:)`).
     static let reviewLog = SyncedTable(
         name: "reviewLog", syncedRow: { .reviewLogEntry($0) },
         fields: [],
@@ -107,8 +110,9 @@ struct SyncedTable: Sendable {
             SyncedColumn("way", .text),
             SyncedColumn("kind", .text),
             SyncedColumn("rating", .text),
-            SyncedColumn("step", .integer),
             SyncedColumn("due", .time),
+            // A placement's ease, as Anki had it.
+            SyncedColumn("ease", .real),
             // As this device holds it, to the millisecond, so that every
             // device replays the joined log alike.
             SyncedColumn("answeredAt", .time),
@@ -117,9 +121,13 @@ struct SyncedTable: Sendable {
             // As the device that answered decided it, never worked out again.
             SyncedColumn("isAhead", .boolean),
             // The UUID of the entry a review answered, which can come later,
-            // so it's no link: the ladder reads it to tell two devices'
-            // answers to one wait apart.
+            // so it's no link: the scheduler keeps a review's interval only
+            // when it answered the entry replayed just before it.
             SyncedColumn("answeredEntryUuid", key: "answeredEntry", .text),
+            // A review's or a placement's interval, in seconds, which an
+            // entry from a Ficha before FSRS comes without, and is given as
+            // it comes in (`applyReviewLogEntry(_:as:in:)`).
+            SyncedColumn("interval", .real),
         ],
         marksRowsFromAnotherDevice: true,
         check: { id, db in _ = try ReviewLogEntry(row: try tableRow(id, of: "reviewLog", in: db)) })

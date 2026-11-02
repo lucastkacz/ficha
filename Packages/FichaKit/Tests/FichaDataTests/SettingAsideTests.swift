@@ -21,19 +21,20 @@ struct SettingAsideTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("a set-aside deck's cards leave review now, See more and the menu's counts")
     func aSetAsideDecksCardsLeaveReviewNowSeeMoreAndTheCounts() throws {
-        // eudaimonía gets to the 30-day step, from which a card is learned,
-        // ubuntu to the first step, and both come due. ataraxia is new.
+        // eudaimonía gets learned, graduated to wait 21 days or more, ubuntu
+        // goes to the first learning step, and both come due. ataraxia is
+        // new.
         let ubuntu = try approveCard("ubuntu", deck: "Lenguaje")
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
         try approveCard("ataraxia", deck: "Filosofía")
-        try engine.climb(eudaimonia, to: 5, movingForward: time)
+        try engine.climbUntilLearned(eudaimonia, movingForward: time)
         try engine.meet(ubuntu)
-        time.advance(by: days(30))
+        time.move(to: try #require(try engine.standing(of: eudaimonia.id, with: settings.scheduler).due))
 
         try engine.setAside(deck: "Filosofía")
 
@@ -113,13 +114,13 @@ struct SettingAsideTests {
     // the deck. serendipia gets to the second step, which waits 4 hours, and
     // comes due while it's set aside.
     @Test(
-        "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back on its step, due when it was"
+        "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back where it stood, due when it was"
     )
     func aCardMovedIntoASetAsideDeckLeavesReviews() throws {
         let serendipia = try approveCard("serendipia")
         let coliseo = try approveCard("Coliseo")
-        try engine.climb(serendipia, to: 1, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.setAside(deck: "Historia")
 
         let mayo = try approveCard("Revolución de Mayo", deck: "Historia")
@@ -132,8 +133,8 @@ struct SettingAsideTests {
         #expect(try engine.reviewNow(settings).isEmpty)
         try engine.changeDeck(of: [serendipia.id, coliseo.id], to: Deck.defaultName)
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews, .setAside(by: ["Historia"])])
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
-        #expect(try engine.reviewNow(settings) == [.review(serendipia), .firstView(coliseo)])
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
+        #expect(try engine.reviewNow(settings) == [.review(serendipia), .new(coliseo)])
     }
 
     // Historia::Roma became a priority deck before Historia was set aside,
@@ -162,7 +163,7 @@ struct SettingAsideTests {
         try engine.setAside(deck: Deck.defaultName)
 
         #expect(try engine.cards().map(\.standing) == [.setAside(by: [Deck.defaultName]), .inReviews])
-        #expect(try engine.reviewNow(settings) == [.firstView(gioconda)])
+        #expect(try engine.reviewNow(settings) == [.new(gioconda)])
         #expect(throws: EngineError.cardSetAside(petricor.id, decks: [Deck.defaultName])) {
             try engine.meet(petricor)
         }
@@ -171,28 +172,29 @@ struct SettingAsideTests {
     }
 
     @Test(
-        "stopping setting a deck aside brings its cards back on their step, with the cards that came due meanwhile due")
+        "stopping setting a deck aside brings its cards back where they stood, with the cards that came due meanwhile due"
+    )
     func stoppingSettingADeckAsideBringsItsCardsBack() throws {
         // eudaimonía gets to the second step, which waits 4 hours, and
         // ataraxia is new.
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
         let ataraxia = try approveCard("ataraxia", deck: "Filosofía")
-        try engine.climb(eudaimonia, to: 1, movingForward: time)
-        let standing = try engine.standing(of: eudaimonia.id, on: settings.ladder)
+        try engine.climb(eudaimonia, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: eudaimonia.id, with: settings.scheduler)
         try engine.setAside(deck: "Filosofía")
         time.advance(by: days(2))
         #expect(try engine.reviewNow(settings).isEmpty)
 
         try engine.stopSettingAside(deck: "Filosofía")
 
-        #expect(try engine.standing(of: eudaimonia.id, on: settings.ladder) == standing)
-        #expect(try engine.reviewNow(settings) == [.review(eudaimonia), .firstView(ataraxia)])
+        #expect(try engine.standing(of: eudaimonia.id, with: settings.scheduler) == standing)
+        #expect(try engine.reviewNow(settings) == [.review(eudaimonia), .new(ataraxia)])
         #expect(try engine.progress(settings).due == 1)
         #expect(try engine.reviewLog().map(\.cardID) == [eudaimonia.id, eudaimonia.id])
     }
 
     @Test(
-        "setting a deck aside takes both ways of its cards out of reviews, and stopping brings both back on their steps"
+        "setting a deck aside takes both ways of its cards out of reviews, and stopping brings both back where they stood"
     )
     func settingADeckAsideTakesOutBothWays() throws {
         let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
@@ -323,7 +325,7 @@ struct SettingAsideTests {
         }
 
         #expect(try engine.cards().map(\.standing) == [.inReviews, .inReviews, .inReviews])
-        #expect(try engine.reviewNow(settings) == [.firstView(ubuntu)])
+        #expect(try engine.reviewNow(settings) == [.new(ubuntu)])
         try engine.meet(ubuntu)
         try engine.meet(eudaimonia)
         try engine.meet(petricor)

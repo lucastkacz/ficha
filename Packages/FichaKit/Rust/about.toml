@@ -1,0 +1,30 @@
+# cargo-about's configuration, for THIRD-PARTY-NOTICES.txt: the notices of
+# fsrs-rs and the crates it brings into the static library each app links, for
+# the targets the XCFramework holds (ADR 0026). cbindgen and what it brings
+# only run as the crate builds, so their notices stay out. docs/development.md
+# says how to write the file again after Cargo.lock changes.
+#
+# The licenses Ficha takes, in the order cargo-about picks one from a crate
+# that offers several: MIT first, the shortest, as most crates offer it or
+# Apache-2.0. priority-queue, which fsrs-rs pins, offers LGPL-3.0-or-later or
+# MPL-2.0: Ficha takes MPL-2.0, which an App Store app can link statically, as
+# it takes zstd's BSD license (ADR 0015). LGPL stays out of the list, so a
+# crate that offers only it fails the generation.
+accepted = [
+    "MIT",
+    "BSD-3-Clause",
+    "Apache-2.0",
+    "MPL-2.0",
+    "Unicode-3.0",
+]
+# Our own crate, which `publish = false` marks, is Ficha's, under its license.
+private = { ignore = true }
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-apple-ios",
+]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true

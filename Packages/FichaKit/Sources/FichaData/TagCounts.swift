@@ -37,15 +37,16 @@ public struct CountedTag: Sendable, Equatable {
 
 extension Engine {
     /// Every tag `allTags()` lists, in its order, each with its counts, as
-    /// All Tags shows them, each card standing on `ladder` now: a tag no card
-    /// lists counts none. One read, so each tag's pin, which gives the pinned
-    /// tags' order (`pinnedInOrder`), and its counts are of the same moment.
-    public func countedTags(on ladder: Ladder) throws(EngineError) -> [CountedTag] {
+    /// All Tags shows them, each card standing as `scheduler` replays its log
+    /// now: a tag no card lists counts none. One read, so each tag's pin,
+    /// which gives the pinned tags' order (`pinnedInOrder`), and its counts
+    /// are of the same moment.
+    public func countedTags(with scheduler: Scheduler) throws(EngineError) -> [CountedTag] {
         let now = time.now
         return try read { db in
             let own = try OwnTags(in: db)
             var counts: [String: (cards: Int, due: Int)] = [:]
-            for row in try FichaData.cardRows(in: .all, matching: "", on: ladder, at: now, in: db) {
+            for row in try FichaData.cardRows(in: .all, matching: "", with: scheduler, at: now, in: db) {
                 let isDue = row.isDue(at: now)
                 for tag in TagPath.lineages(of: row.card.tags) {
                     counts[tag, default: (0, 0)].cards += 1

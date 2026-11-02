@@ -117,7 +117,10 @@ private func apply(_ record: ICloudRecord, to row: SyncedRow, in db: Database) t
     switch row {
     case .card(let id): try SyncedTable.cards.apply(record, toRowWith: id, in: db)
     case .capture(let id): try SyncedTable.captures.apply(record, toRowWith: id, in: db)
-    case .reviewLogEntry(let id): try SyncedTable.reviewLog.apply(record, toRowWith: id, in: db)
+    case .reviewLogEntry(let id):
+        // An entry from a version of Ficha before FSRS comes in carried over
+        // to the scheduler's, as the migration carried over this device's.
+        try applyReviewLogEntry(record, as: id, in: db)
     case .tag(let name): try applyTag(record, named: name, in: db)
     case .progressSettings: try applyProgressSettings(record, in: db)
     case .syncChoice: try applySyncChoice(record, in: db)
@@ -367,6 +370,19 @@ extension ICloudRecord {
             throw unreadable("A record from iCloud has no number where it should")
         }
         return number
+    }
+
+    /// The number with a fraction the field `key` holds, or nil when it
+    /// holds nothing: a whole number reads as one too, as a column of
+    /// numbers with a fraction reads it (`SyncedColumn`).
+    func optionalNumber(_ key: String) throws -> Double? {
+        switch value(of: key) {
+        case nil: return nil
+        case .double(let number)?: return number
+        case .int(let number)?: return Double(number)
+        case .string?, .bytes?, .asset?:
+            throw unreadable("A record from iCloud holds something else where a number should be")
+        }
     }
 
     /// The whole number the field `key` holds, or nil when it holds nothing.

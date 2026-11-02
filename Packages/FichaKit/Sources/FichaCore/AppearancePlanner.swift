@@ -88,7 +88,7 @@ extension ReviewSettings {
         signals: some DeviceSignals,
         now: Date,
         calendar: Calendar
-    ) throws(UnexpectedReviewLog) -> AppearancePlan {
+    ) throws(SchedulingError) -> AppearancePlan {
         guard !signals.isAsleep else {
             return .notNow(.asleep)
         }
@@ -101,7 +101,7 @@ extension ReviewSettings {
         if let until = signals.lastWake?.adding(waitAfterWaking), now < until {
             return .notNow(.tooSoonAfterWaking(until: until))
         }
-        let standings = try cards.standings(on: ladder)
+        let standings = try cards.standings(with: scheduler)
         let horizon = now.adding(lookAhead)
         let picked = pickCards(after: standings, of: cards, dueBy: horizon, now: now, calendar: calendar)
         let isAnyCardDue = standings.contains { $0.standing.isDue(at: now) }
@@ -111,7 +111,7 @@ extension ReviewSettings {
         // may come in is asked as without them.
         let mayMeetNewCard =
             pickCards(after: standings, of: cards.withoutPriority, dueBy: horizon, now: now, calendar: calendar)
-            .firstView != nil
+            .newWay != nil
         guard isAnyCardDue || mayMeetNewCard else {
             return .notNow(.nothingDue)
         }
@@ -144,12 +144,12 @@ extension ReviewSettings {
         from now: Date,
         calendar: Calendar,
         upTo count: Int
-    ) throws(UnexpectedReviewLog) -> [PlannedAppearance] {
+    ) throws(SchedulingError) -> [PlannedAppearance] {
         let cards = cards.frontFirstOnly
         // With nothing rated, the cards keep their due times, and a new card
         // waits for a day whose new cards Lucas hasn't met, if one ever comes
         // in: when none may, a new day changes nothing, and the plan ends.
-        let standings = try cards.standings(on: ladder).map(\.standing)
+        let standings = try cards.standings(with: scheduler).map(\.standing)
         let dueTimes = standings.compactMap(\.due)
         let mayMeetNewCards = standings.contains(.new) && bringsNewCard(after: 0, metToday: 0)
         var plan: [PlannedAppearance] = []
@@ -183,28 +183,28 @@ extension ReviewSettings {
     /// brought the ways in `appearance`, in the order they show, once Lucas
     /// answered it from its card notification (ADR 0010): the first of the
     /// ways after it that he can still answer at `now`, out of `cards`. As in
-    /// any appearance, a new way comes for its first view, and one due within
-    /// `lookAhead` for a review, so one he rated meanwhile, or whose card left
-    /// his reviews, is skipped. None comes once none is left.
+    /// any appearance, a new way comes for its first review, and one due
+    /// within `lookAhead` for a review, so one he rated meanwhile, or whose
+    /// card left his reviews, is skipped. None comes once none is left.
     public func nextCard(
         after way: CardWay,
         in appearance: [CardWay],
         cards: CardsInReviews,
         now: Date
-    ) throws(UnexpectedReviewLog) -> PanelCardIDs {
+    ) throws(SchedulingError) -> PanelCardIDs {
         let inReviews = Set(cards.ways)
         let later = appearance.drop { $0 != way }.dropFirst().filter(inReviews.contains)
-        for (laterWay, standing) in try ladder.standings(of: later, after: cards.log) {
+        for (laterWay, standing) in try scheduler.standings(of: later, after: cards.log) {
             switch standing {
             case .new:
-                return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: laterWay)
-            case .onLadder where standing.isDue(at: now.adding(lookAhead)):
-                return PanelCardIDs(reviews: [laterWay], reviewsAhead: [], firstView: nil)
-            case .onLadder:
+                return PanelCardIDs(reviews: [], reviewsAhead: [], newWay: laterWay)
+            case .started where standing.isDue(at: now.adding(lookAhead)):
+                return PanelCardIDs(reviews: [laterWay], reviewsAhead: [], newWay: nil)
+            case .started:
                 continue
             }
         }
-        return PanelCardIDs(reviews: [], reviewsAhead: [], firstView: nil)
+        return PanelCardIDs(reviews: [], reviewsAhead: [], newWay: nil)
     }
 
     /// When active hours start after `time`, a time outside them: the start

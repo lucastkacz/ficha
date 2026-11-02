@@ -2,12 +2,12 @@ import FichaCore
 import Foundation
 
 /// The Cards window while it's open: what its sidebar chose, what Lucas looks
-/// for and what he selected, what the table lists, read from his cards on the
-/// ladder he set in Settings, and so what the detail shows and what Lucas can
-/// do with it. It reads his cards whenever the window asks: once the window
-/// listens for the reasons to read them again, and then for each of them, the
-/// engine's changes, the passing of time, a new ladder in Settings, and Ficha
-/// Dev moving the time. What Lucas does in the window goes through it too,
+/// for and what he selected, what the table lists, read from his cards with
+/// the scheduling settings in Settings, and so what the detail shows and what
+/// Lucas can do with it. It reads his cards whenever the window asks: once
+/// the window listens for the reasons to read them again, and then for each
+/// of them, the engine's changes, the passing of time, new scheduling
+/// settings, and Ficha Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
 /// buries and unburies at once, turns Both ways on or off for several cards
@@ -474,9 +474,9 @@ public struct CardsWindowState: Sendable {
     /// The engine's time when the cards were read, which the Due and
     /// Back-first due columns count from.
     public private(set) var now: Date
-    /// The ladder Lucas set in Settings, which the cards stand on, and whose
-    /// steps a card's review log spans.
-    public private(set) var ladder: Ladder
+    /// The scheduling settings in Settings, which the cards stand by, and
+    /// which give the intervals of a card's review log.
+    public private(set) var scheduler: Scheduler
     /// What Lucas edits, until he saves or cancels.
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
@@ -538,9 +538,9 @@ public struct CardsWindowState: Sendable {
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
-    init(engine: Engine, ladder: Ladder, lastDeckAddedTo: String) {
+    init(engine: Engine, scheduler: Scheduler, lastDeckAddedTo: String) {
         self.engine = engine
-        self.ladder = ladder
+        self.scheduler = scheduler
         self.lastDeckAddedTo = lastDeckAddedTo
         now = engine.now
     }
@@ -692,7 +692,7 @@ public struct CardsWindowState: Sendable {
         sidebarItem = item
         tagShownFromAllTags = nil
         chosenDeckTag = nil
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Narrows what the table lists to what mentions `search`. A blank search
@@ -703,7 +703,7 @@ public struct CardsWindowState: Sendable {
         if sidebarItem == .allTags, tagShownFromAllTags == nil {
             tagsClosedInSearch = []
         }
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Selects the cards in `selection`, in a group of cards.
@@ -761,7 +761,7 @@ public struct CardsWindowState: Sendable {
     /// `editedImages` and `editedSounds` hold them, going both ways as
     /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
     /// edit, while Save is on, or records why it couldn't and goes on with
-    /// it. The card keeps its step and its review log, and a flagged one is
+    /// it. The card keeps its progress and its review log, and a flagged one is
     /// fixed, back in the reviews unless it's buried. The detail shows it as
     /// saved at once, without waiting for the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
@@ -774,7 +774,7 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             endEditing()
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 
@@ -790,7 +790,7 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             editing = nil
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 
@@ -871,7 +871,7 @@ public struct CardsWindowState: Sendable {
             bothWays ? .turnOnBothWays(cardCount: cardIDs.count) : .turnOffBothWays(cardCount: cardIDs.count)
         let done = perform(action) { engine throws(EngineError) in try engine.setBothWays(bothWays, of: cardIDs) }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 
@@ -1011,7 +1011,7 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Reads the decks, the tags and what the sidebar chose, as they are now,
-    /// on `ladder`, the one Lucas set in Settings, which he may have changed
+    /// with `scheduler`, the settings in Settings, which may have changed
     /// since the last read, and the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
     /// did it (`follow(_:)`). When the chosen deck is gone, as Default once
@@ -1025,21 +1025,21 @@ public struct CardsWindowState: Sendable {
     /// stays chosen. All Tags' selection keeps only the tags there are. A
     /// tag chosen among the chosen deck's tags that none of its cards carries
     /// anymore is no longer chosen, and the deck lists all its cards again.
-    public mutating func read(on ladder: Ladder) {
-        self.ladder = ladder
+    public mutating func read(with scheduler: Scheduler) {
+        self.scheduler = scheduler
         now = engine.now
         do throws(EngineError) {
             let deckChanges = try engine.deckChanges(after: lastDeckChangeFollowed)
             // All Tags reads every tag with its counts, which its tree lists,
             // and the rest of the window reads every tag alone.
-            let counted = sidebarItem == .allTags ? try engine.countedTags(on: ladder) : nil
+            let counted = sidebarItem == .allTags ? try engine.countedTags(with: scheduler) : nil
             if let counted {
                 tags = counted.map(\.tag)
             } else {
                 tags = try engine.allTags()
             }
             pinnedTags = tags.pinnedInOrder.map(PinnedTagRow.init(tag:))
-            decks = try engine.countedDecks(on: ladder)
+            decks = try engine.countedDecks(with: scheduler)
             follow(deckChanges)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
@@ -1055,12 +1055,13 @@ public struct CardsWindowState: Sendable {
             selectedTags.formIntersection(names)
             if let group = listedGroup {
                 listing = .success(
-                    .cards(narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, on: ladder))))
+                    .cards(
+                        narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, with: scheduler))))
             } else if let counted {
                 listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()
             } else {
-                listing = .success(.inbox(try engine.inboxRows(matching: search, on: ladder)))
+                listing = .success(.inbox(try engine.inboxRows(matching: search, with: scheduler)))
             }
         } catch {
             listing = .failure(error)
@@ -1092,7 +1093,8 @@ public struct CardsWindowState: Sendable {
             return
         }
         reviewLog = CardReviewLog(
-            cardID: row.id, rows: Result { () throws(EngineError) in try engine.reviewLogRows(of: row.id, on: ladder) })
+            cardID: row.id,
+            rows: Result { () throws(EngineError) in try engine.reviewLogRows(of: row.id, with: scheduler) })
     }
 }
 
@@ -1105,11 +1107,13 @@ private struct CardReviewLog: Sendable {
 
 extension Engine {
     /// Opens the Cards window on All cards, with nothing searched or
-    /// selected, for Lucas's cards standing on `ladder`, the one he set in
+    /// selected, for Lucas's cards standing by `scheduler`, the settings in
     /// Settings, which it reads once the window asks, remembering
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
-    public func openCardsWindow(on ladder: Ladder, lastDeckAddedTo: String = Deck.defaultName) -> CardsWindowState {
-        CardsWindowState(engine: self, ladder: ladder, lastDeckAddedTo: lastDeckAddedTo)
+    public func openCardsWindow(with scheduler: Scheduler, lastDeckAddedTo: String = Deck.defaultName)
+        -> CardsWindowState
+    {
+        CardsWindowState(engine: self, scheduler: scheduler, lastDeckAddedTo: lastDeckAddedTo)
     }
 }

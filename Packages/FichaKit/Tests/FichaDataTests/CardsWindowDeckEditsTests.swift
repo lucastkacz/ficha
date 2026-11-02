@@ -6,12 +6,12 @@ import Testing
 /// Tests on renaming, moving and deleting decks in the Cards window (ADR
 /// 0024): Rename… and Delete… in a deck's menu, which the Actions menu above
 /// the card list offers too, as the keyboard's way to them, and dropping
-/// cards and decks on the sidebar's decks. On the default ladder; they start
+/// cards and decks on the sidebar's decks. On the default scheduler; they start
 /// at 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckEditsTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -126,8 +126,8 @@ struct CardsWindowDeckEditsTests {
     func deletingADeckTheFieldsHold() throws {
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        var window = engine.openCardsWindow(on: ladder, lastDeckAddedTo: "Arte::Pintura")
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: "Arte::Pintura")
+        window.read(with: scheduler)
         window.choose(.cards(.deck("Historia")))
         window.openNewCardForm()
         var draft = try #require(window.cardForm?.draft)
@@ -240,8 +240,8 @@ struct CardsWindowDeckEditsTests {
 
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

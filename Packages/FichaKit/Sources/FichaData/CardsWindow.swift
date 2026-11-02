@@ -3,7 +3,7 @@ import Foundation
 internal import GRDB
 
 /// A card as the Cards window lists it: the card, where it stands, in Lucas's
-/// reviews and on his ladder each way, and when he last saw it.
+/// reviews and in the scheduler each way, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
     /// The card's tags, in its order, each with what it has of its own, as
@@ -12,17 +12,17 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
-    /// Where its front-first way stands, which every card has, as the Step
-    /// and Due columns show it.
+    /// Where its front-first way stands, which every card has, as the
+    /// Interval and Due columns show it.
     public let frontFirst: WayProgress
-    /// Where its back-first way stands, as the Back-first step and
+    /// Where its back-first way stands, as the Back-first interval and
     /// Back-first due columns show it, or nil while the card goes one way,
     /// also once Lucas switched Both ways off, which keeps that way's
     /// progress.
     public let backFirst: WayProgress?
-    /// When the user last saw it, either way: its review log's latest first
-    /// view or review, or nil while it's new, or while it has only the
-    /// placement an import put it on its step with (ADR 0013).
+    /// When the user last saw it, either way: its review log's latest
+    /// review, or nil while it's new, or while it has only the placement an
+    /// import gave it (ADR 0013).
     public let lastSeen: Date?
 
     public var id: Int64 {
@@ -36,41 +36,69 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     }
 
     /// Whether the card is new in Lucas's reviews: its front-first way
-    /// hasn't had its first view yet, whatever its back-first way did.
+    /// hasn't had its first review yet, whatever its back-first way did.
     var isNew: Bool {
         frontFirst.isNew
     }
 
-    /// Whether the card is learned in Lucas's reviews, standing on `ladder`:
-    /// its front-first way on a step that waits 30 days or more, as the menu
-    /// counts it, so that switching Both ways on changes nothing there.
-    func isLearned(on ladder: Ladder) -> Bool {
-        frontFirst.isLearned(on: ladder)
+    /// Whether the card is learned in Lucas's reviews: its front-first way
+    /// graduated with an interval of 21 days or more, as the menu counts it,
+    /// so that switching Both ways on changes nothing there.
+    var isLearned: Bool {
+        frontFirst.isLearned
     }
 }
 
-/// Where one of a card's ways stands, as the Cards window shows it: on the
-/// ladder after that way's review log, as if it were a card of its own
+/// Where one of a card's ways stands, as the Cards window shows it: in the
+/// scheduler after that way's review log, as if it were a card of its own
 /// (ADR 0016), and in Lucas's reviews or out of them with the card, both ways
 /// together.
 public struct WayProgress: Sendable, Equatable {
-    /// Where the way stands on the ladder: new, or on a step until it's due,
-    /// worked out from its entries in the review log. A flagged, buried or
-    /// set-aside card keeps it, and `cardStanding` says whether the card is
-    /// in Lucas's reviews.
-    public let standing: LadderStanding
-    /// How long its step waits, or nil while it's new.
-    public let wait: Duration?
+    /// Where the way stands in the scheduler: new, or at a stage, waiting
+    /// its interval until it's due, worked out from its entries in the review
+    /// log. A flagged, buried or set-aside card keeps it, and `cardStanding`
+    /// says whether the card is in Lucas's reviews.
+    public let standing: WayStanding
+    /// What FSRS knows of how well Lucas remembers the way, as the window
+    /// read it, or nil while it's new, or while an import placed it in its
+    /// learning steps without reviews.
+    public let memory: WayMemory?
     /// Where the card stands, both ways together.
     let cardStanding: CardStanding
 
-    /// The step it stands on, counted from 0, the first step, or nil while
-    /// it's new.
-    public var step: Int? {
-        guard case .onLadder(let step, _) = standing else {
-            return nil
+    /// How long the way waits after its last entry, or nil while it's new.
+    public var interval: Duration? {
+        standing.interval
+    }
+
+    /// What the Interval column, or the Back-first interval column, and the
+    /// detail's Interval rows say of the way, as Anki's Browse says it, in
+    /// the order the columns sort ways, shortest first: new ways, then those
+    /// in their learning steps, then every other by its interval.
+    public enum IntervalColumn: Sendable, Comparable {
+        /// That it's new.
+        case new
+        /// That it's in its learning steps, whatever the step's interval,
+        /// as Anki's Browse says "(learning)" there: an import's placement
+        /// of a card Anki was learning too, whose interval is none when the
+        /// settings have no learning steps. Ways in their learning steps
+        /// sort by that interval among themselves, and before every other
+        /// interval, as Anki's Browse sorts them with an interval of zero.
+        case learning(Duration)
+        /// Its interval: graduated, in days, or in its relearning steps,
+        /// the step's.
+        case interval(Duration)
+    }
+
+    /// What the Interval columns and the detail's Interval rows say of the
+    /// way.
+    public var intervalColumn: IntervalColumn {
+        switch standing {
+        case .new: .new
+        case .started(.learning, let interval, _, _): .learning(interval)
+        case .started(.graduated, let interval, _, _), .started(.relearning, let interval, _, _):
+            .interval(interval)
         }
-        return step
     }
 
     /// When the way is due, as the Cards window says it: nil while it's new,
@@ -82,14 +110,14 @@ public struct WayProgress: Sendable, Equatable {
 
     /// What the Due column, or the Back-first due column, says of the way.
     public enum DueColumn: Sendable, Equatable {
-        /// When it's due: the card is in Lucas's reviews, and the way on the
-        /// ladder.
+        /// When it's due: the card is in Lucas's reviews, and the way isn't
+        /// new.
         case due(Date)
         /// That the card is set aside, so it won't show up until neither its
         /// deck nor any deck that deck sits inside is.
         case setAside
         /// Nothing: the way is new, or the card flagged or buried, which the
-        /// step's column and the Front column's marks say.
+        /// interval's column and the Front column's marks say.
         case nothing
     }
 
@@ -112,27 +140,44 @@ public struct WayProgress: Sendable, Equatable {
     }
 
     /// Whether the way is new in Lucas's reviews: it hasn't had its first
-    /// view yet.
+    /// review yet.
     var isNew: Bool {
         cardStanding.isNew(given: standing)
     }
 
-    /// Whether the way is learned in Lucas's reviews, standing on `ladder`:
-    /// on a step that waits 30 days or more.
-    func isLearned(on ladder: Ladder) -> Bool {
-        cardStanding.isLearned(given: standing, on: ladder)
+    /// Whether the way is learned in Lucas's reviews: graduated, with an
+    /// interval of 21 days or more.
+    var isLearned: Bool {
+        cardStanding.isLearned(given: standing)
     }
 }
 
+/// What FSRS knows of how well Lucas remembers one of a card's ways, as a
+/// card's detail shows it, as Anki's Card Info does: why the way shows up
+/// when it does: FSRS's memory state, its stability and difficulty, as
+/// fsrs-rs's `MemoryState` and `WayStanding.Memory` name them, and the
+/// retrievability they give.
+public struct WayMemory: Sendable, Equatable {
+    /// How long the way's memory lasts: the days it takes the chance of
+    /// remembering it to fall to 90%, FSRS's stability.
+    public let stabilityInDays: Double
+    /// How hard the way is, from 0 to 1, as Anki shows FSRS's difficulty
+    /// as a percentage (`WayStanding.Memory.difficultyAsAnkiShowsIt`).
+    public let difficulty: Double
+    /// The chance of remembering the way when the window read it, from 0 to
+    /// 1, FSRS's retrievability.
+    public let retrievability: Double
+}
+
 /// An entry of a card's review log as the Cards window shows it under the
-/// card, in its chart and its list: the first view, review or placement, and
-/// the step the entry's way stood on after it.
+/// card, in its chart and its list: the review or placement, and the
+/// interval the entry's way waited after it.
 public struct ReviewLogRow: Sendable, Equatable {
-    /// The first view, review or placement, as the review log keeps it.
+    /// The review or placement, as the review log keeps it.
     public let entry: ReviewLogEntry
-    /// The step the entry's way stood on after it, counted from 0, the first
-    /// step.
-    public let step: Int
+    /// The interval the entry's way waited after it, as the scheduler works
+    /// it out from the way's entries up to this one.
+    public let interval: Duration
 }
 
 /// A group of cards the Cards window's sidebar offers, which the window lists
@@ -140,7 +185,7 @@ public struct ReviewLogRow: Sendable, Equatable {
 public enum CardGroup: Sendable, Hashable {
     /// Every card that isn't buried, flagged and set-aside ones too.
     case all
-    /// The cards in Lucas's reviews that haven't had their first view yet,
+    /// The cards in Lucas's reviews that haven't had their first review yet,
     /// front first.
     case new
     /// The cards in Lucas's reviews with either of their ways due now: each
@@ -237,13 +282,14 @@ public struct InboxRow: Sendable, Equatable, Identifiable {
 extension Engine {
     /// The cards in `group` that mention `search` in their front, back or
     /// source, as the Cards window lists them, in the order Lucas approved
-    /// them, each standing on `ladder`. A blank search narrows nothing.
-    public func cardRows(in group: CardGroup, matching search: String = "", on ladder: Ladder) throws(EngineError)
-        -> [CardRow]
+    /// them, each standing as `scheduler` replays its log. A blank search
+    /// narrows nothing.
+    public func cardRows(in group: CardGroup, matching search: String = "", with scheduler: Scheduler)
+        throws(EngineError) -> [CardRow]
     {
         let now = time.now
         return try read { db in
-            try FichaData.cardRows(in: group, matching: search, on: ladder, at: now, in: db)
+            try FichaData.cardRows(in: group, matching: search, with: scheduler, at: now, in: db)
         }
     }
 
@@ -251,8 +297,11 @@ extension Engine {
     /// lists it, the latest added first: the captures, the expansions and the
     /// follow-ups that mention it in their text or source, and the flagged
     /// cards that mention it in their front, back or source, as Flagged lists
-    /// them, each standing on `ladder`. A blank search narrows nothing.
-    public func inboxRows(matching search: String = "", on ladder: Ladder) throws(EngineError) -> [InboxRow] {
+    /// them, each standing as `scheduler` replays its log. A blank search
+    /// narrows nothing.
+    public func inboxRows(matching search: String = "", with scheduler: Scheduler) throws(EngineError)
+        -> [InboxRow]
+    {
         let now = time.now
         return try read { db in
             let captures = try capturesWaiting(in: db).filter { $0.matches(search) }.map { capture in
@@ -261,14 +310,16 @@ extension Engine {
                         ?? capture.followUp(in: db).map(InboxRow.Item.followUp) ?? .capture(capture),
                     addedAt: capture.createdAt)
             }
-            let flaggedCards = try FichaData.cardRows(in: .flagged, matching: search, on: ladder, at: now, in: db)
-                .map { row in
-                    // Flagged lists only cards waiting in the inbox.
-                    guard case .inInbox(let flag) = row.cardStanding else {
-                        throw EngineError.cardNotFlagged(row.id)
-                    }
-                    return InboxRow(item: .flaggedCard(row), addedAt: flag.flaggedAt)
+            let flaggedCards = try FichaData.cardRows(
+                in: .flagged, matching: search, with: scheduler, at: now, in: db
+            )
+            .map { row in
+                // Flagged lists only cards waiting in the inbox.
+                guard case .inInbox(let flag) = row.cardStanding else {
+                    throw EngineError.cardNotFlagged(row.id)
                 }
+                return InboxRow(item: .flaggedCard(row), addedAt: flag.flaggedAt)
+            }
             return (captures + flaggedCards).sorted { $0.addedAt > $1.addedAt }
         }
     }
@@ -289,50 +340,46 @@ extension Engine {
 
     /// A card's review log as the Cards window shows it under the card,
     /// oldest first, also when it joins two devices' entries, which come in
-    /// any order: each first view, review and placement, either way, with the
-    /// step of `ladder` the entry's way stood on after it. Empty while the
-    /// card is new.
-    public func reviewLogRows(of cardID: Int64, on ladder: Ladder) throws(EngineError) -> [ReviewLogRow] {
+    /// any order: each review and placement, either way, in the order the
+    /// scheduler replays them, with the interval `scheduler` gives the
+    /// entry's way after it. Empty while the card is new.
+    public func reviewLogRows(of cardID: Int64, with scheduler: Scheduler) throws(EngineError) -> [ReviewLogRow] {
         try read { db in
-            let entries = try logEntries(ofExisting: cardID, in: db).sorted { entry, other in
-                entry.answeredAt == other.answeredAt
-                    ? entry.isReplayed(before: other) : entry.answeredAt < other.answeredAt
-            }
-            // Each step is where the ladder puts the entry's way after that
-            // way's entries answered up to this one, as it works out the
+            let entries = try logEntries(ofExisting: cardID, in: db).sorted { $0.precedes($1) }
+            // Each interval is the one the scheduler gives the entry's way
+            // after that way's entries up to this one, as it works out the
             // way's standing from its whole log, so the way's last one is the
-            // Step column's, also after another device's first view that came
-            // later. That goes over the log again for each entry, but a card
-            // has few.
+            // Interval column's. That goes over the log again for each entry,
+            // but a card has few.
             return try entries.indices.map { end in
                 let wayUpToEntry = entries[...end].filter { $0.way == entries[end].way }
-                guard case .onLadder(let step, _) = try ladder.standing(after: wayUpToEntry) else {
-                    // The ladder puts a card with an entry on a step, or
-                    // throws.
+                guard let interval = try scheduler.standing(after: Array(wayUpToEntry)).interval else {
+                    // The scheduler starts a way with an entry, or throws.
                     logger.error("Card \(cardID)'s review log left it new after an entry")
                     throw EngineError.unreadableReviewLog(cardID)
                 }
-                return ReviewLogRow(entry: entries[end], step: step)
+                return ReviewLogRow(entry: entries[end], interval: interval)
             }
         }
     }
 }
 
 /// The cards in `group` that mention `search` in their front, back or source,
-/// in the order Lucas approved them, each standing on `ladder` at `now`.
+/// in the order Lucas approved them, each standing as `scheduler` replays its
+/// log at `now`.
 func cardRows(
     in group: CardGroup,
     matching search: String,
-    on ladder: Ladder,
+    with scheduler: Scheduler,
     at now: Date,
     in db: Database
 ) throws -> [CardRow] {
     let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
     let ownTags = try OwnTags(in: db)
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
-        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], on: ladder)
+        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], with: scheduler, at: now)
     }
-    .filter { group.holds($0, at: now, on: ladder) }
+    .filter { group.holds($0, at: now) }
 }
 
 extension Card {
@@ -350,13 +397,13 @@ extension Capture {
 }
 
 extension CardGroup {
-    /// Whether the group holds the card in `row`, at `now`, on `ladder`.
-    fileprivate func holds(_ row: CardRow, at now: Date, on ladder: Ladder) -> Bool {
+    /// Whether the group holds the card in `row`, at `now`.
+    fileprivate func holds(_ row: CardRow, at now: Date) -> Bool {
         switch self {
         case .all: row.cardStanding.isInAllCards
         case .new: row.isNew
         case .due: row.isDue(at: now)
-        case .learned: row.isLearned(on: ladder)
+        case .learned: row.isLearned
         case .flagged:
             switch row.cardStanding {
             case .inInbox: true
@@ -390,36 +437,39 @@ extension CardStanding {
 extension CardRow {
     /// The row of `card`, whose tags have what `ownTags` says of their own,
     /// after `entries`, its review log's, in any order: last seen either way,
-    /// when Lucas last answered it, and each way standing on `ladder`, its
-    /// back-first way only while the card goes both ways.
+    /// when Lucas last answered it, and each way standing as `scheduler`
+    /// replays its log, with its memory at `now`, its back-first way only
+    /// while the card goes both ways.
     fileprivate init(
-        card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], on ladder: Ladder
-    ) throws(UnexpectedReviewLog) {
+        card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
+    ) throws(SchedulingError) {
         self.card = card
         tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
-        frontFirst = try WayProgress(.frontFirst, of: card, after: entries, on: ladder)
-        backFirst = card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, on: ladder) : nil
-        lastSeen =
-            entries.filter { entry in
-                if case .placement = entry.kind { false } else { true }
-            }
-            .map(\.answeredAt).max()
+        frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler, at: now)
+        backFirst =
+            card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, with: scheduler, at: now) : nil
+        lastSeen = entries.filter { !$0.isPlacement }.map(\.answeredAt).max()
     }
 }
 
 extension WayProgress {
-    /// Where `card`'s `way` stands on `ladder` after its entries out of
-    /// `entries`, the card's review log's, in any order.
+    /// Where `card`'s `way` stands as `scheduler` replays its entries out of
+    /// `entries`, the card's review log's, in any order, with its memory at
+    /// `now`.
     fileprivate init(
-        _ way: Way, of card: Card, after entries: [ReviewLogEntry], on ladder: Ladder
-    ) throws(UnexpectedReviewLog) {
-        standing = try ladder.standing(after: entries.filter { $0.way == way })
+        _ way: Way, of card: Card, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
+    ) throws(SchedulingError) {
+        let standing = try scheduler.standing(after: entries.filter { $0.way == way })
+        self.standing = standing
         cardStanding = card.standing
-        if case .onLadder(let step, _) = standing {
-            wait = ladder.waits[step]
-        } else {
-            wait = nil
+        // The scheduler reads a retrievability whenever the way has a memory.
+        memory = try scheduler.retrievability(of: standing, at: now).flatMap { retrievability in
+            standing.memory.map { memory in
+                WayMemory(
+                    stabilityInDays: Double(memory.stability), difficulty: Double(memory.difficultyAsAnkiShowsIt),
+                    retrievability: Double(retrievability))
+            }
         }
     }
 }

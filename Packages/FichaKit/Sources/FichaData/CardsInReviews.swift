@@ -33,8 +33,8 @@ struct CardsThatShowUp {
     func panelCards(_ picked: PanelCardIDs) throws -> [PanelCard] {
         var panelCards = try picked.reviews.map { PanelCard.review(try card($0.cardID), $0.way) }
         panelCards += try picked.reviewsAhead.map { PanelCard.reviewAhead(try card($0.cardID), $0.way) }
-        if let firstView = picked.firstView {
-            panelCards.append(.firstView(try card(firstView.cardID), firstView.way))
+        if let newWay = picked.newWay {
+            panelCards.append(.new(try card(newWay.cardID), newWay.way))
         }
         if let shownFirst = picked.shownFirst, let index = panelCards.firstIndex(where: { $0.cardWay == shownFirst }) {
             panelCards.insert(panelCards.remove(at: index), at: 0)

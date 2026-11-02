@@ -20,7 +20,7 @@ final class ImportingTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 21, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
@@ -276,7 +276,7 @@ final class ImportingTests {
             card(.word, front: "serendipia", back: "Un hallazgo."), bothWays: true)
         let petricor = try engine.create(card(.word, front: "petricor", back: "Un olor."))
         try engine.meet(serendipia)
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
         let withColumn = try file(
             "Con columna.txt",
             """
@@ -297,7 +297,7 @@ final class ImportingTests {
         #expect(cards.map(\.id) == [serendipia.id, petricor.id])
         #expect(cards.map(\.back) == ["Un hallazgo por casualidad.", "El olor de la lluvia."])
         #expect(cards.map(\.bothWays) == [false, true])
-        #expect(try engine.standing(of: serendipia.id, on: ladder) != .new)
+        #expect(try engine.standing(of: serendipia.id, with: scheduler) != .new)
     }
 
     @Test("unreadable lines are listed with their numbers and reasons, and the rest come in")
@@ -380,17 +380,17 @@ final class ImportingTests {
     }
 
     @Test(
-        "repeated cards are updated with everything the file gives them but their front, keeping their step and review log"
+        "repeated cards are updated with everything the file gives them but their front, keeping their progress and review log"
     )
-    func repeatedCardsAreUpdatedKeepingTheirStepAndReviewLog() async throws {
+    func repeatedCardsAreUpdatedKeepingTheirProgressAndReviewLog() async throws {
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"], source: "Un libro"), in: engine)
         let petricor = try approve(
             card(.concept, front: "petricor", back: "Un olor.", tags: ["lenguaje"], source: "Wikipedia"), in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
         try engine.meet(petricor)
-        let ladder = ReviewSettings.defaults.ladder
-        let standings = try [serendipia, petricor].map { try engine.standing(of: $0.id, on: ladder) }
+        let scheduler = ReviewSettings.defaults.scheduler
+        let standings = try [serendipia, petricor].map { try engine.standing(of: $0.id, with: scheduler) }
         let reviewLog = try engine.reviewLog()
         let file = try file(
             "Palabras.txt",
@@ -416,7 +416,7 @@ final class ImportingTests {
         // serendipia had the proposed tag as "palabras", which it keeps.
         #expect(cards.map(\.tags) == [["vocabulario", "palabras"], ["lenguaje", "Palabras"], ["Palabras"]])
         #expect(cards.map(\.source) == [nil, "Wikipedia", nil])
-        #expect(try [serendipia, petricor].map { try engine.standing(of: $0.id, on: ladder) } == standings)
+        #expect(try [serendipia, petricor].map { try engine.standing(of: $0.id, with: scheduler) } == standings)
         #expect(try engine.reviewLog() == reviewLog)
     }
 
@@ -468,22 +468,22 @@ final class ImportingTests {
         #expect(cards.map(\.back) == ["El ion del calcio.", "El agua."])
     }
 
-    // Once with each card's first view as new cards come up, a day apart.
-    @Test("imported new cards come up for their first view in the file's order")
+    // Once with each card's first review as new cards come up, a day apart.
+    @Test("imported new cards come up for their first review in the file's order")
     func importedNewCardsComeUpInTheFilesOrder() async throws {
         let file = try file("Orden.txt", "zeta\tLa última letra.\nalfa\tLa primera letra.\nmu\tUna del medio.\n")
         try await importFile(file)
 
-        var firstViews: [String] = []
+        var firstReviews: [String] = []
         for _ in 0..<3 {
-            for case .firstView(let card, _) in try engine.reviewNow(.defaults) {
-                firstViews.append(card.front)
+            for case .new(let card, _) in try engine.reviewNow(.defaults) {
+                firstReviews.append(card.front)
                 try engine.meet(card)
             }
             time.advance(by: days(1))
         }
 
-        #expect(firstViews == ["zeta", "alfa", "mu"])
+        #expect(firstReviews == ["zeta", "alfa", "mu"])
     }
 
     @Test("a file that isn't UTF-8 text, or whose headers say what Ficha can't follow, isn't read at all")

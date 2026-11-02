@@ -17,7 +17,7 @@ struct PriorityDecksTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("due priority cards come before the other due cards, each group in today's order")
@@ -51,7 +51,7 @@ struct PriorityDecksTests {
 
         try engine.togglePriority(ofDeck: "Filosofía")
 
-        let expected = due.prefix(4).map { PanelCard.review($0) } + [.firstView(eudaimonia)]
+        let expected = due.prefix(4).map { PanelCard.review($0) } + [.new(eudaimonia)]
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .show(expected))
         #expect(try engine.reviewNow(settings) == expected)
     }
@@ -82,7 +82,7 @@ struct PriorityDecksTests {
         try engine.review(others[3], .good)
         #expect(
             try engine.reviewNow(settings) == ([eudaimonia] + others.prefix(3)).map { PanelCard.review($0) }
-                + [.firstView(ataraxia)])
+                + [.new(ataraxia)])
     }
 
     @Test(
@@ -130,11 +130,11 @@ struct PriorityDecksTests {
         time.advance(by: hours(1))
         let dueOnes = try engine.reviewNow(settings)
 
-        #expect(newOne == [.review(bothWays[1]), .review(bothWays[0]), .firstView(bothWays[1], .backFirst)])
+        #expect(newOne == [.review(bothWays[1]), .review(bothWays[0]), .new(bothWays[1], .backFirst)])
         #expect(
             dueOnes == [
                 .review(bothWays[1]), .review(bothWays[1], .backFirst), .review(bothWays[0]),
-                .review(bothWays[0], .backFirst), .firstView(petricor),
+                .review(bothWays[0], .backFirst), .new(petricor),
             ])
     }
 
@@ -174,19 +174,19 @@ struct PriorityDecksTests {
         #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia].map { PanelCard.review($0) })
     }
 
-    @Test("each card's step and due time are the same with or without priority decks")
-    func priorityDecksChangeNoStepOrDueTime() throws {
+    @Test("each card's progress and due time are the same with or without priority decks")
+    func priorityDecksChangeNoProgressOrDueTime() throws {
         let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", in: engine)
-        try engine.climb(ubuntu, to: 2, movingForward: time)
-        try engine.climb(eudaimonia, to: 1, movingForward: time)
+        try engine.climb(ubuntu, goods: 2, movingForward: time)
+        try engine.climb(eudaimonia, goods: 1, movingForward: time)
         let cards = [ubuntu, eudaimonia, ataraxia]
-        let standings = try cards.map { try engine.standing(of: $0.id, on: settings.ladder) }
+        let standings = try cards.map { try engine.standing(of: $0.id, with: settings.scheduler) }
 
         try engine.togglePriority(ofDeck: "Filosofía")
 
-        #expect(try cards.map { try engine.standing(of: $0.id, on: settings.ladder) } == standings)
+        #expect(try cards.map { try engine.standing(of: $0.id, with: settings.scheduler) } == standings)
     }
 
     // A new priority card fits beside the cards due within the look-ahead,
@@ -194,9 +194,8 @@ struct PriorityDecksTests {
     // appearance before one would come without priority decks.
     @Test("an appearance comes when it would without priority decks, even when a new priority card would fit")
     func anAppearanceComesWhenItWouldWithoutPriorityDecks() throws {
-        // Five cards climb to the third step, which waits 2 days, so they
-        // come due on the 16th at 14:00, when none of that day's new cards is
-        // met yet.
+        // Five cards graduate together, alike, so they come due together on
+        // a later day, when none of that day's new cards is met yet.
         let lenguaje = try ["uno", "dos", "tres", "cuatro"].map { try approveInDeck($0, deck: "Lenguaje", in: engine) }
         let cinco = try approveInDeck("cinco", deck: "Filosofía", in: engine)
         for card in lenguaje + [cinco] {
@@ -209,7 +208,11 @@ struct PriorityDecksTests {
             }
         }
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
-        let dueTime = time.now + days(2)
+        let dues = try (lenguaje + [cinco]).map { card in
+            try #require(try engine.standing(of: card.id, with: settings.scheduler).due)
+        }
+        try #require(Set(dues).count == 1)
+        let dueTime = try #require(dues.first)
         try engine.togglePriority(ofDeck: "Filosofía")
 
         // They're due within the 20-minute look-ahead, but none is due yet.
@@ -218,7 +221,7 @@ struct PriorityDecksTests {
         time.move(to: dueTime)
         #expect(
             try engine.checkAppearance(settings, mac: FakeMac())
-                == .show([.review(cinco)] + lenguaje.prefix(3).map { PanelCard.review($0) } + [.firstView(eudaimonia)]))
+                == .show([.review(cinco)] + lenguaje.prefix(3).map { PanelCard.review($0) } + [.new(eudaimonia)]))
     }
 
     // Ciencia is set aside, with no card, and Literatura is set aside after
@@ -401,9 +404,9 @@ struct PriorityDecksTests {
         try approveInDeck("eudaimonía", deck: "Filosofía", in: another)
 
         #expect(try reopened.prioritizeMenu().priorityDeckNames == ["Filosofía"])
-        #expect(try reopened.reviewNow(settings) == [.firstView(eudaimonia)])
+        #expect(try reopened.reviewNow(settings) == [.new(eudaimonia)])
         #expect(try another.prioritizeMenu().priorityDeckNames.isEmpty)
-        #expect(try another.reviewNow(settings) == [.firstView(anotherUbuntu)])
+        #expect(try another.reviewNow(settings) == [.new(anotherUbuntu)])
     }
 
     /// Approves a card with this front in this deck and meets it now, so

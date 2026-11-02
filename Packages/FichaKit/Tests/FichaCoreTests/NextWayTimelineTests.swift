@@ -29,10 +29,10 @@ struct NextWayTimelineTests {
 
     @Test("with ways that come due more than 200 times, the timeline stops at the 200th, and is worked out again then")
     func stopsAfter200Looks() throws {
-        // Each due a minute after the one before, on the first step, so the
-        // first stays first.
+        // Each due a minute after the one before, graduated with the same
+        // interval, so the first stays first.
         let placed = (1...250).map { id in
-            placement(of: Int64(id), on: 0, dueAt: now + TimeInterval(id * 60))
+            placement(of: Int64(id), interval: .days(3), dueAt: now + TimeInterval(id * 60))
         }
         let cards = CardsInReviews((1...250).map { card(Int64($0)) }, priorityDecks: [], log: placed)
 
@@ -48,12 +48,14 @@ struct NextWayTimelineTests {
 
     @Test("a timeline whose widget changes more than 30 times stops at its 30th entry, and is worked out again then")
     func stopsAt30Entries() throws {
-        // A ladder of 40 steps, and a card on each, each due an hour after
-        // the one before, a step lower, so it comes first once it's due.
-        var settings = ReviewSettings.defaults
-        settings.ladder = try #require(Ladder(waits: (1...40).map { .seconds($0 * 60 * 60) }))
-        let placed = (1...40).map { id in
-            placement(of: Int64(id), on: 40 - id, dueAt: now + TimeInterval(id * 60 * 60))
+        // 40 cards graduated with intervals from 40 days down to one, each
+        // due an hour after the one before, with an interval a day shorter,
+        // so it comes first once it's due.
+        let settings = ReviewSettings.defaults
+        let placed = (1...40).map { (id: Int) -> ReviewLogEntry in
+            let interval = Duration.days(Int64(41 - id))
+            let due = now + TimeInterval(id * 60 * 60)
+            return placement(of: Int64(id), interval: interval, dueAt: due)
         }
         let cards = CardsInReviews((1...40).map { card(Int64($0)) }, priorityDecks: [], log: placed)
 
@@ -66,9 +68,11 @@ struct NextWayTimelineTests {
     }
 
     /// The placement an import gave the card with the id `id`, a day before
-    /// the test's time, on `step`, due at `due`.
-    private func placement(of id: Int64, on step: Int, dueAt due: Date) -> ReviewLogEntry {
-        ReviewLogEntry(placing: id, on: Placement(step: step, due: due), at: now - 24 * 60 * 60)
+    /// the test's time, graduated with `interval` and Anki's starting ease,
+    /// due at `due`.
+    private func placement(of id: Int64, interval: Duration, dueAt due: Date) -> ReviewLogEntry {
+        ReviewLogEntry(
+            placing: id, on: Placement(interval: interval, due: due, ease: 2.5), at: now - 24 * 60 * 60, uuid: UUID())
     }
 }
 

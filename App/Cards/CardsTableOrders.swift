@@ -36,14 +36,17 @@ nonisolated extension ColumnOrder {
 
 /// How the table orders its cards: by one column, either way. Cards with
 /// nothing in the column, like a new card in Due and Last seen, or a card
-/// that goes one way in Back-first step and Back-first due, go after the
+/// that goes one way in Back-first interval and Back-first due, go after the
 /// others, whichever way the table is ordered. The app's preferences keep it
 /// by its column's name, so the window opens in the order Lucas left it in.
 nonisolated struct CardRowOrder: ColumnOrder, Codable {
     /// A column the table sorts by. Its raw value is how the preferences keep
-    /// the order, and its table column's customization ID, so it never
-    /// changes. Every column of the table is one, since the preferences keep
-    /// whether each of these shows, and no other column's.
+    /// the order, and its table column's customization ID, so it changes only
+    /// when the column becomes another, as Step became Interval: then a
+    /// layout kept from before shows it as a new column, and an order kept
+    /// by the old one reads as the new one's (`init(from:)`). Every column of
+    /// the table is one, since the preferences keep whether each of these
+    /// shows, and no other column's.
     enum Column: String, Codable, CaseIterable {
         /// When Lucas approved the card, and then, for cards approved
         /// together, the order he approved them in.
@@ -52,12 +55,18 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         /// Cards with images first, then those with sounds, then those with
         /// both, and cards of text alone after the others.
         case media
-        /// By the front-first way's step, new cards first.
-        case step
+        /// By what the front-first way's Interval column says: new cards
+        /// first, then those in their learning steps, then the rest by
+        /// interval, shortest first (`WayProgress.IntervalColumn`). It took
+        /// the place of the ladder's Step column (#404) with an ID of its
+        /// own, so a layout kept from before shows it as it would a new
+        /// column.
+        case interval
         /// When the front-first way is due.
         case due
-        /// By the back-first way's step, new ones first, as Step does.
-        case backFirstStep
+        /// By what the back-first way's column says, as Interval does, in
+        /// Back-first step's place.
+        case backFirstInterval
         /// When the back-first way is due, as Due does.
         case backFirstDue
         /// By what the Type column says, alphabetically, and cards with no
@@ -71,6 +80,28 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         /// When the card's front or back last changed, and cards never
         /// edited after the others.
         case edited
+
+        /// The column the preferences keep by `decoder`'s raw value: the
+        /// ladder's Step and Back-first step columns, which versions before
+        /// #404 kept as "step" and "backFirstStep", read as the Interval
+        /// columns that took their place, so the window opens sorted as
+        /// Lucas left it. A value that names no column fails, which
+        /// `Preferences.cardsSortOrder` logs.
+        init(from decoder: any Decoder) throws {
+            let rawValue = try decoder.singleValueContainer().decode(String.self)
+            switch rawValue {
+            case "step": self = .interval
+            case "backFirstStep": self = .backFirstInterval
+            default:
+                guard let column = Column(rawValue: rawValue) else {
+                    throw DecodingError.dataCorrupted(
+                        DecodingError.Context(
+                            codingPath: decoder.codingPath,
+                            debugDescription: "The Cards window's table has no column \(rawValue) to sort by."))
+                }
+                self = column
+            }
+        }
     }
 
     /// The table's order until Lucas clicks a column's header: the newest
@@ -95,12 +126,12 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
             ordered(lhs.card.front.localizedStandardCompare(rhs.card.front))
         case .media:
             ordered(lhs.media, rhs.media, by: compared)
-        case .step:
-            ordered(lhs.frontFirst.stepNumber, rhs.frontFirst.stepNumber)
+        case .interval:
+            ordered(lhs.frontFirst.intervalColumn, rhs.frontFirst.intervalColumn)
         case .due:
             ordered(lhs.frontFirst.due, rhs.frontFirst.due) { $0.compare($1) }
-        case .backFirstStep:
-            ordered(lhs.backFirst?.stepNumber, rhs.backFirst?.stepNumber, by: compared)
+        case .backFirstInterval:
+            ordered(lhs.backFirst?.intervalColumn, rhs.backFirst?.intervalColumn, by: compared)
         case .backFirstDue:
             ordered(lhs.backFirst?.due, rhs.backFirst?.due) { $0.compare($1) }
         case .type:
@@ -114,14 +145,6 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case .edited:
             ordered(lhs.card.editedAt, rhs.card.editedAt) { $0.compare($1) }
         }
-    }
-}
-
-extension WayProgress {
-    /// The way's step counted from 1, as Settings counts them, or 0 while
-    /// it's new, before the first step.
-    nonisolated fileprivate var stepNumber: Int {
-        step.map { $0 + 1 } ?? 0
     }
 }
 

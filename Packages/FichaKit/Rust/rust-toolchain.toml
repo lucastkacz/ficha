@@ -1,0 +1,17 @@
+# The Rust that builds fsrs-rs into the XCFramework FichaKit links (ADR 0026),
+# as rustup reads it from this folder: `make bootstrap` installs it, with the
+# targets each app builds for. The Mac's archive is for Apple silicon and
+# Intel, the iPhone's builds for an iPhone and for its simulator, which runs on
+# either (ADR 0015). Moving it is a risk:high pull request, as the merge gate
+# says.
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-apple-ios",
+]

@@ -20,12 +20,13 @@ extension EngineError {
                 comment: "An alert's message in the Cards window, under what couldn't be done with the selected cards."
             )
         case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
-            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotNew, .cardStillNew, .cardNotDue,
+            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotDue,
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName,
             .tagNotPinned, .deckSetAside, .blankDeckName, .defaultDeckName, .deckInsideItself, .deckInsideDefault,
             .defaultDeckStays, .deckNotFound, .blankTypeName, .builtInTypeName, .typeNameTaken, .userTypeNotFound,
             .cannotUndo,
-            .cannotUndoFollowUp, .unreadableReviewLog, .storage, .copyNotFound, .copyMigratedByNewerVersion,
+            .cannotUndoFollowUp, .unreadableReviewLog, .schedulerFailed, .storage, .copyNotFound,
+            .copyMigratedByNewerVersion,
             .backupsFolder, .notAnImage, .notASound, .soundConversion, .unreadableFileForSide, .noSuchFile,
             .fileNotInDownloads,
             .fileNotAnImage, .fileNotASound, .notAnImageOrSound, .noFileNamed, .imagesFolder, .soundsFolder,
@@ -45,12 +46,13 @@ extension EngineError {
         case .captureNotInInbox:
             message
         case .migratedByNewerVersion, .emptyCapture, .notAnExpansion, .noCards, .blankSideOnNewCard, .sideLeftBlank,
-            .noFileOnSide, .cardNotFound, .cardNotNew, .cardStillNew, .cardNotDue, .cardNotInAppearance,
+            .noFileOnSide, .cardNotFound, .cardNotDue, .cardNotInAppearance,
             .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried, .cardSetAside,
             .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .deckSetAside, .blankDeckName,
             .defaultDeckName, .deckInsideItself, .deckInsideDefault, .defaultDeckStays, .deckNotFound,
             .blankTypeName, .builtInTypeName,
-            .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .storage,
+            .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog, .schedulerFailed,
+            .storage,
             .copyNotFound,
             .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,

@@ -251,7 +251,7 @@ extension CardsWindowState {
         cardForm?.draft.back = CardForm.Side()
         // A blank front repeats no card.
         cardForm?.frontWarning = nil
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Shows the card the front repeats, while the form warns about one: the
@@ -293,7 +293,7 @@ extension CardsWindowState {
         showFiles()
         if form.approvesCaptureOnClose, let capture = form.capture {
             perform(.approveCapture) { engine throws(EngineError) in try engine.approve(capture.id) }
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 }

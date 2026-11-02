@@ -105,7 +105,7 @@ extension CardsWindowState {
         case .form: cardForm?.draft.type = .user(made)
         case .editor: setTypeInEditor(.user(made))
         }
-        read(on: ladder)
+        read(with: scheduler)
     }
 
     /// Asks which name the user type with the ID `id` gets, in the rename
@@ -147,7 +147,7 @@ extension CardsWindowState {
             try engine.deleteUserType(type.id)
         }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 
@@ -159,7 +159,7 @@ extension CardsWindowState {
             try engine.renameUserType(type.id, to: name)
         }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
         return done
     }
@@ -172,7 +172,7 @@ extension CardsWindowState {
             try engine.setEmoji(emoji, ofUserType: type.id)
         }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
         return done
     }

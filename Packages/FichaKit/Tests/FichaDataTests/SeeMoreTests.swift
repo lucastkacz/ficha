@@ -4,7 +4,8 @@ import Foundation
 import Testing
 
 /// Tests on "See more" and reviews ahead, with the default settings: 5 cards
-/// per appearance, and the default ladder, whose third step waits 2 days.
+/// per appearance, and learning steps of 1 hour and 4 hours, after which a
+/// card graduates, to wait a day or more.
 struct SeeMoreTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -14,14 +15,14 @@ struct SeeMoreTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    @Test("review now with nothing due offers to review ahead, and \"Don't know\" there sends the card back")
-    func againAheadSendsTheCardBack() throws {
+    @Test("review now with nothing due offers to review ahead, and again there makes the card lapse, to relearn it")
+    func againAheadMakesTheCardLapse() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        time.advance(by: days(1))
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        time.advance(by: hours(1))
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards.isEmpty)
         #expect(panel.moreCards == [.reviewAhead(serendipia)])
@@ -30,37 +31,42 @@ struct SeeMoreTests {
         try panel.answer(.review(.again), responseTime: .seconds(4))
 
         #expect(
-            try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 0, due: time.now + hours(1)))
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == relearning(step: 0, due: time.now + hours(1)))
         #expect(try engine.reviewLog().last?.isAhead == true)
     }
 
+    // As #404 has it: a review ahead counts, as FSRS reckons it.
     @Test(
-        "in a review ahead, \"Sort of\" and \"Know it\" leave the card's step and due time as they were",
+        "in a review ahead, hard and good count as any review: the card waits the interval they set from then",
         arguments: [Rating.hard, .good])
-    func hardAndGoodAheadLeaveTheCard(rating: Rating) throws {
+    func hardAndGoodAheadCount(rating: Rating) throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
-        time.advance(by: days(1))
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        time.advance(by: hours(1))
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
         panel.seeMore()
         try panel.answer(.review(rating), responseTime: .seconds(4))
 
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
-        #expect(try engine.reviewLog().last?.isAhead == true)
-        #expect(try engine.reviewLog().last?.kind == .review(rating))
+        let ahead = try #require(try engine.reviewLog().last)
+        #expect(ahead.isAhead)
+        #expect(ahead.kind == .review(rating))
+        let interval = try #require(ahead.interval)
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == graduated(due: time.now.adding(interval)))
     }
 
-    @Test("a card's back-first way comes to review ahead as its front-first way does, and \"Don't know\" moves only it")
+    @Test("a card's back-first way comes to review ahead as its front-first way does, and \"Again\" moves only it")
     func backFirstWaysComeToReviewAhead() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])
-        try engine.climb(serendipia, to: 2, movingForward: time)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
         try engine.meet(serendipia, way: .backFirst)
         time.advance(by: hours(1))
         try engine.review(serendipia, .good, way: .backFirst)
-        let frontFirst = try engine.standing(of: serendipia.id, on: settings.ladder)
+        let frontFirst = try engine.standing(of: serendipia.id, with: settings.scheduler)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards.isEmpty)
         #expect(panel.moreCards == [.reviewAhead(bothWays[0], .backFirst), .reviewAhead(bothWays[0])])
@@ -69,9 +75,9 @@ struct SeeMoreTests {
         try panel.answer(.review(.again), responseTime: .seconds(4))
 
         #expect(
-            try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
-                == .onLadder(step: 0, due: time.now + hours(1)))
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == frontFirst)
+            try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler).stageAndDue
+                == learning(step: 0, due: time.now + hours(1)))
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == frontFirst)
         #expect(try engine.reviewLog().last?.isAhead == true)
     }
 
@@ -132,14 +138,14 @@ struct SeeMoreTests {
         #expect(try engine.reviewLog().last?.isAhead == false)
     }
 
-    @Test("with no other card on the ladder, there's nothing more to see")
+    @Test("with no other card met, there's nothing more to see")
     func nothingMoreWithoutOtherCards() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         try approveCard("ubuntu", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        #expect(panel.cards == [.firstView(serendipia)])
+        #expect(panel.cards == [.new(serendipia)])
 
-        try panel.answer(.firstView, responseTime: .seconds(8))
+        try panel.answer(.review(.again), responseTime: .seconds(8))
 
         #expect(panel.current == nil)
         #expect(panel.moreCards.isEmpty)
@@ -164,7 +170,7 @@ struct SeeMoreTests {
 
     // Lucas, in #14: once "See more?" keeps the panel open, a slip on the
     // last card can be undone.
-    @Test("⌘Z at the end undoes what Lucas did with the last card, a first view too, and goes back to it")
+    @Test("⌘Z at the end undoes what Lucas did with the last card, a first review too, and goes back to it")
     func undoAtTheEndGoesBackToTheLastCard() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let petricor = try approveCard("petricor", in: engine)
@@ -174,20 +180,20 @@ struct SeeMoreTests {
         time.advance(by: minutes(30))
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        #expect(panel.cards == [.review(ubuntu), .firstView(serendipia)])
+        #expect(panel.cards == [.review(ubuntu), .new(serendipia)])
         try panel.answer(.review(.good), responseTime: .seconds(3))
-        try panel.answer(.firstView, responseTime: .seconds(8))
+        try panel.answer(.review(.again), responseTime: .seconds(8))
         #expect(panel.moreCards == [.reviewAhead(petricor)])
         #expect(panel.canUndo)
 
         try panel.undo()
 
-        #expect(panel.current == .firstView(serendipia))
+        #expect(panel.current == .new(serendipia))
         #expect(panel.moreCards.isEmpty)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .new)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == .new)
         try panel.undo()
         #expect(panel.current == .review(ubuntu))
-        #expect(try engine.standing(of: ubuntu.id, on: settings.ladder).isDue(at: time.now))
+        #expect(try engine.standing(of: ubuntu.id, with: settings.scheduler).isDue(at: time.now))
     }
 
     // Lucas asked for it, and it's due by the time he answers.
@@ -205,7 +211,8 @@ struct SeeMoreTests {
 
         #expect(try engine.reviewLog().last?.isAhead == false)
         #expect(
-            try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: time.now + hours(4)))
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == learning(step: 1, due: time.now + hours(4)))
     }
 
     // A snooze leaves cards due, and the cards "See more" adds aren't due,

@@ -1,8 +1,9 @@
 import Foundation
 
 /// An Anki collection, as an Anki package holds it, in plain values whatever
-/// its schema: when it was created and how it counts its days, and its note
-/// types, decks, notes and cards, with what Ficha reads of each. A package's
+/// its schema: when it was created, how it counts its days and its
+/// scheduler's version, and its note types, decks, notes, cards and the
+/// entries Anki logged of them, with what Ficha reads of each. A package's
 /// reader, which knows the schema, makes it, from the JSON of schema 11 or
 /// the tables of schema 18, and `importReading(in:images:sounds:sha1:)`
 /// makes Ficha's cards of it, the same way for both. The values follow
@@ -21,10 +22,16 @@ public struct AnkiCollection: Sendable, Equatable {
     public let notes: [Int64: AnkiNote]
     /// The cards, in any order.
     public let cards: [AnkiCard]
+    /// What Anki logged of every card, its `revlog` table: its reviews, and
+    /// the entries no button made, in any order.
+    public let revlog: [AnkiRevlogEntry]
+    /// The version of Anki's scheduler its configuration says it's on.
+    public let schedulerVersion: AnkiSchedulerVersion
 
     public init(
         creationTime: Int64, daySettings: AnkiDaySettings, noteTypes: [Int64: AnkiNoteType],
-        decks: [Int64: AnkiDeck], notes: [Int64: AnkiNote], cards: [AnkiCard]
+        decks: [Int64: AnkiDeck], notes: [Int64: AnkiNote], cards: [AnkiCard], revlog: [AnkiRevlogEntry],
+        schedulerVersion: AnkiSchedulerVersion
     ) {
         self.creationTime = creationTime
         self.daySettings = daySettings
@@ -32,6 +39,8 @@ public struct AnkiCollection: Sendable, Equatable {
         self.decks = decks
         self.notes = notes
         self.cards = cards
+        self.revlog = revlog
+        self.schedulerVersion = schedulerVersion
     }
 }
 
@@ -240,6 +249,9 @@ public struct AnkiCard: Sendable, Equatable {
     public let due: Int64
     /// `ivl`: its interval, in days.
     public let interval: Int64
+    /// `factor`: its ease in thousandths, such as 2500 for 250%, or 0 for a
+    /// card that has none yet, as a new one.
+    public let factor: Int64
     /// `odue`: its `due` in its home deck while it's in a filtered deck, or
     /// 0.
     public let originalDue: Int64
@@ -248,7 +260,7 @@ public struct AnkiCard: Sendable, Equatable {
 
     public init(
         id: Int64, noteID: Int64, deckID: Int64, originalDeckID: Int64, templateIndex: Int, type: Int, queue: Int,
-        due: Int64, interval: Int64, originalDue: Int64, flags: Int
+        due: Int64, interval: Int64, factor: Int64, originalDue: Int64, flags: Int
     ) {
         self.id = id
         self.noteID = noteID
@@ -259,6 +271,7 @@ public struct AnkiCard: Sendable, Equatable {
         self.queue = queue
         self.due = due
         self.interval = interval
+        self.factor = factor
         self.originalDue = originalDue
         self.flags = flags
     }
@@ -278,5 +291,43 @@ public struct AnkiCard: Sendable, Equatable {
     /// new cards.
     var newPosition: Int64 {
         originalDeckID != 0 && originalDue != 0 ? originalDue : due
+    }
+}
+
+/// An entry Anki logged of a card in an Anki collection, a review or one no
+/// button made, with the columns of Anki's `revlog` table an import reads,
+/// as Anki stores them (`rslib/src/revlog/mod.rs`).
+public struct AnkiRevlogEntry: Sendable, Equatable {
+    /// `id`: when it happened, in milliseconds since 1970.
+    public let id: Int64
+    /// `cid`: the card it's of.
+    public let cardID: Int64
+    /// `ease`: the button pressed, 1 again, 2 hard, 3 good and 4 easy, or 0
+    /// for an entry no button made, as Set Due Date's, a reset's and FSRS's
+    /// rescheduling. On Anki 2.0's scheduler, a card in learning steps had
+    /// three buttons, so 2 was good and 3 easy there.
+    public let button: Int64
+    /// `ivl`: the interval it set, in days when positive, and in seconds
+    /// when negative, as on a learning or relearning step.
+    public let interval: Int64
+    /// `factor`: the card's ease after it, in thousandths, as 2500 for 250%,
+    /// or once FSRS scheduled the card, its difficulty, from 100 to 1100.
+    public let factor: Int64
+    /// `time`: how long the answer took, in milliseconds.
+    public let milliseconds: Int64
+    /// `type`: 0 learning, 1 review, 2 relearning, 3 filtered, 4 manual, 5
+    /// rescheduled.
+    public let kind: Int64
+
+    public init(
+        id: Int64, cardID: Int64, button: Int64, interval: Int64, factor: Int64, milliseconds: Int64, kind: Int64
+    ) {
+        self.id = id
+        self.cardID = cardID
+        self.button = button
+        self.interval = interval
+        self.factor = factor
+        self.milliseconds = milliseconds
+        self.kind = kind
     }
 }

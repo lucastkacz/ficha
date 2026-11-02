@@ -1,35 +1,33 @@
-/// The three settings that decide a card's progress: the ladder, how many new
-/// cards a day, and when a card is forgotten often. They sync, so a card's
-/// progress means the same on each of the user's devices (ADR 0017): the
-/// engine keeps them in the database. The rest of `ReviewSettings`, when
+/// The settings that decide a card's progress: the scheduler's settings, how
+/// many new cards a day, and when a card is forgotten often. They sync, so a
+/// card's progress means the same on each of the user's devices (ADR 0017):
+/// the engine keeps them in the database. The rest of `ReviewSettings`, when
 /// Ficha shows up and how the review panel behaves, stays each device's own,
 /// in the app's preferences.
 public struct ProgressSettings: Sendable, Equatable {
-    /// The waits a card climbs as the user remembers it.
-    public var ladder: Ladder
+    /// The settings FSRS spaces cards with, each of which syncs on its own.
+    public var scheduler: Scheduler
     /// How many new cards the user meets in a day at most, by the device's
     /// calendar day.
     public var newCardsPerDay: Int
-    /// How many reviews of one of a card's ways the user rates again in,
-    /// since its front or back last changed, before the review panel offers
-    /// to flag it as forgotten often, at least 1, or nil when it never
-    /// offers.
+    /// How many lapses of one of a card's ways, since its front or back last
+    /// changed, before the review panel offers to flag it as forgotten often,
+    /// at least 1, or nil when it never offers.
     public var forgottenOftenAfter: Int?
 
-    public init(ladder: Ladder, newCardsPerDay: Int, forgottenOftenAfter: Int?) {
-        self.ladder = ladder
+    public init(scheduler: Scheduler, newCardsPerDay: Int, forgottenOftenAfter: Int?) {
+        self.scheduler = scheduler
         self.newCardsPerDay = newCardsPerDay
         self.forgottenOftenAfter = forgottenOftenAfter
     }
 
     /// These settings, but for those that `changed` changed from `old`,
     /// which it gives: the user changed those, and these may hold another
-    /// device's later change to the others.
+    /// device's later change to the others. Each of the scheduler's settings
+    /// counts on its own.
     public func taking(_ changed: ProgressSettings, changedFrom old: ProgressSettings) -> ProgressSettings {
         var settings = self
-        if changed.ladder != old.ladder {
-            settings.ladder = changed.ladder
-        }
+        settings.scheduler = scheduler.taking(changed.scheduler, changedFrom: old.scheduler)
         if changed.newCardsPerDay != old.newCardsPerDay {
             settings.newCardsPerDay = changed.newCardsPerDay
         }
@@ -45,10 +43,11 @@ extension ReviewSettings {
     /// leaves the rest as it is.
     public var progress: ProgressSettings {
         get {
-            ProgressSettings(ladder: ladder, newCardsPerDay: newCardsPerDay, forgottenOftenAfter: forgottenOftenAfter)
+            ProgressSettings(
+                scheduler: scheduler, newCardsPerDay: newCardsPerDay, forgottenOftenAfter: forgottenOftenAfter)
         }
         set {
-            ladder = newValue.ladder
+            scheduler = newValue.scheduler
             newCardsPerDay = newValue.newCardsPerDay
             forgottenOftenAfter = newValue.forgottenOftenAfter
         }

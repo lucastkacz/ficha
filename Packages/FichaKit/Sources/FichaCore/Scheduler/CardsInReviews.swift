@@ -25,8 +25,9 @@ public struct CardsInReviews: Sendable, Equatable {
     /// levels, as priority cards, along with `log`, the whole review log, in
     /// the order it was written. A card's tags never make it one.
     /// Each card in his reviews brings its front-first way, and, when it goes
-    /// both ways, its back-first way, once its front-first way had its first
-    /// view or a placement (ADR 0016): the card's standing is both ways'.
+    /// both ways, its back-first way, once its front-first way has any entry,
+    /// its first review or a placement (ADR 0016): the card's standing is
+    /// both ways'.
     public init(
         _ cards: [(id: Int64, standing: CardStanding, deck: String, bothWays: Bool)],
         priorityDecks: Set<String>,
@@ -65,10 +66,10 @@ public struct CardsInReviews: Sendable, Equatable {
         CardsInReviews(ways: ways.filter { $0.way == .frontFirst }, priorityIDs: priorityIDs, log: log)
     }
 
-    /// Where each way stands on `ladder`, by card in the order Lucas approved
-    /// them, after the review log.
-    func standings(on ladder: Ladder) throws(UnexpectedReviewLog) -> [(way: CardWay, standing: LadderStanding)] {
-        try ladder.standings(of: ways, after: log)
+    /// Where each way stands with `scheduler`'s settings, by card in the
+    /// order Lucas approved them, after the review log.
+    func standings(with scheduler: Scheduler) throws(SchedulingError) -> [(way: CardWay, standing: WayStanding)] {
+        try scheduler.standings(of: ways, after: log)
     }
 
     /// `ways` split into those of priority cards and the others, each group

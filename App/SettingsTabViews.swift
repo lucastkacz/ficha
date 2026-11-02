@@ -165,7 +165,8 @@ struct AppearancesSettings: View {
 
 /// The Review panel tab of Settings: how the panel behaves when it shows up
 /// on its own, and whether it offers to flag a card forgotten often, after
-/// how many “Don't know”.
+/// how many lapses, each an “Again” while the card is out of its learning and
+/// relearning steps.
 struct ReviewPanelSettings: View {
     @Bindable var model: AppModel
 
@@ -215,7 +216,7 @@ struct ReviewPanelSettings: View {
                 Text(
                     "Offer to flag a card you forget often",
                     comment:
-                        "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Don't know” to, so it gets fixed."
+                        "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Again” to while it's out of its learning and relearning steps, so it gets fixed."
                 )
                 Text(
                     "So it gets fixed. Ficha never flags a card on its own.",
@@ -227,16 +228,20 @@ struct ReviewPanelSettings: View {
                     Text(
                         "After forgetting it \(number.wrappedValue) times",
                         comment:
-                            "Settings, under Review panel: how many “Don't know” answers to one of a card's ways, since its front or back last changed, bring the offer to flag it."
+                            "Settings, under Review panel: how many “Again” answers to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it."
                     )
                 }
             }
         } footer: {
             Text(
                 """
-                Each “Don't know” counts, since the card's front or back last changed. If you don't flag it, the \
-                panel offers again after half as many more.
-                """)
+                Each “Again” to a card out of its learning and relearning steps counts, since the card's front or \
+                back last changed. If you don't flag it, the panel offers again after half as many more.
+                """,
+                comment: """
+                    Settings, under Review panel: below the offer to flag a card forgotten often, which counts \
+                    Anki's lapses. “Again” is the review panel's button, as Anki names it.
+                    """)
         }
     }
 
@@ -251,91 +256,196 @@ struct ReviewPanelSettings: View {
     }
 }
 
-/// The Ladder tab of Settings: the ladder's steps, each picked from a list
-/// that keeps it longer than the step before it and shorter than the one
-/// after it, so every ladder Lucas makes is one the engine can use. A change
-/// re-times every card from its history.
-struct LadderSettings: View {
-    @Binding var ladder: Ladder
+/// The Scheduling tab of Settings: the settings FSRS spaces cards with, as
+/// Anki's deck options hold them (#404). The learning and relearning steps
+/// are each picked from a list that keeps a step longer than the one before
+/// it and shorter than the one after it, and the desired retention and the
+/// longest interval stay within what the scheduler takes, as `Scheduler`'s
+/// changes decide, so every change Lucas makes is one the engine can use.
+/// FSRS's parameters stay out of sight until Optimize (ADR 0025). A change
+/// applies from each card's next review.
+struct SchedulingSettings: View {
+    @Binding var scheduler: Scheduler
 
     var body: some View {
         Section {
-            ForEach(Array(ladder.waits.enumerated()), id: \.offset) { index, wait in
-                HStack {
-                    Picker(selection: step(index, waiting: wait)) {
-                        spans(ladderSteps.filter { fits($0, at: index) }, including: wait)
-                    } label: {
-                        Text("Step \(index + 1)", comment: "Settings: a step of the ladder, counted from 1.")
-                    }
-                    Button {
-                        change { waits in
-                            if waits.indices.contains(index) {
-                                waits.remove(at: index)
-                            }
-                        }
-                    } label: {
-                        Label {
-                            Text("Remove Step \(index + 1)", comment: "Settings: removes a step of the ladder.")
-                        } icon: {
-                            Image(systemName: "minus.circle")
-                        }
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .disabled(ladder.waits.count == 1)
-                }
-            }
-            Button("Add Step") {
-                if let next = nextStep {
-                    change { $0.append(next) }
-                }
-            }
-            .disabled(nextStep == nil)
+            StepsSettings(list: .learning, scheduler: $scheduler)
+        } header: {
+            Text("Learning steps", comment: "Settings, under Scheduling: the header of the learning steps.")
+        } footer: {
+            Text(
+                "A new card waits each step in turn before it graduates. With none, its first review graduates it.",
+                comment: "Settings, under Scheduling: below the learning steps.")
+        }
+        Section {
+            StepsSettings(list: .relearning, scheduler: $scheduler)
+        } header: {
+            Text("Relearning steps", comment: "Settings, under Scheduling: the header of the relearning steps.")
         } footer: {
             Text(
                 """
-                Each time you know a card, it climbs a step and waits that long to be due again. A change re-times \
-                every card from its history, and a card beyond a shorter ladder's end sits on its last step.
-                """)
+                A card you forget waits each step in turn before it graduates again. With none, it gets FSRS's \
+                interval at once.
+                """,
+                comment: "Settings, under Scheduling: below the relearning steps; a card forgotten is a lapse.")
+        }
+        Section {
+            LabeledContent {
+                HStack {
+                    Text(scheduler.desiredRetention, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                    Stepper(value: retention, in: Scheduler.desiredRetentions, step: 0.01) {
+                        desiredRetention
+                    }
+                    .labelsHidden()
+                    .accessibilityValue(Text(scheduler.desiredRetention, format: .percent))
+                }
+            } label: {
+                desiredRetention
+                Text(
+                    "From \(Scheduler.desiredRetentions.lowerBound, format: .percent) to \(Scheduler.desiredRetentions.upperBound, format: .percent)",
+                    comment:
+                        "Settings, under Scheduling: below the desired retention, the least and the most it can be.")
+            }
+            LabeledContent {
+                HStack {
+                    TextField(value: longestInterval, format: .number) {
+                        longestIntervalLabel
+                    }
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .monospacedDigit()
+                    .frame(width: 64)
+                    Stepper(value: longestInterval, in: Scheduler.longestIntervalsInDays) {
+                        longestIntervalLabel
+                    }
+                    .labelsHidden()
+                }
+            } label: {
+                longestIntervalLabel
+                Text(
+                    "In days, up to \(Scheduler.longestIntervalsInDays.upperBound, format: .number)",
+                    comment: "Settings, under Scheduling: below the longest interval, its unit and the most it can be.")
+            }
+        } footer: {
+            Text(
+                """
+                A higher retention means shorter intervals and more reviews a day. A change applies from each card's \
+                next review.
+                """,
+                comment: """
+                    Settings, under Scheduling: below the desired retention and the longest interval, as Anki's manual \
+                    says it; a change never moves a card's due time.
+                    """)
         }
     }
 
-    /// The wait of the step at `index`, which waits `wait` as its row shows.
-    /// The row may outlive its step for a moment once Lucas removes it, so
-    /// the step is never read by its index.
-    private func step(_ index: Int, waiting wait: Duration) -> Binding<Duration> {
+    /// The desired retention's name.
+    private var desiredRetention: Text {
+        Text(
+            "Desired retention",
+            comment: "Settings, under Scheduling: how likely the user wants to be to remember a card when it's due.")
+    }
+
+    /// The longest interval's name.
+    private var longestIntervalLabel: Text {
+        Text(
+            "Longest interval",
+            comment: "Settings, under Scheduling: the longest a card can wait after a review, in days.")
+    }
+
+    /// The desired retention, which Settings steps a percent at a time.
+    private var retention: Binding<Double> {
         Binding(
-            get: { wait },
-            set: { newWait in
-                change { waits in
-                    if waits.indices.contains(index) {
-                        waits[index] = newWait
+            get: { scheduler.desiredRetention },
+            set: { retention in change(&scheduler) { $0.changingDesiredRetention(to: retention) } })
+    }
+
+    /// The longest interval, in days, which a number typed past its bounds
+    /// stops at.
+    private var longestInterval: Binding<Int> {
+        Binding(
+            get: { scheduler.longestIntervalInDays },
+            set: { days in change(&scheduler) { $0.changingLongestInterval(toDays: days) } })
+    }
+}
+
+/// Changes `scheduler` to what `edit` makes of it, unless it makes none.
+private func change(_ scheduler: inout Scheduler, with edit: (Scheduler) -> Scheduler?) {
+    if let changed = edit(scheduler) {
+        scheduler = changed
+    }
+}
+
+/// A step's row in Settings' Scheduling tab: the step's place in its list,
+/// from 0, and its interval. A form tells its rows apart by their IDs across
+/// its sections, so each list's rows have their own, or the form mixes up the
+/// two lists' rows and draws them in the wrong sections.
+private struct StepRow: Identifiable {
+    struct ID: Hashable {
+        let list: Scheduler.StepList
+        let index: Int
+    }
+
+    let list: Scheduler.StepList
+    let index: Int
+    let interval: Duration
+
+    var id: ID { ID(list: list, index: index) }
+}
+
+/// The rows of a list of steps in Settings' Scheduling tab, the learning
+/// steps or the relearning steps, each picked from the intervals `Scheduler`
+/// offers it, then a button that adds one. A list may have none.
+private struct StepsSettings: View {
+    /// Which steps they are.
+    let list: Scheduler.StepList
+    /// The settings that hold them.
+    @Binding var scheduler: Scheduler
+
+    var body: some View {
+        ForEach(scheduler.steps(list).enumerated().map { StepRow(list: list, index: $0.offset, interval: $0.element) })
+        { row in
+            let index = row.index
+            let interval = row.interval
+            HStack {
+                Picker(selection: step(index, lasting: interval)) {
+                    spans(scheduler.intervals(forStep: index, of: list), including: interval)
+                } label: {
+                    Text(
+                        "Step \(index + 1)",
+                        comment: "Settings, under Scheduling: a learning or relearning step, counted from 1.")
+                }
+                Button {
+                    change(&scheduler) { $0.removingStep(index, of: list) }
+                } label: {
+                    Label {
+                        Text(
+                            "Remove Step \(index + 1)",
+                            comment: "Settings, under Scheduling: removes a learning or relearning step.")
+                    } icon: {
+                        Image(systemName: "minus.circle")
                     }
                 }
-            })
-    }
-
-    /// Whether `wait` fits the step at `index`: longer than the step before
-    /// it and shorter than the one after it.
-    private func fits(_ wait: Duration, at index: Int) -> Bool {
-        let waits = ladder.waits
-        return (index == 0 || waits[index - 1] < wait) && (index == waits.count - 1 || wait < waits[index + 1])
-    }
-
-    /// The wait a new last step gets: the first in the list after the last
-    /// step's, or nil when there's none.
-    private var nextStep: Duration? {
-        ladderSteps.first { $0 > ladder.waits[ladder.waits.count - 1] }
-    }
-
-    /// Changes the ladder's waits with `edit`, unless that doesn't leave a
-    /// ladder.
-    private func change(_ edit: (inout [Duration]) -> Void) {
-        var waits = ladder.waits
-        edit(&waits)
-        if let changed = Ladder(waits: waits) {
-            ladder = changed
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+            }
         }
+        Button {
+            change(&scheduler) { $0.addingStep(to: list) }
+        } label: {
+            Text("Add Step", comment: "Settings, under Scheduling: adds a learning or relearning step at the end.")
+        }
+        .disabled(scheduler.addingStep(to: list) == nil)
+    }
+
+    /// The interval of the step at `index`, which lasts `interval` as its row
+    /// shows. The row may outlive its step for a moment once Lucas removes
+    /// it, so the step is never read by its index.
+    private func step(_ index: Int, lasting interval: Duration) -> Binding<Duration> {
+        Binding(
+            get: { interval },
+            set: { newInterval in change(&scheduler) { $0.changingStep(index, of: list, to: newInterval) } })
     }
 }
 
@@ -361,8 +471,8 @@ struct ProgressSettingsForm<Settings: View>: View {
                     title: LocalizedStringResource(
                         "Couldn't save the change",
                         comment: """
-                            An alert's title in Settings, when a change to the ladder, the new cards per day or the \
-                            forgotten-often count couldn't be saved; the alert says why under it.
+                            An alert's title in Settings, when a change to the scheduling settings, the new cards per \
+                            day or the forgotten-often count couldn't be saved; the alert says why under it.
                             """),
                     error: error)
             }
@@ -471,8 +581,3 @@ private let waitsAfterWaking: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(Duration.
 private let idleTimes: [Duration] = [1, 2, 3, 5, 10, 15, 30].map { .seconds($0) }
 /// The waits after a suppression to pick from.
 private let waitsAfterSuppression: [Duration] = [0, 1, 2, 3, 5, 10, 15].map(Duration.minutes)
-/// The ladder steps to pick from: from 10 minutes to a year, the standard
-/// ladder's among them.
-private let ladderSteps: [Duration] =
-    [10, 15, 20, 30].map(Duration.minutes) + [1, 2, 3, 4, 6, 8, 12].map { Duration.minutes($0 * 60) }
-    + [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 21, 30, 45, 60, 75, 90, 120, 180, 365].map { Duration.minutes($0 * 24 * 60) }

@@ -17,7 +17,7 @@ extension Engine {
     /// Renames the deck `deck` to `newName`, its levels cleaned up as
     /// `makeDeck(named:)` cleans them up, and every deck inside it along with
     /// it, in one write: each card that lives in one moves to its new name,
-    /// keeping its step, its review log and its tags, and each row of the
+    /// keeping its progress, its review log and its tags, and each row of the
     /// `deck` table moves to the new name with what it has of its own, its
     /// switch, color, emoji and choice to sync, made on this device. Onto a
     /// name that exists, as a row has it, a card lives in it or a deck inside

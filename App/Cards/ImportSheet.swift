@@ -144,7 +144,8 @@ private func doneAwayFromTheMainActor(_ work: ImportWork) async -> ImportWork.Do
 /// card; for an Anki package, its notes' tags. The user renames each tag,
 /// or clears it to leave it out. An Anki package's cards come in where Anki
 /// had them while Bring progress is ticked (ADR 0013), and how many of them
-/// land on a step goes in the line under the title. Import imports them.
+/// come with their progress goes in the line under the title. Import
+/// imports them.
 /// While it reads the file or imports, it says so beside a spinner. A
 /// preview taller than the window scrolls between the title and the
 /// buttons. Last, it says what the import did. `CardsWindowState` holds the
@@ -449,18 +450,19 @@ struct ImportSheet: View {
     }
 
     /// How many cards the import brings in, as the state counts them: new
-    /// ones, and while Bring progress is ticked, those that land on a step.
+    /// ones, and while Bring progress is ticked, those that come with their
+    /// progress.
     private var cardsComingIn: Text {
         switch importing.cardsComingIn {
         case .new(let count)?:
             Text(
                 "\(count) new cards come in, at the pace of your new cards per day.",
                 comment: "In the Import sheet's preview, with how many new cards the file brings.")
-        case .newAndPlaced(let new, let placed)?:
+        case .newAndWithProgress(let new, let withProgress)?:
             Text(
-                "\(new) new cards come in, at the pace of your new cards per day, and \(placed) on a step, as Anki had them.",
+                "\(new) new cards come in, at the pace of your new cards per day, and \(withProgress) with their progress and Anki's reviews, due when Anki had them due.",
                 comment:
-                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many on a step of the user's ladder."
+                    "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due."
             )
         case nil:
             Text(verbatim: "")
@@ -480,8 +482,9 @@ struct ImportSheet: View {
             .toggleStyle(.checkbox)
             Text(
                 """
-                Cards Anki was learning or reviewing land on the step nearest their interval, due when Anki said, \
-                and suspended cards come in buried. Unticked, every card comes in new.
+                Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due \
+                date, those it was learning go on with your learning steps, due when Anki said, and suspended \
+                cards come in buried. Unticked, every card comes in new.
                 """,
                 comment: "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
             )

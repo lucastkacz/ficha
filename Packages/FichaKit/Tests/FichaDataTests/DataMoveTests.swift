@@ -47,7 +47,7 @@ final class DataMoveTests {
             card(
                 .word, front: "hornero", back: "Un pájaro que hace su nido de barro.", frontImage: bird, backSound: la),
             in: engine)
-        try engine.climb(hornero, to: 2, movingForward: time)
+        try engine.climb(hornero, goods: 2, movingForward: time)
         try approveCard("serendipia", in: engine)
         try engine.newCapture("¿Por qué el cielo es azul?", source: "Una charla")
         let backup = try engine.backUpNow(.defaults)
@@ -278,9 +278,11 @@ enum BrokenFile {
 
 /// Every setting the real Ficha keeps in its preferences, by its name there,
 /// with a value Lucas could have left, of the kind the app stores. That
-/// includes the three that decide a card's progress, which versions before
-/// #315 kept there, and which the app moves into the database from its
-/// preferences while the database holds none. A dictionary of any values
+/// includes the three that decided a card's progress, which versions before
+/// #315 kept there: the app moves the new cards a day and the offer to flag
+/// a card forgotten often into the database from its preferences while the
+/// database holds none, and reads the ladder's minutes no more (#407). A
+/// dictionary of any values
 /// isn't `Sendable`, so each use makes its own.
 var everySetting: [String: Any] {
     [

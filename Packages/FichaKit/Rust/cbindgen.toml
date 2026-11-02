@@ -1,0 +1,11 @@
+# cbindgen's configuration for the C header of src/lib.rs, which build.rs
+# writes: C, not C++, with the status's cases named after it, as C's names
+# share one namespace.
+language = "C"
+include_guard = "FICHA_FSRS_H"
+autogen_warning = "/* Written by cbindgen from Packages/FichaKit/Rust/src/lib.rs as the crate builds: never edit it. */"
+usize_is_size_t = true
+
+[enum]
+prefix_with_name = true
+rename_variants = "ScreamingSnakeCase"

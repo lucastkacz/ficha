@@ -5,11 +5,11 @@ import Testing
 
 /// Tests on images in the Cards window: the card form and the card editor
 /// put an image on a side, dragged or pasted, replace it or remove it, and
-/// the detail shows a card's images, on the default ladder.
+/// the detail shows a card's images, on the default scheduler.
 struct CardsWindowImageTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         engine = try Engine(location: .inMemory, time: time)
@@ -18,8 +18,8 @@ struct CardsWindowImageTests {
     /// Opens the Cards window and reads the cards, as the window does once
     /// it listens for the reasons to read them again.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 

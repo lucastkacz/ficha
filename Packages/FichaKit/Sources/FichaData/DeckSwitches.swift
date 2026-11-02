@@ -131,7 +131,7 @@ extension Engine {
     /// `Deck.defaultName`: every card that lives in it, or in a deck inside
     /// it, leaves the user's reviews for now, also cards that move in later,
     /// unless it's buried or flagged. A priority deck is no longer one. Its
-    /// cards keep their steps, and their waits keep running. A deck that
+    /// cards keep their progress, and their intervals keep running. A deck that
     /// isn't there is made, as Change Deck makes one, and a name
     /// `makeDeck(named:)` refuses is refused.
     public func setAside(deck: String) throws(EngineError) {

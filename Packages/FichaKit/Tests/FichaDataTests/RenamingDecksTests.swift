@@ -6,32 +6,32 @@ import Testing
 /// Tests on renaming decks (ADR 0024), which moves them too, as a deck's
 /// whole name carries the decks it sits inside, as Anki does: a deck renamed
 /// takes the decks inside it and their cards along, each card keeping its
-/// step, its review log and its tags, and a deck renamed onto one that
-/// exists joins it. On the default ladder; they start at 9 in the morning in
+/// progress, its review log and its tags, and a deck renamed onto one that
+/// exists joins it. On the default scheduler; they start at 9 in the morning in
 /// Buenos Aires, when active hours start.
 struct RenamingDecksTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     // Arte::Escultura has no card, and Historia stays where it is.
     @Test(
-        "renaming a deck moves it with the decks inside it and their cards, each card keeping its step, its review log and its tags"
+        "renaming a deck moves it with the decks inside it and their cards, each card keeping its progress, its review log and its tags"
     )
     func renamingADeck() throws {
         let gioconda = try approveInDeck("La Gioconda", deck: "Arte::Pintura", tags: ["italia"], in: engine)
         try approveInDeck("La Piedad", deck: "Arte", in: engine)
         try approveInDeck("Coliseo", deck: "Historia", in: engine)
         try engine.makeDeck(named: "Arte::Escultura")
-        try engine.climb(gioconda, to: 2, movingForward: time)
+        try engine.climb(gioconda, goods: 2, movingForward: time)
         let log = try engine.reviewLog()
-        let standing = try engine.standing(of: gioconda.id, on: ladder)
+        let standing = try engine.standing(of: gioconda.id, with: scheduler)
 
         #expect(try engine.renameDeck("Arte", to: " Cultura :: Artes ") == "Cultura::Artes")
 
@@ -45,7 +45,7 @@ struct RenamingDecksTests {
             ])
         #expect(try engine.cards().map(\.tags) == [["italia"], [], []])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.standing(of: gioconda.id, on: ladder) == standing)
+        #expect(try engine.standing(of: gioconda.id, with: scheduler) == standing)
     }
 
     // Arte::Pintura is purple, set aside and chosen to sync; Pinturas is

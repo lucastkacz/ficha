@@ -15,7 +15,7 @@ struct AppearanceTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("the review panel shows up on its own once a card is due, and not before")
@@ -32,7 +32,7 @@ struct AppearanceTests {
     func aNewCardIsEnoughWithNothingDue() throws {
         let serendipia = try approveCard("serendipia", in: engine)
 
-        #expect(try appearance() == .show([.firstView(serendipia)]))
+        #expect(try appearance() == .show([.new(serendipia)]))
     }
 
     @Test("an appearance brings along the cards due within the next 20 minutes, and not those due later")
@@ -46,9 +46,9 @@ struct AppearanceTests {
         #expect(try appearance() == .show([.review(ubuntu), .review(serendipia)]))
     }
 
-    // So that a card brought along moves on the ladder as if it had waited
-    // its whole wait, while a review ahead, which Lucas asks for, doesn't
-    // (ADR 0002).
+    // So that a card brought along counts as if it had waited its whole
+    // interval, while a review ahead, which Lucas asks for, counts how long
+    // it really waited (#404).
     @Test("a card an appearance brings along before it's due is reviewed as on time, unlike one due later")
     func cardsBroughtAlongAreReviewedOnTime() throws {
         try meetCard("ubuntu", dueAt: try at(10, 0))
@@ -59,7 +59,9 @@ struct AppearanceTests {
         try engine.record(
             .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
 
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: try at(14, 0)))
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue
+                == learning(step: 1, due: try at(14, 0)))
         #expect(throws: EngineError.cardNotDue(petricor.id)) {
             try engine.record(
                 .review(.good), of: petricor.id, responseTime: .seconds(3), trigger: .appearance, settings: settings)
@@ -79,10 +81,11 @@ struct AppearanceTests {
         }
     }
 
-    @Test("the cards an appearance brings along take their place by step, as review now's cards do")
-    func cardsBroughtAlongTakeTheirPlaceByStep() throws {
-        // petricor climbs to the second step, due at 14:00, and ubuntu waits
-        // on the first, due at 14:10.
+    @Test("the cards an appearance brings along come shortest interval first, as review now's cards do")
+    func cardsBroughtAlongComeShortestIntervalFirst() throws {
+        // petricor moves to the second learning step, of 4 hours, due at
+        // 14:00, and ubuntu waits the first's hour, due at 14:10, so it comes
+        // first.
         let petricor = try meetCard("petricor", dueAt: try at(10, 0))
         time.move(to: try at(10, 0))
         try engine.review(petricor, .good)
@@ -161,23 +164,23 @@ struct AppearanceTests {
         #expect(try appearance() == .show([.review(serendipia)]))
     }
 
-    // A first view counts once Lucas ends it with "Got it", so a new card he
+    // A new card counts once Lucas rates its first review, so a new card he
     // snoozed comes back in the next appearance.
-    @Test("a snoozed first view doesn't count toward the day's 5 new cards")
-    func aSnoozedFirstViewDoesNotCount() throws {
+    @Test("a snoozed new card doesn't count toward the day's 5 new cards")
+    func aSnoozedNewCardDoesNotCount() throws {
         let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude"].map { try approveCard($0, in: engine) }
         let ockham = try approveCard("navaja de Ockham", in: engine)
         for card in met {
             try engine.meet(card)
         }
         var panel = try openAppearance()
-        #expect(panel.cards == [.firstView(ockham)])
+        #expect(panel.cards == [.new(ockham)])
 
         time.move(to: try at(9, 5))
         panel.close(.byLucas)
 
         time.move(to: try at(9, 35))
-        #expect(try appearance() == .show([.firstView(ockham)]))
+        #expect(try appearance() == .show([.new(ockham)]))
     }
 
     // 21:00 in Buenos Aires is already the next day in UTC.
@@ -199,20 +202,20 @@ struct AppearanceTests {
         for card in met {
             try engine.review(card, .good)
         }
-        #expect(try appearance() == .show([.firstView(sunkCost)]))
+        #expect(try appearance() == .show([.new(sunkCost)]))
     }
 
     @Test("every appearance and review now goes into the appearance log, with its trigger, times and outcome")
     func appearancesAndReviewNowsGoIntoTheAppearanceLog() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         time.move(to: try at(10, 0))
-        var snoozed = try engine.openPanel(.appearance, with: [.firstView(serendipia)], settings: settings)
+        var snoozed = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
         time.move(to: try at(10, 3))
         snoozed.close(.byLucas)
         time.move(to: try at(11, 18))
-        var finished = try engine.openPanel(.reviewNow, with: [.firstView(serendipia)], settings: settings)
+        var finished = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
         time.move(to: try at(11, 20))
-        try finished.answer(.firstView, responseTime: .seconds(90))
+        try finished.answer(.review(.again), responseTime: .seconds(90))
         finished.close(.byLucas)
         time.move(to: try at(12, 0))
         var autoClosed = try engine.openPanel(.appearance, with: [.review(serendipia)], settings: settings)

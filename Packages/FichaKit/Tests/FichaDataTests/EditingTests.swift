@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 /// Tests on editing in the Cards window: a card changes its content and keeps
-/// its place on the ladder, and is fixed when it's flagged; a capture in the
+/// its progress, and is fixed when it's flagged; a capture in the
 /// inbox changes its text, note and source, and stays in the inbox.
 struct EditingTests {
     let calendar: Calendar
@@ -15,16 +15,16 @@ struct EditingTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    @Test("an edit changes a card's content and keeps its step, its due time and its review log")
-    func anEditKeepsTheCardsStep() throws {
-        // serendipia climbs to the third step, 2 days, and Lucas edits it
-        // before it's due.
+    @Test("an edit changes a card's content and keeps its progress, its due time and its review log")
+    func anEditKeepsTheCardsProgress() throws {
+        // serendipia graduates with two goods, due a day later, and Lucas
+        // edits it before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         let log = try engine.reviewLog()
         time.advance(by: hours(1))
 
@@ -44,20 +44,21 @@ struct EditingTests {
         #expect(edited.captureID == serendipia.captureID)
         #expect(try engine.cards() == [edited])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         time.move(to: try #require(standing.due))
         #expect(try engine.reviewNow(settings) == [.review(edited)])
     }
 
     // The Cards window (#87) has no button to unflag a card flagged by
     // mistake: Lucas saves it as it is.
-    @Test("editing a flagged card fixes it, even with its content unchanged: it's back on its step in Lucas's reviews")
+    @Test(
+        "editing a flagged card fixes it, even with its content unchanged: it's back where it stood in Lucas's reviews")
     func editingAFlaggedCardFixesIt() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 1, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
         time.advance(by: hours(1))
 
@@ -71,7 +72,7 @@ struct EditingTests {
         #expect(edited == serendipia)
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(try engine.progress(settings).inInbox == 0)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         time.move(to: try #require(standing.due))
         #expect(try engine.reviewNow(settings) == [.review(edited)])
     }

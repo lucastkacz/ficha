@@ -16,7 +16,7 @@ struct UndoTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("undoing a rating puts the card back where it stood, and the panel shows it again")
@@ -25,7 +25,7 @@ struct UndoTests {
         try approveCard("petricor", in: engine)
         try engine.meet(ubuntu)
         time.advance(by: hours(1))
-        let standing = try engine.standing(of: ubuntu.id, on: settings.ladder)
+        let standing = try engine.standing(of: ubuntu.id, with: settings.scheduler)
         let log = try engine.reviewLog()
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         try panel.answer(.review(.good), responseTime: .seconds(3))
@@ -33,7 +33,7 @@ struct UndoTests {
         try panel.undo()
 
         #expect(panel.current == .review(ubuntu))
-        #expect(try engine.standing(of: ubuntu.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: ubuntu.id, with: settings.scheduler) == standing)
         #expect(try engine.reviewLog() == log)
     }
 
@@ -66,7 +66,7 @@ struct UndoTests {
     @Test("⌘Z goes back one card at a time, and no further than the first one")
     func undoGoesBackOneCardAtATime() throws {
         let cards = try dueCards("ubuntu", "petricor", "serendipia")
-        let standing = try engine.standing(of: cards[0].id, on: settings.ladder)
+        let standing = try engine.standing(of: cards[0].id, with: settings.scheduler)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(!panel.canUndo)
         try panel.answer(.review(.good), responseTime: .seconds(3))
@@ -81,7 +81,7 @@ struct UndoTests {
         try panel.undo()
 
         #expect(panel.current == .review(cards[0]))
-        #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: cards[0].id, with: settings.scheduler) == standing)
         #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
     }
 
@@ -114,7 +114,7 @@ struct UndoTests {
         try engine.meet(serendipia)
         try engine.meet(serendipia, way: .backFirst)
         time.advance(by: hours(1))
-        let backFirst = try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+        let backFirst = try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler)
         var panel = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
         panel.flip()
         panel.rate(.again)
@@ -123,23 +123,23 @@ struct UndoTests {
         panel.undoLastCard()
 
         #expect(panel.content == .bothSides(bothWays[0], .backFirst))
-        #expect(try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder) == backFirst)
+        #expect(try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler) == backFirst)
         #expect(try engine.reviewLog().map(\.way) == [.frontFirst, .backFirst, .frontFirst])
     }
 
-    @Test("undoing a back-first first view leaves that way new, and shows the card back first, whole")
-    func undoingABackFirstFirstViewLeavesThatWayNew() throws {
+    @Test("undoing a back-first way's first review leaves that way new, and shows the card back first, flipped")
+    func undoingABackFirstFirstReviewLeavesThatWayNew() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
-        var panel = try engine.openPanel(.reviewNow, with: [.firstView(bothWays[0], .backFirst)], settings: settings)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(bothWays[0], .backFirst)], settings: settings)
         panel.flip()
-        panel.endFirstView()
+        panel.rate(.good)
 
         panel.undoLastCard()
 
-        #expect(panel.content == .firstView(bothWays[0], .backFirst))
-        #expect(try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder) == .new)
+        #expect(panel.content == .bothSides(bothWays[0], .backFirst, isNew: true))
+        #expect(try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler) == .new)
         #expect(try engine.reviewLog().map(\.way) == [.frontFirst])
     }
 
@@ -156,7 +156,8 @@ struct UndoTests {
 
         #expect(!panel.canUndo)
         #expect(
-            try engine.standing(of: cards[0].id, on: settings.ladder) == .onLadder(step: 1, due: time.now + hours(4)))
+            try engine.standing(of: cards[0].id, with: settings.scheduler).stageAndDue
+                == learning(step: 1, due: time.now + hours(4)))
     }
 
     // A refine session can fix or unbury a card while the panel is open.
@@ -202,7 +203,7 @@ struct UndoTests {
     )
     func undoDeletesTheFollowUpsOnTheCurrentCardFirst() throws {
         let cards = try dueCards("ubuntu", "petricor")
-        let standing = try engine.standing(of: cards[0].id, on: settings.ladder)
+        let standing = try engine.standing(of: cards[0].id, with: settings.scheduler)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         panel.flip()
         panel.rate(.good)
@@ -220,7 +221,7 @@ struct UndoTests {
         panel.undoLastCard()
 
         #expect(panel.content == .bothSides(cards[0]))
-        #expect(try engine.standing(of: cards[0].id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: cards[0].id, with: settings.scheduler) == standing)
         #expect(!panel.canUndo)
         #expect(panel.failure == nil)
     }

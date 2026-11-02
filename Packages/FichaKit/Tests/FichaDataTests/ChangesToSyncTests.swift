@@ -22,7 +22,7 @@ final class ChangesToSyncTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 21, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     deinit {
@@ -30,7 +30,7 @@ final class ChangesToSyncTests {
     }
 
     @Test(
-        "a new card waits to be sent under an ID unique across devices, as do the capture it came from and its first view"
+        "a new card waits to be sent under an ID unique across devices, as do the capture it came from and its first review"
     )
     func aNewCardWaitsToBeSent() throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -124,25 +124,25 @@ final class ChangesToSyncTests {
             ])
     }
 
-    @Test("each first view and review waits to be sent, and an answer taken back waits as a deletion")
+    @Test("each review, a first one too, waits to be sent, and an answer taken back waits as a deletion")
     func answersWaitToBeSent() throws {
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
-        let firstView = try #require(try engine.recorded { try engine.meet(petricor) }.only)
+        let firstReview = try #require(try engine.recorded { try engine.meet(petricor) }.only)
         let review = try #require(
             try engine.recorded { try engine.reviewWhenDue(petricor, .good, movingForward: time) }.only)
 
         let takenBack = try engine.recorded { try engine.takeBackAnswer(of: petricor.id, way: .frontFirst) }
 
-        #expect(firstView.row.recordType == .reviewLogEntry)
+        #expect(firstReview.row.recordType == .reviewLogEntry)
         #expect(review.row.recordType == .reviewLogEntry)
-        #expect(firstView.row != review.row)
-        #expect([firstView.kind, review.kind] == [.saved, .saved])
+        #expect(firstReview.row != review.row)
+        #expect([firstReview.kind, review.kind] == [.saved, .saved])
         #expect(takenBack == [Waiting(row: review.row, kind: .deleted)])
     }
 
     // So that a joined log can tell two devices' answers to one wait (#302).
     @Test(
-        "each review names the entry of its way it answered, the way's last, each way apart, and a first view names none"
+        "each review names the entry of its way it answered, the way's last, each way apart, and a first review names none"
     )
     func eachReviewNamesTheEntryItAnswered() throws {
         let ubuntu = try engine.create(card(.word, front: "ubuntu", back: "Soy porque somos."), bothWays: true)
@@ -279,7 +279,7 @@ final class ChangesToSyncTests {
     @Test("deleting a card waits as its deletion and its review log's, and its expansion lets go of it")
     func deletingWaitsAsDeletions() throws {
         let (serendipia, cardRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
-        let firstView = try #require(try engine.recorded { try engine.meet(serendipia) }.only)
+        let firstReview = try #require(try engine.recorded { try engine.meet(serendipia) }.only)
         let expansion = try #require(
             try engine.recorded { try engine.expand(text: "Serendipia", note: nil, source: nil) }.only)
         try engine.edit(serendipia.id, with: card(.word, front: "serendipia", back: "Un hallazgo."))
@@ -290,7 +290,7 @@ final class ChangesToSyncTests {
 
         #expect(
             afterDeletion == [
-                Waiting(row: firstView.row, kind: .deleted),
+                Waiting(row: firstReview.row, kind: .deleted),
                 Waiting(row: expansion.row, kind: .saved, fieldTimes: [.expandedCard: deleted]),
                 Waiting(row: cardRow, kind: .deleted),
             ])
@@ -342,7 +342,7 @@ final class ChangesToSyncTests {
 
         let afterImport = try await engine.recordedAsync {
             try await engine.importCards(
-                engine.previewImport(of: file), choosing: ImportChoices(progress: .brought(onto: .standard)))
+                engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
         }
 
         let log = try engine.reviewLog()

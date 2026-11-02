@@ -8,7 +8,7 @@ import Testing
 /// window shows wherever the tag shows.
 struct TagColorAndEmojiTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -32,7 +32,9 @@ struct TagColorAndEmojiTests {
         let lenguaje = CardTag(name: "lenguaje")
         #expect(try engine.allTags() == [argentina, ciencia, historia, lenguaje])
         #expect(
-            try engine.cardRows(in: .all, on: ladder).map(\.tags) == [[historia, argentina], [ciencia, lenguaje]])
+            try engine.cardRows(in: .all, with: scheduler).map(\.tags) == [
+                [historia, argentina], [ciencia, lenguaje],
+            ])
     }
 
     // The `tag` table refuses a row with nothing in it, so removing both
@@ -96,8 +98,8 @@ struct TagColorAndEmojiTests {
         #expect(try engine.allTags() == [argentina])
 
         let martin = try approveCard("San Martín", tags: ["argentina"])
-        #expect(try engine.cardRows(in: .tag("argentina"), on: ladder).map(\.tags) == [[argentina]])
-        #expect(try engine.cardRows(in: .tag("argentina"), on: ladder).map(\.id) == [martin.id])
+        #expect(try engine.cardRows(in: .tag("argentina"), with: scheduler).map(\.tags) == [[argentina]])
+        #expect(try engine.cardRows(in: .tag("argentina"), with: scheduler).map(\.id) == [martin.id])
     }
 
     /// Approves a capture into one word card with this front and these

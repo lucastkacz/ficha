@@ -6,10 +6,10 @@ import Testing
 /// Tests on a deck's color and emoji in the Cards window (ADR 0024): Color
 /// and Emoji… in a deck's menu, Default's too, the same in the sidebar and in
 /// the Actions menu above the card list, and the sidebar's decks showing
-/// them, their own or the nearest parent's, on the default ladder.
+/// them, their own or the nearest parent's, on the default scheduler.
 struct CardsWindowDeckLooksTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -83,8 +83,8 @@ struct CardsWindowDeckLooksTests {
     }
 
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

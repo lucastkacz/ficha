@@ -9,7 +9,7 @@ import Testing
 final class CardsWindowExportTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
     /// A folder of the test's own, for the files it exports.
     let folder = URL.temporaryDirectory.appending(
         path: "FichaCardsWindowExportTests-\(UUID().uuidString)",
@@ -29,8 +29,8 @@ final class CardsWindowExportTests {
 
     /// The Cards window, open on All cards with its cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 

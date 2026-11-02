@@ -6,10 +6,10 @@ import Testing
 /// Tests on the Cards window's card types of the user's own (#365): the
 /// sidebar's Types section, New Type… in the type picker of the card form and
 /// the editor, and Rename…, Emoji… and Delete… in a user type's context menu,
-/// on the default ladder.
+/// on the default scheduler.
 struct CardsWindowTypesTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -51,12 +51,12 @@ struct CardsWindowTypesTests {
         window.choose(.cards(.type(.user(formula))))
         #expect(window.listedCardIDs == [water.id])
         let renamed = try engine.renameUserType(formula.id, to: "Fórmula química")
-        window.read(on: ladder)
+        window.read(with: scheduler)
         #expect(window.sidebarItem == .cards(.type(.user(renamed))))
         #expect(window.listedCardIDs == [water.id])
 
         try engine.deleteUserType(formula.id)
-        window.read(on: ladder)
+        window.read(with: scheduler)
         #expect(window.sidebarItem == .cards(.all))
     }
 
@@ -188,8 +188,8 @@ struct CardsWindowTypesTests {
 
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

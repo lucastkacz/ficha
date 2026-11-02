@@ -1,34 +1,39 @@
 import Foundation
 
-/// A card Lucas forgot often one way: he rated that way again, "Don't know",
-/// in as many reviews as his settings say, in all, since its front or back
-/// last changed, so the review panel offers to flag it, for it to be fixed.
-/// Each way of a card that goes both ways counts apart (ADR 0016).
+/// A card Lucas forgot often one way: that way lapsed, rated again while it
+/// was graduated, as many times as his settings say, in all, since its front
+/// or back last changed, as Anki counts a leech's lapses, so the review panel
+/// offers to flag it, for it to be fixed. Each way of a card that goes both
+/// ways counts apart (ADR 0016).
 public struct ForgottenOften: Sendable, Equatable {
-    /// How many reviews of that way he rated again since then.
+    /// How many times that way lapsed since then.
     public let times: Int
     /// The way he forgot it: front first, or back first.
     public let way: Way
 }
 
 extension ReviewSettings {
-    /// Whether the card whose review log is `log`, in the order it happened,
-    /// is forgotten often after its last answer, the log's last entry, and
-    /// how many times Lucas forgot it the way that answer went, or nil. Only
-    /// the reviews of that way he rated again since `editedAt`, when its
-    /// front or back last changed, count, or all of them for a card never
-    /// edited. It's forgotten often when a rating of again brings them to
-    /// `forgottenOftenAfter`, and again each time it brings them half of
-    /// that further, rounded down and at least one, as Anki warns again
-    /// about a leech.
-    public func forgottenOften(after log: [ReviewLogEntry], editedAt: Date?) -> ForgottenOften? {
+    /// Whether the card whose review log is `log`, its last entry the answer
+    /// Lucas just gave, is forgotten often after it, and how many times he
+    /// forgot it the way that answer went, or nil. Only that way's lapses
+    /// since `editedAt`, when its front or back last changed, count, or all
+    /// of them for a card never edited, as the scheduler tells them from its
+    /// log: agains of the way while it was graduated, and not a new way's
+    /// agains in its learning steps. It's forgotten often when a lapse brings
+    /// them to `forgottenOftenAfter`, and again each time one brings them
+    /// half of that further, rounded down and at least one, as Anki warns
+    /// again about a leech.
+    public func forgottenOften(after log: [ReviewLogEntry], editedAt: Date?) throws(SchedulingError)
+        -> ForgottenOften?
+    {
         guard let number = forgottenOftenAfter, let last = log.last, last.kind == .review(.again) else {
             return nil
         }
-        let sinceEdited = log.filter { entry in
-            entry.way == last.way && (editedAt.map { entry.answeredAt >= $0 } ?? true)
+        let lapses = try scheduler.lapses(after: log.filter { $0.way == last.way })
+        guard lapses.contains(last) else {
+            return nil
         }
-        let times = sinceEdited.count { $0.kind == .review(.again) }
+        let times = lapses.count { lapse in editedAt.map { lapse.answeredAt >= $0 } ?? true }
         let repeatEvery = max(1, number / 2)
         guard times >= number, (times - number).isMultiple(of: repeatEvery) else {
             return nil

@@ -128,21 +128,23 @@ extension CardsWindowState {
         public enum CardsComingIn: Sendable, Equatable {
             /// This many, new, at the pace of the user's new cards per day.
             case new(Int)
-            /// This many new, and this many on a step, as Anki had them.
-            case newAndPlaced(new: Int, placed: Int)
+            /// This many new, and this many with their progress and Anki's
+            /// reviews, due when Anki had them due.
+            case newAndWithProgress(new: Int, withProgress: Int)
         }
 
         /// How many of the file's cards come in, while the sheet shows a
         /// preview: those new to Ficha, and while Bring progress is ticked
-        /// and some of them land on a step, how many do.
+        /// and some of them come with their progress, how many do.
         public var cardsComingIn: CardsComingIn? {
             guard let preview else {
                 return nil
             }
-            guard importBringsProgress, preview.placedCount > 0 else {
+            guard importBringsProgress, preview.withProgressCount > 0 else {
                 return .new(preview.newCount)
             }
-            return .newAndPlaced(new: preview.newCount - preview.placedCount, placed: preview.placedCount)
+            return .newAndWithProgress(
+                new: preview.newCount - preview.withProgressCount, withProgress: preview.withProgressCount)
         }
 
         /// How many of the file's cards come in going both ways made of two
@@ -184,17 +186,16 @@ extension CardsWindowState {
         }
 
         /// What the user chose, for the import, with the cards' progress
-        /// brought onto `ladder`, the user's, when the sheet offers it and
-        /// it's ticked.
-        fileprivate func choices(on ladder: Ladder) -> ImportChoices {
+        /// brought when the sheet offers it and it's ticked.
+        fileprivate var importChoices: ImportChoices {
             var choices = self.choices
-            choices.progress = importBringsProgress ? .brought(onto: ladder) : .leftOut
+            choices.progress = importBringsProgress ? .brought : .leftOut
             return choices
         }
 
         /// What the user chose, but the cards' progress, which comes in left
         /// out: what the sheet says before the import, such as what goes up
-        /// to iCloud, takes no ladder.
+        /// to iCloud, doesn't depend on it.
         private var choices: ImportChoices {
             ImportChoices(
                 deckNames: deckNames, deckForCardsWithoutDeck: chosenDeck, tagNames: tagNames,
@@ -349,10 +350,10 @@ extension CardsWindowState {
     /// away from the main actor and hands to `finishImportWork(_:)`: the
     /// sheet then says what the import did, or why it couldn't import the
     /// cards, and the preview stays. An Anki package's cards bring their
-    /// progress onto the window's ladder while Bring progress is ticked.
+    /// progress while Bring progress is ticked.
     public mutating func importCards() -> ImportWork? {
         guard let importing, importing.canImport, let preview = importing.preview else { return nil }
-        return startImportWork(.importCards(preview, importing.choices(on: ladder)), busy: .importing)
+        return startImportWork(.importCards(preview, importing.importChoices), busy: .importing)
     }
 
     /// Starts `job` while the sheet is open and isn't busy, and returns its
@@ -373,7 +374,7 @@ extension CardsWindowState {
     /// leaves alone.
     public mutating func finishImportWork(_ done: ImportWork.Done) {
         if case .imported(.success) = done.result {
-            read(on: ladder)
+            read(with: scheduler)
         }
         guard importing?.awaitedWork == done.id else { return }
         importing?.busy = nil

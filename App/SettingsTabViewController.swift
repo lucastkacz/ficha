@@ -7,7 +7,9 @@ enum SettingsTab: String {
     case general
     case appearances
     case reviewPanel
-    case ladder
+    /// Stored as the Ladder tab it replaced (#404), so Settings reopens on
+    /// it.
+    case scheduling = "ladder"
     case backups
     case sync
     case about
@@ -24,7 +26,10 @@ enum SettingsTab: String {
         case .general: String(localized: "General", comment: "A tab of the Settings window.")
         case .appearances: String(localized: "Appearances", comment: "A tab of the Settings window.")
         case .reviewPanel: String(localized: "Review panel", comment: "A tab of the Settings window.")
-        case .ladder: String(localized: "Ladder", comment: "A tab of the Settings window.")
+        case .scheduling:
+            String(
+                localized: "Scheduling",
+                comment: "A tab of the Settings window: when cards come back, as Anki's deck options set it.")
         case .backups: String(localized: "Backups", comment: "A tab of the Settings window.")
         case .sync: String(localized: "Sync", comment: "A tab of the Settings window: sync through iCloud.")
         case .about: String(localized: "About", comment: "A tab of the Settings window.")
@@ -37,7 +42,7 @@ enum SettingsTab: String {
         case .general: "gearshape"
         case .appearances: "clock"
         case .reviewPanel: "macwindow"
-        case .ladder: "stairs"
+        case .scheduling: "calendar.badge.clock"
         case .backups: "clock.arrow.circlepath"
         case .sync: "icloud"
         case .about: "info.circle"
@@ -70,9 +75,9 @@ final class SettingsTabViewController: NSTabViewController {
         add(.appearances, content: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model)))
         add(.reviewPanel, content: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model)))
         add(
-            .ladder,
+            .scheduling,
             content: ProgressSettingsForm(
-                model: model, settings: LadderSettings(ladder: Bindable(model).settings.ladder)))
+                model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler)))
         add(.backups, content: BackupsTab(model: model, closeReviewPanel: closeReviewPanel))
         if model.sync != nil {
             add(.sync, content: SyncTab(model: model))
@@ -94,7 +99,7 @@ final class SettingsTabViewController: NSTabViewController {
     }
 
     /// Adds `tab`, which shows `content`. The tab follows the content's
-    /// height as it changes, as when Lucas adds a step to the ladder.
+    /// height as it changes, as when Lucas adds a learning step.
     private func add(_ tab: SettingsTab, content: some View) {
         let controller = NSHostingController(rootView: content.frame(width: 500))
         controller.sizingOptions = .preferredContentSize
@@ -112,5 +117,21 @@ final class SettingsTabViewController: NSTabViewController {
         if let tab = SettingsTab(of: tabViewItem) {
             Preferences.settingsTab = tab
         }
+        keepTheKeyboardOutOfTheSchedulingTab()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        keepTheKeyboardOutOfTheSchedulingTab()
+    }
+
+    /// Leaves the keyboard with the window when the Scheduling tab shows, as
+    /// Settings opens on it or Lucas picks it: AppKit gives it to the tab's
+    /// Longest interval field, Settings' only text field, with its number
+    /// selected, where a stray keystroke would change a setting that syncs.
+    /// A click or Tab puts it there.
+    private func keepTheKeyboardOutOfTheSchedulingTab() {
+        guard SettingsTab(of: tabView.selectedTabViewItem) == .scheduling else { return }
+        view.window?.makeFirstResponder(nil)
     }
 }

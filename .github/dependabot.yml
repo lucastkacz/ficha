@@ -12,3 +12,10 @@ updates:
     schedule:
       interval: monthly
     labels: ["risk:high"]
+  # Our crate, which pins fsrs-rs, whose upgrade can change intervals
+  # (ADR 0026).
+  - package-ecosystem: cargo
+    directory: /Packages/FichaKit/Rust
+    schedule:
+      interval: monthly
+    labels: ["risk:high"]

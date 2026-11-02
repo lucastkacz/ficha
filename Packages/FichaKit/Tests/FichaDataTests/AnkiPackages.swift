@@ -51,6 +51,11 @@ struct AnkiPackage {
     /// `rollover` in the collection's configuration: the hour Anki's day
     /// starts at, or nil to leave it out, as current Anki's packages do.
     var rollover: Int? = nil
+    /// `schedVer` in the collection's configuration: the version of Anki's
+    /// scheduler that reviewed its cards, 2 for Anki 2.1's and later, 1 for
+    /// Anki 2.0's, or nil to leave it out, as Anki 2.0 did, which Anki reads
+    /// as 1.
+    var schedulerVersion: Int? = 2
 
     /// Writes the package to `file`, as a zip, as Anki does: `meta`, the
     /// collection, the placeholder, each media file, and the media list.
@@ -192,12 +197,30 @@ struct AnkiPackage {
                         due = -100_000 + Int64(index)
                     }
                     // Wrapping, for a damaged template index.
+                    let cardID = noteID * 10 &+ Int64(ordinal)
                     try db.execute(
                         sql: "INSERT INTO cards VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 2500, 0, 0, 0, ?, ?, 0, '')",
                         arguments: [
-                            noteID * 10 &+ Int64(ordinal), noteID, deck, ordinal, columns.type, queue, due,
-                            columns.interval, originalDue, originalDeck,
+                            cardID, noteID, deck, ordinal, columns.type, queue, due, columns.interval, originalDue,
+                            originalDeck,
                         ])
+                    // A revlog entry's id is unique across the collection, so
+                    // a note's third card and those after log none, rather
+                    // than its first card's again.
+                    let revlog =
+                        switch ordinal {
+                        case 0: note.revlog
+                        case 1: note.reversedCardRevlog
+                        default: [AnkiRevlogEntry]()
+                        }
+                    for entry in revlog {
+                        try db.execute(
+                            sql: "INSERT INTO revlog VALUES (?, ?, 0, ?, ?, 0, ?, ?, ?)",
+                            arguments: [
+                                Int64((entry.at.timeIntervalSince1970 * 1000).rounded()), cardID, entry.button,
+                                entry.interval, entry.factor, entry.milliseconds, entry.kind.rawValue,
+                            ])
+                    }
                 }
             }
         }
@@ -258,7 +281,8 @@ struct AnkiPackage {
     /// 11 keeps it in `col.conf`, and schema 18 a row for each key in its
     /// `config` table.
     private var confJSON: [String: Int] {
-        var conf = ["schedVer": 2]
+        var conf: [String: Int] = [:]
+        conf["schedVer"] = schedulerVersion
         conf["creationOffset"] = creationOffset
         conf["rollover"] = rollover
         return conf
@@ -443,6 +467,12 @@ struct AnkiNote {
         case review(due: Int, interval: Int)
         /// Being learned, due at this time, in seconds since 1970.
         case learning(dueAt: Int64)
+        /// Being learned, with steps of a day or more, due on this day,
+        /// counted from the collection's creation.
+        case learningAcrossDays(due: Int)
+        /// Being relearned after a lapse, due at this time, in seconds since
+        /// 1970, with the interval it graduates with, a day.
+        case relearning(dueAt: Int64)
         /// Being relearned after a lapse, with steps of a day or more, due on
         /// this day, counted from the collection's creation.
         case relearningAcrossDays(due: Int)
@@ -458,6 +488,8 @@ struct AnkiNote {
             case .new, .newAt: (0, 0, Int64(position), 0)
             case .review(let due, let interval): (2, 2, Int64(due), interval)
             case .learning(let dueAt): (1, 1, dueAt, 0)
+            case .learningAcrossDays(let due): (1, 3, Int64(due), 0)
+            case .relearning(let dueAt): (3, 1, dueAt, 1)
             case .relearningAcrossDays(let due): (3, 3, Int64(due), 1)
             case .anki20Relearning(let dueAt): (2, 1, dueAt, 1)
             }
@@ -491,6 +523,11 @@ struct AnkiNote {
     /// place of `progress` and `queue`, or nil when it stands as its first
     /// card does.
     var reversedCard: (progress: Progress, queue: Queue)? = nil
+    /// What Anki logged of its first card, its rows of the `revlog` table.
+    var revlog: [AnkiRevlogEntry] = []
+    /// What Anki logged of its reversed card, its second template's. A
+    /// note's other cards have none.
+    var reversedCardRevlog: [AnkiRevlogEntry] = []
     /// The filtered deck its cards were moved to, or nil.
     var filteredDeck: String? = nil
     /// The template index of the note's one card, in place of those Anki
@@ -531,6 +568,45 @@ struct AnkiNote {
             "Please update to the latest Anki version, then import the .colpkg/.apkg file again.",
             "This package was made by a newer Anki.",
         ])
+}
+
+/// An entry Anki logged of a card in a test's Anki package, a row of its
+/// `revlog` table, as Anki writes it (`rslib/src/revlog/mod.rs`).
+struct AnkiRevlogEntry {
+    /// What the entry records, its `type`.
+    enum Kind: Int {
+        /// A review of a card in its learning steps.
+        case learning = 0
+        /// A review of a card in review.
+        case review = 1
+        /// A review of a card in its relearning steps, after a lapse.
+        case relearning = 2
+        /// A review in a filtered deck: of a card not due yet, or, with
+        /// rescheduling off and an ease of 0, cramming, which changes
+        /// nothing.
+        case filtered = 3
+        /// Set Due Date, or, with an ease of 0, a reset to new.
+        case manual = 4
+        /// FSRS rescheduling the card as its settings changed.
+        case rescheduled = 5
+        /// A type Anki doesn't write, as in a damaged package.
+        case unknown = 6
+    }
+
+    /// When it happened: its `id`, in milliseconds since 1970, which Anki
+    /// keeps unique across the collection's cards.
+    var at: Date
+    /// The button pressed, `ease`: 1 again, 2 hard, 3 good, 4 easy, or 0
+    /// for an entry no button made.
+    var button: Int
+    /// The interval it set, `ivl`: in days when positive, in seconds when
+    /// negative, as on a learning step.
+    var interval: Int
+    /// The card's ease after it, `factor`, in thousandths.
+    var factor = 2500
+    /// How long the answer took, `time`, in milliseconds.
+    var milliseconds = 6000
+    var kind: Kind
 }
 
 /// A note type of a test's Anki package: its fields, by their names, and its
@@ -678,6 +754,9 @@ private let schema11 = """
       mod integer NOT NULL, usn integer NOT NULL, type integer NOT NULL, queue integer NOT NULL, due integer NOT NULL,
       ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL, lapses integer NOT NULL,
       left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL, flags integer NOT NULL, data text NOT NULL);
+    CREATE TABLE revlog (id integer PRIMARY KEY, cid integer NOT NULL, usn integer NOT NULL, ease integer NOT NULL,
+      ivl integer NOT NULL, lastIvl integer NOT NULL, factor integer NOT NULL, time integer NOT NULL,
+      type integer NOT NULL);
     """
 
 /// Schema 18's tables a reader needs: schema 11's, and those the upgrades

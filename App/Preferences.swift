@@ -47,10 +47,10 @@ enum Preferences {
 
     /// The settings that decide a card's progress as the preferences kept
     /// them before they synced, which no version writes since, for the engine
-    /// to move them into the database.
+    /// to move them into the database: the ladder they kept went with it
+    /// (#407), so the scheduler's settings are Ficha's.
     static func progressSettingsBeforeSync() -> ProgressSettings {
         var settings = ReviewSettings.defaults.progress
-        settings.ladder = read(.ladder, as: [Int].self, ladder) ?? settings.ladder
         settings.newCardsPerDay = read(.newCardsPerDay, as: Int.self) { $0 >= 0 ? $0 : nil } ?? settings.newCardsPerDay
         if let offer = read(.forgottenOftenAfter, as: Int.self, StoredOffer.init(stored:)) {
             settings.forgottenOftenAfter = offer.timesForgotten
@@ -153,7 +153,7 @@ enum Preferences {
     }
 
     /// The Cards window's table columns: which ones show, as Lucas left them,
-    /// at first the table's own, Front, Media, Step and Due, in the table's
+    /// at first the table's own, Front, Media, Interval and Due, in the table's
     /// order and at its widths. SwiftUI keeps their order and widths too,
     /// which aren't kept here, nor read back from a version before #391: a
     /// width saved in a wider pane, which the table gave its columns as the
@@ -205,11 +205,10 @@ enum Preferences {
     }
 
     /// Each setting's name in the preferences. Spans of time are stored in
-    /// whole minutes, but the idle time, in whole seconds. The ladder, the
-    /// new cards a day and the forgotten-often count are as versions before
-    /// #315 left them, only to be moved into the database.
+    /// whole minutes, but the idle time, in whole seconds. The new cards a
+    /// day and the forgotten-often count are as versions before #315 left
+    /// them, only to be moved into the database.
     private enum Key: String {
-        case ladder = "LadderMinutes"
         case cardsPerAppearance = "CardsPerAppearance"
         case newCardsPerDay = "NewCardsPerDay"
         case lookAhead = "LookAheadMinutes"
@@ -223,9 +222,8 @@ enum Preferences {
         case autoClose = "AutoCloseMinutes"
         case focusMode = "FocusMode"
         case idleBeforeTakingKeyboard = "IdleBeforeTakingKeyboardSeconds"
-        /// How many reviews of one of a card's ways rated again make it
-        /// forgotten often, or 0 when the review panel never offers to flag
-        /// it.
+        /// How many lapses of one of a card's ways make it forgotten often,
+        /// or 0 when the review panel never offers to flag it.
         case forgottenOftenAfter = "ForgottenOftenAfter"
         /// The raw value of how often Ficha backs up on its own.
         case backupFrequency = "BackupFrequency"
@@ -327,15 +325,6 @@ private func wholeMinutes(_ duration: Duration) -> Int64 {
     duration.components.seconds / 60
 }
 
-/// The ladder stored as each step's wait in whole minutes, or nil unless they
-/// make one, each step up to a year.
-private func ladder(_ stored: [Int]) -> Ladder? {
-    guard stored.allSatisfy((1...longest).contains) else {
-        return nil
-    }
-    return Ladder(waits: stored.map(Duration.minutes))
-}
-
 /// The active hours stored as two numbers, the first hour and the hour after
 /// the last one, or nil unless they make a part of the day.
 private func activeHours(_ stored: [Int]) -> Range<Int>? {
@@ -359,11 +348,11 @@ private enum StoredShortcut {
 }
 
 /// The offer to flag a card forgotten often, as the preferences stored it
-/// before it synced: the number of reviews of one of a card's ways rated
-/// again that brings it, or 0 when it's off.
+/// before it synced: the number of lapses of one of a card's ways that
+/// brings it, or 0 when it's off.
 private struct StoredOffer {
-    /// How many reviews of one of a card's ways rated again bring the offer,
-    /// or nil when it's off.
+    /// How many lapses of one of a card's ways bring the offer, or nil when
+    /// it's off.
     let timesForgotten: Int?
 
     /// The offer `stored` says, or nil unless it's 0 or a number from 1 up.

@@ -11,12 +11,12 @@ import Testing
 struct DeletingDecksTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     // Arte::Escultura has no card, and Guernica is buried. Artes starts as
@@ -62,7 +62,7 @@ struct DeletingDecksTests {
         try engine.bury(guernica.id)
         let expansion = try engine.expand(text: "La Gioconda", note: "También se llama Mona Lisa", source: nil)
         let followUp = try engine.followUp(piedad.id, text: "¿Dónde está?")
-        let standing = try engine.standing(of: coliseo.id, on: ladder)
+        let standing = try engine.standing(of: coliseo.id, with: scheduler)
 
         let deletion = try engine.deleteDeck("Arte")
 
@@ -70,7 +70,7 @@ struct DeletingDecksTests {
         #expect(try engine.decks().map(\.name) == [Deck.defaultName, "Historia"])
         #expect(try engine.cards().map(\.id) == [coliseo.id, petricor.id])
         #expect(try engine.reviewLog().map(\.cardID) == [coliseo.id])
-        #expect(try engine.standing(of: coliseo.id, on: ladder) == standing)
+        #expect(try engine.standing(of: coliseo.id, with: scheduler) == standing)
         let inbox = try engine.inbox()
         #expect(inbox.captures.map(\.id) == [expansion.id, followUp.id])
         #expect(inbox.captures.map(\.expandsCardID) == [nil, nil])

@@ -21,11 +21,41 @@ DERIVED := .build/DerivedData
 RENDER := scripts/render
 CHECKS :=
 
+# Our crate, which builds fsrs-rs, Anki's FSRS library, for FichaKit to link
+# (ADR 0026), and the Rust toolchain its rust-toolchain.toml pins. rustup's
+# commands, cargo among them, run that toolchain from the crate's folder.
+# Homebrew's rustup, which `make bootstrap` installs, keeps them in a folder
+# of its own, off the PATH, since it's keg-only: so the recipes find them
+# there first.
+RUST := $(PACKAGE)/Rust
+export PATH := $(shell brew --prefix rustup 2>/dev/null)/bin:$(PATH)
+
 .PHONY: bootstrap
-bootstrap: ## Install the tools the build and the lint need.
+bootstrap: ## Install the tools the build and the lint need, and the Rust toolchain.
 	@command -v xcodegen >/dev/null || brew install xcodegen
 	@command -v shellcheck >/dev/null || brew install shellcheck
 	@command -v actionlint >/dev/null || brew install actionlint
+	@command -v rustup >/dev/null || brew install rustup
+	$(MAKE) rust-toolchain
+
+.PHONY: rustup
+rustup: ## Fail unless rustup, which runs the Rust toolchain that rust-toolchain.toml pins, is installed.
+	@command -v rustup >/dev/null || { \
+		echo "There's no rustup, which runs the Rust toolchain that $(RUST)/rust-toolchain.toml pins: run make bootstrap, which installs both." >&2; \
+		exit 1; }
+
+.PHONY: rust-toolchain
+rust-toolchain: rustup ## Install the Rust toolchain that rust-toolchain.toml pins, with its targets, as CI does too.
+	cd $(RUST) && rustup toolchain install
+
+# The XCFramework, which git ignores, and which every target that builds
+# FichaKit needs first: SwiftPM and Xcode can't resolve the package without
+# it. The script says when it builds, and why.
+FSRS_XCFRAMEWORK := $(PACKAGE)/Frameworks/CFichaFSRS.xcframework
+
+.PHONY: fsrs
+fsrs: ## Build fsrs-rs into the XCFramework FichaKit links, when the crate, its lock or the toolchain changed.
+	@scripts/build-fsrs.sh $(RUST) $(FSRS_XCFRAMEWORK)
 
 .PHONY: xcode-check
 CHECKS += xcode-check
@@ -45,22 +75,27 @@ SHELL_SCRIPTS := .claude/hooks/*.sh scripts/*.sh
 
 .PHONY: lint
 CHECKS += lint
-lint: ## Check the Swift code's formatting and style, and lint the shell scripts and the workflows.
+lint: rustup ## Check the Swift code's and our crate's formatting and style, and lint the shell scripts and the workflows.
 	swift format lint --strict --recursive --parallel $(SWIFT_SOURCES)
+	cd $(RUST) && cargo fmt --check || { \
+		echo "Our crate's Rust isn't formatted as rustfmt formats it, as the diff above shows: run make fmt and commit the result." >&2; \
+		exit 1; }
+	cd $(RUST) && cargo clippy --locked --quiet -- --deny warnings
 	shellcheck $(SHELL_SCRIPTS)
 	actionlint
 
 .PHONY: fmt
-fmt: ## Format the Swift code in place.
+fmt: rustup ## Format the Swift code and our crate in place.
 	swift format --in-place --recursive --parallel $(SWIFT_SOURCES)
+	cd $(RUST) && cargo fmt
 
 .PHONY: test
 CHECKS += test
-test: ## Run the package tests.
+test: fsrs ## Run the package tests.
 	swift test --package-path $(PACKAGE) --quiet
 
 .PHONY: project
-project: ## Generate Ficha.xcodeproj from project.yml (never edit it by hand).
+project: fsrs ## Generate Ficha.xcodeproj from project.yml (never edit it by hand), and build the XCFramework its package links.
 	xcodegen generate --quiet
 
 # The build number, the app's CFBundleVersion: how many commits the built
@@ -151,7 +186,7 @@ clean-merged-test: ## Test make clean-merged on a scratch repo, with a fake gh.
 
 .PHONY: render-build
 CHECKS += render-build
-render-build: ## Build the render tool, so a change to the app's views can't break it unnoticed.
+render-build: fsrs ## Build the render tool, so a change to the app's views can't break it unnoticed.
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
 
 .PHONY: run
@@ -160,7 +195,7 @@ run: team build ## Build and open Ficha Dev, in its sandbox, restarting it; the 
 	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 
 .PHONY: render
-render: ## Draw an app window as a PNG, offscreen: make render ARGS="cards --dark".
+render: fsrs ## Draw an app window as a PNG, offscreen: make render ARGS="cards --dark".
 	CFFIXED_USER_HOME=$(CURDIR)/.build/render/home swift run --package-path $(RENDER) --quiet Render $(ARGS)
 
 .PHONY: render-iphone

@@ -78,7 +78,7 @@ struct RenameDeckCommand: EngineCommand {
         abstract: "Rename a deck, or move it, with every deck inside it, and print it and the decks inside it.",
         discussion: """
             A new name with "::" moves the deck inside another, and one without moves it to the top. Every card \
-            in it, or in a deck inside it, moves along, on every device, keeping its step, its review log and its \
+            in it, or in a deck inside it, moves along, on every device, keeping its progress, its review log and its \
             tags, and the deck keeps its switch, color, emoji and choice to sync. Onto a deck that exists, the two \
             join, and the deck there keeps what it had of its own. Default is never renamed, and no deck moves \
             inside itself. For example:
@@ -131,7 +131,7 @@ struct SetDeckAsideCommand: EngineCommand {
         abstract: "Set a deck aside, or with --off stop setting it aside, and print the deck.",
         discussion: """
             A set-aside deck's cards, and those of the decks inside it, are out of your reviews for now; they keep \
-            their steps. A priority deck set aside is no longer one.
+            their progress. A priority deck set aside is no longer one.
             """
     )
 
@@ -249,7 +249,7 @@ struct ChangeDeckCommand: EngineCommand {
         abstract: "Move cards to a deck, as Change Deck… in the Cards window does, and print them.",
         discussion: """
             Name the deck by its whole name, as `ficha decks` prints it, with "::" between a deck and a deck \
-            inside it, or "" for Default; one you have none by that name is made. Each card keeps its step, its \
+            inside it, or "" for Default; one you have none by that name is made. Each card keeps its progress, its \
             review log and its tags. For example:
 
               ficha change-deck 12 15 --to Idiomas::Inglés
@@ -298,10 +298,10 @@ struct PrintedDecks {
     let decks: [PrintedDeck]
 
     /// The decks `engine` holds now, every one, as the Sync tab lists them,
-    /// each with its counts on the engine's ladder, read together.
+    /// each with its counts by the engine's scheduling settings, read together.
     init(of engine: Engine) throws {
-        let ladder = try engine.progressSettings().ladder
-        decks = try engine.countedDecks(on: ladder, asTheSyncTabLists: true).map { counted in
+        let scheduler = try engine.progressSettings().scheduler
+        decks = try engine.countedDecks(with: scheduler, asTheSyncTabLists: true).map { counted in
             let (deck, count) = (counted.deck, counted.counts)
             return PrintedDeck(
                 name: deck.name, cards: count.cards, due: count.due, setAside: deck.switchedOn == .setAside,

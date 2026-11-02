@@ -6,10 +6,10 @@ import Testing
 /// Tests on the Cards window's tags (ADR 0021, ADR 0022): the sidebar's
 /// pinned tags, which Lucas pins, unpins and drags into his own order, what
 /// choosing a tag lists, and renaming a tag with Rename…, on the default
-/// ladder. All Tags has tests of its own (`CardsWindowAllTagsTests`).
+/// scheduler. All Tags has tests of its own (`CardsWindowAllTagsTests`).
 struct CardsWindowTagsTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -218,8 +218,8 @@ struct CardsWindowTagsTests {
     /// Opens the Cards window and reads Lucas's cards, as the window does
     /// once it listens for the reasons to read them again.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 

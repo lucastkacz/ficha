@@ -32,9 +32,9 @@ extension Engine {
     /// Records Lucas's answer to a card from its card notification, in
     /// `appearance`, with one of the notification's buttons, and returns the
     /// card whose notification comes next, or nil once none is left. The
-    /// answer, the end of a new card's first view or a review with his
-    /// rating, goes into the review log as an appearance's, with no response
-    /// time, since nothing measures how long he looked at the card. An answer
+    /// answer, a review with his rating, a new card's first review too, goes
+    /// into the review log as an appearance's, with no response time, since
+    /// nothing measures how long he looked at the card. An answer
     /// to a card the appearance didn't bring is refused. The next card is the
     /// first of the appearance's after this one that he can still answer, as
     /// `ReviewSettings.nextCard` says: one he rated in the app, flagged or
@@ -55,7 +55,7 @@ extension Engine {
         return try write { db in
             try recordAnswer(
                 kind, of: answered, at: answeredAt, responseTime: nil, trigger: .appearance, settings: settings,
-                reviewingAhead: false, in: db)
+                reviewingAhead: false, ids: ids, in: db)
             let cards = try cardsThatShowUp(in: db)
             let next = try settings.nextCard(
                 after: answered, in: appearance.ways, cards: cards.inReviews, now: answeredAt)

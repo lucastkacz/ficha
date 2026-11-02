@@ -29,7 +29,7 @@ final class AnkiImportingTests {
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 23, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
@@ -694,7 +694,8 @@ final class AnkiImportingTests {
 
         let cards = try engine.cards()
         #expect(cards.map(\.front) == ["tres", "three", "dos", "uno", "cuatro", "four"])
-        #expect(try cards.allSatisfy { try engine.standing(of: $0.id, on: ReviewSettings.defaults.ladder) == .new })
+        #expect(
+            try cards.allSatisfy { try engine.standing(of: $0.id, with: ReviewSettings.defaults.scheduler) == .new })
     }
 
     @Test(

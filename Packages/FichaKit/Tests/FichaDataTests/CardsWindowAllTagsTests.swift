@@ -8,16 +8,16 @@ import Testing
 /// several tags selected and acted on at once from one menu, Delete… and
 /// Clear Unused Tags with their questions, the drops onto a tag and between
 /// rows, and a tag's cards listed in All Tags' place, with Back, on the
-/// default ladder.
+/// default scheduler.
 struct CardsWindowAllTagsTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     // arte::barroco and geografía have a color, filosofía an emoji,
@@ -483,7 +483,7 @@ struct CardsWindowAllTagsTests {
         window.showCards(of: "economía")
 
         try engine.deleteTags(["economía"])
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(window.shownTag == nil)
         #expect(window.allTagsRows?.outline == [])
@@ -492,8 +492,8 @@ struct CardsWindowAllTagsTests {
     /// Opens the Cards window and reads Lucas's cards, as the window does
     /// once it listens for the reasons to read them again.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 

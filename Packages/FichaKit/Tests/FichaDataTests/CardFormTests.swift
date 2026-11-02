@@ -4,11 +4,11 @@ import Foundation
 import Testing
 
 /// Tests on the Cards window's form, which creates cards: from New Card, or
-/// from a capture in the inbox with Convert to Card, on the default ladder.
+/// from a capture in the inbox with Convert to Card, on the default scheduler.
 struct CardFormTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         engine = try Engine(location: .inMemory, time: time)
@@ -17,8 +17,8 @@ struct CardFormTests {
     /// Opens the Cards window and reads the cards, as the window does once
     /// it listens for the reasons to read them again.
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 
@@ -59,7 +59,7 @@ struct CardFormTests {
         #expect(added.tags == ["lenguaje", "ciencia"])
         #expect(added.source == "Un podcast")
         #expect(added.captureID == nil)
-        #expect(try engine.reviewNow(.defaults) == [.firstView(added)])
+        #expect(try engine.reviewNow(.defaults) == [.new(added)])
         let draft = try #require(window.cardForm?.draft)
         #expect(draft.front.text == "")
         #expect(draft.back.text == "")
@@ -107,7 +107,7 @@ struct CardFormTests {
 
         window.type(front: "petricor ")
         let typedBeforeReading = window.cardForm?.frontWarning
-        window.read(on: ladder)
+        window.read(with: scheduler)
 
         #expect(typedBeforeReading == nil)
         #expect(window.cardForm?.frontWarning == .repeats(petricor))
@@ -237,8 +237,8 @@ struct CardFormTests {
                 .concept, front: "La división de poderes en la Argentina",
                 back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
             in: engine)
-        try engine.climb(poderes, to: 2, movingForward: time)
-        let standing = try engine.standing(of: poderes.id, on: ladder)
+        try engine.climb(poderes, goods: 2, movingForward: time)
+        let standing = try engine.standing(of: poderes.id, with: scheduler)
         let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
         var window = openWindow()
         window.choose(.inbox)
@@ -257,7 +257,7 @@ struct CardFormTests {
         #expect(window.cardForm == nil)
         #expect(window.failure == nil)
         #expect(cards.first == poderes)
-        #expect(try engine.standing(of: poderes.id, on: ladder) == standing)
+        #expect(try engine.standing(of: poderes.id, with: scheduler) == standing)
         #expect(
             cards.dropFirst().map(\.front) == [
                 "¿Quién propone a los jueces de la Corte Suprema?", "¿Quién aprueba a los jueces de la Corte Suprema?",

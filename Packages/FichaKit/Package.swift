@@ -45,6 +45,22 @@ let package = Package(
     targets: [
         .target(
             name: "FichaCore",
+            dependencies: ["FichaFSRS"],
+            swiftSettings: [.treatAllWarnings(as: .error)]
+        ),
+        // fsrs-rs, Anki's FSRS library, through our crate in `Rust/`, which
+        // `make fsrs` builds from source into this XCFramework of static
+        // libraries, for the Mac, the iPhone and its simulator, never committed
+        // (ADR 0026).
+        .binaryTarget(
+            name: "CFichaFSRS",
+            path: "Frameworks/CFichaFSRS.xcframework"
+        ),
+        // The crate's C interface in Swift's types and FichaCore's names,
+        // which FichaCore schedules with.
+        .target(
+            name: "FichaFSRS",
+            dependencies: ["CFichaFSRS"],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
         // The SVG drawer, which draws the SVGs an import brings in with WebKit,
@@ -89,6 +105,13 @@ let package = Package(
         .testTarget(
             name: "FichaCoreTests",
             dependencies: ["FichaCore"],
+            swiftSettings: [.treatAllWarnings(as: .error)]
+        ),
+        // The tests that call fsrs-rs through FichaFSRS: against fsrs-rs's own
+        // expected values, and with parameters it can't work with.
+        .testTarget(
+            name: "FichaFSRSTests",
+            dependencies: ["FichaFSRS"],
             swiftSettings: [.treatAllWarnings(as: .error)]
         ),
         .testTarget(

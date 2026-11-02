@@ -9,7 +9,7 @@ import Testing
 final class CardsWindowImportTests {
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
     /// A folder of the test's own, for the files it imports.
     let folder = URL.temporaryDirectory.appending(
         path: "FichaCardsWindowImportTests-\(UUID().uuidString)",
@@ -19,7 +19,7 @@ final class CardsWindowImportTests {
     init() throws {
         let calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
@@ -38,8 +38,8 @@ final class CardsWindowImportTests {
     /// Opens the Cards window, reads the cards, and opens the Import sheet
     /// on the file `name` with `text`, as choosing it in the open panel does.
     private func importSheet(on name: String, _ text: String) async throws -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         window.startImport()
         await window.previewImportAndWait(of: try file(name, text))
         return window
@@ -50,8 +50,8 @@ final class CardsWindowImportTests {
     private func ankiImportSheet(on name: String, _ package: AnkiPackage) async throws -> CardsWindowState {
         let file = folder.appending(path: name)
         try package.write(to: file)
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         window.startImport()
         await window.previewImportAndWait(of: file)
         return window
@@ -62,8 +62,8 @@ final class CardsWindowImportTests {
     )
     func choosingAFileShowsItsPreview() async throws {
         try approveCard("serendipia", in: engine)
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
 
         window.startImport()
         let beforeChoosing = window.importing
@@ -332,7 +332,7 @@ final class CardsWindowImportTests {
         ])
         let file = folder.appending(path: "Inglés.apkg")
         try package.write(to: file)
-        var window = engine.openCardsWindow(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
         window.startImport()
 
         await window.previewImportAndWait(of: file)
@@ -353,8 +353,8 @@ final class CardsWindowImportTests {
         "while the file chosen is read, the sheet says so, and a reading that ends after the sheet closed shows nothing"
     )
     func whileTheFileIsReadTheSheetSaysSo() async throws {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         window.startImport()
         let file = try file("Palabras.txt", "efímero\tQue dura poco.\n")
 
@@ -394,7 +394,7 @@ final class CardsWindowImportTests {
 
     @Test("a file that can't be read leaves the sheet where it was, saying why until it's dismissed")
     func aFileThatCantBeReadSaysWhy() async throws {
-        var window = engine.openCardsWindow(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
         window.startImport()
 
         await window.previewImportAndWait(of: folder.appending(path: "Nada.txt"))

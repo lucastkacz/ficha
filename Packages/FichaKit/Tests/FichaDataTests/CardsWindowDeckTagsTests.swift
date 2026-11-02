@@ -7,10 +7,10 @@ import Testing
 /// card list while the sidebar chose a deck, with each tag its cards carry
 /// and how many do, the most first, the ones that fit and "+N more" for the
 /// rest, and one of them chosen at a time, which narrows the list to the
-/// deck's cards that carry it, on the default ladder.
+/// deck's cards that carry it, on the default scheduler.
 struct CardsWindowDeckTagsTests {
     let engine: Engine
-    let ladder = ReviewSettings.defaults.ladder
+    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -164,8 +164,8 @@ struct CardsWindowDeckTagsTests {
     }
 
     private func openWindow() -> CardsWindowState {
-        var window = engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         return window
     }
 }

@@ -76,7 +76,7 @@ enum Window: String {
     /// package.
     case cardsImportAnki = "cards-import-anki"
     /// The Cards window once that Anki package came in with its progress,
-    /// with a card it put on a step selected, and reviewed since.
+    /// with a card it brought Anki's interval to selected, and reviewed since.
     case cardsAnkiImported = "cards-anki-imported"
     /// The Cards window with its Import sheet showing the preview of a zip
     /// of cards whose images weigh 240 MB, while sync is on, which says they
@@ -92,8 +92,8 @@ enum Window: String {
     /// Settings, on its Review panel tab, which holds the forgotten-often
     /// count, with those settings not Ficha's.
     case reviewPanel = "review-panel"
-    /// Settings, on its Ladder tab, with those settings not Ficha's.
-    case ladder
+    /// Settings, on its Scheduling tab, with those settings not Ficha's.
+    case scheduling
     /// Settings, on its Sync tab, once the Mac synced.
     case sync
     /// Settings, on its Sync tab, on a Mac signed out of iCloud.
@@ -130,8 +130,18 @@ enum Window: String {
     /// The review panel on a new card in Ciencias › Psicología, a deck inside
     /// Ciencias, whose color and emoji it shows, with its three tags, drawn
     /// on a gradient in a window, since the panel's own has nothing behind
-    /// its Liquid Glass below the desktop picture.
+    /// its Liquid Glass below the desktop picture. `--key space` flips it,
+    /// showing the four buttons with their intervals.
     case panelCard = "panel-card"
+    /// The same on the sample's graduated card that waits longest, once it's
+    /// due, which `--key space` flips, showing the intervals of days or months
+    /// the four buttons would set.
+    case panelReview = "panel-review"
+    /// The Cards window with a sample card that goes both ways selected, its
+    /// back-first way rated Again and then Good, its detail scrolled to its
+    /// end, below both ways' interval, due time, stability, difficulty and
+    /// retrievability: its chart, with a line for each way, and its key.
+    case cardsBothWays = "cards-both-ways"
 }
 
 /// What the tool was asked to draw.
@@ -370,10 +380,10 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
-                 package), cards-anki-imported (once it came in, a card it put on a step selected),
+                 package), cards-anki-imported (once it came in, a card it brought progress to selected),
                  cards-import-heavy (previewing a zip whose images weigh 240 MB, while sync is on), backups
                  (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
-                 or ladder (Settings on those tabs, with the settings that decide progress not Ficha's), sync
+                 or scheduling (Settings on those tabs, with the settings that decide progress not Ficha's), sync
                  (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
                  full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
                  in iCloud), sync-restored (off after a restore), sync-chosen-decks (syncing only the cards in
@@ -486,12 +496,15 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 
 /// An engine at `location` with Ficha Dev's sample cards, as Lucas would have
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
-/// the first day and climbing at different paces, two sent back to the first
-/// step, one flagged with a note and one buried, and the rest new, with a
-/// capture waiting in the inbox; and then a new card with a flag on its front
-/// and the Sun of May and a sound on its back, and two new cards made by
-/// hand, with no type and no capture. The time it's on stays where the twelve
-/// days left it.
+/// the first day, rated Good, Again or Hard, sixteen of them graduated since
+/// at different paces, two rated Easy and two after a lapse, and four still in
+/// their learning steps, one flagged with a note and one buried, and the
+/// rest new, with a capture waiting in the inbox; and then a new card with a
+/// flag on its front and the Sun of May and a sound on its back, and two new
+/// cards made by hand, with no type and no capture. The time it's on stays
+/// where the twelve days left it. FSRS fuzzes each interval by the review
+/// log's IDs, which count up from the same first on every run, so every
+/// run's graduated intervals and due times are the same.
 func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time: ManualTimeSource) {
     var calendar = Calendar(identifier: .gregorian)
     guard let buenosAires = TimeZone(identifier: "America/Argentina/Buenos_Aires") else {
@@ -502,32 +515,41 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
         throw RenderError(description: "Couldn't make the sample's start date.")
     }
     let time = ManualTimeSource(now: start)
-    let engine = try Engine(location: location, time: time, calendar: calendar)
+    let engine = try Engine(location: location, time: time, ids: CountingIDSource(), calendar: calendar)
     let settings = ReviewSettings.defaults
     try SampleCards.load(into: engine)
     let cards = try engine.cards()
 
     /// Reviews the cards in `range` that are due with `rating`.
     func review(_ range: Range<Int>, _ rating: Rating) throws {
-        for card in cards[range] where try engine.standing(of: card.id, on: settings.ladder).isDue(at: time.now) {
+        for card in cards[range] where try engine.standing(of: card.id, with: settings.scheduler).isDue(at: time.now) {
             try engine.record(
                 .review(rating), of: card.id, responseTime: .seconds(3), trigger: .reviewNow, settings: settings)
         }
     }
 
-    for card in cards[0..<20] {
-        try engine.record(.firstView, of: card.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
+    /// Meets the cards in `range`, new, rating each first review `rating`.
+    func meet(_ range: Range<Int>, _ rating: Rating) throws {
+        for card in cards[range] {
+            try engine.record(
+                .review(rating), of: card.id, responseTime: .seconds(8), trigger: .reviewNow, settings: settings)
+        }
     }
+
+    try meet(0..<14, .good)
+    try meet(14..<18, .again)
+    try meet(18..<20, .hard)
     time.advance(by: hours(1))
     try review(0..<18, .good)
     time.advance(by: hours(4))
     try review(0..<16, .good)
     try review(16..<18, .hard)
     time.advance(by: hours(2 * 24))
-    try review(0..<12, .good)
+    try review(0..<10, .good)
+    try review(10..<12, .easy)
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
-    try review(0..<8, .good)
+    try review(0..<16, .good)
     // A capture that waits in the inbox, for Convert to Card: the inbox lists
     // it after the flagged card, which comes later.
     let capture = try engine.capture(
@@ -650,9 +672,10 @@ func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws 
 /// The Cards window's state partway through importing an Anki package, as
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
-/// Anki tags, two cards Anki was reviewing, which Bring progress puts on a
-/// step, a card the sample cards have, a card with two images on its front,
-/// of which the first comes in, and a card whose back is only a sound, one
+/// Anki tags, two cards Anki had progress on, which Bring progress brings in
+/// due when Anki had them due, the femur with Anki's reviews of it, a card
+/// the sample cards have, a card with two images on its front, of which the
+/// first comes in, and a card whose back is only a sound, one
 /// whose front is only an image the package lacks and an Image Occlusion
 /// note, which stay out. The file goes once it's read.
 func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
@@ -671,8 +694,9 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
 }
 
 /// The app's model on the sample cards, once the sample Anki package came in
-/// with its progress, and four days later, the card of the femur, which it
-/// put on the 12-day step, was reviewed with Know it, on time.
+/// with its progress, and four days later, the card of the femur, which came
+/// in with Anki's five reviews of it, the last setting its 10 days, was
+/// reviewed with Good, once due.
 func ankiImportedModel() throws -> AppModel {
     let (engine, time) = try sampleEngine(at: .inMemory)
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
@@ -681,8 +705,7 @@ func ankiImportedModel() throws -> AppModel {
     defer { try? FileManager.default.removeItem(at: file) }
     let settings = ReviewSettings.defaults
     _ = try engine.importCards(
-        waitFor { try await engine.previewImport(of: file) },
-        choosing: ImportChoices(progress: .brought(onto: settings.ladder)))
+        waitFor { try await engine.previewImport(of: file) }, choosing: ImportChoices(progress: .brought))
     guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
         throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
     }
@@ -692,18 +715,23 @@ func ankiImportedModel() throws -> AppModel {
 }
 
 /// The app's model on the sample cards, whose settings that decide progress,
-/// in the database, aren't Ficha's, as another device may have left them: a
-/// ladder of five steps, from 20 minutes to 60 days, 8 new cards a day, and
-/// the offer to flag a card forgotten often after 6 reviews rated again.
+/// in the database, aren't Ficha's, as another device may have left them:
+/// learning steps of 10 minutes, 1 hour and 6 hours, a relearning step of 20
+/// minutes, a desired retention of 87%, a longest interval of 3,650 days, 8
+/// new cards a day, and the offer to flag a card forgotten often after 6
+/// lapses.
 func progressSettingsModel() throws -> AppModel {
     let engine = try sampleEngine(at: .inMemory).engine
-    let day = 24 * 60
-    guard let ladder = Ladder(waits: [20, day, 4 * day, 14 * day, 60 * day].map { Duration.minutes($0) }) else {
+    guard
+        let scheduler = Scheduler(
+            learningSteps: [.minutes(10), .minutes(60), .minutes(6 * 60)], relearningSteps: [.minutes(20)],
+            desiredRetention: 0.87, longestIntervalInDays: 3_650, parameters: [])
+    else {
         throw RenderError(
-            description: "The sample's ladder has waits that don't grow step by step: fix progressSettingsModel().")
+            description: "The sample's scheduling settings break the scheduler's rules: fix progressSettingsModel().")
     }
     try engine.saveProgressSettings(
-        ProgressSettings(ladder: ladder, newCardsPerDay: 8, forgottenOftenAfter: 6),
+        ProgressSettings(scheduler: scheduler, newCardsPerDay: 8, forgottenOftenAfter: 6),
         changedFrom: ReviewSettings.defaults.progress)
     return try AppModel(engine: engine)
 }
@@ -837,7 +865,7 @@ func giveSampleDecksLooks(in engine: Engine) throws {
 /// `cards-decks`, `cards-deck-tag` and `cards-delete-deck` start.
 func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
     var state = model.openCardsWindow()
-    state.read(on: state.ladder)
+    state.read(with: state.scheduler)
     state.setDeckOpen(false, "Ciencias")
     state.setDeckOpen(false, "Humanidades")
     state.choose(.cards(.deck(deck)))
@@ -878,7 +906,7 @@ func giveSampleUserTypes(in engine: Engine) throws {
 /// Chooses the user type named `name` in the sidebar of the Cards window
 /// `state`, and selects its card fronted `front`.
 func chooseUserType(_ name: String, selecting front: String, in state: inout CardsWindowState) throws {
-    state.read(on: state.ladder)
+    state.read(with: state.scheduler)
     guard let type = state.pickerTypes.first(where: { $0.userType?.name == name }) else {
         throw RenderError(
             description: "The Cards window doesn't list the type “\(name)”: fix giveSampleUserTypes(in:).")
@@ -906,6 +934,33 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
             description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
     }
     sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
+}
+
+/// Scrolls the detail of the Cards window `window`, once it shows, to its
+/// end, where a card's chart and its key show below the rows of its ways,
+/// for the same reason as `scrollSidebarToEnd(of:)`.
+func scrollDetailToEnd(of window: NSWindow) throws {
+    // The sidebar and the table scroll too: the detail is the one on the right.
+    let detail = scrollViews(in: window.contentView).max {
+        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
+    }
+    guard let detail, let document = detail.documentView else {
+        throw RenderError(description: "The Cards window shows no detail to scroll: fix scrollDetailToEnd(of:).")
+    }
+    let clip = detail.contentView
+    // Past the bar under the detail, which insets the scroll view's end, as
+    // scrolling there does in the app.
+    let end =
+        document.isFlipped ? max(0, document.bounds.height - clip.bounds.height + detail.contentInsets.bottom) : 0
+    clip.scroll(to: NSPoint(x: clip.bounds.minX, y: end))
+    detail.reflectScrolledClipView(clip)
+}
+
+/// The scroll views in `view` and the views inside it.
+func scrollViews(in view: NSView?) -> [NSScrollView] {
+    guard let view else { return [] }
+    if let scrollView = view as? NSScrollView { return [scrollView] }
+    return view.subviews.flatMap(scrollViews(in:))
 }
 
 /// The outline views in `view` and the views inside it.
@@ -1022,7 +1077,7 @@ func zipFiles(_ files: [URL], into file: URL, describing described: String) thro
 /// card of the femur selected, so the detail shows its review log.
 func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
     var state = model.openCardsWindow()
-    state.read(on: state.ladder)
+    state.read(with: state.scheduler)
     guard case .success(.cards(let rows)) = state.listing, let femur = rows.first(where: { $0.card.front == "fémur" })
     else {
         throw RenderError(description: "The Cards window doesn't list the sample Anki package's card of the femur.")
@@ -1076,7 +1131,8 @@ func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
 /// at 4 in the morning in Buenos Aires, its Basic, Cloze and Image Occlusion
 /// note types, a deck of medicine with two subdecks, and the notes, with
 /// their cards: the femur's in review, every 10 days, due on Anki's day 22,
-/// 23 October; the systole's relearning, due on day 20, 21 October; and the
+/// 23 October, with Anki's reviews of it; the systole's relearning, due on
+/// day 20, 21 October, with none; and the
 /// rest new, among them one in Default whose front shows the flag and the
 /// Sun of May, of which the first comes in, and one whose front is only an
 /// image the package lacks.
@@ -1127,6 +1183,16 @@ func sampleAnkiCollectionSQL() throws -> String {
     // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
     // by the notes' places above: in review, and relearning across days.
     let progress: [Int: (type: Int, queue: Int, due: Int, interval: Int)] = [0: (2, 2, 22, 10), 5: (3, 3, 20, 1)]
+    // Anki's reviews of the cards, by the notes' places above, each its
+    // seconds after the collection's creation, its button, its `ivl` and its
+    // `type`: the femur's two learning steps on 2 October, and its reviews
+    // since, the last on 13 October, which set its 10 days.
+    let revlog: [Int: [(after: Int, button: Int, interval: Int, type: Int)]] = [
+        0: [
+            (30 * 3_600, 3, -600, 0), (30 * 3_600 + 600, 3, 1, 0), (54 * 3_600, 3, 3, 1), (126 * 3_600, 3, 7, 1),
+            (294 * 3_600, 3, 10, 1),
+        ]
+    ]
     var sql = """
         CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
           ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
@@ -1139,6 +1205,9 @@ func sampleAnkiCollectionSQL() throws -> String {
           due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
           lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
           flags integer NOT NULL, data text NOT NULL);
+        CREATE TABLE revlog (id integer PRIMARY KEY, cid integer NOT NULL, usn integer NOT NULL, ease integer NOT NULL,
+          ivl integer NOT NULL, lastIvl integer NOT NULL, factor integer NOT NULL, time integer NOT NULL,
+          type integer NOT NULL);
         INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2,"creationOffset":180}', \
         \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
 
@@ -1159,6 +1228,13 @@ func sampleAnkiCollectionSQL() throws -> String {
                 \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
 
                 """
+            for entry in revlog[index] ?? [] {
+                sql += """
+                    INSERT INTO revlog VALUES (\((1_790_838_000 + entry.after) * 1_000), \(noteID * 10 + ordinal), 0, \
+                    \(entry.button), \(entry.interval), 0, 2500, 5000, \(entry.type));
+
+                    """
+            }
         }
     }
     return sql
@@ -1195,6 +1271,13 @@ func model(for name: Window) throws -> AppModel {
         let engine = try sampleEngine(at: .inMemory).engine
         try giveSampleDecksLooks(in: engine)
         return try AppModel(engine: engine)
+    case .panelReview:
+        let (engine, time) = try sampleEngine(at: .inMemory)
+        try giveSampleDecksLooks(in: engine)
+        let due = try longestWaitingSampleCard(in: engine).due
+        time.advance(by: due.timeIntervalSince(time.now))
+        return try AppModel(engine: engine)
+    case .cardsBothWays: return try bothWaysModel()
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
@@ -1273,7 +1356,7 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil)
         }
-    case .appearances, .reviewPanel, .ladder: return try progressSettingsModel()
+    case .appearances, .reviewPanel, .scheduling: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
     case .backups: return try AppModel(engine: try backupsEngine())
     case .backupsFailed:
@@ -1358,7 +1441,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return window
     case .cardsNewDeck:
         var state = model.openCardsWindow()
-        state.read(on: state.ladder)
+        state.read(with: state.scheduler)
         state.choose(.cards(.deck("Idiomas::Español")))
         state.openNewCardForm()
         state.askForNewDeck(in: .form)
@@ -1373,7 +1456,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return window
     case .cardsNewType:
         var state = model.openCardsWindow()
-        state.read(on: state.ladder)
+        state.read(with: state.scheduler)
         state.openNewCardForm()
         state.askForNewType(in: .form)
         let window = CardsWindow(model: model)
@@ -1393,7 +1476,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .menuICloudFull: return menuWindow(model: model)
     case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
     case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
-    case .ladder: return settingsTabWindow(model: model, openingOn: .ladder)
+    case .scheduling: return settingsTabWindow(model: model, openingOn: .scheduling)
     case .about: return settingsTabWindow(model: model, openingOn: .about)
     case .startAtLogin:
         // The alert's own window, laid out as `runModal()` would show it,
@@ -1406,17 +1489,71 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         mac.focusChanged(holdsBack: true)
         return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
     case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
+    case .panelReview:
+        return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).row.card.front) {
+            .review($0)
+        }
+    case .cardsBothWays:
+        var state = model.openCardsWindow()
+        state.read(with: state.scheduler)
+        guard case .success(.cards(let rows)) = state.listing,
+            let bothWays = rows.first(where: { $0.backFirst != nil })
+        else {
+            throw RenderError(description: "No sample card goes both ways: fix bothWaysModel().")
+        }
+        state.select([bothWays.id])
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
     }
 }
 
-/// The review panel on the sample's new card whose front is `front`, as an
-/// appearance brings it, on a gradient in a window, so that its Liquid Glass
-/// has something to show through, as the README's pictures draw it.
-func panelWindow(model: AppModel, on front: String) throws -> NSWindow {
+/// The row of the sample's graduated card in the reviews that waits longest,
+/// front first, as the Cards window lists it, and when it's due.
+func longestWaitingSampleCard(in engine: Engine) throws -> (row: CardRow, due: Date) {
+    let rows = try engine.cardRows(in: .all, with: ReviewSettings.defaults.scheduler)
+    let graduated = rows.filter { $0.frontFirst.standing.stage == .graduated }.compactMap { row in
+        row.frontFirst.due.map { (row: row, due: $0) }
+    }
+    guard let longest = graduated.max(by: { $0.row.frontFirst.intervalColumn < $1.row.frontFirst.intervalColumn })
+    else {
+        throw RenderError(description: "No sample card graduated: fix sampleEngine(at:).")
+    }
+    return longest
+}
+
+/// The app's model on the sample cards, once the card of serendipia, which
+/// graduated front first, goes both ways, and its back-first way was met,
+/// rated Again, and then Good when due, which puts it on the second learning
+/// step.
+func bothWaysModel() throws -> AppModel {
+    let (engine, time) = try sampleEngine(at: .inMemory)
+    let settings = ReviewSettings.defaults
+    guard let card = try engine.cards().first(where: { $0.front == "serendipia" }) else {
+        throw RenderError(description: "No sample card's front is “serendipia”: fix SampleCards.swift.")
+    }
+    try engine.setBothWays(true, of: [card.id])
+    try engine.record(
+        .review(.again), of: card.id, way: .backFirst, responseTime: .seconds(9), trigger: .reviewNow,
+        settings: settings)
+    time.advance(by: hours(1))
+    try engine.record(
+        .review(.good), of: card.id, way: .backFirst, responseTime: .seconds(5), trigger: .reviewNow,
+        settings: settings)
+    return try AppModel(engine: engine)
+}
+
+/// The review panel on the sample's card whose front is `front`, as an
+/// appearance brings it, new unless `panelCard` says otherwise, on a gradient
+/// in a window, so that its Liquid Glass has something to show through, as
+/// the README's pictures draw it.
+func panelWindow(
+    model: AppModel, on front: String, as panelCard: (Card) -> PanelCard = { .new($0) }
+) throws -> NSWindow {
     guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
         throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
     }
-    let panel = model.startAppearance(with: [.firstView(card)])
+    let panel = model.startAppearance(with: [panelCard(card)])
     let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -1802,6 +1939,10 @@ do {
     // which a click in the sidebar can't reach there.
     if [.cardsTags, .cardsTypes].contains(name) {
         try scrollSidebarToEnd(of: window)
+        try wait(0.5)
+    }
+    if name == .cardsBothWays {
+        try scrollDetailToEnd(of: window)
         try wait(0.5)
     }
     for action in request.actions {

@@ -262,7 +262,7 @@ final class ImageTests {
 
         let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(.defaults), settings: .defaults)
 
-        #expect(panel.content == .firstView(hornero))
+        #expect(panel.content == .upperSide(hornero, isNew: true))
         #expect(try panel.images[bird]?.get() == engine.image(bird))
         #expect(try panel.images[nest]?.get() == engine.image(nest))
     }

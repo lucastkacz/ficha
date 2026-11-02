@@ -103,22 +103,22 @@ final class SyncedFilesTests {
         try await iPhone.iCloud.sendChanges()
         try await iPhone.iCloud.fetchChanges(in: iCloud.zones.filter { $0 != .files })
         let hornero = try iPhone.engine.card(fronted: "¿Qué pájaro es?")
-        let ladder = ReviewSettings.defaults.ladder
-        var window = iPhone.engine.openCardsWindow(on: ladder)
-        window.read(on: ladder)
+        let scheduler = ReviewSettings.defaults.scheduler
+        var window = iPhone.engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
         window.select([hornero.id])
 
         let panel = try iPhone.engine.openPanel(
             .reviewNow, with: iPhone.engine.reviewNow(.defaults), settings: .defaults)
 
-        #expect(panel.content == .firstView(hornero))
+        #expect(panel.content == .upperSide(hornero, isNew: true))
         #expect(panel.images[bird] == nil)
         #expect(panel.sounds[song] == nil)
         #expect(window.images[bird] == nil)
         #expect(window.sounds[song] == nil)
 
         try await iPhone.syncNow()
-        window.read(on: ladder)
+        window.read(with: scheduler)
         let panelOnceThere = try iPhone.engine.openPanel(
             .reviewNow, with: iPhone.engine.reviewNow(.defaults), settings: .defaults)
 
@@ -252,7 +252,7 @@ final class SyncedFilesTests {
         try await mac.iCloud.sendChanges()
         let before = try mac.engine.progressSettings()
         var changed = before
-        changed.ladder = try #require(Ladder(waits: [.seconds(hours(1)), .seconds(days(1))]))
+        changed.newCardsPerDay = 3
         try mac.engine.saveProgressSettings(changed, changedFrom: before)
         try await mac.iCloud.fetchChanges()
         try await mac.iCloud.sendChanges()

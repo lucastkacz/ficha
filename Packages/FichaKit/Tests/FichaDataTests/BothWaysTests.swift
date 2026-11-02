@@ -15,16 +15,18 @@ struct BothWaysTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    @Test("a new card goes one way, and Both ways turns on and off for one card or several at once, on their steps")
+    @Test(
+        "a new card goes one way, and Both ways turns on and off for one card or several at once, keeping their progress"
+    )
     func bothWaysTurnsOnAndOffForOneCardOrSeveral() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
-        try engine.climb(serendipia, to: 2, movingForward: time)
-        let standing = try engine.standing(of: serendipia.id, on: settings.ladder)
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         let log = try engine.reviewLog()
         let newCards = try engine.cards()
 
@@ -42,7 +44,7 @@ struct BothWaysTests {
         #expect(afterSeveral == [true, true, true])
         #expect(try engine.cards().map(\.bothWays) == [false, true, false])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == standing)
+        #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
     }
 
     // Changing what a card holds, in the Cards window or in a refine session,
@@ -79,7 +81,7 @@ struct BothWaysTests {
         time.advance(by: minutes(10))
         try engine.meet(serendipia, way: .backFirst)
         time.advance(by: hours(1))
-        let backFirst = try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder)
+        let backFirst = try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler)
 
         let oneWay = try engine.setBothWays(false, of: [serendipia.id])
         let whileOff = try engine.reviewNow(settings)
@@ -87,7 +89,7 @@ struct BothWaysTests {
 
         #expect(whileOff == [.review(oneWay[0])])
         #expect(try engine.reviewNow(settings) == [.review(bothWays[0]), .review(bothWays[0], .backFirst)])
-        #expect(try engine.standing(of: serendipia.id, way: .backFirst, on: settings.ladder) == backFirst)
+        #expect(try engine.standing(of: serendipia.id, way: .backFirst, with: settings.scheduler) == backFirst)
     }
 
     @Test("Both ways turns on for none of the cards when one of them doesn't exist")

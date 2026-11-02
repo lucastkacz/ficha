@@ -126,7 +126,7 @@ extension CardsWindowState {
             return false
         }
         followUp(&self)
-        read(on: ladder)
+        read(with: scheduler)
         return true
     }
 
@@ -239,7 +239,7 @@ extension CardsWindowState {
             return false
         }
         follow([.rename(tag, to: renamed)])
-        read(on: ladder)
+        read(with: scheduler)
         return true
     }
 

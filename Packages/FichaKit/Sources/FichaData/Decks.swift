@@ -240,20 +240,20 @@ extension Engine {
     }
 
     /// Every deck `decks()` lists, in its order, each with its counts, each
-    /// card standing on `ladder` now, in one read: a deck no card lives in
-    /// counts none. With `asTheSyncTabLists`, as `ficha decks` lists them, it
-    /// lists every deck the Sync tab lists to choose from instead, whatever
-    /// selective sync hides here: Default first, whether or not it holds
-    /// cards, then every deck with a row, every deck a card lives in, and
-    /// every deck those sit inside.
-    public func countedDecks(on ladder: Ladder, asTheSyncTabLists: Bool = false) throws(EngineError)
+    /// card standing as `scheduler` replays its log now, in one read: a deck
+    /// no card lives in counts none. With `asTheSyncTabLists`, as `ficha
+    /// decks` lists them, it lists every deck the Sync tab lists to choose
+    /// from instead, whatever selective sync hides here: Default first,
+    /// whether or not it holds cards, then every deck with a row, every deck
+    /// a card lives in, and every deck those sit inside.
+    public func countedDecks(with scheduler: Scheduler, asTheSyncTabLists: Bool = false) throws(EngineError)
         -> [CountedDeck]
     {
         let now = time.now
         return try read { db in
             let own = try OwnDecks(in: db)
             var counts: [String: (cards: Int, due: Int)] = [:]
-            for row in try FichaData.cardRows(in: .all, matching: "", on: ladder, at: now, in: db) {
+            for row in try FichaData.cardRows(in: .all, matching: "", with: scheduler, at: now, in: db) {
                 let isDue = row.isDue(at: now)
                 for deck in TagPath.lineage(of: row.card.deck) {
                     counts[deck, default: (0, 0)].cards += 1
@@ -287,7 +287,7 @@ extension Engine {
     /// Moves the cards with the ids `cardIDs` to the deck `deck`, by its whole
     /// name, its levels cleaned up as `makeDeck(named:)` cleans them up, or
     /// to Default, by `Deck.defaultName`, in one write: Change Deck. Each
-    /// card keeps its step, its review log and its tags, and the change syncs
+    /// card keeps its progress, its review log and its tags, and the change syncs
     /// as one to its deck. The deck is made on this device, as
     /// `makeDeck(named:)` makes it, also when it's there already. Refuses a
     /// name `makeDeck(named:)` refuses, and a card that isn't there, moving

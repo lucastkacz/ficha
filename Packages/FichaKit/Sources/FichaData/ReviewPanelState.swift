@@ -5,9 +5,9 @@ import Foundation
 /// it brought, which Lucas goes through one at a time, what the panel shows of
 /// the card he's on, its deck and tags included, whether the panel may have the
 /// keyboard, and how it closes. Each card comes one of its ways, front first
-/// or back first, and his answers move only that way. He ends a new way's
-/// first view, back first once he flipped it, and flips and rates a due way,
-/// or one he reviews ahead. He plays a side's sound
+/// or back first, and his answers move only that way. He flips and rates a
+/// new way, in its first review, a due way, or one he reviews ahead. He plays
+/// a side's sound
 /// only when he asks, one at a time, until he answers the card, writes about
 /// it or leaves it, or the panel closes. He can also flag any card
 /// with a note on what to fix, or bury it, and ask questions about it, each a
@@ -40,16 +40,14 @@ public struct ReviewPanelState: Sendable {
         /// Review now brought no cards: none is due, and no new card is
         /// waiting today. "See more" can bring cards to review ahead.
         case nothingToReview
-        /// A new way of a card, whole, for its first view: front first from
-        /// the start, and back first once Lucas flipped it.
-        case firstView(Card, Way = .frontFirst)
         /// A way of a card, its upper side alone, for Lucas to remember the
-        /// other: a due way, one he reviews ahead, or a new back-first way,
-        /// in its first view, marked as new.
+        /// other: a due way, one he reviews ahead, or a new way, in its first
+        /// review, marked as new.
         case upperSide(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
-        /// A due way of a card, or one Lucas reviews ahead, its upper side
-        /// and its lower side, for him to rate it.
-        case bothSides(Card, Way = .frontFirst, isAhead: Bool = false)
+        /// A way of a card, its upper side and its lower side, for Lucas to
+        /// rate it: a due way, one he reviews ahead, or a new way, marked as
+        /// new.
+        case bothSides(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
         /// The card Lucas is on, as it showed, its lower side included or
         /// not, while he writes a note on what to fix in it, also when the
         /// panel offers to flag it.
@@ -72,7 +70,7 @@ public struct ReviewPanelState: Sendable {
 
     /// What Lucas did that couldn't be saved.
     public enum FailedAction: Sendable, Equatable {
-        /// He ended a first view, or rated a card.
+        /// He rated a card.
         case answer
         /// He flagged a card.
         case flag
@@ -85,6 +83,9 @@ public struct ReviewPanelState: Sendable {
         /// He went through every card, and the panel looked for more to
         /// offer.
         case lookForMore
+        /// He turned a card over, or ⌘Z showed its lower side again, and the
+        /// panel worked out the interval each of its buttons would set.
+        case workOutIntervals
     }
 
     /// What opened the panel: Lucas, with review now, or an appearance.
@@ -139,6 +140,10 @@ public struct ReviewPanelState: Sendable {
     private var cardShownAt = Duration.zero
     /// Whether the card Lucas is on shows its lower side: he flipped it.
     private var isFlipped = false
+    /// The interval each rating would set for the card Lucas is on, as the
+    /// scheduler worked them out when its lower side showed, and when, or
+    /// nil until it shows, or when they couldn't be worked out.
+    private var shownIntervals: (preview: IntervalPreview, at: Date)?
     /// The note Lucas is writing to flag the card he's on, while he writes
     /// it.
     private var flagging: Flagging?
@@ -202,9 +207,9 @@ public struct ReviewPanelState: Sendable {
     /// What the panel shows: the card Lucas is on, the way it came, its
     /// upper side alone or with its lower side, or as it showed while he
     /// writes a note to flag it or a question about it, or that there was
-    /// nothing to review, or that he went through every card. A first view
-    /// front first shows the whole card from the start; back first, its back
-    /// until he flips it, as a review does.
+    /// nothing to review, or that he went through every card. A new way
+    /// shows its upper side until he flips it, as a review does, marked as
+    /// new.
     public var content: Content {
         guard !cards.isEmpty else {
             return .nothingToReview
@@ -220,11 +225,26 @@ public struct ReviewPanelState: Sendable {
             return .asking(card, way, showsLowerSide: showsLowerSide)
         }
         return switch (current, showsLowerSide) {
-        case (.firstView, true): .firstView(card, way)
-        case (.firstView, false): .upperSide(card, way, isNew: true)
+        case (.new, false): .upperSide(card, way, isNew: true)
+        case (.new, true): .bothSides(card, way, isNew: true)
         case (.review, false), (.reviewAhead, false): .upperSide(card, way, isAhead: current.isAhead)
         case (.review, true), (.reviewAhead, true): .bothSides(card, way, isAhead: current.isAhead)
         }
+    }
+
+    /// The interval each of the four ratings would set for the card Lucas
+    /// is on, which the panel's buttons show once its lower side shows, as
+    /// Anki's do, and which his rating keeps (#404): worked out as the lower
+    /// side showed, so that what a button showed is what the card gets,
+    /// however long he takes. Nil while the panel shows anything else, or
+    /// when the scheduler couldn't work them out, as when it can't follow
+    /// the card's review log: then the buttons show none, and `failure`
+    /// says why.
+    public var intervals: IntervalPreview? {
+        guard case .bothSides = content else {
+            return nil
+        }
+        return shownIntervals?.preview
     }
 
     /// Whether "See more" has cards to bring, now that Lucas went through
@@ -280,21 +300,16 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Whether the card Lucas is on shows its lower side under its upper one:
-    /// a first view front first from the start, and otherwise once he flipped
-    /// it, also while he writes about it.
+    /// once he flipped it, also while he writes about it.
     var showsLowerSide: Bool {
-        switch current {
-        case .firstView(_, .frontFirst): true
-        case .firstView, .review, .reviewAhead: isFlipped
-        case nil: false
-        }
+        current != nil && isFlipped
     }
 
     /// Whether Lucas is on a card, as it shows, to answer, flag, bury or ask
     /// about it.
     var isOnACard: Bool {
         switch content {
-        case .firstView, .upperSide, .bothSides: true
+        case .upperSide, .bothSides: true
         case .nothingToReview, .flagging, .asking, .done: false
         }
     }
@@ -306,28 +321,37 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Shows the lower side of the card Lucas is on under its upper side:
-    /// Space, from its upper side alone, in a review or in a back-first first
-    /// view.
+    /// Space, from its upper side alone.
     public mutating func flip() {
         guard case .upperSide = content else { return }
         isFlipped = true
+        showIntervals()
         touch()
     }
 
-    /// Ends the first view of the new way of a card, once it shows whole,
-    /// which puts that way on the ladder's first step, with how long Lucas
-    /// took, and moves on to the next card: "Got it". When it can't be
-    /// saved, the card stays, and the panel says why.
-    public mutating func endFirstView() {
-        guard case .firstView = content else { return }
-        perform(.answer) { panel throws(EngineError) in
-            try panel.answer(.firstView, responseTime: panel.timeOnCard)
+    /// Works out the interval each rating would set for the card Lucas is
+    /// on, now, while its lower side shows, for its buttons to show and his
+    /// rating to keep, or none otherwise. When the scheduler can't work them
+    /// out, the buttons show none, and the panel says why, as when it can't
+    /// look for more cards: a rating then keeps the interval worked out as
+    /// he answers, if it can be.
+    private mutating func showIntervals() {
+        guard showsLowerSide, let current else {
+            shownIntervals = nil
+            return
+        }
+        let now = engine.now
+        do throws(EngineError) {
+            shownIntervals = (try engine.intervals(of: current.cardWay, at: now, settings: settings), now)
+        } catch {
+            shownIntervals = nil
+            failure = Failure(action: .workOutIntervals, error: error)
         }
     }
 
     /// Rates the way of the card Lucas reviews, once its lower side shows,
-    /// which moves that way on the ladder, with how long he took, and moves
-    /// on to the next card: in a review ahead, only again moves it. When a
+    /// which the scheduler spaces from then on, with how long he took, and
+    /// moves on to the next card: a new way's first review too. When a
     /// rating of again makes the card forgotten often, the panel stays on it
     /// and offers to flag it instead. When it can't be saved, the card stays,
     /// and the panel says why.
@@ -489,17 +513,19 @@ public struct ReviewPanelState: Sendable {
 
     /// Records Lucas's answer to the current card in the review log, with how
     /// long he took, and moves on to the next card: in a review ahead, as one.
-    /// When the engine says a rating of again made the card forgotten often,
+    /// Once the card's lower side showed, a review keeps the interval the
+    /// panel offered for its rating (`intervals`). When the engine says a
+    /// rating of again made the card forgotten often,
     /// the panel stays on it instead, flagging it, with the note written as
     /// how many times he forgot it the way it showed, and the card's time
     /// stopped at his answer. The panel's buttons answer through
-    /// `endFirstView()` and `rate(_:)`, which time him on the steady clock,
+    /// `rate(_:)`, which times him on the steady clock,
     /// and say what failed.
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
         let forgottenOften = try engine.record(
             kind, of: answering.card.id, way: answering.way, responseTime: responseTime, trigger: trigger,
-            settings: settings, reviewingAhead: answering.isAhead)
+            settings: settings, reviewingAhead: answering.isAhead, intervalsWorkedOutAt: shownIntervals?.at)
         // Also when the panel stays on the card, to offer to flag it.
         playingSound = nil
         guard let forgottenOften else {
@@ -585,6 +611,7 @@ public struct ReviewPanelState: Sendable {
         followUpsOnCard = last.followUps
         moreCards = []
         isFlipped = last.showedLowerSide
+        showIntervals()
         startTiming(from: last.timeOnCard)
         touch()
     }
@@ -617,6 +644,7 @@ public struct ReviewPanelState: Sendable {
         showSounds()
         followUpsOnCard = []
         isFlipped = false
+        shownIntervals = nil
         flagging = nil
         asking = nil
         startTiming()
@@ -678,7 +706,7 @@ public struct ReviewPanelState: Sendable {
 
 /// What Lucas did with a card in the review panel, which ⌘Z undoes.
 private enum PanelAction: Sendable {
-    /// He answered it: he ended its first view, or rated it.
+    /// He answered it: he rated it.
     case answered
     /// He flagged it.
     case flagged

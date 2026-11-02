@@ -63,7 +63,7 @@ extension CardsWindowState {
             try engine.renameDeck(deck, to: name)
         }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
         return done
     }
@@ -94,7 +94,7 @@ extension CardsWindowState {
             try engine.deleteDeck(deletion.deck)
         }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
     }
 
@@ -174,7 +174,7 @@ extension CardsWindowState {
             try engine.changeDeck(of: moving, to: deck)
         }
         if done {
-            read(on: ladder)
+            read(with: scheduler)
         }
         return done
     }
@@ -222,7 +222,7 @@ extension CardsWindowState {
         if let parent {
             closedDecks.subtract(TagPath.lineage(of: parent))
         }
-        read(on: ladder)
+        read(with: scheduler)
         return true
     }
 

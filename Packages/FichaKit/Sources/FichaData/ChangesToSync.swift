@@ -159,10 +159,15 @@ enum SyncedField: String, Sendable, CaseIterable {
     case chosenToSync
     /// The tag's place among the pinned tags, while it's pinned.
     case pin
-    // The settings that decide progress, each on its own.
-    case ladder
+    // The settings that decide progress, each on its own. The ladder's, which
+    // a version of Ficha before FSRS sent (#404), is read no more.
     case newCardsPerDay
     case forgottenOftenAfter
+    case learningSteps
+    case relearningSteps
+    case desiredRetention
+    case longestIntervalInDays
+    case fsrsParameters
     /// Whether only the cards in a deck the user chose sync, named when tags
     /// were chosen, as iCloud's records keep it (ADR 0024).
     case onlyChosenTags

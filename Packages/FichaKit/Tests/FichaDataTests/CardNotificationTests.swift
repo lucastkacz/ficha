@@ -4,9 +4,9 @@ import Foundation
 import Testing
 
 /// Tests on answering cards from their card notifications on the iPhone (ADR
-/// 0010), with the default settings: rating a card, or ending a new card's
-/// first view, which moves its appearance on to the next card, and leaving
-/// them alone or swiping them away, which snoozes it. They start at 9 in the
+/// 0010), with the default settings: rating a card, a new one as a due one,
+/// which moves its appearance on to the next card, and leaving them alone or
+/// swiping them away, which snoozes it. They start at 9 in the
 /// morning in Buenos Aires, when active hours start.
 struct CardNotificationTests {
     let calendar: Calendar
@@ -17,12 +17,14 @@ struct CardNotificationTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    // Nothing measures how long Lucas looked at a card notification.
+    // Nothing measures how long Lucas looked at a card notification. Good
+    // moves serendipia from its first review to the second learning step's
+    // 4 hours, and again puts ubuntu, a new card, on the first's hour.
     @Test(
-        "a rating or a first view from a card notification goes into the review log as an appearance's, with no response time"
+        "a rating from a card notification, a new card's first review too, goes into the review log as an appearance's, with no response time"
     )
     func answersFromCardNotificationsGoIntoTheReviewLog() throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
@@ -33,16 +35,43 @@ struct CardNotificationTests {
         time.move(to: try at(10, 1))
         _ = try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
         time.move(to: try at(10, 2))
-        _ = try engine.answerFromNotification(.firstView, of: ubuntu.id, in: appearance, settings: settings)
+        _ = try engine.answerFromNotification(.review(.again), of: ubuntu.id, in: appearance, settings: settings)
 
         #expect(
             try engine.reviewLog().suffix(2).map(\.withoutIDs) == [
                 ReviewLogEntry(
                     cardID: serendipia.id, kind: .review(.good), answeredAt: try at(10, 1), responseTime: nil,
-                    trigger: .appearance),
+                    trigger: .appearance, interval: .seconds(hours(4))),
                 ReviewLogEntry(
-                    cardID: ubuntu.id, kind: .firstView, answeredAt: try at(10, 2), responseTime: nil,
-                    trigger: .appearance),
+                    cardID: ubuntu.id, kind: .review(.again), answeredAt: try at(10, 2), responseTime: nil,
+                    trigger: .appearance, interval: .seconds(hours(1))),
+            ])
+    }
+
+    // Anki's four, which the iPhone's category offers as the Mac's review
+    // panel does, from `Rating.allCases` (#404): again on a card on the
+    // first learning step keeps it there, hard waits halfway to the second
+    // step, good moves it there, and easy graduates it.
+    @Test("each of a card notification's four actions, again, hard, good and easy, answers its card")
+    func eachOfACardNotificationsFourActionsAnswersItsCard() throws {
+        let cards = try ["ubuntu", "serendipia", "petricor", "Schadenfreude"].map { front in
+            try meetCard(front, dueAt: try at(10, 0))
+        }
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        time.move(to: try at(10, 1))
+        for (card, rating) in zip(cards, Rating.allCases) {
+            _ = try engine.answerFromNotification(.review(rating), of: card.id, in: appearance, settings: settings)
+        }
+
+        #expect(
+            try cards.map { try engine.standing(of: $0.id, with: settings.scheduler).stageAndDue?.stage } == [
+                .learning(step: 0), .learning(step: 0), .learning(step: 1), .graduated,
+            ])
+        #expect(
+            try cards.map { try engine.standing(of: $0.id, with: settings.scheduler).interval }.prefix(3) == [
+                .seconds(hours(1)), .seconds(minutes(150)), .seconds(hours(4)),
             ])
     }
 

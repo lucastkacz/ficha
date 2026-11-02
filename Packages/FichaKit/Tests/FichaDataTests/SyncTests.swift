@@ -23,8 +23,12 @@ final class SyncTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 21, in: calendar))
-        mac = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
-        iPhone = try Device(Engine(location: .inMemory, time: time, calendar: calendar), syncingThrough: iCloud)
+        mac = try Device(
+            Engine(location: .inMemory, time: time, ids: CountingIDSource(device: 1), calendar: calendar),
+            syncingThrough: iCloud)
+        iPhone = try Device(
+            Engine(location: .inMemory, time: time, ids: CountingIDSource(device: 2), calendar: calendar),
+            syncingThrough: iCloud)
     }
 
     deinit {
@@ -105,7 +109,7 @@ final class SyncTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }
 
-    @Test("a side edited on another device restarts a card's count of “Don't know” answers, as an edit here does")
+    @Test("a side edited on another device restarts a card's count of “Again” answers, as an edit here does")
     func aSideEditedOnAnotherDeviceRestartsTheForgottenOftenCount() async throws {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = 2
@@ -164,8 +168,11 @@ final class SyncTests {
     }
 
     // Each answer comes at a time that isn't a whole millisecond, as a real
-    // clock's does: both devices must still order the joined log alike.
-    @Test("reviews made offline on both devices join, and two answers to one wait climb one step on both")
+    // clock's does: both devices must still order the joined log alike. The
+    // iPhone's good answered the first review, as the Mac's did, so it's
+    // spaced again after the Mac's: a good on the last learning step, which
+    // graduates the card.
+    @Test("reviews made offline on both devices join, and the card stands alike on both after them")
     func reviewsMadeOfflineJoin() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         time.advance(by: 0.123_456_7)
@@ -173,11 +180,11 @@ final class SyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
         let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu")
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
         mac.iCloud.isOffline = true
         iPhone.iCloud.isOffline = true
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ladder).due) + 0.234_567_8)
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: scheduler).due) + 0.234_567_8)
         try mac.engine.review(ubuntu, .good)
         time.advance(by: minutes(30) + 0.000_432_1)
         try iPhone.engine.review(ubuntuOnIPhone, .good)
@@ -188,11 +195,351 @@ final class SyncTests {
         try await iPhone.syncNow()
         try await mac.syncNow()
 
-        let onMac = try mac.engine.standing(of: ubuntu.id, on: ladder)
-        let macsGood = try #require(try mac.logAsSeen().first { $0.kind == .review(.good) })
-        #expect(onMac == .onLadder(step: 1, due: macsGood.answeredAt + hours(4)))
-        #expect(try iPhone.engine.standing(of: ubuntuOnIPhone.id, on: ladder) == onMac)
-        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.good), .review(.good)])
+        let onMac = try mac.engine.standing(of: ubuntu.id, with: scheduler)
+        #expect(onMac.stage == .graduated)
+        #expect(try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler) == onMac)
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.good), .review(.good)])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
+    // A new card's again waits the first learning step's hour, good the
+    // second step's 4 hours, hard repeats that step, and again goes back to
+    // the first step's hour.
+    @Test("each review keeps the interval it set, which reaches the other device with it")
+    func eachReviewKeepsItsInterval() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        try mac.engine.reviewWhenDue(ubuntu, .good, movingForward: time)
+        try mac.engine.reviewWhenDue(ubuntu, .hard, movingForward: time)
+        try mac.engine.reviewWhenDue(ubuntu, .again, movingForward: time)
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(
+            try mac.logAsSeen().map(\.interval) == [
+                .seconds(hours(1)), .seconds(hours(4)), .seconds(hours(4)), .seconds(hours(1)),
+            ])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
+    // The Mac's again came first, and the iPhone's good five minutes later,
+    // before the iPhone knew of it: the joined log spaces the good from where
+    // the again left the card, relearning, so the good never erases the
+    // again (ADR 0017, #404).
+    @Test("a good one device gave before it knew of the other's again is spaced after the again, which stays")
+    func aGoodBeforeKnowingOfAnAgainNeverErasesIt() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.climb(ubuntu, goods: 2, movingForward: time)
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu")
+        let scheduler = ReviewSettings.defaults.scheduler
+
+        mac.iCloud.isOffline = true
+        iPhone.iCloud.isOffline = true
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: scheduler).due))
+        try mac.engine.review(ubuntu, .again)
+        time.advance(by: minutes(5))
+        try iPhone.engine.review(ubuntuOnIPhone, .good)
+        let keptOnTheIPhone = try #require(
+            try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler).interval)
+        mac.iCloud.isOffline = false
+        iPhone.iCloud.isOffline = false
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        let onMac = try mac.engine.standing(of: ubuntu.id, with: scheduler)
+        #expect(onMac.stage == .graduated)
+        #expect(try #require(onMac.interval) < keptOnTheIPhone)
+        #expect(try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler) == onMac)
+        #expect(try mac.logAsSeen().suffix(2).map(\.kind) == [.review(.again), .review(.good)])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
+    // A device still on a Ficha before FSRS sends a new card's first view,
+    // and each review without the interval it set: the device that takes
+    // them carries them over as the migration does (#407), the first view as
+    // a first review rated again, and each review with the interval the
+    // scheduler gives it. iCloud gives them in any order, here the latest
+    // first, as the fake does, and all before their card: a review that
+    // comes before the entry it answered is carried over again as that entry
+    // comes, so both devices hold the log alike.
+    @Test("a first view and reviews without an interval, from an older Ficha, are carried over as they arrive")
+    func recordsFromAnOlderFichaAreCarriedOverOnArrival() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.climb(ubuntu, goods: 2, movingForward: time)
+        try await mac.syncNow()
+        let entries = try iCloud.records.filter { $0.type == SyncedRow.RecordType.reviewLogEntry.rawValue }
+            .sorted { try $0.time("answeredAt") ?? .distantPast < $1.time("answeredAt") ?? .distantPast }
+        for entry in entries {
+            var fields = entry.fields
+            fields["interval"] = .some(nil)
+            if entry.value(of: "answeredEntry") == nil {
+                fields["kind"] = .string("firstView")
+                fields["rating"] = .some(nil)
+            }
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+
+        try await iPhone.syncNow()
+
+        let scheduler = ReviewSettings.defaults.scheduler
+        let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu")
+        let onTheIPhone = try iPhone.engine.reviewLogRows(of: ubuntuOnIPhone.id, with: scheduler)
+        let onTheMac = try mac.engine.reviewLogRows(of: ubuntu.id, with: scheduler)
+        #expect(onTheIPhone.map(\.entry.kind) == [.review(.again), .review(.good), .review(.good)])
+        #expect(onTheIPhone.map(\.entry.uuid) == onTheMac.map(\.entry.uuid))
+        #expect(onTheIPhone.map(\.interval) == onTheMac.map(\.interval))
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+        #expect(
+            try iPhone.engine.standing(of: ubuntuOnIPhone.id, with: scheduler)
+                == mac.engine.standing(of: ubuntu.id, with: scheduler))
+    }
+
+    // The iPhone holds the card when an older Ficha's entries come, each
+    // carried over as it arrives. Whichever comes first, each review ends up
+    // answering the entry before it, with the interval the carry-over gives
+    // it there, as the migration carries over the Mac's: the Mac recorded
+    // them with Ficha's settings, which the carry-over uses.
+    @Test(
+        "an older Ficha's log carried over as it arrives ends up as the migration carries it over, in any order",
+        arguments: [[2, 1, 0], [0, 1, 2], [1, 2, 0], [0, 2, 1]])
+    func anOlderFichasLogIsCarriedOverInAnyOrder(arrival: [Int]) async throws {
+        let ubuntu = try await receiveAnOlderFichasLog(goods: 2, arrivingInOrder: arrival)
+
+        let log = try iPhone.logAsSeen()
+        #expect(log == (try mac.logAsSeen()))
+        #expect(log.map(\.answeredEntry) == [nil] + log.dropLast().map(\.uuid))
+        #expect(
+            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: .standard)
+                == mac.engine.standing(of: ubuntu.id, with: .standard))
+    }
+
+    // The new cards a day count a new way's first review, which answers no
+    // entry: ubuntu's three entries, which came latest first, make one, so a
+    // second new card still comes today.
+    @Test("a card an older Ficha's log brings counts once toward the new cards a day")
+    func aCardFromAnOlderFichaCountsOnceTowardTheNewCardsADay() async throws {
+        try await receiveAnOlderFichasLog(goods: 2, arrivingInOrder: [2, 1, 0])
+        let petricor = try iPhone.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        var settings = ReviewSettings.defaults
+        settings.newCardsPerDay = 2
+
+        #expect(try iPhone.engine.reviewNow(settings) == [.new(petricor)])
+    }
+
+    // Each review an older Ficha sent keeps the interval the carry-over gave
+    // it, since it answers the entry before it: settings with other steps, a
+    // lower retention, under which ubuntu's last good would wait 19 days in
+    // place of 2, and a shorter longest interval leave it due when it was.
+    @Test("a change to the scheduling settings leaves an older Ficha's reviews, carried over as they arrive, due alike")
+    func aSettingsChangeLeavesCarriedOverReviewsDueAlike() async throws {
+        let ubuntu = try await receiveAnOlderFichasLog(goods: 3, arrivingInOrder: [3, 2, 1, 0])
+        let changed = try #require(
+            Scheduler.standard.replacing(
+                learningSteps: [.seconds(minutes(30)), .seconds(hours(2))], relearningSteps: [.seconds(minutes(20))],
+                desiredRetention: 0.7, longestIntervalInDays: 365, parameters: []))
+
+        #expect(
+            try iPhone.engine.standing(of: iPhone.engine.card(fronted: "ubuntu").id, with: changed).due
+                == mac.engine.standing(of: ubuntu.id, with: .standard).due)
+    }
+
+    /// Has a card reach the iPhone, and then the review log the Mac gives it,
+    /// met and rated good `goods` times, each when due, as a device still on
+    /// a Ficha before FSRS sends it (#407): each entry without the interval
+    /// it set, and the first review, which answers no entry, as a first view.
+    /// The entries arrive in `order`, each by when it was answered, counted
+    /// from 0. Returns the card, as the Mac holds it.
+    @discardableResult
+    private func receiveAnOlderFichasLog(goods: Int, arrivingInOrder order: [Int]) async throws -> Card {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try mac.engine.climb(ubuntu, goods: goods, movingForward: time)
+        try await mac.syncNow()
+        let entries = try iCloud.records.filter { $0.type == SyncedRow.RecordType.reviewLogEntry.rawValue }
+            .sorted { try $0.time("answeredAt") ?? .distantPast < $1.time("answeredAt") ?? .distantPast }
+        // The fake gives a zone's records newest first.
+        for position in order.reversed() {
+            let entry = entries[position]
+            var fields = entry.fields
+            fields["interval"] = .some(nil)
+            if entry.value(of: "answeredEntry") == nil {
+                fields["kind"] = .string("firstView")
+                fields["rating"] = .some(nil)
+            }
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+        try await iPhone.syncNow()
+        return ubuntu
+    }
+
+    // The Mac's update carried over serendipia's first view and its good 10
+    // minutes later. Then a hard from the iPhone, still on a Ficha before
+    // FSRS, comes, given 5 minutes after the first view: the good, which
+    // the migration carried over, now answers the hard, and waits the
+    // second learning step's 4 hours after it, as both would have been
+    // carried over had the hard come before the update.
+    @Test("a review the migration carried over is carried over again when an older Ficha's review comes before it")
+    func aReviewTheMigrationCarriedOverIsCarriedOverAgain() async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let before = time.now - days(1)
+        try saveDatabaseBeforeTheSchedulerReplacedTheLadder(at: folder.appending(path: "Ficha.sqlite"), at: before)
+        let macFromBefore = try Device(
+            Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
+        try macFromBefore.turnSyncOn()
+        try await macFromBefore.syncNow()
+        let serendipia = try macFromBefore.engine.card(fronted: "serendipia")
+        let firstView = try #require(try macFromBefore.engine.reviewLog().first { $0.cardID == serendipia.id })
+        let card = try #require(
+            iCloud.records.first {
+                $0.type == SyncedRow.RecordType.card.rawValue && $0.value(of: "front") == .string("serendipia")
+            })
+        let hard = UUID()
+        iCloud.saveFromANewerFicha(
+            ICloudRecord(
+                id: ICloudRecordID(name: hard.uuidString, zone: card.id.zone),
+                type: SyncedRow.RecordType.reviewLogEntry.rawValue,
+                fields: [
+                    "card": .string(card.id.name), "way": .string(Way.frontFirst.rawValue), "kind": .string("review"),
+                    "rating": .string(Rating.hard.rawValue),
+                    "answeredAt": .int((before + minutes(5)).wholeMilliseconds), "responseTime": .double(2),
+                    "trigger": .string(Trigger.reviewNow.rawValue), "isAhead": .int(0),
+                    "answeredEntry": .string(try #require(firstView.uuid).uuidString),
+                ],
+                systemFields: nil))
+
+        try await macFromBefore.syncNow()
+
+        let log = try macFromBefore.logAsSeen().filter { $0.way == .frontFirst }
+        #expect(log.map(\.kind) == [.review(.again), .review(.hard), .review(.good)])
+        #expect(log.map(\.answeredEntry) == [nil, firstView.uuid, hard])
+        #expect(
+            log.map(\.interval) == [.seconds(hours(1)), .seconds(hours(2) + minutes(30)), .seconds(hours(4))])
+    }
+
+    // An import that brings Anki's progress places a card Anki was reviewing
+    // every 10 days with that interval, Anki's due date and its ease.
+    @Test("a placement reaches the other device with its interval, due time and ease")
+    func aPlacementReachesTheOtherDevice() async throws {
+        try await importOnTheMac([
+            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))
+        ])
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(
+            try iPhone.logAsSeen().map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5))
+            ])
+        #expect(try iPhone.logAsSeen() == mac.logAsSeen())
+    }
+
+    // A device still on a Ficha before FSRS sends a placement on a step of
+    // its ladder, without an interval or an ease: the device that takes it
+    // gives it that step's interval on the ladder Ficha shipped, and, for an
+    // interval of a day or more, Anki's starting ease, as the migration does
+    // with the ladder Ficha shipped. corazón was on the second step, of 4
+    // hours, and pulmón on the fourth, of 5 days.
+    @Test("a placement on a step of the ladder, from an older Ficha, is carried over as it arrives")
+    func aPlacementFromAnOlderFichaIsCarriedOverOnArrival() async throws {
+        try await importOnTheMac([
+            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
+            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        ])
+        try await mac.syncNow()
+        for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
+            var fields = entry.fields
+            fields["step"] = .int(entry.value(of: "interval") == .double(days(10)) ? 1 : 3)
+            fields["interval"] = .some(nil)
+            fields["ease"] = .some(nil)
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+
+        try await iPhone.syncNow()
+
+        let corazon = try iPhone.engine.card(fronted: "corazón")
+        let pulmon = try iPhone.engine.card(fronted: "pulmón")
+        let log = try iPhone.engine.reviewLog()
+        #expect(
+            log.filter { $0.cardID == corazon.id }.map(\.kind) == [
+                .placement(Placement(interval: .seconds(hours(4)), due: try october(31, at: 4)))
+            ])
+        #expect(
+            log.filter { $0.cardID == pulmon.id }.map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(5)), due: try october(26, at: 4), ease: 2.5))
+            ])
+        #expect(
+            try iPhone.engine.standing(of: corazon.id, with: .standard).stageAndDue
+                == learning(step: 0, due: try october(31, at: 4)))
+        #expect(
+            try iPhone.engine.standing(of: pulmon.id, with: .standard).stageAndDue
+                == graduated(due: try october(26, at: 4)))
+    }
+
+    // The ladder's steps counted from 0, as its table's check kept them.
+    @Test("a placement on a step below the ladder's first, from an older Ficha, waits, as the ladder refused it")
+    func aPlacementBelowTheLaddersFirstStepWaits() async throws {
+        try await importOnTheMac([
+            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
+            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        ])
+        try await mac.syncNow()
+        for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
+            var fields = entry.fields
+            fields["step"] = .int(entry.value(of: "interval") == .double(days(10)) ? -1 : 3)
+            fields["interval"] = .some(nil)
+            fields["ease"] = .some(nil)
+            iCloud.saveFromANewerFicha(
+                ICloudRecord(id: entry.id, type: entry.type, fields: fields, systemFields: entry.systemFields))
+        }
+
+        try await iPhone.syncNow()
+        try await iPhone.syncNow()
+
+        let corazon = try iPhone.engine.card(fronted: "corazón")
+        let pulmon = try iPhone.engine.card(fronted: "pulmón")
+        let log = try iPhone.engine.reviewLog()
+        #expect(log.filter { $0.cardID == corazon.id }.isEmpty)
+        #expect(
+            log.filter { $0.cardID == pulmon.id }.map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(5)), due: try october(26, at: 4), ease: 2.5))
+            ])
+    }
+
+    /// Imports on the Mac an Anki package with `notes`, bringing their
+    /// progress. The package's collection was created on 1 October 2026 at 4
+    /// in the morning, so Anki's day 30 is 31 October.
+    private func importOnTheMac(_ notes: [AnkiNote]) async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appending(path: "Mazo.apkg")
+        try AnkiPackage(notes: notes).write(to: file)
+        try await mac.engine.importCards(
+            mac.engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
+    }
+
+    /// `hour` o'clock on `day` October 2026, in Buenos Aires.
+    private func october(_ day: Int, at hour: Int) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour)))
+    }
+
+    @Test("a review rated easy is kept as easy, and reaches the other device as easy")
+    func easyIsKeptAndReachesTheOtherDevice() async throws {
+        let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try mac.engine.meet(ubuntu)
+        try mac.engine.reviewWhenDue(ubuntu, .easy, movingForward: time)
+
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.easy)])
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
     }
 
@@ -202,7 +549,7 @@ final class SyncTests {
         try mac.engine.meet(ubuntu)
         try await mac.syncNow()
         try await iPhone.syncNow()
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ReviewSettings.defaults.ladder).due))
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: ReviewSettings.defaults.scheduler).due))
         try mac.engine.review(ubuntu, .again)
         time.advance(by: minutes(1))
         try iPhone.engine.review(iPhone.engine.card(fronted: "ubuntu"), .good)
@@ -211,21 +558,26 @@ final class SyncTests {
 
         try mac.engine.takeBackAnswer(of: ubuntu.id, way: .frontFirst)
 
-        #expect(try mac.logAsSeen().map(\.kind) == [.firstView, .review(.good)])
+        #expect(try mac.logAsSeen().map(\.kind) == [.review(.again), .review(.good)])
     }
 
     // The iPhone gets the Mac's three entries in one go, in iCloud's order,
-    // and then the Mac's again after its own good, which came later.
-    @Test("the Cards window lists a review log joined from two devices in the order it happened, each with its step")
+    // and then the Mac's again after its own good, which came later. The
+    // Mac's again keeps its relearning step's hour, and the iPhone's good,
+    // which answered the review before it, is spaced again after the again:
+    // a good on the last relearning step, which graduates the card again.
+    @Test(
+        "the Cards window lists a review log joined from two devices in the order it happened, each with its interval, alike on both"
+    )
     func theCardsWindowListsAJoinedLogInOrder() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        try mac.engine.climb(ubuntu, to: 2, movingForward: time)
+        try mac.engine.climb(ubuntu, goods: 2, movingForward: time)
         try await mac.syncNow()
         try await iPhone.syncNow()
         let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu")
-        let ladder = ReviewSettings.defaults.ladder
+        let scheduler = ReviewSettings.defaults.scheduler
 
-        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, on: ladder).due))
+        time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: scheduler).due))
         try mac.engine.review(ubuntu, .again)
         time.advance(by: minutes(10))
         try iPhone.engine.review(ubuntuOnIPhone, .good)
@@ -233,12 +585,20 @@ final class SyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
+        var intervalsOnEach: [[Duration]] = []
         for (device, cardID) in [(mac, ubuntu.id), (iPhone, ubuntuOnIPhone.id)] {
-            let rows = try device.engine.reviewLogRows(of: cardID, on: ladder)
+            let rows = try device.engine.reviewLogRows(of: cardID, with: scheduler)
             #expect(
-                rows.map(\.entry.kind) == [.firstView, .review(.good), .review(.good), .review(.again), .review(.good)])
-            #expect(rows.map(\.step) == [0, 1, 2, 0, 1])
+                rows.map(\.entry.kind) == [
+                    .review(.again), .review(.good), .review(.good), .review(.again), .review(.good),
+                ])
+            intervalsOnEach.append(rows.map(\.interval))
         }
+        let intervals = try #require(intervalsOnEach.first)
+        #expect(intervalsOnEach.last == intervals)
+        #expect(intervals.map { $0 >= .seconds(days(1)) } == [false, false, true, false, true])
+        #expect(
+            [intervals[0], intervals[1], intervals[3]] == [.seconds(hours(1)), .seconds(hours(4)), .seconds(hours(1))])
     }
 
     @Test("what each device had before they first synced joins on both, and nothing is lost")
@@ -252,7 +612,7 @@ final class SyncTests {
         let serendipia = try approve(
             card(.word, front: "serendipia", back: "Un hallazgo por azar.", tags: ["filosofía"]), in: iPhone.engine)
         try iPhone.engine.setEmoji(Emoji("🦉"), of: "filosofía")
-        try iPhone.engine.climb(serendipia, to: 1, movingForward: time)
+        try iPhone.engine.climb(serendipia, goods: 1, movingForward: time)
         try iPhone.engine.newCapture("saudade", note: "De una canción")
 
         try await mac.syncNow()
@@ -295,7 +655,7 @@ final class SyncTests {
     }
 
     // The app hands iCloud's engine each change as the database changes, so
-    // the first view waits there when ⌘Z takes it back.
+    // the first review waits there when ⌘Z takes it back.
     @Test("an answer taken back before it was sent stops waiting to be sent, and never reaches the other device")
     func anAnswerTakenBackBeforeItWasSentStopsWaiting() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -465,6 +825,7 @@ struct LogEntryAsSeen: Equatable {
     let responseTime: Duration?
     let trigger: Trigger?
     let isAhead: Bool
+    let interval: Duration?
 }
 
 extension Device {
@@ -474,13 +835,12 @@ extension Device {
         try engine.cards().sorted { $0.front < $1.front }.map(\.asSeen)
     }
 
-    /// Its review log, in the order the ladder replays it.
+    /// Its review log, in the order the scheduler replays it.
     func logAsSeen() throws -> [LogEntryAsSeen] {
-        try engine.reviewLog().sorted { $0.isReplayed(before: $1) }.map {
+        try engine.reviewLog().sorted { $0.precedes($1) }.map {
             LogEntryAsSeen(
                 uuid: $0.uuid, answeredEntry: $0.answeredEntry, way: $0.way, kind: $0.kind, answeredAt: $0.answeredAt,
-                responseTime: $0.responseTime,
-                trigger: $0.trigger, isAhead: $0.isAhead)
+                responseTime: $0.responseTime, trigger: $0.trigger, isAhead: $0.isAhead, interval: $0.interval)
         }
     }
 }

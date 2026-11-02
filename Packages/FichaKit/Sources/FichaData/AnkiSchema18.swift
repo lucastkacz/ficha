@@ -6,11 +6,11 @@ internal import GRDB
 // default: its note types, with their fields and templates, and its decks
 // are in tables of their own, with protobuf blobs (`rslib/src/storage/
 // notetype/`, `rslib/src/storage/deck/`, `proto/anki/notetypes.proto`),
-// where schema 11 kept them as JSON in its one `col` row. Its notes and
-// cards are in schema 11's tables. Their `name` columns are declared with
-// Anki's own collation, `COLLATE unicase`, so SQL here never filters or
-// sorts on them: the collation registered under that name only stands in
-// for Anki's.
+// where schema 11 kept them as JSON in its one `col` row. Its notes, cards
+// and revlog are in schema 11's tables. Their `name` columns are
+// declared with Anki's own collation, `COLLATE unicase`, so SQL here never
+// filters or sorts on them: the collation registered under that name only
+// stands in for Anki's.
 
 /// Anki's `unicase` collation, which it registers on each connection to a
 /// collection (`rslib/src/storage/sqlite.rs`), as a comparison that ignores
@@ -63,10 +63,12 @@ func schema18Collection(in db: Database) throws -> AnkiCollection {
         let name: String = try row.decode(forColumn: "name")
         return (try row.decode(forColumn: "id") as Int64, AnkiDeck(name: name.components(separatedBy: "\u{1F}")))
     }
+    let configuration = try AnkiConfiguration(configTableOf: db)
     return AnkiCollection(
-        creationTime: creationTime, daySettings: try ankiDaySettings(inConfigTableOf: db),
+        creationTime: creationTime, daySettings: configuration.daySettings,
         noteTypes: Dictionary(noteTypes) { first, _ in first },
-        decks: Dictionary(decks) { first, _ in first }, notes: try ankiNotes(in: db), cards: try ankiCards(in: db))
+        decks: Dictionary(decks) { first, _ in first }, notes: try ankiNotes(in: db), cards: try ankiCards(in: db),
+        revlog: try ankiRevlog(in: db), schedulerVersion: configuration.schedulerVersion)
 }
 
 /// The parts of the note type `noteType`, its fields or its templates, each

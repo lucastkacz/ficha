@@ -1,0 +1,14 @@
+# Cargo builds in the worktree's .build/cargo, beside Xcode's and SwiftPM's
+# builds, which git ignores, `make clean-merged` removes with its worktree,
+# and Xcode doesn't list among the package's files. The path is relative to
+# the crate's folder, as Cargo reads it from this file.
+[build]
+target-dir = "../../../.build/cargo"
+
+# The apps' deployment targets, as project.yml and Package.swift set them,
+# which rustc builds the libraries for: one for a later system would make the
+# apps' links warn. rustc doesn't tell Cargo it reads them, so Cargo builds
+# nothing again when they change: after changing them, delete .build/cargo.
+[env]
+MACOSX_DEPLOYMENT_TARGET = "26.0"
+IPHONEOS_DEPLOYMENT_TARGET = "26.0"

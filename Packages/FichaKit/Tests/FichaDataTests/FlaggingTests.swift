@@ -15,7 +15,7 @@ struct FlaggingTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 14, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
     @Test("a card flagged in the review panel stops showing up and waits in the inbox with Lucas's note")
@@ -50,12 +50,12 @@ struct FlaggingTests {
     // Lucas, 2026-10-15: each card counts in one place.
     @Test("a flagged card counts in the inbox, and neither as due nor as learned until it's fixed")
     func aFlaggedCardCountsInTheInbox() throws {
-        // serendipia gets to the 30-day step, from which a card is learned.
+        // serendipia gets learned: graduated, to wait 21 days or more.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 5, movingForward: time)
+        try engine.climbUntilLearned(serendipia, movingForward: time)
         try engine.newCapture("algo para refinar")
         try engine.flag(serendipia.id, note: note("La definición está incompleta"))
-        time.advance(by: days(30))
+        time.move(to: try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due))
 
         let flagged = try engine.progress(settings)
         try engine.fix(
@@ -95,7 +95,7 @@ struct FlaggingTests {
             try engine.flag(ubuntu.id, note: note("Otra nota"))
         }
         #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Falta un ejemplo"])
-        #expect(try engine.reviewLog().map(\.kind) == [.firstView, .firstView])
+        #expect(try engine.reviewLog().map(\.kind) == [.review(.again), .review(.again)])
     }
 
     // A burial wins over a flag: the card is out of the inbox too.
@@ -116,13 +116,13 @@ struct FlaggingTests {
         #expect(try engine.inbox().flaggedCards.isEmpty)
     }
 
-    @Test("fixing a flagged card changes its content and brings it back to its step in Lucas's reviews")
-    func fixingBringsTheCardBackToItsStep() throws {
+    @Test("fixing a flagged card changes its content and brings it back to Lucas's reviews as it stood")
+    func fixingBringsTheCardBackAsItStood() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 1, movingForward: time)
-        let due = try #require(try engine.standing(of: serendipia.id, on: settings.ladder).due)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let due = try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due)
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
         time.advance(by: hours(1))
 
@@ -141,12 +141,13 @@ struct FlaggingTests {
         #expect(fixed.flag == nil)
         #expect(try engine.cards() == [fixed])
         #expect(try engine.inbox().flaggedCards.isEmpty)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: due))
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue == learning(step: 1, due: due))
         time.move(to: due)
         #expect(try engine.reviewNow(settings) == [.review(fixed)])
     }
 
-    @Test("flagging a card from its back-first way flags it both ways, and fixing it brings both back on their steps")
+    @Test("flagging a card from its back-first way flags it both ways, and fixing it brings both back as they stood")
     func flaggingFromTheBackFirstWayFlagsBothWays() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])
@@ -189,13 +190,13 @@ struct FlaggingTests {
     }
 
     // The review panel's ⌘Z unflags a card Lucas flagged there.
-    @Test("unflagging a flagged card keeps its content and brings it back to its step in Lucas's reviews")
-    func unflaggingBringsTheCardBackToItsStep() throws {
+    @Test("unflagging a flagged card keeps its content and brings it back to Lucas's reviews as it stood")
+    func unflaggingBringsTheCardBackAsItStood() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
         let serendipia = try approveCard("serendipia", in: engine)
-        try engine.climb(serendipia, to: 1, movingForward: time)
-        let due = try #require(try engine.standing(of: serendipia.id, on: settings.ladder).due)
+        try engine.climb(serendipia, goods: 1, movingForward: time)
+        let due = try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due)
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
         time.advance(by: hours(1))
 
@@ -205,7 +206,8 @@ struct FlaggingTests {
         #expect(try engine.cards() == [serendipia])
         #expect(try engine.inbox().flaggedCards.isEmpty)
         #expect(try engine.progress(settings).inInbox == 0)
-        #expect(try engine.standing(of: serendipia.id, on: settings.ladder) == .onLadder(step: 1, due: due))
+        #expect(
+            try engine.standing(of: serendipia.id, with: settings.scheduler).stageAndDue == learning(step: 1, due: due))
         time.move(to: due)
         #expect(try engine.reviewNow(settings) == [.review(serendipia)])
     }

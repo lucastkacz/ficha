@@ -4,26 +4,26 @@
     "%@ can't open your cards" : {
 
     },
+    "Again" : {
+      "comment" : "A card notification's button, Anki's first: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish, as on the Mac."
+    },
     "Cards" : {
       "comment" : "On the iPhone's placeholder screen: how many cards there are."
     },
     "Couldn't count your cards" : {
 
     },
-    "Don't know" : {
-      "comment" : "A due card's notification's button: Lucas didn't know the card."
-    },
     "Due" : {
       "comment" : "On the iPhone's placeholder screen: how many cards are due."
     },
-    "Got it" : {
-      "comment" : "A new card's notification's button: Lucas read the card."
+    "Easy" : {
+      "comment" : "A card notification's button, Anki's fourth: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish, as on the Mac."
     },
-    "Know it" : {
-      "comment" : "A due card's notification's button: Lucas knew the card."
+    "Good" : {
+      "comment" : "A card notification's button, Anki's third: Lucas knew the card. Anki's own name for it, “Bien” in Spanish, as on the Mac."
     },
-    "Sort of" : {
-      "comment" : "A due card's notification's button: Lucas sort of knew the card."
+    "Hard" : {
+      "comment" : "A card notification's button, Anki's second: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish, as on the Mac."
     }
   },
   "version" : "1.0"

@@ -1,0 +1,20 @@
+The notices of fsrs-rs, Anki's FSRS library, and of the crates it brings into
+the static library Ficha links (ADR 0026), each license with the crates under
+it, for the App Store release to ship with every other dependency's. The
+library holds Rust's standard library too, whose notices come with the Rust
+toolchain that rust-toolchain.toml pins, in its share/doc/rust folder, as
+COPYRIGHT-library.html: too large to keep here, so the release takes them from
+there.
+
+Written by cargo-about from Cargo.lock, with about.toml and about.hbs beside it:
+never edit it by hand. docs/development.md says how to write it again.
+{{#each licenses}}
+
+--------------------------------------------------------------------------------
+{{{name}}}, used by:
+{{#each used_by}}
+- {{{crate.name}}} {{{crate.version}}}{{#if crate.repository}}, {{{crate.repository}}}{{/if}}
+{{/each}}
+
+{{{text}}}
+{{/each}}

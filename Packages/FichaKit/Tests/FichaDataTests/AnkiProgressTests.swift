@@ -9,9 +9,12 @@ import Testing
 private let schemas: [AnkiPackage.Format] = [.supportOlderAnkiVersions, .current]
 
 /// Tests on bringing an Anki deck's progress (ADR 0013): where each card
-/// stands once the import is done, on the standard ladder (1 hour, 4 hours,
-/// 2 days, 5 days, 12 days, 30 days and 75 days, steps counted from 0), from
-/// packages the tests write in a folder of their own, into an engine in
+/// stands once the import is done, with the default scheduling settings
+/// (#404), a card that comes without Anki's reviews of it, which
+/// `AnkiReviewsTests` brings, graduated, with its interval and ease, when
+/// Anki was reviewing it, and on the first learning step when Anki was
+/// learning it, from packages the tests write in a folder of their own,
+/// into an engine in
 /// memory on a Mac in Buenos Aires, on 23 October 2026. The packages'
 /// collections were created on 1 October 2026 at 4 in the morning there, so
 /// Anki's day 30 is 31 October, and it starts at 4 in the morning, Anki's
@@ -20,7 +23,7 @@ final class AnkiProgressTests {
     let calendar: Calendar
     let time: ManualTimeSource
     let engine: Engine
-    let ladder = Ladder.standard
+    let scheduler = ReviewSettings.defaults.scheduler
     /// A folder of the test's own, for the packages it imports.
     let folder = URL.temporaryDirectory.appending(
         path: "FichaAnkiProgressTests-\(UUID().uuidString)",
@@ -30,7 +33,7 @@ final class AnkiProgressTests {
     init() throws {
         calendar = try buenosAiresCalendar()
         time = ManualTimeSource(now: try morning(of: 23, in: calendar))
-        engine = try Engine(location: .inMemory, time: time, calendar: calendar)
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
@@ -39,23 +42,23 @@ final class AnkiProgressTests {
     }
 
     /// Imports `package`, written as `name`, with `choices`, by default
-    /// bringing its progress onto the standard ladder, and returns what the
-    /// import did.
+    /// bringing its progress, and returns what the import did.
     @discardableResult
     private func importPackage(
         _ package: AnkiPackage, named name: String = "Mazo.apkg",
-        choosing choices: ImportChoices = ImportChoices(progress: .brought(onto: .standard))
+        choosing choices: ImportChoices = ImportChoices(progress: .brought)
     ) async throws -> ImportOutcome {
         let file = folder.appending(path: name)
         try package.write(to: file)
         return try await engine.importCards(engine.previewImport(of: file), choosing: choices)
     }
 
-    /// Where the card with `front` stands on the standard ladder, the way
-    /// it's said to go, front first unless it's said to go back first.
-    private func standing(of front: String, way: Way = .frontFirst) throws -> LadderStanding {
+    /// The stage and due time of the card with `front`, the way it's said to
+    /// go, front first unless it's said to go back first, or nil while it's
+    /// new.
+    private func standing(of front: String, way: Way = .frontFirst) throws -> StageAndDue? {
         let card = try #require(try engine.cards().first { $0.front == front })
-        return try engine.standing(of: card.id, way: way, on: ladder)
+        return try engine.standing(of: card.id, way: way, with: scheduler).stageAndDue
     }
 
     /// `hour` o'clock on `day` October 2026, in Buenos Aires.
@@ -64,9 +67,9 @@ final class AnkiProgressTests {
     }
 
     @Test(
-        "a card Anki reviews every 10 days lands on the 12-day step of the standard ladder, due on Anki's date",
+        "a card Anki reviews every 10 days comes in graduated, due on Anki's date, placed with its interval and ease",
         arguments: schemas)
-    func aReviewCardLandsOnTheNearestStep(format: AnkiPackage.Format) async throws {
+    func aReviewCardComesInGraduated(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -75,10 +78,14 @@ final class AnkiProgressTests {
 
         try await importPackage(package)
 
-        #expect(try standing(of: "corazón") == .onLadder(step: 4, due: try october(31, at: 4)))
+        #expect(try standing(of: "corazón") == graduated(due: try october(31, at: 4)))
+        #expect(
+            try engine.reviewLog().map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5))
+            ])
     }
 
-    @Test("a card that came in on a step comes back first for its first view once it goes both ways")
+    @Test("a card that came in placed comes back first for its first review once it goes both ways")
     func aPlacedCardComesBackFirstOnceItGoesBothWays() async throws {
         let package = AnkiPackage(
             notes: [AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))])
@@ -87,13 +94,13 @@ final class AnkiProgressTests {
 
         let bothWays = try engine.setBothWays(true, of: [corazon.id])
 
-        #expect(try engine.reviewNow(.defaults) == [.firstView(bothWays[0], .backFirst)])
+        #expect(try engine.reviewNow(.defaults) == [.new(bothWays[0], .backFirst)])
     }
 
     @Test(
-        "each way of a reversed note lands on the step nearest its own Anki card's interval, and a new Anki card leaves its way new",
+        "each way of a reversed note comes in as its own Anki card stood, and a new Anki card leaves its way new",
         arguments: schemas)
-    func eachWayOfAReversedNoteLandsOnItsOwnStep(format: AnkiPackage.Format) async throws {
+    func eachWayOfAReversedNoteComesInAsItsOwnCardStood(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -107,15 +114,15 @@ final class AnkiProgressTests {
 
         try await importPackage(package)
 
-        #expect(try standing(of: "corazón") == .onLadder(step: 4, due: try october(31, at: 4)))
-        #expect(try standing(of: "corazón", way: .backFirst) == .onLadder(step: 2, due: try october(27, at: 4)))
-        #expect(try standing(of: "pulmón") == .onLadder(step: 6, due: try october(26, at: 4)))
-        #expect(try standing(of: "pulmón", way: .backFirst) == .new)
+        #expect(try standing(of: "corazón") == graduated(due: try october(31, at: 4)))
+        #expect(try standing(of: "corazón", way: .backFirst) == graduated(due: try october(27, at: 4)))
+        #expect(try standing(of: "pulmón") == graduated(due: try october(26, at: 4)))
+        #expect(try standing(of: "pulmón", way: .backFirst) == nil)
         #expect(try engine.cards().map(\.bothWays) == [true, true])
     }
 
-    @Test("a card with a 400-day interval lands on the last step, due on Anki's date", arguments: schemas)
-    func aLongIntervalLandsOnTheLastStep(format: AnkiPackage.Format) async throws {
+    @Test("a card with a 400-day interval comes in graduated with it, due on Anki's date", arguments: schemas)
+    func aLongIntervalComesInWhole(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -124,13 +131,34 @@ final class AnkiProgressTests {
 
         try await importPackage(package)
 
-        #expect(try standing(of: "fémur") == .onLadder(step: 6, due: try october(26, at: 4)))
+        let femur = try #require(try engine.cards().first)
+        #expect(try standing(of: "fémur") == graduated(due: try october(26, at: 4)))
+        #expect(try engine.standing(of: femur.id, with: scheduler).interval == .seconds(days(400)))
+    }
+
+    // Anki gives a card in review an interval of a day at least.
+    @Test(
+        "a package with a card in review whose interval is under a day can't be read", arguments: schemas, [0, -3])
+    func aReviewCardUnderADayCantBeRead(format: AnkiPackage.Format, interval: Int) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(type: .basic, fields: ["fémur", "thighbone"], progress: .review(due: 25, interval: interval))
+            ])
+        let file = folder.appending(path: "Fémur.apkg")
+        try package.write(to: file)
+
+        await #expect(throws: EngineError.unreadableFile("Fémur.apkg", .unreadableAnkiPackage)) {
+            try await engine.previewImport(of: file)
+        }
     }
 
     // Anki 2.0 kept a relearning card as a review card in a learning queue,
     // which Anki relabels as relearning when it imports such a package.
-    @Test("a card in learning lands on the first step, due when Anki said", arguments: schemas)
-    func aLearningCardLandsOnTheFirstStep(format: AnkiPackage.Format) async throws {
+    @Test(
+        "a card in learning without Anki's reviews of it comes in on the first learning step, due when Anki said",
+        arguments: schemas)
+    func aLearningCardWithoutAnkisReviewsComesInOnTheFirstLearningStep(format: AnkiPackage.Format) async throws {
         let tenPast = try october(23, at: 9, minute: 10)
         let package = AnkiPackage(
             format: format,
@@ -146,9 +174,9 @@ final class AnkiProgressTests {
 
         try await importPackage(package)
 
-        #expect(try standing(of: "perro") == .onLadder(step: 0, due: tenPast))
-        #expect(try standing(of: "gato") == .onLadder(step: 0, due: try october(24, at: 4)))
-        #expect(try standing(of: "casa") == .onLadder(step: 0, due: tenPast + minutes(10)))
+        #expect(try standing(of: "perro") == learning(step: 0, due: tenPast))
+        #expect(try standing(of: "gato") == learning(step: 0, due: try october(24, at: 4)))
+        #expect(try standing(of: "casa") == learning(step: 0, due: tenPast + minutes(10)))
     }
 
     @Test("new cards stay new, in Anki's order, and come in first", arguments: schemas)
@@ -166,8 +194,8 @@ final class AnkiProgressTests {
         let cards = try engine.cards()
         #expect(cards.map(\.front) == ["tres", "dos", "uno"])
         #expect(
-            try cards.map { try engine.standing(of: $0.id, on: ladder) } == [
-                .new, .new, .onLadder(step: 4, due: try october(31, at: 4)),
+            try cards.map { try engine.standing(of: $0.id, with: scheduler).stageAndDue } == [
+                nil, nil, graduated(due: try october(31, at: 4)),
             ])
         #expect(try engine.reviewNow(.defaults).map(\.card.front) == ["tres"])
     }
@@ -175,7 +203,7 @@ final class AnkiProgressTests {
     // Anki buries a card for the day on its own, as when its sibling was
     // reviewed: it comes back the next day.
     @Test(
-        "a suspended card comes in buried, and unburying puts it on its step; one buried for the day comes in as usual",
+        "a suspended card comes in buried, and unburying puts it back as it stood; one buried for the day comes in as usual",
         arguments: schemas)
     func aSuspendedCardComesInBuried(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -197,17 +225,17 @@ final class AnkiProgressTests {
         #expect(cards.map(\.front) == ["bazo", "riñón", "hígado"])
         #expect(
             cards.map(\.standing) == [.buried(at: time.now, flag: nil), .buried(at: time.now, flag: nil), .inReviews])
-        #expect(try standing(of: "hígado") == .onLadder(step: 3, due: try october(27, at: 4)))
-        #expect(try standing(of: "bazo") == .new)
+        #expect(try standing(of: "hígado") == graduated(due: try october(27, at: 4)))
+        #expect(try standing(of: "bazo") == nil)
 
         try engine.unbury(kidney.id)
 
         #expect(try engine.cards().first { $0.id == kidney.id }?.standing == .inReviews)
-        #expect(try standing(of: "riñón") == .onLadder(step: 4, due: try october(31, at: 4)))
+        #expect(try standing(of: "riñón") == graduated(due: try october(31, at: 4)))
     }
 
     @Test(
-        "a reversed note whose reversed card alone Anki suspended comes in one way, that way's step kept, and one whose first card it suspended comes in buried",
+        "a reversed note whose reversed card alone Anki suspended comes in one way, that way's progress kept, and one whose first card it suspended comes in buried",
         arguments: schemas)
     func aReversedNoteWithASuspendedCard(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -228,12 +256,12 @@ final class AnkiProgressTests {
         #expect(cards.map(\.front) == ["riñón", "bazo"])
         #expect(cards.map(\.bothWays) == [false, true])
         #expect(cards.map(\.standing) == [.inReviews, .buried(at: time.now, flag: nil)])
-        #expect(try standing(of: "riñón", way: .backFirst) == .onLadder(step: 2, due: try october(27, at: 4)))
+        #expect(try standing(of: "riñón", way: .backFirst) == graduated(due: try october(27, at: 4)))
 
         try engine.unbury(spleen.id)
 
-        #expect(try standing(of: "bazo") == .onLadder(step: 4, due: try october(31, at: 4)))
-        #expect(try standing(of: "bazo", way: .backFirst) == .onLadder(step: 2, due: try october(27, at: 4)))
+        #expect(try standing(of: "bazo") == graduated(due: try october(31, at: 4)))
+        #expect(try standing(of: "bazo", way: .backFirst) == graduated(due: try october(27, at: 4)))
     }
 
     @Test("with Bring progress unticked, every card comes in new, and none buried", arguments: schemas)
@@ -254,17 +282,18 @@ final class AnkiProgressTests {
 
         let cards = try engine.cards()
         #expect(cards.count == 4)
-        #expect(try cards.allSatisfy { try engine.standing(of: $0.id, on: ladder) == .new })
+        #expect(try cards.allSatisfy { try engine.standing(of: $0.id, with: scheduler) == .new })
         #expect(cards.allSatisfy { $0.standing == .inReviews })
         #expect(cards.map(\.bothWays) == [false, false, false, true])
         #expect(try engine.reviewLog().isEmpty)
     }
 
-    @Test("a repeated card that the import updates keeps its own step and review log, not Anki's", arguments: schemas)
+    @Test(
+        "a repeated card that the import updates keeps its own progress and review log, not Anki's", arguments: schemas)
     func anUpdatedCardKeepsItsOwnProgress(format: AnkiPackage.Format) async throws {
         let heart = try approve(card(.word, front: "Corazón", back: "Un órgano."), in: engine)
-        try engine.climb(heart, to: 2, movingForward: time)
-        let standingBefore = try engine.standing(of: heart.id, on: ladder)
+        try engine.climb(heart, goods: 2, movingForward: time)
+        let standingBefore = try engine.standing(of: heart.id, with: scheduler)
         let logBefore = try engine.reviewLog()
         let package = AnkiPackage(
             format: format,
@@ -278,7 +307,7 @@ final class AnkiProgressTests {
 
         #expect(outcome.updated == 1)
         #expect(try engine.cards().map(\.back) == ["El órgano que bombea la sangre."])
-        #expect(try engine.standing(of: heart.id, on: ladder) == standingBefore)
+        #expect(try engine.standing(of: heart.id, with: scheduler) == standingBefore)
         #expect(try engine.reviewLog() == logBefore)
     }
 
@@ -303,11 +332,11 @@ final class AnkiProgressTests {
         try await importPackage(package)
 
         #expect(
-            try standing(of: "pulmón") == .onLadder(step: 4, due: try october(settings.dueOn, at: settings.hour)))
+            try standing(of: "pulmón") == graduated(due: try october(settings.dueOn, at: settings.hour)))
     }
 
     @Test(
-        "the Import sheet offers Bring progress for an Anki package, ticked, with how many cards come in on a step, and unticked brings them in new",
+        "the Import sheet offers Bring progress for an Anki package, ticked, with how many cards come in with their progress, and unticked brings them in new",
         arguments: schemas)
     func theImportSheetOffersToBringProgress(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -323,7 +352,7 @@ final class AnkiProgressTests {
         try package.write(to: packageFile)
         let textFile = folder.appending(path: "Números.txt")
         try Data("cuatro\tfour\n".utf8).write(to: textFile)
-        var window = engine.openCardsWindow(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
         window.startImport()
 
         await window.previewImportAndWait(of: textFile)
@@ -341,11 +370,11 @@ final class AnkiProgressTests {
         #expect(importing.offersProgress)
         #expect(importing.bringsProgress)
         // The repeated card keeps its own progress, so it isn't counted.
-        #expect(importing.cardsComingIn == .newAndPlaced(new: 1, placed: 2))
+        #expect(importing.cardsComingIn == .newAndWithProgress(new: 1, withProgress: 2))
         #expect(untickedBrings == false)
         #expect(untickedCardsComingIn == .new(3))
         #expect(try engine.cards().dropFirst().map(\.front) == ["tres", "uno", "dos"])
-        #expect(try engine.cards().allSatisfy { try engine.standing(of: $0.id, on: ladder) == .new })
+        #expect(try engine.cards().allSatisfy { try engine.standing(of: $0.id, with: scheduler) == .new })
     }
 
     @Test(
@@ -366,7 +395,7 @@ final class AnkiProgressTests {
                 AnkiNote(type: .basic, fields: ["uno", "one"]),
             ]
         ).write(to: file)
-        var window = engine.openCardsWindow(on: ladder)
+        var window = engine.openCardsWindow(with: scheduler)
         window.startImport()
         await window.previewImportAndWait(of: file)
 
@@ -378,12 +407,13 @@ final class AnkiProgressTests {
     }
 
     @Test(
-        "with Bring progress ticked, the Import sheet brings each card in on its step, on the user's ladder",
+        "with Bring progress ticked, the Import sheet brings each card in with Anki's interval, ease and due date, whatever the user's scheduling settings",
         arguments: schemas)
-    func theImportSheetBringsProgressOntoTheUsersLadder(format: AnkiPackage.Format) async throws {
-        // A ladder of three steps, whose last one, 10 days, is the nearest
-        // to Anki's 30-day interval.
-        let threeSteps = try #require(Ladder(waits: [.seconds(3_600), .seconds(86_400), .seconds(10 * 86_400)]))
+    func theImportSheetBringsAnkisProgress(format: AnkiPackage.Format) async throws {
+        let oneShortStep = try #require(
+            Scheduler(
+                learningSteps: [.seconds(600)], relearningSteps: [], desiredRetention: 0.8,
+                longestIntervalInDays: 365, parameters: []))
         let file = folder.appending(path: "Mazo.apkg")
         try AnkiPackage(
             format: format,
@@ -391,20 +421,25 @@ final class AnkiProgressTests {
                 AnkiNote(type: .basic, fields: ["uno", "one"], progress: .review(due: 30, interval: 30))
             ]
         ).write(to: file)
-        var window = engine.openCardsWindow(on: threeSteps)
+        var window = engine.openCardsWindow(with: oneShortStep)
         window.startImport()
         await window.previewImportAndWait(of: file)
 
         await window.importCardsAndWait()
 
         let uno = try #require(try engine.cards().first)
-        #expect(try engine.standing(of: uno.id, on: threeSteps) == .onLadder(step: 2, due: try october(31, at: 4)))
+        #expect(
+            try engine.reviewLog().map(\.kind) == [
+                .placement(Placement(interval: .seconds(days(30)), due: try october(31, at: 4), ease: 2.5))
+            ])
+        #expect(
+            try engine.standing(of: uno.id, with: oneShortStep).stageAndDue == graduated(due: try october(31, at: 4)))
     }
 
     @Test(
-        "a card that came in on a step shows it in its review log, unseen until its first review, which climbs from there",
+        "a card that came in placed shows its interval in its review log, unseen until its first review, which goes on from it",
         arguments: schemas)
-    func aPlacedCardShowsItsStepInItsReviewLog(format: AnkiPackage.Format) async throws {
+    func aPlacedCardShowsItsIntervalInItsReviewLog(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -414,19 +449,24 @@ final class AnkiProgressTests {
         let heart = try #require(try engine.cards().first)
         let importedAt = time.now
 
-        let rowsBefore = try engine.reviewLogRows(of: heart.id, on: ladder)
-        let lastSeenBefore = try engine.cardRows(in: .all, on: ladder).first?.lastSeen
+        let rowsBefore = try engine.reviewLogRows(of: heart.id, with: scheduler)
+        let lastSeenBefore = try engine.cardRows(in: .all, with: scheduler).first?.lastSeen
         time.advance(by: days(9))
+        let good = try scheduler.preview(
+            of: CardWay(cardID: heart.id, way: .frontFirst), after: try engine.reviewLog(), at: time.now
+        ).good
         try engine.record(
             .review(.good), of: heart.id, responseTime: .seconds(3), trigger: .reviewNow,
             settings: .defaults)
 
-        #expect(rowsBefore.map(\.entry.kind) == [.placement(Placement(step: 4, due: try october(31, at: 4)))])
+        let placed = Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5)
+        #expect(rowsBefore.map(\.entry.kind) == [.placement(placed)])
         #expect(rowsBefore.map(\.entry.answeredAt) == [importedAt])
-        #expect(rowsBefore.map(\.step) == [4])
+        #expect(rowsBefore.map(\.interval) == [.seconds(days(10))])
         #expect(lastSeenBefore == .some(nil))
-        #expect(try engine.reviewLogRows(of: heart.id, on: ladder).map(\.step) == [4, 5])
-        #expect(try engine.cardRows(in: .all, on: ladder).first?.lastSeen == time.now)
+        #expect(good > .seconds(days(10)))
+        #expect(try engine.reviewLogRows(of: heart.id, with: scheduler).map(\.interval) == [.seconds(days(10)), good])
+        #expect(try engine.cardRows(in: .all, with: scheduler).first?.lastSeen == time.now)
     }
 
     // A filtered deck keeps the card's due in its home deck aside, and
@@ -446,7 +486,7 @@ final class AnkiProgressTests {
 
         try await importPackage(package)
 
-        #expect(try standing(of: "sístole") == .onLadder(step: 4, due: try october(31, at: 4)))
+        #expect(try standing(of: "sístole") == graduated(due: try october(31, at: 4)))
         #expect(try engine.cards().map(\.deck) == ["Medicina"])
     }
 }
