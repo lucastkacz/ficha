@@ -2,28 +2,90 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ can't open your cards" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ no puede abrir tus tarjetas"
+          }
+        }
+      }
     },
     "Again" : {
-      "comment" : "A card notification's button, Anki's first: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish, as on the Mac."
+      "comment" : "A card notification's button, Anki's first: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish, as on the Mac.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otra vez"
+          }
+        }
+      }
     },
     "Cards" : {
-      "comment" : "On the iPhone's placeholder screen: how many cards there are."
+      "comment" : "On the iPhone's placeholder screen: how many cards there are.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjetas"
+          }
+        }
+      }
     },
     "Couldn't count your cards" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron contar tus tarjetas"
+          }
+        }
+      }
     },
     "Due" : {
-      "comment" : "On the iPhone's placeholder screen: how many cards are due."
+      "comment" : "On the iPhone's placeholder screen: how many cards are due.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendientes"
+          }
+        }
+      }
     },
     "Easy" : {
-      "comment" : "A card notification's button, Anki's fourth: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish, as on the Mac."
+      "comment" : "A card notification's button, Anki's fourth: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish, as on the Mac.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fácil"
+          }
+        }
+      }
     },
     "Good" : {
-      "comment" : "A card notification's button, Anki's third: Lucas knew the card. Anki's own name for it, “Bien” in Spanish, as on the Mac."
+      "comment" : "A card notification's button, Anki's third: Lucas knew the card. Anki's own name for it, “Bien” in Spanish, as on the Mac.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bien"
+          }
+        }
+      }
     },
     "Hard" : {
-      "comment" : "A card notification's button, Anki's second: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish, as on the Mac."
+      "comment" : "A card notification's button, Anki's second: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish, as on the Mac.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Difícil"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

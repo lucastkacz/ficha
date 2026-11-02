@@ -2,28 +2,537 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ can't read your cards." : {
-      "comment" : "In the widget, when it couldn't read the cards. The reason follows, small."
+      "comment" : "In the widget, when it couldn't read the cards. The reason follows, small.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ no puede leer tus tarjetas."
+          }
+        }
+      }
+    },
+    "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una captura se aprueba en una o más tarjetas. Para sacarla de la bandeja sin tarjetas, descartala."
+          }
+        }
+      }
+    },
+    "A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un mazo necesita un nombre, así que no cambió nada. Escribí uno, con «::» entre un mazo y un mazo de adentro, como en «Idiomas::Inglés»."
+          }
+        }
+      }
+    },
+    "A newer version of Ficha changed the database, and this version won't open it, so as not to damage your cards. Open it with the version that changed it, or a newer one." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una versión más nueva de Ficha cambió la base de datos, y esta versión no la abre, para no dañar tus tarjetas. Abrila con la versión que la cambió, o con una más nueva."
+          }
+        }
+      }
+    },
+    "A newer version of Ficha saved the copy “%@”, and this version won't restore it, so as not to damage your cards. Restore it with that version, or a newer one." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una versión más nueva de Ficha guardó la copia «%@», y esta versión no la restaura, para no dañar tus tarjetas. Restaurala con esa versión, o con una más nueva."
+          }
+        }
+      }
+    },
+    "A tag needs a name, so nothing changed. Write one, with “::” between a tag and a tag inside it, as in “economía::Argentina”." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una etiqueta necesita un nombre, así que no cambió nada. Escribí uno, con «::» entre una etiqueta y una etiqueta de adentro, como en «economía::Argentina»."
+          }
+        }
+      }
+    },
+    "A type needs a name, so nothing changed. Write one." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un tipo necesita un nombre, así que no cambió nada. Escribí uno."
+          }
+        }
+      }
     },
     "Back first" : {
-      "comment" : "A badge on the card the widget shows, when it shows its back first."
+      "comment" : "A badge on the card the widget shows, when it shows its back first.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reverso primero"
+          }
+        }
+      }
+    },
+    "Capture %lld doesn't expand a card. Approve it into cards, or discard it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura %lld no amplía ninguna tarjeta. Aprobala en tarjetas, o descartala."
+          }
+        }
+      }
+    },
+    "Capture %lld isn't in the inbox: it was already approved or discarded, or it doesn't exist. Check what's in the inbox." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura %lld no está en la bandeja: ya se aprobó o se descartó, o no existe. Revisá qué hay en la bandeja."
+          }
+        }
+      }
+    },
+    "Card %lld can't be placed as an answer: only an import places a card. Nothing was recorded. Report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no se puede ubicar como respuesta: solo una importación ubica una tarjeta. No se guardó nada. Reportalo."
+          }
+        }
+      }
+    },
+    "Card %lld changed outside the review panel, so ⌘Z can't undo it. Close the review panel and open “Review now” again." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld cambió fuera del panel de repaso, así que ⌘Z no puede deshacer el cambio. Cerrá el panel de repaso y volvé a abrir «Repasar ahora»."
+          }
+        }
+      }
+    },
+    "Card %lld has no image on its back, so there's none to take off. `ficha cards` names each side's image and sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no tiene imagen en el reverso, así que no hay ninguna para quitar. `ficha cards` nombra la imagen y el sonido de cada lado."
+          }
+        }
+      }
+    },
+    "Card %lld has no image on its front, so there's none to take off. `ficha cards` names each side's image and sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no tiene imagen en el anverso, así que no hay ninguna para quitar. `ficha cards` nombra la imagen y el sonido de cada lado."
+          }
+        }
+      }
+    },
+    "Card %lld has no sound on its back, so there's none to take off. `ficha cards` names each side's image and sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no tiene sonido en el reverso, así que no hay ninguno para quitar. `ficha cards` nombra la imagen y el sonido de cada lado."
+          }
+        }
+      }
+    },
+    "Card %lld has no sound on its front, so there's none to take off. `ficha cards` names each side's image and sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no tiene sonido en el anverso, así que no hay ninguno para quitar. `ficha cards` nombra la imagen y el sonido de cada lado."
+          }
+        }
+      }
+    },
+    "Card %lld is buried. To bring it back, unbury it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld está enterrada. Para recuperarla, desenterrala."
+          }
+        }
+      }
+    },
+    "Card %lld is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review now” again." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld está marcada: espera en la bandeja a que se corrija. Cerrá el panel de repaso y volvé a abrir «Repasar ahora»."
+          }
+        }
+      }
+    },
+    "Card %lld is set aside with the deck “%@”. To bring it back, untick Set Aside on that deck in the Cards window." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %1$lld está apartada con el mazo «%2$@». Para recuperarla, destildá Apartar en ese mazo, en la ventana Tarjetas."
+          }
+        }
+      }
+    },
+    "Card %lld is set aside with the decks %@. To bring it back, untick Set Aside on each of them in the Cards window." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %1$lld está apartada con los mazos %2$@. Para recuperarla, destildá Apartar en cada uno de ellos, en la ventana Tarjetas."
+          }
+        }
+      }
+    },
+    "Card %lld isn't buried, so there's nothing to unbury. Check the card's id." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no está enterrada, así que no hay nada que desenterrar. Revisá el id de la tarjeta."
+          }
+        }
+      }
+    },
+    "Card %lld isn't due yet, so it can't be reviewed. Close the review panel and open “Review now” again." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld todavía no está pendiente, así que no se puede repasar. Cerrá el panel de repaso y volvé a abrir «Repasar ahora»."
+          }
+        }
+      }
+    },
+    "Card %lld isn't flagged, so there's nothing to fix: it was already fixed, or it was never flagged. Check what's in the inbox." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no está marcada, así que no hay nada que corregir: ya se corrigió, o nunca se marcó. Revisá qué hay en la bandeja."
+          }
+        }
+      }
+    },
+    "Card %lld isn't one of the cards its appearance brought, so its answer wasn't recorded. Report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta %lld no es una de las que trajo su aparición, así que su respuesta no se guardó. Reportalo."
+          }
+        }
+      }
+    },
+    "Card [%lld] has a blank front or back: give each side text, an image or a sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta [%lld] tiene el anverso o el reverso en blanco: dale a cada lado un texto, una imagen o un sonido."
+          }
+        }
+      }
+    },
+    "Default holds the cards no other deck does, so it can't be renamed, moved or deleted, and nothing changed. To go on, make a deck of your own and move Default's cards there." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Predeterminado guarda las tarjetas que no están en ningún otro mazo, así que no se puede renombrar, mover ni eliminar, y no cambió nada. Para seguir, creá un mazo propio y mové ahí las tarjetas de Predeterminado."
+          }
+        }
+      }
+    },
+    "Ficha can't make sense of the review log of card %lld, so it doesn't know when the card is due. Your cards are still saved: report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no entiende el historial de repasos de la tarjeta %lld, así que no sabe cuándo está pendiente. Tus tarjetas siguen guardadas: reportalo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't open “%@” as a zip: it may be damaged. Zip the text file of cards and its images and sounds again, and import that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo abrir «%@» como zip: puede estar dañado. Volvé a comprimir en un zip el archivo de texto de tarjetas con sus imágenes y sonidos, e importá eso."
+          }
+        }
+      }
+    },
+    "Ficha couldn't open “%@”. Check that the file is still there, and try again." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo abrir «%@». Revisá que el archivo siga ahí, y probá de nuevo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't read or change its Backups folder. Check that the disk has room and try again, and if it keeps happening, report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo leer o cambiar su carpeta Backups. Revisá que el disco tenga espacio y probá de nuevo y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't read or save a sound in its Sounds folder. Check that the disk has room and try again, and if it keeps happening, report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo leer o guardar un sonido en su carpeta Sounds. Revisá que el disco tenga espacio y probá de nuevo y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't read or save an image in its Images folder. Check that the disk has room and try again, and if it keeps happening, report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo leer o guardar una imagen en su carpeta Images. Revisá que el disco tenga espacio y probá de nuevo y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't read or save its database. Try again, and if it keeps happening, report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo leer o guardar su base de datos. Probá de nuevo y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't read “%@” as an Anki package: it may be damaged. Export the deck from Anki again, and import that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo leer «%@» como paquete de Anki: puede estar dañado. Volvé a exportar el mazo desde Anki, e importá eso."
+          }
+        }
+      }
+    },
+    "Ficha couldn't read “%@”. Check that the file is still there and that you can open it, and try again." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo leer «%@». Revisá que el archivo siga ahí y que lo puedas abrir, y probá de nuevo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't save “%@”. Check that the disk has room and that you can save in that folder, or choose another one, and try again." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo guardar «%@». Revisá que el disco tenga espacio y que puedas guardar en esa carpeta, o elegí otra, y probá de nuevo."
+          }
+        }
+      }
+    },
+    "Ficha couldn't work out when your cards are due. Your cards are still saved: try again, and if it keeps happening, report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no pudo calcular cuándo están pendientes tus tarjetas. Tus tarjetas siguen guardadas: probá de nuevo y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "Ficha holds no image or sound named “%@”. Give its name as `ficha cards` prints it, or the path of a file on the Mac." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha no tiene ninguna imagen ni ningún sonido llamado «%@». Pasá su nombre como lo imprime `ficha cards`, o la ruta de un archivo en la Mac."
+          }
+        }
+      }
+    },
+    "Ficha read the sound but couldn't convert it. Check that the disk has room and try again, and if it keeps happening, report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha leyó el sonido pero no pudo convertirlo. Revisá que el disco tenga espacio y probá de nuevo y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "Ficha reads files only from your Downloads folder, and “%@” isn't in it. Copy the file to Downloads, and give its path there." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha lee archivos solo de tu carpeta Descargas, y «%@» no está ahí. Copiá el archivo a Descargas, y pasá su ruta ahí."
+          }
+        }
+      }
     },
     "Image" : {
-      "comment" : "The accessibility label of an image on a card's side."
+      "comment" : "The accessibility label of an image on a card's side.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen"
+          }
+        }
+      }
     },
     "Image that couldn't be shown" : {
-      "comment" : "In the widget, in place of an image on a card's side that couldn't be read."
-    },
-    "macOS gave no folder for the App Group %@, which holds your cards. Quit the app and open it again, and if it keeps happening, report it." : {
-      "comment" : "An alert at launch, and in the widget, under that it can't read the cards. The value is the App Group's identifier, such as ABCDE12345.com.lucastkacz.ficha, which stays as it is."
+      "comment" : "In the widget, in place of an image on a card's side that couldn't be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen que no se pudo mostrar"
+          }
+        }
+      }
     },
     "New" : {
-      "comment" : "A badge on the card the widget shows, when it's new."
+      "comment" : "A badge on the card the widget shows, when it's new.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva"
+          }
+        }
+      }
     },
     "Next Card" : {
-      "comment" : "The widget's name in the widget gallery."
+      "comment" : "The widget's name in the widget gallery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próxima tarjeta"
+          }
+        }
+      }
     },
     "Next card at %@" : {
-      "comment" : "In the widget: when the next card comes, today."
+      "comment" : "In the widget: when the next card comes, today.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próxima tarjeta a las %@"
+          }
+        }
+      }
     },
     "Next card on %@ at %@" : {
       "comment" : "In the widget: when the next card comes, another day. The day is a weekday or a date.",
@@ -33,29 +542,462 @@
             "state" : "new",
             "value" : "Next card on %1$@ at %2$@"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próxima tarjeta el %1$@ a las %2$@"
+          }
         }
       }
     },
     "No card waiting" : {
-      "comment" : "In the widget, when no card waits to be reviewed."
+      "comment" : "In the widget, when no card waits to be reviewed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna tarjeta en espera"
+          }
+        }
+      }
     },
     "No cards to review" : {
-      "comment" : "In the widget, when no card waits and none comes on its own: they're buried, flagged or set aside."
+      "comment" : "In the widget, when no card waits and none comes on its own: they're buried, flagged or set aside.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay tarjetas para repasar"
+          }
+        }
+      }
     },
     "No cards yet" : {
-      "comment" : "In the widget, when the user has no cards at all."
+      "comment" : "In the widget, when the user has no cards at all.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no hay tarjetas"
+          }
+        }
+      }
     },
     "Open %@ to see your next card." : {
-      "comment" : "In the widget, before the app ran once since it was installed or updated, to make or update its database and hand over its settings."
+      "comment" : "In the widget, before the app ran once since it was installed or updated, to make or update its database and hand over its settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrí %@ para ver tu próxima tarjeta."
+          }
+        }
+      }
     },
     "Sound" : {
-      "comment" : "In the widget, the speaker on a card's side that holds only a sound."
+      "comment" : "In the widget, the speaker on a card's side that holds only a sound.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonido"
+          }
+        }
+      }
+    },
+    "That holds no sound Ficha can read. Drag or paste a sound or a video with sound instead, such as an MP3, an M4A or a MOV." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eso no tiene ningún sonido que Ficha pueda leer. Arrastrá o pegá un sonido o un video con sonido en su lugar, como un MP3, un M4A o un MOV."
+          }
+        }
+      }
+    },
+    "That isn't an image Ficha can read. Drag or paste a picture instead, such as a JPEG or a PNG." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa no es una imagen que Ficha pueda leer. Arrastrá o pegá una imagen en su lugar, como un JPEG o un PNG."
+          }
+        }
+      }
+    },
+    "That isn't one emoji. Pick just one, or leave the field empty for none." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eso no es un solo emoji. Elegí uno solo, o dejá el campo vacío para ninguno."
+          }
+        }
+      }
+    },
+    "That type was deleted meanwhile, maybe on another of your devices, so nothing changed. Pick another type." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese tipo se eliminó mientras tanto, quizás en otro de tus dispositivos, así que no cambió nada. Elegí otro tipo."
+          }
+        }
+      }
+    },
+    "That would leave card %lld with a blank front or back, so nothing changed: give each side text, an image or a sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eso dejaría la tarjeta %lld con el anverso o el reverso en blanco, así que no cambió nada: dale a cada lado un texto, una imagen o un sonido."
+          }
+        }
+      }
+    },
+    "The #%@ line of “%@” says “%@”, which isn't a column's number. Make it the number of the column, counting the first one as 1." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La línea #%1$@ de «%2$@» dice «%3$@», que no es un número de columna. Cambiala al número de la columna, contando la primera como 1."
+          }
+        }
+      }
+    },
+    "The #columns line of “%@” names no %@ column, which every card needs. Name its columns Front, Back, Tags, Type and Source, or remove the line." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La línea #columns de «%1$@» no nombra ninguna columna %2$@, que toda tarjeta necesita. Nombrá sus columnas Front, Back, Tags, Type y Source, o quitá la línea."
+          }
+        }
+      }
+    },
+    "The #html line of “%@” says “%@”: make it true when the file holds HTML, or false when it doesn't." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La línea #html de «%1$@» dice «%2$@»: cambiala a true si el archivo tiene HTML, o a false si no."
+          }
+        }
+      }
+    },
+    "The #separator line of “%@” says “%@”, which Ficha can't separate columns by. Make it Tab, Comma or Semicolon, or remove it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La línea #separator de «%1$@» dice «%2$@», y Ficha no puede separar columnas con eso. Cambiala a Tab, Comma o Semicolon, o quitala."
+          }
+        }
+      }
+    },
+    "The capture is empty: write what you want to remember." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura está vacía: escribí lo que querés recordar."
+          }
+        }
+      }
+    },
+    "The deck “%@” isn't there any more, maybe since another of your devices renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or pick another." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mazo «%@» ya no está, quizás porque otro de tus dispositivos lo renombró o lo eliminó, así que no cambió nada. Buscalo entre tus mazos con su nombre nuevo, o elegí otro."
+          }
+        }
+      }
     },
     "The next card to review, or when it comes. Click it to review it." : {
-      "comment" : "The widget's description in the widget gallery."
+      "comment" : "The widget's description in the widget gallery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La próxima tarjeta para repasar, o cuándo llega. Hacé clic para repasarla."
+          }
+        }
+      }
+    },
+    "There's no card with the id %lld: it was deleted, or it never existed. Check the card's id." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna tarjeta con el id %lld: se eliminó, o nunca existió. Revisá el id de la tarjeta."
+          }
+        }
+      }
+    },
+    "There's no copy named “%@” in Ficha's Backups folder: it was moved or deleted. Check which copies are there." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna copia llamada «%@» en la carpeta Backups de Ficha: se movió o se eliminó. Revisá qué copias hay."
+          }
+        }
+      }
+    },
+    "There's no file at “%@”. Check the path: a path that doesn't start with / or ~ starts from the folder the command runs in." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ningún archivo en «%@». Revisá la ruta: una ruta que no empieza con / o ~ parte de la carpeta donde corre el comando."
+          }
+        }
+      }
     },
     "This build isn't signed with its App Group, whose folder holds its cards. Install Ficha from TestFlight, or build Ficha Dev with make run, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says." : {
-      "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. TestFlight is Apple's app, make run a command, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
+      "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. TestFlight is Apple's app, make run a command, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta compilación no está firmada con su App Group, cuya carpeta guarda sus tarjetas. Instalá Ficha desde TestFlight, o compilá Ficha Dev con make run, con el ID de tu equipo en iPhone/Local.xcconfig, como dice docs/development.md."
+          }
+        }
+      }
+    },
+    "You already have a type named “%@”, so nothing changed. Pick that type, or write another name." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya tenés un tipo llamado «%@», así que no cambió nada. Elegí ese tipo, o escribí otro nombre."
+          }
+        }
+      }
+    },
+    "Your question about card %lld was approved or discarded outside the review panel, so ⌘Z can't take it back. If it became cards you don't want, delete them in the Cards window." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu pregunta sobre la tarjeta %lld se aprobó o se descartó fuera del panel de repaso, así que ⌘Z no puede deshacerla. Si se convirtió en tarjetas que no querés, eliminalas en la ventana Tarjetas."
+          }
+        }
+      }
+    },
+    "macOS gave no folder for the App Group %@, which holds your cards. Quit the app and open it again, and if it keeps happening, report it." : {
+      "comment" : "An alert at launch, and in the widget, under that it can't read the cards. The value is the App Group's identifier, such as ABCDE12345.com.lucastkacz.ficha, which stays as it is.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no dio ninguna carpeta para el App Group %@, que guarda tus tarjetas. Salí de la app y volvé a abrirla y, si sigue pasando, reportalo."
+          }
+        }
+      }
+    },
+    "“%@” can't go inside Default, which holds the cards no other deck does and has no decks inside it, so nothing changed. Move it inside another deck, or to the top." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no puede ir dentro de Predeterminado, que guarda las tarjetas que no están en ningún otro mazo y no tiene mazos adentro, así que no cambió nada. Movelo dentro de otro mazo, o al primer nivel."
+          }
+        }
+      }
+    },
+    "“%@” can't go inside itself, or inside a deck inside it, so nothing changed. Pick a deck outside it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no puede ir dentro de sí mismo, ni dentro de un mazo que está adentro de él, así que no cambió nada. Elegí un mazo de afuera."
+          }
+        }
+      }
+    },
+    "“%@” can't go inside itself, or inside a tag inside it, so nothing changed. Pick a tag outside it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no puede ir dentro de sí misma, ni dentro de una etiqueta que está adentro de ella, así que no cambió nada. Elegí una etiqueta de afuera."
+          }
+        }
+      }
+    },
+    "“%@” holds no sound Ficha can read. Give a sound or a video with sound as a side's sound instead, such as an MP3, an M4A or a MOV, and a picture as its image." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no tiene ningún sonido que Ficha pueda leer. Como sonido de un lado, pasá un sonido o un video con sonido, como un MP3, un M4A o un MOV, y como su imagen, una imagen."
+          }
+        }
+      }
+    },
+    "“%@” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside the images and sounds. Add it, zip them again, and import that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no tiene ningún archivo de texto de tarjetas: Ficha busca uno que termine en .txt, .csv o .tsv junto a las imágenes y los sonidos. Agregalo, volvé a comprimirlos en un zip, e importá eso."
+          }
+        }
+      }
+    },
+    "“%@” holds several text files of cards, %@, and Ficha imports one at a time. Zip each with its images and sounds on its own, and import them one by one." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%1$@» tiene varios archivos de texto de tarjetas, %2$@, y Ficha importa uno por vez. Comprimí cada uno en un zip aparte con sus imágenes y sonidos, e importalos de a uno."
+          }
+        }
+      }
+    },
+    "“%@” is Default's name, and Default holds the cards no other deck does, so nothing changed. To move cards there, pick Default; to make a deck, write another name." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» es el nombre de Predeterminado, y Predeterminado guarda las tarjetas que no están en ningún otro mazo, así que no cambió nada. Para mover tarjetas ahí, elegí Predeterminado; para crear un mazo, escribí otro nombre."
+          }
+        }
+      }
+    },
+    "“%@” is one of the types Ficha comes with, so nothing changed. Pick that type, or write another name." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» es uno de los tipos que trae Ficha, así que no cambió nada. Elegí ese tipo, o escribí otro nombre."
+          }
+        }
+      }
+    },
+    "“%@” is set aside, and a deck is never both set aside and a priority deck, nor is a deck inside it, so nothing changed. Stop setting it aside first." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» está apartado, y un mazo nunca está apartado y es prioritario a la vez, ni tampoco un mazo de adentro, así que no cambió nada. Primero dejá de apartarlo."
+          }
+        }
+      }
+    },
+    "“%@” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a spreadsheet as “CSV UTF-8”, and import that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no es texto UTF-8, que es lo que lee Ficha. Guardalo de nuevo como texto UTF-8, o desde una planilla como «CSV UTF-8», e importá eso."
+          }
+        }
+      }
+    },
+    "“%@” isn't an image Ficha can read. Give a picture as a side's image instead, such as a JPEG or a PNG, and a sound as its sound." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no es una imagen que Ficha pueda leer. Como imagen de un lado, pasá una imagen, como un JPEG o un PNG, y como su sonido, un sonido."
+          }
+        }
+      }
+    },
+    "“%@” isn't an image or a sound Ficha can read. Give a picture instead, such as a JPEG or a PNG, or a sound or a video with sound, such as an MP3, an M4A or a MOV." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no es una imagen ni un sonido que Ficha pueda leer. Pasá una imagen en su lugar, como un JPEG o un PNG, o un sonido o un video con sonido, como un MP3, un M4A o un MOV."
+          }
+        }
+      }
+    },
+    "“%@” isn't pinned to the sidebar, maybe since another of your devices unpinned it, so nothing moved. Pin it first." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no está fijada en la barra lateral, quizás porque otro de tus dispositivos la quitó, así que no se movió nada. Primero fijala."
+          }
+        }
+      }
+    },
+    "“%@” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with “Support older Anki versions” ticked, and import that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» se exportó con un Anki más nuevo de los que Ficha conoce. En Anki, volvé a exportar el mazo con «Compatibilidad con versiones anteriores de Anki» tildado, e importá eso."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
