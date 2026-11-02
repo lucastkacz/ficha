@@ -1,0 +1,11 @@
+# The languages Ficha is translated into besides English, its base (ADR 0027):
+# every key of every String Catalog has a translated value in each, which
+# make check's translations-check and FichaKit's test of the engine's messages
+# require. A language joins with a line here, in the change that translates
+# every catalog into it and adds its column to docs/terms.md.
+#
+# Each line: the language's code, as String Catalogs name it; its plural
+# categories, as Unicode's CLDR rules give them and Xcode offers them, which
+# every plural variation has in it, with zero too where the English has one;
+# and its name in English, for the check's messages.
+es one,many,other Spanish
