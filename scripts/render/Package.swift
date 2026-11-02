@@ -21,8 +21,10 @@ let package = Package(
             ],
             // The app's entry point and its delegate, its icons, its String
             // Catalog, its Info.plist and its entitlements stay out:
-            // `main.swift` is this tool's entry point, and the tool runs
-            // outside the sandbox. So do the delegate, Ficha Dev's second
+            // `main.swift` is this tool's entry point, which compiles the
+            // catalog itself, as it starts, into the folder SwiftUI looks in,
+            // since SwiftPM would put it in a bundle of its own; and the tool
+            // runs outside the sandbox. So do the delegate, Ficha Dev's second
             // device and the app's `main.swift`, the only files that load
             // CloudKit, which the tool never loads (ADR 0017): the App Intents
             // reach a delegate of the tool's own, `AppDelegateStandIn.swift`.

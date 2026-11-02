@@ -8,17 +8,39 @@
 # simctl's, which `xcrun simctl help` documents. Our own are a simulator for
 # each run, the line the app says on its standard output once its screen is up
 # (iPhone/Rendering.swift), and the wait for a still screen after it.
+#
+# With `--language <code>`, the app opens in one of Ficha's languages, with
+# its region's formats, through the launch arguments Xcode's scheme options
+# pass: `-AppleLanguages` and `-AppleLocale`, and for Arabic those of its
+# right-to-left pseudolanguage too, which mirror the screen even before the
+# app has Arabic.
 
 set -euo pipefail
 
-usage='Usage: make render-iphone ARGS="--out <path>", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without it.'
+# English and the eleven languages Ficha comes in, each as `<locale> <name>`:
+# the language's code in the String Catalogs and its region, as the render
+# tool for the Mac has them (renderLanguages, in
+# scripts/render/Sources/Render/main.swift), and its name in English.
+languages=(
+  "en_US English" "zh-Hans_CN Simplified Chinese" "ja_JP Japanese" "de_DE German" "es_AR Spanish" "fr_FR French"
+  "ko_KR Korean" "pt_BR Portuguese" "zh-Hant_TW Traditional Chinese" "it_IT Italian" "ru_RU Russian" "ar_EG Arabic"
+)
+language_list=""
+for entry in "${languages[@]}"; do
+  language_list+="${language_list:+, }${entry%%_*} (${entry#* })"
+done
+
+usage="Usage: make render-iphone ARGS=\"[--language <code>] [--out <path>]\", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without --out, iphone-<code>-light.png and iphone-<code>-dark.png in a language. Without --language, the app opens in English, with the simulator's formats. The languages: $language_list."
 (($# > 0)) || {
   echo "There's no app to take pictures of: run the tool through make render-iphone, which builds Ficha Dev and passes its path. $usage" >&2
   exit 1
 }
 app=$1
 shift
-out=.build/render/iphone
+out=""
+language=""
+language_name=""
+locale=""
 while (($# > 0)); do
   case $1 in
     --out)
@@ -27,6 +49,22 @@ while (($# > 0)); do
         exit 1
       }
       out=$2
+      shift 2
+      ;;
+    --language)
+      language=${2:-}
+      locale=""
+      for entry in "${languages[@]}"; do
+        if [[ ${entry%% *} == "$language"_* ]]; then
+          locale=${entry%% *}
+          language_name=${entry#* }
+        fi
+      done
+      [[ -n $locale ]] || {
+        echo "${language:+Ficha has no language $language: }--language takes one of the languages below, by its code." >&2
+        echo "$usage" >&2
+        exit 1
+      }
       shift 2
       ;;
     *)
@@ -39,16 +77,35 @@ if [[ $out == *.png ]]; then
   echo "--out takes a path without .png: the tool adds -light.png and -dark.png to it. $usage" >&2
   exit 1
 fi
+out=${out:-.build/render/iphone${language:+-$language}}
 
 # What the app reads and says when the tool opens it, as iPhone/Rendering.swift
 # writes them.
-launch_argument=-FichaRendering
+launch_arguments=(-FichaRendering)
 screen_is_up="The screen is up"
 
 bundle=$(plutil -extract CFBundleIdentifier raw "$app/Info.plist" 2>/dev/null) || {
   echo "There's no app at $app: build it with make build-iphone." >&2
   exit 1
 }
+
+# The language the app opens in: English without --language, with the
+# simulator's own formats, as before the tool took a language.
+if [[ -z $locale ]]; then
+  launch_arguments+=(-AppleLanguages "(en)")
+else
+  launch_arguments+=(-AppleLanguages "($language)" -AppleLocale "$locale")
+  # Arabic, the one of Ficha's languages read right to left.
+  if [[ $language == ar ]]; then
+    launch_arguments+=(-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES)
+  fi
+  # The app's bundle is flat on iOS: its compiled String Catalog is a folder
+  # for each language beside its Info.plist. English is the language the code
+  # writes the texts in, which needs none.
+  if [[ $language != en && ! -d $app/$language.lproj ]]; then
+    echo "iPhone/Localizable.xcstrings has no $language_name ($language) yet, so the app's texts are English, as Ficha shows them on an iPhone in $language_name, with its formats."
+  fi
+fi
 
 # The newest iOS the Mac has, and the first iPhone it offers: simctl lists them
 # by generation, newest first.
@@ -118,8 +175,8 @@ give_up() {
 # seconds, so 8 of them are more than seven.
 take_picture() {
   local app_output=$scratch/$1-output.txt shot=$scratch/shot.png last=$scratch/last.png still_since deadline
-  xcrun simctl launch --terminate-running-process --stdout="$app_output" "$device" "$bundle" "$launch_argument" \
-    >/dev/null || give_up "$1" "Ficha Dev didn't open, as simctl says above"
+  xcrun simctl launch --terminate-running-process --stdout="$app_output" "$device" "$bundle" \
+    "${launch_arguments[@]}" >/dev/null || give_up "$1" "Ficha Dev didn't open, as simctl says above"
   deadline=$((SECONDS + 60))
   until grep -qxF "$screen_is_up" "$app_output" 2>/dev/null; do
     ((SECONDS < deadline)) || give_up "$1" "Ficha Dev didn't say its screen was up within a minute"
