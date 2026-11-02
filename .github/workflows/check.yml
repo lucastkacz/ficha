@@ -208,17 +208,14 @@ jobs:
           key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Save fsrs-rs's build
         # After a run on main, unless the cache had its key already.
-        # Temporary, for #411's warm-run timing: 404-fsrs saves too. The next
-        # commit reverts it.
-        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/404-fsrs') && steps.rust-cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.RUST_BUILDS }}
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - name: Save the Rust toolchain
         # After a run on main, unless the cache had its key already.
-        # Temporary, as above.
-        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/404-fsrs') && steps.rustup-cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && steps.rustup-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.RUSTUP_HOME }}
