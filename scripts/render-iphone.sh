@@ -100,9 +100,12 @@ else
     launch_arguments+=(-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES)
   fi
   # The app's bundle is flat on iOS: its compiled String Catalog is a folder
-  # for each language beside its Info.plist. English is the language the code
-  # writes the texts in, which needs none.
-  if [[ $language != en && ! -d $app/$language.lproj ]]; then
+  # for each language beside its Info.plist, with the texts in Localizable
+  # files, which an incremental build leaves the folder without when the
+  # catalog loses the language. English is the language the code writes the
+  # texts in, which needs none.
+  strings=$app/$language.lproj/Localizable
+  if [[ $language != en && ! -e $strings.strings && ! -e $strings.stringsdict ]]; then
     echo "iPhone/Localizable.xcstrings has no $language_name ($language) yet, so the app's texts are English, as Ficha shows them on an iPhone in $language_name, with its formats."
   fi
 fi
