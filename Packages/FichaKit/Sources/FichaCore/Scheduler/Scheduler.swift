@@ -131,13 +131,16 @@ extension Scheduler {
     /// the first learning step for an interval under a day, and graduated
     /// for one of a day or more, its memory started from that interval and
     /// Anki's ease. A placement after reviews keeps their memory, and gives
-    /// the way the interval Anki had for it: graduated for a day or more,
-    /// and in its steps for less. Either way, the way is due at the
-    /// placement's due time.
+    /// the way its interval: graduated for a day or more, and in its steps
+    /// for less, on the step the reviews left it on, or, after reviews that
+    /// graduated it, on the last learning step, or the last relearning step
+    /// once it lapsed. Either way, the way is due at the placement's due
+    /// time.
     ///
-    /// Throws when fsrs-rs fails, or when an entry can't be followed: a
-    /// placement with a negative interval, or without an ease for a
-    /// graduated way, or a review that kept an interval its rating can't set.
+    /// Throws when fsrs-rs fails, or when an entry can't be followed: the
+    /// same entry twice, a placement with a negative interval, or of a day
+    /// or more with no review before it and no ease above zero, or a review
+    /// that kept no time at all, or an interval its rating can't set.
     public func standing(after entries: [ReviewLogEntry]) throws(SchedulingError) -> WayStanding {
         try WayReplay(of: entries, with: self).standing
     }
@@ -246,9 +249,12 @@ public struct IntervalPreview: Sendable, Equatable {
 /// Why the scheduler couldn't work out where a way stands.
 public enum SchedulingError: Error, Equatable, CustomStringConvertible {
     /// The review log of the card with this id has an entry the scheduler
-    /// can't follow: a placement with a negative interval, or without an
-    /// ease for a graduated way, or a review that kept an interval its rating
-    /// can't set.
+    /// can't follow: one that doesn't come after the entries before it in
+    /// the order the scheduler replays them, as the same entry twice, or one
+    /// an import writes out of that order; a placement with a negative
+    /// interval, or of a day or more with no review before it and no ease
+    /// above zero; or a review that kept no time at all, or an interval its
+    /// rating can't set.
     case unexpectedReviewLog(cardID: Int64)
     /// fsrs-rs couldn't work out a memory, an interval or a retrievability,
     /// as this says.
@@ -258,9 +264,10 @@ public enum SchedulingError: Error, Equatable, CustomStringConvertible {
         switch self {
         case .unexpectedReviewLog(let cardID):
             """
-            Card \(cardID)'s review log has an entry the scheduler can't follow: a placement with a negative \
-            interval, or without an ease for a graduated card, or a review that kept an interval its rating can't set. \
-            Check what wrote it: the import, or the device that recorded the review.
+            Card \(cardID)'s review log has an entry the scheduler can't follow: the same entry twice, or one out of \
+            order, a placement with a negative interval, or without an ease for a graduated card, or a review that \
+            kept no time at all, or an interval its rating can't set. Check what wrote it: the import, or the device \
+            that recorded the review.
             """
         case .fsrsFailed(let description):
             description

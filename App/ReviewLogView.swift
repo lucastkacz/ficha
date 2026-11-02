@@ -5,10 +5,11 @@ import SwiftUI
 
 /// A card's review log in the Cards window's detail, under where the card
 /// stands: a chart of the interval it waited after each review, and after
-/// the placement an import brought it in with (ADR 0013), each the interval
-/// of the entry's way, a line for each way, with a key, and every entry
-/// under it, the latest first, each back-first one marked, with the interval
-/// it set. A new card says it has no reviews yet instead.
+/// each placement an import gave it (ADR 0013), where Anki's reviews of it
+/// start, or after them, each the interval of the entry's way, a line for
+/// each way, with a key, and every entry under it, the latest first, each
+/// back-first one marked, with the interval it set. A new card says it has
+/// no reviews yet instead.
 struct ReviewLogView: View {
     /// The card's review log, oldest first, each entry with the interval its
     /// way waited after it.
@@ -33,8 +34,8 @@ struct ReviewLogView: View {
     /// logarithmic scale of time from minutes to years, so an hour and a year
     /// both fit, marked at round spans of time from the one under the
     /// shortest interval to the one over the longest, in the color of what
-    /// Lucas answered, Anki's colors for its four ratings, or gray for the
-    /// placement an import brought, which the key under the chart names. A
+    /// Lucas answered, Anki's colors for its four ratings, or gray for a
+    /// placement an import gave, which the key under the chart names. A
     /// line for each way holds its interval until its next entry: solid
     /// front first and dashed back first, which the key names too once the
     /// card has a back-first entry. The first and last entries' dates go
@@ -357,7 +358,8 @@ extension Way {
 }
 
 extension ReviewLogEntry {
-    /// Whether the entry is the placement an import brought the card in with.
+    /// Whether the entry is a placement, which an import gives a card where
+    /// Anki's reviews of it start, or after them.
     fileprivate var isPlacement: Bool {
         if case .placement = kind { true } else { false }
     }
@@ -366,8 +368,7 @@ extension ReviewLogEntry {
 extension ReviewLogEntry.Kind {
     /// What the user answered, as the chart's key names it, and VoiceOver
     /// each of the chart's points: the rating as the review panel's buttons
-    /// name it, or "Imported", for the placement an import brought the card
-    /// in with.
+    /// name it, or "Imported", for a placement an import gave the card.
     fileprivate var name: String {
         switch self {
         case .placement:
@@ -383,8 +384,8 @@ extension ReviewLogEntry.Kind {
     }
 
     /// What the user answered, as the review log's list names it: the rating
-    /// as the review panel's buttons name it, or, for the placement an import
-    /// brought the card in with, when the import said it was due.
+    /// as the review panel's buttons name it, or, for a placement an import
+    /// gave the card, when the import said it was due.
     fileprivate var entryName: String {
         switch self {
         case .placement(let placement):

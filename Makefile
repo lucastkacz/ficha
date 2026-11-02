@@ -77,7 +77,9 @@ SHELL_SCRIPTS := .claude/hooks/*.sh scripts/*.sh
 CHECKS += lint
 lint: rustup ## Check the Swift code's and our crate's formatting and style, and lint the shell scripts and the workflows.
 	swift format lint --strict --recursive --parallel $(SWIFT_SOURCES)
-	cd $(RUST) && cargo fmt --check
+	cd $(RUST) && cargo fmt --check || { \
+		echo "Our crate's Rust isn't formatted as rustfmt formats it, as the diff above shows: run make fmt and commit the result." >&2; \
+		exit 1; }
 	cd $(RUST) && cargo clippy --locked --quiet -- --deny warnings
 	shellcheck $(SHELL_SCRIPTS)
 	actionlint

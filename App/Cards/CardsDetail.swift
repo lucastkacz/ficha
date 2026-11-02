@@ -314,10 +314,10 @@ struct CardDetail: View {
     /// Where one of the card's ways stands, in rows of the grid labeled as
     /// `labels` say: its interval, as the Interval column says it, when it's
     /// due, while it has a due time, and, once FSRS has a memory of it, its
-    /// stability, in days, its
-    /// difficulty, as a percentage, and its retrievability, the chance of
-    /// remembering it now, as a percentage too, as Anki's Card Info shows
-    /// them, and as VoiceOver reads them, with their units.
+    /// stability, in days, its difficulty, as a percentage, and its
+    /// retrievability, the chance of remembering it now, as a percentage
+    /// too, as Anki's Card Info shows them, and as VoiceOver reads them,
+    /// with their units.
     @ViewBuilder
     private func wayRows(_ way: WayProgress, labels: WayLabels) -> some View {
         GridRow {
@@ -664,8 +664,9 @@ func dueText(_ way: WayProgress, at now: Date) -> String {
             comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
         )
     }
-    // In the intervals' units, days, hours and minutes, as the Interval
-    // column shows them: "in 8d", never "next week".
+    // In days, hours and minutes, the units of a step's interval and of a
+    // graduated one under a month: "in 8d", never "next week", and "in 45d"
+    // where the Interval column says "1.5mo".
     var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
     style.allowedFields = [.day, .hour, .minute]
     return style.format(now)

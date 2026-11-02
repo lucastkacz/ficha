@@ -38,12 +38,14 @@ extension ImportedProgress {
     /// counts as the last. It comes with that step's interval, or the one its
     /// reviews set there, when it's less than a day, as Ficha's steps are;
     /// when the settings have no such step, a card its reviews graduated
-    /// stays graduated, with the interval they set. The placement comes at `importedAt`, or a millisecond after the last
-    /// review, the finest Anki keeps, when the app's clock put that review
-    /// later.
+    /// stays graduated, with the interval they set. The placement comes at
+    /// `importedAt`, or a millisecond after the last review, the finest Anki
+    /// keeps, when the app's clock put that review later.
     ///
-    /// Throws when fsrs-rs fails, or the scheduler can't follow the
-    /// placement: a graduated one whose ease isn't above zero.
+    /// Throws when fsrs-rs fails, or the scheduler can't follow an entry, as
+    /// `SchedulingError.unexpectedReviewLog` says: reviews out of the order
+    /// the scheduler replays them in, a placement with a negative interval,
+    /// or a graduated one whose ease isn't above zero.
     public func log(of cardWay: CardWay, importedAt: Date, with scheduler: Scheduler, newID: () -> UUID)
         throws(SchedulingError) -> [ReviewLogEntry]
     {

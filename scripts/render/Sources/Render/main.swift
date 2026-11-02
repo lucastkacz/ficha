@@ -138,8 +138,8 @@ enum Window: String {
     /// the four buttons would set.
     case panelReview = "panel-review"
     /// The Cards window with a sample card that goes both ways selected, its
-    /// back-first way met and climbed since, its detail scrolled to its end,
-    /// below both ways' interval, due time, stability, difficulty and
+    /// back-first way rated Again and then Good, its detail scrolled to its
+    /// end, below both ways' interval, due time, stability, difficulty and
     /// retrievability: its chart, with a line for each way, and its key.
     case cardsBothWays = "cards-both-ways"
 }
@@ -695,7 +695,8 @@ func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
 
 /// The app's model on the sample cards, once the sample Anki package came in
 /// with its progress, and four days later, the card of the femur, which came
-/// in with Anki's interval of 10 days, was reviewed with Good, on time.
+/// in with Anki's five reviews of it, the last setting its 10 days, was
+/// reviewed with Good, once due.
 func ankiImportedModel() throws -> AppModel {
     let (engine, time) = try sampleEngine(at: .inMemory)
     let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
