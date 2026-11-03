@@ -19,27 +19,22 @@ enum ColumnWidth {
     static func fitting(header: String, cells: [String] = [], sorts: Bool = true) -> CGFloat {
         let headerWidth =
             sorts
-            ? width(of: header, in: .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)) + 24
-            : width(of: header, in: .systemFont(ofSize: NSFont.smallSystemFontSize)) + 6
-        let cellWidth = (cells.map { width(of: $0, in: .systemFont(ofSize: NSFont.systemFontSize)) }.max() ?? 0) + 6
+            ? header.width(in: .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)) + 24
+            : header.width(in: .systemFont(ofSize: NSFont.smallSystemFontSize)) + 6
+        let cellWidth = (cells.map { $0.width(in: .systemFont(ofSize: NSFont.systemFontSize)) }.max() ?? 0) + 6
         return max(headerWidth, cellWidth).rounded(.up)
     }
 
-    /// `style`'s text of a day in each month of `now`'s year, late in the
-    /// evening, so that the longest month's name and the longest hour are
-    /// among them: the texts of a column that shows dates in `style`.
-    static func inEachMonth(_ style: Date.FormatStyle, of now: Date) -> [String] {
+    /// The texts a column that shows dates in `style` measures: `style`'s
+    /// text of a day in each month of `now`'s year, late in the evening, so
+    /// that the longest month's name and the longest hour are among them.
+    static func dateTexts(_ style: Date.FormatStyle, inEachMonthOf now: Date) -> [String] {
         let calendar = Calendar.current
         let year = calendar.component(.year, from: now)
         return (1...12).compactMap { month in
             calendar.date(from: DateComponents(year: year, month: month, day: 28, hour: 22, minute: 30))
         }
         .map(style.format)
-    }
-
-    /// How wide `text` is in `font`, as AppKit draws it.
-    static func width(of text: String, in font: NSFont) -> CGFloat {
-        (text as NSString).size(withAttributes: [.font: font]).width
     }
 
     /// The points an AppKit table takes besides the widths of its `count`
@@ -88,4 +83,11 @@ extension TableColumn {
     func width(fitting column: FittedColumn) -> TableColumn<RowValue, Sort, Content, Label> {
         width(min: column.min, ideal: column.ideal, max: column.max)
     }
+}
+
+extension FormatStyle where Self == Date.FormatStyle {
+    /// How the date columns of the Cards window's tables, the cards' and the
+    /// inbox's, show a day: without the time, to leave the user's texts, a
+    /// card's front or a capture's, their room.
+    static var tableDay: Date.FormatStyle { Date.FormatStyle(date: .abbreviated, time: .omitted) }
 }

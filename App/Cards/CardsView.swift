@@ -191,14 +191,17 @@ struct CardsView: View {
     /// emoji, two levels down too, like Idiomas › Español › Rioplatense. The
     /// panes' least widths add up to the window's either way.
     private var panes: some View {
-        NavigationSplitView {
+        // The cards' table's columns, fitted to their texts in the app's
+        // language, which the table's pane opens to fit too.
+        let cardColumns = CardTableColumns(now: state.now)
+        return NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 160, ideal: 260, max: 280)
                 .waiting(while: state.editing != nil)
         } content: {
-            table
+            table(cardColumns: cardColumns)
                 .navigationSplitViewColumnWidth(
-                    min: listsAllTagsTree ? 500 : 380, ideal: CardTableColumns(now: state.now).openingPaneWidth
+                    min: listsAllTagsTree ? 500 : 380, ideal: cardColumns.openingPaneWidth
                 )
                 .waiting(while: state.editing != nil)
         } detail: {
@@ -1204,15 +1207,16 @@ struct CardsView: View {
         if case .success(.allTags) = state.listing { true } else { false }
     }
 
+    /// What the table's pane lists, the cards' table with `cardColumns`.
     @ViewBuilder
-    private var table: some View {
+    private func table(cardColumns: CardTableColumns) -> some View {
         switch state.listing {
         case .success(.cards(let rows)):
             VStack(spacing: 0) {
                 if let menu = state.chosenDeckMenu {
                     DeckBar(menu: menu, state: $state)
                 }
-                cardTable(rows)
+                cardTable(rows, columns: cardColumns)
             }
         case .success(.inbox(let rows)):
             inboxTable(rows)
@@ -1233,12 +1237,10 @@ struct CardsView: View {
     /// in All Tags, one per row, which he drags onto a deck in the sidebar,
     /// with the other selected cards when it's one of them. A right click on
     /// the headers shows SwiftUI's menu of the columns, as in Finder, which
-    /// adds or removes all of them but Front.
-    private func cardTable(_ rows: [CardRow]) -> some View {
-        // Each column's header and widths, fitted to its texts in the app's
-        // language.
-        let fitted = CardTableColumns(now: state.now)
-        return Table(of: CardRow.self, selection: selectedCards, sortOrder: $sortOrder, columnCustomization: $columns) {
+    /// adds or removes all of them but Front. Its columns have `fitted`'s
+    /// headers and widths.
+    private func cardTable(_ rows: [CardRow], columns fitted: CardTableColumns) -> some View {
+        Table(of: CardRow.self, selection: selectedCards, sortOrder: $sortOrder, columnCustomization: $columns) {
             TableColumn(Text(fitted.front.header), sortUsing: CardRowOrder(.front)) { row in
                 FrontCell(card: row.card)
             }
@@ -1310,20 +1312,20 @@ struct CardsView: View {
             .customizationID(CardRowOrder.Column.source.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(Text(fitted.lastSeen.header), sortUsing: CardRowOrder(.lastSeen)) { row in
-                Text(row.lastSeen?.formatted(CardTableColumns.day) ?? "")
+                Text(row.lastSeen?.formatted(.tableDay) ?? "")
             }
             .width(fitting: fitted.lastSeen)
             .customizationID(CardRowOrder.Column.lastSeen.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(Text(fitted.created.header), sortUsing: CardRowOrder(.created)) { row in
-                Text(row.card.createdAt.formatted(CardTableColumns.day))
+                Text(row.card.createdAt.formatted(.tableDay))
             }
             .width(fitting: fitted.created)
             .customizationID(CardRowOrder.Column.created.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(Text(fitted.edited.header), sortUsing: CardRowOrder(.edited)) { row in
                 // Blank for a card never edited.
-                Text(row.card.editedAt?.formatted(CardTableColumns.day) ?? "")
+                Text(row.card.editedAt?.formatted(.tableDay) ?? "")
             }
             .width(fitting: fitted.edited)
             .customizationID(CardRowOrder.Column.edited.rawValue)
@@ -1356,27 +1358,11 @@ struct CardsView: View {
     /// the follow-ups and the flagged cards, which Lucas selects one at a
     /// time.
     private func inboxTable(_ rows: [InboxRow]) -> some View {
-        // The headers and widths of the columns of the app's own texts,
-        // fitted to them in the app's language, as the cards' table's.
-        let kind = FittedColumn(
-            String(
-                localized: "Kind",
-                comment:
-                    "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card."
-            ),
-            cells: InboxKind.allCases.map(\.name), min: 64, ideal: 76, max: 110)
-        let added = FittedColumn(
-            String(
-                localized: "Added",
-                comment: "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."),
-            cells: ColumnWidth.inEachMonth(CardTableColumns.day, of: state.now), min: 80, ideal: 96, max: 140)
+        // Each column's header and widths, fitted to its texts in the app's
+        // language.
+        let fitted = InboxTableColumns(now: state.now)
         return Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
-            TableColumn(
-                Text(
-                    "Text",
-                    comment: "A column of the Cards window's inbox: a capture's text, or a flagged card's front."),
-                sortUsing: InboxRowOrder(.text)
-            ) { row in
+            TableColumn(Text(fitted.text.header), sortUsing: InboxRowOrder(.text)) { row in
                 if let cardRow = row.flaggedCard {
                     FrontCell(card: cardRow.card)
                 } else {
@@ -1384,16 +1370,17 @@ struct CardsView: View {
                         .lineLimit(1)
                 }
             }
-            .width(min: 120)
-            TableColumn(Text(kind.header), sortUsing: InboxRowOrder(.kind)) { row in
+            // Narrows below its texts, the user's: `InboxTableColumns` says
+            // why.
+            .width(fitting: fitted.text)
+            TableColumn(Text(fitted.kind.header), sortUsing: InboxRowOrder(.kind)) { row in
                 Text(row.kindName)
             }
-            .width(fitting: kind)
-            TableColumn(Text(added.header), sortUsing: InboxRowOrder(.added)) { row in
-                // Without the time, to leave the Text column its room.
-                Text(row.addedAt.formatted(CardTableColumns.day))
+            .width(fitting: fitted.kind)
+            TableColumn(Text(fitted.added.header), sortUsing: InboxRowOrder(.added)) { row in
+                Text(row.addedAt.formatted(.tableDay))
             }
-            .width(fitting: added)
+            .width(fitting: fitted.added)
         }
         .focused($isTableFocused)
         .overlay {

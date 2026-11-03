@@ -121,7 +121,7 @@ final class SettingsTabViewController: NSTabViewController {
     /// window's edges.
     private static func width(showing tabs: [SettingsTab]) -> CGFloat {
         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        let names = tabs.map { max(ColumnWidth.width(of: $0.name, in: font), 32) }
+        let names = tabs.map { max($0.name.width(in: font), 32) }
         let toolbar = names.reduce(0, +) + 14 * CGFloat(tabs.count - 1) + 2 * 24
         return max(500, toolbar.rounded(.up))
     }

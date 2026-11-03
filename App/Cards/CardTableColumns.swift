@@ -4,7 +4,7 @@ import FichaCore
 /// The Cards window's table of cards' columns, each with its header and its
 /// widths in the app's language, which the table draws them at and its pane
 /// opens to fit. Each is measured with the texts its cells draw: the date
-/// columns' in `day`, Interval's from `WayIntervalText` and Due's from
+/// columns' in `.tableDay`, Interval's from `WayIntervalText` and Due's from
 /// `DueText`. Front, Type, Tags and Source narrow below their texts when the
 /// table is short of room, as once Lucas narrows the window: a front, a type
 /// of the user's own, a tag and a source are the user's texts, often too long
@@ -22,10 +22,6 @@ struct CardTableColumns {
     let lastSeen: FittedColumn
     let created: FittedColumn
     let edited: FittedColumn
-
-    /// How the date columns show a day: without the time, to leave Front its
-    /// room, as the inbox's Added column does too.
-    static let day = Date.FormatStyle(date: .abbreviated, time: .omitted)
 
     /// The columns, with the texts of their cells as they show them at `now`.
     init(now: Date) {
@@ -69,7 +65,7 @@ struct CardTableColumns {
                 localized: "Source",
                 comment: "A column of the Cards window: where Lucas came across the card's content."),
             min: 60, ideal: 120)
-        let days = ColumnWidth.inEachMonth(Self.day, of: now)
+        let days = ColumnWidth.dateTexts(.tableDay, inEachMonthOf: now)
         lastSeen = FittedColumn(
             String(
                 localized: "Last seen", comment: "A column of the Cards window: when Lucas last reviewed the card."),

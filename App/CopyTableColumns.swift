@@ -20,7 +20,7 @@ struct CopyTableColumns {
     init(now: Date, tableWidth: CGFloat) {
         saved = FittedColumn(
             String(localized: "Saved", comment: "Settings, under Backups: the column of when a copy was saved."),
-            cells: ColumnWidth.inEachMonth(Self.savedAt, of: now), sorts: false)
+            cells: ColumnWidth.dateTexts(Self.savedAt, inEachMonthOf: now), sorts: false)
         size = FittedColumn(
             String(localized: "Size", comment: "Settings, under Backups: the column of what each copy weighs."),
             cells: [Int64(999_900_000).formatted(.byteCount(style: .file))], sorts: false, min: 80, max: 80)
