@@ -58,6 +58,15 @@
             ]
           }
         },
+        "ko" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}에서 지금 복습",
+              "${applicationName}에서 복습하기"
+            ]
+          }
+        },
         "pt" : {
           "stringSet" : {
             "state" : "translated",
