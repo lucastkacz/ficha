@@ -1572,32 +1572,33 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
             .review($0)
         }
     case .cardsBothWays:
-        var state = model.openCardsWindow()
-        state.read(with: state.scheduler)
-        guard case .success(.cards(let rows)) = state.listing,
-            let bothWays = rows.first(where: { $0.backFirst != nil })
-        else {
-            throw RenderError(description: "No sample card goes both ways: fix bothWaysModel().")
-        }
-        state.select([bothWays.id])
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
+        return try cardsWindow(
+            of: model, selectingFirst: { $0.backFirst != nil },
+            orElse: "No sample card goes both ways: fix bothWaysModel().")
     case .panelArabic: return try panelWindow(model: model, on: sampleArabicFront)
     case .cardsArabic:
-        var state = model.openCardsWindow()
-        state.read(with: state.scheduler)
-        guard case .success(.cards(let rows)) = state.listing,
-            let arabic = rows.first(where: { $0.card.front == sampleArabicFront })
-        else {
-            throw RenderError(
-                description: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
-        }
-        state.select([arabic.id])
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
+        return try cardsWindow(
+            of: model, selectingFirst: { $0.card.front == sampleArabicFront },
+            orElse: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
     }
+}
+
+/// The Cards window of `model` on every card, its cards read, with the first
+/// row `isWanted` picks selected, its detail showing it, as
+/// `cards-both-ways` and `cards-arabic` open; `missing`, a failure that
+/// says what to fix, when no row is.
+func cardsWindow(
+    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
+) throws -> NSWindow {
+    var state = model.openCardsWindow()
+    state.read(with: state.scheduler)
+    guard case .success(.cards(let rows)) = state.listing, let wanted = rows.first(where: isWanted) else {
+        throw RenderError(description: missing)
+    }
+    state.select([wanted.id])
+    let window = CardsWindow(model: model)
+    window.makeContent(opening: state)
+    return window
 }
 
 /// The front of the card in Arabic `addSampleArabicCard(in:)` adds: the
