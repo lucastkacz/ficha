@@ -86,6 +86,15 @@
               "Повторение в ${applicationName}"
             ]
           }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在${applicationName}中立即复习",
+              "用${applicationName}复习"
+            ]
+          }
         }
       }
     }
