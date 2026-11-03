@@ -984,10 +984,9 @@ func chooseUserType(_ name: String, selecting front: String, in state: inout Car
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
 func scrollSidebarToEnd(of window: NSWindow) throws {
-    // The table is an outline view too: the sidebar is the one on the left.
-    let sidebar = outlineViews(in: window.contentView).min {
-        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
-    }
+    // The table is an outline view too: the sidebar is the one at the
+    // leading side.
+    let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
     guard let sidebar, sidebar.numberOfRows > 0 else {
         throw RenderError(
             description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
@@ -995,14 +994,23 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
     sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
 }
 
+/// Whether `view` starts nearer the leading side of `window` than `other`:
+/// further left, or further right in a language read right to left, which
+/// mirrors the window.
+func isNearerLeadingSide(_ view: NSView, than other: NSView, in window: NSWindow) -> Bool {
+    let frame = view.convert(view.bounds, to: nil)
+    let otherFrame = other.convert(other.bounds, to: nil)
+    return window.contentView?.userInterfaceLayoutDirection == .rightToLeft
+        ? frame.maxX > otherFrame.maxX : frame.minX < otherFrame.minX
+}
+
 /// Scrolls the detail of the Cards window `window`, once it shows, to its
 /// end, where a card's chart and its key show below the rows of its ways,
 /// for the same reason as `scrollSidebarToEnd(of:)`.
 func scrollDetailToEnd(of window: NSWindow) throws {
-    // The sidebar and the table scroll too: the detail is the one on the right.
-    let detail = scrollViews(in: window.contentView).max {
-        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
-    }
+    // The sidebar and the table scroll too: the detail is the one at the
+    // trailing side.
+    let detail = scrollViews(in: window.contentView).max { isNearerLeadingSide($0, than: $1, in: window) }
     guard let detail, let document = detail.documentView else {
         throw RenderError(description: "The Cards window shows no detail to scroll: fix scrollDetailToEnd(of:).")
     }
