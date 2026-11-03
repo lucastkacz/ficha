@@ -169,10 +169,8 @@ struct CardDetail: View {
                     SideImage(image: images[image], maximumHeight: 320)
                 }
                 if !row.card.front.isEmpty {
-                    Text(row.card.front)
+                    TextAsItReads(row.card.front)
                         .font(.title2.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .alignedAsItReads(row.card.front)
                 }
                 if row.card.frontSound != nil {
                     soundControls(.front)
@@ -188,19 +186,15 @@ struct CardDetail: View {
                     SideImage(image: images[image], maximumHeight: 320)
                 }
                 if !row.card.back.isEmpty {
-                    Text(row.card.back)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .alignedAsItReads(row.card.back)
+                    TextAsItReads(row.card.back)
                 }
                 if row.card.backSound != nil {
                     soundControls(.back)
                 }
                 if let source = row.card.source {
-                    Text(source)
+                    TextAsItReads(source)
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .alignedAsItReads(source)
                 }
                 Divider()
                 standing
@@ -436,16 +430,14 @@ struct CaptureDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Chip(text: kind)
-                Text(capture.text)
+                TextAsItReads(capture.text)
                     .font(.title2.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
                     if let note = capture.note {
                         GridRow {
                             gridLabel(
                                 Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
-                            Text(note)
-                                .fixedSize(horizontal: false, vertical: true)
+                            TextAsItReads(note)
                         }
                     }
                     if let source = capture.source {
@@ -454,8 +446,7 @@ struct CaptureDetail: View {
                                 Text(
                                     "Source",
                                     comment: "In the Cards window's detail: where Lucas came across a capture's text."))
-                            Text(source)
-                                .fixedSize(horizontal: false, vertical: true)
+                            TextAsItReads(source)
                         }
                     }
                     GridRow {
@@ -508,9 +499,7 @@ private struct TiedCard: View {
             TypeAndTags(card: card)
             FrontCell(card: card, wraps: true)
                 .font(.headline)
-            Text(card.back)
-                .fixedSize(horizontal: false, vertical: true)
-                .alignedAsItReads(card.back)
+            TextAsItReads(card.back)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)

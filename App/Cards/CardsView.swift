@@ -1303,9 +1303,8 @@ struct CardsView: View {
             .customizationID(CardRowOrder.Column.tags.rawValue)
             .defaultVisibility(.hidden)
             TableColumn(Text(fitted.source.header), sortUsing: CardRowOrder(.source)) { row in
-                Text(row.card.source ?? "")
+                TextAsItReads(row.card.source ?? "")
                     .lineLimit(1)
-                    .alignedAsItReads(row.card.source ?? "")
             }
             .width(fitting: fitted.source)
             .customizationID(CardRowOrder.Column.source.rawValue)
@@ -1381,7 +1380,7 @@ struct CardsView: View {
                 if let cardRow = row.flaggedCard {
                     FrontCell(card: cardRow.card)
                 } else {
-                    Text(row.text)
+                    TextAsItReads(row.text)
                         .lineLimit(1)
                 }
             }
