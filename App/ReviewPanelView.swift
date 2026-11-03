@@ -222,9 +222,9 @@ struct ReviewPanelView: View {
                 topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
             }
             HStack(alignment: .bottom) {
-                // In Anki's order, again's first, on 1 to 4.
-                ForEach(Array(zip(Rating.allCases, "1234")), id: \.0) { rating, key in
-                    ratingButton(rating, key: key, in: panel)
+                // In Anki's order, again's first, on 1 to 4 (`RatingKey`).
+                ForEach(Rating.allCases, id: \.self) { rating in
+                    ratingButton(rating, in: panel)
                 }
             }
             .background {
@@ -700,8 +700,9 @@ struct ReviewPanelView: View {
     /// The button that rates the card `rating`, named as Anki names it, with
     /// its key, and the interval it would set above it, small, as Anki shows
     /// it, which VoiceOver reads after its name, in words.
-    private func ratingButton(_ rating: Rating, key: Character, in panel: ReviewPanelModel) -> some View {
+    private func ratingButton(_ rating: Rating, in panel: ReviewPanelModel) -> some View {
         let interval = panel.state.intervals?[rating]
+        let key = RatingKey.digit(of: rating)
         return VStack(spacing: 4) {
             Text(interval.map(intervalText) ?? "")
                 .font(.caption)
