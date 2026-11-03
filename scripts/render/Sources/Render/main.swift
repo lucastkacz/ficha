@@ -1590,7 +1590,8 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         guard case .success(.cards(let rows)) = state.listing,
             let arabic = rows.first(where: { $0.card.front == sampleArabicFront })
         else {
-            throw RenderError(description: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
+            throw RenderError(
+                description: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
         }
         state.select([arabic.id])
         let window = CardsWindow(model: model)
