@@ -21,6 +21,12 @@
             "state" : "translated",
             "value" : "%@ non riesce a leggere le tue carte."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não consegue ler seus cartões."
+          }
         }
       }
     },
@@ -44,6 +50,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Una cattura viene approvata in una o più carte. Per toglierla dalla casella in entrata senza carte, scartala."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma captura é aprovada em um ou mais cartões. Para tirá-la da caixa de entrada sem cartões, descarte-a."
           }
         }
       }
@@ -69,6 +81,12 @@
             "state" : "translated",
             "value" : "Un mazzo deve avere un nome, quindi non è cambiato nulla. Scrivine uno, con “::” tra un mazzo e un mazzo al suo interno, come in “Idiomas::Inglés”."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um baralho precisa de um nome, por isso nada mudou. Escreva um, com “::” entre um baralho e um baralho dentro dele, como em “Idiomas::Inglês”."
+          }
         }
       }
     },
@@ -92,6 +110,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Una versione più recente di Ficha ha modificato il database, e questa versione non lo apre, per non danneggiare le tue carte. Aprilo con la versione che lo ha modificato, o con una più recente."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma versão mais nova da Ficha alterou a base de dados, e esta versão não vai abri-la, para não danificar seus cartões. Abra-a com a versão que a alterou, ou com uma mais nova."
           }
         }
       }
@@ -117,6 +141,12 @@
             "state" : "translated",
             "value" : "Una versione più recente di Ficha ha salvato la copia “%@”, e questa versione non la ripristina, per non danneggiare le tue carte. Ripristinala con quella versione, o con una più recente."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma versão mais nova da Ficha salvou a cópia “%@”, e esta versão não vai restaurá-la, para não danificar seus cartões. Restaure-a com essa versão, ou com uma mais nova."
+          }
         }
       }
     },
@@ -140,6 +170,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un’etichetta deve avere un nome, quindi non è cambiato nulla. Scrivine uno, con “::” tra un’etichetta e un’etichetta al suo interno, come in “economía::Argentina”."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma etiqueta precisa de um nome, por isso nada mudou. Escreva um, com “::” entre uma etiqueta e uma etiqueta dentro dela, como em “economia::Brasil”."
           }
         }
       }
@@ -165,6 +201,12 @@
             "state" : "translated",
             "value" : "Un tipo deve avere un nome, quindi non è cambiato nulla. Scrivine uno."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um tipo precisa de um nome, por isso nada mudou. Escreva um."
+          }
         }
       }
     },
@@ -187,6 +229,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prima il retro"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verso primeiro"
           }
         }
       }
@@ -212,6 +260,12 @@
             "state" : "translated",
             "value" : "La cattura %lld non amplia nessuna carta. Approvala in carte, oppure scartala."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A captura %lld não amplia nenhum cartão. Aprove-a em cartões, ou descarte-a."
+          }
         }
       }
     },
@@ -235,6 +289,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La cattura %lld non è nella casella in entrata: è già stata approvata o scartata, oppure non esiste. Controlla cosa c’è nella casella in entrata."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A captura %lld não está na caixa de entrada: ela já foi aprovada ou descartada, ou não existe. Verifique o que há na caixa de entrada."
           }
         }
       }
@@ -260,6 +320,12 @@
             "state" : "translated",
             "value" : "La carta %lld non può essere collocata come risposta: solo un’importazione colloca una carta. Non è stato registrato nulla. Segnalalo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não pode ser colocado como resposta: só uma importação coloca um cartão. Nada foi salvo. Relate o problema."
+          }
         }
       }
     },
@@ -283,6 +349,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %lld è cambiata fuori dal pannello di ripasso, quindi ⌘Z non può annullare la modifica. Chiudi il pannello di ripasso e apri di nuovo “Ripassa ora”."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld mudou fora do painel de revisão, por isso ⌘Z não pode desfazer. Feche o painel de revisão e abra “Revisar agora” de novo."
           }
         }
       }
@@ -308,6 +380,12 @@
             "state" : "translated",
             "value" : "La carta %lld non ha nessuna immagine sul retro, quindi non c’è niente da togliere. `ficha cards` indica l’immagine e l’audio di ogni lato."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não tem imagem no verso, por isso não há nenhuma para tirar. `ficha cards` mostra a imagem e o som de cada lado."
+          }
         }
       }
     },
@@ -331,6 +409,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %lld non ha nessuna immagine sul fronte, quindi non c’è niente da togliere. `ficha cards` indica l’immagine e l’audio di ogni lato."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não tem imagem na frente, por isso não há nenhuma para tirar. `ficha cards` mostra a imagem e o som de cada lado."
           }
         }
       }
@@ -356,6 +440,12 @@
             "state" : "translated",
             "value" : "La carta %lld non ha nessun audio sul retro, quindi non c’è niente da togliere. `ficha cards` indica l’immagine e l’audio di ogni lato."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não tem som no verso, por isso não há nenhum para tirar. `ficha cards` mostra a imagem e o som de cada lado."
+          }
         }
       }
     },
@@ -379,6 +469,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %lld non ha nessun audio sul fronte, quindi non c’è niente da togliere. `ficha cards` indica l’immagine e l’audio di ogni lato."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não tem som na frente, por isso não há nenhum para tirar. `ficha cards` mostra a imagem e o som de cada lado."
           }
         }
       }
@@ -404,6 +500,12 @@
             "state" : "translated",
             "value" : "La carta %lld è seppellita. Per recuperarla, disseppelliscila."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld está oculto. Para trazê-lo de volta, desoculte-o."
+          }
         }
       }
     },
@@ -427,6 +529,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %lld è contrassegnata: attende nella casella in entrata di essere corretta. Chiudi il pannello di ripasso e apri di nuovo “Ripassa ora”."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld está sinalizado: ele espera na caixa de entrada para ser corrigido. Feche o painel de revisão e abra “Revisar agora” de novo."
           }
         }
       }
@@ -452,6 +560,12 @@
             "state" : "translated",
             "value" : "La carta %1$lld è accantonata con il mazzo “%2$@”. Per recuperarla, togli la spunta ad Accantona su quel mazzo, nella finestra Carte."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %1$lld está posto de lado com o baralho “%2$@”. Para trazê-lo de volta, desmarque Pôr de Lado nesse baralho, na janela Cartões."
+          }
         }
       }
     },
@@ -475,6 +589,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %1$lld è accantonata con i mazzi %2$@. Per recuperarla, togli la spunta ad Accantona su ciascuno di essi, nella finestra Carte."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %1$lld está posto de lado com os baralhos %2$@. Para trazê-lo de volta, desmarque Pôr de Lado em cada um deles, na janela Cartões."
           }
         }
       }
@@ -500,6 +620,12 @@
             "state" : "translated",
             "value" : "La carta %lld non è seppellita, quindi non c’è niente da disseppellire. Controlla l’id della carta."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não está oculto, por isso não há nada para desocultar. Verifique o id do cartão."
+          }
         }
       }
     },
@@ -523,6 +649,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %lld non è ancora in scadenza, quindi non può essere ripassata. Chiudi il pannello di ripasso e apri di nuovo “Ripassa ora”."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld ainda não está na data de revisão, por isso não pode ser revisado. Feche o painel de revisão e abra “Revisar agora” de novo."
           }
         }
       }
@@ -548,6 +680,12 @@
             "state" : "translated",
             "value" : "La carta %lld non è contrassegnata, quindi non c’è niente da correggere: è già stata corretta, oppure non è mai stata contrassegnata. Controlla cosa c’è nella casella in entrata."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não está sinalizado, por isso não há nada para corrigir: ele já foi corrigido, ou nunca foi sinalizado. Verifique o que há na caixa de entrada."
+          }
         }
       }
     },
@@ -571,6 +709,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La carta %lld non è tra le carte portate dalla sua apparizione, quindi la sua risposta non è stata registrata. Segnalalo."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão %lld não é um dos cartões que sua aparição trouxe, por isso a resposta não foi salva. Relate o problema."
           }
         }
       }
@@ -596,6 +740,12 @@
             "state" : "translated",
             "value" : "La carta [%lld] ha il fronte o il retro vuoto: dai a ogni lato un testo, un’immagine o un audio."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O cartão [%lld] tem a frente ou o verso em branco: dê a cada lado um texto, uma imagem ou um som."
+          }
         }
       }
     },
@@ -619,6 +769,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Predefinito contiene le carte che non sono in nessun altro mazzo, quindi non può essere rinominato, spostato né eliminato, e non è cambiato nulla. Per continuare, crea un mazzo tuo e spostaci le carte di Predefinito."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Padrão guarda os cartões que não estão em nenhum outro baralho, por isso não pode ser renomeado, movido nem apagado, e nada mudou. Para continuar, crie um baralho seu e mova para ele os cartões de Padrão."
           }
         }
       }
@@ -644,6 +800,12 @@
             "state" : "translated",
             "value" : "Ficha non riesce a interpretare la cronologia dei ripassi della carta %lld, quindi non sa quando è in scadenza. Le tue carte sono ancora salvate: segnalalo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não consegue entender o histórico de revisões do cartão %lld, por isso não sabe quando revisá-lo. Seus cartões continuam salvos: relate o problema."
+          }
         }
       }
     },
@@ -667,6 +829,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha non è riuscita ad aprire “%@” come file zip: potrebbe essere danneggiato. Comprimi di nuovo in un file zip il file di testo delle carte con le sue immagini e audio, e importa quello."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu abrir “%@” como zip: ele pode estar danificado. Comprima de novo em um zip o arquivo de texto de cartões e suas imagens e sons, e importe o resultado."
           }
         }
       }
@@ -692,6 +860,12 @@
             "state" : "translated",
             "value" : "Ficha non è riuscita ad aprire “%@”. Controlla che il file sia ancora lì, e riprova."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu abrir “%@”. Verifique se o arquivo ainda está lá e tente novamente."
+          }
         }
       }
     },
@@ -715,6 +889,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha non è riuscita a leggere o modificare la sua cartella Backups. Controlla che il disco abbia spazio e riprova, e se continua a succedere, segnalalo."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu ler nem alterar sua pasta Backups. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
           }
         }
       }
@@ -740,6 +920,12 @@
             "state" : "translated",
             "value" : "Ficha non è riuscita a leggere o salvare un audio nella sua cartella Sounds. Controlla che il disco abbia spazio e riprova, e se continua a succedere, segnalalo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu ler nem salvar um som na sua pasta Sounds. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
+          }
         }
       }
     },
@@ -763,6 +949,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha non è riuscita a leggere o salvare un’immagine nella sua cartella Images. Controlla che il disco abbia spazio e riprova, e se continua a succedere, segnalalo."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu ler nem salvar uma imagem na sua pasta Images. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
           }
         }
       }
@@ -788,6 +980,12 @@
             "state" : "translated",
             "value" : "Ficha non è riuscita a leggere o salvare il suo database. Riprova, e se continua a succedere, segnalalo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu ler nem salvar sua base de dados. Tente novamente e, se voltar a acontecer, relate o problema."
+          }
         }
       }
     },
@@ -811,6 +1009,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha non è riuscita a leggere “%@” come pacchetto Anki: potrebbe essere danneggiato. Esporta di nuovo il mazzo da Anki, e importa quello."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu ler “%@” como pacote do Anki: ele pode estar danificado. Exporte o baralho do Anki de novo e importe o resultado."
           }
         }
       }
@@ -836,6 +1040,12 @@
             "state" : "translated",
             "value" : "Ficha non è riuscita a leggere “%@”. Controlla che il file sia ancora lì e che tu possa aprirlo, e riprova."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu ler “%@”. Verifique se o arquivo ainda está lá e se você consegue abri-lo, e tente novamente."
+          }
         }
       }
     },
@@ -859,6 +1069,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha non è riuscita a salvare “%@”. Controlla che il disco abbia spazio e che tu possa salvare in quella cartella, oppure scegline un’altra, e riprova."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu salvar “%@”. Verifique se o disco tem espaço e se você pode salvar nessa pasta, ou escolha outra, e tente novamente."
           }
         }
       }
@@ -884,6 +1100,12 @@
             "state" : "translated",
             "value" : "Ficha non è riuscita a calcolare quando sono in scadenza le tue carte. Le tue carte sono ancora salvate: riprova, e se continua a succedere, segnalalo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não conseguiu calcular quando revisar seus cartões. Seus cartões continuam salvos: tente novamente e, se voltar a acontecer, relate o problema."
+          }
         }
       }
     },
@@ -907,6 +1129,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha non contiene nessuna immagine né audio chiamato “%@”. Indica il suo nome come lo stampa `ficha cards`, oppure il percorso di un file sul Mac."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha não tem nenhuma imagem ou som chamado “%@”. Informe o nome como `ficha cards` o mostra, ou o caminho de um arquivo no Mac."
           }
         }
       }
@@ -932,6 +1160,12 @@
             "state" : "translated",
             "value" : "Ficha ha letto l’audio ma non è riuscita a convertirlo. Controlla che il disco abbia spazio e riprova, e se continua a succedere, segnalalo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha leu o som, mas não conseguiu convertê-lo. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
+          }
         }
       }
     },
@@ -956,6 +1190,12 @@
             "state" : "translated",
             "value" : "Ficha legge i file solo dalla tua cartella Download, e “%@” non è lì. Copia il file in Download, e indica il suo percorso lì."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Ficha só lê arquivos da sua pasta Downloads, e “%@” não está nela. Copie o arquivo para Downloads e informe o caminho dele lá."
+          }
         }
       }
     },
@@ -978,6 +1218,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Immagine"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagem"
           }
         }
       }
@@ -1002,6 +1248,12 @@
             "state" : "translated",
             "value" : "Immagine che non è stato possibile mostrare"
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagem que não pôde ser mostrada"
+          }
         }
       }
     },
@@ -1024,6 +1276,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nuova"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novo"
           }
         }
       }
@@ -1048,6 +1306,12 @@
             "state" : "translated",
             "value" : "Prossima carta"
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próximo Cartão"
+          }
         }
       }
     },
@@ -1070,6 +1334,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prossima carta alle %@"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próximo cartão às %@"
           }
         }
       }
@@ -1100,6 +1370,12 @@
             "state" : "translated",
             "value" : "Prossima carta: %1$@ alle %2$@"
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próximo cartão: %1$@ às %2$@"
+          }
         }
       }
     },
@@ -1122,6 +1398,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nessuna carta in attesa"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum cartão à espera"
           }
         }
       }
@@ -1146,6 +1428,12 @@
             "state" : "translated",
             "value" : "Nessuna carta da ripassare"
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum cartão para revisar"
+          }
         }
       }
     },
@@ -1168,6 +1456,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ancora nessuna carta"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum cartão ainda"
           }
         }
       }
@@ -1192,6 +1486,12 @@
             "state" : "translated",
             "value" : "Apri %@ per vedere la tua prossima carta."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra %@ para ver seu próximo cartão."
+          }
         }
       }
     },
@@ -1214,6 +1514,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Audio"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Som"
           }
         }
       }
@@ -1239,6 +1545,12 @@
             "state" : "translated",
             "value" : "Non contiene nessun audio che Ficha possa leggere. Trascina o incolla invece un audio o un video con audio, come un MP3, un M4A o un MOV."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso não contém nenhum som que a Ficha consiga ler. Arraste ou cole um som ou um vídeo com som, como um MP3, um M4A ou um MOV."
+          }
         }
       }
     },
@@ -1262,6 +1574,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non è un’immagine che Ficha possa leggere. Trascina o incolla invece un’immagine, come un JPEG o un PNG."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso não é uma imagem que a Ficha consiga ler. Arraste ou cole uma imagem, como um JPEG ou um PNG."
           }
         }
       }
@@ -1287,6 +1605,12 @@
             "state" : "translated",
             "value" : "Non è una sola emoji. Scegline solo una, oppure lascia vuoto il campo per non averne."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso não é um único emoji. Escolha só um, ou deixe o campo vazio para não usar nenhum."
+          }
         }
       }
     },
@@ -1310,6 +1634,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nel frattempo quel tipo è stato eliminato, forse su un altro tuo dispositivo, quindi non è cambiato nulla. Scegli un altro tipo."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esse tipo foi apagado enquanto isso, talvez em outro dos seus dispositivos, por isso nada mudou. Escolha outro tipo."
           }
         }
       }
@@ -1335,6 +1665,12 @@
             "state" : "translated",
             "value" : "La carta %lld resterebbe con il fronte o il retro vuoto, quindi non è cambiato nulla: dai a ogni lato un testo, un’immagine o un audio."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso deixaria o cartão %lld com a frente ou o verso em branco, por isso nada mudou: dê a cada lado um texto, uma imagem ou um som."
+          }
         }
       }
     },
@@ -1358,6 +1694,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La riga #%1$@ di “%2$@” dice “%3$@”, che non è il numero di una colonna. Cambiala con il numero della colonna, contando la prima come 1."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A linha #%1$@ de “%2$@” diz “%3$@”, que não é um número de coluna. Escreva o número da coluna, contando a primeira como 1."
           }
         }
       }
@@ -1383,6 +1725,12 @@
             "state" : "translated",
             "value" : "La riga #columns di “%1$@” non nomina nessuna colonna %2$@, che serve a ogni carta. Nomina le sue colonne Front, Back, Tags, Type e Source, oppure rimuovi la riga."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A linha #columns de “%1$@” não nomeia nenhuma coluna %2$@, que todo cartão precisa ter. Nomeie as colunas Front, Back, Tags, Type e Source, ou remova a linha."
+          }
         }
       }
     },
@@ -1406,6 +1754,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La riga #html di “%1$@” dice “%2$@”: cambiala in true se il file contiene HTML, o in false se non lo contiene."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A linha #html de “%1$@” diz “%2$@”: use true se o arquivo contém HTML, ou false se não contém."
           }
         }
       }
@@ -1431,6 +1785,12 @@
             "state" : "translated",
             "value" : "La riga #separator di “%1$@” dice “%2$@”, e Ficha non può separare le colonne con quello. Cambiala in Tab, Comma o Semicolon, oppure rimuovila."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A linha #separator de “%1$@” diz “%2$@”, e a Ficha não consegue separar colunas com isso. Use Tab, Comma ou Semicolon, ou remova a linha."
+          }
         }
       }
     },
@@ -1454,6 +1814,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La cattura è vuota: scrivi ciò che vuoi ricordare."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A captura está vazia: escreva o que você quer lembrar."
           }
         }
       }
@@ -1479,6 +1845,12 @@
             "state" : "translated",
             "value" : "Il mazzo “%@” non c’è più, forse perché un altro tuo dispositivo lo ha rinominato o eliminato, quindi non è cambiato nulla. Cercalo tra i tuoi mazzi con il nuovo nome, oppure scegline un altro."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O baralho “%@” não existe mais, talvez porque outro dos seus dispositivos o renomeou ou apagou, por isso nada mudou. Procure-o entre seus baralhos com o novo nome, ou escolha outro."
+          }
         }
       }
     },
@@ -1501,6 +1873,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La prossima carta da ripassare, o quando arriva. Fai clic per ripassarla."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O próximo cartão para revisar, ou quando ele chega. Clique para revisá-lo."
           }
         }
       }
@@ -1526,6 +1904,12 @@
             "state" : "translated",
             "value" : "Non c’è nessuna carta con l’id %lld: è stata eliminata, oppure non è mai esistita. Controlla l’id della carta."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não há nenhum cartão com o id %lld: ele foi apagado, ou nunca existiu. Verifique o id do cartão."
+          }
         }
       }
     },
@@ -1549,6 +1933,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non c’è nessuna copia chiamata “%@” nella cartella Backups di Ficha: è stata spostata o eliminata. Controlla quali copie ci sono."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não há nenhuma cópia chamada “%@” na pasta Backups da Ficha: ela foi movida ou apagada. Verifique quais cópias estão lá."
           }
         }
       }
@@ -1574,6 +1964,12 @@
             "state" : "translated",
             "value" : "Non c’è nessun file in “%@”. Controlla il percorso: un percorso che non inizia con / o ~ parte dalla cartella in cui viene eseguito il comando."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não há nenhum arquivo em “%@”. Verifique o caminho: um caminho que não começa com / ou ~ parte da pasta onde o comando é executado."
+          }
         }
       }
     },
@@ -1596,6 +1992,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Questa build non è firmata con il suo App Group, la cui cartella contiene le sue carte. Installa Ficha da TestFlight, oppure compila Ficha Dev con make run, con l’ID del tuo team in iPhone/Local.xcconfig, come indica docs/development.md."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta compilação não está assinada com seu App Group, cuja pasta guarda seus cartões. Instale a Ficha pelo TestFlight, ou compile a Ficha Dev com make run, com o ID da sua equipe em iPhone/Local.xcconfig, como diz docs/development.md."
           }
         }
       }
@@ -1621,6 +2023,12 @@
             "state" : "translated",
             "value" : "Hai già un tipo chiamato “%@”, quindi non è cambiato nulla. Scegli quel tipo, oppure scrivi un altro nome."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você já tem um tipo chamado “%@”, por isso nada mudou. Escolha esse tipo, ou escreva outro nome."
+          }
         }
       }
     },
@@ -1645,6 +2053,12 @@
             "state" : "translated",
             "value" : "La tua domanda sulla carta %lld è stata approvata o scartata fuori dal pannello di ripasso, quindi ⌘Z non può annullarla. Se è diventata carte che non vuoi, eliminale nella finestra Carte."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua pergunta sobre o cartão %lld foi aprovada ou descartada fora do painel de revisão, por isso ⌘Z não pode desfazê-la. Se ela se transformou em cartões que você não quer, apague-os na janela Cartões."
+          }
         }
       }
     },
@@ -1667,6 +2081,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS non ha fornito nessuna cartella per l’App Group %@, che contiene le tue carte. Esci dall’app e riaprila, e se continua a succedere, segnalalo."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS não deu nenhuma pasta para o App Group %@, que guarda seus cartões. Encerre o app e abra-o de novo e, se voltar a acontecer, relate o problema."
           }
         }
       }
@@ -1692,6 +2112,12 @@
             "state" : "translated",
             "value" : "“%@” non può andare dentro Predefinito, che contiene le carte che non sono in nessun altro mazzo e non ha mazzi al suo interno, quindi non è cambiato nulla. Spostalo dentro un altro mazzo, oppure al primo livello."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não pode ficar dentro de Padrão, que guarda os cartões que não estão em nenhum outro baralho e não tem baralhos dentro dele, por isso nada mudou. Mova-o para dentro de outro baralho, ou para o nível mais alto."
+          }
         }
       }
     },
@@ -1715,6 +2141,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” non può andare dentro sé stesso, né dentro un mazzo al suo interno, quindi non è cambiato nulla. Scegli un mazzo fuori da esso."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não pode ficar dentro de si mesmo, nem dentro de um baralho dentro dele, por isso nada mudou. Escolha um baralho fora dele."
           }
         }
       }
@@ -1740,6 +2172,12 @@
             "state" : "translated",
             "value" : "“%@” non può andare dentro sé stessa, né dentro un’etichetta al suo interno, quindi non è cambiato nulla. Scegli un’etichetta fuori da essa."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não pode ficar dentro de si mesma, nem dentro de uma etiqueta dentro dela, por isso nada mudou. Escolha uma etiqueta fora dela."
+          }
         }
       }
     },
@@ -1763,6 +2201,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” non contiene nessun audio che Ficha possa leggere. Come audio di un lato, indica invece un audio o un video con audio, come un MP3, un M4A o un MOV, e come sua immagine un’immagine."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não contém nenhum som que a Ficha consiga ler. Use como som de um lado um som ou um vídeo com som, como um MP3, um M4A ou um MOV, e uma imagem como a imagem dele."
           }
         }
       }
@@ -1788,6 +2232,12 @@
             "state" : "translated",
             "value" : "“%@” non contiene nessun file di testo di carte: Ficha ne cerca uno che termini in .txt, .csv o .tsv accanto alle immagini e agli audio. Aggiungilo, comprimili di nuovo in un file zip, e importa quello."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não contém nenhum arquivo de texto de cartões: a Ficha procura um terminado em .txt, .csv ou .tsv junto das imagens e sons. Adicione-o, comprima tudo de novo em um zip e importe o resultado."
+          }
         }
       }
     },
@@ -1811,6 +2261,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%1$@” contiene diversi file di testo di carte, %2$@, e Ficha ne importa uno alla volta. Comprimi ciascuno in un file zip a parte con le sue immagini e audio, e importali uno per uno."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” contém vários arquivos de texto de cartões, %2$@, e a Ficha importa um de cada vez. Comprima cada um em um zip separado com suas imagens e sons, e importe-os um por um."
           }
         }
       }
@@ -1836,6 +2292,12 @@
             "state" : "translated",
             "value" : "“%@” è il nome di Predefinito, e Predefinito contiene le carte che non sono in nessun altro mazzo, quindi non è cambiato nulla. Per spostarci delle carte, scegli Predefinito; per creare un mazzo, scrivi un altro nome."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” é o nome de Padrão, e Padrão guarda os cartões que não estão em nenhum outro baralho, por isso nada mudou. Para mover cartões para lá, escolha Padrão; para criar um baralho, escreva outro nome."
+          }
         }
       }
     },
@@ -1859,6 +2321,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” è uno dei tipi inclusi in Ficha, quindi non è cambiato nulla. Scegli quel tipo, oppure scrivi un altro nome."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” é um dos tipos que vêm com a Ficha, por isso nada mudou. Escolha esse tipo, ou escreva outro nome."
           }
         }
       }
@@ -1884,6 +2352,12 @@
             "state" : "translated",
             "value" : "“%@” è accantonato, e un mazzo non è mai insieme accantonato e prioritario, né lo è un mazzo al suo interno, quindi non è cambiato nulla. Prima smetti di accantonarlo."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” está posto de lado, e um baralho nunca é ao mesmo tempo posto de lado e prioritário, nem um baralho dentro dele, por isso nada mudou. Primeiro, desmarque Pôr de Lado nele."
+          }
         }
       }
     },
@@ -1907,6 +2381,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” non è testo UTF-8, che è ciò che legge Ficha. Salvalo di nuovo come testo UTF-8, o da un foglio di calcolo come “CSV UTF-8”, e importa quello."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não é texto UTF-8, que é o que a Ficha lê. Salve-o de novo como texto UTF-8, ou de uma planilha como “CSV UTF-8”, e importe o resultado."
           }
         }
       }
@@ -1932,6 +2412,12 @@
             "state" : "translated",
             "value" : "“%@” non è un’immagine che Ficha possa leggere. Come immagine di un lato, indica invece un’immagine, come un JPEG o un PNG, e come suo audio un audio."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não é uma imagem que a Ficha consiga ler. Use como imagem de um lado uma imagem, como um JPEG ou um PNG, e um som como o som dele."
+          }
         }
       }
     },
@@ -1955,6 +2441,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” non è un’immagine né un audio che Ficha possa leggere. Indica invece un’immagine, come un JPEG o un PNG, oppure un audio o un video con audio, come un MP3, un M4A o un MOV."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não é uma imagem nem um som que a Ficha consiga ler. Use uma imagem, como um JPEG ou um PNG, ou um som ou um vídeo com som, como um MP3, um M4A ou um MOV."
           }
         }
       }
@@ -1980,6 +2472,12 @@
             "state" : "translated",
             "value" : "“%@” non è fissata nella barra laterale, forse perché un altro tuo dispositivo l’ha rimossa, quindi non si è spostato nulla. Prima fissala."
           }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” não está fixada na barra lateral, talvez porque outro dos seus dispositivos a desafixou, por isso nada se moveu. Fixe-a primeiro."
+          }
         }
       }
     },
@@ -2003,6 +2501,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” è stato esportato da un Anki più recente di quelli che Ficha conosce. In Anki, esporta di nuovo il mazzo con “Supportare vecchie versioni di Anki” spuntato, e importa quello."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” foi exportado por um Anki mais novo do que a Ficha conhece. No Anki, exporte o baralho de novo com “Suporta versões antigas do Anki” marcado, e importe o resultado."
           }
         }
       }

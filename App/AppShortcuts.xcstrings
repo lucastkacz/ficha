@@ -39,6 +39,16 @@
               "Ripassa con ${applicationName}"
             ]
           }
+        },
+        "pt" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Revisar agora na ${applicationName}",
+              "Revisar na ${applicationName}",
+              "Revisar agora com ${applicationName}"
+            ]
+          }
         }
       }
     }
