@@ -11,6 +11,9 @@ import SwiftUI
 /// decides.
 struct BackupsTab: View {
     @Bindable var model: AppModel
+    /// How wide the tab is, as wide as Settings, which its table of copies
+    /// fits.
+    let width: CGFloat
     /// Closes the review panel, if it's open, before a restore.
     let closeReviewPanel: () -> Void
 
@@ -203,17 +206,25 @@ struct BackupsTab: View {
             Text(error.localizedDescription)
                 .foregroundStyle(.secondary)
         case .success(let copies)?:
+            // The grouped form puts the table 20 points in from each side.
+            let columns = CopyTableColumns(now: model.now, tableWidth: width - 2 * 20)
             Table(copies, selection: selection) {
-                TableColumn(Text("Saved", comment: "Settings, under Backups: the column of when a copy was saved.")) {
-                    Text($0.savedAt.formatted(date: .abbreviated, time: .shortened))
+                TableColumn(Text(columns.saved.header)) {
+                    Text($0.savedAt.formatted(CopyTableColumns.savedAt))
                 }
-                TableColumn(Text("Kind", comment: "Settings, under Backups: the column of each copy's kind.")) {
+                .width(fitting: columns.saved)
+                TableColumn(Text(columns.kind.header)) {
+                    // Wraps where the column is narrower than the kind's
+                    // name, as beside Spanish's dates, rather than keep to
+                    // one line, as a table's text does.
                     Text(kindName($0.kind))
+                        .lineLimit(nil)
                 }
-                TableColumn(Text("Size", comment: "Settings, under Backups: the column of what each copy weighs.")) {
+                .width(fitting: columns.kind)
+                TableColumn(Text(columns.size.header)) {
                     Text($0.size.formatted(.byteCount(style: .file)))
                 }
-                .width(80)
+                .width(fitting: columns.size)
             }
             .frame(height: 200)
         case nil:

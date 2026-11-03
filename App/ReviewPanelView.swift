@@ -84,6 +84,9 @@ struct ReviewPanelView: View {
     /// Where the cursor is in the question, or what's selected, which the ask
     /// button clears as the note's is.
     @State private var questionSelection: TextSelection?
+    /// Whether the panel reads right to left, which says whether a card's
+    /// upper side can sit beside the buttons.
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HeightUpTo(maximum: maximumHeight) {
@@ -219,9 +222,9 @@ struct ReviewPanelView: View {
                 topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
             }
             HStack(alignment: .bottom) {
-                // In Anki's order, again's first, on 1 to 4.
-                ForEach(Array(zip(Rating.allCases, "1234")), id: \.0) { rating, key in
-                    ratingButton(rating, key: key, in: panel)
+                // In Anki's order, again's first, on 1 to 4 (`RatingKey`).
+                ForEach(Rating.allCases, id: \.self) { rating in
+                    ratingButton(rating, in: panel)
                 }
             }
             .background {
@@ -275,7 +278,8 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// The panel's main button, at its bottom right, which Enter presses.
+    /// The panel's main button, at its bottom trailing corner, which Enter
+    /// presses.
     private func enterButton(_ title: Text, action: @escaping () -> Void) -> some View {
         HStack {
             Spacer()
@@ -320,15 +324,19 @@ struct ReviewPanelView: View {
     }
 
     /// A card's sides, under the line at its top and beside the buttons at
-    /// the panel's top right: the upper side, which `way` says, and the lower
-    /// one when it shows. The panel's window stops at its share of the
-    /// screen (`ReviewPanelWindow`). A card that doesn't fit has its upper
-    /// side go under the line at its top, the panel's width, and when it
-    /// still doesn't fit, its sides scroll, each card and way from its top,
-    /// while the line at its top and the buttons stay in view, as what's
+    /// the panel's top trailing corner: the upper side, which `way` says, and
+    /// the lower one when it shows. The panel's window stops at its share of
+    /// the screen (`ReviewPanelWindow`). A card that doesn't fit has its
+    /// upper side go under the line at its top, the panel's width, and when
+    /// it still doesn't fit, its sides scroll, each card and way from its
+    /// top, while the line at its top and the buttons stay in view, as what's
     /// under the card does. The scroll never takes the keyboard, so the
     /// panel's keys work as on a short card. The buttons show once, over the
-    /// room each layout keeps for them, so no key belongs to two buttons.
+    /// room each layout keeps for them, so no key belongs to two buttons. An
+    /// upper side that reads against the panel, a Spanish card in Arabic,
+    /// always goes under the line at its top, since beside the buttons it
+    /// would start from where they end, rather than from the panel's edge as
+    /// its lower side does.
     private func sides<TopLine: View>(
         of card: Card, _ way: Way, showingLowerSide: Bool, buttons: TopButtons, in panel: ReviewPanelModel,
         @ViewBuilder topLine: () -> TopLine
@@ -345,17 +353,19 @@ struct ReviewPanelView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         return ViewThatFits(in: .vertical) {
-            VStack(alignment: .leading, spacing: 16) {
-                header {
-                    VStack(alignment: .leading, spacing: 8) {
-                        line
-                        upper
+            if layoutDirection.readsFromLeadingSide(card.text(on: way.upperSide)) {
+                VStack(alignment: .leading, spacing: 16) {
+                    header {
+                        VStack(alignment: .leading, spacing: 8) {
+                            line
+                            upper
+                        }
+                    } buttons: {
+                        room
                     }
-                } buttons: {
-                    room
-                }
-                if showingLowerSide {
-                    lower
+                    if showingLowerSide {
+                        lower
+                    }
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -409,7 +419,7 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// Which buttons a card has at the panel's top right.
+    /// Which buttons a card has at the panel's top trailing corner.
     private enum TopButtons {
         /// Undo, ask, flag, bury, and close, with Esc.
         case forTheCard
@@ -418,8 +428,8 @@ struct ReviewPanelView: View {
         case closeWithoutEsc
     }
 
-    /// The buttons at a card's top right, with their keys, or, `withKeys`
-    /// false, a copy without them that only keeps their room.
+    /// The buttons at a card's top trailing corner, with their keys, or,
+    /// `withKeys` false, a copy without them that only keeps their room.
     @ViewBuilder
     private func topButtons(_ buttons: TopButtons, of panel: ReviewPanelModel, withKeys: Bool) -> some View {
         let closeByLucas = { panel.state.close(.byLucas) }
@@ -641,9 +651,8 @@ struct ReviewPanelView: View {
                 SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
             }
             if !card.text(on: side).isEmpty {
-                Text(card.text(on: side))
+                TextAsItReads(card.text(on: side))
                     .font(.title2.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
             }
             if let sound = card.sound(on: side) {
                 soundControls(sound, on: side, in: panel)
@@ -663,17 +672,15 @@ struct ReviewPanelView: View {
                 SideImage(image: panel.state.images[image], maximumHeight: imageHeight)
             }
             if !card.text(on: side).isEmpty {
-                Text(card.text(on: side))
-                    .fixedSize(horizontal: false, vertical: true)
+                TextAsItReads(card.text(on: side))
             }
             if let sound = card.sound(on: side) {
                 soundControls(sound, on: side, in: panel)
             }
             if let source = card.source {
-                Text(source)
+                TextAsItReads(source)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -693,8 +700,9 @@ struct ReviewPanelView: View {
     /// The button that rates the card `rating`, named as Anki names it, with
     /// its key, and the interval it would set above it, small, as Anki shows
     /// it, which VoiceOver reads after its name, in words.
-    private func ratingButton(_ rating: Rating, key: Character, in panel: ReviewPanelModel) -> some View {
+    private func ratingButton(_ rating: Rating, in panel: ReviewPanelModel) -> some View {
         let interval = panel.state.intervals?[rating]
+        let key = RatingKey.digit(of: rating)
         return VStack(spacing: 4) {
             Text(interval.map(intervalText) ?? "")
                 .font(.caption)
@@ -730,7 +738,8 @@ struct ReviewPanelView: View {
 
 /// The badge of a review ahead, on the card the review panel brings before
 /// it's due and beside the review in the Cards window's review log, with a
-/// tooltip on what a review ahead does.
+/// tooltip on what a review ahead does. Its title stays on one line, as a
+/// capsule's can't wrap.
 struct AheadBadge: View {
     var body: some View {
         Text(
@@ -743,6 +752,7 @@ struct AheadBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
+        .fixedSize()
         .help(
             Text(
                 "A review ahead: it counts, and lengthens the card's interval less the earlier it comes.",
@@ -752,7 +762,8 @@ struct AheadBadge: View {
 
 /// The badge of a card that shows back first, on the card the review panel
 /// shows that way and beside a review that went that way in the Cards
-/// window's review log.
+/// window's review log. Its title stays on one line, as a capsule's can't
+/// wrap: in German, "Rückseite zuerst" broke onto three in the review log.
 struct BackFirstBadge: View {
     var body: some View {
         Text(
@@ -767,6 +778,7 @@ struct BackFirstBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
+        .fixedSize()
     }
 }
 

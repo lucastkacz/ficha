@@ -1,0 +1,121 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Review now in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "ar" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "المراجعة الآن في ${applicationName}",
+              "راجع الآن في ${applicationName}"
+            ]
+          }
+        },
+        "de" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Jetzt in ${applicationName} wiederholen",
+              "In ${applicationName} wiederholen"
+            ]
+          }
+        },
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Review now in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Repasar ahora en ${applicationName}",
+              "Repasar en ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Réviser maintenant dans ${applicationName}",
+              "Réviser dans ${applicationName}"
+            ]
+          }
+        },
+        "it" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Ripassa ora in ${applicationName}",
+              "Ripassa ora con ${applicationName}",
+              "Ripassa con ${applicationName}"
+            ]
+          }
+        },
+        "ja" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}で今すぐ復習",
+              "${applicationName}で復習"
+            ]
+          }
+        },
+        "ko" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}에서 지금 복습",
+              "${applicationName}에서 복습하기"
+            ]
+          }
+        },
+        "pt" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Revisar agora na ${applicationName}",
+              "Revisar na ${applicationName}",
+              "Revisar agora com ${applicationName}"
+            ]
+          }
+        },
+        "ru" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Повторить сейчас в ${applicationName}",
+              "Повторить карточки в ${applicationName}",
+              "Повторение в ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在${applicationName}中立即复习",
+              "用${applicationName}复习"
+            ]
+          }
+        },
+        "zh-Hant" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在${applicationName}中立即複習",
+              "在${applicationName}中複習"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

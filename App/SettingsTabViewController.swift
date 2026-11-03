@@ -52,10 +52,14 @@ enum SettingsTab: String {
 
 /// The Settings window's content, as a Mac's usual settings window: its tabs
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
-/// window as tall as the selected tab. The last tab says which version of the
+/// window as tall as the selected tab and as wide as its toolbar's tabs need,
+/// 500 points at least. The last tab says which version of the
 /// app this is. It opens on the tab Lucas left it on last, unless it's asked
 /// to open on another.
 final class SettingsTabViewController: NSTabViewController {
+    /// How wide every tab is, and so the window.
+    private var width: CGFloat = 500
+
     /// The tabs of every default Lucas can change in `model`, and of the
     /// capture shortcut, `captureShortcut`, then the Backups tab, which closes
     /// the review panel with `closeReviewPanel` before a restore, the Sync
@@ -69,21 +73,57 @@ final class SettingsTabViewController: NSTabViewController {
         // Read before adding the tabs, since adding the first one selects it.
         let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
-        add(.general, settings: GeneralSettings(model: model, captureShortcut: captureShortcut))
-        // Each of these changes one of the settings that decide a card's
-        // progress, which the engine keeps.
-        add(.appearances, content: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model)))
-        add(.reviewPanel, content: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model)))
-        add(
-            .scheduling,
-            content: ProgressSettingsForm(
-                model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler)))
-        add(.backups, content: BackupsTab(model: model, closeReviewPanel: closeReviewPanel))
-        if model.sync != nil {
-            add(.sync, content: SyncTab(model: model))
+        let tabs: [SettingsTab] =
+            [.general, .appearances, .reviewPanel, .scheduling, .backups] + (model.sync != nil ? [.sync] : [])
+            + [.about]
+        width = Self.width(showing: tabs)
+        for shown in tabs {
+            add(
+                shown,
+                content: Self.content(
+                    of: shown, width: width, model: model, captureShortcut: captureShortcut,
+                    closeReviewPanel: closeReviewPanel))
         }
-        add(.about, content: AboutTab())
         select(firstTab)
+    }
+
+    /// What `tab` shows, `width` points wide.
+    @ViewBuilder
+    private static func content(
+        of tab: SettingsTab, width: CGFloat, model: AppModel, captureShortcut: CaptureShortcutRegistration,
+        closeReviewPanel: @escaping () -> Void
+    ) -> some View {
+        switch tab {
+        case .general:
+            Form { GeneralSettings(model: model, captureShortcut: captureShortcut) }.formStyle(.grouped)
+        // Each of these three changes one of the settings that decide a
+        // card's progress, which the engine keeps.
+        case .appearances: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model))
+        case .reviewPanel: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model))
+        case .scheduling:
+            ProgressSettingsForm(
+                model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler))
+        case .backups: BackupsTab(model: model, width: width, closeReviewPanel: closeReviewPanel)
+        case .sync: SyncTab(model: model)
+        case .about: AboutTab()
+        }
+    }
+
+    /// How wide Settings is with `tabs` in its toolbar: 500 points, as in
+    /// English, or as wide as the toolbar needs to show every tab's name in
+    /// a language whose names run longer, as German's and French's do, since
+    /// a name can't wrap and AppKit hides the tabs that don't fit behind ».
+    /// The forms inside keep wrapping their texts, and the Backups tab's
+    /// table of copies fits by narrowing its Kind column, whose texts wrap
+    /// too (`CopyTableColumns`). Our own sum of AppKit's toolbar, as
+    /// `make render`'s pictures measure it: each name in the toolbar's font,
+    /// at least as wide as an icon, the room between two tabs and at the
+    /// window's edges.
+    private static func width(showing tabs: [SettingsTab]) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let names = tabs.map { max($0.name.width(in: font), 32) }
+        let toolbar = names.reduce(0, +) + 14 * CGFloat(tabs.count - 1) + 2 * 24
+        return max(500, toolbar.rounded(.up))
     }
 
     /// Shows `tab`.
@@ -93,15 +133,11 @@ final class SettingsTabViewController: NSTabViewController {
         }
     }
 
-    /// Adds `tab`, which shows `settings` in a grouped form.
-    private func add(_ tab: SettingsTab, settings: some View) {
-        add(tab, content: Form { settings }.formStyle(.grouped))
-    }
-
-    /// Adds `tab`, which shows `content`. The tab follows the content's
-    /// height as it changes, as when Lucas adds a learning step.
+    /// Adds `tab`, which shows `content`, as wide as every tab. The tab
+    /// follows the content's height as it changes, as when Lucas adds a
+    /// learning step.
     private func add(_ tab: SettingsTab, content: some View) {
-        let controller = NSHostingController(rootView: content.frame(width: 500))
+        let controller = NSHostingController(rootView: content.frame(width: width))
         controller.sizingOptions = .preferredContentSize
         controller.title = tab.name
         let item = NSTabViewItem(viewController: controller)

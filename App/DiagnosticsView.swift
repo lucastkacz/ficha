@@ -18,6 +18,12 @@ struct DiagnosticsView: View {
     @State private var isFocusHoldingBack: Bool? = false
     @State private var appearances: Result<[AppearanceLogEntry], EngineError>?
 
+    /// The title of the window it's in, which the app and `make render` give
+    /// it.
+    static var windowTitle: String {
+        String(localized: "Diagnostics", comment: "The Diagnostics window's title.")
+    }
+
     var body: some View {
         Form {
             Section("Right now") {

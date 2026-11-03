@@ -184,18 +184,25 @@ struct CardsView: View {
     /// window first opens, and only for a pane whose content is there by
     /// then, which is why the window opens with the cards already read
     /// (`AppModel.openCardsWindow()`): the table's pane opens wide enough
-    /// for Front, Media, Interval and Due. The sidebar opens wide enough for the
+    /// for Media, Interval and Due in the app's language and for Front about
+    /// as wide as in English beside them (`CardTableColumns.openingPaneWidth`),
+    /// taking the points from the detail. The sidebar opens wide enough for the
     /// sample decks' names to read whole beside their counts, after their
     /// emoji, two levels down too, like Idiomas › Español › Rioplatense. The
     /// panes' least widths add up to the window's either way.
     private var panes: some View {
-        NavigationSplitView {
+        // The cards' table's columns, fitted to their texts in the app's
+        // language, which the table's pane opens to fit too.
+        let cardColumns = CardTableColumns(now: state.now)
+        return NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 160, ideal: 260, max: 280)
                 .waiting(while: state.editing != nil)
         } content: {
-            table
-                .navigationSplitViewColumnWidth(min: listsAllTagsTree ? 500 : 380, ideal: 440)
+            table(cardColumns: cardColumns)
+                .navigationSplitViewColumnWidth(
+                    min: listsAllTagsTree ? 500 : 380, ideal: cardColumns.openingPaneWidth
+                )
                 .waiting(while: state.editing != nil)
         } detail: {
             detail
@@ -378,17 +385,21 @@ struct CardsView: View {
 
     /// `sentences`, which a question before Lucas deletes tags or a deck
     /// says under its title, one after another, as the Mac's language joins
-    /// them, with a space in English.
+    /// them, with a space in English. Each sentence after the first comes
+    /// with what goes before it, rather than the whole question so far going
+    /// into the next join: Foundation wraps a text it puts into another in
+    /// Unicode's directional isolates, and an isolate holding only isolates
+    /// reads left to right, which put Arabic's sentences in the wrong order.
     private func joinedSentences(_ sentences: [String]) -> String {
         sentences.reduce(into: "") { text, sentence in
-            text =
+            text +=
                 text.isEmpty
                 ? sentence
                 : String(
-                    localized: "deletion.next-sentence", defaultValue: "\(text) \(sentence)",
+                    localized: "deletion.next-sentence", defaultValue: " \(sentence)",
                     comment: """
-                        Joins two sentences of the Cards window's question before it deletes tags or a deck: what it \
-                        says so far, then the next sentence, as the language writes one sentence after another.
+                        A sentence of the Cards window's question before it deletes tags or a deck, after the one \
+                        before it: with what the language writes between two sentences, a space in English.
                         """)
         }
     }
@@ -465,9 +476,9 @@ struct CardsView: View {
         } label: {
             Label(
                 String(
-                    localized: "Back",
+                    localized: "toolbar.back", defaultValue: "Back",
                     comment: "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags."),
-                systemImage: "chevron.left")
+                systemImage: "chevron.backward")
         }
         .keyboardShortcut("[", modifiers: .command)
         .disabled(!state.canGoBack)
@@ -1196,15 +1207,16 @@ struct CardsView: View {
         if case .success(.allTags) = state.listing { true } else { false }
     }
 
+    /// What the table's pane lists, the cards' table with `cardColumns`.
     @ViewBuilder
-    private var table: some View {
+    private func table(cardColumns: CardTableColumns) -> some View {
         switch state.listing {
         case .success(.cards(let rows)):
             VStack(spacing: 0) {
                 if let menu = state.chosenDeckMenu {
                     DeckBar(menu: menu, state: $state)
                 }
-                cardTable(rows)
+                cardTable(rows, columns: cardColumns)
             }
         case .success(.inbox(let rows)):
             inboxTable(rows)
@@ -1225,93 +1237,62 @@ struct CardsView: View {
     /// in All Tags, one per row, which he drags onto a deck in the sidebar,
     /// with the other selected cards when it's one of them. A right click on
     /// the headers shows SwiftUI's menu of the columns, as in Finder, which
-    /// adds or removes all of them but Front.
-    private func cardTable(_ rows: [CardRow]) -> some View {
+    /// adds or removes all of them but Front. Its columns have `fitted`'s
+    /// headers and widths.
+    private func cardTable(_ rows: [CardRow], columns fitted: CardTableColumns) -> some View {
         Table(of: CardRow.self, selection: selectedCards, sortOrder: $sortOrder, columnCustomization: $columns) {
-            TableColumn(
-                Text("Front", comment: "A column of the Cards window: the card's front."),
-                sortUsing: CardRowOrder(.front)
-            ) {
-                row in
+            TableColumn(Text(fitted.front.header), sortUsing: CardRowOrder(.front)) { row in
                 FrontCell(card: row.card)
             }
-            .width(min: 120)
+            // Narrows below its texts, the user's fronts, as Type, Tags and
+            // Source do: `CardTableColumns` says why.
+            .width(fitting: fitted.front)
             .customizationID(CardRowOrder.Column.front.rawValue)
             // Always there, as Finder's Name: it says which card a row is.
             .disabledCustomizationBehavior(.visibility)
-            TableColumn(
-                Text(
-                    "Media", comment: "A column of the Cards window: whether the card's sides have an image or a sound."
-                ),
-                sortUsing: CardRowOrder(.media)
-            ) { row in
+            TableColumn(Text(fitted.media.header), sortUsing: CardRowOrder(.media)) { row in
                 MediaCell(card: row.card)
             }
-            .width(min: 48, ideal: 56, max: 80)
+            .width(fitting: fitted.media)
             .customizationID(CardRowOrder.Column.media.rawValue)
             // In a group, since a table's builder takes ten columns at most.
             Group {
-                TableColumn(
-                    Text(
-                        "Interval",
-                        comment: "A column of the Cards window: how long the card waits after its last review."),
-                    sortUsing: CardRowOrder(.interval)
-                ) { row in
+                TableColumn(Text(fitted.interval.header), sortUsing: CardRowOrder(.interval)) { row in
                     WayIntervalText(way: row.frontFirst)
                 }
-                .width(min: 56, ideal: 64, max: 100)
+                .width(fitting: fitted.interval)
                 .customizationID(CardRowOrder.Column.interval.rawValue)
-                TableColumn(
-                    Text("Due", comment: "A column of the Cards window: when the card is due."),
-                    sortUsing: CardRowOrder(.due)
-                ) { row in
-                    Text(dueText(row.frontFirst, at: state.now))
+                TableColumn(Text(fitted.due.header), sortUsing: CardRowOrder(.due)) { row in
+                    Text(DueText.of(row.frontFirst, at: state.now))
                 }
-                .width(min: 60, ideal: 72, max: 110)
+                .width(fitting: fitted.due)
                 .customizationID(CardRowOrder.Column.due.rawValue)
-                TableColumn(
-                    Text(
-                        "Back-first interval",
-                        comment:
-                            "A column of the Cards window: how long a card that goes both ways waits after its last review back first."
-                    ),
-                    sortUsing: CardRowOrder(.backFirstInterval)
-                ) { row in
+                TableColumn(Text(fitted.backFirstInterval.header), sortUsing: CardRowOrder(.backFirstInterval)) {
+                    row in
                     // Blank for a card that goes one way.
                     if let backFirst = row.backFirst {
                         WayIntervalText(way: backFirst)
                     }
                 }
-                .width(min: 56, ideal: 120, max: 150)
+                .width(fitting: fitted.backFirstInterval)
                 .customizationID(CardRowOrder.Column.backFirstInterval.rawValue)
                 .defaultVisibility(.hidden)
-                TableColumn(
-                    Text(
-                        "Back-first due",
-                        comment: "A column of the Cards window: when a card that goes both ways is due back first."),
-                    sortUsing: CardRowOrder(.backFirstDue)
-                ) { row in
+                TableColumn(Text(fitted.backFirstDue.header), sortUsing: CardRowOrder(.backFirstDue)) { row in
                     // Blank for a card that goes one way.
-                    Text(row.backFirst.map { dueText($0, at: state.now) } ?? "")
+                    Text(row.backFirst.map { DueText.of($0, at: state.now) } ?? "")
                 }
-                .width(min: 60, ideal: 120, max: 150)
+                .width(fitting: fitted.backFirstDue)
                 .customizationID(CardRowOrder.Column.backFirstDue.rawValue)
                 .defaultVisibility(.hidden)
             }
-            TableColumn(
-                Text("Type", comment: "A column of the Cards window: the card's type."),
-                sortUsing: CardRowOrder(.type)
-            ) { row in
+            TableColumn(Text(fitted.type.header), sortUsing: CardRowOrder(.type)) { row in
                 // Blank for a card with no type.
                 Text(row.card.type?.title ?? "")
             }
-            .width(min: 60, ideal: 76, max: 110)
+            .width(fitting: fitted.type)
             .customizationID(CardRowOrder.Column.type.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(
-                Text("Tags", comment: "A column of the Cards window: the card's tags."),
-                sortUsing: CardRowOrder(.tags)
-            ) { row in
+            TableColumn(Text(fitted.tags.header), sortUsing: CardRowOrder(.tags)) { row in
                 HStack(spacing: 4) {
                     ForEach(row.tags, id: \.name) { tag in
                         TagCapsule(tag: tag)
@@ -1320,48 +1301,33 @@ struct CardsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .clipped()
             }
-            .width(min: 60, ideal: 120)
+            .width(fitting: fitted.tags)
             .customizationID(CardRowOrder.Column.tags.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(
-                Text("Source", comment: "A column of the Cards window: where Lucas came across the card's content."),
-                sortUsing: CardRowOrder(.source)
-            ) { row in
-                Text(row.card.source ?? "")
+            TableColumn(Text(fitted.source.header), sortUsing: CardRowOrder(.source)) { row in
+                TextAsItReads(row.card.source ?? "")
                     .lineLimit(1)
             }
-            .width(min: 60, ideal: 120)
+            .width(fitting: fitted.source)
             .customizationID(CardRowOrder.Column.source.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(
-                Text(
-                    "Last seen",
-                    comment: "A column of the Cards window: when Lucas last reviewed the card."),
-                sortUsing: CardRowOrder(.lastSeen)
-            ) { row in
-                // Without the time, as the inbox's Added column.
-                Text(row.lastSeen?.formatted(date: .abbreviated, time: .omitted) ?? "")
+            TableColumn(Text(fitted.lastSeen.header), sortUsing: CardRowOrder(.lastSeen)) { row in
+                Text(row.lastSeen?.formatted(.tableDay) ?? "")
             }
-            .width(min: 80, ideal: 96, max: 140)
+            .width(fitting: fitted.lastSeen)
             .customizationID(CardRowOrder.Column.lastSeen.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(
-                Text("Created", comment: "A column of the Cards window: when Lucas approved the card."),
-                sortUsing: CardRowOrder(.created)
-            ) { row in
-                Text(row.card.createdAt.formatted(date: .abbreviated, time: .omitted))
+            TableColumn(Text(fitted.created.header), sortUsing: CardRowOrder(.created)) { row in
+                Text(row.card.createdAt.formatted(.tableDay))
             }
-            .width(min: 80, ideal: 96, max: 140)
+            .width(fitting: fitted.created)
             .customizationID(CardRowOrder.Column.created.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(
-                Text("Edited", comment: "A column of the Cards window: when the card's front or back last changed."),
-                sortUsing: CardRowOrder(.edited)
-            ) { row in
+            TableColumn(Text(fitted.edited.header), sortUsing: CardRowOrder(.edited)) { row in
                 // Blank for a card never edited.
-                Text(row.card.editedAt?.formatted(date: .abbreviated, time: .omitted) ?? "")
+                Text(row.card.editedAt?.formatted(.tableDay) ?? "")
             }
-            .width(min: 80, ideal: 96, max: 140)
+            .width(fitting: fitted.edited)
             .customizationID(CardRowOrder.Column.edited.rawValue)
             .defaultVisibility(.hidden)
         } rows: {
@@ -1392,42 +1358,29 @@ struct CardsView: View {
     /// the follow-ups and the flagged cards, which Lucas selects one at a
     /// time.
     private func inboxTable(_ rows: [InboxRow]) -> some View {
-        Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
-            TableColumn(
-                Text(
-                    "Text",
-                    comment: "A column of the Cards window's inbox: a capture's text, or a flagged card's front."),
-                sortUsing: InboxRowOrder(.text)
-            ) { row in
+        // Each column's header and widths, fitted to its texts in the app's
+        // language.
+        let fitted = InboxTableColumns(now: state.now)
+        return Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
+            TableColumn(Text(fitted.text.header), sortUsing: InboxRowOrder(.text)) { row in
                 if let cardRow = row.flaggedCard {
                     FrontCell(card: cardRow.card)
                 } else {
-                    Text(row.text)
+                    TextAsItReads(row.text)
                         .lineLimit(1)
                 }
             }
-            .width(min: 120)
-            TableColumn(
-                Text(
-                    "Kind",
-                    comment:
-                        "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card."
-                ),
-                sortUsing: InboxRowOrder(.kind)
-            ) { row in
+            // Narrows below its texts, the user's: `InboxTableColumns` says
+            // why.
+            .width(fitting: fitted.text)
+            TableColumn(Text(fitted.kind.header), sortUsing: InboxRowOrder(.kind)) { row in
                 Text(row.kindName)
             }
-            .width(min: 64, ideal: 76, max: 110)
-            TableColumn(
-                Text(
-                    "Added",
-                    comment: "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."),
-                sortUsing: InboxRowOrder(.added)
-            ) { row in
-                // Without the time, to leave the Text column its room.
-                Text(row.addedAt.formatted(date: .abbreviated, time: .omitted))
+            .width(fitting: fitted.kind)
+            TableColumn(Text(fitted.added.header), sortUsing: InboxRowOrder(.added)) { row in
+                Text(row.addedAt.formatted(.tableDay))
             }
-            .width(min: 80, ideal: 96, max: 140)
+            .width(fitting: fitted.added)
         }
         .focused($isTableFocused)
         .overlay {
@@ -1595,11 +1548,15 @@ struct CardsView: View {
                 } actions: {
                     // Side by side, or one above another while the pane is
                     // too narrow for that, as beside All Tags in the
-                    // window's least width.
+                    // window's least width. Side by side, each as wide as
+                    // its title: the actions' row shares its width out
+                    // evenly, which cut Arabic's Show Cards where the three
+                    // fit.
                     ViewThatFits(in: .horizontal) {
                         HStack {
                             tagButtons(for: selected)
                         }
+                        .fixedSize()
                         VStack {
                             tagButtons(for: selected)
                         }
@@ -1722,11 +1679,14 @@ struct CardsView: View {
     }
 
     /// What Lucas can do with the capture or the card the detail shows, at
-    /// its foot, always in sight.
+    /// its foot, always in sight, in a second line when the detail is too
+    /// narrow for all of them in one, as in German.
     private var actionBar: some View {
         ActionBar {
-            actionButtons
-            Spacer()
+            WrappingRow {
+                actionButtons
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

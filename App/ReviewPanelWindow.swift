@@ -97,6 +97,35 @@ final class ReviewPanelWindow: NSPanel {
         super.sendEvent(event)
     }
 
+    // The rating keys rate by their place on the keyboard, whatever the
+    // layout types with them (`RatingKey`): ١ in Arabic, & in French. A press
+    // of one without modifiers reaches the rating buttons' shortcuts as its
+    // digit, and then as it came, unless a text field has the keyboard, where
+    // it types what the layout says.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if let asDigit = ratingKeyPress(event), super.performKeyEquivalent(with: asDigit) {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    /// `event` as the press of its rating key's digit, when it's a press of
+    /// one, without modifiers, that types something else, while no text field
+    /// has the keyboard.
+    private func ratingKeyPress(_ event: NSEvent) -> NSEvent? {
+        let modifiers = event.modifierFlags.intersection([.shift, .control, .option, .command])
+        guard event.type == .keyDown, modifiers.isEmpty, !(firstResponder is NSText),
+            let digit = RatingKey.digit(forKeyCode: event.keyCode).map(String.init),
+            event.charactersIgnoringModifiers != digit
+        else {
+            return nil
+        }
+        return NSEvent.keyEvent(
+            with: .keyDown, location: event.locationInWindow, modifierFlags: event.modifierFlags,
+            timestamp: event.timestamp, windowNumber: event.windowNumber, context: nil, characters: digit,
+            charactersIgnoringModifiers: digit, isARepeat: event.isARepeat, keyCode: event.keyCode)
+    }
+
     /// Shows the panel and gives it the keyboard, since Lucas asked for it:
     /// a review now.
     func show() {

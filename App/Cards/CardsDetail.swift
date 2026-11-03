@@ -3,9 +3,10 @@ import FichaData
 import SwiftUI
 
 /// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says, since a buried card keeps its flag. A
-/// front without text says "Image" or "Sound" in gray, as Mail says "No
-/// Subject", rather than leave the cell empty.
+/// buried, as where it stands says, since a buried card keeps its flag,
+/// aligned with them as the front reads. A front without text says "Image"
+/// or "Sound" in gray, as Mail says "No Subject", rather than leave the cell
+/// empty.
 struct FrontCell: View {
     let card: Card
     /// Whether a long front goes on over more lines, as below a capture in
@@ -34,6 +35,7 @@ struct FrontCell: View {
                     .fixedSize(horizontal: false, vertical: wraps)
             }
         }
+        .alignedAsItReads(card.front)
     }
 
     /// The word that stands for a front without text, as `media` says.
@@ -167,9 +169,8 @@ struct CardDetail: View {
                     SideImage(image: images[image], maximumHeight: 320)
                 }
                 if !row.card.front.isEmpty {
-                    Text(row.card.front)
+                    TextAsItReads(row.card.front)
                         .font(.title2.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if row.card.frontSound != nil {
                     soundControls(.front)
@@ -185,17 +186,15 @@ struct CardDetail: View {
                     SideImage(image: images[image], maximumHeight: 320)
                 }
                 if !row.card.back.isEmpty {
-                    Text(row.card.back)
-                        .fixedSize(horizontal: false, vertical: true)
+                    TextAsItReads(row.card.back)
                 }
                 if row.card.backSound != nil {
                     soundControls(.back)
                 }
                 if let source = row.card.source {
-                    Text(source)
+                    TextAsItReads(source)
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Divider()
                 standing
@@ -328,7 +327,7 @@ struct CardDetail: View {
             GridRow {
                 gridLabel(labels.due)
                 HStack(spacing: 6) {
-                    Text(dueText(way, at: now))
+                    Text(DueText.of(way, at: now))
                     Text(due.formatted(date: .abbreviated, time: .shortened))
                         .foregroundStyle(.secondary)
                 }
@@ -392,6 +391,8 @@ private struct TypeAndTags: View {
                             first, its back, then its front.
                             """)
                 } icon: {
+                    // Arrows both ways, the same mirrored, so no backward
+                    // and forward.
                     Image(systemName: "arrow.left.arrow.right")
                 }
                 .font(.caption)
@@ -429,16 +430,14 @@ struct CaptureDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Chip(text: kind)
-                Text(capture.text)
+                TextAsItReads(capture.text)
                     .font(.title2.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
                     if let note = capture.note {
                         GridRow {
                             gridLabel(
                                 Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
-                            Text(note)
-                                .fixedSize(horizontal: false, vertical: true)
+                            TextAsItReads(note)
                         }
                     }
                     if let source = capture.source {
@@ -447,8 +446,7 @@ struct CaptureDetail: View {
                                 Text(
                                     "Source",
                                     comment: "In the Cards window's detail: where Lucas came across a capture's text."))
-                            Text(source)
-                                .fixedSize(horizontal: false, vertical: true)
+                            TextAsItReads(source)
                         }
                     }
                     GridRow {
@@ -501,8 +499,7 @@ private struct TiedCard: View {
             TypeAndTags(card: card)
             FrontCell(card: card, wraps: true)
                 .font(.headline)
-            Text(card.back)
-                .fixedSize(horizontal: false, vertical: true)
+            TextAsItReads(card.back)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -618,56 +615,86 @@ struct WayIntervalText: View {
     var body: some View {
         switch way.intervalColumn {
         case .new:
-            Text(
-                "New",
-                comment:
-                    "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
-            )
+            Text(Self.new)
         case .learning:
-            Text(
-                "Learning",
-                comment: """
-                    In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
-                    steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
-                    says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
-                    """)
+            Text(Self.learning)
         case .interval(let interval):
             Text(intervalText(interval))
                 .accessibilityLabel(spokenIntervalText(interval))
         }
     }
+
+    /// A way before its first review.
+    static var new: String {
+        String(
+            localized: "New",
+            comment:
+                "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
+        )
+    }
+
+    /// A way in its learning steps.
+    static var learning: String {
+        String(
+            localized: "Learning",
+            comment: """
+                In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
+                steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
+                says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
+                """)
+    }
 }
 
-/// When one of a card's ways is due, counted from `now`: "now" once it's
-/// due, however long ago, and before, as the Mac's locale words it, like
-/// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the card
-/// is set aside by its deck, and nothing while the way is new, or the card
-/// flagged or buried, since it won't show up then.
-func dueText(_ way: WayProgress, at now: Date) -> String {
-    let due: Date
-    switch way.dueColumn {
-    case .due(let date):
-        due = date
-    case .setAside:
-        return String(
+/// The texts of the Cards window's Due and Back-first due columns, and of
+/// its detail's Due rows, which `of(_:at:)` picks from, and the columns'
+/// widths measure.
+enum DueText {
+    /// When one of a card's ways is due, counted from `now`: "now" once it's
+    /// due, however long ago, and before, as the Mac's locale words it, like
+    /// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the
+    /// card is set aside by its deck, and nothing while the way is new, or
+    /// the card flagged or buried, since it won't show up then.
+    static func of(_ way: WayProgress, at now: Date) -> String {
+        switch way.dueColumn {
+        case .due(let date): way.isDue(at: now) ? Self.now : until(date, from: now)
+        case .setAside: setAside
+        case .nothing: ""
+        }
+    }
+
+    /// A way that's due, however long ago.
+    static var now: String {
+        String(
+            localized: "now",
+            comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
+        )
+    }
+
+    /// A way that won't show up, since its card's deck is set aside.
+    static var setAside: String {
+        String(
             localized: "set aside",
             comment: """
                 In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a \
                 deck it sits inside, is set aside. Lowercase, like “now”.
                 """)
-    case .nothing:
-        return ""
     }
-    guard !way.isDue(at: now) else {
-        return String(
-            localized: "now",
-            comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
-        )
+
+    /// What the columns say of ways due at times from `now` as far apart as
+    /// the scheduler sets them, and of the ways due now and set aside: the
+    /// longest texts they show, for their widths.
+    static func samples(from now: Date) -> [String] {
+        let hours: [Double] = [10, 2 * 24, 45 * 24, 300 * 24]
+        return [Self.now, setAside] + hours.map { until(now.addingTimeInterval($0 * 3600), from: now) }
     }
-    // In days, hours and minutes, the units of a step's interval and of a
-    // graduated one under a month: "in 8d", never "next week", and "in 45d"
-    // where the Interval column says "1.5mo".
-    var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
-    style.allowedFields = [.day, .hour, .minute]
-    return style.format(now)
+
+    /// How long from `now` until `due`, as the Mac's locale words it.
+    static func until(_ due: Date, from now: Date) -> String {
+        // In days, hours and minutes, the units of a step's interval and of a
+        // graduated one under a month: "in 8d", never "next week", and "in
+        // 45d" where the Interval column says "1.5mo".
+        var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
+        style.allowedFields = [.day, .hour, .minute]
+        return style.format(now)
+    }
 }

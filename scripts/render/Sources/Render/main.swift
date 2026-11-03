@@ -7,8 +7,9 @@ import FichaData
 import SQLite3
 import SwiftUI
 
-// Draws one of the app's windows as a PNG, with Ficha Dev's sample cards,
-// without showing anything on screen: `make render ARGS="cards --dark"`. The
+// Draws one of the app's windows as a PNG, with Ficha Dev's sample cards, in
+// English or any of Ficha's languages, without showing anything on screen:
+// `make render ARGS="cards --dark"`, `make render ARGS="cards --language ar"`. The
 // window goes below the desktop picture, where macOS still draws it but nobody
 // sees it and nothing takes the mouse or the keyboard; the tool clicks, presses
 // keys and types in it where it's told, as Lucas would, and captures it with
@@ -20,8 +21,9 @@ import SwiftUI
 // table here broke `CaptureShortcut.swift`. Give what you add at the top level
 // a name of its own.
 
-/// A window the tool can draw, by the name its arguments give it.
-enum Window: String {
+/// A window the tool can draw, by the name its arguments give it, which the
+/// usage lists.
+enum Window: String, CaseIterable {
     case cards
     /// The Cards window on ciencia, once the sample's tags sit inside tags
     /// and five are pinned, in an order of their own, its sidebar scrolled to
@@ -121,6 +123,11 @@ enum Window: String {
     case menuICloudFull = "menu-icloud-full"
     /// Settings, on its About tab.
     case about
+    /// Settings, on its General tab, in Ficha Dev, which never starts at
+    /// login.
+    case general
+    /// The capture window, empty.
+    case capture
     /// The alert the real Ficha shows at its first launch, which asks whether
     /// it opens at login.
     case startAtLogin = "start-at-login"
@@ -142,12 +149,24 @@ enum Window: String {
     /// end, below both ways' interval, due time, stability, difficulty and
     /// retrievability: its chart, with a line for each way, and its key.
     case cardsBothWays = "cards-both-ways"
+    /// The review panel on a new card in Arabic, which the tool adds to the
+    /// sample, as `panel-card` draws it: its text reads, and is aligned, right
+    /// to left whatever the window's language, as a Spanish card's reads left
+    /// to right in Arabic. `--key space` flips it.
+    case panelArabic = "panel-arabic"
+    /// The Cards window with that card in Arabic first in the table and
+    /// selected, its detail showing it, which `--key cmd+l` edits in the
+    /// detail's fields.
+    case cardsArabic = "cards-arabic"
 }
 
 /// What the tool was asked to draw.
 struct Request {
     var window: Window?
     var isDark = false
+    /// The language to draw the window in, or none for English with the Mac's
+    /// own formats.
+    var language: FichaLanguage?
     /// What to do in the window before the capture, in order.
     var actions: [Action] = []
     /// Where the PNG goes.
@@ -177,6 +196,23 @@ enum Action: CustomStringConvertible {
         case .copyImage(let picture): "--copy-image \(picture.rawValue)"
         case .copySound: "--copy-sound"
         }
+    }
+}
+
+/// The languages the tool draws a window in, as a Mac in each would show it,
+/// `--language de`: Ficha's languages, English and the eleven Ficha comes in,
+/// in `scripts/languages.txt`, which `scripts/render-iphone.sh` reads too, so
+/// both draw in the same ones. The tool reaches the list from this file's own
+/// path, three folders up, as it reaches the app's String Catalog, and reads
+/// it with `FichaLanguage`, in `Languages.swift`, a link to the reader in
+/// `scripts/`.
+func readRenderLanguages() throws(RenderError) -> [FichaLanguage] {
+    let list = URL(filePath: #filePath).deletingLastPathComponent()
+        .appending(path: "../../../languages.txt").standardized
+    do {
+        return try FichaLanguage.read(at: list, again: "render again")
+    } catch {
+        throw RenderError(description: error.description)
     }
 }
 
@@ -378,19 +414,14 @@ struct RenderError: Error, CustomStringConvertible {
 let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was written for: open an issue with this message."
 
 let usage = """
-    Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
-      <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
-                 package), cards-anki-imported (once it came in, a card it brought progress to selected),
-                 cards-import-heavy (previewing a zip whose images weigh 240 MB, while sync is on), backups
-                 (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
-                 or scheduling (Settings on those tabs, with the settings that decide progress not Ficha's), sync
-                 (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
-                 full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
-                 in iCloud), sync-restored (off after a restore), sync-chosen-decks (syncing only the cards in
-                 two ticked decks), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
-                 (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
-                 or diagnostics (while a Focus holds appearances back, once it held one back)
+    Usage: make render ARGS="<window> [--dark] [--language <code>] [--click <point> | --key <keys> | --type <text>]...
+                             [--out <file.png>]"
+      <window>   one of these, which "A window's picture" in docs/development.md describes:
+    \(indentedLines(listing: Window.allCases.map(\.rawValue), indent: 13, width: 118))
       --dark     dark mode instead of light
+      --language the language to draw the window in, as a Mac in it shows it: with the app's translations, its region's
+                 formats, and mirrored for Arabic. Without it, English, with this Mac's formats. The languages, by
+                 their codes, like de or ar: English and Ficha's eleven, which scripts/languages.txt lists
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
       --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
@@ -398,11 +429,29 @@ let usage = """
       --type     text typed into what holds the focus, like a text field
       --copy-image  a picture, flag or sun, copied to the tool's own pasteboard, for --key cmd+v to paste
       --copy-sound  a sound file, a tone of 12 seconds, copied to the tool's own pasteboard, for --key cmd+v
-      --out      the PNG, by default .build/render/<window>-<light|dark>.png
+      --out      the PNG, by default .build/render/<window>-<light|dark>.png, or <window>-<code>-<light|dark>.png in a
+                 language
     --click, --key, --type, --copy-image and --copy-sound run in the order given, and after each one the tool
     prints what holds the focus.
     While the window has a sheet, an alert or a confirmation open, they go to it.
     """
+
+/// `names`, separated by commas, in lines no wider than `width`, each
+/// indented by `indent` spaces, as the usage lists the windows.
+func indentedLines(listing names: [String], indent: Int, width: Int) -> String {
+    var lines: [String] = []
+    var line = ""
+    for (index, name) in names.enumerated() {
+        let word = index == names.count - 1 ? name : "\(name),"
+        if !line.isEmpty, indent + line.count + 1 + word.count > width {
+            lines.append(line)
+            line = ""
+        }
+        line += line.isEmpty ? word : " \(word)"
+    }
+    lines.append(line)
+    return lines.map { String(repeating: " ", count: indent) + $0 }.joined(separator: "\n")
+}
 
 /// Splits the modifier keys held down off `name`, an argument of `option`:
 /// for `--key cmd+f`, Command and `f`.
@@ -453,14 +502,24 @@ func mouseClick(named name: String) throws(RenderError) -> MouseClick {
     return MouseClick(name: name, point: CGPoint(x: numbers[0], y: numbers[1]), modifiers: modifiers)
 }
 
-/// The request in the tool's arguments.
-func request(from arguments: [String]) throws(RenderError) -> Request {
+/// The request in the tool's arguments, whose `--language` takes one of
+/// `languages`.
+func request(from arguments: [String], languages: [FichaLanguage]) throws(RenderError) -> Request {
     var request = Request()
     var arguments = arguments[...]
     while let argument = arguments.popFirst() {
         switch argument {
         case "--dark":
             request.isDark = true
+        case "--language":
+            let code = arguments.popFirst() ?? ""
+            guard let language = languages.first(where: { $0.code == code }) else {
+                let unknown = code.isEmpty ? "" : "Ficha has no language \(code): "
+                let list = languages.map { "\($0.code) (\($0.name))" }.joined(separator: ", ")
+                throw RenderError(
+                    description: "\(unknown)--language takes one of these, by its code: \(list).\n\(usage)")
+            }
+            request.language = language
         case "--click":
             request.actions.append(.click(try mouseClick(named: arguments.popFirst() ?? "")))
         case "--key":
@@ -925,10 +984,9 @@ func chooseUserType(_ name: String, selecting front: String, in state: inout Car
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
 func scrollSidebarToEnd(of window: NSWindow) throws {
-    // The table is an outline view too: the sidebar is the one on the left.
-    let sidebar = outlineViews(in: window.contentView).min {
-        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
-    }
+    // The table is an outline view too: the sidebar is the one at the
+    // leading side.
+    let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
     guard let sidebar, sidebar.numberOfRows > 0 else {
         throw RenderError(
             description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
@@ -936,14 +994,23 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
     sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
 }
 
+/// Whether `view` starts nearer the leading side of `window` than `other`:
+/// further left, or further right in a language read right to left, which
+/// mirrors the window.
+func isNearerLeadingSide(_ view: NSView, than other: NSView, in window: NSWindow) -> Bool {
+    let frame = view.convert(view.bounds, to: nil)
+    let otherFrame = other.convert(other.bounds, to: nil)
+    return window.contentView?.userInterfaceLayoutDirection == .rightToLeft
+        ? frame.maxX > otherFrame.maxX : frame.minX < otherFrame.minX
+}
+
 /// Scrolls the detail of the Cards window `window`, once it shows, to its
 /// end, where a card's chart and its key show below the rows of its ways,
 /// for the same reason as `scrollSidebarToEnd(of:)`.
 func scrollDetailToEnd(of window: NSWindow) throws {
-    // The sidebar and the table scroll too: the detail is the one on the right.
-    let detail = scrollViews(in: window.contentView).max {
-        $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX
-    }
+    // The sidebar and the table scroll too: the detail is the one at the
+    // trailing side.
+    let detail = scrollViews(in: window.contentView).max { isNearerLeadingSide($0, than: $1, in: window) }
     guard let detail, let document = detail.documentView else {
         throw RenderError(description: "The Cards window shows no detail to scroll: fix scrollDetailToEnd(of:).")
     }
@@ -1260,7 +1327,7 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1278,6 +1345,10 @@ func model(for name: Window) throws -> AppModel {
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
+    case .panelArabic, .cardsArabic:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try addSampleArabicCard(in: engine)
+        return try AppModel(engine: engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
@@ -1478,6 +1549,13 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
     case .scheduling: return settingsTabWindow(model: model, openingOn: .scheduling)
     case .about: return settingsTabWindow(model: model, openingOn: .about)
+    case .general: return settingsTabWindow(model: model, openingOn: .general)
+    case .capture:
+        let window = CaptureWindow(model: model)
+        if let view = window.contentView {
+            window.setContentSize(view.fittingSize)
+        }
+        return window
     case .startAtLogin:
         // The alert's own window, laid out as `runModal()` would show it,
         // for the real Ficha, the only one that asks.
@@ -1487,25 +1565,65 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .diagnostics:
         let mac = SystemMacSignals { model.now }
         mac.focusChanged(holdsBack: true)
-        return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
+        return AppWindow(title: DiagnosticsView.windowTitle, content: DiagnosticsView(model: model, mac: mac))
     case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
     case .panelReview:
         return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).row.card.front) {
             .review($0)
         }
     case .cardsBothWays:
-        var state = model.openCardsWindow()
-        state.read(with: state.scheduler)
-        guard case .success(.cards(let rows)) = state.listing,
-            let bothWays = rows.first(where: { $0.backFirst != nil })
-        else {
-            throw RenderError(description: "No sample card goes both ways: fix bothWaysModel().")
-        }
-        state.select([bothWays.id])
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
+        return try cardsWindow(
+            of: model, selectingFirst: { $0.backFirst != nil },
+            orElse: "No sample card goes both ways: fix bothWaysModel().")
+    case .panelArabic: return try panelWindow(model: model, on: sampleArabicFront)
+    case .cardsArabic:
+        return try cardsWindow(
+            of: model, selectingFirst: { $0.card.front == sampleArabicFront },
+            orElse: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
     }
+}
+
+/// The Cards window of `model` on every card, its cards read, with the first
+/// row `isWanted` picks selected, its detail showing it, as
+/// `cards-both-ways` and `cards-arabic` open; `missing`, a failure that
+/// says what to fix, when no row is.
+func cardsWindow(
+    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
+) throws -> NSWindow {
+    var state = model.openCardsWindow()
+    state.read(with: state.scheduler)
+    guard case .success(.cards(let rows)) = state.listing, let wanted = rows.first(where: isWanted) else {
+        throw RenderError(description: missing)
+    }
+    state.select([wanted.id])
+    let window = CardsWindow(model: model)
+    window.makeContent(opening: state)
+    return window
+}
+
+/// The front of the card in Arabic `addSampleArabicCard(in:)` adds: the
+/// butterfly effect, as a sample card in Spanish has it.
+let sampleArabicFront = "أثر الفراشة"
+
+/// Adds a card in Arabic to the sample cards, made by hand, as two in
+/// Spanish are, so that the newest, it comes first in the Cards window. Its
+/// back holds a name in Latin letters and a year, which read left to right
+/// inside its Arabic.
+func addSampleArabicCard(in engine: Engine) throws {
+    guard
+        let content = CardContent(
+            type: nil, front: sampleArabicFront,
+            back: """
+                تغييرٌ صغير، مثل رفرفة جناحي فراشة، قد يؤدي إلى نتائج كبيرة لا يمكن توقعها. سمّاه بذلك عالم \
+                الأرصاد الجوية Edward Lorenz عام 1972.
+                """,
+            tags: ["ciencia"], source: "نظرية الفوضى")
+    else {
+        throw RenderError(
+            description:
+                "The sample's card in Arabic has a blank front or back: give it both in addSampleArabicCard(in:).")
+    }
+    try engine.create(content)
 }
 
 /// The row of the sample's graduated card in the reviews that waits longest,
@@ -1898,6 +2016,104 @@ func capture(_ window: NSWindow, to output: URL) throws {
     }
 }
 
+/// The app's String Catalog, through the tool's link to `App/`.
+let renderCatalog = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "App/Localizable.xcstrings")
+
+/// Gives the tool the app's translations and `language`, or English with the
+/// Mac's own formats without one, as a Mac in that language gives them to the
+/// app. Run it before anything reads a text or a format: Foundation and
+/// AppKit read the language once.
+///
+/// The translations go where SwiftUI and `String(localized:)` look for them,
+/// the tool's main bundle, the folder its executable is in: the tool compiles
+/// the app's String Catalog there, as Xcode compiles it into the app, with
+/// `xcstringstool`, Xcode's own tool, into a `.lproj` folder for each language
+/// the catalog has. The language and the region are the user defaults macOS
+/// keeps them in, `AppleLanguages` and `AppleLocale`, set as launch arguments
+/// would set them, as Xcode's scheme options do. Our own: the compiled
+/// catalog beside the executable, and the defaults set by the tool itself.
+///
+/// For a language read right to left, the tool sets the defaults Xcode's
+/// right-to-left pseudolanguage sets, `AppleTextDirection` and
+/// `NSForceRightToLeftWritingDirection`, which mirror the window even before
+/// the catalog has the language, and its title bar too, with its buttons on
+/// the right, as macOS draws every app's when its own language reads right to
+/// left. A catalog with the language and `AppleTextDirection` alone mirror
+/// the window's content but leave its title bar as it is.
+func useLanguage(_ language: FichaLanguage?) throws(RenderError) {
+    // SwiftPM's `.build/debug` is a link to the folder.
+    let bundle = Bundle.main.bundleURL.resolvingSymlinksInPath()
+    // The languages an earlier run compiled go first, since the catalog may
+    // no longer have them. SwiftPM puts nothing of its own in `.lproj`
+    // folders there: it keeps resources in bundles.
+    do {
+        for folder in try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil)
+        where folder.pathExtension == "lproj" {
+            try FileManager.default.removeItem(at: folder)
+        }
+    } catch {
+        throw RenderError(
+            description: """
+                Couldn't remove the translations an earlier run compiled, the .lproj folders in \
+                \(bundle.path(percentEncoded: false)): \(error.localizedDescription) Remove them yourself, and \
+                render again.
+                """)
+    }
+    let xcstringstool = Process()
+    xcstringstool.executableURL = URL(filePath: "/usr/bin/xcrun")
+    xcstringstool.arguments = [
+        "xcstringstool", "compile", renderCatalog.path(percentEncoded: false),
+        "--output-directory", bundle.path(percentEncoded: false),
+    ]
+    do {
+        try xcstringstool.run()
+    } catch {
+        throw RenderError(
+            description: """
+                Couldn't run xcrun, which runs xcstringstool to compile App/Localizable.xcstrings: \
+                \(error.localizedDescription) Check that Xcode's command line tools are installed, with \
+                xcode-select -p, and render again.
+                """)
+    }
+    xcstringstool.waitUntilExit()
+    guard xcstringstool.terminationStatus == 0 else {
+        throw RenderError(
+            description: """
+                xcstringstool couldn't compile App/Localizable.xcstrings (exit \(xcstringstool.terminationStatus)), \
+                as it says above: fix the catalog, which make strings writes, and render again.
+                """)
+    }
+    var defaults = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+    defaults["AppleLanguages"] = [language?.code ?? "en"]
+    if let language {
+        defaults["AppleLocale"] = language.locale
+        if language.isRightToLeft {
+            defaults["AppleTextDirection"] = true
+            // It puts the title bar's buttons on the right, as a Mac in Arabic
+            // does, even once the catalog has the language, and changes
+            // nothing else: drawn with a throwaway Arabic catalog, with it and
+            // without it (#416), the review panel's Spanish card, front and
+            // back, and the Cards window's rows came out pixel for pixel the
+            // same, right-aligned both ways; only the title bar differed, and
+            // in the Cards window the toolbar beside its buttons.
+            defaults["NSForceRightToLeftWritingDirection"] = true
+        }
+        // English is the language the code writes the texts in, which the
+        // catalog needs no folder for.
+        if language.code != "en",
+            !FileManager.default.fileExists(
+                atPath: bundle.appending(path: "\(language.code).lproj").path(percentEncoded: false))
+        {
+            print(
+                """
+                App/Localizable.xcstrings has no \(language.name) (\(language.code)) yet, so the window's texts are \
+                English, as Ficha shows them on a Mac in \(language.name), with its formats.
+                """)
+        }
+    }
+    UserDefaults.standard.setVolatileDomain(defaults, forName: UserDefaults.argumentDomain)
+}
+
 do {
     // The app's files go to a scratch home, never to Lucas's.
     guard ProcessInfo.processInfo.environment["CFFIXED_USER_HOME"] != nil else {
@@ -1911,10 +2127,11 @@ do {
     let preferencesDomain = ProcessInfo.processInfo.processName
     UserDefaults.standard.removePersistentDomain(forName: preferencesDomain)
     defer { UserDefaults.standard.removePersistentDomain(forName: preferencesDomain) }
-    let request = try request(from: Array(CommandLine.arguments.dropFirst()))
+    let request = try request(from: Array(CommandLine.arguments.dropFirst()), languages: readRenderLanguages())
     guard let name = request.window else {
         throw RenderError(description: "Which window? Name one.\n\(usage)")
     }
+    try useLanguage(request.language)
     let pasteboard = try usePasteboardOfItsOwn()
     defer { pasteboard.releaseGlobally() }
     NSApplication.shared.setActivationPolicy(.accessory)
@@ -1961,8 +2178,10 @@ do {
         try wait(0.5)
         print("\(action): the focus is on \(focus(in: window))")
     }
+    let language = request.language.map { "-\($0.code)" } ?? ""
     let output =
-        request.output ?? URL(filePath: ".build/render/\(name.rawValue)-\(request.isDark ? "dark" : "light").png")
+        request.output
+        ?? URL(filePath: ".build/render/\(name.rawValue)\(language)-\(request.isDark ? "dark" : "light").png")
     try capture(window, to: output)
     print(
         "\(output.path(percentEncoded: false)): a \(Int(window.frame.width)) × \(Int(window.frame.height)) pt window"

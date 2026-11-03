@@ -240,13 +240,13 @@ struct ImportSheet: View {
                     decks come in from the .apkg files Anki exports.
                     """,
                     comment: "Under the title of the Cards window's Import sheet, before a file is chosen."))
-            HStack {
+            SheetButtons {
                 if importing.busy == nil {
                     CopyInstructionsButton()
                 } else {
                     busyNote
                 }
-                Spacer()
+            } trailing: {
                 cancelButton
                 chooseFileButton(
                     Text("Choose File…", comment: "The Import sheet's button that opens a text file of cards."),
@@ -863,6 +863,32 @@ struct ImportSheet: View {
             importing.bringsProgress
         } set: {
             chooseToBringProgress($0)
+        }
+    }
+}
+
+/// A sheet's row of buttons: `leading` at its leading edge and `trailing` at
+/// its trailing edge, in one line, or `leading` in a line above `trailing`
+/// when the sheet, which keeps its width, is too narrow for both, as in
+/// German, so that no button's title is cut.
+private struct SheetButtons<Leading: View, Trailing: View>: View {
+    @ViewBuilder let leading: Leading
+    @ViewBuilder let trailing: Trailing
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                leading
+                Spacer()
+                trailing
+            }
+            VStack(alignment: .leading) {
+                leading
+                HStack {
+                    Spacer()
+                    trailing
+                }
+            }
         }
     }
 }

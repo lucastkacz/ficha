@@ -68,10 +68,11 @@ struct ReviewLogView: View {
         }
         .chartForegroundStyleScale(domain: keyItems.map(\.name), range: keyItems.map(\.color))
         .chartLineStyleScale(domain: keyWays.map(\.name), range: keyWays.map(\.lineStyle))
-        .chartLegend(position: .bottom, alignment: .leading)
-        // The key draws the ways' lines in the chart's default style: gray,
-        // as the lines are.
-        .foregroundStyle(.gray)
+        // A key of our own, whose names wrap: Swift Charts' cut the last
+        // one in German.
+        .chartLegend(position: .bottom, alignment: .leading) {
+            ChartKey(items: keyItems, ways: keyWays)
+        }
         .chartXScale(domain: entryDomain, range: .plotDimension(padding: 10))
         .chartYScale(domain: scale.domain, range: .plotDimension(padding: 8), type: .log)
         .chartXAxis {
@@ -176,22 +177,39 @@ struct ReviewLogView: View {
     /// Every entry, the latest first: when Lucas answered, what he answered,
     /// marked when it was a review ahead and when it went back first, the
     /// interval it set and how long he took; or when the import brought the
-    /// card in, and when it said the card was due.
+    /// card in, and when it said the card was due. Each on one line while
+    /// every entry fits the detail's width that way, as in English, and
+    /// otherwise each date above what Lucas answered: in German, the badge
+    /// "Rückseite zuerst", which can't wrap, leaves the date no room beside
+    /// it.
     private var entries: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+        ViewThatFits(in: .horizontal) {
+            entryGrid(datesAbove: false)
+            entryGrid(datesAbove: true)
+        }
+        .font(.callout)
+    }
+
+    /// The entries in columns, each date beside what Lucas answered, or above
+    /// it when `datesAbove`, where the badges go on a line of their own when
+    /// they don't fit beside the answer.
+    private func entryGrid(datesAbove: Bool) -> some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: datesAbove ? 10 : 6) {
             ForEach(Array(rows.enumerated().reversed()), id: \.offset) { _, row in
                 GridRow {
-                    Text(row.entry.answeredAt.formatted(date: .abbreviated, time: .shortened))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    HStack(spacing: 6) {
-                        AnswerDot(kind: row.entry.kind)
-                        Text(row.entry.kind.entryName)
-                        if row.entry.isAhead {
-                            AheadBadge()
+                    if datesAbove {
+                        VStack(alignment: .leading, spacing: 3) {
+                            entryDate(row)
+                            WrappingRow(spacing: 6) {
+                                answer(row)
+                            }
                         }
-                        if row.entry.way == .backFirst {
-                            BackFirstBadge()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        entryDate(row)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        HStack(spacing: 6) {
+                            answer(row)
                         }
                     }
                     EntryInterval(row: row)
@@ -202,7 +220,68 @@ struct ReviewLogView: View {
                 .accessibilityElement(children: .combine)
             }
         }
-        .font(.callout)
+    }
+
+    /// When Lucas answered `row`'s entry, or the import brought the card in.
+    private func entryDate(_ row: ReviewLogRow) -> some View {
+        Text(row.entry.answeredAt.formatted(date: .abbreviated, time: .shortened))
+            .foregroundStyle(.secondary)
+    }
+
+    /// What Lucas answered in `row`'s entry, after its dot, then its badges,
+    /// each a view of its own for the row that lays them out.
+    @ViewBuilder
+    private func answer(_ row: ReviewLogRow) -> some View {
+        HStack(spacing: 6) {
+            AnswerDot(kind: row.entry.kind)
+            Text(row.entry.kind.entryName)
+        }
+        if row.entry.isAhead {
+            AheadBadge()
+        }
+        if row.entry.way == .backFirst {
+            BackFirstBadge()
+        }
+    }
+}
+
+/// The key under the review log's chart: a dot in each color the points
+/// take, with what it means, then, once the card went back first, each
+/// way's line, gray as the chart draws it, with its name, side by side, in
+/// lines that wrap when they don't fit the chart's width.
+private struct ChartKey: View {
+    /// What each color means, in the key's order.
+    let items: [(name: String, color: Color)]
+    /// The ways whose lines the key names, in its order.
+    let ways: [Way]
+
+    var body: some View {
+        WrappingRow(spacing: 10) {
+            ForEach(items, id: \.name) { item in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(item.color)
+                        .frame(width: 7, height: 7)
+                    Text(item.name)
+                }
+            }
+            ForEach(ways, id: \.self) { way in
+                HStack(spacing: 4) {
+                    // A level line, the same mirrored.
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: 1))
+                        path.addLine(to: CGPoint(x: 16, y: 1))
+                    }
+                    .stroke(.gray, style: way.lineStyle)
+                    .frame(width: 16, height: 2)
+                    Text(way.name)
+                }
+            }
+        }
+        .font(.caption)
+        // The secondary label color, as Swift Charts' key has it, not the
+        // chart's own style, which is the accent color.
+        .foregroundStyle(Color.secondary)
     }
 }
 

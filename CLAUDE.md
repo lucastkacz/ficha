@@ -57,7 +57,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - A building session ends when its PR opens, ready for review: with auto-merge on, or with a risk:high PR labeled and Lucas's merge command, `gh pr merge <n> --auto --squash`, alone in a bash block, last in its message. It leaves CI and the merge to GitHub and Lucas: if CI fails, Lucas comes back to that session, which knows the change.
 - A session that takes bugs from Lucas one at a time, such as a hand test, stays open across them and gives each fix, small ones too, to a fresh `builder`, which diagnoses and fixes it: the session writes the brief from Lucas's report, then reviews the branch and opens its PR as above. This is our own way to keep the session's context short, since a fix built in it is read again by every later step.
 - A session with a mechanical chore of more than a few steps, the ORCHESTRATOR too, such as creating, moving, commenting on, closing or relabeling several issues, or the same edit across many files of its worktree, gives it to a fresh `clerk` with a brief that holds all it needs, then checks the result. Our own too: each step of a chore done in the session reads the session's whole context again.
-- A PR that changes what Lucas sees shows it in pictures from `make render`, or `make render-iphone` for the iPhone, as "The PR's pictures" in `docs/development.md` describes.
+- A PR that changes what Lucas sees shows each window or screen it changes in pictures, in English, German and Arabic, from `make render`, or `make render-iphone` for the iPhone, as "The PR's pictures" in `docs/development.md` describes.
 - What only Lucas can check on his Mac (real meetings, full-screen apps, Spaces, how the panel feels) becomes a check in the one hand-checks issue, which the PR links: "Hand checks" in `docs/agents/issue-tracker.md` says how.
 - After a merge, the session Lucas tells, the ORCHESTRATOR in his setup, archives the finished session, whose worktree stays locked while it runs, and then runs `make clean-merged` from the main folder, on `main`: "Cleaning up after a merge" in `docs/development.md` says what it removes and what it keeps.
 
@@ -69,7 +69,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, rules, the plugin, the `/refine` skill and the subagents' types. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
-- `scripts/`: the hook tests, the render tools, the build of fsrs-rs's XCFramework (`make fsrs`), and the cleanup after a merge with its tests.
+- `scripts/`: the hook tests, the render tools, the build of fsrs-rs's XCFramework (`make fsrs`), the cleanup after a merge with its tests, the translations check with its tests, and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
 
 ## Commands
 

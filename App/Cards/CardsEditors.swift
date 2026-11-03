@@ -159,6 +159,7 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Front", text: $front, axis: .vertical)
                         .lineLimit(1...4)
+                        .alignedAsItReads(front)
                         .focused($focusedText, equals: .front)
                         .pastesImages(while: focusedText == .front) { image in
                             putImage(image, .front)
@@ -179,6 +180,7 @@ struct CardEditor: View {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Back", text: $back, axis: .vertical)
                         .lineLimit(4...12)
+                        .alignedAsItReads(back)
                         .focused($focusedText, equals: .back)
                         .pastesImages(while: focusedText == .back) { image in
                             putImage(image, .back)
@@ -217,6 +219,7 @@ struct CardEditor: View {
                     axis: .vertical
                 )
                 .lineLimit(1...3)
+                .alignedAsItReads(source)
             }
             GridRow {
                 gridLabel(BothWaysToggle.label)

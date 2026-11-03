@@ -20,8 +20,9 @@ struct CardTypePicker: View {
 
     var body: some View {
         Picker(selection: choice) {
-            // A key of its own, since a tag's Color submenu says "None" too,
-            // which a translation may word apart.
+            // A key of its own, since the Prioritize submenu, the emoji field
+            // and a tag's Color submenu say "None" too, which a translation
+            // may word apart.
             Text(
                 String(
                     localized: "card-type.none", defaultValue: "None",
