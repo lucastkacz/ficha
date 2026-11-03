@@ -45294,7 +45294,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "افصل بين الوسوم بالفاصلة (,)، واكتب \"::\" قبل الوسم الموجود داخل وسم آخر، كما في \"economía::Argentina\"."
+            "value" : "افصل بين الوسوم بالفاصلة، واكتب \"::\" قبل الوسم الموجود داخل وسم آخر، كما في \"economía::Argentina\"."
           }
         },
         "de" : {
@@ -45324,7 +45324,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タグはコンマ（,）で区切り、ほかのタグの内側のタグの前には「::」を書きます（例: 「economía::Argentina」）。"
+            "value" : "タグは読点（、）で区切り、ほかのタグの内側のタグの前には「::」を書きます（例: 「economía::Argentina」）。"
           }
         },
         "ko" : {
@@ -45348,7 +45348,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用逗号（,）分隔标签；若标签位于另一个标签内，请在其前面写“::”，例如“economía::Argentina”。"
+            "value" : "用逗号分隔标签；若标签位于另一个标签内，请在其前面写“::”，例如“economía::Argentina”。"
           }
         },
         "zh-Hant" : {
