@@ -738,7 +738,8 @@ struct ReviewPanelView: View {
 
 /// The badge of a review ahead, on the card the review panel brings before
 /// it's due and beside the review in the Cards window's review log, with a
-/// tooltip on what a review ahead does.
+/// tooltip on what a review ahead does. Its title stays on one line, as a
+/// capsule's can't wrap.
 struct AheadBadge: View {
     var body: some View {
         Text(
@@ -751,6 +752,7 @@ struct AheadBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
+        .fixedSize()
         .help(
             Text(
                 "A review ahead: it counts, and lengthens the card's interval less the earlier it comes.",
@@ -760,7 +762,8 @@ struct AheadBadge: View {
 
 /// The badge of a card that shows back first, on the card the review panel
 /// shows that way and beside a review that went that way in the Cards
-/// window's review log.
+/// window's review log. Its title stays on one line, as a capsule's can't
+/// wrap: in German, "Rückseite zuerst" broke onto three in the review log.
 struct BackFirstBadge: View {
     var body: some View {
         Text(
@@ -775,6 +778,7 @@ struct BackFirstBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
+        .fixedSize()
     }
 }
 

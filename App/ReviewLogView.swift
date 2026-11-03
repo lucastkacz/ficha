@@ -177,22 +177,39 @@ struct ReviewLogView: View {
     /// Every entry, the latest first: when Lucas answered, what he answered,
     /// marked when it was a review ahead and when it went back first, the
     /// interval it set and how long he took; or when the import brought the
-    /// card in, and when it said the card was due.
+    /// card in, and when it said the card was due. Each on one line while
+    /// every entry fits the detail's width that way, as in English, and
+    /// otherwise each date above what Lucas answered: in German, the badge
+    /// "Rückseite zuerst", which can't wrap, leaves the date no room beside
+    /// it.
     private var entries: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+        ViewThatFits(in: .horizontal) {
+            entryGrid(datesAbove: false)
+            entryGrid(datesAbove: true)
+        }
+        .font(.callout)
+    }
+
+    /// The entries in columns, each date beside what Lucas answered, or above
+    /// it when `datesAbove`, where the badges go on a line of their own when
+    /// they don't fit beside the answer.
+    private func entryGrid(datesAbove: Bool) -> some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: datesAbove ? 10 : 6) {
             ForEach(Array(rows.enumerated().reversed()), id: \.offset) { _, row in
                 GridRow {
-                    Text(row.entry.answeredAt.formatted(date: .abbreviated, time: .shortened))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    HStack(spacing: 6) {
-                        AnswerDot(kind: row.entry.kind)
-                        Text(row.entry.kind.entryName)
-                        if row.entry.isAhead {
-                            AheadBadge()
+                    if datesAbove {
+                        VStack(alignment: .leading, spacing: 3) {
+                            entryDate(row)
+                            WrappingRow(spacing: 6) {
+                                answer(row)
+                            }
                         }
-                        if row.entry.way == .backFirst {
-                            BackFirstBadge()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        entryDate(row)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        HStack(spacing: 6) {
+                            answer(row)
                         }
                     }
                     EntryInterval(row: row)
@@ -203,7 +220,28 @@ struct ReviewLogView: View {
                 .accessibilityElement(children: .combine)
             }
         }
-        .font(.callout)
+    }
+
+    /// When Lucas answered `row`'s entry, or the import brought the card in.
+    private func entryDate(_ row: ReviewLogRow) -> some View {
+        Text(row.entry.answeredAt.formatted(date: .abbreviated, time: .shortened))
+            .foregroundStyle(.secondary)
+    }
+
+    /// What Lucas answered in `row`'s entry, after its dot, then its badges,
+    /// each a view of its own for the row that lays them out.
+    @ViewBuilder
+    private func answer(_ row: ReviewLogRow) -> some View {
+        HStack(spacing: 6) {
+            AnswerDot(kind: row.entry.kind)
+            Text(row.entry.kind.entryName)
+        }
+        if row.entry.isAhead {
+            AheadBadge()
+        }
+        if row.entry.way == .backFirst {
+            BackFirstBadge()
+        }
     }
 }
 
