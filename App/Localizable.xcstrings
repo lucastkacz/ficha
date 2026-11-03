@@ -46,7 +46,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ no pudo leer estos ajustes, como pasa cuando se editan a mano: %2$@. Quedaron en sus valores predeterminados, y el atajo de captura está desactivado, hasta que los vuelvas a configurar en Ajustes."
+            "value" : "%1$@ no pudo leer esta parte de su configuración, como pasa cuando se edita a mano: %2$@. Volvió a sus valores predeterminados, y el atajo de captura está desactivado, hasta que la vuelvas a definir en Configuración."
           }
         }
       }
@@ -77,7 +77,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ te muestra tarjetas solo mientras está abierta. Podés cambiarlo después en Ajustes."
+            "value" : "%@ te muestra tarjetas solo mientras está abierta. Podés cambiarlo después en Configuración."
           }
         }
       }
@@ -2117,7 +2117,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permitilo en Ajustes del Sistema, en Ítems de inicio."
+            "value" : "Permitilo en Configuración del Sistema, en Elementos de inicio."
           }
         }
       }
@@ -2159,7 +2159,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otra app ya usa este atajo. Elegí otro en Ajustes, o salí de esa app, o desactivá su atajo, y probá de nuevo."
+            "value" : "Otra app ya usa este atajo. Elegí otro en Configuración, o salí de esa app, o desactivá su atajo, y probá de nuevo."
           }
         }
       }
@@ -2214,7 +2214,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con cada copia de seguridad que se guarda, se van las más viejas que pasan de ese número. Las copias de antes de una actualización, una restauración o una importación quedan hasta que las elimines."
+            "value" : "Con cada respaldo que se guarda, se van los más viejos que pasan de ese número. Las copias de antes de una actualización, una restauración o una importación quedan hasta que las elimines."
           }
         }
       }
@@ -2390,7 +2390,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia de seguridad"
+            "value" : "Respaldo"
           }
         }
       }
@@ -2401,7 +2401,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copias de seguridad"
+            "value" : "Respaldos"
           }
         }
       }
@@ -2412,7 +2412,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copias de seguridad a conservar"
+            "value" : "Respaldos a conservar"
           }
         }
       }
@@ -3588,19 +3588,19 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudieron trasladar %lld copias a la papelera"
+                  "value" : "No se pudieron transferir %lld copias al basurero"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudo trasladar la copia a la papelera"
+                  "value" : "No se pudo transferir la copia al basurero"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudieron trasladar %lld copias a la papelera"
+                  "value" : "No se pudieron transferir %lld copias al basurero"
                 }
               }
             }
@@ -4397,7 +4397,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "Listo"
           }
         }
       }
@@ -4518,7 +4518,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emojis y símbolos"
+            "value" : "Emoji y símbolos"
           }
         }
       }
@@ -4529,7 +4529,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emojis y símbolos (⌃⌘Espacio)"
+            "value" : "Emoji y símbolos (⌃⌘Espacio)"
           }
         }
       }
@@ -5026,7 +5026,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtro de Concentración"
+            "value" : "Filtro de enfoque"
           }
         }
       }
@@ -5257,7 +5257,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Frenada por un modo de Concentración"
+            "value" : "Frenada por un enfoque"
           }
         }
       }
@@ -5355,7 +5355,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Frena las apariciones mientras este modo de Concentración está activado. Repasar ahora sigue funcionando."
+            "value" : "Frena las apariciones mientras este enfoque está activado. Repasar ahora sigue funcionando."
           }
         }
       }
@@ -5685,7 +5685,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Última copia"
+            "value" : "Último respaldo"
           }
         }
       }
@@ -5696,7 +5696,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Falló la última copia"
+            "value" : "Falló el último respaldo"
           }
         }
       }
@@ -6078,19 +6078,19 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Trasladar %lld copias a la papelera?"
+                  "value" : "¿Transferir %lld copias al basurero?"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Trasladar la copia a la papelera?"
+                  "value" : "¿Transferir la copia al basurero?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Trasladar %lld copias a la papelera?"
+                  "value" : "¿Transferir %lld copias al basurero?"
                 }
               }
             }
@@ -6104,7 +6104,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasladar a la papelera"
+            "value" : "Transferir al basurero"
           }
         }
       }
@@ -6235,7 +6235,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tarjetas nuevas por día"
+            "value" : "Tarjetas nuevas/día"
           }
         }
       }
@@ -6658,7 +6658,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aceptar"
+            "value" : "OK"
           }
         }
       }
@@ -6792,7 +6792,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir Ítems de inicio"
+            "value" : "Abrir Elementos de inicio"
           }
         }
       }
@@ -7428,7 +7428,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustes…"
+            "value" : "Configuración…"
           }
         }
       }
@@ -7547,7 +7547,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudieron leer algunos ajustes"
+            "value" : "No se pudo leer parte de la configuración"
           }
         }
       }
@@ -8324,7 +8324,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Para deshacerla, restaurá la copia guardada antes, en Ajustes › Copias de seguridad."
+            "value" : "Para deshacerla, restaurá la copia guardada antes, en Configuración › Respaldos."
           }
         }
       }
@@ -8497,7 +8497,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hasta que vacíes la papelera, podés recuperar lo que trasladás ahí."
+            "value" : "Hasta que vacíes el basurero, podés sacar de ahí lo que transfieras."
           }
         }
       }
@@ -8699,7 +8699,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No podés deshacerlo, pero las copias de seguridad diarias de Ajustes › Copias de seguridad guardan lo que elimina."
+            "value" : "No podés deshacerlo, pero los respaldos diarios de Configuración › Respaldos guardan lo que elimina."
           }
         }
       }
@@ -8752,7 +8752,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tus tarjetas, su progreso y la bandeja son iguales en cada uno de tus dispositivos, a través de tu propio iCloud. Cada dispositivo guarda sus propias copias de seguridad."
+            "value" : "Tus tarjetas, su progreso y la bandeja son iguales en cada uno de tus dispositivos, a través de tu propio iCloud. Cada dispositivo guarda sus propios respaldos."
           }
         }
       }
@@ -8957,7 +8957,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS no dejó que %1$@ se abra al iniciar sesión (%2$@). Probá de nuevo, o agregala en Ajustes del Sistema > General > Ítems de inicio."
+            "value" : "macOS no dejó que %1$@ se abra al iniciar sesión (%2$@). Probá de nuevo, o agregala en Configuración del Sistema > General > Elementos de inicio."
           }
         }
       }
@@ -8973,7 +8973,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS no impidió que %1$@ se abra al iniciar sesión (%2$@). Probá de nuevo, o quitala en Ajustes del Sistema > General > Ítems de inicio."
+            "value" : "macOS no impidió que %1$@ se abra al iniciar sesión (%2$@). Probá de nuevo, o quitala en Configuración del Sistema > General > Elementos de inicio."
           }
         }
       }

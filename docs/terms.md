@@ -5,10 +5,10 @@ Every text the app shows is translated into the languages `scripts/languages.txt
 A term's source says where its words come from:
 
 - **Anki**: Anki's own translation, from its Fluent files in [`ankitects/anki-core-i18n`](https://github.com/ankitects/anki-core-i18n), `core/<locale>/*.ftl`, under the message ID the row names. Where Anki has two words for one term, the row picks one.
-- **Apple**: the word macOS uses in that language, in its own menus, System Settings and Finder.
+- **Apple**: the word macOS uses in that language, in its own menus, System Settings and Finder. For Spanish, a Mac in Spanish (Latin America), `es_419` in macOS's own files, whose words are the ones Rioplatense Spanish uses ("Configuración", "Agregar", "respaldo"), not a Mac in Spain's Spanish ("Ajustes", "Añadir", "copia de seguridad"): Lucas's call, on 2 November 2026.
 - **Ficha**: our own word, chosen in the first translation into that language.
 
-A language joins with a column here, beside its line in `scripts/languages.txt`. Spanish is Rioplatense, with "vos" in what the app asks of the user ("Elegí", "Revisá", "Tenés"), and Anki's words stay as Anki's Spanish has them. Quotes are « ».
+A language joins with a column here, beside its line in `scripts/languages.txt`. Spanish is Rioplatense, with "vos" in what the app asks of the user ("Elegí", "Revisá", "Tenés"), and Anki's words stay as Anki's Spanish has them, but where a row says otherwise. Quotes are « ».
 
 ## Anki's terms
 
@@ -38,25 +38,35 @@ A language joins with a column here, beside its line in `scripts/languages.txt`.
 | retrievability | Anki `card-stats-fsrs-retrievability` | recuperabilidad |
 | stability | Anki `card-stats-fsrs-stability` | estabilidad |
 | difficulty | Anki `card-stats-fsrs-difficulty` | dificultad |
-| new cards per day | Anki `scheduling-new-cardsday` | tarjetas nuevas por día |
+| New cards per day (the setting) | Anki `scheduling-new-cardsday` | Tarjetas nuevas/día, its label in Settings; in a sentence, tarjetas nuevas por día, ours, where the slash reads wrong |
 | Scheduling (Settings' tab) | Anki `preferences-scheduling` | Programación |
 | created | Anki `browsing-created` | creada |
 | notes (Anki's) | Anki `browsing-notes` | notas |
 | Import, Export | Anki `actions-import`, `actions-export` | Importar, Exportar |
 | Support older Anki versions | Anki `exporting-support-older-anki-versions` | Compatibilidad con versiones anteriores de Anki |
+| Notes in Plain Text | Anki `exporting-notes-in-plain-text` | Notas en texto plano |
+| Image Occlusion | Anki `notetypes-image-occlusion-name` | Oclusión de imagen |
+| template (a card's, in Anki) | Anki `card-templates-template-box` | plantilla |
+| Media (a card's images and sounds) | Anki `editing-media` | Multimedia |
+| review ahead | Anki `custom-study-review-ahead` | repasar por adelantado, un repaso por adelantado |
+| graduate (a card leaving its steps) | Anki `scheduling-graduating-interval` | graduarse, as Anki's "Intervalo de graduación" |
+| discard | Anki `actions-discard` | descartar |
 
 ## Apple's terms
 
 | English | Source | Spanish (es) |
 |---|---|---|
-| Settings… | Apple | Ajustes… |
-| System Settings | Apple | Ajustes del Sistema |
-| Login Items | Apple | Ítems de inicio |
+| Settings… | Apple | Configuración… |
+| settings (an app's) | Apple | configuración |
+| System Settings | Apple | Configuración del Sistema |
+| Login Items | Apple | Elementos de inicio |
 | Open at Login | Apple | Abrir al iniciar sesión |
 | Quit | Apple | Salir |
 | Cancel | Apple | Cancelar |
-| OK | Apple | Aceptar |
-| Done | Apple | OK |
+| OK | Apple | OK |
+| Done | Apple | Listo |
+| Add | Apple | Agregar, as Apple's Spanish (Latin America) and Rioplatense Spanish say it, where Anki's `actions-add` says Añadir |
+| Restore | Apple | Restaurar |
 | Close | Apple | Cerrar |
 | Undo | Apple | Deshacer |
 | Delete | Apple | Eliminar |
@@ -65,14 +75,14 @@ A language joins with a column here, beside its line in `scripts/languages.txt`.
 | Find | Apple | Buscar |
 | Rename | Apple | Renombrar |
 | Show in Finder | Apple | Mostrar en el Finder |
-| Move to Trash, Trash | Apple | Trasladar a la papelera, papelera |
+| Move to Trash, Trash | Apple | Transferir al basurero, basurero |
 | Downloads | Apple | Descargas |
 | sidebar | Apple | barra lateral |
 | menu bar | Apple | barra de menús |
-| Emoji & Symbols | Apple | Emojis y símbolos |
-| Focus | Apple | modo de Concentración |
+| Emoji & Symbols | Apple | Emoji y símbolos |
+| Focus, Focus filter | Apple | enfoque, filtro de enfoque |
 | full screen | Apple | pantalla completa |
-| backups | Apple | copias de seguridad |
+| backup, backups | Apple | respaldo, respaldos |
 | About | Apple | Acerca de |
 | Privacy Policy | Apple | Política de privacidad |
 | Finder's tag colors: Red, Orange, Yellow, Green, Blue, Purple, Gray | Apple | Rojo, Naranja, Amarillo, Verde, Azul, Morado, Gris |
@@ -88,6 +98,7 @@ A language joins with a column here, beside its line in `scripts/languages.txt`.
 | review log | Ficha | historial de repasos |
 | capture (noun, verb) | Ficha | captura, capturar |
 | inbox | Ficha | bandeja |
+| approve (a capture into cards) | Ficha | aprobar |
 | flag, flagged | Ficha | marcar, marcada |
 | expand, expansion | Ficha | ampliar, ampliación |
 | follow-up (a question about a card) | Ficha | consulta |
