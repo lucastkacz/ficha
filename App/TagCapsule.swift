@@ -136,7 +136,14 @@ struct ColorItemLabel: View {
                 color.swatch
             }
         } else {
-            Text("None", comment: "The first item of the Color submenu of a tag's menu or a deck's: no color.")
+            // A key of its own, since the Prioritize submenu and the emoji
+            // field say "None" too, of a deck and an emoji, which a language
+            // may word apart from a color, as Portuguese's "Nenhuma".
+            Text(
+                String(
+                    localized: "color.none", defaultValue: "None",
+                    comment: "The first item of the Color submenu of a tag's menu or a deck's: no color.")
+            )
         }
     }
 }

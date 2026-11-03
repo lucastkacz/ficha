@@ -16555,7 +16555,7 @@
       }
     },
     "None" : {
-      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a tag, a deck or a card type an emoji.\nThe first item of the Color submenu of a tag's menu or a deck's: no color.",
+      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a tag, a deck or a card type an emoji.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22535,6 +22535,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhum"
+          }
+        }
+      }
+    },
+    "color.none" : {
+      "comment" : "The first item of the Color submenu of a tag's menu or a deck's: no color.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "None"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguno"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuno"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma"
           }
         }
       }
