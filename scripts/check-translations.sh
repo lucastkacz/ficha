@@ -30,8 +30,8 @@ done <"$list"
 # Each failure of a catalog, as a line that names the catalog, the key and the
 # language, and says what to do. A text with plural variations in English has
 # them in every language, in the categories the list gives it, and zero too
-# when the English has one, which Apple's plural rules use for 0 in every
-# language.
+# when the English has one: Apple uses a zero variation for 0 in any language,
+# as the English ones show, though Unicode's CLDR gives English no zero.
 read -r -d '' failures <<'EOF'
 # The failure of one value, `.`, unless it's translated, as {state, part}: its
 # state, "missing" when there's no value, and the part of the text it is, ""
