@@ -3,14 +3,15 @@ import Foundation
 
 /// An interval as the review panel's buttons and the Cards window show it,
 /// short, as Anki's buttons do: in days, hours and minutes under a month,
-/// like "5d" or "2h 30m", then in months, like "1.5mo", and from a year on in
-/// years, like "2.1y", with a decimal. A year is 365 days and a month a
-/// twelfth of it, about 30.4 days, as Anki counts them
+/// like "5d" or "2h 30m" in English and "5 Tg." in German
+/// (`shortInterval(in:)` says why), then in months, like "1.5mo", and from a
+/// year on in years, like "2.1y", with a decimal. A year is 365 days and a
+/// month a twelfth of it, about 30.4 days, as Anki counts them
 /// (`rslib/src/scheduler/timespan.rs`), so 30 days are still "30d".
 func intervalText(_ interval: Duration) -> String {
     let days = interval.inDays
     guard days >= daysInAMonth else {
-        return interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .narrow))
+        return interval.formatted(.shortInterval(in: .autoupdatingCurrent))
     }
     let tenths = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1))
     guard days >= daysInAYear else {
