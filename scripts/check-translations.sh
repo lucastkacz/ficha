@@ -10,6 +10,11 @@ set -u
 list=$1
 shift
 
+[[ -r $list ]] || {
+  echo "There's no $list, the languages every catalog is translated into: restore it with git restore, and run make check again." >&2
+  exit 1
+}
+
 # The languages, as a JSON array of {code, categories, name}, from the list's
 # lines that aren't blank or comments.
 languages="[]"
@@ -26,6 +31,10 @@ while IFS= read -r line || [[ -n $line ]]; do
   languages=$(jq -c --arg code "$code" --arg categories "$categories" --arg name "$name" \
     '. + [{code: $code, categories: ($categories | split(",")), name: $name}]' <<<"$languages")
 done <"$list"
+[[ $languages != "[]" ]] || {
+  echo "$list lists no language: write a line for each language, as in 'es one,many,other Spanish', and run make check again." >&2
+  exit 1
+}
 
 # Each failure of a catalog, as a line that names the catalog, the key and the
 # language, and says what to do. A text with plural variations in English has

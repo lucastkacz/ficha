@@ -1,17 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Review Now" : {
-      "comment" : "The name of the app's action in the Shortcuts app and Spotlight.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Repasar ahora"
-          }
-        }
-      }
-    },
     "Review now in ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

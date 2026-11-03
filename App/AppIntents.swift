@@ -74,16 +74,17 @@ struct ReviewNowIntent: AppIntent {
 }
 
 /// The shortcuts Ficha offers from install, with no shortcut made by hand.
-/// Their phrases and short titles are translated in `AppShortcuts.xcstrings`,
-/// Apple's String Catalog for App Shortcuts, which Xcode fills with them:
-/// each phrase keeps the app's name token in every language.
+/// Their phrases are translated in `AppShortcuts.xcstrings`, Apple's String
+/// Catalog for App Shortcuts, which Xcode fills with them: each phrase keeps
+/// the app's name token in every language. It holds phrases alone, since Xcode
+/// reads every text in it as one, so a short title is translated in the app's
+/// `Localizable.xcstrings`, as any other text.
 struct FichaShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: ReviewNowIntent(), phrases: ["Review now in \(.applicationName)"],
             shortTitle: LocalizedStringResource(
-                "Review Now", table: "AppShortcuts",
-                comment: "The name of the app's action in the Shortcuts app and Spotlight."),
+                "Review Now", comment: "The name of the app's action in the Shortcuts app and Spotlight."),
             systemImageName: "rectangle.stack")
     }
 }

@@ -198,8 +198,8 @@ extension DeckInTree {
 extension InboxRow.Item {
     /// What kind it is, as the inbox's Kind column and the capture's detail
     /// say it. Each kind has a key of its own, since "Capture" is also the
-    /// capture window's title, and "Flagged" the sidebar's group, which a
-    /// translation may word apart.
+    /// capture window's title, and "Flagged" the flag icon's label beside a
+    /// flagged card, which a translation may word apart.
     nonisolated var kindName: String {
         switch self {
         case .capture:

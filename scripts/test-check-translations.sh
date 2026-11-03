@@ -42,10 +42,12 @@ plural() {
   printf '"%s" : { "variations" : { "plural" : { %s } } }' "$language" "$variations"
 }
 
-# check <name>: runs the script on the catalog <name>, keeping what it prints
-# in $output and its exit code in $status.
+# check <name>: runs the script on the catalog <name>, against the languages
+# file $languages_file, keeping what it prints in $output and its exit code in
+# $status.
+languages_file=languages.txt
 check() {
-  output=$(cd "$tmp" && "$script" languages.txt "$1.xcstrings" 2>&1)
+  output=$(cd "$tmp" && "$script" "$languages_file" "$1.xcstrings" 2>&1)
   status=$?
 }
 # expect_pass <description> <name>
@@ -189,6 +191,24 @@ expect_pass "an App Shortcut's phrases in every language pass" shortcuts
 echo "garbled" >"$tmp/garbled.xcstrings"
 expect_failure "a catalog that isn't JSON fails, naming it" garbled "garbled.xcstrings isn't a String Catalog"
 
+catalog spanish-missing "{
+  \"Review now\" : { \"localizations\" : { $(unit ja '今すぐ復習') } }
+}"
+expect_failure "a key missing Spanish fails, naming it" spanish-missing \
+  'spanish-missing.xcstrings: “Review now” has no Spanish (es) translation'
+
+# The languages file's own failures, each with a file of its own, which
+# `check` reads in place of languages.txt.
+languages_file=missing.txt
+expect_failure "a missing languages file fails, saying how to fix it" complete \
+  "There's no missing.txt, the languages every catalog is translated into: restore it"
+
+languages_file=empty.txt
+printf '# Only a comment.\n\n   # And an indented one.\n' >"$tmp/$languages_file"
+expect_failure "a languages file with no language fails, saying how to fix it" complete \
+  "empty.txt lists no language: write a line for each language"
+
+languages_file=languages.txt
 echo "es Spanish" >>"$list"
 expect_failure "a line of the languages file without its plural categories fails, saying how to fix it" \
   complete "languages.txt:5 isn't a language's code, its plural categories and its name"

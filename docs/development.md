@@ -142,9 +142,9 @@ xcrun simctl spawn booted log show --last 5m --info --predicate 'subsystem == "c
 
 ## The apps' texts
 
-The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's, `Widget/Localizable.xcstrings` for the Mac's widget, `iPhone/Localizable.xcstrings` for the iPhone's and `App/AppShortcuts.xcstrings` for the App Shortcut's phrases and short title, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
+The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's, `Widget/Localizable.xcstrings` for the Mac's widget, `iPhone/Localizable.xcstrings` for the iPhone's and `App/AppShortcuts.xcstrings` for the App Shortcut's phrases, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations or translations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
 
-When a text with plural variations changes, the export brings the new text in plain, without them: move the variations over from the stale entry by hand, every language's, delete the stale entry, and run `make strings` again, which should change nothing.
+When a translated text changes, the export brings the new text in plain, without its translations: move every language's translation over from the stale entry by hand, plural variations and substitutions included, change it to say what the new English says, delete the stale entry, and run `make strings` again, which should change nothing.
 
 ### Translating a text
 
@@ -155,7 +155,7 @@ Every text is translated, in the change that adds or changes it, into each langu
 - An App Shortcut's phrase: a `stringSet` of one phrase or more, each with `${applicationName}`, where Siri hears the app's name.
 - A text that must not change, such as one of symbols alone, gets `"shouldTranslate" : false` instead, and no translations.
 
-The engine's messages (`EngineError`) are manual keys in the app's and the widget's catalogs, keyed by their whole English text with its format specifiers, which the export keeps as they are: a new or changed message is added, or changed, by hand in both, translated, and FichaKit's `EngineMessagesTests` fails until it is. Its comment says it's the engine's.
+The engine's messages (`EngineError`) are manual keys, which the export keeps as they are, in the catalogs `CODING_STANDARDS.md` names for them: a new or changed message is added, or changed, by hand in each, translated, with the comment the other messages have, and FichaKit's `EngineMessagesTests` fails until it is.
 
 For many texts at once, write the translations to a file and merge them into the catalog with a script, then run `make strings`, which writes the catalog back in Xcode's layout, and run it again, which should change nothing.
 
