@@ -238,7 +238,7 @@ struct CardEditor: View {
 
     /// The tags in the Tags field.
     private var tags: [String] {
-        CardContent.tags(inField: tagsText)
+        CardContent.tags(inField: tagsText, startedWith: card.tags)
     }
 
     /// The place for the image on `side`.
