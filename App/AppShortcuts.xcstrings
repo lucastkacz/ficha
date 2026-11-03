@@ -49,6 +49,15 @@
             ]
           }
         },
+        "ja" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}で今すぐ復習",
+              "${applicationName}で復習"
+            ]
+          }
+        },
         "pt" : {
           "stringSet" : {
             "state" : "translated",
