@@ -10,6 +10,10 @@
 # Usage: check-translations.sh <languages file> <catalog>...
 
 set -u
+if (($# < 2)); then
+  echo "Usage: check-translations.sh <languages file> <catalog>...: give it Ficha's languages and every String Catalog to check, as make translations-check does, and run it again." >&2
+  exit 1
+fi
 list=$1
 shift
 

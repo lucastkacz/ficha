@@ -83,6 +83,22 @@ expect_failure() {
 
 echo "check-translations"
 
+# expect_usage <description> <argument>...: runs the script on those arguments
+# alone, expecting it to fail and say how to run it.
+expect_usage() {
+  local description=$1
+  shift
+  output=$(cd "$tmp" && "$script" "$@" 2>&1)
+  status=$?
+  if [[ $status != 0 && $output == *"Usage: check-translations.sh <languages file> <catalog>..."* ]]; then
+    pass "$description"
+  else
+    fail "$description (exit $status: $output)"
+  fi
+}
+expect_usage "the check without arguments fails, saying how to run it"
+expect_usage "the check without a catalog fails, saying how to run it, since it would check nothing" languages.txt
+
 catalog complete "{
   \"Review now\" : { \"comment\" : \"A button.\", \"localizations\" : { $(unit es 'Repasar ahora'), $(unit ja '今すぐ復習') } }
 }"
