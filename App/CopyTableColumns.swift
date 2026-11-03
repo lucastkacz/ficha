@@ -4,8 +4,7 @@ import AppKit
 /// its widths in the app's language, which the table draws them at. Saved is
 /// as wide as its dates and Size as its sizes, and Kind takes what they leave
 /// it, down to its header, its texts wrapping, so that every column shows
-/// whole within the width the tab names give Settings, in every language,
-/// and English's columns stay as they were before they had widths.
+/// whole within the width the tab names give Settings, in every language.
 struct CopyTableColumns {
     let saved: FittedColumn
     let kind: FittedColumn
@@ -32,9 +31,9 @@ struct CopyTableColumns {
         // one, as Saved, and widens the columns alike to fill the table, but
         // doesn't narrow them to fit it as it opens: a table short of room
         // then pushes its last column out of sight. So Kind starts as wide as
-        // Saved, and the two share the room equally, as English's did before
-        // they had widths; or, where Saved's dates need more than half of
-        // it, as Spanish's do, with what they leave.
+        // Saved, and the two share the room equally, as in English; or, where
+        // Saved's dates need more than half of it, as Spanish's do, Kind takes
+        // what they leave.
         kind = FittedColumn(
             String(localized: "Kind", comment: "Settings, under Backups: the column of each copy's kind."),
             sorts: false, ideal: min(saved.min, room - saved.min))

@@ -25,7 +25,7 @@ nonisolated struct FichaLanguage {
     var locale: String { "\(code)_\(region)" }
 
     /// The languages in the list at `url`, in its order. Each line that isn't
-    /// blank, or whose first character after any spaces isn't `#`, is a
+    /// blank, and whose first character after any spaces isn't `#`, is a
     /// language's code, region, direction, `ltr` or `rtl`, plural categories,
     /// other among them, and name. A missing list, a line of another shape or
     /// a list of no language throws, saying what's wrong and what to do, its

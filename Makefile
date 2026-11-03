@@ -219,7 +219,7 @@ render: fsrs ## Draw an app window as a PNG, offscreen: make render ARGS="cards 
 	CFFIXED_USER_HOME=$(CURDIR)/.build/render/home swift run --package-path $(RENDER) --quiet Render $(ARGS)
 
 .PHONY: render-iphone
-render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, in a simulator of its own: make render-iphone ARGS="--out <path>".
+render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, in a simulator of its own: make render-iphone ARGS="[--language <code>] [--out <path>]".
 	scripts/render-iphone.sh "$(DERIVED)/Build/Products/Debug-iphonesimulator/Ficha Dev.app" $(ARGS)
 
 # `make upload` sends the real Ficha to TestFlight from main alone, as GitHub

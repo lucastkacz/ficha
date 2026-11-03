@@ -13,7 +13,7 @@
 # its region's formats, through the launch arguments Xcode's scheme options
 # pass: `-AppleLanguages` and `-AppleLocale`, and for a language read right to
 # left, Arabic, those of its right-to-left pseudolanguage too, which mirror the
-# screen even before the app has Arabic.
+# screen.
 
 set -euo pipefail
 
