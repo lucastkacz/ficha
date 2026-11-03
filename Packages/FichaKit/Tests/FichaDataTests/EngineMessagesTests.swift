@@ -5,8 +5,8 @@ import Testing
 @testable import FichaData
 
 /// Tests that every message `EngineError` can show is in the String Catalogs
-/// of the Mac's app, its widget and the iPhone app, translated into every
-/// language the catalog has, among Ficha's in `scripts/languages.txt`. Xcode
+/// of the Mac's app, its widget and the iPhone app, translated into every one
+/// of Ficha's languages in `scripts/languages.txt`. Xcode
 /// adds no text of a package to them, so each message is added by hand
 /// (CODING_STANDARDS.md), and this catches one that wasn't. It reads the
 /// catalogs and the list from the repo this file is in.
@@ -49,7 +49,7 @@ struct EngineMessagesTests {
     }
 
     @Test(
-        "every message of the engine is in the catalog, translated into every language the catalog has",
+        "every message of the engine is in the catalog, translated into every one of Ficha's languages",
         arguments: ["App/Localizable.xcstrings", "Widget/Localizable.xcstrings", "iPhone/Localizable.xcstrings"])
     func everyMessageIsTranslated(catalogPath: String) throws {
         let catalog = try JSONDecoder().decode(
@@ -72,12 +72,12 @@ struct EngineMessagesTests {
         }
     }
 
-    /// The languages every text of `catalog` is translated into: those of
-    /// Ficha's languages, in `scripts/languages.txt`, the catalog has a text
-    /// in, besides its source, English, as make check's translations check
-    /// requires them. `FichaLanguage` reads the list, failing the test, as it
-    /// fails the check, when the list is missing or wrong. A language the
-    /// catalog has that isn't one of Ficha's fails it too.
+    /// The languages every text of `catalog` is translated into: Ficha's
+    /// languages, in `scripts/languages.txt`, besides the catalog's source,
+    /// English, as make check's translations check requires them.
+    /// `FichaLanguage` reads the list, failing the test, as it fails the
+    /// check, when the list is missing or wrong. A language the catalog has
+    /// that isn't one of Ficha's fails it too.
     private static func languages(of catalog: Catalog, at catalogPath: String) throws -> [FichaLanguage] {
         let listed = try FichaLanguage.read(
             at: repo.appending(path: FichaLanguage.listPath), again: "run the test again")
@@ -90,7 +90,7 @@ struct EngineMessagesTests {
                 \(FichaLanguage.listPath): add the language's line there, or delete the texts, and run the test again.
                 """)
         }
-        return listed.filter { present.contains($0.code) }
+        return listed.filter { $0.code != catalog.sourceLanguage }
     }
 }
 

@@ -1,12 +1,11 @@
 #!/bin/bash
 # Fails while a String Catalog lacks a translation: `make check` runs it on
-# every catalog at once (ADR 0027). Each text is translated into every
-# language the catalogs have a text in, besides their source, English, so a
-# language is required in every catalog once its translation starts. Each of
-# those is one of Ficha's languages, which scripts/languages.txt lists with
-# its plural categories. It reads the catalogs alone, without building
-# anything: Apple ships no command that checks a catalog's translations, so
-# this check is our own.
+# every catalog at once (ADR 0027). Each text is translated into every one of
+# Ficha's languages, which scripts/languages.txt lists with their plural
+# categories, besides the catalog's source, English, and a catalog has no
+# texts in a language the list lacks. It reads the catalogs alone, without
+# building anything: Apple ships no command that checks a catalog's
+# translations, so this check is our own.
 #
 # Usage: check-translations.sh <languages file> <catalog>...
 
@@ -22,7 +21,7 @@ listed=$(jq -R -s -c '[split("\n")[] | select(length > 0) | split(" ")
   | {code: .[0], categories: (.[3] | split(",")), name: (.[4:] | join(" "))}]' <<<"$lines")
 
 # The catalogs jq can read, and the languages each has a text in, besides its
-# source, as {catalog, code}, one a line.
+# source, as {catalog, code}, one a line, for the languages the list lacks.
 found=0
 catalogs=()
 present=""
@@ -38,8 +37,7 @@ for catalog in "$@"; do
   present+="$codes"$'\n'
 done
 
-# A language a catalog has that isn't one of Ficha's fails; the others are
-# the languages every catalog is translated into.
+# A language a catalog has that isn't one of Ficha's fails.
 read -r -d '' unknown_language <<'EOF'
 select(.code | IN($listed[].code) | not)
 | "\(.catalog) has texts in \(.code), which isn't one of Ficha's languages in \($list): add the language's line there, or delete the texts, and run make check again."
@@ -49,8 +47,6 @@ if [[ -n $unknown ]]; then
   echo "$unknown" >&2
   found=1
 fi
-languages=$(jq -s -c --argjson listed "$listed" '[.[].code] as $codes | $listed | map(select(.code | IN($codes[])))' \
-  <<<"$present")
 
 # Each failure of a catalog, as a line that names the catalog, the key and the
 # language, and says what to do. A text with plural variations in English has
@@ -81,13 +77,14 @@ def failures($english; $language):
     | ($translation.substitutions[$name] // {})
     | failures($english.substitutions[$name]; $language; "the"; " of its “\($name)” substitution"));
 
-.strings | to_entries[] | .key as $key | .value as $entry
+.sourceLanguage as $source
+| .strings | to_entries[] | .key as $key | .value as $entry
 | if $entry.extractionState == "stale" then
     "\($catalog): “\($key)” is stale, since the code no longer has it: delete it, after moving its translations to the text that replaced it, if one did, and run make check again."
   elif $entry.shouldTranslate == false then empty
   else
-    ($entry.localizations.en // {}) as $english
-    | $languages[] as $language
+    ($entry.localizations[$source] // {}) as $english
+    | ($listed[] | select(.code != $source)) as $language
     | "\($language.name) (\($language.code))" as $name
     | ($entry.localizations[$language.code] // null) as $translation
     | if $translation == null then {state: "missing", part: ""}
@@ -96,7 +93,7 @@ def failures($english; $language):
     | (if .part == "" then "" else " in \(.part)" end) as $in
     | "\($catalog): “\($key)” "
       + if .state == "missing" then
-          "has no \($name) translation\($for): translate it into every language the catalogs have, with the words in docs/terms.md, and run make check again."
+          "has no \($name) translation\($for): translate it into every language in \($list), with the words in docs/terms.md, and run make check again."
         else
           "has its \($name) translation marked "
           + (if .state == "needs_review" then "for review" else "“\(.state)”, not translated" end)
@@ -106,7 +103,7 @@ def failures($english; $language):
 EOF
 
 for catalog in ${catalogs[@]+"${catalogs[@]}"}; do
-  messages=$(jq -r --arg catalog "$catalog" --argjson languages "$languages" "$failures" "$catalog")
+  messages=$(jq -r --arg catalog "$catalog" --arg list "$list" --argjson listed "$listed" "$failures" "$catalog")
   if [[ -n $messages ]]; then
     echo "$messages" >&2
     found=1

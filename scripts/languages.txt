@@ -2,8 +2,7 @@
 # eleven Ficha comes in (ADR 0027). This one list is read by make render and
 # make render-iphone, which draw in each, and by make check's
 # translations-check and FichaKit's test of the engine's messages, which
-# require a translation into each language the String Catalogs have: a
-# language is required once its translation starts, so it needs no mark here.
+# require a translation into each of the eleven in every String Catalog.
 # scripts/languages.sh reads it for the scripts and scripts/Languages.swift for
 # the Swift, by the same rules. The list and its format are our own.
 #

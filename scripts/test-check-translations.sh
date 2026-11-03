@@ -2,7 +2,7 @@
 # Tests scripts/check-translations.sh, which `make check` runs on the String
 # Catalogs; `make check` runs this too. Each case is a small catalog of its
 # own, or a few checked at once, against a list of Ficha's languages of its
-# own: English, Spanish, Japanese and German, which no catalog has but one.
+# own: English, the catalogs' source, Spanish and Japanese.
 
 set -u
 script="$(cd "$(dirname "$0")" && pwd)/check-translations.sh"
@@ -24,7 +24,6 @@ es AR ltr one,many,other Spanish
 
   # An indented comment.
 ja JP ltr other Japanese
-de DE ltr one,other German
 EOF
 
 # catalog <name> <strings>: a catalog named <name>.xcstrings, holding the JSON
@@ -89,7 +88,13 @@ catalog complete "{
 }"
 expect_pass "a catalog translated into every language passes" complete
 
-expect_pass "a language of the list no catalog has isn't required yet" complete
+catalog spanish-only "{
+  \"Cancel\" : { \"localizations\" : { $(unit es 'Cancelar') } },
+  \"Review now\" : { \"localizations\" : { $(unit es 'Repasar ahora') } }
+}"
+expect_failure "a key missing a language of the list fails, though no catalog has that language yet" spanish-only \
+  'spanish-only.xcstrings: “Cancel” has no Japanese (ja) translation' \
+  'spanish-only.xcstrings: “Review now” has no Japanese (ja) translation'
 
 catalog missing "{
   \"Cancel\" : { \"localizations\" : { $(unit es 'Cancelar'), $(unit ja 'キャンセル') } },
@@ -98,13 +103,6 @@ catalog missing "{
 expect_failure "a key missing a language another key has fails, naming the catalog, the key and the language" \
   missing 'missing.xcstrings: “Review now” has no Japanese (ja) translation'
 
-catalog german "{
-  \"Cancel\" : { \"localizations\" : { $(unit de 'Abbrechen') } }
-}"
-expect_failure "a language one catalog has is required in every catalog checked with it" "complete german" \
-  'complete.xcstrings: “Review now” has no German (de) translation' \
-  'german.xcstrings: “Cancel” has no Spanish (es) translation'
-
 catalog dutch "{
   \"Review now\" : { \"localizations\" : { $(unit es 'Repasar ahora'), $(unit ja '今すぐ復習'), $(unit nl 'Nu herhalen') } }
 }"
@@ -112,8 +110,8 @@ expect_failure "a language that isn't in the list fails, saying how to fix it" d
   "dutch.xcstrings has texts in nl, which isn't one of Ficha's languages in languages.txt: add the language's line there, or delete the texts"
 
 catalog english "{
-  \"Review now\" : { \"localizations\" : { $(unit en 'Review now'), $(unit es 'Repasar ahora') } },
-  \"Cancel\" : { \"localizations\" : { $(unit es 'Cancelar') } }
+  \"Review now\" : { \"localizations\" : { $(unit en 'Review now'), $(unit es 'Repasar ahora'), $(unit ja '今すぐ復習') } },
+  \"Cancel\" : { \"localizations\" : { $(unit es 'Cancelar'), $(unit ja 'キャンセル') } }
 }"
 expect_pass "English, the catalogs' source, isn't required" english
 
@@ -197,7 +195,7 @@ catalog dont-translate "{
 expect_pass "a key marked Don't translate passes without translations" dont-translate
 
 expect_failure "the message says what to do" missing \
-  "translate it into every language the catalogs have, with the words in docs/terms.md, and run make check again."
+  "translate it into every language in languages.txt, with the words in docs/terms.md, and run make check again."
 expect_failure "the message for a translation to check says what to do" review \
   "check it against the English, with the words in docs/terms.md, mark it translated, and run make check again."
 
@@ -211,7 +209,7 @@ catalog shortcuts "{
   \"Review now in $name\" : { \"localizations\" : {
     $(phrases en "Review now in $name"), $(phrases es "Repasar ahora en $name") } }
 }"
-expect_failure "an App Shortcut's phrases missing a language another catalog has fail" "complete shortcuts" \
+expect_failure "an App Shortcut's phrases missing a language of the list fail" shortcuts \
   'shortcuts.xcstrings: “Review now in '"$name"'” has no Japanese (ja) translation'
 catalog shortcuts "{
   \"Review now in $name\" : { \"localizations\" : {
@@ -256,7 +254,7 @@ expect_failure "a line of the languages file whose categories lack other fails" 
 languages_file=languages.txt
 echo "es Spanish" >>"$list"
 expect_failure "a line of the languages file without its region, direction and categories fails, saying how to fix it" \
-  complete "languages.txt:8 isn't a language's code, region, direction, plural categories and name, as in 'es AR ltr one,many,other Spanish': write it so"
+  complete "languages.txt:7 isn't a language's code, region, direction, plural categories and name, as in 'es AR ltr one,many,other Spanish': write it so"
 
 if ((failures > 0)); then
   echo "$failures of the check's tests failed, as the lines above say: fix scripts/check-translations.sh or the tests, and run make check again." >&2

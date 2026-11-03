@@ -179,8 +179,8 @@ strings-check: project ## Fail when a String Catalog is out of date, showing how
 		done; exit $$stale
 
 # Ficha's languages, English and the eleven it comes in (ADR 0027): the check
-# below requires a translation into each the catalogs have, as FichaKit's test
-# of the engine's messages does, and the render tools draw in each. The check
+# below requires a translation into each of the eleven, as FichaKit's test of
+# the engine's messages does, and the render tools draw in each. The check
 # reads the catalogs alone, without building anything.
 LANGUAGES := scripts/languages.txt
 
