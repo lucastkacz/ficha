@@ -399,9 +399,10 @@ struct ReviewPanelView: View {
             }
         }
         .background {
-            // R, as M and E, while the card shows with its buttons, on a layout
-            // of another script too (`LetterKey`). It works through a hidden
-            // button, since the ▶ it presses changes with the side that shows.
+            // R, as A, M and E, while the card shows with its buttons, on a
+            // layout of another script too (`LetterKey`). It works through a
+            // hidden button, since the ▶ it presses changes with the side that
+            // shows.
             if buttons == .forTheCard {
                 Button {
                     panel.state.playOrStopSound()

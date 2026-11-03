@@ -117,7 +117,7 @@ final class ReviewPanelWindow: NSPanel {
     private func shortcutPress(_ event: NSEvent) -> NSEvent? {
         let modifiers = event.modifierFlags.intersection([.shift, .control, .option, .command])
         guard event.type == .keyDown, modifiers.isEmpty, !(firstResponder is NSText),
-            let key = shortcutKey(of: event), event.charactersIgnoringModifiers != key
+            let key = shortcutKey(of: event).map(String.init), event.charactersIgnoringModifiers != key
         else {
             return nil
         }
@@ -129,16 +129,16 @@ final class ReviewPanelWindow: NSPanel {
 
     /// The digit or the letter the key of `event`, a key press, stands for in
     /// the panel's shortcuts, if any.
-    private func shortcutKey(of event: NSEvent) -> String? {
+    private func shortcutKey(of event: NSEvent) -> Character? {
         if let digit = RatingKey.digit(forKeyCode: event.keyCode) {
-            return String(digit)
+            return digit
         }
         guard let typed = event.charactersIgnoringModifiers,
             let typedWithCommand = event.characters(byApplyingModifiers: .command)
         else {
             return nil
         }
-        return LetterKey.letter(typed: typed, typedWithCommand: typedWithCommand).map(String.init)
+        return LetterKey.letter(typed: typed, typedWithCommand: typedWithCommand)
     }
 
     /// Shows the panel and gives it the keyboard, since Lucas asked for it:
