@@ -52,10 +52,14 @@ enum SettingsTab: String {
 
 /// The Settings window's content, as a Mac's usual settings window: its tabs
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
-/// window as tall as the selected tab. The last tab says which version of the
+/// window as tall as the selected tab and as wide as its toolbar's tabs need,
+/// 500 points at least. The last tab says which version of the
 /// app this is. It opens on the tab Lucas left it on last, unless it's asked
 /// to open on another.
 final class SettingsTabViewController: NSTabViewController {
+    /// How wide every tab is, and so the window.
+    private var width: CGFloat = 500
+
     /// The tabs of every default Lucas can change in `model`, and of the
     /// capture shortcut, `captureShortcut`, then the Backups tab, which closes
     /// the review panel with `closeReviewPanel` before a restore, the Sync
@@ -69,6 +73,9 @@ final class SettingsTabViewController: NSTabViewController {
         // Read before adding the tabs, since adding the first one selects it.
         let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
+        width = Self.width(
+            showing: [.general, .appearances, .reviewPanel, .scheduling, .backups]
+                + (model.sync != nil ? [.sync] : []) + [.about])
         add(.general, settings: GeneralSettings(model: model, captureShortcut: captureShortcut))
         // Each of these changes one of the settings that decide a card's
         // progress, which the engine keeps.
@@ -86,6 +93,21 @@ final class SettingsTabViewController: NSTabViewController {
         select(firstTab)
     }
 
+    /// How wide Settings is with `tabs` in its toolbar: 500 points, as in
+    /// English, or as wide as the toolbar needs to show every tab's name in
+    /// a language whose names run longer, as German's and French's do, since
+    /// a name can't wrap and AppKit hides the tabs that don't fit behind ».
+    /// The forms inside keep wrapping their texts. Our own sum of AppKit's
+    /// toolbar, as `make render`'s pictures measure it: each name in the
+    /// toolbar's font, at least as wide as an icon, the room between two
+    /// tabs and at the window's edges.
+    private static func width(showing tabs: [SettingsTab]) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let names = tabs.map { max(($0.name as NSString).size(withAttributes: [.font: font]).width, 32) }
+        let toolbar = names.reduce(0, +) + 14 * CGFloat(tabs.count - 1) + 2 * 24
+        return max(500, toolbar.rounded(.up))
+    }
+
     /// Shows `tab`.
     func select(_ tab: SettingsTab) {
         if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == tab }) {
@@ -98,10 +120,11 @@ final class SettingsTabViewController: NSTabViewController {
         add(tab, content: Form { settings }.formStyle(.grouped))
     }
 
-    /// Adds `tab`, which shows `content`. The tab follows the content's
-    /// height as it changes, as when Lucas adds a learning step.
+    /// Adds `tab`, which shows `content`, as wide as every tab. The tab
+    /// follows the content's height as it changes, as when Lucas adds a
+    /// learning step.
     private func add(_ tab: SettingsTab, content: some View) {
-        let controller = NSHostingController(rootView: content.frame(width: 500))
+        let controller = NSHostingController(rootView: content.frame(width: width))
         controller.sizingOptions = .preferredContentSize
         controller.title = tab.name
         let item = NSTabViewItem(viewController: controller)

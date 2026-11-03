@@ -68,10 +68,11 @@ struct ReviewLogView: View {
         }
         .chartForegroundStyleScale(domain: keyItems.map(\.name), range: keyItems.map(\.color))
         .chartLineStyleScale(domain: keyWays.map(\.name), range: keyWays.map(\.lineStyle))
-        .chartLegend(position: .bottom, alignment: .leading)
-        // The key draws the ways' lines in the chart's default style: gray,
-        // as the lines are.
-        .foregroundStyle(.gray)
+        // A key of our own, whose names wrap: Swift Charts' cut the last
+        // one in German.
+        .chartLegend(position: .bottom, alignment: .leading) {
+            ChartKey(items: keyItems, ways: keyWays)
+        }
         .chartXScale(domain: entryDomain, range: .plotDimension(padding: 10))
         .chartYScale(domain: scale.domain, range: .plotDimension(padding: 8), type: .log)
         .chartXAxis {
@@ -203,6 +204,45 @@ struct ReviewLogView: View {
             }
         }
         .font(.callout)
+    }
+}
+
+/// The key under the review log's chart: a dot in each color the points
+/// take, with what it means, then, once the card went back first, each
+/// way's line, gray as the chart draws it, with its name, side by side, in
+/// lines that wrap when they don't fit the chart's width.
+private struct ChartKey: View {
+    /// What each color means, in the key's order.
+    let items: [(name: String, color: Color)]
+    /// The ways whose lines the key names, in its order.
+    let ways: [Way]
+
+    var body: some View {
+        WrappingRow(spacing: 10) {
+            ForEach(items, id: \.name) { item in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(item.color)
+                        .frame(width: 7, height: 7)
+                    Text(item.name)
+                }
+            }
+            ForEach(ways, id: \.self) { way in
+                HStack(spacing: 4) {
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: 1))
+                        path.addLine(to: CGPoint(x: 16, y: 1))
+                    }
+                    .stroke(.gray, style: way.lineStyle)
+                    .frame(width: 16, height: 2)
+                    Text(way.name)
+                }
+            }
+        }
+        .font(.caption)
+        // The secondary label color, as Swift Charts' key has it, not the
+        // chart's own style, which is the accent color.
+        .foregroundStyle(Color.secondary)
     }
 }
 

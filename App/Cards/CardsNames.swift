@@ -197,10 +197,28 @@ extension DeckInTree {
 
 extension InboxRow.Item {
     /// What kind it is, as the inbox's Kind column and the capture's detail
-    /// say it. Each kind has a key of its own, since "Capture" is also the
-    /// capture window's title, and "Flagged" the flag icon's label beside a
-    /// flagged card, which a translation may word apart.
+    /// say it.
     nonisolated var kindName: String {
+        switch self {
+        case .capture: InboxKind.capture.name
+        case .expansion: InboxKind.expansion.name
+        case .followUp: InboxKind.followUp.name
+        case .flaggedCard: InboxKind.flagged.name
+        }
+    }
+}
+
+/// The kinds of the inbox's rows, whose names the Kind column's width fits.
+nonisolated enum InboxKind: CaseIterable {
+    case capture
+    case expansion
+    case followUp
+    case flagged
+
+    /// The kind's name. Each has a key of its own, since "Capture" is also
+    /// the capture window's title, and "Flagged" the flag icon's label beside
+    /// a flagged card, which a translation may word apart.
+    var name: String {
         switch self {
         case .capture:
             String(
@@ -216,7 +234,7 @@ extension InboxRow.Item {
                 comment:
                     "In the Cards window's inbox, the kind of a row: a capture asked about a card in the review panel, tied to it."
             )
-        case .flaggedCard:
+        case .flagged:
             String(
                 localized: "inbox-kind.flagged", defaultValue: "Flagged",
                 comment: "In the Cards window's inbox, the kind of a row: a flagged card.")

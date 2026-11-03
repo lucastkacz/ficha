@@ -203,13 +203,26 @@ struct BackupsTab: View {
             Text(error.localizedDescription)
                 .foregroundStyle(.secondary)
         case .success(let copies)?:
+            // Saved and Kind share the room Size leaves, each at least as
+            // wide as its longest text in the app's language: Spanish's dates
+            // and German's kinds run long.
+            let saved = String(
+                localized: "Saved", comment: "Settings, under Backups: the column of when a copy was saved.")
+            let savedWidth = ColumnWidth.fitting(
+                header: saved, cells: ColumnWidth.inEachMonth { $0.formatted(date: .abbreviated, time: .shortened) },
+                sorts: false)
+            let kind = String(localized: "Kind", comment: "Settings, under Backups: the column of each copy's kind.")
+            let kindWidth = ColumnWidth.fitting(
+                header: kind, cells: DatabaseCopy.Kind.allCases.map { kindName($0) }, sorts: false)
             Table(copies, selection: selection) {
-                TableColumn(Text("Saved", comment: "Settings, under Backups: the column of when a copy was saved.")) {
+                TableColumn(Text(saved)) {
                     Text($0.savedAt.formatted(date: .abbreviated, time: .shortened))
                 }
-                TableColumn(Text("Kind", comment: "Settings, under Backups: the column of each copy's kind.")) {
+                .width(min: savedWidth)
+                TableColumn(Text(kind)) {
                     Text(kindName($0.kind))
                 }
+                .width(min: kindWidth)
                 TableColumn(Text("Size", comment: "Settings, under Backups: the column of what each copy weighs.")) {
                     Text($0.size.formatted(.byteCount(style: .file)))
                 }

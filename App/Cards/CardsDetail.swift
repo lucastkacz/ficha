@@ -618,23 +618,33 @@ struct WayIntervalText: View {
     var body: some View {
         switch way.intervalColumn {
         case .new:
-            Text(
-                "New",
-                comment:
-                    "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
-            )
+            Text(Self.new)
         case .learning:
-            Text(
-                "Learning",
-                comment: """
-                    In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
-                    steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
-                    says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
-                    """)
+            Text(Self.learning)
         case .interval(let interval):
             Text(intervalText(interval))
                 .accessibilityLabel(spokenIntervalText(interval))
         }
+    }
+
+    /// A way before its first review.
+    static var new: String {
+        String(
+            localized: "New",
+            comment:
+                "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
+        )
+    }
+
+    /// A way in its learning steps.
+    static var learning: String {
+        String(
+            localized: "Learning",
+            comment: """
+                In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
+                steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
+                says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
+                """)
     }
 }
 
@@ -644,30 +654,49 @@ struct WayIntervalText: View {
 /// is set aside by its deck, and nothing while the way is new, or the card
 /// flagged or buried, since it won't show up then.
 func dueText(_ way: WayProgress, at now: Date) -> String {
-    let due: Date
     switch way.dueColumn {
-    case .due(let date):
-        due = date
-    case .setAside:
-        return String(
+    case .due(let date): way.isDue(at: now) ? DueText.now : DueText.until(date, from: now)
+    case .setAside: DueText.setAside
+    case .nothing: ""
+    }
+}
+
+/// The texts of the Cards window's Due and Back-first due columns, which
+/// `dueText(_:at:)` picks from, and their widths measure.
+enum DueText {
+    /// A way that's due, however long ago.
+    static var now: String {
+        String(
+            localized: "now",
+            comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
+        )
+    }
+
+    /// A way that won't show up, since its card's deck is set aside.
+    static var setAside: String {
+        String(
             localized: "set aside",
             comment: """
                 In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a \
                 deck it sits inside, is set aside. Lowercase, like “now”.
                 """)
-    case .nothing:
-        return ""
     }
-    guard !way.isDue(at: now) else {
-        return String(
-            localized: "now",
-            comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
-        )
+
+    /// What the columns say of ways due at times from `now` as far apart as
+    /// the scheduler sets them, and of the ways due now and set aside: the
+    /// longest texts they show, for their widths.
+    static func samples(from now: Date) -> [String] {
+        let hours: [Double] = [10, 2 * 24, 45 * 24, 300 * 24]
+        return [Self.now, setAside] + hours.map { until(now.addingTimeInterval($0 * 3600), from: now) }
     }
-    // In days, hours and minutes, the units of a step's interval and of a
-    // graduated one under a month: "in 8d", never "next week", and "in 45d"
-    // where the Interval column says "1.5mo".
-    var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
-    style.allowedFields = [.day, .hour, .minute]
-    return style.format(now)
+
+    /// How long from `now` until `due`, as the Mac's locale words it.
+    static func until(_ due: Date, from now: Date) -> String {
+        // In days, hours and minutes, the units of a step's interval and of a
+        // graduated one under a month: "in 8d", never "next week", and "in
+        // 45d" where the Interval column says "1.5mo".
+        var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
+        style.allowedFields = [.day, .hour, .minute]
+        return style.format(now)
+    }
 }

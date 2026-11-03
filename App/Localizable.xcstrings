@@ -7211,7 +7211,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antes de una restauración"
+            "value" : "Antes de restaurar"
           }
         },
         "fr" : {
@@ -7246,7 +7246,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antes de una importación"
+            "value" : "Antes de importar"
           }
         },
         "fr" : {
@@ -7281,7 +7281,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antes de una actualización"
+            "value" : "Antes de actualizar"
           }
         },
         "fr" : {
@@ -18255,7 +18255,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "File multimediali"
+            "value" : "Multimedia"
           }
         },
         "pt" : {
