@@ -66,9 +66,11 @@ xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-v
 		echo "This Mac runs Xcode $$mac and CI runs $$ci, the one .xcode-version names: update the Mac's Xcode to $$ci, or the file to $$mac, which moves CI too." >&2; \
 		exit 1; }
 
-# The render tool's own files: its `Sources/Render/App` is a link to `App/`.
+# The render tool's own files: its `Sources/Render/App` is a link to `App/`,
+# and its `Languages.swift` one to `scripts/Languages.swift`, the reader of
+# Ficha's languages, which FichaKit's tests link to too.
 SWIFT_SOURCES := App CLI SVGDrawer Widget iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
-	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift
+	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift scripts/Languages.swift
 # The shell scripts, for shellcheck. actionlint finds the workflows on its own,
 # in .github/workflows, and runs shellcheck on each step's `run:` script too.
 SHELL_SCRIPTS := .claude/hooks/*.sh scripts/*.sh
@@ -176,9 +178,10 @@ strings-check: project ## Fail when a String Catalog is out of date, showing how
 		echo "$$catalog is out of date with the code's UI texts: run make strings and commit the catalog." >&2; }; \
 		done; exit $$stale
 
-# The languages every String Catalog is translated into besides English, which
-# the check below and FichaKit's test of the engine's messages require (ADR
-# 0027). The check reads the catalogs alone, without building anything.
+# Ficha's languages, English and the eleven it comes in (ADR 0027): the check
+# below requires a translation into each the catalogs have, as FichaKit's test
+# of the engine's messages does, and the render tools draw in each. The check
+# reads the catalogs alone, without building anything.
 LANGUAGES := scripts/languages.txt
 
 .PHONY: translations-check

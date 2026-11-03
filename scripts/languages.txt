@@ -1,11 +1,30 @@
-# The languages Ficha is translated into besides English, its base (ADR 0027):
-# every key of every String Catalog has a translated value in each, which
-# make check's translations-check and FichaKit's test of the engine's messages
-# require. A language joins with a line here, in the change that translates
-# every catalog into it and adds its column to docs/terms.md.
+# Ficha's languages: English, the base the code writes every text in, and the
+# eleven Ficha comes in (ADR 0027). This one list is read by make render and
+# make render-iphone, which draw in each, and by make check's
+# translations-check and FichaKit's test of the engine's messages, which
+# require a translation into each language the String Catalogs have: a
+# language is required once its translation starts, so it needs no mark here.
+# scripts/languages.sh reads it for the scripts and scripts/Languages.swift for
+# the Swift, by the same rules. The list and its format are our own.
 #
-# Each line: the language's code, as String Catalogs name it; its plural
-# categories, as Unicode's CLDR rules give them and Xcode offers them, which
-# every plural variation has in it, with zero too where the English has one;
-# and its name in English, for the check's messages.
-es one,many,other Spanish
+# Each line: the language's code, as String Catalogs name it; the region whose
+# formats for dates, numbers and durations the render tools draw, Unicode's
+# likely one for the language, as Locale.Language.maximalIdentifier gives it,
+# but Argentina for Ficha's Rioplatense Spanish; rtl for a language read right
+# to left, which mirrors the window, or ltr; its plural categories, as
+# Unicode's CLDR rules give them and Xcode offers them, which every plural
+# variation has in it, with zero too where the English has one; and its name
+# in English, for the messages. Blank lines and lines that start with # are
+# skipped.
+en US ltr one,other English
+zh-Hans CN ltr other Simplified Chinese
+ja JP ltr other Japanese
+de DE ltr one,other German
+es AR ltr one,many,other Spanish
+fr FR ltr one,many,other French
+ko KR ltr other Korean
+pt BR ltr one,many,other Portuguese
+zh-Hant TW ltr other Traditional Chinese
+it IT ltr one,many,other Italian
+ru RU ltr one,few,many,other Russian
+ar EG rtl zero,one,two,few,many,other Arabic

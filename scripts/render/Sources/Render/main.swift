@@ -151,7 +151,7 @@ struct Request {
     var isDark = false
     /// The language to draw the window in, or none for English with the Mac's
     /// own formats.
-    var language: RenderLanguage?
+    var language: FichaLanguage?
     /// What to do in the window before the capture, in order.
     var actions: [Action] = []
     /// Where the PNG goes.
@@ -184,64 +184,21 @@ enum Action: CustomStringConvertible {
     }
 }
 
-/// A language the tool draws a window in, as a Mac in that language would
-/// show it: `--language de`. A line of `scripts/render-languages.txt`.
-struct RenderLanguage {
-    /// The language's code, as the String Catalogs name it.
-    let code: String
-    /// The region of the Mac the tool draws for, whose formats the window's
-    /// dates, numbers and durations take.
-    let region: String
-    /// Whether it reads right to left, like Arabic, which mirrors the window.
-    let isRightToLeft: Bool
-    /// The language's name in English, for the tool's messages.
-    let name: String
-
-    /// The Mac's locale: the language with its region, as macOS keeps it.
-    var locale: String { "\(code)_\(region)" }
-}
-
-/// `scripts/render-languages.txt`, the languages the tool takes, English and
-/// the eleven Ficha comes in, which `scripts/render-iphone.sh` reads too, so
-/// both draw in the same ones. The tool reaches it from this file's own path,
-/// three folders up, as it reaches the app's String Catalog.
-let renderLanguagesFile = URL(filePath: #filePath).deletingLastPathComponent()
-    .appending(path: "../../../render-languages.txt").standardized
-
-/// The languages in `renderLanguagesFile`, in its order: on each line that
-/// isn't blank or a comment, a language's code, region, direction, `ltr` or
-/// `rtl`, and name.
-func readRenderLanguages() throws(RenderError) -> [RenderLanguage] {
-    let list = "scripts/render-languages.txt"
-    let text: String
+/// The languages the tool draws a window in, as a Mac in each would show it,
+/// `--language de`: Ficha's languages, English and the eleven Ficha comes in,
+/// in `scripts/languages.txt`, which `scripts/render-iphone.sh` reads too, so
+/// both draw in the same ones. The tool reaches the list from this file's own
+/// path, three folders up, as it reaches the app's String Catalog, and reads
+/// it with `FichaLanguage`, in `Languages.swift`, a link to the reader in
+/// `scripts/`.
+func readRenderLanguages() throws(RenderError) -> [FichaLanguage] {
+    let list = URL(filePath: #filePath).deletingLastPathComponent()
+        .appending(path: "../../../languages.txt").standardized
     do {
-        text = try String(contentsOf: renderLanguagesFile, encoding: .utf8)
+        return try FichaLanguage.read(at: list, again: "render again")
     } catch {
-        throw RenderError(
-            description: """
-                Couldn't read \(list), the languages the tool takes: \(error.localizedDescription) Restore it with \
-                git restore \(list), and render again.
-                """)
+        throw RenderError(description: error.description)
     }
-    var languages: [RenderLanguage] = []
-    for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-        let fields = line.split(maxSplits: 3, whereSeparator: \.isWhitespace)
-        guard let first = fields.first, !first.hasPrefix("#") else {
-            continue
-        }
-        guard fields.count == 4, ["ltr", "rtl"].contains(fields[2]) else {
-            throw RenderError(
-                description: """
-                    \(list):\(index + 1) isn't a language's code, region, direction and name, as in \
-                    'es AR ltr Spanish': write it so, with ltr or rtl for the direction it reads in, and render again.
-                    """)
-        }
-        languages.append(
-            RenderLanguage(
-                code: String(fields[0]), region: String(fields[1]), isRightToLeft: fields[2] == "rtl",
-                name: fields[3].trimmingCharacters(in: .whitespaces)))
-    }
-    return languages
 }
 
 /// Writes a tone to `file`, a WAV file, for the sample's card with a sound
@@ -458,7 +415,7 @@ let usage = """
       --dark     dark mode instead of light
       --language the language to draw the window in, as a Mac in it shows it: with the app's translations, its region's
                  formats, and mirrored for Arabic. Without it, English, with this Mac's formats. The languages, by
-                 their codes, like de or ar: English and Ficha's eleven, which scripts/render-languages.txt lists
+                 their codes, like de or ar: English and Ficha's eleven, which scripts/languages.txt lists
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
       --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
@@ -524,7 +481,7 @@ func mouseClick(named name: String) throws(RenderError) -> MouseClick {
 
 /// The request in the tool's arguments, whose `--language` takes one of
 /// `languages`.
-func request(from arguments: [String], languages: [RenderLanguage]) throws(RenderError) -> Request {
+func request(from arguments: [String], languages: [FichaLanguage]) throws(RenderError) -> Request {
     var request = Request()
     var arguments = arguments[...]
     while let argument = arguments.popFirst() {
@@ -2001,7 +1958,7 @@ let renderCatalog = URL(filePath: #filePath).deletingLastPathComponent().appendi
 /// the right, as macOS draws every app's when its own language reads right to
 /// left. A catalog with the language and `AppleTextDirection` alone mirror
 /// the window's content but leave its title bar as it is.
-func useLanguage(_ language: RenderLanguage?) throws(RenderError) {
+func useLanguage(_ language: FichaLanguage?) throws(RenderError) {
     // SwiftPM's `.build/debug` is a link to the folder.
     let bundle = Bundle.main.bundleURL.resolvingSymlinksInPath()
     // The languages an earlier run compiled go first, since the catalog may

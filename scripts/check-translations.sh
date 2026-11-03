@@ -1,8 +1,12 @@
 #!/bin/bash
 # Fails while a String Catalog lacks a translation: `make check` runs it on
-# every catalog, against the languages scripts/languages.txt lists (ADR 0027).
-# It reads the catalogs alone, without building anything: Apple ships no
-# command that checks a catalog's translations, so this check is our own.
+# every catalog at once (ADR 0027). Each text is translated into every
+# language the catalogs have a text in, besides their source, English, so a
+# language is required in every catalog once its translation starts. Each of
+# those is one of Ficha's languages, which scripts/languages.txt lists with
+# its plural categories. It reads the catalogs alone, without building
+# anything: Apple ships no command that checks a catalog's translations, so
+# this check is our own.
 #
 # Usage: check-translations.sh <languages file> <catalog>...
 
@@ -10,31 +14,43 @@ set -u
 list=$1
 shift
 
-[[ -r $list ]] || {
-  echo "There's no $list, the languages every catalog is translated into: restore it with git restore, and run make check again." >&2
-  exit 1
-}
+# shellcheck source=scripts/languages.sh
+source "$(dirname "$0")/languages.sh"
+lines=$(read_languages "$list" "run make check again") || exit 1
+# Ficha's languages, as a JSON array of {code, categories, name}.
+listed=$(jq -R -s -c '[split("\n")[] | select(length > 0) | split(" ")
+  | {code: .[0], categories: (.[3] | split(",")), name: (.[4:] | join(" "))}]' <<<"$lines")
 
-# The languages, as a JSON array of {code, categories, name}, from the list's
-# lines that aren't blank or comments.
-languages="[]"
-number=0
-while IFS= read -r line || [[ -n $line ]]; do
-  number=$((number + 1))
-  [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
-  read -r code categories name <<<"$line"
-  category="(zero|one|two|few|many|other)"
-  if [[ -z $name || ! $categories =~ ^$category(,$category)*$ || ! $categories =~ other ]]; then
-    echo "$list:$number isn't a language's code, its plural categories and its name, as in 'es one,many,other Spanish': write it so, with the categories Unicode's CLDR gives the language, other among them, and run make check again." >&2
-    exit 1
+# The catalogs jq can read, and the languages each has a text in, besides its
+# source, as {catalog, code}, one a line.
+found=0
+catalogs=()
+present=""
+for catalog in "$@"; do
+  if ! codes=$(jq -c --arg catalog "$catalog" '.sourceLanguage as $source
+    | [.strings[] | .localizations // {} | keys[]] | unique[] | select(. != $source) | {catalog: $catalog, code: .}' \
+    "$catalog"); then
+    echo "$catalog isn't a String Catalog this check can read, as jq says above: write it back as Xcode writes it, with make strings, and run make check again." >&2
+    found=1
+    continue
   fi
-  languages=$(jq -c --arg code "$code" --arg categories "$categories" --arg name "$name" \
-    '. + [{code: $code, categories: ($categories | split(",")), name: $name}]' <<<"$languages")
-done <"$list"
-[[ $languages != "[]" ]] || {
-  echo "$list lists no language: write a line for each language, as in 'es one,many,other Spanish', and run make check again." >&2
-  exit 1
-}
+  catalogs+=("$catalog")
+  present+="$codes"$'\n'
+done
+
+# A language a catalog has that isn't one of Ficha's fails; the others are
+# the languages every catalog is translated into.
+read -r -d '' unknown_language <<'EOF'
+select(.code | IN($listed[].code) | not)
+| "\(.catalog) has texts in \(.code), which isn't one of Ficha's languages in \($list): add the language's line there, or delete the texts, and run make check again."
+EOF
+unknown=$(jq -r --argjson listed "$listed" --arg list "$list" "$unknown_language" <<<"$present")
+if [[ -n $unknown ]]; then
+  echo "$unknown" >&2
+  found=1
+fi
+languages=$(jq -s -c --argjson listed "$listed" '[.[].code] as $codes | $listed | map(select(.code | IN($codes[])))' \
+  <<<"$present")
 
 # Each failure of a catalog, as a line that names the catalog, the key and the
 # language, and says what to do. A text with plural variations in English has
@@ -80,7 +96,7 @@ def failures($english; $language):
     | (if .part == "" then "" else " in \(.part)" end) as $in
     | "\($catalog): “\($key)” "
       + if .state == "missing" then
-          "has no \($name) translation\($for): translate it into every language in \($list), with the words in docs/terms.md, and run make check again."
+          "has no \($name) translation\($for): translate it into every language the catalogs have, with the words in docs/terms.md, and run make check again."
         else
           "has its \($name) translation marked "
           + (if .state == "needs_review" then "for review" else "“\(.state)”, not translated" end)
@@ -89,13 +105,9 @@ def failures($english; $language):
   end
 EOF
 
-found=0
-for catalog in "$@"; do
-  if ! messages=$(jq -r --arg catalog "$catalog" --arg list "$list" --argjson languages "$languages" \
-    "$failures" "$catalog"); then
-    echo "$catalog isn't a String Catalog this check can read, as jq says above: write it back as Xcode writes it, with make strings, and run make check again." >&2
-    found=1
-  elif [[ -n $messages ]]; then
+for catalog in ${catalogs[@]+"${catalogs[@]}"}; do
+  messages=$(jq -r --arg catalog "$catalog" --argjson languages "$languages" "$failures" "$catalog")
+  if [[ -n $messages ]]; then
     echo "$messages" >&2
     found=1
   fi

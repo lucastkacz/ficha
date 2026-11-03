@@ -17,35 +17,24 @@
 
 set -euo pipefail
 
-# English and the eleven languages Ficha comes in, from the list make render
-# reads too: on each line that isn't blank or a comment, a language's code in
-# the String Catalogs, its region, its direction, ltr or rtl, and its name in
-# English.
-list=$(dirname "$0")/render-languages.txt
-[[ -r $list ]] || {
-  echo "There's no $list, the languages the tool takes: restore it with git restore scripts/render-languages.txt, and run the tool again." >&2
-  exit 1
-}
+# English and the eleven languages Ficha comes in, from scripts/languages.txt,
+# which make render reads too: each language's code in the String Catalogs,
+# its region, its direction, ltr or rtl, and its name in English.
+# shellcheck source=scripts/languages.sh
+source "$(dirname "$0")/languages.sh"
+lines=$(read_languages "$(dirname "$0")/languages.txt" "run the tool again") || exit 1
 codes=()
 regions=()
 directions=()
 names=()
 language_list=""
-number=0
-while IFS= read -r line || [[ -n $line ]]; do
-  number=$((number + 1))
-  [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
-  read -r code region direction name <<<"$line"
-  [[ -n $name && $direction =~ ^(ltr|rtl)$ ]] || {
-    echo "$list:$number isn't a language's code, region, direction and name, as in 'es AR ltr Spanish': write it so, with ltr or rtl for the direction it reads in, and run the tool again." >&2
-    exit 1
-  }
+while read -r code region direction _ name; do
   codes+=("$code")
   regions+=("$region")
   directions+=("$direction")
   names+=("$name")
   language_list+="${language_list:+, }$code ($name)"
-done <"$list"
+done <<<"$lines"
 
 usage="Usage: make render-iphone ARGS=\"[--language <code>] [--out <path>]\", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without --out, iphone-<code>-light.png and iphone-<code>-dark.png in a language. Without --language, the app opens in English, with the simulator's formats. The languages: $language_list."
 (($# > 0)) || {

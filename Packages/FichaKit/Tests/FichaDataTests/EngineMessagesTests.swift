@@ -6,10 +6,10 @@ import Testing
 
 /// Tests that every message `EngineError` can show is in the String Catalogs
 /// of the Mac's app, its widget and the iPhone app, translated into every
-/// language of `scripts/languages.txt`. Xcode adds no text of a package to
-/// them, so each message is added by hand (CODING_STANDARDS.md), and this
-/// catches one that wasn't. It reads the catalogs and the list from the repo
-/// this file is in.
+/// language the catalog has, among Ficha's in `scripts/languages.txt`. Xcode
+/// adds no text of a package to them, so each message is added by hand
+/// (CODING_STANDARDS.md), and this catches one that wasn't. It reads the
+/// catalogs and the list from the repo this file is in.
 struct EngineMessagesTests {
     /// The repo's folder, five folders up from this file.
     static let repo = URL(filePath: #filePath)
@@ -49,12 +49,12 @@ struct EngineMessagesTests {
     }
 
     @Test(
-        "every message of the engine is in the catalog, translated into every language",
+        "every message of the engine is in the catalog, translated into every language the catalog has",
         arguments: ["App/Localizable.xcstrings", "Widget/Localizable.xcstrings", "iPhone/Localizable.xcstrings"])
     func everyMessageIsTranslated(catalogPath: String) throws {
         let catalog = try JSONDecoder().decode(
             Catalog.self, from: Data(contentsOf: Self.repo.appending(path: catalogPath)))
-        let languages = try Self.languages()
+        let languages = try Self.languages(of: catalog, at: catalogPath)
 
         for error in Self.samples {
             let key = error.message.key
@@ -72,45 +72,31 @@ struct EngineMessagesTests {
         }
     }
 
-    /// The languages `scripts/languages.txt` lists, read by the rules
-    /// `scripts/check-translations.sh` reads it by: a line that's blank, or
-    /// whose first character after any spaces is `#`, is skipped, and every
-    /// other one is a language's code, its plural categories, other among
-    /// them, and its name. A missing file, a line of another shape or a list
-    /// of no language fails the test, as each fails the check.
-    static func languages() throws -> [(code: String, name: String)] {
-        let path = "scripts/languages.txt"
-        let text = try #require(
-            try? String(contentsOf: repo.appending(path: path), encoding: .utf8),
-            "There's no \(path), the languages every catalog is translated into: restore it with git restore, and run the test again."
-        )
-        let category = "(zero|one|two|few|many|other)"
-        let categories = try Regex("^\(category)(,\(category))*$")
-        var languages: [(code: String, name: String)] = []
-        for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-            let content = line.drop(while: \.isWhitespace)
-            if content.isEmpty || content.hasPrefix("#") { continue }
-            let fields = content.split(maxSplits: 2, whereSeparator: \.isWhitespace)
-            try #require(
-                fields.count == 3 && fields[1].wholeMatch(of: categories) != nil
-                    && fields[1].split(separator: ",").contains("other"),
+    /// The languages every text of `catalog` is translated into: those of
+    /// Ficha's languages, in `scripts/languages.txt`, the catalog has a text
+    /// in, besides its source, English, as make check's translations check
+    /// requires them. `FichaLanguage` reads the list, failing the test, as it
+    /// fails the check, when the list is missing or wrong. A language the
+    /// catalog has that isn't one of Ficha's fails it too.
+    private static func languages(of catalog: Catalog, at catalogPath: String) throws -> [FichaLanguage] {
+        let listed = try FichaLanguage.read(
+            at: repo.appending(path: FichaLanguage.listPath), again: "run the test again")
+        let present = Set(catalog.strings.values.flatMap { $0.localizations?.keys.map { $0 } ?? [] })
+            .subtracting([catalog.sourceLanguage])
+        for code in present.sorted() where !listed.contains(where: { $0.code == code }) {
+            Issue.record(
                 """
-                \(path):\(index + 1) isn't a language's code, its plural categories and its name, as in \
-                'es one,many,other Spanish': write it so, with the categories Unicode's CLDR gives the language, \
-                other among them, and run the test again.
+                \(catalogPath) has texts in \(code), which isn't one of Ficha's languages in \
+                \(FichaLanguage.listPath): add the language's line there, or delete the texts, and run the test again.
                 """)
-            languages.append((String(fields[0]), String(fields[2].trimmingCharacters(in: .whitespaces))))
         }
-        try #require(
-            !languages.isEmpty,
-            "\(path) lists no language: write a line for each language, as in 'es one,many,other Spanish', and run the test again."
-        )
-        return languages
+        return listed.filter { present.contains($0.code) }
     }
 }
 
 /// The parts of a String Catalog this test reads.
 private struct Catalog: Decodable {
+    let sourceLanguage: String
     let strings: [String: Entry]
 
     struct Entry: Decodable {
