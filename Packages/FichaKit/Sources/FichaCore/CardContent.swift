@@ -83,7 +83,7 @@ public struct CardContent: Sendable, Equatable {
     /// for the tags it started with, `tags`, holds those tags as they are, so
     /// that one with a comma in its name, which can come in from Anki, a text
     /// file, the CLI or a rename, stays whole until the user changes the field.
-    public static func tags(inField text: String, startedWith tags: [String] = []) -> [String] {
+    public static func tags(inField text: String, startedWith tags: [String]) -> [String] {
         guard text != tagsField(of: tags) else { return tags }
         return text.split { ",\u{060C}\u{FF0C}\u{3001}".contains($0) }.map(String.init)
     }

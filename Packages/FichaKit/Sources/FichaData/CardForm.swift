@@ -38,11 +38,23 @@ extension CardsWindowState {
             return followUp
         }
 
+        /// What Add saves, checked as every card is, or nil while a side is
+        /// blank: it has neither text, an image nor a sound. Its tags are
+        /// those of the follow-up's card, as they are, while the Tags field
+        /// holds them as it started.
+        var content: CardContent? {
+            CardContent(
+                type: draft.type, front: draft.front.text, back: draft.back.text,
+                tags: CardContent.tags(inField: draft.tags, startedWith: followUp?.card.tags ?? []),
+                source: draft.source, frontImage: draft.front.image, backImage: draft.back.image,
+                frontSound: draft.front.sound, backSound: draft.back.sound)
+        }
+
         /// Whether Add is on: while both sides have text, an image or a
         /// sound, whatever the front repeats, and no sound is converting for
         /// a side.
         public var canAdd: Bool {
-            draft.content != nil && soundsComingIn.isEmpty
+            content != nil && soundsComingIn.isEmpty
         }
 
         /// Whether closing the form approves the capture it was opened from,
@@ -84,10 +96,6 @@ extension CardsWindowState.CardForm {
         public var back = Side()
         /// The tags as the Tags field holds them, separated by commas.
         public var tags = ""
-        /// The tags the Tags field started with, those of the card a
-        /// follow-up is on, which stay as they are until the user changes the
-        /// field.
-        var tagsItStartedWith: [String] = []
         public var source = ""
         /// Whether the card goes both ways, which the form starts off.
         public var bothWays = false
@@ -99,15 +107,6 @@ extension CardsWindowState.CardForm {
 
         /// Empty fields, the type None, Both ways off, and Default.
         public init() {}
-
-        /// What Add saves, checked as every card is, or nil while a side is
-        /// blank: it has neither text, an image nor a sound.
-        var content: CardContent? {
-            CardContent(
-                type: type, front: front.text, back: back.text,
-                tags: CardContent.tags(inField: tags, startedWith: tagsItStartedWith), source: source,
-                frontImage: front.image, backImage: back.image, frontSound: front.sound, backSound: back.sound)
-        }
 
         /// The side `side` of the draft.
         subscript(side: CardSide) -> Side {
@@ -166,7 +165,6 @@ extension CardsWindowState {
             form = CardForm(openedBy: .followUp(followUp))
             form.draft.deck = followUp.card.deck
             form.draft.tags = CardContent.tagsField(of: followUp.card.tags)
-            form.draft.tagsItStartedWith = followUp.card.tags
         case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
             return
         }
@@ -242,7 +240,7 @@ extension CardsWindowState {
     /// source and Both ways, for the next card. When the card can't be saved,
     /// it records why, and the fields stay as they were.
     public mutating func addCard() {
-        guard let form = cardForm, form.canAdd, let content = form.draft.content else { return }
+        guard let form = cardForm, form.canAdd, let content = form.content else { return }
         var added: Card?
         let files = heldFiles(of: content)
         perform(.addCard) { engine throws(EngineError) in
