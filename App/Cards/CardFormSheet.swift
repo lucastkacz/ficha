@@ -230,6 +230,7 @@ private struct CardFormSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Front", text: draft(\.front.text), axis: .vertical)
                         .lineLimit(1...4)
+                        .alignedAsItReads(form.draft.front.text)
                         .focused($isFrontFocused)
                         .cardFormPart(.text(.front))
                         .pastesImages(while: focusedPart == .text(.front)) { image in
@@ -249,6 +250,7 @@ private struct CardFormSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Back", text: draft(\.back.text), axis: .vertical)
                         .lineLimit(4...10)
+                        .alignedAsItReads(form.draft.back.text)
                         .cardFormPart(.text(.back))
                         .pastesImages(while: focusedPart == .text(.back)) { image in
                             state.putImageInForm(image, on: .back)
@@ -279,6 +281,7 @@ private struct CardFormSheet: View {
                     axis: .vertical
                 )
                 .lineLimit(1...3)
+                .alignedAsItReads(form.draft.source)
                 .cardFormPart(.source)
             }
             GridRow {

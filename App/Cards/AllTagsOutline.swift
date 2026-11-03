@@ -362,7 +362,7 @@ extension CardsWindowState.AllTagsColumn {
             return column
         }
         let isNumber = self == .cards || self == .due
-        column.headerCell.alignment = isNumber ? .right : .center
+        column.headerCell.alignment = isNumber ? .trailing : .center
         column.sizeToFit()
         // Room for the sort's arrow beside a number's title, in bold while
         // it sorts; a checkbox's title, centered, has some at its sides.
@@ -411,13 +411,13 @@ private final class TagCellView: NSTableCellView {
     }
 }
 
-/// A number's cell, Cards or Due, on the right, in digits of one width, and
-/// faint when it's none.
+/// A number's cell, Cards or Due, at the trailing side, in digits of one
+/// width, and faint when it's none.
 private final class NumberCellView: NSTableCellView {
     init() {
         super.init(frame: .zero)
         let text = NSTextField(labelWithString: "")
-        text.alignment = .right
+        text.alignment = .trailing
         text.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         text.translatesAutoresizingMaskIntoConstraints = false
         addSubview(text)
@@ -463,5 +463,15 @@ private final class CheckboxCellView: NSTableCellView {
     /// Shows whether `row`'s tag is pinned.
     func show(_ row: CardsWindowState.AllTagsRow) {
         button.state = row.tag.isPinned ? .on : .off
+    }
+}
+
+extension NSTextAlignment {
+    /// The trailing side, where a number column's digits line up, as
+    /// Finder's Size: AppKit's alignments name the leading side, `.natural`,
+    /// but not this one, and `.right` stays at the right in a language read
+    /// right to left, which mirrors the outline's columns.
+    fileprivate static var trailing: NSTextAlignment {
+        NSApplication.shared.userInterfaceLayoutDirection == .rightToLeft ? .left : .right
     }
 }

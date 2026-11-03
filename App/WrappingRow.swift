@@ -22,6 +22,8 @@ struct WrappingRow: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var y = bounds.minY
         for line in lines(of: subviews, in: bounds.width) {
+            // From the leading side: SwiftUI mirrors a layout's places in a
+            // language read right to left, as Arabic's pictures show.
             var x = bounds.minX
             for index in line.indices {
                 let size = subviews[index].sizeThatFits(.unspecified)

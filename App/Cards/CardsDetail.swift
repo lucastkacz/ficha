@@ -3,9 +3,10 @@ import FichaData
 import SwiftUI
 
 /// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says, since a buried card keeps its flag. A
-/// front without text says "Image" or "Sound" in gray, as Mail says "No
-/// Subject", rather than leave the cell empty.
+/// buried, as where it stands says, since a buried card keeps its flag,
+/// aligned with them as the front reads. A front without text says "Image"
+/// or "Sound" in gray, as Mail says "No Subject", rather than leave the cell
+/// empty.
 struct FrontCell: View {
     let card: Card
     /// Whether a long front goes on over more lines, as below a capture in
@@ -34,6 +35,7 @@ struct FrontCell: View {
                     .fixedSize(horizontal: false, vertical: wraps)
             }
         }
+        .alignedAsItReads(card.front)
     }
 
     /// The word that stands for a front without text, as `media` says.
@@ -170,6 +172,7 @@ struct CardDetail: View {
                     Text(row.card.front)
                         .font(.title2.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
+                        .alignedAsItReads(row.card.front)
                 }
                 if row.card.frontSound != nil {
                     soundControls(.front)
@@ -187,6 +190,7 @@ struct CardDetail: View {
                 if !row.card.back.isEmpty {
                     Text(row.card.back)
                         .fixedSize(horizontal: false, vertical: true)
+                        .alignedAsItReads(row.card.back)
                 }
                 if row.card.backSound != nil {
                     soundControls(.back)
@@ -196,6 +200,7 @@ struct CardDetail: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .alignedAsItReads(source)
                 }
                 Divider()
                 standing
@@ -392,6 +397,8 @@ private struct TypeAndTags: View {
                             first, its back, then its front.
                             """)
                 } icon: {
+                    // Arrows both ways, the same mirrored, so no backward
+                    // and forward.
                     Image(systemName: "arrow.left.arrow.right")
                 }
                 .font(.caption)
@@ -503,6 +510,7 @@ private struct TiedCard: View {
                 .font(.headline)
             Text(card.back)
                 .fixedSize(horizontal: false, vertical: true)
+                .alignedAsItReads(card.back)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)

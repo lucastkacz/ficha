@@ -149,6 +149,15 @@ enum Window: String, CaseIterable {
     /// end, below both ways' interval, due time, stability, difficulty and
     /// retrievability: its chart, with a line for each way, and its key.
     case cardsBothWays = "cards-both-ways"
+    /// The review panel on a new card in Arabic, which the tool adds to the
+    /// sample, as `panel-card` draws it: its text reads, and is aligned, right
+    /// to left whatever the window's language, as a Spanish card's reads left
+    /// to right in Arabic. `--key space` flips it.
+    case panelArabic = "panel-arabic"
+    /// The Cards window with that card in Arabic first in the table and
+    /// selected, its detail showing it, which `--key cmd+l` edits in the
+    /// detail's fields.
+    case cardsArabic = "cards-arabic"
 }
 
 /// What the tool was asked to draw.
@@ -1328,6 +1337,10 @@ func model(for name: Window) throws -> AppModel {
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
+    case .panelArabic, .cardsArabic:
+        let engine = try sampleEngine(at: .inMemory).engine
+        try addSampleArabicCard(in: engine)
+        return try AppModel(engine: engine)
     case .cardsTags, .cardsAllTags:
         let engine = try sampleEngine(at: .inMemory).engine
         try nestSampleTags(in: engine)
@@ -1562,7 +1575,43 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
+    case .panelArabic: return try panelWindow(model: model, on: sampleArabicFront)
+    case .cardsArabic:
+        var state = model.openCardsWindow()
+        state.read(with: state.scheduler)
+        guard case .success(.cards(let rows)) = state.listing,
+            let arabic = rows.first(where: { $0.card.front == sampleArabicFront })
+        else {
+            throw RenderError(description: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
+        }
+        state.select([arabic.id])
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
     }
+}
+
+/// The front of the card in Arabic `addSampleArabicCard(in:)` adds: the
+/// butterfly effect, as a sample card in Spanish has it.
+let sampleArabicFront = "أثر الفراشة"
+
+/// Adds a card in Arabic to the sample cards, made by hand, as two in
+/// Spanish are, so that the newest, it comes first in the Cards window. Its
+/// back holds a name in Latin letters and a year, which read left to right
+/// inside its Arabic.
+func addSampleArabicCard(in engine: Engine) throws {
+    guard
+        let content = CardContent(
+            type: nil, front: sampleArabicFront,
+            back: """
+                تغييرٌ صغير، مثل رفرفة جناحي فراشة، قد يؤدي إلى نتائج كبيرة لا يمكن توقعها. سمّاه بذلك عالم \
+                الأرصاد الجوية Edward Lorenz عام 1972.
+                """,
+            tags: ["ciencia"], source: "نظرية الفوضى")
+    else {
+        throw RenderError(description: "The sample's card in Arabic has a blank front or back.")
+    }
+    try engine.create(content)
 }
 
 /// The row of the sample's graduated card in the reviews that waits longest,

@@ -229,6 +229,7 @@ private struct ChartKey: View {
             }
             ForEach(ways, id: \.self) { way in
                 HStack(spacing: 4) {
+                    // A level line, the same mirrored.
                     Path { path in
                         path.move(to: CGPoint(x: 0, y: 1))
                         path.addLine(to: CGPoint(x: 16, y: 1))

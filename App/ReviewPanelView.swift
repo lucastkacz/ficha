@@ -644,6 +644,7 @@ struct ReviewPanelView: View {
                 Text(card.text(on: side))
                     .font(.title2.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
+                    .alignedAsItReads(card.text(on: side))
             }
             if let sound = card.sound(on: side) {
                 soundControls(sound, on: side, in: panel)
@@ -665,6 +666,7 @@ struct ReviewPanelView: View {
             if !card.text(on: side).isEmpty {
                 Text(card.text(on: side))
                     .fixedSize(horizontal: false, vertical: true)
+                    .alignedAsItReads(card.text(on: side))
             }
             if let sound = card.sound(on: side) {
                 soundControls(sound, on: side, in: panel)
@@ -674,6 +676,7 @@ struct ReviewPanelView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .alignedAsItReads(source)
             }
         }
     }

@@ -471,7 +471,7 @@ struct CardsView: View {
                 String(
                     localized: "toolbar.back", defaultValue: "Back",
                     comment: "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags."),
-                systemImage: "chevron.left")
+                systemImage: "chevron.backward")
         }
         .keyboardShortcut("[", modifiers: .command)
         .disabled(!state.canGoBack)
@@ -1301,6 +1301,7 @@ struct CardsView: View {
             TableColumn(Text(fitted.source.header), sortUsing: CardRowOrder(.source)) { row in
                 Text(row.card.source ?? "")
                     .lineLimit(1)
+                    .alignedAsItReads(row.card.source ?? "")
             }
             .width(fitting: fitted.source)
             .customizationID(CardRowOrder.Column.source.rawValue)
@@ -1557,11 +1558,15 @@ struct CardsView: View {
                 } actions: {
                     // Side by side, or one above another while the pane is
                     // too narrow for that, as beside All Tags in the
-                    // window's least width.
+                    // window's least width. Side by side, each as wide as
+                    // its title: the actions' row shares its width out
+                    // evenly, which cut Arabic's Show Cards where the three
+                    // fit.
                     ViewThatFits(in: .horizontal) {
                         HStack {
                             tagButtons(for: selected)
                         }
+                        .fixedSize()
                         VStack {
                             tagButtons(for: selected)
                         }
