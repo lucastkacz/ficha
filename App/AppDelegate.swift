@@ -110,9 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func openDiagnostics() {
         guard let model, let mac else { return }
         open(&diagnosticsWindow) {
-            AppWindow(
-                title: String(localized: "Diagnostics", comment: "The Diagnostics window's title."),
-                content: DiagnosticsView(model: model, mac: mac))
+            AppWindow(title: DiagnosticsView.windowTitle, content: DiagnosticsView(model: model, mac: mac))
         }
     }
 

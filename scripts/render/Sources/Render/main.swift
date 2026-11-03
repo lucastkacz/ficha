@@ -1565,7 +1565,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .diagnostics:
         let mac = SystemMacSignals { model.now }
         mac.focusChanged(holdsBack: true)
-        return AppWindow(title: "Diagnostics", content: DiagnosticsView(model: model, mac: mac))
+        return AppWindow(title: DiagnosticsView.windowTitle, content: DiagnosticsView(model: model, mac: mac))
     case .panelCard: return try panelWindow(model: model, on: "El sesgo de supervivencia")
     case .panelReview:
         return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).row.card.front) {
