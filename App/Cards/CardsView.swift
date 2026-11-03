@@ -382,17 +382,21 @@ struct CardsView: View {
 
     /// `sentences`, which a question before Lucas deletes tags or a deck
     /// says under its title, one after another, as the Mac's language joins
-    /// them, with a space in English.
+    /// them, with a space in English. Each sentence after the first comes
+    /// with what goes before it, rather than the whole question so far going
+    /// into the next join: Foundation wraps a text it puts into another in
+    /// Unicode's directional isolates, and an isolate holding only isolates
+    /// reads left to right, which put Arabic's sentences in the wrong order.
     private func joinedSentences(_ sentences: [String]) -> String {
         sentences.reduce(into: "") { text, sentence in
-            text =
+            text +=
                 text.isEmpty
                 ? sentence
                 : String(
-                    localized: "deletion.next-sentence", defaultValue: "\(text) \(sentence)",
+                    localized: "deletion.next-sentence", defaultValue: " \(sentence)",
                     comment: """
-                        Joins two sentences of the Cards window's question before it deletes tags or a deck: what it \
-                        says so far, then the next sentence, as the language writes one sentence after another.
+                        A sentence of the Cards window's question before it deletes tags or a deck, after the one \
+                        before it: with what the language writes between two sentences, a space in English.
                         """)
         }
     }
