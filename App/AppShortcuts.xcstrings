@@ -29,6 +29,16 @@
               "Repasar en ${applicationName}"
             ]
           }
+        },
+        "it" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Ripassa ora in ${applicationName}",
+              "Ripassa ora con ${applicationName}",
+              "Ripassa con ${applicationName}"
+            ]
+          }
         }
       }
     }
