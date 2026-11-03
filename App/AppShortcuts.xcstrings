@@ -58,6 +58,16 @@
               "Revisar agora com ${applicationName}"
             ]
           }
+        },
+        "ru" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Повторить сейчас в ${applicationName}",
+              "Повторить карточки в ${applicationName}",
+              "Повторение в ${applicationName}"
+            ]
+          }
         }
       }
     }

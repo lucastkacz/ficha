@@ -33,6 +33,12 @@
             "state" : "translated",
             "value" : "%@ não consegue ler seus cartões."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не может прочитать Ваши карточки."
+          }
         }
       }
     },
@@ -68,6 +74,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uma captura é aprovada em um ou mais cartões. Para tirá-la da caixa de entrada sem cartões, descarte-a."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Одобренная заметка становится одной или несколькими карточками. Чтобы убрать ее из входящих без карточек, отбросьте ее."
           }
         }
       }
@@ -105,6 +117,12 @@
             "state" : "translated",
             "value" : "Um baralho precisa de um nome, por isso nada mudou. Escreva um, com “::” entre um baralho e um baralho dentro dele, como em “Idiomas::Inglês”."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У колоды должно быть название, поэтому ничего не изменилось. Введите его, с «::» между колодой и вложенной в нее колодой, как в «Idiomas::Inglés»."
+          }
         }
       }
     },
@@ -140,6 +158,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uma versão mais nova da Ficha alterou a base de dados, e esta versão não vai abri-la, para não danificar seus cartões. Abra-a com a versão que a alterou, ou com uma mais nova."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Более новая версия Ficha изменила базу данных, и эта версия не будет ее открывать, чтобы не повредить Ваши карточки. Откройте ее той версией, которая ее изменила, или более новой."
           }
         }
       }
@@ -177,6 +201,12 @@
             "state" : "translated",
             "value" : "Uma versão mais nova da Ficha salvou a cópia “%@”, e esta versão não vai restaurá-la, para não danificar seus cartões. Restaure-a com essa versão, ou com uma mais nova."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копию «%@» сохранила более новая версия Ficha, и эта версия не будет ее восстанавливать, чтобы не повредить Ваши карточки. Восстановите ее той версией или более новой."
+          }
         }
       }
     },
@@ -212,6 +242,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uma etiqueta precisa de um nome, por isso nada mudou. Escreva um, com “::” entre uma etiqueta e uma etiqueta dentro dela, como em “economia::Brasil”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У метки должно быть название, поэтому ничего не изменилось. Введите его, с «::» между меткой и вложенной в нее меткой, как в «economía::Argentina»."
           }
         }
       }
@@ -249,6 +285,12 @@
             "state" : "translated",
             "value" : "Um tipo precisa de um nome, por isso nada mudou. Escreva um."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У типа должно быть название, поэтому ничего не изменилось. Введите его."
+          }
         }
       }
     },
@@ -283,6 +325,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verso primeiro"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала оборот"
           }
         }
       }
@@ -320,6 +368,12 @@
             "state" : "translated",
             "value" : "A captura %lld não amplia nenhum cartão. Aprove-a em cartões, ou descarte-a."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка %lld не дополняет карточку. Одобрите ее, чтобы она стала карточками, или отбросьте."
+          }
         }
       }
     },
@@ -355,6 +409,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A captura %lld não está na caixa de entrada: ela já foi aprovada ou descartada, ou não existe. Verifique o que há na caixa de entrada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки %lld нет во входящих: ее уже одобрили или отбросили, или ее не существует. Проверьте, что есть во входящих."
           }
         }
       }
@@ -392,6 +452,12 @@
             "state" : "translated",
             "value" : "O cartão %lld não pode ser colocado como resposta: só uma importação coloca um cartão. Nada foi salvo. Relate o problema."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточку %lld нельзя разместить в качестве ответа: размещать карточки может только импорт. Ничего не записано. Сообщите об ошибке."
+          }
         }
       }
     },
@@ -427,6 +493,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %lld mudou fora do painel de revisão, por isso ⌘Z não pode desfazer. Feche o painel de revisão e abra “Revisar agora” de novo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %lld изменилась вне панели повторения, поэтому ⌘Z не может это отменить. Закройте панель повторения и снова откройте «Повторить сейчас»."
           }
         }
       }
@@ -464,6 +536,12 @@
             "state" : "translated",
             "value" : "O cartão %lld não tem imagem no verso, por isso não há nenhuma para tirar. `ficha cards` mostra a imagem e o som de cada lado."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На обороте карточки %lld нет изображения, поэтому удалять нечего. `ficha cards` называет изображение и звук каждой стороны."
+          }
         }
       }
     },
@@ -499,6 +577,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %lld não tem imagem na frente, por isso não há nenhuma para tirar. `ficha cards` mostra a imagem e o som de cada lado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На лице карточки %lld нет изображения, поэтому удалять нечего. `ficha cards` называет изображение и звук каждой стороны."
           }
         }
       }
@@ -536,6 +620,12 @@
             "state" : "translated",
             "value" : "O cartão %lld não tem som no verso, por isso não há nenhum para tirar. `ficha cards` mostra a imagem e o som de cada lado."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На обороте карточки %lld нет звука, поэтому удалять нечего. `ficha cards` называет изображение и звук каждой стороны."
+          }
         }
       }
     },
@@ -571,6 +661,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %lld não tem som na frente, por isso não há nenhum para tirar. `ficha cards` mostra a imagem e o som de cada lado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На лице карточки %lld нет звука, поэтому удалять нечего. `ficha cards` называет изображение и звук каждой стороны."
           }
         }
       }
@@ -608,6 +704,12 @@
             "state" : "translated",
             "value" : "O cartão %lld está oculto. Para trazê-lo de volta, desoculte-o."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %lld отложена. Верните ее, чтобы она снова появлялась."
+          }
         }
       }
     },
@@ -643,6 +745,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %lld está sinalizado: ele espera na caixa de entrada para ser corrigido. Feche o painel de revisão e abra “Revisar agora” de novo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %lld помечена: она ждет исправления во входящих. Закройте панель повторения и снова откройте «Повторить сейчас»."
           }
         }
       }
@@ -680,6 +788,12 @@
             "state" : "translated",
             "value" : "O cartão %1$lld está posto de lado com o baralho “%2$@”. Para trazê-lo de volta, desmarque Pôr de Lado nesse baralho, na janela Cartões."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %1$lld приостановлена вместе с колодой «%2$@». Чтобы вернуть ее, снимите флажок «Приостановить» у этой колоды в окне «Карточки»."
+          }
         }
       }
     },
@@ -715,6 +829,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %1$lld está posto de lado com os baralhos %2$@. Para trazê-lo de volta, desmarque Pôr de Lado em cada um deles, na janela Cartões."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %1$lld приостановлена вместе с колодами %2$@. Чтобы вернуть ее, снимите флажок «Приостановить» у каждой из них в окне «Карточки»."
           }
         }
       }
@@ -752,6 +872,12 @@
             "state" : "translated",
             "value" : "O cartão %lld não está oculto, por isso não há nada para desocultar. Verifique o id do cartão."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %lld не отложена, поэтому возвращать нечего. Проверьте ID карточки."
+          }
         }
       }
     },
@@ -787,6 +913,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %lld ainda não está na data de revisão, por isso não pode ser revisado. Feche o painel de revisão e abra “Revisar agora” de novo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок повторения карточки %lld еще не наступил, поэтому ее нельзя повторить. Закройте панель повторения и снова откройте «Повторить сейчас»."
           }
         }
       }
@@ -824,6 +956,12 @@
             "state" : "translated",
             "value" : "O cartão %lld não está sinalizado, por isso não há nada para corrigir: ele já foi corrigido, ou nunca foi sinalizado. Verifique o que há na caixa de entrada."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточка %lld не помечена, поэтому исправлять нечего: ее уже исправили или никогда не помечали. Проверьте, что есть во входящих."
+          }
         }
       }
     },
@@ -859,6 +997,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O cartão %lld não é um dos cartões que sua aparição trouxe, por isso a resposta não foi salva. Relate o problema."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточки %lld не было среди карточек ее появления, поэтому ответ на нее не записан. Сообщите об ошибке."
           }
         }
       }
@@ -896,6 +1040,12 @@
             "state" : "translated",
             "value" : "O cartão [%lld] tem a frente ou o verso em branco: dê a cada lado um texto, uma imagem ou um som."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У карточки [%lld] пустое лицо или оборот: добавьте на каждую сторону текст, изображение или звук."
+          }
         }
       }
     },
@@ -931,6 +1081,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Padrão guarda os cartões que não estão em nenhum outro baralho, por isso não pode ser renomeado, movido nem apagado, e nada mudou. Para continuar, crie um baralho seu e mova para ele os cartões de Padrão."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колода «По умолчанию» хранит карточки, которых нет ни в одной другой колоде, поэтому ее нельзя переименовать, переместить или удалить, и ничего не изменилось. Чтобы продолжить, создайте свою колоду и переместите туда карточки из «По умолчанию»."
           }
         }
       }
@@ -968,6 +1124,12 @@
             "state" : "translated",
             "value" : "A Ficha não consegue entender o histórico de revisões do cartão %lld, por isso não sabe quando revisá-lo. Seus cartões continuam salvos: relate o problema."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не может разобрать историю повторений карточки %lld, поэтому не знает, когда ее повторять. Ваши карточки по-прежнему сохранены: сообщите об ошибке."
+          }
         }
       }
     },
@@ -1003,6 +1165,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A Ficha não conseguiu abrir “%@” como zip: ele pode estar danificado. Comprima de novo em um zip o arquivo de texto de cartões e suas imagens e sons, e importe o resultado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось открыть «%@» как zip-архив: возможно, он поврежден. Снова упакуйте в zip текстовый файл с карточками и его изображения и звуки и импортируйте полученный архив."
           }
         }
       }
@@ -1040,6 +1208,12 @@
             "state" : "translated",
             "value" : "A Ficha não conseguiu abrir “%@”. Verifique se o arquivo ainda está lá e tente novamente."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось открыть «%@». Убедитесь, что файл все еще на месте, и повторите попытку."
+          }
         }
       }
     },
@@ -1075,6 +1249,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A Ficha não conseguiu ler nem alterar sua pasta Backups. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось прочитать или изменить свою папку «Backups». Убедитесь, что на диске есть место, и повторите попытку, а если это повторится, сообщите об ошибке."
           }
         }
       }
@@ -1112,6 +1292,12 @@
             "state" : "translated",
             "value" : "A Ficha não conseguiu ler nem salvar um som na sua pasta Sounds. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось прочитать или сохранить звук в своей папке «Sounds». Убедитесь, что на диске есть место, и повторите попытку, а если это повторится, сообщите об ошибке."
+          }
         }
       }
     },
@@ -1147,6 +1333,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A Ficha não conseguiu ler nem salvar uma imagem na sua pasta Images. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось прочитать или сохранить изображение в своей папке «Images». Убедитесь, что на диске есть место, и повторите попытку, а если это повторится, сообщите об ошибке."
           }
         }
       }
@@ -1184,6 +1376,12 @@
             "state" : "translated",
             "value" : "A Ficha não conseguiu ler nem salvar sua base de dados. Tente novamente e, se voltar a acontecer, relate o problema."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось прочитать или сохранить свою базу данных. Повторите попытку, а если это повторится, сообщите об ошибке."
+          }
         }
       }
     },
@@ -1219,6 +1417,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A Ficha não conseguiu ler “%@” como pacote do Anki: ele pode estar danificado. Exporte o baralho do Anki de novo e importe o resultado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось прочитать «%@» как пакет Anki: возможно, он поврежден. Снова экспортируйте колоду из Anki и импортируйте полученный файл."
           }
         }
       }
@@ -1256,6 +1460,12 @@
             "state" : "translated",
             "value" : "A Ficha não conseguiu ler “%@”. Verifique se o arquivo ainda está lá e se você consegue abri-lo, e tente novamente."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось прочитать «%@». Убедитесь, что файл все еще на месте и Вы можете его открыть, и повторите попытку."
+          }
         }
       }
     },
@@ -1291,6 +1501,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A Ficha não conseguiu salvar “%@”. Verifique se o disco tem espaço e se você pode salvar nessa pasta, ou escolha outra, e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось сохранить «%@». Убедитесь, что на диске есть место и Вы можете сохранять в эту папку, или выберите другую, и повторите попытку."
           }
         }
       }
@@ -1328,6 +1544,12 @@
             "state" : "translated",
             "value" : "A Ficha não conseguiu calcular quando revisar seus cartões. Seus cartões continuam salvos: tente novamente e, se voltar a acontecer, relate o problema."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha не удалось рассчитать сроки повторения Ваших карточек. Ваши карточки по-прежнему сохранены: повторите попытку, а если это повторится, сообщите об ошибке."
+          }
         }
       }
     },
@@ -1363,6 +1585,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A Ficha não tem nenhuma imagem ou som chamado “%@”. Informe o nome como `ficha cards` o mostra, ou o caminho de um arquivo no Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В Ficha нет изображения или звука с именем «%@». Укажите имя так, как его выводит `ficha cards`, или путь к файлу на Mac."
           }
         }
       }
@@ -1400,6 +1628,12 @@
             "state" : "translated",
             "value" : "A Ficha leu o som, mas não conseguiu convertê-lo. Verifique se o disco tem espaço e tente novamente e, se voltar a acontecer, relate o problema."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha прочитала звук, но не смогла его преобразовать. Убедитесь, что на диске есть место, и повторите попытку, а если это повторится, сообщите об ошибке."
+          }
         }
       }
     },
@@ -1436,6 +1670,12 @@
             "state" : "translated",
             "value" : "A Ficha só lê arquivos da sua pasta Downloads, e “%@” não está nela. Copie o arquivo para Downloads e informe o caminho dele lá."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha читает файлы только из Вашей папки «Загрузки», а «%@» в ней нет. Скопируйте файл в «Загрузки» и укажите его путь там."
+          }
         }
       }
     },
@@ -1470,6 +1710,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Imagem"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изображение"
           }
         }
       }
@@ -1506,6 +1752,12 @@
             "state" : "translated",
             "value" : "Imagem que não pôde ser mostrada"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изображение, которое не удалось показать"
+          }
         }
       }
     },
@@ -1540,6 +1792,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Novo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая"
           }
         }
       }
@@ -1576,6 +1834,12 @@
             "state" : "translated",
             "value" : "Próximo Cartão"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая карточка"
+          }
         }
       }
     },
@@ -1610,6 +1874,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Próximo cartão às %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая карточка в %@"
           }
         }
       }
@@ -1652,6 +1922,12 @@
             "state" : "translated",
             "value" : "Próximo cartão: %1$@ às %2$@"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая карточка: %1$@ в %2$@"
+          }
         }
       }
     },
@@ -1686,6 +1962,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhum cartão à espera"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет ожидающих карточек"
           }
         }
       }
@@ -1722,6 +2004,12 @@
             "state" : "translated",
             "value" : "Nenhum cartão para revisar"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет карточек для повторения"
+          }
         }
       }
     },
@@ -1756,6 +2044,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhum cartão ainda"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточек пока нет"
           }
         }
       }
@@ -1792,6 +2086,12 @@
             "state" : "translated",
             "value" : "Abra %@ para ver seu próximo cartão."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте %@, чтобы увидеть следующую карточку."
+          }
         }
       }
     },
@@ -1826,6 +2126,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Som"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звук"
           }
         }
       }
@@ -1863,6 +2169,12 @@
             "state" : "translated",
             "value" : "Isso não contém nenhum som que a Ficha consiga ler. Arraste ou cole um som ou um vídeo com som, como um MP3, um M4A ou um MOV."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь нет звука, который Ficha может прочитать. Вместо этого перетяните или вставьте звук или видео со звуком, например MP3, M4A или MOV."
+          }
         }
       }
     },
@@ -1898,6 +2210,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Isso não é uma imagem que a Ficha consiga ler. Arraste ou cole uma imagem, como um JPEG ou um PNG."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не изображение, которое Ficha может прочитать. Вместо этого перетяните или вставьте картинку, например JPEG или PNG."
           }
         }
       }
@@ -1935,6 +2253,12 @@
             "state" : "translated",
             "value" : "Isso não é um único emoji. Escolha só um, ou deixe o campo vazio para não usar nenhum."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не один эмодзи. Выберите только один или оставьте поле пустым, чтобы обойтись без эмодзи."
+          }
         }
       }
     },
@@ -1970,6 +2294,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esse tipo foi apagado enquanto isso, talvez em outro dos seus dispositivos, por isso nada mudou. Escolha outro tipo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тип тем временем был удален — возможно, на другом Вашем устройстве, — поэтому ничего не изменилось. Выберите другой тип."
           }
         }
       }
@@ -2007,6 +2337,12 @@
             "state" : "translated",
             "value" : "Isso deixaria o cartão %lld com a frente ou o verso em branco, por isso nada mudou: dê a cada lado um texto, uma imagem ou um som."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тогда у карточки %lld осталось бы пустое лицо или оборот, поэтому ничего не изменилось: добавьте на каждую сторону текст, изображение или звук."
+          }
         }
       }
     },
@@ -2042,6 +2378,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A linha #%1$@ de “%2$@” diz “%3$@”, que não é um número de coluna. Escreva o número da coluna, contando a primeira como 1."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В строке #%1$@ файла «%2$@» указано «%3$@», а это не номер колонки. Укажите номер колонки, считая первую за 1."
           }
         }
       }
@@ -2079,6 +2421,12 @@
             "state" : "translated",
             "value" : "A linha #columns de “%1$@” não nomeia nenhuma coluna %2$@, que todo cartão precisa ter. Nomeie as colunas Front, Back, Tags, Type e Source, ou remova a linha."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В строке #columns файла «%1$@» нет колонки %2$@, которая нужна каждой карточке. Назовите колонки Front, Back, Tags, Type и Source или удалите эту строку."
+          }
         }
       }
     },
@@ -2114,6 +2462,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A linha #html de “%1$@” diz “%2$@”: use true se o arquivo contém HTML, ou false se não contém."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В строке #html файла «%1$@» указано «%2$@»: укажите true, если файл содержит HTML, или false, если нет."
           }
         }
       }
@@ -2151,6 +2505,12 @@
             "state" : "translated",
             "value" : "A linha #separator de “%1$@” diz “%2$@”, e a Ficha não consegue separar colunas com isso. Use Tab, Comma ou Semicolon, ou remova a linha."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В строке #separator файла «%1$@» указано «%2$@», а этим Ficha не может разделять колонки. Укажите Tab, Comma или Semicolon или удалите эту строку."
+          }
         }
       }
     },
@@ -2186,6 +2546,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A captura está vazia: escreva o que você quer lembrar."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка пуста: напишите, что хотите запомнить."
           }
         }
       }
@@ -2223,6 +2589,12 @@
             "state" : "translated",
             "value" : "O baralho “%@” não existe mais, talvez porque outro dos seus dispositivos o renomeou ou apagou, por isso nada mudou. Procure-o entre seus baralhos com o novo nome, ou escolha outro."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колоды «%@» больше нет — возможно, ее переименовали или удалили на другом Вашем устройстве, — поэтому ничего не изменилось. Найдите ее среди своих колод под новым названием или выберите другую."
+          }
         }
       }
     },
@@ -2257,6 +2629,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O próximo cartão para revisar, ou quando ele chega. Clique para revisá-lo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая карточка для повторения или время ее появления. Нажмите на нее, чтобы ее повторить."
           }
         }
       }
@@ -2294,6 +2672,12 @@
             "state" : "translated",
             "value" : "Não há nenhum cartão com o id %lld: ele foi apagado, ou nunca existiu. Verifique o id do cartão."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточки с ID %lld нет: ее удалили или ее никогда не было. Проверьте ID карточки."
+          }
         }
       }
     },
@@ -2329,6 +2713,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não há nenhuma cópia chamada “%@” na pasta Backups da Ficha: ela foi movida ou apagada. Verifique quais cópias estão lá."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В папке «Backups» приложения Ficha нет копии с именем «%@»: ее переместили или удалили. Проверьте, какие копии там есть."
           }
         }
       }
@@ -2366,6 +2756,12 @@
             "state" : "translated",
             "value" : "Não há nenhum arquivo em “%@”. Verifique o caminho: um caminho que não começa com / ou ~ parte da pasta onde o comando é executado."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По пути «%@» нет файла. Проверьте путь: путь, который не начинается с / или ~, отсчитывается от папки, в которой выполняется команда."
+          }
         }
       }
     },
@@ -2400,6 +2796,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esta compilação não está assinada com seu App Group, cuja pasta guarda seus cartões. Instale a Ficha pelo TestFlight, ou compile a Ficha Dev com make run, com o ID da sua equipe em iPhone/Local.xcconfig, como diz docs/development.md."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта сборка не подписана своей App Group, в папке которой хранятся ее карточки. Установите Ficha из TestFlight или соберите Ficha Dev командой make run, указав ID своей команды в iPhone/Local.xcconfig, как описано в docs/development.md."
           }
         }
       }
@@ -2437,6 +2839,12 @@
             "state" : "translated",
             "value" : "Você já tem um tipo chamado “%@”, por isso nada mudou. Escolha esse tipo, ou escreva outro nome."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У Вас уже есть тип «%@», поэтому ничего не изменилось. Выберите этот тип или введите другое название."
+          }
         }
       }
     },
@@ -2473,6 +2881,12 @@
             "state" : "translated",
             "value" : "Sua pergunta sobre o cartão %lld foi aprovada ou descartada fora do painel de revisão, por isso ⌘Z não pode desfazê-la. Se ela se transformou em cartões que você não quer, apague-os na janela Cartões."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш вопрос о карточке %lld одобрили или отбросили вне панели повторения, поэтому ⌘Z не может его вернуть. Если из него получились ненужные Вам карточки, удалите их в окне «Карточки»."
+          }
         }
       }
     },
@@ -2507,6 +2921,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O macOS não deu nenhuma pasta para o App Group %@, que guarda seus cartões. Encerre o app e abra-o de novo e, se voltar a acontecer, relate o problema."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не предоставила папку для App Group %@, в которой хранятся Ваши карточки. Завершите приложение и откройте его снова, а если это повторится, сообщите об ошибке."
           }
         }
       }
@@ -2544,6 +2964,12 @@
             "state" : "translated",
             "value" : "“%@” não pode ficar dentro de Padrão, que guarda os cartões que não estão em nenhum outro baralho e não tem baralhos dentro dele, por isso nada mudou. Mova-o para dentro de outro baralho, ou para o nível mais alto."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» нельзя вложить в колоду «По умолчанию»: она хранит карточки, которых нет ни в одной другой колоде, и в ней не бывает вложенных колод, поэтому ничего не изменилось. Вложите ее в другую колоду или переместите на верхний уровень."
+          }
         }
       }
     },
@@ -2579,6 +3005,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” não pode ficar dentro de si mesmo, nem dentro de um baralho dentro dele, por isso nada mudou. Escolha um baralho fora dele."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» нельзя вложить в саму себя или во вложенную в нее колоду, поэтому ничего не изменилось. Выберите колоду вне ее."
           }
         }
       }
@@ -2616,6 +3048,12 @@
             "state" : "translated",
             "value" : "“%@” não pode ficar dentro de si mesma, nem dentro de uma etiqueta dentro dela, por isso nada mudou. Escolha uma etiqueta fora dela."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» нельзя вложить в саму себя или во вложенную в нее метку, поэтому ничего не изменилось. Выберите метку вне ее."
+          }
         }
       }
     },
@@ -2651,6 +3089,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” não contém nenhum som que a Ficha consiga ler. Use como som de um lado um som ou um vídeo com som, como um MP3, um M4A ou um MOV, e uma imagem como a imagem dele."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В «%@» нет звука, который Ficha может прочитать. Вместо этого укажите в качестве звука стороны звук или видео со звуком, например MP3, M4A или MOV, а картинку — в качестве ее изображения."
           }
         }
       }
@@ -2688,6 +3132,12 @@
             "state" : "translated",
             "value" : "“%@” não contém nenhum arquivo de texto de cartões: a Ficha procura um terminado em .txt, .csv ou .tsv junto das imagens e sons. Adicione-o, comprima tudo de novo em um zip e importe o resultado."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В «%@» нет текстового файла с карточками: Ficha ищет файл с расширением .txt, .csv или .tsv рядом с изображениями и звуками. Добавьте его, снова упакуйте все в zip и импортируйте полученный архив."
+          }
         }
       }
     },
@@ -2723,6 +3173,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%1$@” contém vários arquivos de texto de cartões, %2$@, e a Ficha importa um de cada vez. Comprima cada um em um zip separado com suas imagens e sons, e importe-os um por um."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В «%1$@» несколько текстовых файлов с карточками (%2$@), а Ficha импортирует их по одному. Упакуйте каждый в отдельный zip с его изображениями и звуками и импортируйте их по очереди."
           }
         }
       }
@@ -2760,6 +3216,12 @@
             "state" : "translated",
             "value" : "“%@” é o nome de Padrão, e Padrão guarda os cartões que não estão em nenhum outro baralho, por isso nada mudou. Para mover cartões para lá, escolha Padrão; para criar um baralho, escreva outro nome."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — название колоды «По умолчанию», которая хранит карточки, которых нет ни в одной другой колоде, поэтому ничего не изменилось. Чтобы переместить туда карточки, выберите «По умолчанию»; чтобы создать колоду, введите другое название."
+          }
         }
       }
     },
@@ -2795,6 +3257,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” é um dos tipos que vêm com a Ficha, por isso nada mudou. Escolha esse tipo, ou escreva outro nome."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — один из встроенных типов Ficha, поэтому ничего не изменилось. Выберите этот тип или введите другое название."
           }
         }
       }
@@ -2832,6 +3300,12 @@
             "state" : "translated",
             "value" : "“%@” está posto de lado, e um baralho nunca é ao mesmo tempo posto de lado e prioritário, nem um baralho dentro dele, por isso nada mudou. Primeiro, desmarque Pôr de Lado nele."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колода «%@» приостановлена, а приостановленная колода и вложенные в нее колоды не могут быть приоритетными, поэтому ничего не изменилось. Сначала снимите с нее приостановку."
+          }
         }
       }
     },
@@ -2867,6 +3341,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” não é texto UTF-8, que é o que a Ficha lê. Salve-o de novo como texto UTF-8, ou de uma planilha como “CSV UTF-8”, e importe o resultado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не текст в кодировке UTF-8, а Ficha читает только такой текст. Сохраните файл заново как текст в UTF-8 или из электронной таблицы в формате «CSV UTF-8» и импортируйте его."
           }
         }
       }
@@ -2904,6 +3384,12 @@
             "state" : "translated",
             "value" : "“%@” não é uma imagem que a Ficha consiga ler. Use como imagem de um lado uma imagem, como um JPEG ou um PNG, e um som como o som dele."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не изображение, которое Ficha может прочитать. Вместо этого укажите в качестве изображения стороны картинку, например JPEG или PNG, а звук — в качестве ее звука."
+          }
         }
       }
     },
@@ -2939,6 +3425,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” não é uma imagem nem um som que a Ficha consiga ler. Use uma imagem, como um JPEG ou um PNG, ou um som ou um vídeo com som, como um MP3, um M4A ou um MOV."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не изображение и не звук, которые Ficha может прочитать. Вместо этого укажите картинку, например JPEG или PNG, или звук либо видео со звуком, например MP3, M4A или MOV."
           }
         }
       }
@@ -2976,6 +3468,12 @@
             "state" : "translated",
             "value" : "“%@” não está fixada na barra lateral, talvez porque outro dos seus dispositivos a desafixou, por isso nada se moveu. Fixe-a primeiro."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метка «%@» не закреплена в боковом меню — возможно, ее открепили на другом Вашем устройстве, — поэтому ничего не перемещено. Сначала закрепите ее."
+          }
         }
       }
     },
@@ -3011,6 +3509,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” foi exportado por um Anki mais novo do que a Ficha conhece. No Anki, exporte o baralho de novo com “Suporta versões antigas do Anki” marcado, e importe o resultado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл «%@» экспортирован версией Anki новее тех, что знает Ficha. Экспортируйте колоду в Anki заново, установив флажок «С поддержкой старых версий Anki», и импортируйте полученный файл."
           }
         }
       }
