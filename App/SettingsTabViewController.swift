@@ -52,10 +52,10 @@ enum SettingsTab: String {
 
 /// The Settings window's content, as a Mac's usual settings window: its tabs
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
-/// window as tall as the selected tab and as wide as its toolbar's tabs need,
-/// 500 points at least. The last tab says which version of the
-/// app this is. It opens on the tab Lucas left it on last, unless it's asked
-/// to open on another.
+/// window as tall as the selected tab and as wide as its toolbar's tabs and
+/// the Backups tab's table of copies need, 500 points at least. The last tab
+/// says which version of the app this is. It opens on the tab Lucas left it on
+/// last, unless it's asked to open on another.
 final class SettingsTabViewController: NSTabViewController {
     /// How wide every tab is, and so the window.
     private var width: CGFloat = 500
@@ -76,7 +76,7 @@ final class SettingsTabViewController: NSTabViewController {
         let tabs: [SettingsTab] =
             [.general, .appearances, .reviewPanel, .scheduling, .backups] + (model.sync != nil ? [.sync] : [])
             + [.about]
-        width = Self.width(showing: tabs)
+        width = max(Self.width(showing: tabs), BackupsTab.settingsWidth(now: model.now))
         for shown in tabs {
             add(
                 shown,
