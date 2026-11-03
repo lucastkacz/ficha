@@ -641,10 +641,21 @@ extension CardsFileProblem {
     }
 }
 
-/// `words` in quotes, listed as the Mac's language lists them, like “ética”
-/// and “filosofía” in English.
-private func quotedList(_ words: [String]) -> String {
-    words.map { "“\($0)”" }.formatted(.list(type: .and))
+extension EngineError {
+    /// `name` in the quotes of the language the message shows in, like
+    /// “ética” in English, „ética“ in German and 「ética」 in Japanese: a text
+    /// of its own in the String Catalogs, added by hand and translated as a
+    /// message is, since a message takes a list of names as one value, which
+    /// its translation can't quote name by name.
+    static func quotedName(_ name: String) -> LocalizedStringResource {
+        LocalizedStringResource("“\(name)”")
+    }
+}
+
+/// `names`, each in the quotes of the language the message shows in, listed
+/// as the Mac's language lists them, like “ética” and “filosofía” in English.
+private func quotedList(_ names: [String]) -> String {
+    names.map { String(localized: EngineError.quotedName($0)) }.formatted(.list(type: .and))
 }
 
 extension EngineError {

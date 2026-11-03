@@ -56,10 +56,14 @@ struct EngineMessagesTests {
             Catalog.self, from: Data(contentsOf: Self.repo.appending(path: catalogPath)))
         let languages = try Self.languages(of: catalog, at: catalogPath)
 
-        for error in Self.samples {
-            let key = error.message.key
+        // Each message, and the quotes each name of a list in one takes, since
+        // a message takes the list as one value.
+        let texts =
+            Self.samples.map { (key: $0.message.key, shownBy: "as \($0) shows it") }
+            + [(key: EngineError.quotedName("Historia").key, shownBy: "as each name of a list in a message shows")]
+        for (key, shownBy) in texts {
             let entry = catalog.strings[key]
-            #expect(entry != nil, "\(catalogPath) has no “\(key)”: add it by hand, translated, as \(error) shows it.")
+            #expect(entry != nil, "\(catalogPath) has no “\(key)”: add it by hand, translated, \(shownBy).")
             for language in languages {
                 let unit = entry?.localizations?[language.code]?.stringUnit
                 #expect(

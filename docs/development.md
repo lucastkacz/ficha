@@ -155,7 +155,7 @@ Every text is translated, in the change that adds or changes it, into each of Fi
 - An App Shortcut's phrase: a `stringSet` of one phrase or more, each with `${applicationName}`, where Siri hears the app's name.
 - A text that must not change, such as one of symbols alone, gets `"shouldTranslate" : false` instead, and no translations.
 
-The engine's messages (`EngineError`) are manual keys, which the export keeps as they are, in the catalogs `CODING_STANDARDS.md` names for them: a new or changed message is added, or changed, by hand in each, translated, with the comment the other messages have, and FichaKit's `EngineMessagesTests` fails until it is.
+The engine's messages (`EngineError`) are manual keys, which the export keeps as they are, in the catalogs `CODING_STANDARDS.md` names for them: a new or changed message is added, or changed, by hand in each, translated, with the comment the other messages have, and FichaKit's `EngineMessagesTests` fails until it is. So is `“%@”`, one name in the quotes each language writes, like „Historia“ in German (`EngineError.quotedName`), which quotes each name of a list a message takes as one value, such as two decks', so that the list's quotes are the sentence's.
 
 For many texts at once, write the translations to a file and merge them into the catalog with a script, then run `make strings`, which writes the catalog back in Xcode's layout, and run it again, which should change nothing.
 
