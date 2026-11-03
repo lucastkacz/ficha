@@ -1,0 +1,24 @@
+# The languages make render and make render-iphone draw a window or the
+# iPhone's screen in: English, the app's base, and the eleven Ficha comes in
+# (ADR 0027). Both tools read this list, scripts/render/Sources/Render/main.swift
+# and scripts/render-iphone.sh, so a language joins them with a line here. The
+# list and its format are our own.
+#
+# Each line: the language's code, as String Catalogs name it; the region whose
+# formats for dates, numbers and durations a device in the language shows,
+# Unicode's likely one for it, as Locale.Language.maximalIdentifier gives it,
+# but Argentina for Ficha's Rioplatense Spanish; rtl for a language read right
+# to left, which mirrors the window, or ltr; and its name in English, for the
+# tools' messages.
+en US ltr English
+zh-Hans CN ltr Simplified Chinese
+ja JP ltr Japanese
+de DE ltr German
+es AR ltr Spanish
+fr FR ltr French
+ko KR ltr Korean
+pt BR ltr Portuguese
+zh-Hant TW ltr Traditional Chinese
+it IT ltr Italian
+ru RU ltr Russian
+ar EG rtl Arabic
