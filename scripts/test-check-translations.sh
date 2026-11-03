@@ -100,7 +100,7 @@ catalog missing "{
   \"Cancel\" : { \"localizations\" : { $(unit es 'Cancelar'), $(unit ja 'キャンセル') } },
   \"Review now\" : { \"localizations\" : { $(unit es 'Repasar ahora') } }
 }"
-expect_failure "a key missing a language another key has fails, naming the catalog, the key and the language" \
+expect_failure "a missing translation's failure names the catalog, the key and the language" \
   missing 'missing.xcstrings: “Review now” has no Japanese (ja) translation'
 
 catalog dutch "{
@@ -216,6 +216,11 @@ catalog shortcuts "{
     $(phrases es "Repasar ahora en $name"), $(phrases ja "${name}で今すぐ復習") } }
 }"
 expect_pass "an App Shortcut's phrases in every language pass" shortcuts
+
+printf '{\n  "strings" : { "Review now" : { "localizations" : { %s } } },\n  "version" : "1.0"\n}' \
+  "$(unit es 'Repasar ahora')" >"$tmp/sourceless.xcstrings"
+expect_failure "a catalog without its source language fails, saying how to fix it" sourceless \
+  "sourceless.xcstrings doesn't say its source language: write it back as Xcode writes it, with make strings, and run make check again."
 
 echo "garbled" >"$tmp/garbled.xcstrings"
 expect_failure "a catalog that isn't JSON fails, naming it" garbled "garbled.xcstrings isn't a String Catalog"

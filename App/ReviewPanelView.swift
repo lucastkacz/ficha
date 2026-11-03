@@ -278,7 +278,8 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// The panel's main button, at its bottom right, which Enter presses.
+    /// The panel's main button, at its bottom trailing corner, which Enter
+    /// presses.
     private func enterButton(_ title: Text, action: @escaping () -> Void) -> some View {
         HStack {
             Spacer()
@@ -323,12 +324,12 @@ struct ReviewPanelView: View {
     }
 
     /// A card's sides, under the line at its top and beside the buttons at
-    /// the panel's top right: the upper side, which `way` says, and the lower
-    /// one when it shows. The panel's window stops at its share of the
-    /// screen (`ReviewPanelWindow`). A card that doesn't fit has its upper
-    /// side go under the line at its top, the panel's width, and when it
-    /// still doesn't fit, its sides scroll, each card and way from its top,
-    /// while the line at its top and the buttons stay in view, as what's
+    /// the panel's top trailing corner: the upper side, which `way` says, and
+    /// the lower one when it shows. The panel's window stops at its share of
+    /// the screen (`ReviewPanelWindow`). A card that doesn't fit has its
+    /// upper side go under the line at its top, the panel's width, and when
+    /// it still doesn't fit, its sides scroll, each card and way from its
+    /// top, while the line at its top and the buttons stay in view, as what's
     /// under the card does. The scroll never takes the keyboard, so the
     /// panel's keys work as on a short card. The buttons show once, over the
     /// room each layout keeps for them, so no key belongs to two buttons. An
@@ -418,7 +419,7 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// Which buttons a card has at the panel's top right.
+    /// Which buttons a card has at the panel's top trailing corner.
     private enum TopButtons {
         /// Undo, ask, flag, bury, and close, with Esc.
         case forTheCard
@@ -427,8 +428,8 @@ struct ReviewPanelView: View {
         case closeWithoutEsc
     }
 
-    /// The buttons at a card's top right, with their keys, or, `withKeys`
-    /// false, a copy without them that only keeps their room.
+    /// The buttons at a card's top trailing corner, with their keys, or,
+    /// `withKeys` false, a copy without them that only keeps their room.
     @ViewBuilder
     private func topButtons(_ buttons: TopButtons, of panel: ReviewPanelModel, withKeys: Bool) -> some View {
         let closeByLucas = { panel.state.close(.byLucas) }

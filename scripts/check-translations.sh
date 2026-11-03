@@ -33,6 +33,12 @@ for catalog in "$@"; do
     found=1
     continue
   fi
+  # Without its source, the check can't tell English from a translation.
+  if ! jq -e '.sourceLanguage | type == "string"' "$catalog" >/dev/null; then
+    echo "$catalog doesn't say its source language: write it back as Xcode writes it, with make strings, and run make check again." >&2
+    found=1
+    continue
+  fi
   catalogs+=("$catalog")
   present+="$codes"$'\n'
 done
@@ -103,7 +109,10 @@ def failures($english; $language):
 EOF
 
 for catalog in ${catalogs[@]+"${catalogs[@]}"}; do
-  messages=$(jq -r --arg catalog "$catalog" --arg list "$list" --argjson listed "$listed" "$failures" "$catalog")
+  if ! messages=$(jq -r --arg catalog "$catalog" --arg list "$list" --argjson listed "$listed" "$failures" "$catalog"); then
+    echo "The check stopped reading $catalog, as jq says above: write it back as Xcode writes it, with make strings, or fix scripts/check-translations.sh, and run make check again." >&2
+    found=1
+  fi
   if [[ -n $messages ]]; then
     echo "$messages" >&2
     found=1

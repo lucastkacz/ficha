@@ -1618,7 +1618,9 @@ func addSampleArabicCard(in engine: Engine) throws {
                 """,
             tags: ["ciencia"], source: "نظرية الفوضى")
     else {
-        throw RenderError(description: "The sample's card in Arabic has a blank front or back.")
+        throw RenderError(
+            description:
+                "The sample's card in Arabic has a blank front or back: give it both in addSampleArabicCard(in:).")
     }
     try engine.create(content)
 }
