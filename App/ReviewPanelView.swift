@@ -84,6 +84,9 @@ struct ReviewPanelView: View {
     /// Where the cursor is in the question, or what's selected, which the ask
     /// button clears as the note's is.
     @State private var questionSelection: TextSelection?
+    /// Whether the panel reads right to left, which says whether a card's
+    /// upper side can sit beside the buttons.
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HeightUpTo(maximum: maximumHeight) {
@@ -328,7 +331,11 @@ struct ReviewPanelView: View {
     /// while the line at its top and the buttons stay in view, as what's
     /// under the card does. The scroll never takes the keyboard, so the
     /// panel's keys work as on a short card. The buttons show once, over the
-    /// room each layout keeps for them, so no key belongs to two buttons.
+    /// room each layout keeps for them, so no key belongs to two buttons. An
+    /// upper side that reads against the panel, a Spanish card in Arabic,
+    /// always goes under the line at its top, since beside the buttons it
+    /// would start from where they end, rather than from the panel's edge as
+    /// its lower side does.
     private func sides<TopLine: View>(
         of card: Card, _ way: Way, showingLowerSide: Bool, buttons: TopButtons, in panel: ReviewPanelModel,
         @ViewBuilder topLine: () -> TopLine
@@ -345,17 +352,19 @@ struct ReviewPanelView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         return ViewThatFits(in: .vertical) {
-            VStack(alignment: .leading, spacing: 16) {
-                header {
-                    VStack(alignment: .leading, spacing: 8) {
-                        line
-                        upper
+            if layoutDirection.readsFromLeadingSide(card.text(on: way.upperSide)) {
+                VStack(alignment: .leading, spacing: 16) {
+                    header {
+                        VStack(alignment: .leading, spacing: 8) {
+                            line
+                            upper
+                        }
+                    } buttons: {
+                        room
                     }
-                } buttons: {
-                    room
-                }
-                if showingLowerSide {
-                    lower
+                    if showingLowerSide {
+                        lower
+                    }
                 }
             }
             VStack(alignment: .leading, spacing: 8) {

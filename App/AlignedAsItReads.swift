@@ -15,17 +15,25 @@ extension View {
     }
 }
 
+extension LayoutDirection {
+    /// Whether `text` starts reading from this layout's leading side, as
+    /// `ReadingDirection` finds from its first letter: a Spanish card does in
+    /// English and not in Arabic. A text without a letter does.
+    func readsFromLeadingSide(_ text: String) -> Bool {
+        switch ReadingDirection(of: text) {
+        case nil: true
+        case .leftToRight: self == .leftToRight
+        case .rightToLeft: self == .rightToLeft
+        }
+    }
+}
+
 private struct AlignedAsItReads: ViewModifier {
     let text: String
     @Environment(\.layoutDirection) private var layoutDirection
 
     func body(content: Content) -> some View {
-        let readsAsTheLayout =
-            switch ReadingDirection(of: text) {
-            case nil: true
-            case .leftToRight: layoutDirection == .leftToRight
-            case .rightToLeft: layoutDirection == .rightToLeft
-            }
+        let readsAsTheLayout = layoutDirection.readsFromLeadingSide(text)
         content
             .multilineTextAlignment(readsAsTheLayout ? .leading : .trailing)
             .frame(maxWidth: .infinity, alignment: readsAsTheLayout ? .leading : .trailing)
