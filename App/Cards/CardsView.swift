@@ -184,9 +184,9 @@ struct CardsView: View {
     /// window first opens, and only for a pane whose content is there by
     /// then, which is why the window opens with the cards already read
     /// (`AppModel.openCardsWindow()`): the table's pane opens wide enough
-    /// for Front, Media, Interval and Due in the app's language
-    /// (`CardTableColumns.openingPaneWidth`), taking the points from the
-    /// detail. The sidebar opens wide enough for the
+    /// for Media, Interval and Due in the app's language and for Front about
+    /// as wide as in English beside them (`CardTableColumns.openingPaneWidth`),
+    /// taking the points from the detail. The sidebar opens wide enough for the
     /// sample decks' names to read whole beside their counts, after their
     /// emoji, two levels down too, like Idiomas › Español › Rioplatense. The
     /// panes' least widths add up to the window's either way.

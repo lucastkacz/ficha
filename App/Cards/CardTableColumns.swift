@@ -80,17 +80,21 @@ struct CardTableColumns {
             cells: days, min: 80, ideal: 96, max: 140)
     }
 
-    /// How wide the table's pane opens: 440 points, as in English, or wide
-    /// enough for the columns the table starts with, Front, Media, Interval
-    /// and Due, each at its least width, where they need more, as in
-    /// Spanish, so that the table doesn't scroll sideways; the detail beside
-    /// it gives up those points. The columns and the room the table takes
-    /// besides them, in its inset style, with a scroller that takes room, as
-    /// it does with a mouse (`ColumnWidth.tableSpacing`).
+    /// How wide the table's pane opens, so that Front, which takes the room
+    /// the other columns leave, opens about as wide as in English, some 145
+    /// points, beside the columns the table starts with, Media, Interval and
+    /// Due: 440 points, as in English, wider by the points those three need
+    /// at their least widths beyond the 184 they need in English, as in
+    /// Spanish; and at least wide enough for the four at their least widths,
+    /// so that the table doesn't scroll sideways. The detail beside it gives
+    /// up those points. The columns and the room the table takes besides
+    /// them, in its inset style, with a scroller that takes room, as it does
+    /// with a mouse (`ColumnWidth.tableSpacing`).
     var openingPaneWidth: CGFloat {
         let columns = [front, media, interval, due].map(\.min)
         let table =
             columns.reduce(0, +) + ColumnWidth.tableSpacing(columns: columns.count, edges: 16.5, scroller: true)
-        return max(440, table.rounded(.up))
+        let others = columns.dropFirst().reduce(0, +)
+        return max(440 + max(0, others - 184), table).rounded(.up)
     }
 }
