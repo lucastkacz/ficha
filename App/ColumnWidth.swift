@@ -41,6 +41,19 @@ enum ColumnWidth {
     static func width(of text: String, in font: NSFont) -> CGFloat {
         (text as NSString).size(withAttributes: [.font: font]).width
     }
+
+    /// The points an AppKit table takes besides the widths of its `count`
+    /// columns: the 17 between two columns, `edges` at each of its sides,
+    /// which its style decides, and, if it has a `scroller`, a legacy
+    /// scroller's width, which the scroller takes beside the columns with a
+    /// mouse. Our own sum, as `make render`'s pictures and AppKit's frames
+    /// measure it: 16.5 at each edge in the inset style the Cards window's
+    /// table has, and 6 in the full-width one SwiftUI gives a table in a
+    /// grouped form.
+    static func tableSpacing(columns count: Int, edges: CGFloat, scroller: Bool) -> CGFloat {
+        let scrollerWidth = scroller ? NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy) : 0
+        return 17 * CGFloat(count - 1) + 2 * edges + scrollerWidth
+    }
 }
 
 /// A table column's header, in the app's language, and its widths: the ones

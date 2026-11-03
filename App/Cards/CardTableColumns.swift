@@ -88,13 +88,13 @@ struct CardTableColumns {
     /// enough for the columns the table starts with, Front, Media, Interval
     /// and Due, each at its least width, where they need more, as in
     /// Spanish, so that the table doesn't scroll sideways; the detail beside
-    /// it gives up those points. Our own sum of AppKit's table, as
-    /// `make render`'s pictures measure it: the columns, the 17 points
-    /// between two of them, 8 at each of the table's edges, and a scroller
-    /// that takes room, as it does with a mouse.
+    /// it gives up those points. The columns and the room the table takes
+    /// besides them, in its inset style, with a scroller that takes room, as
+    /// it does with a mouse (`ColumnWidth.tableSpacing`).
     var openingPaneWidth: CGFloat {
         let columns = [front, media, interval, due].map(\.min)
-        let table = columns.reduce(0, +) + 17 * CGFloat(columns.count) + 2 * 8
-        return max(440, (table + NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy)).rounded(.up))
+        let table =
+            columns.reduce(0, +) + ColumnWidth.tableSpacing(columns: columns.count, edges: 16.5, scroller: true)
+        return max(440, table.rounded(.up))
     }
 }

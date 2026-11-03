@@ -11,6 +11,9 @@ import SwiftUI
 /// decides.
 struct BackupsTab: View {
     @Bindable var model: AppModel
+    /// How wide the tab is, as wide as Settings, which its table of copies
+    /// fits.
+    let width: CGFloat
     /// Closes the review panel, if it's open, before a restore.
     let closeReviewPanel: () -> Void
 
@@ -203,14 +206,19 @@ struct BackupsTab: View {
             Text(error.localizedDescription)
                 .foregroundStyle(.secondary)
         case .success(let copies)?:
-            let columns = Self.columns(now: model.now)
+            // The grouped form puts the table 20 points in from each side.
+            let columns = CopyTableColumns(now: model.now, tableWidth: width - 2 * 20)
             Table(copies, selection: selection) {
                 TableColumn(Text(columns.saved.header)) {
-                    Text($0.savedAt.formatted(Self.savedAt))
+                    Text($0.savedAt.formatted(CopyTableColumns.savedAt))
                 }
                 .width(fitting: columns.saved)
                 TableColumn(Text(columns.kind.header)) {
-                    Text(Self.kindName($0.kind))
+                    // Wraps where the column is narrower than the kind's
+                    // name, as beside Spanish's dates, rather than keep to
+                    // one line, as a table's text does.
+                    Text(kindName($0.kind))
+                        .lineLimit(nil)
                 }
                 .width(fitting: columns.kind)
                 TableColumn(Text(columns.size.header)) {
@@ -223,41 +231,6 @@ struct BackupsTab: View {
             EmptyView()
         }
     }
-
-    /// The copies table's columns, on `now`: Saved and Kind share the room
-    /// Size leaves, each at least as wide as its longest text in the app's
-    /// language, and Size is 80 points, as in English, or as wide as its
-    /// header and the longest size, such as 999.9 MB, need.
-    private static func columns(now: Date) -> (saved: FittedColumn, kind: FittedColumn, size: FittedColumn) {
-        (
-            FittedColumn(
-                String(localized: "Saved", comment: "Settings, under Backups: the column of when a copy was saved."),
-                cells: ColumnWidth.inEachMonth(savedAt, of: now), sorts: false),
-            FittedColumn(
-                String(localized: "Kind", comment: "Settings, under Backups: the column of each copy's kind."),
-                cells: DatabaseCopy.Kind.allCases.map { kindName($0) }, sorts: false),
-            FittedColumn(
-                String(localized: "Size", comment: "Settings, under Backups: the column of what each copy weighs."),
-                cells: [Int64(999_900_000).formatted(.byteCount(style: .file))], sorts: false, min: 80, max: 80)
-        )
-    }
-
-    /// How wide Settings is for the copies' table to show each column whole,
-    /// on `now`: about 500 points in English, and more where the dates and
-    /// the kinds run longer, as Spanish's together do, since a table short of
-    /// room pushes its last column out of sight. Our own sum of AppKit's
-    /// table in a grouped form, as `make render`'s pictures measure it: the
-    /// columns, the 17 points between two of them, 6 at each of the table's
-    /// edges, and the form's 20 at each side.
-    static func settingsWidth(now: Date) -> CGFloat {
-        let columns = columns(now: now)
-        let widths = [columns.saved.min, columns.kind.min, columns.size.min]
-        return (widths.reduce(0, +) + 17 * CGFloat(widths.count - 1) + 2 * 6 + 2 * 20).rounded(.up)
-    }
-
-    /// How the Saved column shows when a copy was saved, which its width
-    /// measures too.
-    private static let savedAt = Date.FormatStyle(date: .abbreviated, time: .shortened)
 
     /// How many `copies` there are and what they weigh in all, and under
     /// it what the images and the sounds they share weigh, when they share
@@ -380,7 +353,7 @@ struct BackupsTab: View {
     }
 
     /// What `kind` of copy is called in the table.
-    private static func kindName(_ kind: DatabaseCopy.Kind) -> String {
+    private func kindName(_ kind: DatabaseCopy.Kind) -> String {
         switch kind {
         case .backup:
             String(localized: "Backup", comment: "Settings, under Backups: a copy's kind, a backup.")

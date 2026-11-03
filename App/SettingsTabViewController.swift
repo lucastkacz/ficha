@@ -52,10 +52,10 @@ enum SettingsTab: String {
 
 /// The Settings window's content, as a Mac's usual settings window: its tabs
 /// in the toolbar, each as tall as its settings, so none scrolls, and the
-/// window as tall as the selected tab and as wide as its toolbar's tabs and
-/// the Backups tab's table of copies need, 500 points at least. The last tab
-/// says which version of the app this is. It opens on the tab Lucas left it on
-/// last, unless it's asked to open on another.
+/// window as tall as the selected tab and as wide as its toolbar's tabs need,
+/// 500 points at least. The last tab says which version of the
+/// app this is. It opens on the tab Lucas left it on last, unless it's asked
+/// to open on another.
 final class SettingsTabViewController: NSTabViewController {
     /// How wide every tab is, and so the window.
     private var width: CGFloat = 500
@@ -76,20 +76,21 @@ final class SettingsTabViewController: NSTabViewController {
         let tabs: [SettingsTab] =
             [.general, .appearances, .reviewPanel, .scheduling, .backups] + (model.sync != nil ? [.sync] : [])
             + [.about]
-        width = max(Self.width(showing: tabs), BackupsTab.settingsWidth(now: model.now))
+        width = Self.width(showing: tabs)
         for shown in tabs {
             add(
                 shown,
                 content: Self.content(
-                    of: shown, model: model, captureShortcut: captureShortcut, closeReviewPanel: closeReviewPanel))
+                    of: shown, width: width, model: model, captureShortcut: captureShortcut,
+                    closeReviewPanel: closeReviewPanel))
         }
         select(firstTab)
     }
 
-    /// What `tab` shows.
+    /// What `tab` shows, `width` points wide.
     @ViewBuilder
     private static func content(
-        of tab: SettingsTab, model: AppModel, captureShortcut: CaptureShortcutRegistration,
+        of tab: SettingsTab, width: CGFloat, model: AppModel, captureShortcut: CaptureShortcutRegistration,
         closeReviewPanel: @escaping () -> Void
     ) -> some View {
         switch tab {
@@ -102,7 +103,7 @@ final class SettingsTabViewController: NSTabViewController {
         case .scheduling:
             ProgressSettingsForm(
                 model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler))
-        case .backups: BackupsTab(model: model, closeReviewPanel: closeReviewPanel)
+        case .backups: BackupsTab(model: model, width: width, closeReviewPanel: closeReviewPanel)
         case .sync: SyncTab(model: model)
         case .about: AboutTab()
         }
@@ -112,10 +113,12 @@ final class SettingsTabViewController: NSTabViewController {
     /// English, or as wide as the toolbar needs to show every tab's name in
     /// a language whose names run longer, as German's and French's do, since
     /// a name can't wrap and AppKit hides the tabs that don't fit behind ».
-    /// The forms inside keep wrapping their texts. Our own sum of AppKit's
-    /// toolbar, as `make render`'s pictures measure it: each name in the
-    /// toolbar's font, at least as wide as an icon, the room between two
-    /// tabs and at the window's edges.
+    /// The forms inside keep wrapping their texts, and the Backups tab's
+    /// table of copies fits by narrowing its Kind column, whose texts wrap
+    /// too (`CopyTableColumns`). Our own sum of AppKit's toolbar, as
+    /// `make render`'s pictures measure it: each name in the toolbar's font,
+    /// at least as wide as an icon, the room between two tabs and at the
+    /// window's edges.
     private static func width(showing tabs: [SettingsTab]) -> CGFloat {
         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         let names = tabs.map { max(ColumnWidth.width(of: $0.name, in: font), 32) }
