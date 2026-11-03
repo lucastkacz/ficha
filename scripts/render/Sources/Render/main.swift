@@ -21,8 +21,9 @@ import SwiftUI
 // table here broke `CaptureShortcut.swift`. Give what you add at the top level
 // a name of its own.
 
-/// A window the tool can draw, by the name its arguments give it.
-enum Window: String {
+/// A window the tool can draw, by the name its arguments give it, which the
+/// usage lists.
+enum Window: String, CaseIterable {
     case cards
     /// The Cards window on ciencia, once the sample's tags sit inside tags
     /// and five are pinned, in an order of their own, its sidebar scrolled to
@@ -406,17 +407,8 @@ let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was writte
 let usage = """
     Usage: make render ARGS="<window> [--dark] [--language <code>] [--click <point> | --key <keys> | --type <text>]...
                              [--out <file.png>]"
-      <window>   cards, cards-import (its Import sheet, previewing a file), cards-import-anki (previewing an Anki
-                 package), cards-anki-imported (once it came in, a card it brought progress to selected),
-                 cards-import-heavy (previewing a zip whose images weigh 240 MB, while sync is on), backups
-                 (Settings, on its Backups tab), backups-failed (once a backup failed), appearances, review-panel
-                 or scheduling (Settings on those tabs, with the settings that decide progress not Ficha's), sync
-                 (Settings, on its Sync tab, synced), sync-no-account (signed out of iCloud), sync-full (iCloud
-                 full), sync-off (turned off, with 800 MB to send), sync-purged (off after a purge of Ficha's data
-                 in iCloud), sync-restored (off after a restore), sync-chosen-decks (syncing only the cards in
-                 two ticked decks), sync-first (off since the Mac held cards before it ever synced), menu-icloud-full (the menu's content while iCloud is full, in a window), about
-                 (Settings, on its About tab), start-at-login (the alert the real Ficha shows at its first launch)
-                 or diagnostics (while a Focus holds appearances back, once it held one back)
+      <window>   one of these, which "A window's picture" in docs/development.md describes:
+    \(indentedLines(listing: Window.allCases.map(\.rawValue), indent: 13, width: 118))
       --dark     dark mode instead of light
       --language the language to draw the window in, as a Mac in it shows it: with the app's translations, its region's
                  formats, and mirrored for Arabic. Without it, English, with this Mac's formats. The languages, by
@@ -434,6 +426,23 @@ let usage = """
     prints what holds the focus.
     While the window has a sheet, an alert or a confirmation open, they go to it.
     """
+
+/// `names`, separated by commas, in lines no wider than `width`, each
+/// indented by `indent` spaces, as the usage lists the windows.
+func indentedLines(listing names: [String], indent: Int, width: Int) -> String {
+    var lines: [String] = []
+    var line = ""
+    for (index, name) in names.enumerated() {
+        let word = index == names.count - 1 ? name : "\(name),"
+        if !line.isEmpty, indent + line.count + 1 + word.count > width {
+            lines.append(line)
+            line = ""
+        }
+        line += line.isEmpty ? word : " \(word)"
+    }
+    lines.append(line)
+    return lines.map { String(repeating: " ", count: indent) + $0 }.joined(separator: "\n")
+}
 
 /// Splits the modifier keys held down off `name`, an argument of `option`:
 /// for `--key cmd+f`, Command and `f`.

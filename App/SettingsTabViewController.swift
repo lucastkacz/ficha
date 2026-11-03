@@ -73,24 +73,39 @@ final class SettingsTabViewController: NSTabViewController {
         // Read before adding the tabs, since adding the first one selects it.
         let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
-        width = Self.width(
-            showing: [.general, .appearances, .reviewPanel, .scheduling, .backups]
-                + (model.sync != nil ? [.sync] : []) + [.about])
-        add(.general, settings: GeneralSettings(model: model, captureShortcut: captureShortcut))
-        // Each of these changes one of the settings that decide a card's
-        // progress, which the engine keeps.
-        add(.appearances, content: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model)))
-        add(.reviewPanel, content: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model)))
-        add(
-            .scheduling,
-            content: ProgressSettingsForm(
-                model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler)))
-        add(.backups, content: BackupsTab(model: model, closeReviewPanel: closeReviewPanel))
-        if model.sync != nil {
-            add(.sync, content: SyncTab(model: model))
+        let tabs: [SettingsTab] =
+            [.general, .appearances, .reviewPanel, .scheduling, .backups] + (model.sync != nil ? [.sync] : [])
+            + [.about]
+        width = Self.width(showing: tabs)
+        for shown in tabs {
+            add(
+                shown,
+                content: Self.content(
+                    of: shown, model: model, captureShortcut: captureShortcut, closeReviewPanel: closeReviewPanel))
         }
-        add(.about, content: AboutTab())
         select(firstTab)
+    }
+
+    /// What `tab` shows.
+    @ViewBuilder
+    private static func content(
+        of tab: SettingsTab, model: AppModel, captureShortcut: CaptureShortcutRegistration,
+        closeReviewPanel: @escaping () -> Void
+    ) -> some View {
+        switch tab {
+        case .general:
+            Form { GeneralSettings(model: model, captureShortcut: captureShortcut) }.formStyle(.grouped)
+        // Each of these three changes one of the settings that decide a
+        // card's progress, which the engine keeps.
+        case .appearances: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model))
+        case .reviewPanel: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model))
+        case .scheduling:
+            ProgressSettingsForm(
+                model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler))
+        case .backups: BackupsTab(model: model, closeReviewPanel: closeReviewPanel)
+        case .sync: SyncTab(model: model)
+        case .about: AboutTab()
+        }
     }
 
     /// How wide Settings is with `tabs` in its toolbar: 500 points, as in
@@ -103,7 +118,7 @@ final class SettingsTabViewController: NSTabViewController {
     /// tabs and at the window's edges.
     private static func width(showing tabs: [SettingsTab]) -> CGFloat {
         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        let names = tabs.map { max(($0.name as NSString).size(withAttributes: [.font: font]).width, 32) }
+        let names = tabs.map { max(ColumnWidth.width(of: $0.name, in: font), 32) }
         let toolbar = names.reduce(0, +) + 14 * CGFloat(tabs.count - 1) + 2 * 24
         return max(500, toolbar.rounded(.up))
     }
@@ -113,11 +128,6 @@ final class SettingsTabViewController: NSTabViewController {
         if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == tab }) {
             selectedTabViewItemIndex = index
         }
-    }
-
-    /// Adds `tab`, which shows `settings` in a grouped form.
-    private func add(_ tab: SettingsTab, settings: some View) {
-        add(tab, content: Form { settings }.formStyle(.grouped))
     }
 
     /// Adds `tab`, which shows `content`, as wide as every tab. The tab

@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 /// The width a table's column needs for its header and the texts of its cells
 /// to show whole in the language the app shows, as `CODING_STANDARDS.md` asks
@@ -8,9 +9,7 @@ import AppKit
 /// gives, never to its texts: each text in the font AppKit draws it in, with
 /// the room around it that `make render`'s pictures showed, beyond the 17
 /// points between two columns that a column's width leaves out, and a few
-/// more, which the last column loses beside the scroller. A column
-/// takes it as its least width, since a table short of room narrows every
-/// column down to its least.
+/// more, which the last column loses beside the scroller.
 enum ColumnWidth {
     /// The width that fits `header`, semibold and with the sort indicator
     /// after it as when the table is sorted by the column, if the column
@@ -26,19 +25,54 @@ enum ColumnWidth {
         return max(headerWidth, cellWidth).rounded(.up)
     }
 
-    /// `format`'s text of a day in each month of this year, late in the
+    /// `style`'s text of a day in each month of `now`'s year, late in the
     /// evening, so that the longest month's name and the longest hour are
-    /// among them.
-    static func inEachMonth(_ format: (Date) -> String) -> [String] {
+    /// among them: the texts of a column that shows dates in `style`.
+    static func inEachMonth(_ style: Date.FormatStyle, of now: Date) -> [String] {
         let calendar = Calendar.current
-        let year = calendar.component(.year, from: .now)
+        let year = calendar.component(.year, from: now)
         return (1...12).compactMap { month in
             calendar.date(from: DateComponents(year: year, month: month, day: 28, hour: 22, minute: 30))
         }
-        .map(format)
+        .map(style.format)
     }
 
-    private static func width(of text: String, in font: NSFont) -> CGFloat {
+    /// How wide `text` is in `font`, as AppKit draws it.
+    static func width(of text: String, in font: NSFont) -> CGFloat {
         (text as NSString).size(withAttributes: [.font: font]).width
+    }
+}
+
+/// A table column's header, in the app's language, and its widths: the ones
+/// it has in English, each raised to the width `ColumnWidth` measures for the
+/// header and the texts of its cells where that's more. A column takes them
+/// with `width(fitting:)`, its least width among them, since a table short
+/// of room narrows every column down to its least.
+struct FittedColumn {
+    let header: String
+    let min: CGFloat
+    let ideal: CGFloat?
+    let max: CGFloat?
+
+    /// `header`'s column, whose cells show `cells`, the longest texts they
+    /// show in the app's language, and which `sorts` or not, with English's
+    /// widths, `min`, `ideal` and `max`: a width not given stays SwiftUI's,
+    /// but the least, which is the fitted width then.
+    init(
+        _ header: String, cells: [String] = [], sorts: Bool = true, min: CGFloat = 0, ideal: CGFloat? = nil,
+        max: CGFloat? = nil
+    ) {
+        let fitted = ColumnWidth.fitting(header: header, cells: cells, sorts: sorts)
+        self.header = header
+        self.min = Swift.max(min, fitted)
+        self.ideal = ideal.map { Swift.max($0, fitted) }
+        self.max = max.map { Swift.max($0, fitted) }
+    }
+}
+
+extension TableColumn {
+    /// The column at `column`'s widths.
+    func width(fitting column: FittedColumn) -> TableColumn<RowValue, Sort, Content, Label> {
+        width(min: column.min, ideal: column.ideal, max: column.max)
     }
 }

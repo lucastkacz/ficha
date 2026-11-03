@@ -206,23 +206,21 @@ struct BackupsTab: View {
             // Saved and Kind share the room Size leaves, each at least as
             // wide as its longest text in the app's language: Spanish's dates
             // and German's kinds run long.
-            let saved = String(
-                localized: "Saved", comment: "Settings, under Backups: the column of when a copy was saved.")
-            let savedWidth = ColumnWidth.fitting(
-                header: saved, cells: ColumnWidth.inEachMonth { $0.formatted(date: .abbreviated, time: .shortened) },
-                sorts: false)
-            let kind = String(localized: "Kind", comment: "Settings, under Backups: the column of each copy's kind.")
-            let kindWidth = ColumnWidth.fitting(
-                header: kind, cells: DatabaseCopy.Kind.allCases.map { kindName($0) }, sorts: false)
+            let saved = FittedColumn(
+                String(localized: "Saved", comment: "Settings, under Backups: the column of when a copy was saved."),
+                cells: ColumnWidth.inEachMonth(Self.savedAt, of: model.now), sorts: false)
+            let kind = FittedColumn(
+                String(localized: "Kind", comment: "Settings, under Backups: the column of each copy's kind."),
+                cells: DatabaseCopy.Kind.allCases.map { kindName($0) }, sorts: false)
             Table(copies, selection: selection) {
-                TableColumn(Text(saved)) {
-                    Text($0.savedAt.formatted(date: .abbreviated, time: .shortened))
+                TableColumn(Text(saved.header)) {
+                    Text($0.savedAt.formatted(Self.savedAt))
                 }
-                .width(min: savedWidth)
-                TableColumn(Text(kind)) {
+                .width(fitting: saved)
+                TableColumn(Text(kind.header)) {
                     Text(kindName($0.kind))
                 }
-                .width(min: kindWidth)
+                .width(fitting: kind)
                 TableColumn(Text("Size", comment: "Settings, under Backups: the column of what each copy weighs.")) {
                     Text($0.size.formatted(.byteCount(style: .file)))
                 }
@@ -233,6 +231,10 @@ struct BackupsTab: View {
             EmptyView()
         }
     }
+
+    /// How the Saved column shows when a copy was saved, which its width
+    /// measures too.
+    private static let savedAt = Date.FormatStyle(date: .abbreviated, time: .shortened)
 
     /// How many `copies` there are and what they weigh in all, and under
     /// it what the images and the sounds they share weigh, when they share

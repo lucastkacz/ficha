@@ -184,7 +184,9 @@ struct CardsView: View {
     /// window first opens, and only for a pane whose content is there by
     /// then, which is why the window opens with the cards already read
     /// (`AppModel.openCardsWindow()`): the table's pane opens wide enough
-    /// for Front, Media, Interval and Due. The sidebar opens wide enough for the
+    /// for Front, Media, Interval and Due in the app's language
+    /// (`CardTableColumns.openingPaneWidth`), taking the points from the
+    /// detail. The sidebar opens wide enough for the
     /// sample decks' names to read whole beside their counts, after their
     /// emoji, two levels down too, like Idiomas › Español › Rioplatense. The
     /// panes' least widths add up to the window's either way.
@@ -195,7 +197,9 @@ struct CardsView: View {
                 .waiting(while: state.editing != nil)
         } content: {
             table
-                .navigationSplitViewColumnWidth(min: listsAllTagsTree ? 500 : 380, ideal: 440)
+                .navigationSplitViewColumnWidth(
+                    min: listsAllTagsTree ? 500 : 380, ideal: CardTableColumns(now: state.now).openingPaneWidth
+                )
                 .waiting(while: state.editing != nil)
         } detail: {
             detail
@@ -1227,109 +1231,62 @@ struct CardsView: View {
     /// the headers shows SwiftUI's menu of the columns, as in Finder, which
     /// adds or removes all of them but Front.
     private func cardTable(_ rows: [CardRow]) -> some View {
-        // The headers and the cells' texts that run longer than English's in
-        // some language, and the widths that fit them: each column's least,
-        // ideal and greatest widths are English's, or that width where it's
-        // more.
-        let front = String(localized: "Front", comment: "A column of the Cards window: the card's front.")
-        let frontWidth = ColumnWidth.fitting(header: front)
-        let media = String(
-            localized: "Media",
-            comment: "A column of the Cards window: whether the card's sides have an image or a sound.")
-        let mediaWidth = ColumnWidth.fitting(header: media)
-        let interval = String(
-            localized: "Interval",
-            comment: "A column of the Cards window: how long the card waits after its last review."
-        )
-        let intervalTexts = [WayIntervalText.new, WayIntervalText.learning]
-        let intervalWidth = ColumnWidth.fitting(header: interval, cells: intervalTexts)
-        let due = String(localized: "Due", comment: "A column of the Cards window: when the card is due.")
-        let dueTexts = DueText.samples(from: state.now)
-        let dueWidth = ColumnWidth.fitting(header: due, cells: dueTexts)
-        let backFirstInterval = String(
-            localized: "Back-first interval",
-            comment:
-                "A column of the Cards window: how long a card that goes both ways waits after its last review back first."
-        )
-        let backFirstIntervalWidth = ColumnWidth.fitting(header: backFirstInterval, cells: intervalTexts)
-        let backFirstDue = String(
-            localized: "Back-first due",
-            comment: "A column of the Cards window: when a card that goes both ways is due back first.")
-        let backFirstDueWidth = ColumnWidth.fitting(header: backFirstDue, cells: dueTexts)
-        let tags = String(localized: "Tags", comment: "A column of the Cards window: the card's tags.")
-        let tagsWidth = ColumnWidth.fitting(header: tags)
-        let dates = ColumnWidth.inEachMonth { $0.formatted(date: .abbreviated, time: .omitted) }
-        let lastSeen = String(
-            localized: "Last seen", comment: "A column of the Cards window: when Lucas last reviewed the card.")
-        let lastSeenWidth = ColumnWidth.fitting(header: lastSeen, cells: dates)
-        let created = String(
-            localized: "Created", comment: "A column of the Cards window: when Lucas approved the card.")
-        let createdWidth = ColumnWidth.fitting(header: created, cells: dates)
-        let edited = String(
-            localized: "Edited", comment: "A column of the Cards window: when the card's front or back last changed.")
-        let editedWidth = ColumnWidth.fitting(header: edited, cells: dates)
+        // Each column's header and widths, fitted to its texts in the app's
+        // language.
+        let fitted = CardTableColumns(now: state.now)
         return Table(of: CardRow.self, selection: selectedCards, sortOrder: $sortOrder, columnCustomization: $columns) {
-            TableColumn(Text(front), sortUsing: CardRowOrder(.front)) { row in
+            TableColumn(Text(fitted.front.header), sortUsing: CardRowOrder(.front)) { row in
                 FrontCell(card: row.card)
             }
-            // The one column that narrows below its texts when the table is
-            // short of room, as in Spanish beside the detail, since a front
-            // is often too long for any width.
-            .width(min: max(60, frontWidth))
+            // Narrows below its texts, the user's fronts, as Type, Tags and
+            // Source do: `CardTableColumns` says why.
+            .width(fitting: fitted.front)
             .customizationID(CardRowOrder.Column.front.rawValue)
             // Always there, as Finder's Name: it says which card a row is.
             .disabledCustomizationBehavior(.visibility)
-            TableColumn(Text(media), sortUsing: CardRowOrder(.media)) { row in
+            TableColumn(Text(fitted.media.header), sortUsing: CardRowOrder(.media)) { row in
                 MediaCell(card: row.card)
             }
-            .width(min: max(48, mediaWidth), ideal: max(56, mediaWidth), max: max(80, mediaWidth))
+            .width(fitting: fitted.media)
             .customizationID(CardRowOrder.Column.media.rawValue)
             // In a group, since a table's builder takes ten columns at most.
             Group {
-                TableColumn(Text(interval), sortUsing: CardRowOrder(.interval)) { row in
+                TableColumn(Text(fitted.interval.header), sortUsing: CardRowOrder(.interval)) { row in
                     WayIntervalText(way: row.frontFirst)
                 }
-                .width(min: max(56, intervalWidth), ideal: max(64, intervalWidth), max: max(100, intervalWidth))
+                .width(fitting: fitted.interval)
                 .customizationID(CardRowOrder.Column.interval.rawValue)
-                TableColumn(Text(due), sortUsing: CardRowOrder(.due)) { row in
-                    Text(dueText(row.frontFirst, at: state.now))
+                TableColumn(Text(fitted.due.header), sortUsing: CardRowOrder(.due)) { row in
+                    Text(DueText.of(row.frontFirst, at: state.now))
                 }
-                .width(min: max(60, dueWidth), ideal: max(72, dueWidth), max: max(110, dueWidth))
+                .width(fitting: fitted.due)
                 .customizationID(CardRowOrder.Column.due.rawValue)
-                TableColumn(Text(backFirstInterval), sortUsing: CardRowOrder(.backFirstInterval)) { row in
+                TableColumn(Text(fitted.backFirstInterval.header), sortUsing: CardRowOrder(.backFirstInterval)) {
+                    row in
                     // Blank for a card that goes one way.
                     if let backFirst = row.backFirst {
                         WayIntervalText(way: backFirst)
                     }
                 }
-                .width(
-                    min: max(56, backFirstIntervalWidth), ideal: max(120, backFirstIntervalWidth),
-                    max: max(150, backFirstIntervalWidth)
-                )
+                .width(fitting: fitted.backFirstInterval)
                 .customizationID(CardRowOrder.Column.backFirstInterval.rawValue)
                 .defaultVisibility(.hidden)
-                TableColumn(Text(backFirstDue), sortUsing: CardRowOrder(.backFirstDue)) { row in
+                TableColumn(Text(fitted.backFirstDue.header), sortUsing: CardRowOrder(.backFirstDue)) { row in
                     // Blank for a card that goes one way.
-                    Text(row.backFirst.map { dueText($0, at: state.now) } ?? "")
+                    Text(row.backFirst.map { DueText.of($0, at: state.now) } ?? "")
                 }
-                .width(
-                    min: max(60, backFirstDueWidth), ideal: max(120, backFirstDueWidth),
-                    max: max(150, backFirstDueWidth)
-                )
+                .width(fitting: fitted.backFirstDue)
                 .customizationID(CardRowOrder.Column.backFirstDue.rawValue)
                 .defaultVisibility(.hidden)
             }
-            TableColumn(
-                Text("Type", comment: "A column of the Cards window: the card's type."),
-                sortUsing: CardRowOrder(.type)
-            ) { row in
+            TableColumn(Text(fitted.type.header), sortUsing: CardRowOrder(.type)) { row in
                 // Blank for a card with no type.
                 Text(row.card.type?.title ?? "")
             }
-            .width(min: 60, ideal: 76, max: 110)
+            .width(fitting: fitted.type)
             .customizationID(CardRowOrder.Column.type.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(Text(tags), sortUsing: CardRowOrder(.tags)) { row in
+            TableColumn(Text(fitted.tags.header), sortUsing: CardRowOrder(.tags)) { row in
                 HStack(spacing: 4) {
                     ForEach(row.tags, id: \.name) { tag in
                         TagCapsule(tag: tag)
@@ -1338,37 +1295,33 @@ struct CardsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .clipped()
             }
-            .width(min: max(60, tagsWidth), ideal: max(120, tagsWidth))
+            .width(fitting: fitted.tags)
             .customizationID(CardRowOrder.Column.tags.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(
-                Text("Source", comment: "A column of the Cards window: where Lucas came across the card's content."),
-                sortUsing: CardRowOrder(.source)
-            ) { row in
+            TableColumn(Text(fitted.source.header), sortUsing: CardRowOrder(.source)) { row in
                 Text(row.card.source ?? "")
                     .lineLimit(1)
             }
-            .width(min: 60, ideal: 120)
+            .width(fitting: fitted.source)
             .customizationID(CardRowOrder.Column.source.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(Text(lastSeen), sortUsing: CardRowOrder(.lastSeen)) { row in
-                // Without the time, as the inbox's Added column.
-                Text(row.lastSeen?.formatted(date: .abbreviated, time: .omitted) ?? "")
+            TableColumn(Text(fitted.lastSeen.header), sortUsing: CardRowOrder(.lastSeen)) { row in
+                Text(row.lastSeen?.formatted(CardTableColumns.day) ?? "")
             }
-            .width(min: max(80, lastSeenWidth), ideal: max(96, lastSeenWidth), max: max(140, lastSeenWidth))
+            .width(fitting: fitted.lastSeen)
             .customizationID(CardRowOrder.Column.lastSeen.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(Text(created), sortUsing: CardRowOrder(.created)) { row in
-                Text(row.card.createdAt.formatted(date: .abbreviated, time: .omitted))
+            TableColumn(Text(fitted.created.header), sortUsing: CardRowOrder(.created)) { row in
+                Text(row.card.createdAt.formatted(CardTableColumns.day))
             }
-            .width(min: max(80, createdWidth), ideal: max(96, createdWidth), max: max(140, createdWidth))
+            .width(fitting: fitted.created)
             .customizationID(CardRowOrder.Column.created.rawValue)
             .defaultVisibility(.hidden)
-            TableColumn(Text(edited), sortUsing: CardRowOrder(.edited)) { row in
+            TableColumn(Text(fitted.edited.header), sortUsing: CardRowOrder(.edited)) { row in
                 // Blank for a card never edited.
-                Text(row.card.editedAt?.formatted(date: .abbreviated, time: .omitted) ?? "")
+                Text(row.card.editedAt?.formatted(CardTableColumns.day) ?? "")
             }
-            .width(min: max(80, editedWidth), ideal: max(96, editedWidth), max: max(140, editedWidth))
+            .width(fitting: fitted.edited)
             .customizationID(CardRowOrder.Column.edited.rawValue)
             .defaultVisibility(.hidden)
         } rows: {
@@ -1399,19 +1352,20 @@ struct CardsView: View {
     /// the follow-ups and the flagged cards, which Lucas selects one at a
     /// time.
     private func inboxTable(_ rows: [InboxRow]) -> some View {
-        // The headers and the cells' texts that run longer than English's in
-        // some language, and the widths that fit them, as the cards' table's.
-        let kind = String(
-            localized: "Kind",
-            comment:
-                "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card."
-        )
-        let kindWidth = ColumnWidth.fitting(header: kind, cells: InboxKind.allCases.map(\.name))
-        let added = String(
-            localized: "Added",
-            comment: "A column of the Cards window's inbox: when Lucas captured it, or flagged the card.")
-        let addedWidth = ColumnWidth.fitting(
-            header: added, cells: ColumnWidth.inEachMonth { $0.formatted(date: .abbreviated, time: .omitted) })
+        // The headers and widths of the columns of the app's own texts,
+        // fitted to them in the app's language, as the cards' table's.
+        let kind = FittedColumn(
+            String(
+                localized: "Kind",
+                comment:
+                    "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card."
+            ),
+            cells: InboxKind.allCases.map(\.name), min: 64, ideal: 76, max: 110)
+        let added = FittedColumn(
+            String(
+                localized: "Added",
+                comment: "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."),
+            cells: ColumnWidth.inEachMonth(CardTableColumns.day, of: state.now), min: 80, ideal: 96, max: 140)
         return Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
             TableColumn(
                 Text(
@@ -1427,15 +1381,15 @@ struct CardsView: View {
                 }
             }
             .width(min: 120)
-            TableColumn(Text(kind), sortUsing: InboxRowOrder(.kind)) { row in
+            TableColumn(Text(kind.header), sortUsing: InboxRowOrder(.kind)) { row in
                 Text(row.kindName)
             }
-            .width(min: max(64, kindWidth), ideal: max(76, kindWidth), max: max(110, kindWidth))
-            TableColumn(Text(added), sortUsing: InboxRowOrder(.added)) { row in
+            .width(fitting: kind)
+            TableColumn(Text(added.header), sortUsing: InboxRowOrder(.added)) { row in
                 // Without the time, to leave the Text column its room.
-                Text(row.addedAt.formatted(date: .abbreviated, time: .omitted))
+                Text(row.addedAt.formatted(CardTableColumns.day))
             }
-            .width(min: max(80, addedWidth), ideal: max(96, addedWidth), max: max(140, addedWidth))
+            .width(fitting: added)
         }
         .focused($isTableFocused)
         .overlay {

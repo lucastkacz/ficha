@@ -328,7 +328,7 @@ struct CardDetail: View {
             GridRow {
                 gridLabel(labels.due)
                 HStack(spacing: 6) {
-                    Text(dueText(way, at: now))
+                    Text(DueText.of(way, at: now))
                     Text(due.formatted(date: .abbreviated, time: .shortened))
                         .foregroundStyle(.secondary)
                 }
@@ -648,22 +648,23 @@ struct WayIntervalText: View {
     }
 }
 
-/// When one of a card's ways is due, counted from `now`: "now" once it's
-/// due, however long ago, and before, as the Mac's locale words it, like
-/// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the card
-/// is set aside by its deck, and nothing while the way is new, or the card
-/// flagged or buried, since it won't show up then.
-func dueText(_ way: WayProgress, at now: Date) -> String {
-    switch way.dueColumn {
-    case .due(let date): way.isDue(at: now) ? DueText.now : DueText.until(date, from: now)
-    case .setAside: DueText.setAside
-    case .nothing: ""
-    }
-}
-
-/// The texts of the Cards window's Due and Back-first due columns, which
-/// `dueText(_:at:)` picks from, and their widths measure.
+/// The texts of the Cards window's Due and Back-first due columns, and of
+/// its detail's Due rows, which `of(_:at:)` picks from, and the columns'
+/// widths measure.
 enum DueText {
+    /// When one of a card's ways is due, counted from `now`: "now" once it's
+    /// due, however long ago, and before, as the Mac's locale words it, like
+    /// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the
+    /// card is set aside by its deck, and nothing while the way is new, or
+    /// the card flagged or buried, since it won't show up then.
+    static func of(_ way: WayProgress, at now: Date) -> String {
+        switch way.dueColumn {
+        case .due(let date): way.isDue(at: now) ? Self.now : until(date, from: now)
+        case .setAside: setAside
+        case .nothing: ""
+        }
+    }
+
     /// A way that's due, however long ago.
     static var now: String {
         String(
