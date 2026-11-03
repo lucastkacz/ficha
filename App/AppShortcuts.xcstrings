@@ -95,6 +95,15 @@
               "用${applicationName}复习"
             ]
           }
+        },
+        "zh-Hant" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在${applicationName}中立即複習",
+              "在${applicationName}中複習"
+            ]
+          }
         }
       }
     }

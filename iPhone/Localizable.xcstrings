@@ -56,6 +56,12 @@
             "state" : "translated",
             "value" : "%@无法打开你的卡片"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@無法打開你的卡片"
+          }
         }
       }
     },
@@ -115,6 +121,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "速记需要采纳为一张或多张卡片。若要将其移出收件箱而不创建卡片，请放弃它。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速記會核准為一張或多張卡片。若要將其移出收件匣而不建立卡片，請將其捨棄。"
           }
         }
       }
@@ -176,6 +188,12 @@
             "state" : "translated",
             "value" : "牌组需要名称，因此未做任何更改。请输入名称，在牌组与其中的牌组之间写“::”，例如“Idiomas::Inglés”。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "牌組需要名稱，因此未做任何更改。請輸入名稱，並在牌組和其中的牌組之間寫上「::」，例如「Idiomas::Inglés」。"
+          }
         }
       }
     },
@@ -235,6 +253,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "较新版本的Ficha更改了数据库，为避免损坏你的卡片，此版本不会打开它。请使用更改它的版本或更新的版本打开。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "較新版本的Ficha更改了資料庫，為了避免損壞你的卡片，此版本不會打開它。請使用更改它的版本或更新的版本打開。"
           }
         }
       }
@@ -296,6 +320,12 @@
             "state" : "translated",
             "value" : "副本“%@”由较新版本的Ficha保存，为避免损坏你的卡片，此版本不会恢复它。请使用该版本或更新的版本恢复。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "副本「%@」是由較新版本的Ficha儲存的，為了避免損壞你的卡片，此版本不會回復它。請使用該版本或更新的版本回復。"
+          }
         }
       }
     },
@@ -355,6 +385,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "标签需要名称，因此未做任何更改。请输入名称，在标签与其中的标签之间写“::”，例如“economía::Argentina”。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標籤需要名稱，因此未做任何更改。請輸入名稱，並在標籤和其中的標籤之間寫上「::」，例如「economía::Argentina」。"
           }
         }
       }
@@ -416,6 +452,12 @@
             "state" : "translated",
             "value" : "类型需要名称，因此未做任何更改。请输入名称。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "類型需要名稱，因此未做任何更改。請輸入名稱。"
+          }
         }
       }
     },
@@ -474,6 +516,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重来"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重來"
           }
         }
       }
@@ -535,6 +583,12 @@
             "state" : "translated",
             "value" : "速记%lld没有补充任何卡片。请将其采纳为卡片，或放弃它。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速記%lld並未補充任何卡片。請將其核准為卡片，或將其捨棄。"
+          }
         }
       }
     },
@@ -594,6 +648,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "速记%lld不在收件箱中：它已被采纳或放弃，或者不存在。请检查收件箱中的内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速記%lld不在收件匣中：它已被核准或捨棄，或者不存在。請檢查收件匣中的內容。"
           }
         }
       }
@@ -655,6 +715,12 @@
             "state" : "translated",
             "value" : "卡片%lld无法以回答的形式放置：只有导入才会放置卡片。未记录任何内容。请报告此问题。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld無法以回答的形式直接安排：只有匯入才能直接安排卡片。未記錄任何內容。請回報此問題。"
+          }
         }
       }
     },
@@ -714,6 +780,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%lld已在复习面板之外被更改，因此无法用⌘Z撤销。请关闭复习面板，然后重新打开“立即复习”。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld已在複習面板之外被更改，因此無法以⌘Z還原。請關閉複習面板，然後再次打開「立即複習」。"
           }
         }
       }
@@ -775,6 +847,12 @@
             "state" : "translated",
             "value" : "卡片%lld的背面没有图片，因此无可移除。`ficha cards`会列出每一面的图片和声音。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld的背面沒有影像，因此沒有可移除的影像。`ficha cards`會列出每一面的影像和聲音。"
+          }
         }
       }
     },
@@ -834,6 +912,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%lld的正面没有图片，因此无可移除。`ficha cards`会列出每一面的图片和声音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld的正面沒有影像，因此沒有可移除的影像。`ficha cards`會列出每一面的影像和聲音。"
           }
         }
       }
@@ -895,6 +979,12 @@
             "state" : "translated",
             "value" : "卡片%lld的背面没有声音，因此无可移除。`ficha cards`会列出每一面的图片和声音。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld的背面沒有聲音，因此沒有可移除的聲音。`ficha cards`會列出每一面的影像和聲音。"
+          }
         }
       }
     },
@@ -954,6 +1044,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%lld的正面没有声音，因此无可移除。`ficha cards`会列出每一面的图片和声音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld的正面沒有聲音，因此沒有可移除的聲音。`ficha cards`會列出每一面的影像和聲音。"
           }
         }
       }
@@ -1015,6 +1111,12 @@
             "state" : "translated",
             "value" : "卡片%lld已搁置。若要恢复，请取消搁置。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld已埋藏。若要讓它回來，請取消埋藏。"
+          }
         }
       }
     },
@@ -1074,6 +1176,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%lld带有旗标：它正在收件箱中等待修正。请关闭复习面板，然后重新打开“立即复习”。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld已加上旗標：它正在收件匣中等待修正。請關閉複習面板，然後再次打開「立即複習」。"
           }
         }
       }
@@ -1135,6 +1243,12 @@
             "state" : "translated",
             "value" : "卡片%1$lld随牌组“%2$@”一起暂缓。若要恢复，请在卡片窗口中取消勾选该牌组的“暂缓”。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%1$lld已隨牌組「%2$@」放在一旁。若要讓它回來，請在「卡片」視窗中取消勾選該牌組的「放在一旁」。"
+          }
         }
       }
     },
@@ -1194,6 +1308,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%1$lld随牌组%2$@一起暂缓。若要恢复，请在卡片窗口中逐一取消勾选这些牌组的“暂缓”。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%1$lld已隨牌組%2$@放在一旁。若要讓它回來，請在「卡片」視窗中取消勾選每個牌組的「放在一旁」。"
           }
         }
       }
@@ -1255,6 +1375,12 @@
             "state" : "translated",
             "value" : "卡片%lld未被搁置，因此无需取消搁置。请检查卡片的ID。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld未被埋藏，因此無須取消埋藏。請檢查卡片的ID。"
+          }
         }
       }
     },
@@ -1314,6 +1440,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%lld尚未到期，因此无法复习。请关闭复习面板，然后重新打开“立即复习”。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld尚未到期，因此無法複習。請關閉複習面板，然後再次打開「立即複習」。"
           }
         }
       }
@@ -1375,6 +1507,12 @@
             "state" : "translated",
             "value" : "卡片%lld没有旗标，因此无需修正：它已被修正，或从未加过旗标。请检查收件箱中的内容。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld未加上旗標，因此無須修正：它已修正過，或從未加上旗標。請檢查收件匣中的內容。"
+          }
         }
       }
     },
@@ -1434,6 +1572,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片%lld不在此次出现带来的卡片中，因此未记录其回答。请报告此问题。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片%lld不在此次出現帶來的卡片之中，因此未記錄其回答。請回報此問題。"
           }
         }
       }
@@ -1495,6 +1639,12 @@
             "state" : "translated",
             "value" : "卡片[%lld]的正面或背面为空：请为每一面添加文本、图片或声音。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片[%lld]的正面或背面為空白：請為每一面加入文字、影像或聲音。"
+          }
         }
       }
     },
@@ -1550,6 +1700,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "卡片"
@@ -1612,6 +1768,12 @@
             "state" : "translated",
             "value" : "无法统计你的卡片"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法計算你的卡片數量"
+          }
         }
       }
     },
@@ -1672,6 +1834,12 @@
             "state" : "translated",
             "value" : "“系统默认”存放不属于其他任何牌组的卡片，因此无法重新命名、移动或删除，未做任何更改。若要继续，请创建你自己的牌组，并将“系统默认”中的卡片移到其中。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「預設」存放不屬於其他牌組的卡片，因此無法重新命名、搬移或刪除，也未做任何更改。若要繼續，請建立你自己的牌組，並將「預設」中的卡片移到那裡。"
+          }
         }
       }
     },
@@ -1731,6 +1899,12 @@
             "state" : "translated",
             "value" : "到期"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已到期"
+          }
         }
       }
     },
@@ -1789,6 +1963,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "简单"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "簡單"
           }
         }
       }
@@ -1850,6 +2030,12 @@
             "state" : "translated",
             "value" : "Ficha无法解读卡片%lld的复习记录，因此不知道该卡片何时到期。你的卡片仍已保存：请报告此问题。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法解讀卡片%lld的複習記錄，因此不知道這張卡片何時到期。你的卡片仍已儲存：請回報此問題。"
+          }
         }
       }
     },
@@ -1909,6 +2095,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha无法将“%@”作为zip文件打开：它可能已损坏。请重新将卡片文本文件及其图片和声音压缩为zip，然后导入该文件。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法將「%@」作為zip檔打開：檔案可能已損毀。請重新將卡片文字檔及其影像和聲音壓縮成zip檔，然後匯入該檔案。"
           }
         }
       }
@@ -1970,6 +2162,12 @@
             "state" : "translated",
             "value" : "Ficha无法打开“%@”。请检查文件是否仍然存在，然后重试。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法打開「%@」。請確認檔案仍然存在，然後再試一次。"
+          }
         }
       }
     },
@@ -2029,6 +2227,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha无法读取或更改其“Backups”文件夹。请检查磁盘是否有空间，然后重试；如果问题仍然存在，请报告此问题。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法讀取或更改其「Backups」檔案夾。請確認磁碟有足夠空間後再試一次；若問題持續發生，請回報。"
           }
         }
       }
@@ -2090,6 +2294,12 @@
             "state" : "translated",
             "value" : "Ficha无法在其“Sounds”文件夹中读取或保存声音。请检查磁盘是否有空间，然后重试；如果问题仍然存在，请报告此问题。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法在其「Sounds」檔案夾中讀取或儲存聲音。請確認磁碟有足夠空間後再試一次；若問題持續發生，請回報。"
+          }
         }
       }
     },
@@ -2149,6 +2359,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha无法在其“Images”文件夹中读取或保存图片。请检查磁盘是否有空间，然后重试；如果问题仍然存在，请报告此问题。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法在其「Images」檔案夾中讀取或儲存影像。請確認磁碟有足夠空間後再試一次；若問題持續發生，請回報。"
           }
         }
       }
@@ -2210,6 +2426,12 @@
             "state" : "translated",
             "value" : "Ficha无法读取或保存其数据库。请重试；如果问题仍然存在，请报告此问题。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法讀取或儲存其資料庫。請再試一次；若問題持續發生，請回報。"
+          }
         }
       }
     },
@@ -2269,6 +2491,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha无法将“%@”作为Anki牌组包读取：它可能已损坏。请从Anki重新导出牌组，然后导入该文件。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法將「%@」讀取為Anki牌組檔：檔案可能已損毀。請從Anki重新匯出牌組，然後匯入該檔案。"
           }
         }
       }
@@ -2330,6 +2558,12 @@
             "state" : "translated",
             "value" : "Ficha无法读取“%@”。请检查文件是否仍然存在且你可以打开它，然后重试。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法讀取「%@」。請確認檔案仍然存在且你可以打開它，然後再試一次。"
+          }
         }
       }
     },
@@ -2389,6 +2623,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha无法保存“%@”。请检查磁盘是否有空间以及你能否在该文件夹中保存，或选取其他文件夹，然后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法儲存「%@」。請確認磁碟有足夠空間且你可以在該檔案夾中儲存，或選擇其他檔案夾，然後再試一次。"
           }
         }
       }
@@ -2450,6 +2690,12 @@
             "state" : "translated",
             "value" : "Ficha无法计算你的卡片何时到期。你的卡片仍已保存：请重试；如果问题仍然存在，请报告此问题。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha無法計算你的卡片何時到期。你的卡片仍已儲存：請再試一次；若問題持續發生，請回報。"
+          }
         }
       }
     },
@@ -2509,6 +2755,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha中没有名为“%@”的图片或声音。请提供`ficha cards`显示的名称，或Mac上文件的路径。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha中沒有名為「%@」的影像或聲音。請提供`ficha cards`所列出的名稱，或Mac上檔案的路徑。"
           }
         }
       }
@@ -2570,6 +2822,12 @@
             "state" : "translated",
             "value" : "Ficha已读取声音，但无法转换。请检查磁盘是否有空间，然后重试；如果问题仍然存在，请报告此问题。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha已讀取聲音，但無法將其轉換。請確認磁碟有足夠空間後再試一次；若問題持續發生，請回報。"
+          }
         }
       }
     },
@@ -2630,6 +2888,12 @@
             "state" : "translated",
             "value" : "Ficha只读取“下载”文件夹中的文件，而“%@”不在其中。请将文件拷贝到“下载”文件夹，并提供它在那里的路径。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha只會讀取你「下載項目」檔案夾中的檔案，而「%@」不在其中。請將檔案拷貝到「下載項目」，並提供它在那裡的路徑。"
+          }
         }
       }
     },
@@ -2685,6 +2949,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "良好"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "良好"
@@ -2748,6 +3018,12 @@
             "state" : "translated",
             "value" : "困难"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "困難"
+          }
         }
       }
     },
@@ -2807,6 +3083,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "其中没有Ficha可读取的声音。请改为拖移或粘贴声音或带声音的视频，例如MP3、M4A或MOV。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其中沒有Ficha可讀取的聲音。請改為拖放或貼上聲音或有聲音的影片，例如MP3、M4A或MOV。"
           }
         }
       }
@@ -2868,6 +3150,12 @@
             "state" : "translated",
             "value" : "这不是Ficha可读取的图片。请改为拖移或粘贴图片，例如JPEG或PNG。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這不是Ficha可讀取的影像。請改為拖放或貼上圖片，例如JPEG或PNG。"
+          }
         }
       }
     },
@@ -2927,6 +3215,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这不是单个表情符号。请只选取一个，或将此栏留空以不使用表情符号。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這不是單一表情符號。請只選擇一個，或將欄位留空以不使用表情符號。"
           }
         }
       }
@@ -2988,6 +3282,12 @@
             "state" : "translated",
             "value" : "在此期间，该类型已被删除（可能是在你的其他设备上），因此未做任何更改。请选取其他类型。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該類型已在此期間被刪除（可能是在你的其他裝置上），因此未做任何更改。請選擇其他類型。"
+          }
         }
       }
     },
@@ -3047,6 +3347,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这会让卡片%lld的正面或背面为空，因此未做任何更改：请为每一面添加文本、图片或声音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這會讓卡片%lld的正面或背面變成空白，因此未做任何更改：請為每一面加入文字、影像或聲音。"
           }
         }
       }
@@ -3108,6 +3414,12 @@
             "state" : "translated",
             "value" : "“%2$@”的#%1$@行写的是“%3$@”，这不是列号。请改为该列的编号，第一列记为1。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%2$@」的#%1$@行為「%3$@」，這不是欄位的編號。請將其改為欄位的編號，第一欄算作1。"
+          }
         }
       }
     },
@@ -3167,6 +3479,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%1$@”的#columns行未指明%2$@列，而每张卡片都需要该列。请将各列命名为Front、Back、Tags、Type和Source，或移除这一行。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」的#columns行未指定%2$@欄，但每張卡片都需要此欄。請將欄位命名為Front、Back、Tags、Type和Source，或移除此行。"
           }
         }
       }
@@ -3228,6 +3546,12 @@
             "state" : "translated",
             "value" : "“%1$@”的#html行写的是“%2$@”：文件包含HTML时请改为true，否则改为false。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」的#html行為「%2$@」：檔案包含HTML時請設為true，否則請設為false。"
+          }
         }
       }
     },
@@ -3287,6 +3611,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%1$@”的#separator行写的是“%2$@”，Ficha无法以此分隔列。请改为Tab、Comma或Semicolon，或移除这一行。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」的#separator行為「%2$@」，Ficha無法以此分隔欄位。請將其改為Tab、Comma或Semicolon，或移除此行。"
           }
         }
       }
@@ -3348,6 +3678,12 @@
             "state" : "translated",
             "value" : "速记为空：请写下你想记住的内容。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速記是空的：請寫下你想記住的內容。"
+          }
         }
       }
     },
@@ -3407,6 +3743,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "牌组“%@”已不存在（可能是你的其他设备将其重新命名或删除了），因此未做任何更改。请在你的牌组中按新名称查找，或选取其他牌组。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "牌組「%@」已不存在，可能是你的其他裝置將其重新命名或刪除，因此未做任何更改。請在你的牌組中以新名稱尋找，或選擇其他牌組。"
           }
         }
       }
@@ -3468,6 +3810,12 @@
             "state" : "translated",
             "value" : "没有ID为%lld的卡片：它已被删除，或从未存在。请检查卡片的ID。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有ID為%lld的卡片：它已被刪除，或從未存在。請檢查卡片的ID。"
+          }
         }
       }
     },
@@ -3527,6 +3875,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ficha的“Backups”文件夹中没有名为“%@”的副本：它已被移动或删除。请检查其中有哪些副本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ficha的「Backups」檔案夾中沒有名為「%@」的副本：它已被搬移或刪除。請檢查其中有哪些副本。"
           }
         }
       }
@@ -3588,6 +3942,12 @@
             "state" : "translated",
             "value" : "“%@”处没有文件。请检查路径：不以/或~开头的路径从命令运行所在的文件夹开始。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」處沒有檔案。請檢查路徑：不是以/或~開頭的路徑，會從執行指令的檔案夾開始算起。"
+          }
         }
       }
     },
@@ -3647,6 +4007,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你已有名为“%@”的类型，因此未做任何更改。请选取该类型，或输入其他名称。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你已有名為「%@」的類型，因此未做任何更改。請選擇該類型，或輸入其他名稱。"
           }
         }
       }
@@ -3708,6 +4074,12 @@
             "state" : "translated",
             "value" : "你关于卡片%lld的提问已在复习面板之外被采纳或放弃，因此无法用⌘Z撤回。如果它变成了你不想要的卡片，请在卡片窗口中删除它们。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你針對卡片%lld的提問已在複習面板之外被核准或捨棄，因此無法以⌘Z撤回。若它變成了你不想要的卡片，請在「卡片」視窗中將其刪除。"
+          }
         }
       }
     },
@@ -3767,6 +4139,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”不能放入“系统默认”，因为“系统默认”存放不属于其他任何牌组的卡片，且其中没有牌组，因此未做任何更改。请将其移入其他牌组，或移到顶层。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」無法放入「預設」，因為「預設」存放不屬於其他牌組的卡片，且其中沒有任何牌組，因此未做任何更改。請將它移到其他牌組中，或移到最上層。"
           }
         }
       }
@@ -3828,6 +4206,12 @@
             "state" : "translated",
             "value" : "“%@”不能放入自身或其中的牌组，因此未做任何更改。请选取它之外的牌组。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」無法放入自身或其中的牌組，因此未做任何更改。請選擇它以外的牌組。"
+          }
         }
       }
     },
@@ -3887,6 +4271,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”不能放入自身或其中的标签，因此未做任何更改。请选取它之外的标签。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」無法放入自身或其中的標籤，因此未做任何更改。請選擇它以外的標籤。"
           }
         }
       }
@@ -3948,6 +4338,12 @@
             "state" : "translated",
             "value" : "“%@”中没有Ficha可读取的声音。请改为提供声音或带声音的视频作为一面的声音，例如MP3、M4A或MOV，并提供图片作为其图片。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」中沒有Ficha可讀取的聲音。請改為提供聲音或有聲音的影片作為一面的聲音，例如MP3、M4A或MOV，並提供圖片作為其影像。"
+          }
         }
       }
     },
@@ -4007,6 +4403,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”中没有卡片文本文件：Ficha会在图片和声音旁查找以.txt、.csv或.tsv结尾的文件。请添加该文件，重新压缩为zip，然后导入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」中沒有卡片文字檔：Ficha會在影像和聲音旁尋找以.txt、.csv或.tsv結尾的檔案。請加入該檔案，重新壓縮成zip檔，然後匯入。"
           }
         }
       }
@@ -4068,6 +4470,12 @@
             "state" : "translated",
             "value" : "“%1$@”中有多个卡片文本文件（%2$@），而Ficha一次只导入一个。请将每个文件与其图片和声音分别压缩为zip，然后逐个导入。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」中有多個卡片文字檔（%2$@），但Ficha一次只能匯入一個。請將每個檔案與其影像和聲音分別壓縮成zip檔，再逐一匯入。"
+          }
         }
       }
     },
@@ -4127,6 +4535,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”是“系统默认”的名称，而“系统默认”存放不属于其他任何牌组的卡片，因此未做任何更改。若要将卡片移到其中，请选取“系统默认”；若要创建牌组，请输入其他名称。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」是「預設」的名稱，而「預設」存放不屬於其他牌組的卡片，因此未做任何更改。若要將卡片移到那裡，請選擇「預設」；若要建立牌組，請輸入其他名稱。"
           }
         }
       }
@@ -4188,6 +4602,12 @@
             "state" : "translated",
             "value" : "“%@”是Ficha自带的类型之一，因此未做任何更改。请选取该类型，或输入其他名称。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」是Ficha內建的類型之一，因此未做任何更改。請選擇該類型，或輸入其他名稱。"
+          }
         }
       }
     },
@@ -4247,6 +4667,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”已暂缓，而牌组（及其中的牌组）不能既暂缓又是优先牌组，因此未做任何更改。请先取消暂缓。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」已放在一旁，而牌組（及其中的牌組）不能同時放在一旁又是優先牌組，因此未做任何更改。請先取消將其放在一旁。"
           }
         }
       }
@@ -4308,6 +4734,12 @@
             "state" : "translated",
             "value" : "“%@”不是UTF-8文本，而Ficha只读取UTF-8文本。请将其重新保存为UTF-8文本，或从电子表格保存为“CSV UTF-8”，然后导入。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」不是Ficha可讀取的UTF-8文字。請將其重新儲存為UTF-8文字，或從試算表儲存為「CSV UTF-8」，然後匯入該檔案。"
+          }
         }
       }
     },
@@ -4367,6 +4799,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”不是Ficha可读取的图片。请改为提供图片作为一面的图片，例如JPEG或PNG，并提供声音作为其声音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」不是Ficha可讀取的影像。請改為提供圖片作為一面的影像，例如JPEG或PNG，並提供聲音作為其聲音。"
           }
         }
       }
@@ -4428,6 +4866,12 @@
             "state" : "translated",
             "value" : "“%@”不是Ficha可读取的图片或声音。请改为提供图片（例如JPEG或PNG），或声音或带声音的视频（例如MP3、M4A或MOV）。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」不是Ficha可讀取的影像或聲音。請改為提供圖片，例如JPEG或PNG，或提供聲音或有聲音的影片，例如MP3、M4A或MOV。"
+          }
         }
       }
     },
@@ -4488,6 +4932,12 @@
             "state" : "translated",
             "value" : "“%@”未固定到边栏（可能是你的其他设备取消了固定），因此未移动任何内容。请先将其固定。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」未釘選到側邊欄（可能是你的其他裝置取消了釘選），因此未搬移任何項目。請先將其釘選。"
+          }
         }
       }
     },
@@ -4547,6 +4997,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”由比Ficha所知更新的Anki版本导出。请在Anki中勾选“支持较旧的 Anki 版本”后重新导出牌组，然后导入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」是由比Ficha所知更新的Anki版本匯出的。請在Anki中勾選「舊版 Anki 支援」後重新匯出牌組，然後匯入該檔案。"
           }
         }
       }
