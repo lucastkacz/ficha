@@ -399,9 +399,10 @@ struct ReviewPanelView: View {
             }
         }
         .background {
-            // R, as M and E, while the card shows with its buttons. It works
-            // through a hidden button, since the ▶ it presses changes with
-            // the side that shows.
+            // R, as A, M and E, while the card shows with its buttons, on a
+            // layout of another script too (`LetterKey`). It works through a
+            // hidden button, since the ▶ it presses changes with the side that
+            // shows.
             if buttons == .forTheCard {
                 Button {
                     panel.state.playOrStopSound()
@@ -452,7 +453,8 @@ struct ReviewPanelView: View {
 
     /// The buttons for the card Lucas is on: ⌘Z undoes the last thing he did,
     /// A asks a question about this card, M flags it with a note, and E buries
-    /// it. Without `withKeys`, none of them has its key.
+    /// it, on a layout of another script too (`LetterKey`). Without `withKeys`,
+    /// none of them has its key.
     @ViewBuilder
     private func cardButtons(of panel: ReviewPanelModel, withKeys: Bool) -> some View {
         undoButton(of: panel, withKeys: withKeys)
