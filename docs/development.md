@@ -142,9 +142,28 @@ xcrun simctl spawn booted log show --last 5m --info --predicate 'subsystem == "c
 
 ## The apps' texts
 
-The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's, `Widget/Localizable.xcstrings` for the Mac's widget and `iPhone/Localizable.xcstrings` for the iPhone's, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
+The texts each app shows live in its String Catalog, `App/Localizable.xcstrings` for the Mac's, `Widget/Localizable.xcstrings` for the Mac's widget, `iPhone/Localizable.xcstrings` for the iPhone's and `App/AppShortcuts.xcstrings` for the App Shortcut's phrases and short title, which the builds compile but never fill. After changing a text, run `make strings` and commit the catalog with the change. Xcode's export, which builds both apps, brings in the new texts with their comments, and drops the ones the code no longer has, or marks them stale when they have plural variations. `make check`, and so CI, fails while a catalog is out of date, and shows how it differs.
 
-When a text with plural variations changes, the export brings the new text in plain, without them: move the variations over from the stale entry by hand, delete the stale entry, and run `make strings` again, which should change nothing.
+When a text with plural variations changes, the export brings the new text in plain, without them: move the variations over from the stale entry by hand, every language's, delete the stale entry, and run `make strings` again, which should change nothing.
+
+### Translating a text
+
+Every text is translated, in the change that adds or changes it, into each language `scripts/languages.txt` lists, with the words in `docs/terms.md` (ADR 0027). After `make strings` brings a new text in, give its entry a localization per language, as Xcode's catalog editor writes one, marked translated:
+
+- A plain text: `"es" : { "stringUnit" : { "state" : "translated", "value" : "Repasar ahora" } }`. With two values or more, number them, `%1$@` and `%2$@`, when the language puts them in another order.
+- A text with plural variations: the language's own, under `variations` › `plural`, in the categories `scripts/languages.txt` gives it (Spanish: one, many and other), and zero too when the English has one. A text with substitutions, such as `%#@learned@`, gets the same substitutions, each with its variations.
+- An App Shortcut's phrase: a `stringSet` of one phrase or more, each with `${applicationName}`, where Siri hears the app's name.
+- A text that must not change, such as one of symbols alone, gets `"shouldTranslate" : false` instead, and no translations.
+
+The engine's messages (`EngineError`) are manual keys in the app's and the widget's catalogs, keyed by their whole English text with its format specifiers, which the export keeps as they are: a new or changed message is added, or changed, by hand in both, translated, and FichaKit's `EngineMessagesTests` fails until it is. Its comment says it's the engine's.
+
+For many texts at once, write the translations to a file and merge them into the catalog with a script, then run `make strings`, which writes the catalog back in Xcode's layout, and run it again, which should change nothing.
+
+`make translations-check`, a step of `make check`, reads the catalogs alone, without building anything, and fails while a text not marked Don't translate lacks a translated value in a language, a plural variation's or a substitution's included, has one marked for review or "new", or is stale; each failure names the catalog, the text and the language, and says what to do. Its script is `scripts/check-translations.sh`, and `scripts/test-check-translations.sh` tests it on small catalogs of its own.
+
+A language joins with a line in `scripts/languages.txt`, its code, its plural categories from Unicode's CLDR and its name, and a column in `docs/terms.md`, in the change that translates every catalog into it. XcodeGen adds it to the project's known regions from the catalogs, so `project.yml` doesn't change, and the build gives the app its `.lproj` folder, so System Settings offers the language for Ficha.
+
+To use the app in a language without changing the Mac's, quit it and launch it with `-AppleLanguages "(es)"`, as in `open ".build/DerivedData/Build/Products/Debug/Ficha Dev.app" --args -AppleLanguages "(es)"`, or set the language for Ficha alone in System Settings › General › Language & Region › Applications.
 
 ## Refining
 
