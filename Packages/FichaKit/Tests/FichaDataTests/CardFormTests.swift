@@ -228,6 +228,25 @@ struct CardFormTests {
         #expect(form.draft.source == "")
     }
 
+    @Test("a card added from a follow-up keeps a tag with a comma in its name whole, until the user changes the field")
+    func aFollowUpsTagWithACommaStaysWhole() throws {
+        let poderes = try approve(
+            card(.concept, front: "La división de poderes", back: "Tres.", tags: ["历史、文学", "política"]), in: engine)
+        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
+        var window = openWindow()
+        window.choose(.inbox)
+        window.selectInInbox(.capture(followUp.id))
+        window.convertToCard()
+
+        window.type(front: "Los jueces", back: "Los propone el Ejecutivo.")
+        window.addCard()
+        window.type(front: "Los jueces de la Corte", back: "Los aprueba el Senado.", tags: "历史、文学, arte")
+        window.addCard()
+
+        let added = try #require(window.cardForm?.addedCards)
+        #expect(added.map(\.tags) == [["历史、文学", "política"], ["历史", "文学", "arte"]])
+    }
+
     @Test(
         "adding cards from a follow-up leaves its card as it is, and closing the form after them takes the follow-up out of the inbox"
     )

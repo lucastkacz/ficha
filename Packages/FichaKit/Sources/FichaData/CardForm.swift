@@ -84,6 +84,10 @@ extension CardsWindowState.CardForm {
         public var back = Side()
         /// The tags as the Tags field holds them, separated by commas.
         public var tags = ""
+        /// The tags the Tags field started with, those of the card a
+        /// follow-up is on, which stay as they are until the user changes the
+        /// field.
+        var tagsItStartedWith: [String] = []
         public var source = ""
         /// Whether the card goes both ways, which the form starts off.
         public var bothWays = false
@@ -100,9 +104,9 @@ extension CardsWindowState.CardForm {
         /// blank: it has neither text, an image nor a sound.
         var content: CardContent? {
             CardContent(
-                type: type, front: front.text, back: back.text, tags: CardContent.tags(inField: tags),
-                source: source, frontImage: front.image, backImage: back.image, frontSound: front.sound,
-                backSound: back.sound)
+                type: type, front: front.text, back: back.text,
+                tags: CardContent.tags(inField: tags, startedWith: tagsItStartedWith), source: source,
+                frontImage: front.image, backImage: back.image, frontSound: front.sound, backSound: back.sound)
         }
 
         /// The side `side` of the draft.
@@ -162,6 +166,7 @@ extension CardsWindowState {
             form = CardForm(openedBy: .followUp(followUp))
             form.draft.deck = followUp.card.deck
             form.draft.tags = CardContent.tagsField(of: followUp.card.tags)
+            form.draft.tagsItStartedWith = followUp.card.tags
         case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
             return
         }

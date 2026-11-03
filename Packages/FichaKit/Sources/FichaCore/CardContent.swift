@@ -79,9 +79,13 @@ public struct CardContent: Sendable, Equatable {
     /// in: `init` cleans them up as it does wherever a card comes from. The
     /// comma of each of Ficha's languages separates them: `,`, Arabic's
     /// U+060C, Chinese's full-width U+FF0C, and U+3001, Japanese's and that of
-    /// Chinese lists.
-    public static func tags(inField text: String) -> [String] {
-        text.split { ",\u{060C}\u{FF0C}\u{3001}".contains($0) }.map(String.init)
+    /// Chinese lists. A field that still holds what `tagsField(of:)` writes
+    /// for the tags it started with, `tags`, holds those tags as they are, so
+    /// that one with a comma in its name, which can come in from Anki, a text
+    /// file, the CLI or a rename, stays whole until the user changes the field.
+    public static func tags(inField text: String, startedWith tags: [String] = []) -> [String] {
+        guard text != tagsField(of: tags) else { return tags }
+        return text.split { ",\u{060C}\u{FF0C}\u{3001}".contains($0) }.map(String.init)
     }
 
     /// What a Tags field holds for `tags` when it starts with them, as when

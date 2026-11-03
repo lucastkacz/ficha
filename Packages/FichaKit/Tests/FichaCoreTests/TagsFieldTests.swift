@@ -19,4 +19,18 @@ struct TagsFieldTests {
 
         #expect(content.tags == ["历史", "文学", "美术", "音乐"])
     }
+
+    @Test("a Tags field left as it started gives back its tags whole, with commas in their names")
+    func aFieldLeftAsItStartedKeepsItsTagsWhole() {
+        let tags = ["历史、文学", "derecho, política", "arte"]
+
+        #expect(
+            CardContent.tags(inField: "历史、文学, derecho, política, arte", startedWith: tags) == tags)
+    }
+
+    @Test("a Tags field the user changed splits on its commas, whatever it started with")
+    func aFieldTheUserChangedSplits() {
+        #expect(CardContent.tags(inField: "历史、文学,美术", startedWith: ["历史、文学"]) == ["历史", "文学", "美术"])
+        #expect(CardContent.tags(inField: "", startedWith: ["历史、文学"]) == [])
+    }
 }
