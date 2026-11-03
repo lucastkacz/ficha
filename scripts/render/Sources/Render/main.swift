@@ -122,6 +122,11 @@ enum Window: String {
     case menuICloudFull = "menu-icloud-full"
     /// Settings, on its About tab.
     case about
+    /// Settings, on its General tab, in Ficha Dev, which never starts at
+    /// login.
+    case general
+    /// The capture window, empty.
+    case capture
     /// The alert the real Ficha shows at its first launch, which asks whether
     /// it opens at login.
     case startAtLogin = "start-at-login"
@@ -1296,7 +1301,7 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .startAtLogin:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .startAtLogin:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1514,6 +1519,13 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
     case .scheduling: return settingsTabWindow(model: model, openingOn: .scheduling)
     case .about: return settingsTabWindow(model: model, openingOn: .about)
+    case .general: return settingsTabWindow(model: model, openingOn: .general)
+    case .capture:
+        let window = CaptureWindow(model: model)
+        if let view = window.contentView {
+            window.setContentSize(view.fittingSize)
+        }
+        return window
     case .startAtLogin:
         // The alert's own window, laid out as `runModal()` would show it,
         // for the real Ficha, the only one that asks.
