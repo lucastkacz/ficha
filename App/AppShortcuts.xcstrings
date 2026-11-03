@@ -30,6 +30,15 @@
             ]
           }
         },
+        "fr" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Réviser maintenant dans ${applicationName}",
+              "Réviser dans ${applicationName}"
+            ]
+          }
+        },
         "it" : {
           "stringSet" : {
             "state" : "translated",
