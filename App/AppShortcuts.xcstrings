@@ -4,6 +4,15 @@
     "Review now in ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "de" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Jetzt in ${applicationName} wiederholen",
+              "In ${applicationName} wiederholen"
+            ]
+          }
+        },
         "en" : {
           "stringSet" : {
             "state" : "new",
