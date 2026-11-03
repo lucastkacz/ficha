@@ -11,24 +11,41 @@
 #
 # With `--language <code>`, the app opens in one of Ficha's languages, with
 # its region's formats, through the launch arguments Xcode's scheme options
-# pass: `-AppleLanguages` and `-AppleLocale`, and for Arabic those of its
-# right-to-left pseudolanguage too, which mirror the screen even before the
-# app has Arabic.
+# pass: `-AppleLanguages` and `-AppleLocale`, and for a language read right to
+# left, Arabic, those of its right-to-left pseudolanguage too, which mirror the
+# screen even before the app has Arabic.
 
 set -euo pipefail
 
-# English and the eleven languages Ficha comes in, each as `<locale> <name>`:
-# the language's code in the String Catalogs and its region, as the render
-# tool for the Mac has them (renderLanguages, in
-# scripts/render/Sources/Render/main.swift), and its name in English.
-languages=(
-  "en_US English" "zh-Hans_CN Simplified Chinese" "ja_JP Japanese" "de_DE German" "es_AR Spanish" "fr_FR French"
-  "ko_KR Korean" "pt_BR Portuguese" "zh-Hant_TW Traditional Chinese" "it_IT Italian" "ru_RU Russian" "ar_EG Arabic"
-)
+# English and the eleven languages Ficha comes in, from the list make render
+# reads too: on each line that isn't blank or a comment, a language's code in
+# the String Catalogs, its region, its direction, ltr or rtl, and its name in
+# English.
+list=$(dirname "$0")/render-languages.txt
+[[ -r $list ]] || {
+  echo "There's no $list, the languages the tool takes: restore it with git restore scripts/render-languages.txt, and run the tool again." >&2
+  exit 1
+}
+codes=()
+regions=()
+directions=()
+names=()
 language_list=""
-for entry in "${languages[@]}"; do
-  language_list+="${language_list:+, }${entry%%_*} (${entry#* })"
-done
+number=0
+while IFS= read -r line || [[ -n $line ]]; do
+  number=$((number + 1))
+  [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+  read -r code region direction name <<<"$line"
+  [[ -n $name && $direction =~ ^(ltr|rtl)$ ]] || {
+    echo "$list:$number isn't a language's code, region, direction and name, as in 'es AR ltr Spanish': write it so, with ltr or rtl for the direction it reads in, and run the tool again." >&2
+    exit 1
+  }
+  codes+=("$code")
+  regions+=("$region")
+  directions+=("$direction")
+  names+=("$name")
+  language_list+="${language_list:+, }$code ($name)"
+done <"$list"
 
 usage="Usage: make render-iphone ARGS=\"[--language <code>] [--out <path>]\", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without --out, iphone-<code>-light.png and iphone-<code>-dark.png in a language. Without --language, the app opens in English, with the simulator's formats. The languages: $language_list."
 (($# > 0)) || {
@@ -41,6 +58,7 @@ out=""
 language=""
 language_name=""
 locale=""
+language_direction=ltr
 while (($# > 0)); do
   case $1 in
     --out)
@@ -54,10 +72,11 @@ while (($# > 0)); do
     --language)
       language=${2:-}
       locale=""
-      for entry in "${languages[@]}"; do
-        if [[ ${entry%% *} == "$language"_* ]]; then
-          locale=${entry%% *}
-          language_name=${entry#* }
+      for i in "${!codes[@]}"; do
+        if [[ ${codes[i]} == "$language" ]]; then
+          locale=${codes[i]}_${regions[i]}
+          language_name=${names[i]}
+          language_direction=${directions[i]}
         fi
       done
       [[ -n $locale ]] || {
@@ -90,13 +109,12 @@ bundle=$(plutil -extract CFBundleIdentifier raw "$app/Info.plist" 2>/dev/null) |
 }
 
 # The language the app opens in: English without --language, with the
-# simulator's own formats, as before the tool took a language.
+# simulator's own formats.
 if [[ -z $locale ]]; then
   launch_arguments+=(-AppleLanguages "(en)")
 else
   launch_arguments+=(-AppleLanguages "($language)" -AppleLocale "$locale")
-  # Arabic, the one of Ficha's languages read right to left.
-  if [[ $language == ar ]]; then
+  if [[ $language_direction == rtl ]]; then
     launch_arguments+=(-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES)
   fi
   # The app's bundle is flat on iOS: its compiled String Catalog is a folder

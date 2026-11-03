@@ -150,7 +150,7 @@ struct Request {
     var window: Window?
     var isDark = false
     /// The language to draw the window in, or none for English with the Mac's
-    /// own formats, as the tool drew before it took a language.
+    /// own formats.
     var language: RenderLanguage?
     /// What to do in the window before the capture, in order.
     var actions: [Action] = []
@@ -185,48 +185,64 @@ enum Action: CustomStringConvertible {
 }
 
 /// A language the tool draws a window in, as a Mac in that language would
-/// show it: `--language de`.
+/// show it: `--language de`. A line of `scripts/render-languages.txt`.
 struct RenderLanguage {
     /// The language's code, as the String Catalogs name it.
     let code: String
-    /// The language's name in English, for the usage.
-    let name: String
     /// The region of the Mac the tool draws for, whose formats the window's
     /// dates, numbers and durations take.
     let region: String
+    /// Whether it reads right to left, like Arabic, which mirrors the window.
+    let isRightToLeft: Bool
+    /// The language's name in English, for the tool's messages.
+    let name: String
 
     /// The Mac's locale: the language with its region, as macOS keeps it.
     var locale: String { "\(code)_\(region)" }
-    /// Whether it reads right to left, like Arabic, which mirrors the window.
-    var isRightToLeft: Bool { Locale.Language(identifier: code).characterDirection == .rightToLeft }
 }
 
-/// English, the app's base, and the eleven languages Ficha comes in (ADR
-/// 0027), each with the region Unicode's likely subtags give it, as
-/// `Locale.Language.maximalIdentifier` does, but Spanish, with Argentina's,
-/// since Ficha's Spanish is Rioplatense. Keep it in step with the languages
-/// `scripts/render-iphone.sh` takes.
-let renderLanguages = [
-    RenderLanguage(code: "en", name: "English", region: "US"),
-    RenderLanguage(code: "zh-Hans", name: "Simplified Chinese", region: "CN"),
-    RenderLanguage(code: "ja", name: "Japanese", region: "JP"),
-    RenderLanguage(code: "de", name: "German", region: "DE"),
-    RenderLanguage(code: "es", name: "Spanish", region: "AR"),
-    RenderLanguage(code: "fr", name: "French", region: "FR"),
-    RenderLanguage(code: "ko", name: "Korean", region: "KR"),
-    RenderLanguage(code: "pt", name: "Portuguese", region: "BR"),
-    RenderLanguage(code: "zh-Hant", name: "Traditional Chinese", region: "TW"),
-    RenderLanguage(code: "it", name: "Italian", region: "IT"),
-    RenderLanguage(code: "ru", name: "Russian", region: "RU"),
-    RenderLanguage(code: "ar", name: "Arabic", region: "EG"),
-]
+/// `scripts/render-languages.txt`, the languages the tool takes, English and
+/// the eleven Ficha comes in, which `scripts/render-iphone.sh` reads too, so
+/// both draw in the same ones. The tool reaches it from this file's own path,
+/// three folders up, as it reaches the app's String Catalog.
+let renderLanguagesFile = URL(filePath: #filePath).deletingLastPathComponent()
+    .appending(path: "../../../render-languages.txt").standardized
 
-/// The languages `--language` takes, for the usage, four a line, indented as
-/// its options' lines: `en (English), zh-Hans (Simplified Chinese), …`.
-let renderLanguageList = stride(from: 0, to: renderLanguages.count, by: 4).map { first in
-    renderLanguages[first..<min(first + 4, renderLanguages.count)].map { "\($0.code) (\($0.name))" }
-        .joined(separator: ", ")
-}.joined(separator: ",\n             ")
+/// The languages in `renderLanguagesFile`, in its order: on each line that
+/// isn't blank or a comment, a language's code, region, direction, `ltr` or
+/// `rtl`, and name.
+func readRenderLanguages() throws(RenderError) -> [RenderLanguage] {
+    let list = "scripts/render-languages.txt"
+    let text: String
+    do {
+        text = try String(contentsOf: renderLanguagesFile, encoding: .utf8)
+    } catch {
+        throw RenderError(
+            description: """
+                Couldn't read \(list), the languages the tool takes: \(error.localizedDescription) Restore it with \
+                git restore \(list), and render again.
+                """)
+    }
+    var languages: [RenderLanguage] = []
+    for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+        let fields = line.split(maxSplits: 3, whereSeparator: \.isWhitespace)
+        guard let first = fields.first, !first.hasPrefix("#") else {
+            continue
+        }
+        guard fields.count == 4, ["ltr", "rtl"].contains(fields[2]) else {
+            throw RenderError(
+                description: """
+                    \(list):\(index + 1) isn't a language's code, region, direction and name, as in \
+                    'es AR ltr Spanish': write it so, with ltr or rtl for the direction it reads in, and render again.
+                    """)
+        }
+        languages.append(
+            RenderLanguage(
+                code: String(fields[0]), region: String(fields[1]), isRightToLeft: fields[2] == "rtl",
+                name: fields[3].trimmingCharacters(in: .whitespaces)))
+    }
+    return languages
+}
 
 /// Writes a tone to `file`, a WAV file, for the sample's card with a sound
 /// and for `--copy-sound`, since the tool can't drag a file: an A, 440 Hz,
@@ -441,8 +457,8 @@ let usage = """
                  or diagnostics (while a Focus holds appearances back, once it held one back)
       --dark     dark mode instead of light
       --language the language to draw the window in, as a Mac in it shows it: with the app's translations, its region's
-                 formats, and mirrored for Arabic. Without it, English, with this Mac's formats. The languages:
-                 \(renderLanguageList)
+                 formats, and mirrored for Arabic. Without it, English, with this Mac's formats. The languages, by
+                 their codes, like de or ar: English and Ficha's eleven, which scripts/render-languages.txt lists
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
       --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
@@ -506,8 +522,9 @@ func mouseClick(named name: String) throws(RenderError) -> MouseClick {
     return MouseClick(name: name, point: CGPoint(x: numbers[0], y: numbers[1]), modifiers: modifiers)
 }
 
-/// The request in the tool's arguments.
-func request(from arguments: [String]) throws(RenderError) -> Request {
+/// The request in the tool's arguments, whose `--language` takes one of
+/// `languages`.
+func request(from arguments: [String], languages: [RenderLanguage]) throws(RenderError) -> Request {
     var request = Request()
     var arguments = arguments[...]
     while let argument = arguments.popFirst() {
@@ -516,10 +533,11 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
             request.isDark = true
         case "--language":
             let code = arguments.popFirst() ?? ""
-            guard let language = renderLanguages.first(where: { $0.code == code }) else {
+            guard let language = languages.first(where: { $0.code == code }) else {
                 let unknown = code.isEmpty ? "" : "Ficha has no language \(code): "
+                let list = languages.map { "\($0.code) (\($0.name))" }.joined(separator: ", ")
                 throw RenderError(
-                    description: "\(unknown)--language takes one of the languages below, by its code.\n\(usage)")
+                    description: "\(unknown)--language takes one of these, by its code: \(list).\n\(usage)")
             }
             request.language = language
         case "--click":
@@ -1983,15 +2001,24 @@ let renderCatalog = URL(filePath: #filePath).deletingLastPathComponent().appendi
 /// the right, as macOS draws every app's when its own language reads right to
 /// left. A catalog with the language and `AppleTextDirection` alone mirror
 /// the window's content but leave its title bar as it is.
-func speak(_ language: RenderLanguage?) throws {
+func useLanguage(_ language: RenderLanguage?) throws(RenderError) {
     // SwiftPM's `.build/debug` is a link to the folder.
     let bundle = Bundle.main.bundleURL.resolvingSymlinksInPath()
     // The languages an earlier run compiled go first, since the catalog may
     // no longer have them. SwiftPM puts nothing of its own in `.lproj`
     // folders there: it keeps resources in bundles.
-    for folder in try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil)
-    where folder.pathExtension == "lproj" {
-        try FileManager.default.removeItem(at: folder)
+    do {
+        for folder in try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil)
+        where folder.pathExtension == "lproj" {
+            try FileManager.default.removeItem(at: folder)
+        }
+    } catch {
+        throw RenderError(
+            description: """
+                Couldn't remove the translations an earlier run compiled, the .lproj folders in \
+                \(bundle.path(percentEncoded: false)): \(error.localizedDescription) Remove them yourself, and \
+                render again.
+                """)
     }
     let xcstringstool = Process()
     xcstringstool.executableURL = URL(filePath: "/usr/bin/xcrun")
@@ -1999,7 +2026,16 @@ func speak(_ language: RenderLanguage?) throws {
         "xcstringstool", "compile", renderCatalog.path(percentEncoded: false),
         "--output-directory", bundle.path(percentEncoded: false),
     ]
-    try xcstringstool.run()
+    do {
+        try xcstringstool.run()
+    } catch {
+        throw RenderError(
+            description: """
+                Couldn't run xcrun, which runs xcstringstool to compile App/Localizable.xcstrings: \
+                \(error.localizedDescription) Check that Xcode's command line tools are installed, with \
+                xcode-select -p, and render again.
+                """)
+    }
     xcstringstool.waitUntilExit()
     guard xcstringstool.terminationStatus == 0 else {
         throw RenderError(
@@ -2014,12 +2050,20 @@ func speak(_ language: RenderLanguage?) throws {
         defaults["AppleLocale"] = language.locale
         if language.isRightToLeft {
             defaults["AppleTextDirection"] = true
+            // It puts the title bar's buttons on the right, as a Mac in Arabic
+            // does, even once the catalog has the language, and changes
+            // nothing else: drawn with a throwaway Arabic catalog, with it and
+            // without it (#416), the review panel's Spanish card, front and
+            // back, and the Cards window's rows came out pixel for pixel the
+            // same, right-aligned both ways; only the title bar differed, and
+            // in the Cards window the toolbar beside its buttons.
             defaults["NSForceRightToLeftWritingDirection"] = true
         }
         // English is the language the code writes the texts in, which the
         // catalog needs no folder for.
         if language.code != "en",
-            !FileManager.default.fileExists(atPath: bundle.appending(path: "\(language.code).lproj").path())
+            !FileManager.default.fileExists(
+                atPath: bundle.appending(path: "\(language.code).lproj").path(percentEncoded: false))
         {
             print(
                 """
@@ -2044,11 +2088,11 @@ do {
     let preferencesDomain = ProcessInfo.processInfo.processName
     UserDefaults.standard.removePersistentDomain(forName: preferencesDomain)
     defer { UserDefaults.standard.removePersistentDomain(forName: preferencesDomain) }
-    let request = try request(from: Array(CommandLine.arguments.dropFirst()))
+    let request = try request(from: Array(CommandLine.arguments.dropFirst()), languages: readRenderLanguages())
     guard let name = request.window else {
         throw RenderError(description: "Which window? Name one.\n\(usage)")
     }
-    try speak(request.language)
+    try useLanguage(request.language)
     let pasteboard = try usePasteboardOfItsOwn()
     defer { pasteboard.releaseGlobally() }
     NSApplication.shared.setActivationPolicy(.accessory)
