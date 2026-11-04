@@ -69,7 +69,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, rules, the plugin, the `/refine` skill and the subagents' types. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
-- `scripts/`: the hook tests, the render tools, the build of fsrs-rs's XCFramework (`make fsrs`), the wrapper `make` runs `xcodebuild` through, the reader of Ficha Dev's last crash (`make last-crash`), the runner of its `ficha` on a scratch folder, the cleanup after a merge with its tests, the translations check with its tests, and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
+- `scripts/`: the hook tests, the render tools, the build of fsrs-rs's XCFramework (`make fsrs`), the wrapper `make` runs `xcodebuild` through, what unregisters an app's other copies from LaunchServices, the reader of Ficha Dev's last crash (`make last-crash`) with its tests, the runner of its `ficha` on a scratch folder, the cleanup after a merge with its tests, the translations check with its tests, the check that the clock and the review log's IDs come from their sources, and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
 
 ## Commands
 

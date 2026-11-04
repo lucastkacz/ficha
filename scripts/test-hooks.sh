@@ -186,6 +186,41 @@ BODY
 EOF
 expect 0 "a here-document's body inside quotes passes, even with a stray quote" issue-comments.sh "$(bash_input "$body_from_substitution" "$tmp/branch")"
 
+echo "no-email-addresses"
+# A call as Claude Code sends it: tool_input <tool> <input as JSON>.
+tool_input() { jq -n --arg tool "$1" --argjson input "$2" '{tool_name: $tool, tool_input: $input}'; }
+# An address at mail.test, which RFC 2606 reserves and the hook doesn't allow,
+# written in two parts so that this file doesn't hold one, and a Write of it
+# passes the hook.
+address="someone@""mail.test"
+in_repo="$tmp/branch/App/Notes.swift"
+outside="$tmp/scratchpad/notes.md"
+bash_call() { tool_input Bash "$(jq -n --arg command "$1" '{command: $command}')"; }
+write_call() { tool_input Write "$(jq -n --arg file "$1" --arg content "$2" '{file_path: $file, content: $content}')"; }
+edit_call() {
+  tool_input Edit "$(jq -n --arg file "$1" --arg old "$2" --arg new "$3" '{file_path: $file, old_string: $old, new_string: $new}')"
+}
+expect 2 "a curl with an address in its User-Agent is refused" no-email-addresses.sh "$(bash_call "curl -A 'ficha ($address)' https://crates.io/api/v1/crates/cbindgen")"
+expect 2 "an address in the terminal panel is refused" no-email-addresses.sh "$(tool_input mcp__terminal__run_in_terminal "$(jq -n --arg command "git config user.email $address" '{command: $command}')")"
+expect 2 "a WebFetch whose URL holds an address is refused" no-email-addresses.sh "$(tool_input WebFetch "$(jq -n --arg url "https://crates.io/api?contact=$address" '{url: $url, prompt: "Read it"}')")"
+expect 2 "a WebFetch whose URL holds an address with its @ percent-encoded is refused" no-email-addresses.sh "$(tool_input WebFetch "$(jq -n --arg url "https://crates.io/api?contact=${address/@/%40}" '{url: $url, prompt: "Read it"}')")"
+expect 2 "a WebSearch whose query holds an address is refused" no-email-addresses.sh "$(tool_input WebSearch "$(jq -n --arg query "who is $address" '{query: $query}')")"
+expect 2 "a Write of a repo file that holds an address is refused" no-email-addresses.sh "$(write_call "$in_repo" "// Ask $address")"
+expect 2 "an Edit that writes an address into a repo file is refused" no-email-addresses.sh "$(edit_call "$in_repo" "// Ask" "// Ask $address")"
+expect 2 "a MultiEdit that writes an address into a repo file is refused" no-email-addresses.sh "$(tool_input MultiEdit "$(jq -n --arg file "$in_repo" --arg new "// Ask $address" '{file_path: $file, edits: [{old_string: "// Ask", new_string: $new}]}')")"
+expect 2 "a Write through .. out of the repo's path is refused too" no-email-addresses.sh "$(write_call "$tmp/branch/../elsewhere.md" "Ask $address")"
+expect 2 "an address that only starts like an allowed one is refused" no-email-addresses.sh "$(bash_call "echo someone@""example.com.mail.test")"
+expect 2 "an address that only ends like the allowed one is refused" no-email-addresses.sh "$(bash_call "echo not-noreply@""anthropic.com")"
+expect 2 "a call the hook can't read is refused" no-email-addresses.sh "not json"
+expect 0 "a commit with the Co-Authored-By line passes" no-email-addresses.sh "$(bash_call "$(printf 'git commit -m "Change\n\nCo-Authored-By: Claude <noreply@anthropic.com>"')")"
+expect 0 "a Write of an address at example.com passes" no-email-addresses.sh "$(write_call "$in_repo" "// Ask test@example.com")"
+expect 0 "an address at example.org or example.net passes" no-email-addresses.sh "$(bash_call "echo test@example.org test@EXAMPLE.net")"
+expect 0 "git's address on this Mac passes" no-email-addresses.sh "$(bash_call "echo 1234+someone@users.noreply.github.com")"
+expect 0 "a Write of an address to a file outside the repo passes" no-email-addresses.sh "$(write_call "$outside" "Ask $address")"
+expect 0 "an Edit that takes an address out of a repo file passes" no-email-addresses.sh "$(edit_call "$in_repo" "// Ask $address" "// Ask")"
+expect 0 "a curl with no address passes" no-email-addresses.sh "$(bash_call "curl https://crates.io/api/v1/crates/cbindgen")"
+expect 0 "a format string or a package's version passes" no-email-addresses.sh "$(bash_call "echo '%@file.txt %@.txt react@18.3.1 actions/cache@v4'")"
+
 echo "swift-format"
 printf 'let  x=1\n' >"$tmp/branch/Sample.swift"
 jq -n --arg file "$tmp/branch/Sample.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh"

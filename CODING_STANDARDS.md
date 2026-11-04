@@ -28,9 +28,9 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 - The merge gate watches these four files, so a change to where a card stands, and so to which cards show up, makes a pull request risk:high; the same rule written elsewhere would slip past it.
 - A card's flag and burial are set and cleared only by the functions in `FichaData/FlaggingAndBurying.swift`. Fixing and editing a card, the review panel's ⌘Z, an import that buries a card suspended in the app it comes from, and sync, which takes the flag and the burial another device left, call them too, never SQL of their own, so a change to how a card is flagged or buried can't miss a path.
 
-## Time
+## Time and IDs
 
-- Logic gets the current time from a `TimeSource` (`now`), never from `Date()` or `Date.now`, so tests control time.
+- Logic gets the current time from a `TimeSource` (`now`), and the review log's IDs, which seed FSRS's fuzz, from the engine's `IDSource` (`newID`), never from `Date()`, `Date.now` or `UUID()`, so tests control both. An ID that seeds nothing, such as a temporary file's name or a card type's, may still take a `UUID()`, as `FichaData` does. `make time-and-ids-check`, a step of `make check`, fails on `Date()` and `Date.now` outside the tests, `scripts/` and `FichaCore/TimeSource.swift`, and on `UUID()` in `FichaCore` outside `IDSource.swift`. The reviewer judges the rest.
 
 ## Errors and crashes
 

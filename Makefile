@@ -196,6 +196,11 @@ CHECKS += translations-check-test
 translations-check-test: ## Test the translations check on small catalogs of its own.
 	scripts/test-check-translations.sh
 
+.PHONY: time-and-ids-check
+CHECKS += time-and-ids-check
+time-and-ids-check: ## Fail on Date(), Date.now or a UUID() in FichaCore outside TimeSource and IDSource, naming each line.
+	@scripts/check-time-and-ids.sh
+
 .PHONY: hooks-test
 CHECKS += hooks-test
 hooks-test: ## Test the Claude Code hooks.
