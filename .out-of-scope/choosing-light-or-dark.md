@@ -1,4 +1,4 @@
-# Choosing Ficha's appearance
+# Choosing light or dark
 
 Ficha follows the system's light or dark appearance. It has no setting or button of its own for it.
 
