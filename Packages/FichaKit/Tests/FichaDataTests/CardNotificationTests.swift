@@ -48,6 +48,17 @@ struct CardNotificationTests {
             ])
     }
 
+    @Test("a rating from a card notification counts in the card's Reviews")
+    func answersFromCardNotificationsCountAsReviews() throws {
+        let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
+        time.move(to: try at(10, 0))
+        let appearance = try nextAppearance()
+
+        _ = try engine.answerFromNotification(.review(.good), of: serendipia.id, in: appearance, settings: settings)
+
+        #expect(try engine.cardRows(in: .all, with: settings.scheduler).map(\.reviews) == [2])
+    }
+
     // Anki's four, which the iPhone's category offers as the Mac's review
     // panel does, from `Rating.allCases` (#404): again on a card on the
     // first learning step keeps it there, hard waits halfway to the second

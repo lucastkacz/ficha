@@ -4,11 +4,13 @@ import FichaCore
 /// The Cards window's table of cards' columns, each with its header and its
 /// widths in the app's language, which the table draws them at and its pane
 /// opens to fit. Each is measured with the texts its cells draw: the date
-/// columns' in `.tableDay`, Interval's from `WayIntervalText` and Due's from
-/// `DueText`. Front, Type, Tags and Source narrow below their texts when the
-/// table is short of room, as once Lucas narrows the window: a front, a type
-/// of the user's own, a tag and a source are the user's texts, often too long
-/// for any width. Their headers fit, and the app's own texts in every column.
+/// columns' in `.tableDay`, Interval's from `WayIntervalText`, Due's from
+/// `DueText` and Reviews' a count of four digits, as the language writes it,
+/// far more than a card gets. Front, Type, Tags and Source narrow below their
+/// texts when the table is short of room, as once Lucas narrows the window: a
+/// front, a type of the user's own, a tag and a source are the user's texts,
+/// often too long for any width. Their headers fit, and the app's own texts in
+/// every column.
 struct CardTableColumns {
     let front: FittedColumn
     let media: FittedColumn
@@ -20,6 +22,7 @@ struct CardTableColumns {
     let tags: FittedColumn
     let source: FittedColumn
     let lastSeen: FittedColumn
+    let reviews: FittedColumn
     let created: FittedColumn
     let edited: FittedColumn
 
@@ -70,6 +73,11 @@ struct CardTableColumns {
             String(
                 localized: "Last seen", comment: "A column of the Cards window: when Lucas last reviewed the card."),
             cells: days, min: 80, ideal: 96, max: 140)
+        reviews = FittedColumn(
+            String(
+                localized: "Reviews",
+                comment: "A column of the Cards window: how many times Lucas reviewed the card, either way."),
+            cells: [9_999.formatted()], min: 56, ideal: 72, max: 110)
         created = FittedColumn(
             String(localized: "Created", comment: "A column of the Cards window: when Lucas approved the card."),
             cells: days, min: 80, ideal: 96, max: 140)

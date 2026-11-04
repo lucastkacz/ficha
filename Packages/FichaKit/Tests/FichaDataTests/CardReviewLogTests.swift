@@ -219,6 +219,67 @@ struct CardReviewLogTests {
         #expect(row.lastSeen == time.now)
     }
 
+    @Test(
+        "a card's Reviews counts every rating, on time or ahead: 0 while it's new, and 1 after its first review, which is a review like any other"
+    )
+    func reviewsCountEveryRating() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+
+        #expect(try reviews(of: serendipia) == 0)
+        try engine.meet(serendipia)
+        #expect(try reviews(of: serendipia) == 1)
+
+        try engine.reviewWhenDue(serendipia, .hard, movingForward: time)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        try engine.reviewWhenDue(serendipia, .easy, movingForward: time)
+        try engine.record(
+            .review(.good), of: serendipia.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults,
+            reviewingAhead: true)
+
+        #expect(try reviews(of: serendipia) == 5)
+    }
+
+    @Test(
+        "a card that goes both ways adds up its reviews in Reviews and keeps each way's, and switching Both ways off keeps every review, as its chart does"
+    )
+    func reviewsAddUpBothWays() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id])
+        try engine.climb(serendipia, goods: 2, movingForward: time)
+        try engine.meet(serendipia, way: .backFirst)
+
+        let bothWays = try #require(try engine.cardRows(in: .all, with: scheduler).first)
+        try engine.setBothWays(false, of: [serendipia.id])
+        let oneWay = try #require(try engine.cardRows(in: .all, with: scheduler).first)
+
+        #expect(bothWays.reviews == 4)
+        #expect(bothWays.frontFirst.reviews == 3)
+        #expect(bothWays.backFirst?.reviews == 1)
+        #expect(oneWay.reviews == 4)
+        #expect(oneWay.backFirst == nil)
+        #expect(try engine.reviewLogRows(of: serendipia.id, with: scheduler).count == 4)
+    }
+
+    @Test("a card's Reviews goes back down when an answer is taken back, and up when another device's review arrives")
+    func reviewsFollowTheReviewLog() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let metAt = time.now
+        try engine.meet(serendipia)
+        try engine.reviewWhenDue(serendipia, .good, movingForward: time)
+        #expect(try reviews(of: serendipia) == 2)
+
+        try engine.takeBackAnswer(of: serendipia.id, way: .frontFirst)
+        #expect(try reviews(of: serendipia) == 1)
+
+        try engine.receive(firstReview(of: serendipia, at: metAt + minutes(5)))
+        #expect(try reviews(of: serendipia) == 2)
+    }
+
+    /// How many times the Cards window says `card` was reviewed.
+    private func reviews(of card: Card) throws -> Int {
+        try #require(try engine.cardRows(in: .all, with: scheduler).first { $0.id == card.id }).reviews
+    }
+
     /// The first review of `card`, rated again, that another device recorded
     /// at `time`, from review now: it answered no entry, and kept the first
     /// learning step's hour.

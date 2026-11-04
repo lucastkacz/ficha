@@ -125,6 +125,30 @@ final class AnkiReviewsTests {
         #expect(try standing(of: "corazón", with: otherSettings) == graduated(due: try october(31, at: 10, minute: 40)))
     }
 
+    @Test(
+        "a card's Reviews counts the reviews Anki brought, not the interval Set Due Date gave it",
+        arguments: schemas)
+    func reviewsCountWhatAnkiBrought(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["riñón", "kidney"], progress: .review(due: 25, interval: 20),
+                    revlog: [
+                        AnkiRevlogEntry(at: try october(2, at: 10), button: 3, interval: -600, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(2, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
+                        AnkiRevlogEntry(at: try october(5, at: 12, minute: 5), button: 0, interval: 20, kind: .manual),
+                    ])
+            ])
+
+        try await importPackage(package)
+
+        let row = try #require(try engine.cardRows(in: .all, with: scheduler).first)
+        #expect(try engine.reviewLog().filter(\.isPlacement).count == 1)
+        #expect(row.reviews == 2)
+    }
+
     // Set Due Date with "20!" sets the interval too. FSRS's rescheduling and
     // a reset write an entry with no button as well; cramming in a filtered
     // deck with rescheduling off writes one with an ease of 0.

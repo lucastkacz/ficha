@@ -1317,6 +1317,12 @@ struct CardsView: View {
             .width(fitting: fitted.lastSeen)
             .customizationID(CardRowOrder.Column.lastSeen.rawValue)
             .defaultVisibility(.hidden)
+            TableColumn(Text(fitted.reviews.header), sortUsing: CardRowOrder(.reviews)) { row in
+                ReviewsText(count: row.reviews)
+            }
+            .width(fitting: fitted.reviews)
+            .customizationID(CardRowOrder.Column.reviews.rawValue)
+            .defaultVisibility(.hidden)
             TableColumn(Text(fitted.created.header), sortUsing: CardRowOrder(.created)) { row in
                 Text(row.card.createdAt.formatted(.tableDay))
             }

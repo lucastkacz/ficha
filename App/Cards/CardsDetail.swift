@@ -220,7 +220,8 @@ struct CardDetail: View {
     /// Card Info says: its interval, when it's due, and its stability,
     /// difficulty and retrievability once it has them, front first, and
     /// back first too when it goes both ways, as the table's columns name
-    /// them; when Lucas last saw it and when he approved it.
+    /// them; when Lucas last saw it, how many times he reviewed it and when
+    /// he approved it.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             wayRows(
@@ -295,10 +296,43 @@ struct CardDetail: View {
                 }
             }
             GridRow {
+                gridLabel(
+                    Text(
+                        "Reviews",
+                        comment: "In the Cards window's detail: how many times Lucas reviewed the card, either way."))
+                reviews
+            }
+            GridRow {
                 gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
         }
+    }
+
+    /// How many times Lucas reviewed the card, as the Reviews column says it,
+    /// and, while it goes both ways, how many of those went each way in
+    /// secondary text, which VoiceOver reads after the count with its noun.
+    @ViewBuilder
+    private var reviews: some View {
+        if let backFirst = row.backFirst {
+            reviewsByWay(Text(row.reviews, format: .number).foregroundStyle(.primary), backFirst: backFirst)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(reviewsByWay(Text(ReviewsText.spoken(row.reviews)), backFirst: backFirst))
+        } else {
+            ReviewsText(count: row.reviews)
+        }
+    }
+
+    /// `total`, the card's reviews either way, then how many of them went
+    /// each way, whose back-first way is `backFirst`.
+    private func reviewsByWay(_ total: Text, backFirst: WayProgress) -> Text {
+        Text(
+            "\(total) · \(row.frontFirst.reviews) front first, \(backFirst.reviews) back first",
+            comment: """
+                In the Cards window's detail, for a card that goes both ways: how many times Lucas reviewed it, either \
+                way, then how many of those went front first and back first, like “14 · 9 front first, 5 back first”. \
+                The first value is the number, and for VoiceOver the number with its noun, like “14 reviews”.
+                """)
     }
 
     /// What the rows of one of the card's ways are labeled.
@@ -641,6 +675,28 @@ struct WayIntervalText: View {
                 In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
                 steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
                 says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
+                """)
+    }
+}
+
+/// How many times a card was reviewed, either way, as the Cards window's
+/// Reviews column and its detail's Reviews row say it: a number, which
+/// VoiceOver reads with its noun, like "14 reviews".
+struct ReviewsText: View {
+    let count: Int
+
+    var body: some View {
+        Text(count, format: .number)
+            .accessibilityLabel(Self.spoken(count))
+    }
+
+    /// `count` as VoiceOver reads it.
+    static func spoken(_ count: Int) -> String {
+        String(
+            localized: "\(count) reviews",
+            comment: """
+                For VoiceOver, in the Cards window's Reviews column and its detail's Reviews row: how many times Lucas \
+                reviewed the card, either way.
                 """)
     }
 }
