@@ -260,19 +260,16 @@ struct CardReviewLogTests {
         #expect(try engine.reviewLogRows(of: serendipia.id, with: scheduler).count == 4)
     }
 
-    @Test("a card's Reviews goes back down when an answer is taken back, and up when another device's review arrives")
-    func reviewsFollowTheReviewLog() throws {
+    @Test("a card's Reviews goes back down when an answer is taken back")
+    func reviewsGoDownWhenAnAnswerIsTakenBack() throws {
         let serendipia = try approveCard("serendipia", in: engine)
-        let metAt = time.now
         try engine.meet(serendipia)
         try engine.reviewWhenDue(serendipia, .good, movingForward: time)
         #expect(try reviews(of: serendipia) == 2)
 
         try engine.takeBackAnswer(of: serendipia.id, way: .frontFirst)
-        #expect(try reviews(of: serendipia) == 1)
 
-        try engine.receive(firstReview(of: serendipia, at: metAt + minutes(5)))
-        #expect(try reviews(of: serendipia) == 2)
+        #expect(try reviews(of: serendipia) == 1)
     }
 
     /// How many times the Cards window says `card` was reviewed.

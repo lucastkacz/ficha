@@ -437,7 +437,7 @@ final class AnkiProgressTests {
     }
 
     @Test(
-        "a card that came in placed shows its interval in its review log, unseen until its first review, which goes on from it",
+        "a card that came in placed shows its interval in its review log, unseen and with no reviews until its first one, which goes on from it",
         arguments: schemas)
     func aPlacedCardShowsItsIntervalInItsReviewLog(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(

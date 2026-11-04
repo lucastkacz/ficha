@@ -596,7 +596,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$lld Vorderseite zuerst, %3$lld Rückseite zuerst"
+            "value" : "%1$@ · Vorderseite zuerst: %2$lld, Rückseite zuerst: %3$lld"
           }
         },
         "en" : {
@@ -608,19 +608,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$lld anverso primero, %3$lld reverso primero"
+            "value" : "%1$@ · anverso primero: %2$lld, reverso primero: %3$lld"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$lld recto d’abord, %3$lld verso d’abord"
+            "value" : "%1$@ · recto d’abord : %2$lld, verso d’abord : %3$lld"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$lld prima il fronte, %3$lld prima il retro"
+            "value" : "%1$@ · prima il fronte: %2$lld, prima il retro: %3$lld"
           }
         },
         "ja" : {
@@ -638,7 +638,7 @@
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$lld frente primeiro, %3$lld verso primeiro"
+            "value" : "%1$@ · frente primeiro: %2$lld, verso primeiro: %3$lld"
           }
         },
         "ru" : {

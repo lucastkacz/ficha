@@ -26,8 +26,10 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     public let lastSeen: Date?
     /// How many times the user reviewed it, either way, as the Reviews column
     /// shows it: its review log's reviews, an import's from another app too,
-    /// without a placement, which nobody rated. A way the card no longer goes
-    /// keeps its reviews here, as the card's chart still draws them.
+    /// the rated points of the card's chart. A placement isn't one, even when
+    /// an import made it from Anki's first review of a card whose learning
+    /// steps Anki lost. A way the card no longer goes keeps its reviews here,
+    /// as the chart still draws them.
     public let reviews: Int
 
     public var id: Int64 {
@@ -457,9 +459,9 @@ extension CardRow {
         frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler, at: now)
         backFirst =
             card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, with: scheduler, at: now) : nil
-        let reviews = entries.filter { !$0.isPlacement }
-        lastSeen = reviews.map(\.answeredAt).max()
-        self.reviews = reviews.count
+        let rated = entries.filter { !$0.isPlacement }
+        lastSeen = rated.map(\.answeredAt).max()
+        reviews = rated.count
     }
 }
 
