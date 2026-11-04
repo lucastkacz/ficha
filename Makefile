@@ -104,7 +104,8 @@ project: fsrs ## Generate Ficha.xcodeproj from project.yml (never edit it by han
 # commit's history has, so each build after a merge shows a larger one. It's
 # passed to xcodebuild as a build setting, which overrides project.yml's.
 # Both are expanded only by the targets that build, which stop without it.
-# scripts/xcodebuild.sh runs xcodebuild and keeps a failed build's output short.
+# scripts/xcodebuild.sh runs xcodebuild, waits for any other Xcode build on the
+# Mac, and keeps a failed build's output short.
 BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: git couldn't count this checkout's commits))
 XCODEBUILD_MAC = scripts/xcodebuild.sh -project Ficha.xcodeproj -scheme Ficha -derivedDataPath $(DERIVED) -quiet \
 	CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
@@ -205,6 +206,11 @@ CHECKS += clean-merged-test
 clean-merged-test: ## Test make clean-merged on a scratch repo, with a fake gh.
 	scripts/test-clean-merged.sh
 
+.PHONY: last-crash-test
+CHECKS += last-crash-test
+last-crash-test: ## Test make last-crash on a crash report written by hand.
+	scripts/test-last-crash.sh
+
 .PHONY: render-build
 CHECKS += render-build
 render-build: fsrs ## Build the render tool, so a change to the app's views can't break it unnoticed.
@@ -215,6 +221,10 @@ run: team build ## Build and open Ficha Dev, in its sandbox, restarting it, with
 	@pkill -x "Ficha Dev" || true
 	@scripts/unregister-other-copies.sh "Ficha Dev.app" "$(CURDIR)/$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
+
+.PHONY: last-crash
+last-crash: ## Say where Ficha Dev's last crash stopped: make last-crash ARGS="<report>" reads another report.
+	@scripts/last-crash.sh $(if $(ARGS),"$(ARGS)")
 
 .PHONY: render
 render: fsrs ## Draw an app window as a PNG, offscreen: make render ARGS="cards --dark".

@@ -1,0 +1,52 @@
+{"app_name":"Ficha Dev","timestamp":"2026-10-27 22:12:33.00 -0300","app_version":"0.1","bug_type":"309","platform":1,"bundleID":"com.lucastkacz.ficha.dev","name":"Ficha Dev"}
+{
+  "procName": "Ficha Dev",
+  "pid": 4242,
+  "procLaunch": "2026-10-27 22:10:01.1000 -0300",
+  "captureTime": "2026-10-27 22:12:33.5000 -0300",
+  "exception": {"codes": "0x0000000000000001, 0x0000000000000000", "type": "EXC_BREAKPOINT", "signal": "SIGTRAP"},
+  "asi": {"CloudKit": ["Don't call cancelOperations from inside handleEvent"]},
+  "faultingThread": 1,
+  "usedImages": [
+    {"name": "Ficha Dev", "source": "P"},
+    {"name": "CloudKit", "source": "P"},
+    {"name": "libsystem_pthread.dylib", "source": "P"}
+  ],
+  "threads": [
+    {
+      "id": 100,
+      "queue": "com.apple.main-thread",
+      "frames": [
+        {"imageOffset": 1000, "symbol": "OtherThreadSymbol", "symbolLocation": 8, "imageIndex": 0}
+      ]
+    },
+    {
+      "id": 101,
+      "triggered": true,
+      "frames": [
+        {"imageOffset": 2000, "symbol": "-[CKSyncEngine cancelOperations]", "symbolLocation": 32, "imageIndex": 1},
+        {"imageOffset": 2001, "symbol": "frame1", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2002, "symbol": "frame2", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2003, "symbol": "frame3", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2004, "symbol": "frame4", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2005, "symbol": "frame5", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2006, "symbol": "frame6", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2007, "symbol": "frame7", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2008, "symbol": "frame8", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2009, "symbol": "frame9", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2010, "symbol": "frame10", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2011, "symbol": "frame11", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2012, "symbol": "frame12", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2013, "symbol": "frame13", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2014, "symbol": "frame14", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2015, "symbol": "frame15", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2016, "symbol": "frame16", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2017, "symbol": "frame17", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2018, "symbol": "frame18", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2019, "symbol": "frame19", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2020, "symbol": "frame20", "symbolLocation": 0, "imageIndex": 0},
+        {"imageOffset": 2021, "symbol": "frame21", "symbolLocation": 0, "imageIndex": 2}
+      ]
+    }
+  ]
+}
