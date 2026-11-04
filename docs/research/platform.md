@@ -279,6 +279,14 @@ Our inference from the facts above, unless a source is named.
 
 Every probe that builds waits until no other Xcode build runs, uses Ficha Dev's bundle identifier or a throwaway one, never `com.lucastkacz.ficha`, and reads sandbox denials in Console, filtered on the subsystem `com.apple.sandbox.reporting` ([Discovering and diagnosing App Sandbox violations](https://developer.apple.com/documentation/security/discovering-and-diagnosing-app-sandbox-violations)). Those marked **before the grilling** change its answers; the rest can wait for the build.
 
+A probe of something macOS tells the app, such as a Focus filter's `perform`, an App Intent or a widget's timeline, also runs it **cold**: the app quit and launched again, as at login, with nothing touched since that could connect macOS to the app, such as the System Settings pane where the user turned the thing on. A pass counts only once the cold run passes too. This rule is our own, from #307.
+
+A probe of something macOS launches, such as a widget's click, a Shortcut, a Focus filter or a link, first checks which copy of the app it would open. LaunchServices picks one of the copies it has registered, and `make run` unregisters the others, but any build brings its own back:
+
+```bash
+osascript -l JavaScript -e "ObjC.import('AppKit'); $.NSWorkspace.sharedWorkspace.URLForApplicationWithBundleIdentifier('com.lucastkacz.ficha.dev').path.js"
+```
+
 **The sandbox and the CLI**
 
 - **P1, before the grilling.** Do the detectors, idle time, the capture shortcut and start at login work sandboxed, with no device entitlements? On a branch, give Ficha Dev's Debug configuration the sandbox and an entitlements file with `com.apple.security.app-sandbox` alone. Watch Diagnostics idle, on a FaceTime call, with a YouTube video and with an app in full screen; press the capture shortcut; log `SMAppService.mainApp.status`. A right reading means it works; "can't tell" with a denial in Console means it's blocked; a wrong "not in use" with no denial is a silent filter, so compare with the unsandboxed build. Lucas makes the call and plays the video. Since #305, answered in section 1: of the detectors, idle time and the capture shortcut, only the camera's reading fails, as a silent filter.

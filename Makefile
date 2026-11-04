@@ -104,8 +104,9 @@ project: fsrs ## Generate Ficha.xcodeproj from project.yml (never edit it by han
 # commit's history has, so each build after a merge shows a larger one. It's
 # passed to xcodebuild as a build setting, which overrides project.yml's.
 # Both are expanded only by the targets that build, which stop without it.
+# scripts/xcodebuild.sh runs xcodebuild and keeps a failed build's output short.
 BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: git couldn't count this checkout's commits))
-XCODEBUILD_MAC = xcodebuild -project Ficha.xcodeproj -scheme Ficha -derivedDataPath $(DERIVED) -quiet \
+XCODEBUILD_MAC = scripts/xcodebuild.sh -project Ficha.xcodeproj -scheme Ficha -derivedDataPath $(DERIVED) -quiet \
 	CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 # The builds for this Mac, for Apple silicon alone.
 XCODEBUILD = $(XCODEBUILD_MAC) -destination 'platform=macOS,arch=arm64'
@@ -135,7 +136,7 @@ build: project ## Build the app, signed when the team's ID is there; warnings ar
 
 # The iPhone app, which stage 1 builds only as Ficha Dev, in the Debug
 # configuration (#97).
-XCODEBUILD_IPHONE = xcodebuild -project Ficha.xcodeproj -scheme iPhone -configuration Debug \
+XCODEBUILD_IPHONE = scripts/xcodebuild.sh -project Ficha.xcodeproj -scheme iPhone -configuration Debug \
 	-derivedDataPath $(DERIVED) -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 
 .PHONY: build-iphone
@@ -210,8 +211,9 @@ render-build: fsrs ## Build the render tool, so a change to the app's views can'
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
 
 .PHONY: run
-run: team build ## Build and open Ficha Dev, in its sandbox, restarting it; the real Ficha keeps running.
+run: team build ## Build and open Ficha Dev, in its sandbox, restarting it, with every other copy unregistered from LaunchServices; the real Ficha keeps running.
 	@pkill -x "Ficha Dev" || true
+	@scripts/unregister-other-copies.sh "Ficha Dev.app" "$(CURDIR)/$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 
 .PHONY: render
@@ -248,7 +250,9 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # as Xcode's Organizer does, through the account in Xcode's settings, so
 # neither the repo nor CI holds a secret. ExportOptions.plist keeps the build
 # to TestFlight's internal testers, and its number as the Makefile sets it.
-# Archiving and exporting with xcodebuild is Apple's documented way.
+# Archiving and exporting with xcodebuild is Apple's documented way. The archive
+# holds a Ficha.app, which a widget's click or a ficha:// link must never open
+# in place of the installed one, on Lucas's cards, so the other copies go.
 UPLOAD := .build/upload
 
 .PHONY: upload
@@ -256,6 +260,7 @@ upload: on-main team project ## From main: archive the real Ficha and upload it 
 	rm -rf $(UPLOAD)
 	$(XCODEBUILD_MAC) -configuration Release -destination 'generic/platform=macOS' \
 		-archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
+	@scripts/unregister-other-copies.sh Ficha.app /Applications/Ficha.app
 	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
 		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
 		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \
