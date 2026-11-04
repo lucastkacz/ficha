@@ -437,7 +437,7 @@ final class AnkiProgressTests {
     }
 
     @Test(
-        "a card that came in placed shows its interval in its review log, unseen until its first review, which goes on from it",
+        "a card that came in placed shows its interval in its review log, unseen and with no reviews until its first one, which goes on from it",
         arguments: schemas)
     func aPlacedCardShowsItsIntervalInItsReviewLog(format: AnkiPackage.Format) async throws {
         let package = AnkiPackage(
@@ -450,7 +450,7 @@ final class AnkiProgressTests {
         let importedAt = time.now
 
         let rowsBefore = try engine.reviewLogRows(of: heart.id, with: scheduler)
-        let lastSeenBefore = try engine.cardRows(in: .all, with: scheduler).first?.lastSeen
+        let rowBefore = try #require(try engine.cardRows(in: .all, with: scheduler).first)
         time.advance(by: days(9))
         let good = try scheduler.preview(
             of: CardWay(cardID: heart.id, way: .frontFirst), after: try engine.reviewLog(), at: time.now
@@ -463,10 +463,13 @@ final class AnkiProgressTests {
         #expect(rowsBefore.map(\.entry.kind) == [.placement(placed)])
         #expect(rowsBefore.map(\.entry.answeredAt) == [importedAt])
         #expect(rowsBefore.map(\.interval) == [.seconds(days(10))])
-        #expect(lastSeenBefore == .some(nil))
+        #expect(rowBefore.lastSeen == nil)
+        #expect(rowBefore.reviews == 0)
         #expect(good > .seconds(days(10)))
         #expect(try engine.reviewLogRows(of: heart.id, with: scheduler).map(\.interval) == [.seconds(days(10)), good])
-        #expect(try engine.cardRows(in: .all, with: scheduler).first?.lastSeen == time.now)
+        let rowAfter = try #require(try engine.cardRows(in: .all, with: scheduler).first)
+        #expect(rowAfter.lastSeen == time.now)
+        #expect(rowAfter.reviews == 1)
     }
 
     // A filtered deck keeps the card's due in its home deck aside, and

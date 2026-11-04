@@ -77,6 +77,10 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
         case tags
         case source
         case lastSeen
+        /// How many times the card was reviewed, either way, fewest first. A
+        /// card not reviewed yet has 0 there, so it isn't one with nothing in
+        /// the column.
+        case reviews
         /// When the card's front or back last changed, and cards never
         /// edited after the others.
         case edited
@@ -142,6 +146,8 @@ nonisolated struct CardRowOrder: ColumnOrder, Codable {
             ordered(lhs.card.source, rhs.card.source) { $0.localizedStandardCompare($1) }
         case .lastSeen:
             ordered(lhs.lastSeen, rhs.lastSeen) { $0.compare($1) }
+        case .reviews:
+            ordered(lhs.reviews, rhs.reviews)
         case .edited:
             ordered(lhs.card.editedAt, rhs.card.editedAt) { $0.compare($1) }
         }

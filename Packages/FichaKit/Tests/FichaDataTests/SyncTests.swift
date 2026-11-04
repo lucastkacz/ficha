@@ -205,6 +205,21 @@ final class SyncTests {
     // A new card's again waits the first learning step's hour, good the
     // second step's 4 hours, hard repeats that step, and again goes back to
     // the first step's hour.
+    @Test("a card's Reviews counts a review the other device made, once it syncs")
+    func reviewsCountTheOtherDevicesReview() async throws {
+        try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        let scheduler = ReviewSettings.defaults.scheduler
+        #expect(try mac.engine.cardRows(in: .all, with: scheduler).map(\.reviews) == [0])
+
+        try iPhone.engine.meet(try #require(try iPhone.engine.cards().only))
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(try mac.engine.cardRows(in: .all, with: scheduler).map(\.reviews) == [1])
+    }
+
     @Test("each review keeps the interval it set, which reaches the other device with it")
     func eachReviewKeepsItsInterval() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))

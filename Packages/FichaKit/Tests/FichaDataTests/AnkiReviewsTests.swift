@@ -125,6 +125,45 @@ final class AnkiReviewsTests {
         #expect(try standing(of: "corazón", with: otherSettings) == graduated(due: try october(31, at: 10, minute: 40)))
     }
 
+    // The second card's first review starts it, as the test of reviews
+    // without the learning steps says, so it comes in as a placement.
+    @Test(
+        "a card's Reviews counts the rated points of its chart, the reviews Anki brought, and no placement: the interval Set Due Date gave it, or a card's first review without its learning steps",
+        arguments: schemas)
+    func reviewsCountWhatAnkiBrought(format: AnkiPackage.Format) async throws {
+        let package = AnkiPackage(
+            format: format,
+            notes: [
+                AnkiNote(
+                    type: .basic, fields: ["riñón", "kidney"], progress: .review(due: 25, interval: 20),
+                    revlog: [
+                        AnkiRevlogEntry(at: try october(2, at: 10), button: 3, interval: -600, kind: .learning),
+                        AnkiRevlogEntry(
+                            at: try october(2, at: 10, minute: 10), button: 3, interval: 1, kind: .learning),
+                        AnkiRevlogEntry(at: try october(5, at: 12, minute: 5), button: 0, interval: 20, kind: .manual),
+                    ]),
+                AnkiNote(
+                    type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 27, interval: 15),
+                    revlog: [
+                        AnkiRevlogEntry(at: try october(1, at: 9), button: 0, interval: 3, kind: .manual),
+                        AnkiRevlogEntry(
+                            at: try october(3, at: 10), button: 3, interval: 5, factor: 2300, kind: .review),
+                        AnkiRevlogEntry(at: try october(13, at: 10), button: 3, interval: 15, kind: .review),
+                    ]),
+            ])
+
+        try await importPackage(package)
+
+        let rows = try engine.cardRows(in: .all, with: scheduler)
+        let kidney = try #require(rows.first { $0.card.front == "riñón" })
+        let lung = try #require(rows.first { $0.card.front == "pulmón" })
+        #expect(
+            try engine.reviewLogRows(of: kidney.id, with: scheduler).map(\.entry.isPlacement) == [false, false, true])
+        #expect(kidney.reviews == 2)
+        #expect(try engine.reviewLogRows(of: lung.id, with: scheduler).map(\.entry.isPlacement) == [true, false])
+        #expect(lung.reviews == 1)
+    }
+
     // Set Due Date with "20!" sets the interval too. FSRS's rescheduling and
     // a reset write an entry with no button as well; cramming in a filtered
     // deck with rescheduling off writes one with an ease of 0.

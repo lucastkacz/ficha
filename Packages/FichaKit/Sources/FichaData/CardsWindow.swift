@@ -24,6 +24,13 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// review, or nil while it's new, or while it has only the placement an
     /// import gave it (ADR 0013).
     public let lastSeen: Date?
+    /// How many times the user reviewed it, either way, as the Reviews column
+    /// shows it: its review log's reviews, an import's from another app too,
+    /// the rated points of the card's chart. A placement isn't one, even when
+    /// an import made it from Anki's first review of a card whose learning
+    /// steps Anki lost. A way the card no longer goes keeps its reviews here,
+    /// as the chart still draws them.
+    public let reviews: Int
 
     public var id: Int64 {
         card.id
@@ -63,6 +70,9 @@ public struct WayProgress: Sendable, Equatable {
     /// read it, or nil while it's new, or while an import placed it in its
     /// learning steps without reviews.
     public let memory: WayMemory?
+    /// How many times the user reviewed the card this way, as the detail's
+    /// Reviews row splits the card's reviews.
+    public let reviews: Int
     /// Where the card stands, both ways together.
     let cardStanding: CardStanding
 
@@ -437,9 +447,9 @@ extension CardStanding {
 extension CardRow {
     /// The row of `card`, whose tags have what `ownTags` says of their own,
     /// after `entries`, its review log's, in any order: last seen either way,
-    /// when Lucas last answered it, and each way standing as `scheduler`
-    /// replays its log, with its memory at `now`, its back-first way only
-    /// while the card goes both ways.
+    /// when Lucas last answered it, how many times he did, and each way
+    /// standing as `scheduler` replays its log, with its memory at `now`, its
+    /// back-first way only while the card goes both ways.
     fileprivate init(
         card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
     ) throws(SchedulingError) {
@@ -449,19 +459,23 @@ extension CardRow {
         frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler, at: now)
         backFirst =
             card.bothWays ? try WayProgress(.backFirst, of: card, after: entries, with: scheduler, at: now) : nil
-        lastSeen = entries.filter { !$0.isPlacement }.map(\.answeredAt).max()
+        let rated = entries.filter { !$0.isPlacement }
+        lastSeen = rated.map(\.answeredAt).max()
+        reviews = rated.count
     }
 }
 
 extension WayProgress {
     /// Where `card`'s `way` stands as `scheduler` replays its entries out of
     /// `entries`, the card's review log's, in any order, with its memory at
-    /// `now`.
+    /// `now` and how many of its entries are reviews.
     fileprivate init(
         _ way: Way, of card: Card, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
     ) throws(SchedulingError) {
-        let standing = try scheduler.standing(after: entries.filter { $0.way == way })
+        let wayEntries = entries.filter { $0.way == way }
+        let standing = try scheduler.standing(after: wayEntries)
         self.standing = standing
+        reviews = wayEntries.count { !$0.isPlacement }
         cardStanding = card.standing
         // The scheduler reads a retrievability whenever the way has a memory.
         memory = try scheduler.retrievability(of: standing, at: now).flatMap { retrievability in
