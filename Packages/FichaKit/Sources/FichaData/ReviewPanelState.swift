@@ -491,6 +491,13 @@ public struct ReviewPanelState: Sendable {
         touchedAt = engine.now
     }
 
+    /// Notes that Lucas pressed a key that changes the card size, which the
+    /// app keeps, so the panel doesn't close on its own while he adjusts it,
+    /// at a limit too, where the press changes nothing.
+    public mutating func cardSizeKeyPressed() {
+        touch()
+    }
+
     /// Notes that Lucas clicked the panel, which gives it the keyboard: it
     /// doesn't take the keyboard on its own after that.
     public mutating func clicked() {

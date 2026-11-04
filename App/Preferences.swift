@@ -109,6 +109,13 @@ enum Preferences {
         set { write(newValue, for: .showsDueCount, unless: false) }
     }
 
+    /// How large a card's text and images show: 100% by default, and stored
+    /// as its percent.
+    static var cardSize: CardSize {
+        get { read(.cardSize, as: Int.self, CardSize.init(percent:)) ?? .normal }
+        set { write(newValue.percent, for: .cardSize, unless: CardSize.normal.percent) }
+    }
+
     /// The shortcut that opens "Capture…" from any app, or nil when it's off:
     /// the app's own (`AppVariant.captureShortcut`) until Lucas picks another
     /// or turns it off, which an empty one stored says. One that can't be
@@ -229,6 +236,7 @@ enum Preferences {
         case backupFrequency = "BackupFrequency"
         case backupsKept = "BackupsKept"
         case showsDueCount = "ShowsDueCount"
+        case cardSize = "CardSizePercent"
         case captureShortcut = "CaptureShortcut"
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
         /// The raw value of the tab Settings opens on.

@@ -17258,6 +17258,77 @@
         }
       }
     },
+    "Card size" : {
+      "comment" : "A row of Settings that picks how large a card's text and images show, from 80% to 200%.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حجم البطاقات"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kartengröße"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño de las tarjetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taille des cartes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dimensioni delle carte"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カードのサイズ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카드 크기"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamanho dos cartões"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Размер карточек"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片大小"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片大小"
+          }
+        }
+      }
+    },
     "Card: “%@”\n\nExpand keeps your capture in the inbox, attached to that card, so that refining adds it to the card. Ignore drops it." : {
       "localizations" : {
         "ar" : {
@@ -36489,6 +36560,148 @@
         }
       }
     },
+    "Make Card Larger" : {
+      "comment" : "A hidden button of the review panel and the Cards window: ⌘+, which makes a card's text and images larger.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تكبير البطاقة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karte vergrößern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrandar la tarjeta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrandir la carte"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingrandisci la carta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カードを拡大"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카드 확대"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aumentar o cartão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увеличить карточку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大卡片"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大卡片"
+          }
+        }
+      }
+    },
+    "Make Card Smaller" : {
+      "comment" : "A hidden button of the review panel and the Cards window: ⌘−, which makes a card's text and images smaller.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تصغير البطاقة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karte verkleinern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Achicar la tarjeta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduire la carte"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rimpicciolisci la carta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カードを縮小"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카드 축소"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diminuir o cartão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить карточку"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩小卡片"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "縮小卡片"
+          }
+        }
+      }
+    },
     "Media" : {
       "comment" : "A column of the Cards window: whether the card's sides have an image or a sound.",
       "localizations" : {
@@ -40188,6 +40401,77 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "尚無"
+          }
+        }
+      }
+    },
+    "Normal Card Size" : {
+      "comment" : "A hidden button of the review panel and the Cards window: ⌘0, which returns a card's text and images to their normal size, 100%.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الحجم العادي للبطاقة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normale Kartengröße"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño normal de la tarjeta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taille normale de la carte"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dimensioni normali della carta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カードを標準サイズに"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카드 원래 크기"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamanho normal do cartão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обычный размер карточки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片正常大小"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片正常大小"
           }
         }
       }
@@ -57313,6 +57597,77 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "「%@」是由比Ficha所知更新的Anki版本匯出的。請在Anki中勾選「舊版 Anki 支援」後重新匯出牌組，然後匯入該檔案。"
+          }
+        }
+      }
+    },
+    "⌘+ and ⌘− make a card larger or smaller in the review panel and the Cards window, and ⌘0 returns it to its normal size." : {
+      "comment" : "Under the Card size row of Settings: the keys that change it. ⌘+, ⌘− and ⌘0 stay as they are.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يكبّر ‎⌘+‎ البطاقة ويصغّرها ‎⌘−‎ في لوحة المراجعة ونافذة البطاقات، ويعيدها ‎⌘0‎ إلى حجمها العادي."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+ und ⌘− machen eine Karte im Wiederholungsfenster und im Fenster „Karten“ größer oder kleiner, und ⌘0 setzt sie auf die normale Größe zurück."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+ y ⌘− agrandan o achican una tarjeta en el panel de repaso y en la ventana Tarjetas, y ⌘0 la devuelve a su tamaño normal."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+ et ⌘− agrandissent ou réduisent une carte dans le panneau de révision et la fenêtre Cartes, et ⌘0 lui rend sa taille normale."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+ e ⌘− ingrandiscono o rimpiccioliscono una carta nel pannello di ripasso e nella finestra Carte, e ⌘0 la riporta alle dimensioni normali."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+と⌘−で、復習パネルと「カード」ウインドウのカードを拡大または縮小できます。⌘0で標準のサイズに戻ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복습 패널과 카드 윈도우에서 ⌘+와 ⌘−는 카드를 확대하거나 축소하고, ⌘0은 원래 크기로 되돌립니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+ e ⌘− aumentam ou diminuem um cartão no painel de revisão e na janela Cartões, e ⌘0 restaura o tamanho normal."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+ и ⌘− увеличивают или уменьшают карточку на панели повторения и в окне «Карточки», а ⌘0 возвращает ей обычный размер."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在复习面板和卡片窗口中，⌘+和⌘−可放大或缩小卡片，⌘0可将其恢复为正常大小。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在複習面板和「卡片」視窗中，⌘+和⌘−可放大或縮小卡片，⌘0可將其回復為正常大小。"
           }
         }
       }

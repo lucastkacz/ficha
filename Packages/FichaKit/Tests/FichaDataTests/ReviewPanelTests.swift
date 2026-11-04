@@ -54,6 +54,22 @@ struct ReviewPanelTests {
         #expect(panel.outcome == .autoClosed)
     }
 
+    @Test("pressing a card size key counts as touching the panel, so it stays open another 10 minutes")
+    func aCardSizeKeyKeepsThePanelOpen() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
+
+        time.advance(by: minutes(5))
+        panel.cardSizeKeyPressed()
+        time.advance(by: minutes(10) - 1)
+        panel.closeIfUntouched()
+        #expect(panel.outcome == nil)
+        time.advance(by: 1)
+        panel.closeIfUntouched()
+
+        #expect(panel.outcome == .autoClosed)
+    }
+
     // So Lucas can ask for more cards, or undo the last one.
     @Test("once Lucas answered every card, the panel stays open, and closing it then finishes it")
     func thePanelStaysOpenOnceEveryCardIsAnswered() throws {

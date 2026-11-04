@@ -147,7 +147,8 @@ private struct SetAsideIcon: View {
 /// buried it when it's buried, and its set-aside decks when it's set aside,
 /// its type and tags and whether it goes both ways, its front and back, each
 /// side's image above its text and its sound below it, and its source, where
-/// it stands, and its review log, in a chart and in full.
+/// it stands, and its review log, in a chart and in full. Its front, back,
+/// source and images show at the card size, and the rest stays its size.
 struct CardDetail: View {
     let row: CardRow
     /// The images the window shows, the card's among them.
@@ -159,6 +160,7 @@ struct CardDetail: View {
     let reviewLog: Result<[ReviewLogRow], EngineError>?
     /// The ▶ and the length of a side's sound, which the window fills.
     let soundControls: (CardSide) -> SoundControls
+    @Environment(\.cardSize) private var cardSize
 
     var body: some View {
         ScrollView {
@@ -166,11 +168,11 @@ struct CardDetail: View {
                 FlagAndBurial(standing: row.cardStanding)
                 TypeAndTags(card: row.card)
                 if let image = row.card.frontImage {
-                    SideImage(image: images[image], maximumHeight: 320)
+                    SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
                 }
                 if !row.card.front.isEmpty {
                     TextAsItReads(row.card.front)
-                        .font(.title2.weight(.semibold))
+                        .cardFont(.title)
                 }
                 if row.card.frontSound != nil {
                     soundControls(.front)
@@ -183,17 +185,18 @@ struct CardDetail: View {
                     Divider()
                 }
                 if let image = row.card.backImage {
-                    SideImage(image: images[image], maximumHeight: 320)
+                    SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
                 }
                 if !row.card.back.isEmpty {
                     TextAsItReads(row.card.back)
+                        .cardFont(.body)
                 }
                 if row.card.backSound != nil {
                     soundControls(.back)
                 }
                 if let source = row.card.source {
                     TextAsItReads(source)
-                        .font(.callout)
+                        .cardFont(.callout)
                         .foregroundStyle(.secondary)
                 }
                 Divider()
@@ -438,7 +441,8 @@ private struct TypeAndTags: View {
 
 /// The capture selected in the inbox, whole: what kind it is, its text, its
 /// note and source, when Lucas captured it, and, for an expansion or a
-/// follow-up, the card it's tied to.
+/// follow-up, the card it's tied to. Its text, note and source show at the card
+/// size, and the rest stays its size.
 struct CaptureDetail: View {
     /// The card a capture is tied to, which its detail shows below it.
     enum Tie {
@@ -465,13 +469,14 @@ struct CaptureDetail: View {
             VStack(alignment: .leading, spacing: 16) {
                 Chip(text: kind)
                 TextAsItReads(capture.text)
-                    .font(.title2.weight(.semibold))
+                    .cardFont(.title)
                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
                     if let note = capture.note {
                         GridRow {
                             gridLabel(
                                 Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
                             TextAsItReads(note)
+                                .cardFont(.body)
                         }
                     }
                     if let source = capture.source {
@@ -481,6 +486,7 @@ struct CaptureDetail: View {
                                     "Source",
                                     comment: "In the Cards window's detail: where Lucas came across a capture's text."))
                             TextAsItReads(source)
+                                .cardFont(.body)
                         }
                     }
                     GridRow {
