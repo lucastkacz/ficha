@@ -13,7 +13,7 @@ extension EnvironmentValues {
 enum CardTextStyle {
     /// A card's upper side, or a capture's text: its largest.
     case title
-    /// A card's lower side, or a capture's note.
+    /// A card's lower side, or a capture's note and source.
     case body
     /// A card's source in the Cards window.
     case callout
@@ -121,15 +121,22 @@ extension NSEvent {
     var asCardSizeShortcut: NSEvent? {
         guard type == .keyDown else { return nil }
         let modifiers = modifierFlags.intersection([.shift, .control, .option, .command])
-        let typed =
-            modifiers == .command
-            ? characters(byApplyingModifiers: .command)
-            : modifiers == [.command, .shift] ? charactersIgnoringModifiers : nil
-        guard let key = typed.flatMap(CardSizeKey.init(typed:)).map({ String($0.rawValue) }) else {
+        guard modifiers == .command || modifiers == [.command, .shift],
+            let typed = charactersIgnoringModifiers,
+            let typedWithCommand = characters(byApplyingModifiers: .command),
+            let key = CardSizeKey(
+                typed: typed, typedWithCommand: typedWithCommand, isShiftHeld: modifiers.contains(.shift))
+        else {
             return nil
         }
-        return NSEvent.keyEvent(
-            with: .keyDown, location: locationInWindow, modifierFlags: .command, timestamp: timestamp,
+        return asPress(of: String(key.rawValue), modifierFlags: .command)
+    }
+
+    /// This key press as one of a key that types `key`, with `modifierFlags`
+    /// held.
+    func asPress(of key: String, modifierFlags: NSEvent.ModifierFlags) -> NSEvent? {
+        NSEvent.keyEvent(
+            with: .keyDown, location: locationInWindow, modifierFlags: modifierFlags, timestamp: timestamp,
             windowNumber: windowNumber, context: nil, characters: key, charactersIgnoringModifiers: key,
             isARepeat: isARepeat, keyCode: keyCode)
     }

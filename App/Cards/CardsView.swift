@@ -1467,59 +1467,58 @@ struct CardsView: View {
                 focusTableOnceEditEnds()
             }
         case nil:
-            switch state.detail {
-            case .capture(let capture):
-                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
-                    .environment(\.cardSize, model.cardSize)
+            Group {
+                switch state.detail {
+                case .capture(let capture):
+                    CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            actionBar
+                        }
+                case .expansion(let expansion):
+                    CaptureDetail(
+                        capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
+                        tie: .expands(expansion.card)
+                    )
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         actionBar
                     }
-            case .expansion(let expansion):
-                CaptureDetail(
-                    capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
-                    tie: .expands(expansion.card)
-                )
-                .environment(\.cardSize, model.cardSize)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    actionBar
-                }
-            case .followUp(let followUp):
-                CaptureDetail(
-                    capture: followUp.capture, kind: InboxRow.Item.followUp(followUp).kindName,
-                    tie: .followsUp(followUp.card)
-                )
-                .environment(\.cardSize, model.cardSize)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    actionBar
-                }
-            case .cards(let rows):
-                selectionSummary(rows)
-            case .card(let row, let reviewLog):
-                CardDetail(
-                    row: row, images: state.images, now: state.now, reviewLog: reviewLog
-                ) { side in
-                    SoundControls(
-                        sound: row.card.sound(on: side).flatMap { state.sounds[$0] },
-                        isPlaying: state.isPlaying(at: .detail(cardID: row.id, side))
-                    ) {
-                        state.playOrStopSound(at: .detail(cardID: row.id, side))
+                case .followUp(let followUp):
+                    CaptureDetail(
+                        capture: followUp.capture, kind: InboxRow.Item.followUp(followUp).kindName,
+                        tie: .followsUp(followUp.card)
+                    )
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        actionBar
                     }
+                case .cards(let rows):
+                    selectionSummary(rows)
+                case .card(let row, let reviewLog):
+                    CardDetail(
+                        row: row, images: state.images, now: state.now, reviewLog: reviewLog
+                    ) { side in
+                        SoundControls(
+                            sound: row.card.sound(on: side).flatMap { state.sounds[$0] },
+                            isPlaying: state.isPlaying(at: .detail(cardID: row.id, side))
+                        ) {
+                            state.playOrStopSound(at: .detail(cardID: row.id, side))
+                        }
+                    }
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        actionBar
+                    }
+                case .nothingSelectedInInbox:
+                    ContentUnavailableView(
+                        String(
+                            localized: "Nothing selected",
+                            comment: "In the Cards window's detail, when nothing in the inbox is selected."),
+                        systemImage: "tray")
+                case .noCardSelected:
+                    ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+                case .allTags(let selected):
+                    tagsDetail(selected)
                 }
-                .environment(\.cardSize, model.cardSize)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    actionBar
-                }
-            case .nothingSelectedInInbox:
-                ContentUnavailableView(
-                    String(
-                        localized: "Nothing selected",
-                        comment: "In the Cards window's detail, when nothing in the inbox is selected."),
-                    systemImage: "tray")
-            case .noCardSelected:
-                ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
-            case .allTags(let selected):
-                tagsDetail(selected)
             }
+            .environment(\.cardSize, model.cardSize)
         }
     }
 

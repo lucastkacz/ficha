@@ -6,36 +6,37 @@
 public struct CardSize: Sendable, Hashable {
     private static let smallest = 80
     private static let largest = 200
-    private static let step = 10
+    private static let gap = 10
 
     /// The size a card shows at until the user changes it.
     public static let normal = CardSize(step: 100)
     /// Every size, smallest first.
-    public static let steps = stride(from: smallest, through: largest, by: step).map(CardSize.init(step:))
+    public static let steps = stride(from: smallest, through: largest, by: gap).map(CardSize.init(step:))
 
     /// The size as a percentage of the normal one, always one of the steps.
     public let percent: Int
 
     /// The size a stored percent says, or nil for anything that isn't a step.
     public init?(percent: Int) {
-        guard (Self.smallest...Self.largest).contains(percent), percent % Self.step == 0 else {
+        guard (Self.smallest...Self.largest).contains(percent), percent % Self.gap == 0 else {
             return nil
         }
         self.percent = percent
     }
 
+    /// The size of a percent already known to be a step.
     private init(step percent: Int) {
         self.percent = percent
     }
 
     /// The next size up, or this one at the largest.
     public var larger: CardSize {
-        percent < Self.largest ? CardSize(step: percent + Self.step) : self
+        percent < Self.largest ? CardSize(step: percent + Self.gap) : self
     }
 
     /// The next size down, or this one at the smallest.
     public var smaller: CardSize {
-        percent > Self.smallest ? CardSize(step: percent - Self.step) : self
+        percent > Self.smallest ? CardSize(step: percent - Self.gap) : self
     }
 
     /// `length`, in points, at this size.
@@ -85,10 +86,12 @@ public enum CardSizeKey: Character, CaseIterable, Sendable {
     case minus = "-"
     case zero = "0"
 
-    /// The key a press stands for, from what its layout types with it, or nil
-    /// when that's none of these.
-    public init?(typed: String) {
-        guard typed.count == 1, let character = typed.first else {
+    /// The key a press held with ⌘ stands for, from what its layout types with
+    /// the press's Shift and without ⌘, `typed`, and what it types with ⌘ and
+    /// without Shift, `typedWithCommand`; or nil when that's none of these.
+    public init?(typed: String, typedWithCommand: String, isShiftHeld: Bool) {
+        let standsFor = isShiftHeld ? typed : typedWithCommand
+        guard standsFor.count == 1, let character = standsFor.first else {
             return nil
         }
         self.init(rawValue: character)

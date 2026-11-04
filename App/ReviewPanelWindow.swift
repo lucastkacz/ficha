@@ -137,10 +137,7 @@ final class ReviewPanelWindow: NSPanel {
         else {
             return nil
         }
-        return NSEvent.keyEvent(
-            with: .keyDown, location: event.locationInWindow, modifierFlags: event.modifierFlags,
-            timestamp: event.timestamp, windowNumber: event.windowNumber, context: nil, characters: key,
-            charactersIgnoringModifiers: key, isARepeat: event.isARepeat, keyCode: event.keyCode)
+        return event.asPress(of: key, modifierFlags: event.modifierFlags)
     }
 
     /// The digit or the letter the key of `event`, a key press, stands for in

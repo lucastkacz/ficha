@@ -42,7 +42,7 @@ struct CardSizeTests {
         #expect(try #require(CardSize(percent: percent)).panelWidth == width)
     }
 
-    @Test("an image's height limit is today's at 100%, doubles at 200%, and follows a short screen")
+    @Test("an image's height limit is 280 pt at 100%, doubles at 200%, and follows a short screen")
     func anImagesHeightLimit() throws {
         let largest = try #require(CardSize(percent: 200))
 
@@ -84,20 +84,42 @@ struct CardSizeKeyTests {
         #expect(CardSizeKey.zero.applied(to: large) == .normal)
     }
 
-    @Test("a press stands for the key its layout types")
-    func aPressStandsForTheKeyItTypes() {
-        #expect(CardSizeKey(typed: "+") == .plus)
-        #expect(CardSizeKey(typed: "=") == .equals)
-        #expect(CardSizeKey(typed: "-") == .minus)
-        #expect(CardSizeKey(typed: "0") == .zero)
+    // What a US, a German, an Arabic and a Zhuyin keyboard type with these keys,
+    // without ⌘ and with it.
+    @Test(
+        "a press of ⌘ alone stands for what its layout types with ⌘",
+        arguments: [
+            ("=", "=", CardSizeKey.equals), ("+", "+", CardSizeKey.plus), ("-", "-", CardSizeKey.minus),
+            ("0", "0", CardSizeKey.zero), ("٠", "0", CardSizeKey.zero), ("ㄢ", "0", CardSizeKey.zero),
+            ("ㄦ", "-", CardSizeKey.minus),
+        ])
+    func aPressOfCommandAlone(typed: String, typedWithCommand: String, key: CardSizeKey) {
+        #expect(CardSizeKey(typed: typed, typedWithCommand: typedWithCommand, isShiftHeld: false) == key)
     }
 
-    // What a US, a German, a French, an Arabic and a Zhuyin keyboard type with
-    // these keys and Shift, or with ⌘ on a key the rule then doesn't take.
+    // What a US, a German and a French keyboard type with these keys and Shift,
+    // and with ⌘ without Shift.
     @Test(
-        "any other press stands for no key: a shifted symbol, another script's digit, or nothing",
-        arguments: ["_", ")", "*", "٠", "ㄢ", "à", "a", "", "=="])
-    func anyOtherPressIsNoKey(typed: String) {
-        #expect(CardSizeKey(typed: typed) == nil)
+        "a press of ⌘ and Shift stands for what its layout types with Shift",
+        arguments: [("+", "=", CardSizeKey.plus), ("=", "0", CardSizeKey.equals), ("0", "à", CardSizeKey.zero)])
+    func aPressOfCommandAndShift(typed: String, typedWithCommand: String, key: CardSizeKey) {
+        #expect(CardSizeKey(typed: typed, typedWithCommand: typedWithCommand, isShiftHeld: true) == key)
+    }
+
+    // A French key that types à with ⌘ too, a letter, what a dead key types, and
+    // more than one character.
+    @Test(
+        "a press of ⌘ alone that types anything else stands for no key",
+        arguments: [("à", "à"), ("a", "a"), ("", ""), ("==", "==")])
+    func anyOtherPressOfCommandAlone(typed: String, typedWithCommand: String) {
+        #expect(CardSizeKey(typed: typed, typedWithCommand: typedWithCommand, isShiftHeld: false) == nil)
+    }
+
+    // A US keyboard's Shift on its - and 0 keys, whose ⌘ alone would act.
+    @Test(
+        "a press of ⌘ and Shift that types anything else stands for no key",
+        arguments: [("_", "-"), (")", "0")])
+    func anyOtherPressOfCommandAndShift(typed: String, typedWithCommand: String) {
+        #expect(CardSizeKey(typed: typed, typedWithCommand: typedWithCommand, isShiftHeld: true) == nil)
     }
 }

@@ -71,6 +71,9 @@ struct ReviewPanelView: View {
     var maximumHeight = CGFloat.infinity
     /// The tallest a side's image shows.
     private var imageHeight: CGFloat { cardSize.imageHeightLimit(panelTallest: maximumHeight) }
+    /// The widest the rating buttons and the writing fields show, the inside of
+    /// the panel at 100%, so they stay their size as it widens with the card.
+    private static let controlsWidth = CardSize.normal.panelWidth - 2 * 20
     /// How large a card's text and images show.
     @Environment(\.cardSize) private var cardSize
     /// Whether the note's field has the keyboard. Whatever shows the note
@@ -231,6 +234,9 @@ struct ReviewPanelView: View {
                     ratingButton(rating, in: panel)
                 }
             }
+            // In the middle of a wider panel, as Anki's bottom bar.
+            .frame(maxWidth: Self.controlsWidth)
+            .frame(maxWidth: .infinity)
             .background {
                 // Space too, as it answers Good in Anki once the answer
                 // shows, through a hidden button, since a button takes one
@@ -613,6 +619,9 @@ struct ReviewPanelView: View {
                 .disabled(!canFinish)
             }
         }
+        // In the trailing corner of a wider panel, as its main button is.
+        .frame(maxWidth: Self.controlsWidth)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var newBadge: some View {
