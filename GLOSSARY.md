@@ -33,6 +33,10 @@ _Avoid_: reverse
 What the user hears on one side of a card, from a file they added or imported, such as an excerpt of an aria or a word's pronunciation. It plays only when they ask for it.
 _Avoid_: audio, clip, recording
 
+**Card size**:
+How large the user chooses to see a card's text and images in the review panel, and the card or capture selected in the Cards window, one size for both. Each Mac keeps its own, and the iPhone follows the system's text size.
+_Avoid_: zoom, text size, scale
+
 **Deck**:
 The subject a card lives in, like "historia" or "Great Works of Art"; each card lives in exactly one. A deck can sit inside another, its parent, for a finer subject under a broad one, as "Artists" does in "Great Works of Art › Artists", and a parent holds the cards of every deck inside it.
 _Avoid_: folder, collection, category, nested deck
