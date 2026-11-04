@@ -217,10 +217,10 @@ render-build: fsrs ## Build the render tool, so a change to the app's views can'
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
 
 .PHONY: run
-run: team build ## Build and open Ficha Dev, in its sandbox, restarting it, with every other copy unregistered from LaunchServices; the real Ficha keeps running.
+run: team build ## Build and open Ficha Dev, in its sandbox, restarting it, with every other copy unregistered from LaunchServices, and on a scratch folder when FICHA_DEV_SCRATCH is set; the real Ficha keeps running.
 	@pkill -x "Ficha Dev" || true
 	@scripts/unregister-other-copies.sh "Ficha Dev.app" "$(CURDIR)/$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
-	open "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
+	open $(if $(FICHA_DEV_SCRATCH),--env "FICHA_DEV_SCRATCH=$(FICHA_DEV_SCRATCH)") "$(DERIVED)/Build/Products/Debug/Ficha Dev.app"
 
 .PHONY: last-crash
 last-crash: ## Say where Ficha Dev's last crash stopped: make last-crash ARGS="<report>" reads another report.

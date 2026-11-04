@@ -191,19 +191,34 @@ Each `ficha` runs in a sandbox of its own, so it reads the files it puts on card
 
 ### Agents' runs of Ficha Dev's `ficha`
 
-An agent that tries Ficha Dev's `ficha` runs it on a scratch folder of its own, so Ficha Dev's cards stay as they were:
+An agent that tries Ficha Dev's `ficha` runs it through `scripts/ficha-dev.sh`, on a scratch folder of its own, so Ficha Dev's cards stay as they were:
 
 ```bash
-FICHA_DEV_SCRATCH=agent-304 <Ficha Dev's ficha> capture "serendipia"
+FICHA_DEV_SCRATCH=agent-304 scripts/ficha-dev.sh capture "serendipia"
 ```
 
+- The script runs the `ficha` this checkout's `make build` made, with its arguments and its standard input. Without `FICHA_DEV_SCRATCH` it refuses to run and says how. When the CLI isn't built, it says to run `make build` with `iPhone/Local.xcconfig` copied in; when it's built unsigned, the CLI's own message says what to do. The script is our own.
 - `FICHA_DEV_SCRATCH=<name>`, with letters, digits, `-` and `_`, makes Ficha Dev's `ficha` open the cards in `Scratch/<name>/`, in Ficha Dev's App Group's folder: a data folder of its own, which starts empty, on the system's time. The open Ficha Dev doesn't hear it, since the notification of a change is named after the database's path. Only Ficha Dev's build reads the variable, and the folder has to be in the group's folder, since the sandbox lets the CLI write nowhere else. The variable is our own, which [#301](https://github.com/lucastkacz/ficha/issues/301) probed.
-- Ficha Dev itself, opened with `open -n --env FICHA_DEV_SCRATCH=<name> <Ficha Dev.app>`, runs on the scratch folder too. It syncs through iCloud in zones of its own, `Files-<name>` and cards' zones such as `Cards-<name>.1761650000000.new`, in the same account as Ficha Dev, whose devices leave them alone, so an agent's cards never reach Ficha Dev's. Its second device, under Debug, syncs in them too.
-- To delete a scratch run's zones from iCloud once it's done, run Ficha Dev's binary itself with `--delete-scratch-zones`, which shows no window and takes neither the pointer nor the keyboard: `FICHA_DEV_SCRATCH=<name> "<Ficha Dev.app>/Contents/MacOS/Ficha Dev" --delete-scratch-zones`. It prints the zones it deleted, or that there were none, and deletes no zone but that run's, so Ficha Dev's own zones stay. It needs a build signed for iCloud, since the CLI's process can't reach it, and it's our own.
+- Ficha Dev itself, opened with `FICHA_DEV_SCRATCH=<name> make run` or `open -n --env FICHA_DEV_SCRATCH=<name> <Ficha Dev.app>`, runs on the scratch folder too, and hears the changes the script's `ficha` makes there. It syncs through iCloud in zones of its own, `Files-<name>` and cards' zones such as `Cards-<name>.1761650000000.new`, in the same account as Ficha Dev, whose devices leave them alone, so an agent's cards never reach Ficha Dev's. Its second device, under Debug, syncs in them too.
+- To delete a scratch run's zones from iCloud once it's done, run `FICHA_DEV_SCRATCH=<name> scripts/ficha-dev.sh --delete-scratch-zones`, which runs Ficha Dev's binary itself, not the CLI, and shows no window and takes neither the pointer nor the keyboard. It prints the zones it deleted, or that there were none, and deletes no zone but that run's, so Ficha Dev's own zones stay. It needs a build signed for iCloud, since the CLI's process can't reach it, and it's our own.
 - `CFFIXED_USER_HOME`, which keeps the render tool's files in a scratch home, doesn't keep a sandboxed CLI's apart: the group's folder doesn't follow it.
 - `.claude/settings.json` keeps Claude out of both groups' folders, so the scratch folders stay. Starting Ficha Dev over leaves them, since they're beside its `Ficha Dev` folder: to delete them, move the group folder's `Scratch` to the Trash.
-- In a worktree, Claude's Bash refuses to run a path with a space, like `Ficha Dev.app/Contents/Helpers/ficha`, and a heredoc beside a command. A two-line script in the scratchpad that runs the CLI, `exec "<path>" "$@"`, gets around the first, and a file gets around the second: `ficha approve 1 < cards.json`.
+- In a worktree, Claude's Bash refuses to run a path with a space, like `Ficha Dev.app/Contents/Helpers/ficha`, which the script gets around, and a heredoc beside a command, which a file gets around: `FICHA_DEV_SCRATCH=<name> scripts/ficha-dev.sh approve 1 < cards.json`.
 - An unsigned build's `ficha`, as from a worktree without `iPhone/Local.xcconfig`, says it isn't signed with its App Group and opens nothing.
+
+To read Ficha's log while a run goes on, start this in the background. It's `/usr/bin/log` because in zsh `log` is a builtin:
+
+```bash
+/usr/bin/log stream --level debug --style compact --predicate 'subsystem == "com.lucastkacz.ficha"'
+```
+
+These lines say that a change reached the open app: "Told the other engines that the database changed", "Heard that the database changed" and "Counted again after a change".
+
+When something macOS should deliver to Ficha never arrives, such as a Focus filter's `perform` or an App Intent, Ficha's own log shows nothing. Read the sender's side, in the `com.apple.appintents` subsystem. For a Focus filter, the sender is `donotdisturbd`. Apple documents neither, so this way of reading them is our own:
+
+```bash
+/usr/bin/log show --last 10m --info --debug --predicate 'subsystem == "com.apple.appintents" AND process == "donotdisturbd"' --style compact
+```
 
 ## A window's picture
 

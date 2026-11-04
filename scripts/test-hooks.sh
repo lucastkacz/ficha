@@ -201,6 +201,26 @@ if [[ $(cat "$tmp/Scratch.swift") == "let  x=1" ]]; then
 else
   fail "a Swift file outside the project is left as it is (got: $(cat "$tmp/Scratch.swift"))"
 fi
+# The repo's own configuration, which the lint finds beside the files.
+cp "$root/.swift-format" "$tmp/branch/.swift-format"
+printf 'func run() {\n    call({ 1 }) { 2 }\n}\n' >"$tmp/branch/Closures.swift"
+output=$(jq -n --arg file "$tmp/branch/Closures.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh" 2>&1)
+status=$?
+if [[ $status == 2 && $output == *OnlyOneTrailingClosureArgument* ]]; then
+  pass "a lint finding in an edited Swift file exits 2 and names the rule"
+else
+  fail "a lint finding in an edited Swift file exits 2 and names the rule (exit $status, output: $output)"
+fi
+printf 'let x = 1\n' >"$tmp/branch/Clean.swift"
+expect 0 "a clean edited Swift file exits 0" swift-format.sh "$(jq -n --arg file "$tmp/branch/Clean.swift" '{tool_input: {file_path: $file}}')"
+printf 'func broken( {\n' >"$tmp/branch/Broken.swift"
+output=$(jq -n --arg file "$tmp/branch/Broken.swift" '{tool_input: {file_path: $file}}' | "$hooks/swift-format.sh" 2>&1)
+status=$?
+if [[ $status == 0 && -z $output ]]; then
+  pass "a Swift file that doesn't parse yet is left alone, with no message"
+else
+  fail "a Swift file that doesn't parse yet is left alone, with no message (exit $status, output: $output)"
+fi
 
 echo "session-start"
 echo '<!-- skill-map: mattpocock-skills 1.2.3 -->' >"$tmp/repo/CLAUDE.md"
