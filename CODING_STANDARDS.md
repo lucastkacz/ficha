@@ -8,6 +8,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 - The app target is isolated to the main actor by default (Xcode 26's default). Work that must leave the main actor says so explicitly (`nonisolated`, `@concurrent`).
 - A delegate method that iOS or macOS calls with a completion handler runs on the main actor (`extension Type: @MainActor Delegate`), even when the framework calls it on a queue of its own, unless the framework's documentation says the handler may run on any thread. Swift also imports it as an `async` method, and calls the handler where that method returns; UIKit's handlers can need the main thread.
 - Package targets aren't main-actor isolated: their types are `Sendable` values (structs and enums) wherever possible.
+- Code that blocks a thread until other work ends, with a semaphore or a `wait`, waits only for work that needs no thread of Swift's concurrency pool: work on the main actor, reached through completion handlers, on a serial dispatch queue of its own, or answered on the thread that waits, as XPC's synchronous proxy answers. An `await` on its way resumes on that pool, an Objective-C method imported as `async` and a task's `value` included, and `DispatchQueue.global()` and XPC's asynchronous replies get no thread either while the pool's all wait: it has one per core, three on GitHub's Macs. Its test makes every other thread of the pool wait while it waits, as `SVGDrawerTests` does, in a serialized suite: two such tests side by side hold the threads each other waits for, and stall every other test.
 
 ## Layers
 
@@ -28,9 +29,9 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 - The merge gate watches these four files, so a change to where a card stands, and so to which cards show up, makes a pull request risk:high; the same rule written elsewhere would slip past it.
 - A card's flag and burial are set and cleared only by the functions in `FichaData/FlaggingAndBurying.swift`. Fixing and editing a card, the review panel's ⌘Z, an import that buries a card suspended in the app it comes from, and sync, which takes the flag and the burial another device left, call them too, never SQL of their own, so a change to how a card is flagged or buried can't miss a path.
 
-## Time
+## Time and IDs
 
-- Logic gets the current time from a `TimeSource` (`now`), never from `Date()` or `Date.now`, so tests control time.
+- Logic gets the current time from a `TimeSource` (`now`), and the review log's IDs, which seed FSRS's fuzz, from the engine's `IDSource` (`newID`), never from `Date()`, `Date.now` or `UUID()`, so tests control both. An ID that seeds nothing, such as a temporary file's name or a card type's, may still take a `UUID()`, as `FichaData` does. `make time-and-ids-check`, a step of `make check`, fails on `Date()` and `Date.now` outside the tests, `scripts/` and `FichaCore/TimeSource.swift`, and on `UUID()` in `FichaCore` outside `IDSource.swift`. The reviewer judges the rest.
 
 ## Errors and crashes
 
@@ -59,6 +60,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 - Swift Testing: `import Testing`, `@Test`, `#expect`, and `try #require` to unwrap.
 - Few and meaningful: test what can break in a way that matters, like scheduling, which cards show and when, storage and migrations, and import and export. No tests for trivial code, and no mocks that only check which calls were made.
 - A fake of a system service, such as `FakeICloud` for CloudKit and `CKSyncEngine`, does what the service's documentation says, and where the documentation says nothing, the less forgiving thing: a fake kinder than the service passes tests the app then fails. Its doc comment names each place it differs from the real service. The reviewer reads a change to a fake, or to code a fake stands in for, against the service's documentation.
+- A change that can delete or drop cards or their files, or replace them with another copy, has a test for each **deletion path**: a sequence of events the service allows that reaches the deletion, not only the one the code was written for. For CloudKit and `CKSyncEngine`, the deletion paths include an account change as `switchAccounts`, and as `signOut` then `signIn` into another account; a purge, or a newer zone, that the device hasn't fetched yet; a full iCloud; and the Mac's clock behind the time in a zone's name. The fake says what the service does, and the deletion paths say which sequences the tests drive through it. The reviewer lists the deletion paths from the service's documentation and the change's own rules, then checks each against a test: a deletion path with no test is a finding.
 - Test names are sentences that state the behavior: `@Test("a wrong answer sends the card back to the first step")`.
 - Fixtures are made by hand, never taken from Lucas's cards.
 

@@ -277,7 +277,15 @@ Our inference from the facts above, unless a source is named.
 
 ## Open questions and probes
 
-Every probe that builds waits until no other Xcode build runs, uses Ficha Dev's bundle identifier or a throwaway one, never `com.lucastkacz.ficha`, and reads sandbox denials in Console, filtered on the subsystem `com.apple.sandbox.reporting` ([Discovering and diagnosing App Sandbox violations](https://developer.apple.com/documentation/security/discovering-and-diagnosing-app-sandbox-violations)). Those marked **before the grilling** change its answers; the rest can wait for the build.
+Every probe that builds waits until no other Xcode build runs, as `make` does by itself, uses Ficha Dev's bundle identifier or a throwaway one, never `com.lucastkacz.ficha`, and reads sandbox denials in Console, filtered on the subsystem `com.apple.sandbox.reporting` ([Discovering and diagnosing App Sandbox violations](https://developer.apple.com/documentation/security/discovering-and-diagnosing-app-sandbox-violations)). Those marked **before the grilling** change its answers; the rest can wait for the build.
+
+A probe of something macOS tells the app, such as a Focus filter's `perform`, an App Intent or a widget's timeline, also runs it **cold**: the app quit and launched again, as at login, with nothing touched since that could connect macOS to the app, such as the System Settings pane where the user turned the thing on. A pass counts only once the cold run passes too. This rule is our own, from #307.
+
+A probe of something macOS launches, such as a widget's click, a Shortcut, a Focus filter or a link, first checks which copy of the app it would open. LaunchServices picks one of the copies it has registered, and `make run` unregisters the others, but any build brings its own back:
+
+```bash
+osascript -l JavaScript -e "ObjC.import('AppKit'); $.NSWorkspace.sharedWorkspace.URLForApplicationWithBundleIdentifier('com.lucastkacz.ficha.dev').path.js"
+```
 
 **The sandbox and the CLI**
 

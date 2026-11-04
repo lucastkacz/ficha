@@ -115,6 +115,15 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/issue-comments.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash|mcp__terminal__run_in_terminal|WebFetch|WebSearch|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no-email-addresses.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [

@@ -28,6 +28,10 @@ Ficha Dev is a separate app, with its own menu-bar icon, data and preferences, s
 
 Ficha Dev runs in the App Sandbox too, signed with Apple Development and your paid team, whose ID it takes from `iPhone/Local.xcconfig`, as [On the iPhone](#on-the-iphone) explains. Without that file, as in CI, `make build` builds Ficha Dev unsigned, which checks the code but can't run in the sandbox, and `make run` stops and says so. A new worktree hasn't the file either, since git ignores it: copy it there from the main folder.
 
+`make run` unregisters every other Mac copy of Ficha Dev from LaunchServices before it opens this one (`scripts/unregister-other-copies.sh`). What opens the app by its bundle ID, such as a click on its widget, a Shortcut, a Focus filter or a link, gets one of the copies LaunchServices has registered, and each worktree's build adds one: in [#308](https://github.com/lucastkacz/ficha/issues/308) a click opened an unsigned agent's copy, which said it can't open its cards. `lsregister -f` on the right copy doesn't win. A copy comes back when it's built or opened again, so it's done at each `make run`. `make upload` does the same for the real Ficha, keeping `/Applications/Ficha.app`, so that a click or a `ficha://` link never opens the archive's copy or a worktree's in its place. Apple documents `lsregister` only in its `-help`, so this use of it is our own.
+
+A Ficha Dev that quits on its own crashed: `make last-crash` says where, as "In the simulator" explains.
+
 Its cards are in its App Group's folder, which its `ficha` shares: `~/Library/Group Containers/<your team's ID>.com.lucastkacz.ficha.dev/Ficha Dev/`, with the database, `Images/`, `Sounds/` and `Backups/`, laid out as the real Ficha's. Its preferences are in its sandbox's own folder, `~/Library/Containers/com.lucastkacz.ficha.dev/`. Before its sandbox, Ficha Dev kept its cards in `~/Library/Application Support/Ficha Dev/`, which stays as it was: the sandboxed Ficha Dev started empty, and its debug menu loads the sample cards.
 
 Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample cards, written by hand, moves Ficha Dev's time forward and checks for an appearance right away. Its time keeps running from there, stays ahead when Ficha Dev restarts, and Ficha Dev's `ficha` runs on it too. The real Ficha has no such menu and always runs on the system's time. To start Ficha Dev over, with no cards and on the system's time, quit it and move its folder, `Ficha Dev` in its App Group's folder, to the Trash, and start over in iCloud too, as "Sync through iCloud" below says, or iCloud brings the cards back.
@@ -137,7 +141,7 @@ xcrun simctl spawn booted log show --last 5m --info --predicate 'subsystem == "c
 - Locking the simulator, with ⌘L, makes the app active for a moment before it goes to the background, so what it does as it becomes active runs then too, such as planning again.
 - To answer a card notification, swipe it left and press View, which shows its buttons. When Ficha Dev isn't running, iOS launches it in the background for the answer, so an answer logged from a new process ID while the app was running may mean it crashed: a bullet below says how to tell. Each answer logs `Recorded an answer from a card notification`, and whether the appearance goes on or is over. A rating for a card that isn't due within 20 minutes, how far an appearance looks ahead, is refused, and the log says why: "Bring the next appearance now" brings the next appearance early, with the cards it brings at its time. So to try the ratings on a due card, answer a new card with "Again", which makes it due an hour later, press "Move forward 1 hour", under Debug, which takes the app's Due count above 0, and then bring the next appearance.
 - To swipe a card notification away, swipe it left until it goes, or swipe it left and press Clear. iOS tells Ficha Dev, launching it in the background when it isn't running, and the app logs `Recorded a card notification swiped away`: its appearance is a snooze, and the next one comes after the separation, with the same cards. An appearance left alone is a snooze too, which the engine notes the next time the app plans. One that arrives while Ficha Dev is in front never shows, so it's one left alone: leave the app before it arrives.
-- A crash writes nothing to the app's log, and iOS starts the app again for the next answer, so the log goes on from a new process ID as if nothing had happened. After each try, look for a crash report newer than the install: `ls -lt ~/Library/Logs/DiagnosticReports ~/Library/Logs/DiagnosticReports/Retired | grep 'Ficha Dev'` lists them newest first, as `Ficha Dev-<date>-<time>.ips` in the Mac's time, and each report's `pid` is the ID the crashed process has in the log. The file is a line of JSON, then the report as JSON, as Apple's [Interpreting the JSON format of a crash report](https://developer.apple.com/documentation/xcode/interpreting-the-json-format-of-a-crash-report) describes, and the thread with `"triggered": true` holds the frames where the app stopped. The command lists `Retired/` too because macOS moves the reports there later, as soon as a few hours after, which Apple doesn't document.
+- A crash writes nothing to the app's log, and iOS starts the app again for the next answer, so the log goes on from a new process ID as if nothing had happened. After each try, run `make last-crash` (`scripts/last-crash.sh`), and see whether its report is newer than the install. It reads the newest `Ficha Dev-<date>-<time>.ips`, named in the Mac's time, in `~/Library/Logs/DiagnosticReports` or its `Retired/` folder, where macOS moves the reports later, as soon as a few hours after, which Apple doesn't document; `make last-crash ARGS="<report>"` reads another. It prints the report's file name, the process's name and ID, which is the ID it has in the log, its start and crash times, the exception's type and signal, the application-specific information, where a framework's assertion leaves its message, and the first 20 frames of the thread with `"triggered": true`, each as its image and symbol. The file is a line of JSON, then the report as JSON, as Apple's [Interpreting the JSON format of a crash report](https://developer.apple.com/documentation/xcode/interpreting-the-json-format-of-a-crash-report) describes. What the script picks from it is our own, and `scripts/test-last-crash.sh` tests it on a report written by hand.
 - To watch the app react to a change in its data, use one of its own debug tools: "Load the sample cards again", which [#107](https://github.com/lucastkacz/ficha/issues/107) will add, or, to watch it plan again meanwhile, "Bring the next appearance now" or one of the "Move forward" buttons. Claude's Bash commands can't reach the data otherwise, on purpose: the app's folder in the simulator has `Application Support/Ficha Dev/` in its path, and so has the name of the notification the engine posts when the database changes, which `notifyutil` would post. `.claude/settings.json` denies any Bash command with `Application Support/Ficha` in it, to keep Lucas's cards out of reach (CLAUDE.md), and that covers these too.
 
 ## The apps' texts
@@ -187,19 +191,34 @@ Each `ficha` runs in a sandbox of its own, so it reads the files it puts on card
 
 ### Agents' runs of Ficha Dev's `ficha`
 
-An agent that tries Ficha Dev's `ficha` runs it on a scratch folder of its own, so Ficha Dev's cards stay as they were:
+An agent that tries Ficha Dev's `ficha` runs it through `scripts/ficha-dev.sh`, on a scratch folder of its own, so Ficha Dev's cards stay as they were:
 
 ```bash
-FICHA_DEV_SCRATCH=agent-304 <Ficha Dev's ficha> capture "serendipia"
+FICHA_DEV_SCRATCH=agent-304 scripts/ficha-dev.sh capture "serendipia"
 ```
 
+- The script runs the `ficha` this checkout's `make build` made, with its arguments and its standard input. Without `FICHA_DEV_SCRATCH` it refuses to run and says how. When the CLI isn't built, it says to run `make build` with `iPhone/Local.xcconfig` copied in; when it's built unsigned, the CLI's own message says what to do. The script is our own.
 - `FICHA_DEV_SCRATCH=<name>`, with letters, digits, `-` and `_`, makes Ficha Dev's `ficha` open the cards in `Scratch/<name>/`, in Ficha Dev's App Group's folder: a data folder of its own, which starts empty, on the system's time. The open Ficha Dev doesn't hear it, since the notification of a change is named after the database's path. Only Ficha Dev's build reads the variable, and the folder has to be in the group's folder, since the sandbox lets the CLI write nowhere else. The variable is our own, which [#301](https://github.com/lucastkacz/ficha/issues/301) probed.
-- Ficha Dev itself, opened with `open -n --env FICHA_DEV_SCRATCH=<name> <Ficha Dev.app>`, runs on the scratch folder too. It syncs through iCloud in zones of its own, `Files-<name>` and cards' zones such as `Cards-<name>.1761650000000.new`, in the same account as Ficha Dev, whose devices leave them alone, so an agent's cards never reach Ficha Dev's. Its second device, under Debug, syncs in them too.
-- To delete a scratch run's zones from iCloud once it's done, run Ficha Dev's binary itself with `--delete-scratch-zones`, which shows no window and takes neither the pointer nor the keyboard: `FICHA_DEV_SCRATCH=<name> "<Ficha Dev.app>/Contents/MacOS/Ficha Dev" --delete-scratch-zones`. It prints the zones it deleted, or that there were none, and deletes no zone but that run's, so Ficha Dev's own zones stay. It needs a build signed for iCloud, since the CLI's process can't reach it, and it's our own.
+- Ficha Dev itself, opened with `FICHA_DEV_SCRATCH=<name> make run` or `open -n --env FICHA_DEV_SCRATCH=<name> <Ficha Dev.app>`, runs on the scratch folder too, and hears the changes the script's `ficha` makes there. It syncs through iCloud in zones of its own, `Files-<name>` and cards' zones such as `Cards-<name>.1761650000000.new`, in the same account as Ficha Dev, whose devices leave them alone, so an agent's cards never reach Ficha Dev's. Its second device, under Debug, syncs in them too.
+- To delete a scratch run's zones from iCloud once it's done, run `FICHA_DEV_SCRATCH=<name> scripts/ficha-dev.sh --delete-scratch-zones`, which runs Ficha Dev's binary itself, not the CLI, and shows no window and takes neither the pointer nor the keyboard. It prints the zones it deleted, or that there were none, and deletes no zone but that run's, so Ficha Dev's own zones stay. It needs a build signed for iCloud, since the CLI's process can't reach it, and it's our own.
 - `CFFIXED_USER_HOME`, which keeps the render tool's files in a scratch home, doesn't keep a sandboxed CLI's apart: the group's folder doesn't follow it.
 - `.claude/settings.json` keeps Claude out of both groups' folders, so the scratch folders stay. Starting Ficha Dev over leaves them, since they're beside its `Ficha Dev` folder: to delete them, move the group folder's `Scratch` to the Trash.
-- In a worktree, Claude's Bash refuses to run a path with a space, like `Ficha Dev.app/Contents/Helpers/ficha`, and a heredoc beside a command. A two-line script in the scratchpad that runs the CLI, `exec "<path>" "$@"`, gets around the first, and a file gets around the second: `ficha approve 1 < cards.json`.
+- In a worktree, Claude's Bash refuses to run a path with a space, like `Ficha Dev.app/Contents/Helpers/ficha`, which the script gets around, and a heredoc beside a command, which a file gets around: `FICHA_DEV_SCRATCH=<name> scripts/ficha-dev.sh approve 1 < cards.json`.
 - An unsigned build's `ficha`, as from a worktree without `iPhone/Local.xcconfig`, says it isn't signed with its App Group and opens nothing.
+
+To read Ficha's log while a run goes on, start this in the background. It's `/usr/bin/log` because in zsh `log` is a builtin:
+
+```bash
+/usr/bin/log stream --level debug --style compact --predicate 'subsystem == "com.lucastkacz.ficha"'
+```
+
+These lines say that a change reached the open app: "Told the other engines that the database changed", "Heard that the database changed" and "Counted again after a change".
+
+When something macOS should deliver to Ficha never arrives, such as a Focus filter's `perform` or an App Intent, Ficha's own log shows nothing. Read the sender's side, in the `com.apple.appintents` subsystem. For a Focus filter, the sender is `donotdisturbd`. Apple documents neither, so this way of reading them is our own:
+
+```bash
+/usr/bin/log show --last 10m --info --debug --predicate 'subsystem == "com.apple.appintents" AND process == "donotdisturbd"' --style compact
+```
 
 ## A window's picture
 
@@ -256,7 +275,7 @@ make render-iphone ARGS="--language de"
 
 ## The PR's pictures
 
-A PR that changes what you see shows it in pictures, which `make render` draws for the Mac and `make render-iphone` for the iPhone, so you can decide from its body. Each window or screen it changes comes in three: in English, in German (`--language de`), the longest of Ficha's languages, where a text that doesn't fit shows up, and in Arabic (`--language ar`), which reads right to left, where a part that doesn't mirror shows up. They never reach `main`:
+A PR that changes what you see shows it in pictures, which `make render` draws for the Mac's windows, "The widget's pictures" below for its widget, and `make render-iphone` for the iPhone, so you can decide from its body. Each window or screen it changes comes in three: in English, in German (`--language de`), the longest of Ficha's languages, where a text that doesn't fit shows up, and in Arabic (`--language ar`), which reads right to left, where a part that doesn't mirror shows up. They never reach `main`:
 
 1. Copy the PNGs to `pr-images/<issue>/` and commit them on the PR's branch.
 2. Remove the folder in the next commit.
@@ -278,6 +297,17 @@ make clean-merged
 - It deletes the branches with `git branch -D` without asking, since the check above stands in for the prompt. The prompt stays for `git branch -D` typed by hand (`.claude/settings.json`).
 - Then it updates `main` with `git pull --ff-only`.
 - It reads the last 200 merged PRs through `gh`, and removes nothing when it can't reach them. `scripts/test-clean-merged.sh`, which `make check` runs, tests it on a scratch repo with a fake `gh`.
+
+## The widget's pictures
+
+`make render` draws app windows alone, so a change to what the widget shows draws its pictures with a throwaway Swift package outside the repo, a way that's our own. It takes no window and no screen, so it needs no OK from you:
+
+1. The package targets macOS 26, depends on `Packages/FichaKit`'s `FichaCore` and `FichaData` by path, links `Widget/NextCardView.swift`, `App/AppVariant.swift` and `App/WidgetHandover.swift` into its sources folder, and defines `FICHA_DEV`.
+2. It builds a `NextCardEntry` for each state the change touches, such as a due card, a back-first card with an image, a sound-only side, no card waiting, no cards and not ready.
+3. It draws `NextCardView` at each family, small, medium and large, at about 170 × 170, 364 × 170 and 364 × 382 points, with WidgetKit's margins approximated by 16 points of padding, on a white or dark gray rounded background.
+4. `ImageRenderer` makes each PNG at scale 2, light and dark through the `colorScheme` environment value.
+
+What it can't show: the "vibrant" look macOS gives desktop widgets while another app is in front, which only your Mac shows ([#350](https://github.com/lucastkacz/ficha/issues/350)); the real sizes, which WidgetKit picks by the screen; and any language but English, since the package holds no String Catalog.
 
 ## The README's pictures
 
