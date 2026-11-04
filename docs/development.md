@@ -275,7 +275,7 @@ make render-iphone ARGS="--language de"
 
 ## The PR's pictures
 
-A PR that changes what you see shows it in pictures, which `make render` draws for the Mac and `make render-iphone` for the iPhone, so you can decide from its body. Each window or screen it changes comes in three: in English, in German (`--language de`), the longest of Ficha's languages, where a text that doesn't fit shows up, and in Arabic (`--language ar`), which reads right to left, where a part that doesn't mirror shows up. They never reach `main`:
+A PR that changes what you see shows it in pictures, which `make render` draws for the Mac's windows, "The widget's pictures" below for its widget, and `make render-iphone` for the iPhone, so you can decide from its body. Each window or screen it changes comes in three: in English, in German (`--language de`), the longest of Ficha's languages, where a text that doesn't fit shows up, and in Arabic (`--language ar`), which reads right to left, where a part that doesn't mirror shows up. They never reach `main`:
 
 1. Copy the PNGs to `pr-images/<issue>/` and commit them on the PR's branch.
 2. Remove the folder in the next commit.
@@ -297,6 +297,17 @@ make clean-merged
 - It deletes the branches with `git branch -D` without asking, since the check above stands in for the prompt. The prompt stays for `git branch -D` typed by hand (`.claude/settings.json`).
 - Then it updates `main` with `git pull --ff-only`.
 - It reads the last 200 merged PRs through `gh`, and removes nothing when it can't reach them. `scripts/test-clean-merged.sh`, which `make check` runs, tests it on a scratch repo with a fake `gh`.
+
+## The widget's pictures
+
+`make render` draws app windows alone, so a change to what the widget shows draws its pictures with a throwaway Swift package outside the repo, a way that's our own. It takes no window and no screen, so it needs no OK from you:
+
+1. The package targets macOS 26, depends on `Packages/FichaKit`'s `FichaCore` and `FichaData` by path, links `Widget/NextCardView.swift`, `App/AppVariant.swift` and `App/WidgetHandover.swift` into its sources folder, and defines `FICHA_DEV`.
+2. It builds a `NextCardEntry` for each state the change touches, such as a due card, a back-first card with an image, a sound-only side, no card waiting, no cards and not ready.
+3. It draws `NextCardView` at each family, small, medium and large, at about 170 × 170, 364 × 170 and 364 × 382 points, with WidgetKit's margins approximated by 16 points of padding, on a white or dark gray rounded background.
+4. `ImageRenderer` makes each PNG at scale 2, light and dark through the `colorScheme` environment value.
+
+What it can't show: the "vibrant" look macOS gives desktop widgets while another app is in front, which only your Mac shows ([#350](https://github.com/lucastkacz/ficha/issues/350)); the real sizes, which WidgetKit picks by the screen; and any language but English, since the package holds no String Catalog.
 
 ## The README's pictures
 
