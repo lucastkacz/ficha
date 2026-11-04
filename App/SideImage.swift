@@ -1,24 +1,27 @@
 import AppKit
+import FichaCore
 import FichaData
 import SwiftUI
 
 /// The image on a side of a card, as the review panel and the Cards window
 /// show it: fitted to the width it's offered, never wider than the image
-/// itself nor taller than `maximumHeight`, its height following its width, so
-/// a panel or a column sizes it as it sizes text. When it couldn't be read,
-/// it says so instead.
+/// itself at the card size nor taller than `maximumHeight`, its height
+/// following its width, so a panel or a column sizes it as it sizes text. So a
+/// small image grows with the card, as in Anki's zoom, less sharp past its own
+/// size. When it couldn't be read, it says so instead.
 struct SideImage: View {
     /// The image, as a JPEG or a PNG, or why it couldn't be read, or nil
     /// while it isn't read.
     let image: Result<Data, EngineError>?
     /// The tallest it shows.
     var maximumHeight: CGFloat = .infinity
+    @Environment(\.cardSize) private var cardSize
 
     var body: some View {
         switch image {
         case .success(let data):
             if let picture = NSImage(data: data), picture.size.width > 0, picture.size.height > 0 {
-                FittedImage(size: picture.size, maximumHeight: maximumHeight) {
+                FittedImage(size: picture.size, maximumHeight: maximumHeight, cardSize: cardSize) {
                     Image(nsImage: picture)
                         .resizable()
                         .clipShape(.rect(cornerRadius: 6))
@@ -52,16 +55,21 @@ struct SideImage: View {
 }
 
 /// Sizes a resizable image of `size` to the width it's offered, or less, so
-/// it's never wider than `size` nor taller than `maximumHeight`, keeping its
-/// proportions: its height follows its width, as a text's does, which the
-/// review panel needs to fit a card without scrolling it (#215).
+/// it's never wider than `size` at `cardSize` nor taller than `maximumHeight`,
+/// keeping its proportions: its height follows its width, as a text's does,
+/// which the review panel needs to fit a card without scrolling it (#215).
+/// Below 100% it takes less of the width it's offered too, as the rest of the
+/// card shrinks in a panel that stays as wide.
 private struct FittedImage: Layout {
     let size: CGSize
     let maximumHeight: CGFloat
+    let cardSize: CardSize
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let ratio = size.width / size.height
-        let width = min(proposal.width ?? size.width, size.width, maximumHeight * ratio)
+        let ownWidth = cardSize.scaled(size.width)
+        let offered = proposal.width.map { cardSize.imageWidthLimit(offered: $0) } ?? ownWidth
+        let width = min(offered, ownWidth, maximumHeight * ratio)
         return CGSize(width: width, height: width / ratio)
     }
 

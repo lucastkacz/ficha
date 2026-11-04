@@ -76,6 +76,16 @@ final class CardsWindow: NSWindow {
         contentView = content
     }
 
+    // The card size's shortcuts take what a key types, and the Mac's layout can
+    // type something else with their keys (`CardSizeKey`): a press of one
+    // reaches them as the key it stands for, and then as it came.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if let asShortcut = event.asCardSizeShortcut, super.performKeyEquivalent(with: asShortcut) {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     /// Brings the window in front of the other apps, out of the Dock when
     /// it's minimized, and with the app when it's hidden.
     private func bringForward() {

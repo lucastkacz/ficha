@@ -36,7 +36,7 @@ final class ReviewPanel {
             }
             window.close(.byLucas)
         }
-        let window = ReviewPanelWindow(model: model.startReviewNow(startingWith: first))
+        let window = ReviewPanelWindow(model: model.startReviewNow(startingWith: first), appModel: model)
         window.show()
         opened(window)
     }
@@ -61,7 +61,7 @@ final class ReviewPanel {
     }
 
     private func showOnItsOwn(_ content: Result<ReviewPanelModel, EngineError>) {
-        let window = ReviewPanelWindow(model: content)
+        let window = ReviewPanelWindow(model: content, appModel: model)
         window.showOnItsOwn(mac: mac)
         opened(window)
     }

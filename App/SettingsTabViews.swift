@@ -32,6 +32,31 @@ struct GeneralSettings: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             startAtLogin = StartAtLogin.status
         }
+        cardSizeSection
+    }
+
+    /// How large a card's text and images show, as the Mac's locale writes a
+    /// percent, which follows the keys while Settings is open. Ficha has no
+    /// View menu, so this is what says the size can change, and which keys
+    /// change it.
+    private var cardSizeSection: some View {
+        Section {
+            Picker(
+                String(
+                    localized: "Card size",
+                    comment: "A row of Settings that picks how large a card's text and images show, from 80% to 200%."),
+                selection: $model.cardSize
+            ) {
+                ForEach(CardSize.steps, id: \.percent) { size in
+                    Text(size.percent.formatted(.percent)).tag(size)
+                }
+            }
+        } footer: {
+            Text(
+                "⌘+ and ⌘− make a card larger or smaller in the review panel and the Cards window, and ⌘0 returns it to its normal size.",
+                comment: "Under the Card size row of Settings: the keys that change it. ⌘+, ⌘− and ⌘0 stay as they are."
+            )
+        }
     }
 
     /// Whether the app starts at login, which only the real Ficha does.

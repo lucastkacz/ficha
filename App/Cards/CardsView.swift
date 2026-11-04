@@ -175,8 +175,10 @@ struct CardsView: View {
     }
 
     /// The window's three panes, with the toolbar's search field, Import…
-    /// and Export…, and ⌘F; and, while the table lists a tag's cards in All
-    /// Tags' place, the tag's name as the window's title, and Back. While the
+    /// and Export…, ⌘F, and the keys that change the card size, which only the
+    /// detail's card or capture shows at; and, while the table lists a tag's
+    /// cards in All Tags' place, the tag's name as the window's title, and
+    /// Back. While the
     /// table's pane lists All Tags' tree, it's at least wide enough for its
     /// six columns to leave the tag's some room, and the detail beside it,
     /// a few buttons, can be narrower to give it: a minimum the split view
@@ -232,6 +234,7 @@ struct CardsView: View {
             }
             .keyboardShortcut("f")
             .hidden()
+            CardSizeKeys(model: model)
         }
     }
 
@@ -1467,6 +1470,7 @@ struct CardsView: View {
             switch state.detail {
             case .capture(let capture):
                 CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
+                    .environment(\.cardSize, model.cardSize)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         actionBar
                     }
@@ -1475,6 +1479,7 @@ struct CardsView: View {
                     capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
                     tie: .expands(expansion.card)
                 )
+                .environment(\.cardSize, model.cardSize)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     actionBar
                 }
@@ -1483,6 +1488,7 @@ struct CardsView: View {
                     capture: followUp.capture, kind: InboxRow.Item.followUp(followUp).kindName,
                     tie: .followsUp(followUp.card)
                 )
+                .environment(\.cardSize, model.cardSize)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     actionBar
                 }
@@ -1499,6 +1505,7 @@ struct CardsView: View {
                         state.playOrStopSound(at: .detail(cardID: row.id, side))
                     }
                 }
+                .environment(\.cardSize, model.cardSize)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     actionBar
                 }

@@ -42,6 +42,14 @@ final class AppModel {
             Preferences.showsDueCount = showsDueCount
         }
     }
+    /// How large a card's text and images show in the review panel and the
+    /// Cards window, as Lucas left it, this Mac's own, since it decides no
+    /// progress (ADR 0017). A change applies at once, in an open panel too.
+    var cardSize = Preferences.cardSize {
+        didSet {
+            Preferences.cardSize = cardSize
+        }
+    }
     /// How often Ficha backs up on its own, and how many backups it keeps, as
     /// Lucas left them in Settings, which keeps them in the app's
     /// preferences. A change applies from the next backup on.

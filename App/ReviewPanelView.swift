@@ -23,8 +23,12 @@ import SwiftUI
 /// any, which Enter brings; review now with nothing due offers to review
 /// ahead the same way. A card taller than the panel's maximum
 /// height scrolls between the line at its top and what's under it, which
-/// stay in view. `ReviewPanelState` decides what the panel shows and what
-/// happens when Lucas acts, and the view draws it.
+/// stay in view. A card's text and images show at the card size, which ⌘+, ⌘−
+/// and ⌘0 change (`ReviewPanelWindow`), and above 100% the panel widens with
+/// them; its buttons, a sound's ▶, the note's and the question's fields and its
+/// messages stay their size, as Anki's bottom bar does. `ReviewPanelState`
+/// decides what the panel shows and what happens when Lucas acts, and the view
+/// draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
@@ -65,10 +69,10 @@ struct ReviewPanelView: View {
     /// The tallest the panel grows, which its window sets by the screen it
     /// shows on: a card taller than that scrolls.
     var maximumHeight = CGFloat.infinity
-    /// The tallest a side's image shows: a third of the panel's tallest, so a
-    /// card with an image on each side and a line or two of text on each fits
-    /// without scrolling, and never more than 280 pt.
-    private var imageHeight: CGFloat { min(280, maximumHeight / 3) }
+    /// The tallest a side's image shows.
+    private var imageHeight: CGFloat { cardSize.imageHeightLimit(panelTallest: maximumHeight) }
+    /// How large a card's text and images show.
+    @Environment(\.cardSize) private var cardSize
     /// Whether the note's field has the keyboard. Whatever shows the note
     /// sets it, in the same action, as the flag button does.
     @FocusState private var noteIsFocused: Bool
@@ -120,7 +124,7 @@ struct ReviewPanelView: View {
                 play(playing)
             }
             .padding(20)
-            .frame(width: 400, alignment: .leading)
+            .frame(width: cardSize.panelWidth, alignment: .leading)
         }
         .glassEffect(.regular, in: .rect(cornerRadius: Self.cornerRadius, style: .continuous))
     }
@@ -654,7 +658,7 @@ struct ReviewPanelView: View {
             }
             if !card.text(on: side).isEmpty {
                 TextAsItReads(card.text(on: side))
-                    .font(.title2.weight(.semibold))
+                    .cardFont(.title)
             }
             if let sound = card.sound(on: side) {
                 soundControls(sound, on: side, in: panel)
@@ -675,13 +679,14 @@ struct ReviewPanelView: View {
             }
             if !card.text(on: side).isEmpty {
                 TextAsItReads(card.text(on: side))
+                    .cardFont(.body)
             }
             if let sound = card.sound(on: side) {
                 soundControls(sound, on: side, in: panel)
             }
             if let source = card.source {
                 TextAsItReads(source)
-                    .font(.caption)
+                    .cardFont(.caption)
                     .foregroundStyle(.secondary)
             }
         }

@@ -10,7 +10,8 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "review
 /// The review panel's window: a small floating panel without a title bar,
 /// which its Liquid Glass draws, near the top of the screen and on the Space
 /// Lucas is in. It fits its content up to two thirds of its screen's height,
-/// and a card taller than that scrolls in it. It's an AppKit panel because a
+/// and a card taller than that scrolls in it. As the card size widens it, it
+/// keeps its center and its top edge. It's an AppKit panel because a
 /// SwiftUI window without a title bar can't take the keyboard. It takes the
 /// keyboard without activating Ficha, so once it closes, the keyboard goes
 /// back to the app Lucas was in. When it shows up on its own, it can't have
@@ -24,14 +25,23 @@ final class ReviewPanelWindow: NSPanel {
 
     /// The panel's cards, or why they couldn't be brought.
     private let model: Result<ReviewPanelModel, EngineError>
+    /// What keeps the card size, which the panel shows at and its keys change.
+    private let appModel: AppModel
     /// Plays the sound the panel says plays, until the panel closes.
     private let player = SoundPlayer()
     /// What the panel shows, which sizes the panel as it changes.
     private lazy var content = NSHostingView(
-        rootView: ReviewPanelView(model: model, player: player) { [weak self] in
-            self?.close()
+        rootView: SizedReviewPanel(
+            panel: ReviewPanelView(model: model, player: player) { [weak self] in
+                self?.close()
+            },
+            appModel: appModel
+        ) { [weak self] in
+            self?.cardSizeKeyPressed()
         }
     )
+    /// How wide the panel was the last time its width changed.
+    private var shownWidth: CGFloat = 0
     /// Whether a panel that says why it couldn't bring its cards may have the
     /// keyboard: when Lucas opened it, or once he clicks it.
     private var failureMayHaveKeyboard = false
@@ -45,10 +55,12 @@ final class ReviewPanelWindow: NSPanel {
 
     /// A panel for the cards a review now or an appearance brought, which
     /// closes itself when Lucas closes it or it closes on its own, or for why
-    /// they couldn't be brought.
-    init(model: Result<ReviewPanelModel, EngineError>) {
+    /// they couldn't be brought, at the card size `appModel` keeps.
+    init(model: Result<ReviewPanelModel, EngineError>, appModel: AppModel) {
         self.model = model
+        self.appModel = appModel
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        delegate = self
         title = String(
             localized: "Review",
             comment: "The review panel's window title, which doesn't show: the panel has no title bar.")
@@ -103,9 +115,13 @@ final class ReviewPanelWindow: NSPanel {
     // act by what the layout types with ⌘ (`LetterKey`): к in Russian, ق in
     // Arabic. A press of one without modifiers reaches the shortcuts as its
     // digit or its letter, and then as it came, unless a text field has the
-    // keyboard, where it types what the layout says.
+    // keyboard, where it types what the layout says. A press of a card size
+    // key, with ⌘, does too (`CardSizeKey`), in a text field as well, where it
+    // types nothing.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if let asShortcut = shortcutPress(event), super.performKeyEquivalent(with: asShortcut) {
+        if let asShortcut = shortcutPress(event) ?? event.asCardSizeShortcut,
+            super.performKeyEquivalent(with: asShortcut)
+        {
             return true
         }
         return super.performKeyEquivalent(with: event)
@@ -221,6 +237,13 @@ final class ReviewPanelWindow: NSPanel {
         }
     }
 
+    /// Notes in the panel's state that Lucas pressed a card size key.
+    private func cardSizeKeyPressed() {
+        if case .success(let panel) = model {
+            panel.state.cardSizeKeyPressed()
+        }
+    }
+
     /// Places the panel at the top of the screen Lucas is pointing at,
     /// centered just below the menu bar, no taller than its share of that
     /// screen. As its content changes size, it keeps its top edge where it is.
@@ -231,7 +254,7 @@ final class ReviewPanelWindow: NSPanel {
             return
         }
         let visible = screen.visibleFrame
-        content.rootView.maximumHeight = (visible.height * Self.maximumShareOfScreen).rounded(.down)
+        content.rootView.panel.maximumHeight = (visible.height * Self.maximumShareOfScreen).rounded(.down)
         let size = content.fittingSize
         setContentSize(size)
         setFrameTopLeftPoint(NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - 40))
@@ -260,5 +283,36 @@ final class ReviewPanelWindow: NSPanel {
         guard let mac, case .success(let panel) = model, panel.state.takesKeyboard(on: mac) else { return }
         makeKey()
         logger.info("The review panel took the keyboard")
+    }
+}
+
+extension ReviewPanelWindow: NSWindowDelegate {
+    // AppKit keeps the panel's top left corner as its content changes size, and
+    // only the card size changes its width: moving by half the change keeps the
+    // panel's center where it is, so a panel at the top of its screen stays
+    // centered there, and one Lucas dragged away stays where he left it.
+    func windowDidResize(_ notification: Notification) {
+        let change = frame.width - shownWidth
+        shownWidth = frame.width
+        if change != 0 {
+            setFrameOrigin(NSPoint(x: frame.minX - change / 2, y: frame.minY))
+        }
+    }
+}
+
+/// The review panel's view at the card size `appModel` keeps, which an open
+/// panel follows at once, with the keys that change it, which also do
+/// `pressed`. The view stays apart from these, so `make render` draws it alone.
+private struct SizedReviewPanel: View {
+    var panel: ReviewPanelView
+    let appModel: AppModel
+    let pressed: () -> Void
+
+    var body: some View {
+        panel
+            .environment(\.cardSize, appModel.cardSize)
+            .background {
+                CardSizeKeys(model: appModel, pressed: pressed)
+            }
     }
 }
