@@ -1,6 +1,6 @@
 # Profiles
 
-Ficha has no profiles, as Anki does: each user of a Mac has one set of cards.
+Ficha has no profiles like Anki's: each user of a Mac has one set of cards.
 
 ## Why this is out of scope
 
