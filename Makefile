@@ -120,7 +120,7 @@ XCODEBUILD = $(XCODEBUILD_MAC) -destination 'platform=macOS,arch=arm64'
 # team's ID, as in CI and in a new worktree, Ficha Dev's builds go unsigned:
 # they check the code, but don't run in their sandbox or sync. Building
 # unsigned without it is our own. The real Ficha needs it, to reach its App
-# Group's folder, so `make upload` stops without it.
+# Group's folder and iCloud, so `make upload` stops without it.
 TEAM := $(shell grep -qs '^DEVELOPMENT_TEAM *= *[A-Z0-9]' iPhone/Local.xcconfig && echo yes)
 SIGNING := $(if $(TEAM),-allowProvisioningUpdates -allowProvisioningDeviceRegistration,CODE_SIGNING_ALLOWED=NO)
 

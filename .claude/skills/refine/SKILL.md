@@ -99,7 +99,7 @@ When Lucas asks to change a deck, a tag or a type of his own, or to move cards t
 
 ## Turning tags into decks
 
-When Lucas asks to turn his tags into decks: once, after the update that brought decks put every card of his in Default, and before sync is on. His Mac held cards before it ever synced, so its switch stays off until he turns it on in the Sync tab: on his Ficha, it runs before that.
+When Lucas asks to turn his tags into decks: once, after the update that brought decks put every card of his in Default, and before sync is on. His Mac held cards before it ever synced, so its switch stays off until he turns it on in the Sync tab: on his Ficha, the conversion runs before that.
 
 1. Run `ficha tags`, and draft the list of tags that become decks: those that are subjects, as the content guide's **Decks and tags** says, leaving out those that cross subjects. Order it: a card that carries two tags of the list goes to the first one's deck, and keeps the other as a tag.
 2. Run `ficha tag convert-to-decks <tag>… --preview`, with the list in its order, which changes nothing. Propose the list to Lucas with what the preview says: each deck, with how many cards go to it, and each card that carries two tags of the list, by its front, with the deck it goes to. If his Ficha syncs by then, ask him whether only the cards in chosen decks sync, as Settings' Sync tab says; if they do, name too each deck whose `chosenToSync` is false and that sits inside no deck whose is true: its cards leave iCloud, kept on every device, and another device keeps its copy with its tags, in Default unless Default was chosen. Wait for his OK; a list he changes goes through the preview again.

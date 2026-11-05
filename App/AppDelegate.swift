@@ -8,8 +8,8 @@ import os
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 
 /// Opens the database in this app's own data folder when the app launches,
-/// and starts the appearances, the widget's reloads and, in Ficha Dev, sync
-/// through iCloud. When it can't open the database, the app says why and
+/// and starts the appearances, the widget's reloads and sync through iCloud.
+/// When it can't open the database, the app says why and
 /// quits: Ficha doesn't run without its cards. It also opens the links a
 /// click on the widget opens the app with. It and `SecondDevice` are the only
 /// files of the app that load CloudKit, so `make render` leaves them out.
