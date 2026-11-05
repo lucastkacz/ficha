@@ -628,6 +628,252 @@ final class BackupTests {
         #expect(try engine.sound(la) == sound)
     }
 
+    @Test("a copy saved in write-ahead logging, with no log beside it, restores, and stays as it was")
+    func copyInWriteAheadLoggingRestores() throws {
+        let engine = try openEngine()
+        let (bird, _) = try twoImages(in: engine)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let image = try engine.image(bird)
+        let copy = try saveCopyInWriteAheadLogging(of: engine)
+        let file = URL(filePath: try path(of: copy, in: engine))
+        let saved = try Data(contentsOf: file)
+        try engine.delete([hornero.id])
+
+        time.advance(by: hours(1))
+        try engine.restore(copy.name)
+
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.image(bird) == image)
+        #expect(try Data(contentsOf: file) == saved)
+        #expect(try logFiles(of: copy, in: engine).isEmpty)
+    }
+
+    @Test("a copy from an older version, in write-ahead logging with no log beside it, is restored and migrated")
+    func olderCopyInWriteAheadLoggingIsMigrated() throws {
+        let engine = try openEngine()
+        try approveCard("ubicuo", in: engine)
+        let backups = try #require(engine.backupsFolder)
+        try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
+        let file = backups.appending(path: "Before update 2026-10-22T033656Z.sqlite")
+        try saveFirstVersionDatabase(at: file, capturing: "serendipia", at: time.now)
+        try leaveInWriteAheadLogging(file.path(percentEncoded: false))
+
+        try engine.restore(file.lastPathComponent)
+
+        #expect(try engine.inbox().captures.map(\.text) == ["serendipia"])
+        let mode = try DatabaseQueue(path: folder.appending(path: "Ficha.sqlite").path(percentEncoded: false))
+            .read { db in try String.fetchOne(db, sql: "PRAGMA journal_mode") }
+        #expect(mode == "wal")
+    }
+
+    @Test("a copy saved in write-ahead logging, in a folder with spaces, accents and a URI's own characters, restores")
+    func copyInWriteAheadLoggingRestoresFromAnyFolder() throws {
+        let unusual = folder.appending(path: "José's #1 ficha 100%?", directoryHint: .isDirectory)
+        let engine = try Engine(location: .folder(unusual), time: time, calendar: calendar)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
+        let copy = try saveCopyInWriteAheadLogging(of: engine)
+        try engine.delete([hornero.id])
+
+        time.advance(by: hours(1))
+        try engine.restore(copy.name)
+
+        #expect(try engine.cards() == [hornero])
+    }
+
+    @Test("deleting old backups counts the files a copy in write-ahead logging uses, and drops the rest")
+    func deletingOldBackupsCountsACopyInWriteAheadLogging() throws {
+        let engine = try openEngine()
+        let keepingOne = try #require(BackupSettings(frequency: .daily, kept: 1))
+        let (bird, nest) = try twoImages(in: engine)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let birdSize = try size(of: [bird], in: engine)
+        let copy = try saveCopyInWriteAheadLogging(of: engine)
+        let nido = try engine.create(
+            card(nil, front: "¿De quién es este nido?", back: "Del hornero.", frontImage: nest))
+        try engine.delete([hornero.id])
+        time.advance(by: days(1))
+        try engine.backUpNow(keepingOne)
+        try engine.delete([nido.id])
+
+        time.advance(by: days(1))
+        let newest = try engine.backUpNow(keepingOne)
+
+        #expect(try engine.sharedImagesSize() == birdSize)
+        #expect(try engine.copies().map(\.name) == [newest.name, copy.name])
+        #expect(try logFiles(of: copy, in: engine).isEmpty)
+    }
+
+    @Test("deleting old backups counts the files only a copy's write-ahead log, beside it, refers to")
+    func deletingOldBackupsCountsWhatACopysLogHolds() throws {
+        let engine = try openEngine()
+        let keepingOne = try #require(BackupSettings(frequency: .daily, kept: 1))
+        let (bird, nest) = try twoImages(in: engine)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let nestSize = try size(of: [nest], in: engine)
+        try saveCopyWhoseLogHolds(frontImage: nest, of: engine)
+        try engine.delete([hornero.id])
+
+        time.advance(by: days(1))
+        try engine.backUpNow(keepingOne)
+        time.advance(by: days(1))
+        try engine.backUpNow(keepingOne)
+
+        // The copy's file alone refers to the bird, and its log puts the nest
+        // in the bird's place, as a restore would bring its cards back.
+        #expect(try engine.sharedImagesSize() == nestSize)
+    }
+
+    @Test("a copy that can't be read keeps every file the copies share as old backups go, and every copy but those")
+    func unreadableCopyKeepsEverySharedFileWhenBackupsGo() async throws {
+        let engine = try openEngine()
+        let keepingOne = try #require(BackupSettings(frequency: .daily, kept: 1))
+        let (bird, nest) = try twoImages(in: engine)
+        let la = try await addTone(440, to: engine)
+        let hornero = try engine.create(
+            card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird, backImage: nest, frontSound: la))
+        let (imagesSize, soundSize) = (try size(of: [bird, nest], in: engine), try size(of: [la], in: engine))
+        try engine.backUpNow(keepingOne)
+        let damaged = try saveDamagedCopy(of: engine)
+        try engine.delete([hornero.id])
+
+        time.advance(by: days(1))
+        let newest = try engine.backUpNow(keepingOne)
+
+        #expect(try engine.sharedImagesSize() == imagesSize)
+        #expect(try engine.sharedSoundsSize() == soundSize)
+        #expect(try engine.copies().map(\.name) == [newest.name, damaged])
+    }
+
+    @Test("a copy that can't be read keeps every file the copies share as copies move to the Trash, and the rest stay")
+    func unreadableCopyKeepsEverySharedFileWhenCopiesMoveToTheTrash() throws {
+        let engine = try openEngine()
+        let (bird, _) = try twoImages(in: engine)
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let birdSize = try size(of: [bird], in: engine)
+        let old = try engine.backUpNow(.defaults)
+        try engine.delete([hornero.id])
+        time.advance(by: days(1))
+        let newest = try engine.backUpNow(.defaults)
+        let damaged = try saveDamagedCopy(of: engine)
+
+        let trashed = try engine.moveToTrash([old])
+        // The test's copies don't stay in Lucas's Trash.
+        defer {
+            for file in trashed {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+
+        #expect(try engine.sharedImagesSize() == birdSize)
+        #expect(try engine.copies().map(\.name) == [newest.name, damaged])
+    }
+
+    @Test("what the log says about a copy that can't be read names the copy and SQLite's reason")
+    func unreadableCopyIsNamedWithItsReason() throws {
+        let engine = try openEngine()
+        try engine.backUpNow(.defaults)
+        let damaged = try saveDamagedCopy(of: engine)
+
+        let error = try #require(throws: UnreadableCopy.self) {
+            try engine.filesTheCopiesUse(in: try #require(engine.backupsFolder))
+        }
+
+        #expect(error.name == damaged)
+        #expect(error.description.contains(damaged))
+        #expect(error.description.contains("file is not a database"))
+    }
+
+    @Test("what the log says about a copy with a file name Ficha refuses holds no card's content")
+    func unreadableCopyHoldsNoCardsContent() throws {
+        let engine = try openEngine()
+        try engine.create(card(nil, front: "secreto del frente", back: "secreto del dorso"))
+        let copy = try engine.backUpNow(.defaults)
+        let refused = "foto de la abuela.jpg"
+        let queue = try DatabaseQueue(path: try path(of: copy, in: engine))
+        try queue.write { db in
+            try db.execute(sql: "UPDATE card SET frontImage = ?", arguments: [refused])
+        }
+        try queue.close()
+
+        let error = try #require(throws: UnreadableCopy.self) {
+            try engine.filesTheCopiesUse(in: try #require(engine.backupsFolder))
+        }
+
+        #expect(error.name == copy.name)
+        #expect(error.description.contains("A card refers to a file"))
+        #expect(!error.description.contains(refused))
+        #expect(!error.description.contains("secreto"))
+    }
+
+    /// Saves a copy before an update of `engine`'s database as versions of
+    /// Ficha before backups saved theirs: its file on its own, still in
+    /// write-ahead logging, with no log beside it.
+    private func saveCopyInWriteAheadLogging(of engine: Engine) throws -> DatabaseCopy {
+        let copy = try #require(try engine.saveCopy(.beforeUpdate))
+        try leaveInWriteAheadLogging(try path(of: copy, in: engine))
+        return copy
+    }
+
+    /// Leaves the database in the file at `file` in write-ahead logging, with
+    /// no log beside it.
+    private func leaveInWriteAheadLogging(_ file: String) throws {
+        let queue = try DatabaseQueue(path: file)
+        try queue.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA journal_mode = WAL")
+        }
+        try queue.close()
+        for log in ["-wal", "-shm"] {
+            try? FileManager.default.removeItem(atPath: file + log)
+        }
+        // Where SQLite reads the journal mode from: the file's header.
+        #expect(try Data(contentsOf: URL(filePath: file))[18] == 2)
+    }
+
+    /// Saves a copy before an update of `engine`'s database with its
+    /// write-ahead log beside it, whose one change, which the copy's file
+    /// doesn't hold, gives every card the front image `image`, which the
+    /// copies share from then on.
+    private func saveCopyWhoseLogHolds(frontImage image: ImageName, of engine: Engine) throws {
+        let copy = try #require(try engine.saveCopy(.beforeUpdate))
+        let file = try path(of: copy, in: engine)
+        let backups = try #require(engine.backupsFolder)
+        try engine.image(image).write(
+            to: folderOfShared(ImageName.self, in: backups).appending(path: image.rawValue))
+        let writing = folder.appending(path: "Copy being written.sqlite").path(percentEncoded: false)
+        try FileManager.default.copyItem(atPath: file, toPath: writing)
+        var configuration = Configuration()
+        configuration.prepareDatabase { db in
+            try db.execute(sql: "PRAGMA journal_mode = WAL")
+            try db.execute(sql: "PRAGMA wal_autocheckpoint = 0")
+        }
+        let queue = try DatabaseQueue(path: writing, configuration: configuration)
+        try queue.write { db in
+            try db.execute(sql: "UPDATE card SET frontImage = ?", arguments: [image.rawValue])
+        }
+        // Copied while the connection is open, since closing it moves the
+        // log's change into the file.
+        try FileManager.default.removeItem(atPath: file)
+        for suffix in ["", "-wal", "-shm"] {
+            try FileManager.default.copyItem(atPath: writing + suffix, toPath: file + suffix)
+        }
+        try queue.close()
+    }
+
+    /// Saves in the Backups folder, which is there already, a file named as a
+    /// copy, which isn't a database, and returns its name.
+    private func saveDamagedCopy(of engine: Engine) throws -> String {
+        let name = "Before update 2026-01-02T120000Z.sqlite"
+        try Data(repeating: 0x2A, count: 4096).write(to: try #require(engine.backupsFolder).appending(path: name))
+        return name
+    }
+
+    /// The names of the files beside `copy` that SQLite made for it.
+    private func logFiles(of copy: DatabaseCopy, in engine: Engine) throws -> [String] {
+        try FileManager.default.contentsOfDirectory(
+            atPath: try #require(engine.backupsFolder).path(percentEncoded: false)
+        ).filter { $0.hasPrefix(copy.name + "-") }
+    }
+
     /// Two images of different sizes, a bird and its nest, which `engine`
     /// keeps.
     private func twoImages(in engine: Engine) throws -> (bird: ImageName, nest: ImageName) {

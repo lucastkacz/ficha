@@ -83,12 +83,7 @@ extension Engine {
         // at the same time.
         let (restoration, replaced) = try whileNoOtherProcessOpens(databaseFile(in: dataFolder)) {
             () throws(EngineError) in
-            let source = try reportingStorageErrors {
-                var configuration = Configuration()
-                configuration.readonly = true
-                return try DatabaseQueue(
-                    path: backupsFolder.appending(path: name).path(percentEncoded: false), configuration: configuration)
-            }
+            let source = try reportingStorageErrors { try openCopyToRead(backupsFolder.appending(path: name)) }
             if try reportingStorageErrors({ try source.read(Schema.migrator.hasBeenSuperseded) }) {
                 logger.error("Refused to restore \(name, privacy: .public), which a newer version of Ficha migrated")
                 throw .copyMigratedByNewerVersion(name)
@@ -211,6 +206,24 @@ func listCopies(in folder: URL) throws(EngineError) -> [DatabaseCopy] {
         logger.error("Couldn't list the copies in the Backups folder: \(String(describing: error))")
         throw .backupsFolder
     }
+}
+
+/// Opens the copy saved in `file` to read it, changing nothing and leaving
+/// nothing beside it. A copy that versions of Ficha before backups saved is
+/// still in write-ahead logging, and a read-only connection fails on it when
+/// no log is beside it, which it can't make. No one writes a copy, so SQLite's
+/// `immutable` reads the file alone, which SQLite's guide to write-ahead
+/// logging gives for a database that's read only. A copy with a log beside it
+/// is read through the log, which may hold part of it: without it, the copy
+/// would seem not to use a file its cards do use, and the file would be
+/// dropped. So it fails, as any copy that can't be read, when it can't be read
+/// that way.
+func openCopyToRead(_ file: URL) throws -> DatabaseQueue {
+    var configuration = Configuration()
+    configuration.readonly = true
+    let path = file.path(percentEncoded: false)
+    let hasLog = FileManager.default.fileExists(atPath: path + "-wal")
+    return try DatabaseQueue(path: hasLog ? path : "\(file.absoluteString)?immutable=1", configuration: configuration)
 }
 
 /// Moves the copies before an update that versions of Ficha before backups
