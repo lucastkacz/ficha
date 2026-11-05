@@ -449,6 +449,10 @@ public struct CardsWindowState: Sendable {
     /// What the table lists, or why it couldn't be read: nil until the window
     /// first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
+    /// Whether the table offers New Card and Import… in plain sight: on All
+    /// cards with no search, while the user has no cards at all, buried ones
+    /// included, as when they just started.
+    public private(set) var offersFirstCards = false
     /// Every tag the window offers, with what each has of its own and takes
     /// from the tags it sits inside, as All Tags lists them: those of the
     /// cards, buried ones too, those with something of their own, and every
@@ -1038,6 +1042,7 @@ public struct CardsWindowState: Sendable {
     public mutating func read(with scheduler: Scheduler) {
         self.scheduler = scheduler
         now = engine.now
+        offersFirstCards = false
         do throws(EngineError) {
             let deckChanges = try engine.deckChanges(after: lastDeckChangeFollowed)
             // All Tags reads every tag with its counts, which its tree lists,
@@ -1064,9 +1069,11 @@ public struct CardsWindowState: Sendable {
             let names = Set(tags.map(\.name))
             selectedTags.formIntersection(names)
             if let group = listedGroup {
-                listing = .success(
-                    .cards(
-                        narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, with: scheduler))))
+                let rows = narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, with: scheduler))
+                listing = .success(.cards(rows))
+                if group == .all, !hasSearch, rows.isEmpty {
+                    offersFirstCards = try engine.cards().isEmpty
+                }
             } else if let counted {
                 listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()

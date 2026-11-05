@@ -46,3 +46,21 @@ final class AppWindow: NSWindow {
         makeKey()
     }
 }
+
+extension NSWindow {
+    /// Brings the window in front of the other apps, out of the Dock when
+    /// it's minimized, and with the app when it's hidden: what the Cards window
+    /// and the Welcome page do, which can stay open while the user hides the
+    /// app.
+    func bringForwardWithTheApp() {
+        if isMiniaturized {
+            deminiaturize(nil)
+        }
+        NSApplication.shared.unhide(nil)
+        NSApplication.shared.activate()
+        // As AppWindow does: in front even when macOS doesn't activate the
+        // app at once.
+        orderFrontRegardless()
+        makeKey()
+    }
+}

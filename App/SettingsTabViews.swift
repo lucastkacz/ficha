@@ -2,6 +2,10 @@ import AppKit
 import FichaCore
 import ServiceManagement
 import SwiftUI
+import os
+
+/// The General tab's log, which says why System Settings didn't open.
+private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "settings")
 
 /// The General tab of Settings: what the app does around the cards.
 struct GeneralSettings: View {
@@ -33,6 +37,69 @@ struct GeneralSettings: View {
             startAtLogin = StartAtLogin.status
         }
         cardSizeSection
+        languageSection
+    }
+
+    /// Where the app's language is decided, since it keeps no language setting
+    /// of its own (ADR 0028). The path uses the names macOS shows in each
+    /// language.
+    private var languageSection: some View {
+        Section {
+            LabeledContent {
+                Button(action: openSystemSettings) {
+                    Text(
+                        "Open System Settings",
+                        comment: "A button of Settings' Language row, which opens the System Settings app.")
+                }
+                .fixedSize()
+            } label: {
+                Text("Language", comment: "A row of Settings that says where the app's language is decided.")
+                Text(
+                    """
+                    \(AppVariant.current.name) follows your Mac's language. To change it for \
+                    \(AppVariant.current.name) alone, go to System Settings › General › Language & Region › \
+                    Applications.
+                    """,
+                    comment: """
+                        Under the Language row of Settings. The names are the app's. The path uses the names macOS \
+                        itself shows in this language, in System Settings.
+                        """)
+            }
+        }
+    }
+
+    /// Opens the System Settings app at no pane in particular, since no
+    /// documented URL reaches one app's language on the Mac (ADR 0028). The
+    /// app's bundle identifier isn't documented either, but it's only looked
+    /// up, and when it can't be opened, an alert says where else to open it.
+    private func openSystemSettings() {
+        let identifier = "com.apple.systempreferences"
+        guard let settingsApp = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) else {
+            logger.error("Found no app with the bundle identifier \(identifier, privacy: .public)")
+            saySystemSettingsDidntOpen()
+            return
+        }
+        Task {
+            do {
+                try await NSWorkspace.shared.openApplication(
+                    at: settingsApp, configuration: NSWorkspace.OpenConfiguration())
+            } catch {
+                logger.error("Couldn't open System Settings: \(String(describing: error), privacy: .public)")
+                saySystemSettingsDidntOpen()
+            }
+        }
+    }
+
+    /// Says System Settings didn't open, and where else to open it.
+    private func saySystemSettingsDidntOpen() {
+        showAlert(
+            String(
+                localized: "Couldn't open System Settings",
+                comment: "An alert after the Open System Settings button of Settings' Language row failed."),
+            details: String(
+                localized: "Open it from the Apple menu.",
+                comment: "The alert after the Open System Settings button failed: how else to open System Settings."),
+            style: .warning, button: String(localized: "OK"))
     }
 
     /// How large a card's text and images show, as the Mac's locale writes a

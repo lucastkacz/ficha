@@ -1215,17 +1215,34 @@ struct CardsView: View {
     }
 
     /// What the table says when `group`, or the search in it, brings no
-    /// cards.
+    /// cards, with New Card and Import… in plain sight, which do what the
+    /// toolbar's do, while the state offers them.
     @ViewBuilder
     private func noCards(in group: CardGroup) -> some View {
         if state.hasSearch {
             ContentUnavailableView.search(text: state.search)
         } else if group == .all {
-            ContentUnavailableView(
-                group.emptyTitle, systemImage: group.symbol,
-                description: Text(
+            ContentUnavailableView {
+                Label(group.emptyTitle, systemImage: group.symbol)
+            } description: {
+                Text(
                     "The cards you create with New Card show up here, and the ones you bury, in Buried.",
-                    comment: "In the Cards window, when All cards is empty."))
+                    comment: "In the Cards window, when All cards is empty.")
+            } actions: {
+                if state.offersFirstCards {
+                    Button {
+                        state.openNewCardForm()
+                    } label: {
+                        Text("New Card", comment: "A button in the Cards window while the user has no cards.")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button {
+                        state.startImport()
+                    } label: {
+                        Text("Import…", comment: "A button in the Cards window while the user has no cards.")
+                    }
+                }
+            }
         } else {
             ContentUnavailableView(group.emptyTitle, systemImage: group.symbol)
         }

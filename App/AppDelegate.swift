@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import FichaCore
 import FichaData
 import FichaICloud
@@ -6,6 +7,8 @@ import FichaSVG
 import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
+/// The log of how a launch came.
+private let launchLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "launch")
 
 /// Opens the database in this app's own data folder when the app launches,
 /// and starts the appearances, the widget's reloads and sync through iCloud.
@@ -57,6 +60,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var diagnosticsWindow: AppWindow?
     /// The Settings window, from the last time it showed.
     private var settingsWindow: AppWindow?
+    /// The Welcome page, from the last time it showed.
+    private var welcomeWindow: WelcomeWindow?
+    /// The Welcome page while it's open.
+    private var openWelcomeWindow: WelcomeWindow? {
+        welcomeWindow?.isOpen == true ? welcomeWindow : nil
+    }
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
@@ -71,8 +80,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var secondDevice: SecondDevice?
     /// What reloads the widget, once the app launched with its cards.
     private var widgetReloads: WidgetReloads?
-    /// The widget's link that launched the app, which macOS hands over before
-    /// the app finished launching, until the review panel can open it.
+    /// The widget's link that waits: one that launched the app, which macOS
+    /// hands over before the app finished launching, until the review panel
+    /// can open it, or one that came while the Welcome page was open, until a
+    /// button closes the page.
     private var pendingLink: WidgetLink?
 
     /// Opens the capture window with empty fields, or brings it forward
@@ -168,7 +179,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Opens the links of the app's scheme, which a click on its widget opens:
     /// a review now that starts with the card the widget showed. One that
     /// launches the app comes before it finished launching, and opens once it
-    /// has.
+    /// has; one that comes while the Welcome page is open opens once a button
+    /// closes the page.
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             guard let scheme = WidgetHandover.linkScheme, let link = WidgetLink(url, scheme: scheme) else {
@@ -181,13 +193,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Opens a review now that starts with the card `link` names, or keeps
-    /// it until the review panel can open it.
+    /// it until the review panel can open it, and until the user answers the
+    /// Welcome page, which comes forward.
     private func open(_ link: WidgetLink) {
+        if let openWelcomeWindow {
+            pendingLink = link
+            openWelcomeWindow.bringForwardWithTheApp()
+            return
+        }
         guard let panel else {
             pendingLink = link
             return
         }
         panel.openReviewNow(startingWith: link.startingWith)
+    }
+
+    /// Opening the app while it runs, as a double click and Spotlight do:
+    /// opens the Cards window, through the same call as the menu's Cards…,
+    /// whether any window is on screen or not, and brings it forward, out of
+    /// the Dock too, when it's open. While the Welcome page is open, the page
+    /// comes forward instead, for the user to answer it first.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if let openWelcomeWindow {
+            openWelcomeWindow.bringForwardWithTheApp()
+        } else {
+            openCards()
+        }
+        return false
     }
 
     /// What to do once Ficha Dev's debug menu moved its time forward: count
@@ -213,11 +245,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // First, while the event is the launch's: an alert below handles others.
+        let launch = AppOpening.Launch.fromCurrentAppleEvent
         switch opening {
         case .success(let model):
             let mac = SystemMacSignals { model.now }
             let panel = ReviewPanel(model: model, mac: mac)
             let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
+            appearances.welcomePageIsOpen = { [weak self] in self?.openWelcomeWindow != nil }
             // Before any panel opens, since an open panel holds the widget's
             // reloads back.
             let widgetReloads = WidgetReloads(model: model)
@@ -227,8 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.panel = panel
             self.appearances = appearances
             self.widgetReloads = widgetReloads
-            // Before the alert at first launch, which an App Intent can run
-            // during.
+            // Before the Welcome page, which an App Intent can run during.
             Self.launched = self
             appearances.start()
             model.startBackups()
@@ -236,18 +270,78 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             widgetReloads.start()
             captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
             turnOnCaptureShortcut()
-            StartAtLogin.askAtFirstLaunch()
-            sayIfSettingsAreUnreadable()
-            if let pendingLink {
-                self.pendingLink = nil
-                open(pendingLink)
-            }
+            showWhatOpeningShows(launch)
         case .failure(let error):
             showAlert(
                 String(localized: "\(AppVariant.current.name) can't open your cards"), explaining: error,
                 style: .critical, button: String(localized: "Quit")
             )
             NSApplication.shared.terminate(nil)
+        }
+    }
+
+    /// Shows what opening the app shows as `launch` came, as `AppOpening`
+    /// says: the Welcome page, whose buttons keep the answer, turn start at
+    /// login on for Open at Login and go on, or else goes on at once.
+    private func showWhatOpeningShows(_ launch: AppOpening.Launch) {
+        var appOpening = AppOpening(
+            appMayStartAtLogin: StartAtLogin.isAvailable, isSetUp: Preferences.startsAtLoginIsSetUp,
+            startsAtLogin: StartAtLogin.status.startsAtLogin, launch: launch)
+        guard appOpening.showsWelcomePage else {
+            finishOpening(opensCardsWindow: appOpening.opensCardsWindow)
+            return
+        }
+        showWelcomePage(asks: appOpening.asks) { [weak self] answer in
+            appOpening.answer(answer)
+            Preferences.startsAtLoginIsSetUp = appOpening.isSetUp
+            if appOpening.turnsOnStartAtLogin {
+                StartAtLogin.turn(on: true)
+            }
+            self?.finishOpening(opensCardsWindow: appOpening.opensCardsWindow)
+        }
+    }
+
+    /// What follows the Welcome page, or a launch with none: the Cards window
+    /// when it opens, what couldn't be read, and the link that waits, which
+    /// launched the app or came while the page was open.
+    private func finishOpening(opensCardsWindow: Bool) {
+        if opensCardsWindow {
+            openCards()
+        }
+        sayIfSettingsAreUnreadable()
+        openPendingLink()
+    }
+
+    /// Opens the link that waits, if one does.
+    private func openPendingLink() {
+        if let pendingLink {
+            self.pendingLink = nil
+            open(pendingLink)
+        }
+    }
+
+    /// Shows the Welcome page, or brings it forward when it's open: `answered`
+    /// takes the button that closes it.
+    private func showWelcomePage(asks: Bool, answered: @escaping (AppOpening.Answer) -> Void) {
+        if let openWelcomeWindow {
+            openWelcomeWindow.bringForwardWithTheApp()
+            return
+        }
+        let window = WelcomeWindow(app: .current, asks: asks) { [weak self] answer in
+            self?.welcomeWindow?.close()
+            answered(answer)
+        }
+        welcomeWindow = window
+        window.show()
+    }
+
+    /// Shows the Welcome page as the real Ficha asks it, for Ficha Dev's debug
+    /// menu. Its answers change nothing, since Ficha Dev never starts at
+    /// login, and closing it opens the Cards window.
+    func showWelcomePage() {
+        showWelcomePage(asks: true) { [weak self] _ in
+            self?.openCards()
+            self?.openPendingLink()
         }
     }
 
@@ -373,5 +467,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// log, and its cards stay as they were.
     func applicationWillTerminate(_ notification: Notification) {
         panel?.close(.byLucas)
+    }
+}
+
+extension AppOpening.Launch {
+    /// How this launch came, from the Apple event AppKit is handling, which
+    /// `applicationDidFinishLaunching` alone can ask: a probe on macOS 26.3.1
+    /// found no event yet in `applicationWillFinishLaunching`, and none in the
+    /// main queue's next turn. A launch with nothing to open has
+    /// `kAEOpenApplication` there, which AppKit sends itself when nobody did,
+    /// so running the executable has it too. A link's launch has no event by
+    /// then, since `application(_:open:)` took its own before, and neither has
+    /// AppleScript's `launch`, so silence wins for what doesn't say it's by
+    /// hand. That event says how the app was launched in its `keyAEPropData`:
+    /// nothing by hand, `keyAELaunchedAsLogInItem` at login, and anything else,
+    /// such as `keyAELaunchedAsServiceItem`, is for something else. Reading
+    /// that property is our own, from community code: Apple doesn't say where
+    /// to read it, nor connect it to `SMAppService.mainApp`, so a real login is
+    /// a hand check, which reads the log's line.
+    fileprivate static var fromCurrentAppleEvent: AppOpening.Launch {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        let launchedAs = event?.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))
+        let launch: AppOpening.Launch =
+            if event?.eventClass != AEEventClass(kCoreEventClass) || event?.eventID != AEEventID(kAEOpenApplication) {
+                .forSomethingElse
+            } else if let launchedAs {
+                launchedAs.enumCodeValue == OSType(keyAELaunchedAsLogInItem) ? .atLogin : .forSomethingElse
+            } else {
+                .byHand
+            }
+        // At the notice level, which macOS keeps on disk, unlike the info
+        // level's, so a hand check can still read it long after a login.
+        launchLogger.notice(
+            """
+            This launch reads as \(String(describing: launch), privacy: .public): its Apple event's class is \
+            \(event?.eventClass.fourCharacters ?? "none", privacy: .public), its ID \
+            \(event?.eventID.fourCharacters ?? "none", privacy: .public), and its keyAEPropData \
+            \(launchedAs?.description ?? "none", privacy: .public)
+            """)
+        return launch
+    }
+}
+
+extension FourCharCode {
+    /// The code as Apple's headers write it, such as `aevt`, for the log.
+    fileprivate var fourCharacters: String {
+        String(decoding: withUnsafeBytes(of: bigEndian) { Array($0) }, as: UTF8.self)
     }
 }

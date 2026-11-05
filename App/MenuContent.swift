@@ -63,6 +63,8 @@ struct MenuContent: View {
     let timeMoved: () -> Void
     /// What Ficha Dev's debug menu does with its second device and with sync.
     let secondDevice: SecondDeviceActions
+    /// Shows the Welcome page, for Ficha Dev's debug menu.
+    let showWelcomePage: () -> Void
 
     var body: some View {
         let saysICloudIsFull = model.sync?.saysICloudIsFull == true
@@ -115,7 +117,8 @@ struct MenuContent: View {
             Divider()
             DebugMenu(
                 tools: debugTools, settings: model.settings, timeMoved: timeMoved,
-                checkAppearance: checkAppearance, captureShortcut: captureShortcut, secondDevice: secondDevice)
+                checkAppearance: checkAppearance, captureShortcut: captureShortcut, secondDevice: secondDevice,
+                showWelcomePage: showWelcomePage)
         }
         Divider()
         Button("Quit") {

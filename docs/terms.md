@@ -73,6 +73,12 @@ A language gets its column here in the change that translates the catalogs into 
 | System Settings | Apple | Configuración del Sistema | Systemeinstellungen | Impostazioni di Sistema | Ajustes do Sistema | Réglages Système | Системные настройки | システム設定 | 시스템 설정 | 系统设置 | 系統設定 | إعدادات النظام |
 | Login Items | Apple | Elementos de inicio | Anmeldeobjekte | Elementi login | Itens de Início, the heading in System Settings, whose pane is «Itens de Início de Sessão e Extensões» | Ouverture, the pane of Réglages Système › Général, as macOS's French names it | Объекты входа | ログイン項目 | 로그인 항목 | 登录项 | 登入項目 | عناصر الدخول |
 | Open at Login | Apple | Abrir al iniciar sesión | Bei der Anmeldung öffnen | Apri al login | Abrir no Início da Sessão, as the Dock says it | Ouvrir avec la session | Открывать при входе | ログイン時に開く | 로그인 시 열기 | 登录时打开; Start at login too | 在登入時打開 | فتح عند الدخول |
+| Continue | Apple | Continuar | Fortfahren | Continua | Continuar | Continuer | Продолжить | 続ける | 계속 | 继续 | 繼續 | متابعة |
+| icon | Apple | ícono | Symbol | icona | ícone | icône | значок | アイコン | 아이콘 | 图标 | 圖像 | أيقونة |
+| Language | Apple | Idioma | Sprache | Lingua | Idioma | Langue | Язык | 言語 | 언어 | 语言 | 語言 | اللغة |
+| General, System Settings' pane and Settings' tab | Apple | General | Allgemein | Generali | Geral | Général | Основные | 一般 | 일반 | 通用 | 一般 | عام |
+| Language & Region, the pane of System Settings › General | Apple | Idioma y región | Sprache & Region | Lingua e zona | Idioma e Região | Langue et région | Язык и регион | 言語と地域 | 언어 및 지역 | 语言与地区 | 語言與地區 | اللغة والمنطقة |
+| Applications, the heading in Language & Region | Apple | Aplicaciones | Apps | Applicazioni | Aplicativos | Applications | Приложения | アプリケーション | 응용 프로그램 | 应用程序 | 應用程式 | التطبيقات |
 | Quit | Apple | Salir | Beenden | Esci | Encerrar | Quitter | Завершить | 終了 | 종료 | 退出 | 結束 | إنهاء |
 | Cancel | Apple | Cancelar | Abbrechen | Annulla | Cancelar | Annuler | Отменить | キャンセル | 취소 | 取消 | 取消 | إلغاء |
 | OK | Apple | OK | OK | OK | OK | OK | ОК, in Cyrillic letters, as Apple's Russian writes it | OK | 확인 | 好 | 好 | موافق |

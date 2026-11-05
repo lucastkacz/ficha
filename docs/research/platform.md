@@ -38,7 +38,7 @@ Each claim says where it comes from: a link to Apple's documentation, the guidel
 
 | Code | In the sandbox |
 |---|---|
-| Start at login, `SMAppService.mainApp` (`App/StartAtLogin.swift`) | Works, and it's the way the store's sandbox allows (Apple staff, [thread 758985](https://developer.apple.com/forums/thread/758985)). But `StartAtLogin.turnOnAtFirstLaunch()` turned it on without asking, and Mac App Store apps "may not auto-launch or have other code run automatically at startup or login without consent" (Guideline 2.4.5(iii)). Since #303, `StartAtLogin.askAtFirstLaunch()` asks first. |
+| Start at login, `SMAppService.mainApp` (`App/StartAtLogin.swift`) | Works, and it's the way the store's sandbox allows (Apple staff, [thread 758985](https://developer.apple.com/forums/thread/758985)). But `StartAtLogin.turnOnAtFirstLaunch()` turned it on without asking, and Mac App Store apps "may not auto-launch or have other code run automatically at startup or login without consent" (Guideline 2.4.5(iii)). Since #303 it asks first, and since #447 on the Welcome page (`AppOpening`, `WelcomeWindow`). |
 | The capture shortcut, Carbon's `RegisterEventHotKey` (`App/CaptureShortcut.swift`) | Our inference: works with no entitlement. Quinn lists it among the ways to get a global hot key (Apple staff, [thread 735223](https://developer.apple.com/forums/thread/735223)). Since #305, measured on Lucas's Mac: it works, with no entitlement. |
 | Import's `.fileImporter`, Export's `NSSavePanel` | Work with `com.apple.security.files.user-selected.read-write` ([Accessing files from the macOS App Sandbox](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox)). Whether Export's atomic write, which writes a temporary file beside the chosen one first, is allowed is P8. Since #305, Ficha Dev holds `com.apple.security.files.user-selected.read-write`, and Export's atomic write works with it, measured on Lucas's Mac, to the Desktop and to another volume, a disk image standing in for a USB drive. |
 | Backups' Show in Finder | Our inference: works; the folder shown becomes a path inside a container. |
@@ -247,7 +247,7 @@ Our inference from the facts above, unless a source is named.
 1. The CLI: a sandbox of its own with a `<TeamID>.` App Group (recommended), with App Intents through `shortcuts run` as the fallback if App Review or macOS 27 refuses it? And how it takes the sound and image files #232 gives it: on standard input, through the Downloads folder, or another way?
 2. Ficha Dev: sandboxed too, with its own group, or left unsandboxed?
 3. The meeting suppression, if the camera and microphone readings need their entitlements (P1, P2): claim them and explain them to App Review, keep only what works without them, or drop it? Since #305, Ficha claims the camera's alone, which never prompts, and explains it to App Review in `docs/app-review-notes.md`; the microphone's reading needs none.
-4. Start at login: how the real Ficha asks at first launch. Since #303, with an alert, "Open Ficha when you log in?".
+4. Start at login: how the real Ficha asks at first launch. Since #303, with "Open Ficha when you log in?", in an alert, and since #447 on the Welcome page.
 5. Lucas's data: copied by a last unsandboxed build signed by the team (recommended), or picked by hand in the sandboxed app? Do the settings travel, or does Lucas set them again?
 
 **Sync**

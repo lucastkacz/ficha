@@ -202,10 +202,11 @@ enum Preferences {
         set { write(newValue, for: .lastDeckAddedTo, unless: Deck.defaultName) }
     }
 
-    /// Whether start at login is set up: the user answered whether the real
-    /// Ficha opens at login, which it asks at its first launch
-    /// (`StartAtLoginQuestion`), or, before it asked, it turned start at login
-    /// on at its first launch. From then on, it's as the user leaves it.
+    /// Whether start at login is set up: the user closed the real Ficha's
+    /// Welcome page, which asks whether it opens at login (`AppOpening`),
+    /// answered the alert that asked before the page, or, before it asked, it
+    /// turned start at login on at its first launch. From then on, it's as the
+    /// user leaves it, and the page never shows again.
     static var startsAtLoginIsSetUp: Bool {
         get { read(.startsAtLoginIsSetUp, as: Bool.self) { $0 } ?? false }
         set { write(newValue, for: .startsAtLoginIsSetUp, unless: false) }

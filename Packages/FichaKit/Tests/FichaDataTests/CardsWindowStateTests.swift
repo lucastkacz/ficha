@@ -26,6 +26,41 @@ struct CardsWindowStateTests {
         return window
     }
 
+    @Test("All cards offers New Card and Import… while there are no cards and no search, and no other group does")
+    func allCardsOffersTheFirstCardsWhileThereAreNone() throws {
+        var window = openWindow()
+        #expect(window.offersFirstCards)
+
+        window.search(for: "serendipia")
+        #expect(!window.offersFirstCards)
+        window.search(for: "  ")
+        #expect(window.offersFirstCards)
+
+        window.choose(.cards(.new))
+        #expect(!window.offersFirstCards)
+        window.choose(.inbox)
+        #expect(!window.offersFirstCards)
+        window.choose(.cards(.all))
+        #expect(window.offersFirstCards)
+
+        try approveCard("serendipia", in: engine)
+        window.read(with: scheduler)
+        #expect(!window.offersFirstCards)
+    }
+
+    // All cards lists nothing then, but they have cards: the buttons are for
+    // someone who has none yet.
+    @Test("All cards offers no first cards while every card is buried")
+    func allCardsOffersNoFirstCardsWhileEveryCardIsBuried() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        try engine.bury(serendipia.id)
+
+        let window = openWindow()
+
+        #expect(window.listedCardIDs == [])
+        #expect(!window.offersFirstCards)
+    }
+
     @Test("a tag that loses its last card sends the sidebar back to All cards")
     func aTagThatLosesItsLastCardSendsTheSidebarBackToAllCards() throws {
         let mayo = try approve(

@@ -25,6 +25,9 @@ import SwiftUI
 /// usage lists.
 enum Window: String, CaseIterable {
     case cards
+    /// The Cards window with no cards at all, as a new user's opens, which
+    /// offers New Card and Import… in plain sight.
+    case cardsEmpty = "cards-empty"
     /// The Cards window on ciencia, once the sample's tags sit inside tags
     /// and five are pinned, in an order of their own, its sidebar scrolled to
     /// its end, below the decks, so that it shows the pinned tags, one inside
@@ -128,9 +131,12 @@ enum Window: String, CaseIterable {
     case general
     /// The capture window, empty.
     case capture
-    /// The alert the real Ficha shows at its first launch, which asks whether
-    /// it opens at login.
-    case startAtLogin = "start-at-login"
+    /// The Welcome page the real Ficha shows the first time it opens on a
+    /// Mac, which asks whether it opens at login.
+    case welcome
+    /// The same when macOS already starts the real Ficha at login: without
+    /// the question, with only Continue.
+    case welcomeOneButton = "welcome-one-button"
     /// The Diagnostics window, while a Focus holds appearances back, once it
     /// held one back.
     case diagnostics
@@ -1327,8 +1333,11 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .startAtLogin:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .welcome,
+        .welcomeOneButton:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsEmpty:
+        return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
     case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
         try setSampleDeckAside(in: engine)
@@ -1445,7 +1454,7 @@ func model(for name: Window) throws -> AppModel {
 /// opens at.
 func window(_ name: Window, model: AppModel) throws -> NSWindow {
     switch name {
-    case .cards:
+    case .cards, .cardsEmpty:
         let window = CardsWindow(model: model)
         window.makeContent()
         return window
@@ -1556,12 +1565,10 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
             window.setContentSize(view.fittingSize)
         }
         return window
-    case .startAtLogin:
-        // The alert's own window, laid out as `runModal()` would show it,
-        // for the real Ficha, the only one that asks.
-        let alert = StartAtLogin.questionAlert(for: .real)
-        alert.layout()
-        return alert.window
+    // For the real Ficha, the only one that shows it on its own. A button's
+    // keyboard shortcut prints what it answered, as the app would take it.
+    case .welcome: return WelcomeWindow(app: .real, asks: true) { print("The Welcome page answered \($0).") }
+    case .welcomeOneButton: return WelcomeWindow(app: .real, asks: false) { print("The Welcome page answered \($0).") }
     case .diagnostics:
         let mac = SystemMacSignals { model.now }
         mac.focusChanged(holdsBack: true)
@@ -1695,7 +1702,7 @@ func menuWindow(model: AppModel) -> NSWindow {
             openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
             openSyncSettings: {},
             checkAppearance: { nil }, timeMoved: {},
-            secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}))
+            secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}), showWelcomePage: {})
     }
     .padding()
     .fixedSize()
