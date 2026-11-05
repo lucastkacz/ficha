@@ -366,6 +366,154 @@
         }
       }
     },
+    "%@ follows your Mac's language. To change it for %@ alone, go to System Settings › General › Language & Region › Applications." : {
+      "comment" : "Under the Language row of Settings. The names are the app's. The path uses the names macOS itself shows in this language, in System Settings.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يتبع %1$@ لغة الـ Mac. لتغييرها في %2$@ فقط، انتقل إلى إعدادات النظام › عام › اللغة والمنطقة › التطبيقات."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ folgt der Sprache deines Mac. Um sie nur für %2$@ zu ändern, gehe zu Systemeinstellungen › Allgemein › Sprache & Region › Apps."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ follows your Mac's language. To change it for %2$@ alone, go to System Settings › General › Language & Region › Applications."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sigue el idioma de tu Mac. Para cambiarlo solo en %2$@, andá a Configuración del Sistema › General › Idioma y región › Aplicaciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ suit la langue de votre Mac. Pour la modifier pour %2$@ seulement, accédez à Réglages Système › Général › Langue et région › Applications."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ segue la lingua del tuo Mac. Per cambiarla solo per %2$@, vai in Impostazioni di Sistema › Generali › Lingua e zona › Applicazioni."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@はMacの言語に従います。%2$@だけ言語を変更するには、システム設定 › 一般 › 言語と地域 › アプリケーションに移動してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@은(는) Mac의 언어를 따릅니다. %2$@의 언어만 변경하려면 시스템 설정 › 일반 › 언어 및 지역 › 응용 프로그램으로 이동하십시오."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ segue o idioma do seu Mac. Para alterá-lo só para %2$@, acesse Ajustes do Sistema › Geral › Idioma e Região › Aplicativos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ использует язык Вашего Mac. Чтобы изменить его только для %2$@, откройте Системные настройки › Основные › Язык и регион › Приложения."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@跟随你的Mac的语言。若要仅更改%2$@的语言，请前往系统设置 › 通用 › 语言与地区 › 应用程序。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@會跟隨你Mac的語言。若只要更改%2$@的語言，請前往系統設定 › 一般 › 語言與地區 › 應用程式。"
+          }
+        }
+      }
+    },
+    "%@ lives in the menu bar" : {
+      "comment" : "The title of the Welcome page, the first time the app opens on a Mac. The name is the app's.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يوجد %@ في شريط القائمة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ findest du in der Menüleiste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ vive en la barra de menús"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ se trouve dans la barre des menus"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ si trova nella barra dei menu"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@はメニューバーにあります"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@은(는) 메뉴 막대에 있습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ fica na barra de menus"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ находится в строке меню"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@在菜单栏中"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@位於選單列中"
+          }
+        }
+      }
+    },
     "%@ never does, so it doesn't get in the real Ficha's way." : {
       "localizations" : {
         "ar" : {
@@ -437,7 +585,7 @@
       }
     },
     "%@ shows you cards only while it's open. You can change this later in Settings." : {
-      "comment" : "An alert at the app's first launch, under whether it opens at login. The name is the app's.",
+      "comment" : "On the Welcome page, under whether the app opens at login. The name is the app's.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -18817,6 +18965,77 @@
         }
       }
     },
+    "Continue" : {
+      "comment" : "The only button of the Welcome page when the app already opens at login, which closes the page.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "متابعة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortfahren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continua"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續"
+          }
+        }
+      }
+    },
     "Convert to Card" : {
       "comment" : "A button of the Cards window that opens the card form from the capture in the detail.",
       "localizations" : {
@@ -22176,6 +22395,77 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法在側邊欄中搬移「%@」"
+          }
+        }
+      }
+    },
+    "Couldn't open System Settings" : {
+      "comment" : "An alert after the Open System Settings button of Settings' Language row failed.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذر فتح إعدادات النظام"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Systemeinstellungen konnten nicht geöffnet werden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir Configuración del Sistema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’ouvrir Réglages Système"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile aprire Impostazioni di Sistema"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システム設定を開けませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 설정을 열 수 없습니다"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir os Ajustes do Sistema"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось открыть Системные настройки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法打开系统设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法打開系統設定"
           }
         }
       }
@@ -33692,7 +33982,7 @@
       }
     },
     "Import…" : {
-      "comment" : "The Cards window's toolbar button that imports cards from a file.",
+      "comment" : "A button in the Cards window while the user has no cards.\nThe Cards window's toolbar button that imports cards from a file.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -34965,6 +35255,77 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "種類"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "comment" : "A row of Settings that says where the app's language is decided.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اللغة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprache"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langue"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lingua"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "言語"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언어"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Язык"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语言"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語言"
           }
         }
       }
@@ -36631,6 +36992,83 @@
         }
       }
     },
+    "Look for %@ at the top of your screen. From there, %@ shows you a card every so often. If you can't see the icon, open %@ again to reach your cards." : {
+      "comment" : "On the Welcome page, under that the app lives in the menu bar. The first value is the app's icon in the menu bar, drawn in the text, or its name for VoiceOver, which a text of its own translates to fit this sentence. The other two are the app's name.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ابحث عن %1$@ في أعلى الشاشة. من هناك، يعرض لك %2$@ بطاقة من حين لآخر. إذا لم تتمكن من رؤية الأيقونة، فافتح %3$@ مرة أخرى للوصول إلى بطاقاتك."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche oben auf deinem Bildschirm nach %1$@. Von dort aus zeigt dir %2$@ ab und zu eine Karte. Wenn du das Symbol nicht siehst, öffne %3$@ noch einmal, um zu deinen Karten zu gelangen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Look for %1$@ at the top of your screen. From there, %2$@ shows you a card every so often. If you can't see the icon, open %3$@ again to reach your cards."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscá %1$@ en la parte superior de la pantalla. Desde ahí, %2$@ te muestra una tarjeta cada tanto. Si no ves el ícono, abrí %3$@ de nuevo para llegar a tus tarjetas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherchez %1$@ en haut de votre écran. De là, %2$@ vous montre une carte de temps en temps. Si vous ne voyez pas l’icône, ouvrez de nouveau %3$@ pour accéder à vos cartes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerca %1$@ nella parte superiore dello schermo. Da lì, %2$@ ti mostra una carta di tanto in tanto. Se non vedi l’icona, apri di nuovo %3$@ per raggiungere le tue carte."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面の上部で%1$@を探してください。%2$@はそこから、ときどきカードを表示します。アイコンが見当たらない場合は、もう一度%3$@を開くとカードにアクセスできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 상단에서 %1$@을(를) 찾으십시오. %2$@은(는) 그곳에서 이따금 카드를 보여 줍니다. 아이콘이 보이지 않으면 %3$@을(를) 다시 열어 카드로 이동하십시오."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procure %1$@ na parte superior da tela. A partir dali, %2$@ mostra um cartão de vez em quando. Se você não encontrar o ícone, abra %3$@ de novo para chegar aos seus cartões."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найдите %1$@ в верхней части экрана. Оттуда %2$@ время от времени показывает Вам карточку. Если Вы не видите значок, откройте %3$@ еще раз, чтобы перейти к своим карточкам."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在屏幕顶部寻找%1$@。%2$@会不时从那里向你显示一张卡片。如果看不到图标，请再次打开%3$@以查看你的卡片。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在螢幕頂端尋找%1$@。%2$@會不時從那裡為你顯示一張卡片。如果看不到圖像，請再次打開%3$@以查看你的卡片。"
+          }
+        }
+      }
+    },
     "Make Card Larger" : {
       "comment" : "A hidden button of the review panel and the Cards window: ⌘+, which makes a card's text and images larger.",
       "localizations" : {
@@ -37926,7 +38364,7 @@
       }
     },
     "New Card" : {
-      "comment" : "A hidden button of the Cards window: ⌘N, which opens the card form.\nThe Cards window's toolbar button that opens the card form.\nThe title of the Cards window's card form.",
+      "comment" : "A button in the Cards window while the user has no cards.\nA hidden button of the Cards window: ⌘N, which opens the card form.\nThe Cards window's toolbar button that opens the card form.\nThe title of the Cards window's card form.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -40548,7 +40986,7 @@
       }
     },
     "Not Now" : {
-      "comment" : "A button of the alert at the app's first launch.",
+      "comment" : "A button of the Welcome page: the app doesn't open at login.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42010,7 +42448,7 @@
       }
     },
     "Open %@ when you log in?" : {
-      "comment" : "An alert at the app's first launch. The name is the app's.",
+      "comment" : "The question on the Welcome page. The name is the app's.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42150,8 +42588,79 @@
         }
       }
     },
+    "Open System Settings" : {
+      "comment" : "A button of Settings' Language row, which opens the System Settings app.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح إعدادات النظام"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Systemeinstellungen öffnen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Configuración del Sistema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir Réglages Système"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri Impostazioni di Sistema"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システム設定を開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 설정 열기"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes do Sistema"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开系统设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打開系統設定"
+          }
+        }
+      }
+    },
     "Open at Login" : {
-      "comment" : "A button of the alert at the app's first launch.",
+      "comment" : "A button of the Welcome page: the app opens at login.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -42217,6 +42726,77 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在登入時打開"
+          }
+        }
+      }
+    },
+    "Open it from the Apple menu." : {
+      "comment" : "The alert after the Open System Settings button failed: how else to open System Settings.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "افتحها من قائمة Apple."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne sie über das Apple-Menü."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrila desde el menú Apple."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez-les depuis le menu Pomme."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprile dal menu Apple."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップルメニューから開いてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple 메뉴에서 여십시오."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra-os pelo menu Apple."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте их из меню Apple."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请从苹果菜单中打开。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請從蘋果選單中打開。"
           }
         }
       }
@@ -56506,6 +57086,77 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "空白鍵"
+          }
+        }
+      }
+    },
+    "the %@ icon" : {
+      "comment" : "What VoiceOver reads for the app's icon in the menu bar on the Welcome page, inside the sentence “Look for %@ at the top of your screen”, so it takes the form that sentence needs. The name is the app's.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أيقونة %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dem %@-Symbol"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el ícono de %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "l’icône de %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "l’icona di %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@のアイコン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 아이콘"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "o ícone de %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "значок %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@图标"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@圖像"
           }
         }
       }

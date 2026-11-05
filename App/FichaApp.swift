@@ -21,7 +21,8 @@ struct FichaApp: App {
                     checkAppearance: appDelegate.checkAppearanceNow, timeMoved: appDelegate.timeMoved,
                     secondDevice: SecondDeviceActions(
                         openCards: appDelegate.openSecondDeviceCards, reviewNow: appDelegate.reviewNowOnSecondDevice,
-                        syncNow: appDelegate.syncNow))
+                        syncNow: appDelegate.syncNow),
+                    showWelcomePage: appDelegate.showWelcomePage)
             }
         } label: {
             MenuBarIcon(variant: variant, model: appDelegate.model)

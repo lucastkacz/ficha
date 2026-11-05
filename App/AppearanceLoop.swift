@@ -8,6 +8,8 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "appear
 
 /// What asking the engine about an appearance came to.
 enum AppearanceCheck {
+    /// The Welcome page was open, so the engine wasn't asked.
+    case welcomePageOpen
     /// The review panel was open, so the engine wasn't asked.
     case panelOpen
     /// The engine decided this, and the panel showed up if it said so.
@@ -20,10 +22,14 @@ enum AppearanceCheck {
 /// when the engine says so (ADR 0003): every minute, or sooner, when the
 /// engine says when the next appearance may come, and as soon as the Mac or
 /// its screens wake, or a suppression starts or ends. As they go to sleep,
-/// the open panel closes on its own.
+/// the open panel closes on its own. While the Welcome page is open, no
+/// appearance shows, so the two don't compete for the user's attention.
 final class AppearanceLoop {
     /// How long it waits at most between two checks.
     private static let checkInterval = Duration.seconds(60)
+
+    /// Whether the Welcome page is open.
+    var welcomePageIsOpen: () -> Bool = { false }
 
     private let model: AppModel
     private let mac: SystemMacSignals
@@ -56,9 +62,9 @@ final class AppearanceLoop {
         checkAgain(after: Self.checkInterval)
     }
 
-    /// Asks the engine now, unless the panel is open, shows the panel if the
-    /// engine says so, and waits for the next check. Ficha Dev's debug menu
-    /// checks this way too.
+    /// Asks the engine now, unless the Welcome page or the panel is open,
+    /// shows the panel if the engine says so, and waits for the next check.
+    /// Ficha Dev's debug menu checks this way too.
     @discardableResult
     func check() -> AppearanceCheck {
         let result = askTheEngine()
@@ -84,6 +90,9 @@ final class AppearanceLoop {
     }
 
     private func askTheEngine() -> AppearanceCheck {
+        guard !welcomePageIsOpen() else {
+            return .welcomePageOpen
+        }
         guard !panel.isOpen else {
             return .panelOpen
         }
