@@ -1,5 +1,4 @@
 import AppKit
-import FichaData
 import ServiceManagement
 import os
 

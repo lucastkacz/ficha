@@ -51,26 +51,16 @@ struct AppOpeningTests {
         #expect(opening.opensCardsWindow)
     }
 
-    @Test(
-        "the real Ficha that starts at login once it's set up shows nothing, whether macOS starts it at login or not",
-        arguments: [false, true])
-    func startingAtLoginShowsNothing(startsAtLogin: Bool) {
-        let opening = AppOpening(
-            appMayStartAtLogin: true, isSetUp: true, startsAtLogin: startsAtLogin, launch: .atLogin)
-
-        #expect(!opening.showsWelcomePage)
-        #expect(!opening.asks)
-        #expect(!opening.opensCardsWindow)
-    }
-
     // A link, and whatever else launches it for something of its own: only
     // that shows, which the app does on its own.
     @Test(
-        "the real Ficha launched for something else once it's set up opens no window of its own, whether macOS starts it at login or not",
-        arguments: [false, true])
-    func aLaunchForSomethingElseOpensNoWindow(startsAtLogin: Bool) {
-        let opening = AppOpening(
-            appMayStartAtLogin: true, isSetUp: true, startsAtLogin: startsAtLogin, launch: .forSomethingElse)
+        """
+        the real Ficha that starts at login or is launched for something else, once it's set up, opens no window of its \
+        own, whether macOS starts it at login or not
+        """,
+        arguments: [AppOpening.Launch.atLogin, .forSomethingElse], [false, true])
+    func aLaunchThatIsNotByHandOpensNoWindow(launch: AppOpening.Launch, startsAtLogin: Bool) {
+        let opening = AppOpening(appMayStartAtLogin: true, isSetUp: true, startsAtLogin: startsAtLogin, launch: launch)
 
         #expect(!opening.showsWelcomePage)
         #expect(!opening.asks)
@@ -91,20 +81,6 @@ struct AppOpeningTests {
             #expect(!opening.asks)
             #expect(!opening.opensCardsWindow)
         }
-    }
-
-    // Lucas's own Ficha turned start at login on at its first launch, before
-    // it asked, which set it up as an answer does; his preferences go along
-    // when his data moves to the sandboxed Ficha.
-    @Test("it asks at the real Ficha's first launch, not once start at login is set up, and never in Ficha Dev")
-    func asksOnlyAtTheRealFichasFirstLaunch() {
-        let firstLaunch = AppOpening(appMayStartAtLogin: true, isSetUp: false, startsAtLogin: false, launch: .byHand)
-        let setUp = AppOpening(appMayStartAtLogin: true, isSetUp: true, startsAtLogin: false, launch: .byHand)
-        let fichaDev = AppOpening(appMayStartAtLogin: false, isSetUp: false, startsAtLogin: false, launch: .byHand)
-
-        #expect(firstLaunch.asks)
-        #expect(!setUp.asks)
-        #expect(!fichaDev.asks)
     }
 
     @Test(

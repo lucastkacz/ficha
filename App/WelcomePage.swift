@@ -1,24 +1,23 @@
 import AppKit
-import CoreServices
 import FichaData
 import SwiftUI
 
 /// The Welcome page, in a window of its own, the first time the real Ficha
 /// opens on a Mac: it says Ficha lives in the menu bar, shows its icon, and
 /// asks whether it opens at login, as `AppOpening` says. It shows in front of
-/// the other apps, and only its buttons close it, with no close button, so
-/// nobody skips the question unawares. `make render` draws it for the real
-/// Ficha, and Ficha Dev's debug menu shows it. The startup code doesn't wait
-/// for it: what follows runs once a button closes it, so App Intents and a
-/// second opening reach the app meanwhile.
+/// the other apps, floats over the app's other windows, and only its buttons
+/// close it, with no close button, so nobody skips the question unawares.
+/// `make render` draws it for the real Ficha, and Ficha Dev's debug menu shows
+/// it. The startup code doesn't wait for it: what follows runs once a button
+/// closes it, so App Intents and a second opening reach the app meanwhile.
 final class WelcomeWindow: NSWindow {
     /// Whether the page is open: until a button closes it, also while the app
     /// is hidden, which `isVisible` doesn't say.
     private(set) var isOpen = false
 
     /// The window for `app`'s page, closed, which asks whether the app opens
-    /// at login when `asks` says so, as tall as its text needs in the app's
-    /// language. `answered` takes the button the user pressed.
+    /// at login when `asks` says so, as large as its text and its buttons need
+    /// in the app's language. `answered` takes the button the user pressed.
     init(app: AppVariant, asks: Bool, answered: @escaping (AppOpening.Answer) -> Void) {
         super.init(contentRect: .zero, styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: true)
         // The name Mission Control and VoiceOver read, which the page doesn't
@@ -26,6 +25,12 @@ final class WelcomeWindow: NSWindow {
         title = app.name
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
+        // The menu's Cards… can open while the page is open, and appearances
+        // wait for the page: under that window, nobody would know. The review
+        // panel and the capture window float too, so either, which comes only
+        // when asked for and closes soon, still shows over the page, where the
+        // keyboard goes.
+        level = .floating
         // A window that can't close or minimize shows these grayed instead.
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             standardWindowButton(button)?.isHidden = true
@@ -44,18 +49,7 @@ final class WelcomeWindow: NSWindow {
     func show() {
         isOpen = true
         center()
-        bringForward()
-    }
-
-    /// Brings the window in front of the other apps, with the app when it's
-    /// hidden.
-    func bringForward() {
-        NSApplication.shared.unhide(nil)
-        NSApplication.shared.activate()
-        // As AppWindow does: in front even when macOS doesn't activate the
-        // app at once.
-        orderFrontRegardless()
-        makeKey()
+        bringForwardWithTheApp()
     }
 
     override func close() {
@@ -66,9 +60,13 @@ final class WelcomeWindow: NSWindow {
 
 /// What the Welcome page says, and its buttons: Open at Login, the default
 /// button, and Not Now, which Esc presses, or, when it doesn't ask, only
-/// Continue. It's as wide as an alert, and grows to fit its text in a long
-/// language such as German.
+/// Continue. Its text wraps at an alert's width, so a long language such as
+/// German makes it taller, and its buttons, which can't wrap, make it wider
+/// when they need more.
 private struct WelcomePage: View {
+    /// The width the text wraps at, which the page's padding makes an alert's.
+    private static let textWidth: CGFloat = 372
+
     let app: AppVariant
     let asks: Bool
     let answered: (AppOpening.Answer) -> Void
@@ -82,9 +80,29 @@ private struct WelcomePage: View {
                         "The title of the Welcome page, the first time the app opens on a Mac. The name is the app's."
                 )
                 .font(.title2.bold())
-                whereItLives(icon: Text(Image(systemName: app.menuBarSymbol)))
-                    .accessibilityLabel(whereItLives(icon: Text(iconName)))
+                Text(
+                    """
+                    Look for \(Text(Image(systemName: app.menuBarSymbol))) at the top of your screen. From there, \
+                    \(app.name) shows you a card every so often. If you can't see the icon, open \(app.name) again to \
+                    reach your cards.
+                    """,
+                    comment: """
+                        On the Welcome page, under that the app lives in the menu bar. The first value is the app's \
+                        icon in the menu bar, drawn in the text. The other two are the app's name.
+                        """
+                )
+                .accessibilityLabel(
+                    Text(
+                        """
+                        Look for the \(app.name) icon at the top of your screen. From there, \(app.name) shows you a \
+                        card every so often. If you can't see the icon, open \(app.name) again to reach your cards.
+                        """,
+                        comment: """
+                            What VoiceOver reads on the Welcome page for the sentence that draws the app's icon in the \
+                            menu bar, which it names instead. The three values are the app's name.
+                            """))
             }
+            .frame(width: Self.textWidth, alignment: .leading)
             if asks {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
@@ -96,45 +114,19 @@ private struct WelcomePage: View {
                         "\(app.name) shows you cards only while it's open. You can change this later in Settings.",
                         comment: "On the Welcome page, under whether the app opens at login. The name is the app's.")
                 }
+                .frame(width: Self.textWidth, alignment: .leading)
             }
             buttons
         }
-        .fixedSize(horizontal: false, vertical: true)
         .padding(24)
-        .frame(width: 420)
-    }
-
-    /// Where the app lives and what it does from there, with `icon` where the
-    /// text names the menu bar's icon: the icon itself, on screen, and its
-    /// name, for VoiceOver.
-    private func whereItLives(icon: Text) -> Text {
-        Text(
-            """
-            Look for \(icon) at the top of your screen. From there, \(app.name) shows you a card every so often. If \
-            you can't see the icon, open \(app.name) again to reach your cards.
-            """,
-            comment: """
-                On the Welcome page, under that the app lives in the menu bar. The first value is the app's icon in \
-                the menu bar, drawn in the text, or its name for VoiceOver, which a text of its own translates to fit \
-                this sentence. The other two are the app's name.
-                """)
-    }
-
-    /// The name VoiceOver reads for the menu bar's icon in `whereItLives(icon:)`.
-    private var iconName: String {
-        String(
-            localized: "the \(app.name) icon",
-            comment: """
-                What VoiceOver reads for the app's icon in the menu bar on the Welcome page, inside the sentence “Look \
-                for %@ at the top of your screen”, so it takes the form that sentence needs. The name is the app's.
-                """)
+        .fixedSize()
     }
 
     /// The buttons, at the page's trailing side, the default one last, as an
-    /// alert has them.
+    /// alert has them, each as wide as its title, however wide that makes the
+    /// page.
     private var buttons: some View {
         HStack {
-            Spacer()
             if asks {
                 Button {
                     answered(.notNow)
@@ -163,28 +155,6 @@ private struct WelcomePage: View {
             }
         }
         .controlSize(.large)
-    }
-}
-
-extension AppOpening.Launch {
-    /// How this launch came, from the Apple event AppKit is handling, which
-    /// `applicationDidFinishLaunching` alone can ask: a probe on macOS 26.3.1
-    /// found no event yet in `applicationWillFinishLaunching`, and none in the
-    /// main queue's next turn. A launch with nothing to open has
-    /// `kAEOpenApplication` there, which AppKit sends itself when nobody did,
-    /// so running the executable has it too. A link's launch has no event by
-    /// then, since `application(_:open:)` took its own before, and neither has
-    /// AppleScript's `launch`, so silence wins for what doesn't say it's by
-    /// hand. Reading `keyAELaunchedAsLogInItem` from the event's `keyAEPropData`
-    /// is our own, from community code: Apple doesn't say where to read it, nor
-    /// connect it to `SMAppService.mainApp`, so a real login is a hand check.
-    static var fromCurrentAppleEvent: AppOpening.Launch {
-        guard let event = NSAppleEventManager.shared().currentAppleEvent,
-            event.eventClass == AEEventClass(kCoreEventClass), event.eventID == AEEventID(kAEOpenApplication)
-        else {
-            return .forSomethingElse
-        }
-        let launchedAs = event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue
-        return launchedAs == OSType(keyAELaunchedAsLogInItem) ? .atLogin : .byHand
+        .frame(minWidth: Self.textWidth, alignment: .trailing)
     }
 }

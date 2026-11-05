@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import FichaCore
 import FichaData
 import FichaICloud
@@ -6,6 +7,8 @@ import FichaSVG
 import os
 
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
+/// The log of how a launch came.
+private let launchLogger = Logger(subsystem: "com.lucastkacz.ficha", category: "launch")
 
 /// Opens the database in this app's own data folder when the app launches,
 /// and starts the appearances, the widget's reloads and sync through iCloud.
@@ -59,6 +62,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: AppWindow?
     /// The Welcome page, from the last time it showed.
     private var welcomeWindow: WelcomeWindow?
+    /// The Welcome page while it's open.
+    private var openWelcomeWindow: WelcomeWindow? {
+        welcomeWindow?.isOpen == true ? welcomeWindow : nil
+    }
     /// The review panel, once the app launched with its cards.
     private var panel: ReviewPanel?
     /// What shows the review panel on its own, once the app launched with its
@@ -73,8 +80,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var secondDevice: SecondDevice?
     /// What reloads the widget, once the app launched with its cards.
     private var widgetReloads: WidgetReloads?
-    /// The widget's link that launched the app, which macOS hands over before
-    /// the app finished launching, until the review panel can open it.
+    /// The widget's link that waits: one that launched the app, which macOS
+    /// hands over before the app finished launching, until the review panel
+    /// can open it, or one that came while the Welcome page was open, until a
+    /// button closes the page.
     private var pendingLink: WidgetLink?
 
     /// Opens the capture window with empty fields, or brings it forward
@@ -170,7 +179,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Opens the links of the app's scheme, which a click on its widget opens:
     /// a review now that starts with the card the widget showed. One that
     /// launches the app comes before it finished launching, and opens once it
-    /// has.
+    /// has; one that comes while the Welcome page is open opens once a button
+    /// closes the page.
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             guard let scheme = WidgetHandover.linkScheme, let link = WidgetLink(url, scheme: scheme) else {
@@ -186,9 +196,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// it until the review panel can open it, and until the user answers the
     /// Welcome page, which comes forward.
     private func open(_ link: WidgetLink) {
-        if let welcomeWindow, welcomeWindow.isOpen {
+        if let openWelcomeWindow {
             pendingLink = link
-            welcomeWindow.bringForward()
+            openWelcomeWindow.bringForwardWithTheApp()
             return
         }
         guard let panel else {
@@ -204,8 +214,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the Dock too, when it's open. While the Welcome page is open, the page
     /// comes forward instead, for the user to answer it first.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if let welcomeWindow, welcomeWindow.isOpen {
-            welcomeWindow.bringForward()
+        if let openWelcomeWindow {
+            openWelcomeWindow.bringForwardWithTheApp()
         } else {
             openCards()
         }
@@ -242,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let mac = SystemMacSignals { model.now }
             let panel = ReviewPanel(model: model, mac: mac)
             let appearances = AppearanceLoop(model: model, mac: mac, panel: panel)
-            appearances.welcomePageIsOpen = { [weak self] in self?.welcomeWindow?.isOpen == true }
+            appearances.welcomePageIsOpen = { [weak self] in self?.openWelcomeWindow != nil }
             // Before any panel opens, since an open panel holds the widget's
             // reloads back.
             let widgetReloads = WidgetReloads(model: model)
@@ -292,8 +302,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// What follows the Welcome page, or a launch with none: the Cards window
-    /// when it opens, what couldn't be read, and the link that launched the
-    /// app.
+    /// when it opens, what couldn't be read, and the link that waits, which
+    /// launched the app or came while the page was open.
     private func finishOpening(opensCardsWindow: Bool) {
         if opensCardsWindow {
             openCards()
@@ -313,8 +323,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Shows the Welcome page, or brings it forward when it's open: `answered`
     /// takes the button that closes it.
     private func showWelcomePage(asks: Bool, answered: @escaping (AppOpening.Answer) -> Void) {
-        if let welcomeWindow, welcomeWindow.isOpen {
-            welcomeWindow.bringForward()
+        if let openWelcomeWindow {
+            openWelcomeWindow.bringForwardWithTheApp()
             return
         }
         let window = WelcomeWindow(app: .current, asks: asks) { [weak self] answer in
@@ -457,5 +467,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// log, and its cards stay as they were.
     func applicationWillTerminate(_ notification: Notification) {
         panel?.close(.byLucas)
+    }
+}
+
+extension AppOpening.Launch {
+    /// How this launch came, from the Apple event AppKit is handling, which
+    /// `applicationDidFinishLaunching` alone can ask: a probe on macOS 26.3.1
+    /// found no event yet in `applicationWillFinishLaunching`, and none in the
+    /// main queue's next turn. A launch with nothing to open has
+    /// `kAEOpenApplication` there, which AppKit sends itself when nobody did,
+    /// so running the executable has it too. A link's launch has no event by
+    /// then, since `application(_:open:)` took its own before, and neither has
+    /// AppleScript's `launch`, so silence wins for what doesn't say it's by
+    /// hand. That event says how the app was launched in its `keyAEPropData`:
+    /// nothing by hand, `keyAELaunchedAsLogInItem` at login, and anything else,
+    /// such as `keyAELaunchedAsServiceItem`, is for something else. Reading
+    /// that property is our own, from community code: Apple doesn't say where
+    /// to read it, nor connect it to `SMAppService.mainApp`, so a real login is
+    /// a hand check, which reads the log's line.
+    fileprivate static var fromCurrentAppleEvent: AppOpening.Launch {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        let launchedAs = event?.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))
+        let launch: AppOpening.Launch =
+            if event?.eventClass != AEEventClass(kCoreEventClass) || event?.eventID != AEEventID(kAEOpenApplication) {
+                .forSomethingElse
+            } else if let launchedAs {
+                launchedAs.enumCodeValue == OSType(keyAELaunchedAsLogInItem) ? .atLogin : .forSomethingElse
+            } else {
+                .byHand
+            }
+        // At the notice level, which macOS keeps on disk, unlike the info
+        // level's, so a hand check can still read it long after a login.
+        launchLogger.notice(
+            """
+            This launch reads as \(String(describing: launch), privacy: .public): its Apple event's class is \
+            \(event?.eventClass.fourCharacters ?? "none", privacy: .public), its ID \
+            \(event?.eventID.fourCharacters ?? "none", privacy: .public), and its keyAEPropData \
+            \(launchedAs?.description ?? "none", privacy: .public)
+            """)
+        return launch
+    }
+}
+
+extension FourCharCode {
+    /// The code as Apple's headers write it, such as `aevt`, for the log.
+    fileprivate var fourCharacters: String {
+        String(decoding: withUnsafeBytes(of: bigEndian) { Array($0) }, as: UTF8.self)
     }
 }

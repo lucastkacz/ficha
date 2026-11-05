@@ -45,13 +45,13 @@ final class CardsWindow: NSWindow {
     /// forward.
     func open() {
         guard !isOpen else {
-            bringForward()
+            bringForwardWithTheApp()
             return
         }
         isOpen = true
         makeContent()
         NSApplication.shared.setActivationPolicy(.regular)
-        bringForward()
+        bringForwardWithTheApp()
     }
 
     /// Gives the window its content, with Lucas's cards as they are now, as
@@ -84,20 +84,6 @@ final class CardsWindow: NSWindow {
             return true
         }
         return super.performKeyEquivalent(with: event)
-    }
-
-    /// Brings the window in front of the other apps, out of the Dock when
-    /// it's minimized, and with the app when it's hidden.
-    private func bringForward() {
-        if isMiniaturized {
-            deminiaturize(nil)
-        }
-        NSApplication.shared.unhide(nil)
-        NSApplication.shared.activate()
-        // As AppWindow does: in front even when macOS doesn't activate the
-        // app at once.
-        orderFrontRegardless()
-        makeKey()
     }
 
     /// Closes the window and its content, and takes the app out of the Dock
