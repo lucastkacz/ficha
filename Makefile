@@ -114,7 +114,7 @@ XCODEBUILD = $(XCODEBUILD_MAC) -destination 'platform=macOS,arch=arm64'
 
 # Ficha Dev, and the real Ficha that `make upload` builds, sign with Lucas's
 # paid team, whose ID git ignores, in iPhone/Local.xcconfig, which
-# Signing.xcconfig includes. Ficha Dev's iCloud and push entitlements need a
+# Signing.xcconfig includes. Their iCloud and push entitlements need a
 # provisioning profile, which Xcode makes and keeps through the account in its
 # settings, registering the Mac with the team the first time. Without the
 # team's ID, as in CI and in a new worktree, Ficha Dev's builds go unsigned:

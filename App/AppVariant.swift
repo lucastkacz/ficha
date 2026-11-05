@@ -80,20 +80,6 @@ enum AppVariant {
         }
     }
 
-    /// Whether the app syncs its cards through the user's iCloud (ADR 0017):
-    /// Ficha Dev does, in the Development environment of Ficha's container,
-    /// a scratch run too, in zones of its own (`scratchName`). The real Ficha
-    /// builds the same code, but keeps sync off until it holds iCloud's
-    /// entitlements (#318), since CloudKit stops an app that asks for a
-    /// container without them: signed with the team, it holds none of
-    /// iCloud's.
-    var syncsThroughICloud: Bool {
-        switch self {
-        case .dev: true
-        case .real: false
-        }
-    }
-
     /// The scratch run `FICHA_DEV_SCRATCH` names in Ficha Dev, an agent's,
     /// or nil for Ficha Dev's own data folder, and always for the real Ficha.
     /// It names the scratch folder the app opens and the zones it syncs in,

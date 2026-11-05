@@ -38,7 +38,7 @@ Ficha Dev's menu also has "Debug", to try a change in minutes: it loads sample c
 
 ### Sync through iCloud
 
-Ficha Dev syncs its cards through your iCloud, in the Development environment of Ficha's container, `iCloud.com.lucastkacz.ficha`, apart from the real Ficha's, which will sync in Production ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). iCloud and push are restricted entitlements, which need a provisioning profile: with your team's ID there, `make build` has Xcode make one through the account in Xcode › Settings › Accounts, and register the Mac with your team the first time. The real Ficha builds the same code with sync off, until it holds those entitlements ([#318](https://github.com/lucastkacz/ficha/issues/318)): signed with the team, it holds none of iCloud's, and CloudKit stops an app that asks for a container without them.
+Both apps sync their cards through your iCloud, in Ficha's container, `iCloud.com.lucastkacz.ficha`: Ficha Dev in its Development environment, and the real Ficha in Production, apart from each other ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). iCloud and push are restricted entitlements, which need a provisioning profile: with your team's ID there, `make build` and `make upload` have Xcode make one through the account in Xcode › Settings › Accounts, and `make build` registers the Mac with your team the first time. A build signed without them, as one without your team's ID, leaves sync off and shows no Sync tab, since CloudKit stops an app that asks for a container without them.
 
 It syncs while it runs: it catches up on what changed in iCloud as it starts, sends each change as it's made, by the app or by its `ficha`, and fetches what another device changed when iCloud pushes it. CloudKit's engine, asked to fetch, asks iCloud nothing unless a push came, so to fetch right away Ficha Dev starts its engine again, catching up first, which is our own. It syncs only while the Sync tab's switch is on, which deleting Ficha's data in System Settings › iCloud turns off too: the cards stay, and turning it on sends again all those that sync ([ADR 0017](adr/0017-cards-sync-through-the-users-own-icloud.md)). A restore turns it off too, and turning it on replaces the cards that sync on the other devices with the restored ones. Under the switch, the Sync tab chooses every card or only those in the decks ticked in its tree, and in the decks inside them ([ADR 0020](adr/0020-selective-sync.md), as [ADR 0024](adr/0024-cards-live-in-decks-and-tags-label-them-as-in-anki.md) changes it): a card that stops syncing leaves iCloud as a record holding its deck alone, and stays on each device. A Mac that held cards before it ever synced starts with the switch off, as Lucas's real Ficha does after the update that brought it; a new install, Ficha Dev's sample cards and a `FICHA_DEV_SCRATCH` run start on a database with no cards, so they sync.
 
@@ -54,7 +54,17 @@ The log says what each device sent and fetched, and why it couldn't. zsh has a `
 /usr/bin/log stream --level info --predicate 'subsystem == "com.lucastkacz.ficha" AND category IN {"icloud", "sync"}'
 ```
 
-What iCloud holds is in [CloudKit Console](https://icloud.developer.apple.com/), signed in with your developer account: Ficha's container, the Development environment, and its private database as your own iCloud account.
+What iCloud holds is in [CloudKit Console](https://icloud.developer.apple.com/), signed in with your developer account: Ficha's container, the Development environment, or Production for the real Ficha's, and its private database as your own iCloud account.
+
+#### A new record type or field in iCloud
+
+Each environment has a schema of its own, the record types and their fields. Development learns a type or a field the first time a record with a value in it is saved, a scratch run's in its own zones too. A field with no value teaches nothing: a card in Default sends no `deck`. Production learns only what's deployed to it, and refuses a record with a type or a field it lacks. Apple [lets a deployment only add](https://developer.apple.com/documentation/cloudkit/deploying-an-icloud-container-s-schema): a type or a field in Production can never be deleted. So a pull request that syncs a new type or field says so, naming each one, and then, in this order:
+
+1. Ficha Dev, built with that change, saves a record with a value in each new field.
+2. In CloudKit Console, in the CloudKit Database app, with Ficha's container chosen, Deploy Schema Changes lists what Development has and Production lacks. Check that it lists those fields and nothing the code no longer writes, and click Deploy.
+3. Only then, `make upload`. A build uploaded first can't save those records until the deployment.
+
+A type or a field Development learned that the code no longer writes goes to Production too. Reset Environment, in the same app, takes it out of Development, with every record there, by reverting its schema to Production's, so Ficha Dev starts over in iCloud too, as above, and has to save its fields again.
 
 ### The widget
 
@@ -80,8 +90,10 @@ make upload
 - It archives the real Ficha for Intel and Apple silicon, signed with Apple Development, into `.build/upload/`. The export signs it again with Apple Distribution and uploads it to App Store Connect, through the account in Xcode › Settings › Accounts, as Xcode's Organizer does: neither the repo nor CI holds a secret, and CI never uploads. When the export says "No Accounts", `xcodebuild` can't reach that account until Xcode refreshes its sign-in: open Xcode › Settings › Accounts, sign in again if it asks, and run `make upload` again, as [Apple's developer forums](https://developer.apple.com/forums/thread/744834) report.
 - [`ExportOptions.plist`](../ExportOptions.plist) keeps each build to TestFlight's internal testers: such a build can't reach external testers or the App Store, so a version for the App Store will take an export of its own. It also keeps the build number as the Makefile sets it, `main`'s count of commits, which grows with each merge, as App Store Connect needs. The version, `MARKETING_VERSION` in `project.yml`, changes by hand.
 - The app's Info.plist says Ficha uses no encryption that needs a declaration (`ITSAppUsesNonExemptEncryption`), so App Store Connect asks nothing about it.
+- A build that syncs a new record type or field needs it in Production first, as "A new record type or field in iCloud" says.
 - Once App Store Connect has processed the build, in some minutes, TestFlight's internal group gets it, and you install it from the TestFlight app. A build lasts 90 days.
 - To check what the sandbox lets each part reach, read the archive's entitlements: `codesign -d --entitlements - .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app`, and the same for its `Contents/Helpers/ficha`, `Contents/PlugIns/FichaWidget.appex` and `Contents/XPCServices/SVGDrawer.xpc`. Only the SVG drawer holds `com.apple.security.network.client`.
+- The app's iCloud entitlement says Production in the archive and after the export. Its push entitlement says `development` in the archive, as the Apple Development profile allows, and `production` once the export signed it, as `codesign -d --entitlements -` says of the installed `/Applications/Ficha.app`.
 
 Archiving and exporting with `xcodebuild`, and the keys of `ExportOptions.plist`, are Apple's documented way (`xcodebuild -help` lists them). The check that `make upload` runs from GitHub's `main`, and the build number from git, are our own.
 

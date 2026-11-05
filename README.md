@@ -1,6 +1,6 @@
 # Ficha
 
-Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Everything stays on your Mac.
+Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Your cards stay on your Mac, and in your own iCloud if you turn on sync.
 
 <p align="center">
   <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with Anki's four buttons below, Again, Hard, Good and Easy, each under how long the card would wait: 1h, 2h 30m, 4h and 2d.">
@@ -87,9 +87,9 @@ flowchart LR
 
 **Refine.** Lucas, who builds Ficha, turns his own captures into cards another way, outside the app: he goes through his inbox with Claude, Anthropic's AI assistant, in a session he starts. Claude drafts cards for each capture, following [a guide](docs/content-guide.md) for how Lucas's cards are written, and proposes the deck each goes in, which of them go both ways, a fix for each card he flagged, and where an image or a sound he points to goes. Nothing becomes a card without his OK.
 
-## Everything stays on your Mac
+## Your cards stay yours
 
-Ficha has no account, no sync and no tracking, and it never connects to the internet. Your cards are kept on your Mac and nowhere else. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Backups tab lists the copies and restores any of them. There's no AI inside the app either: an AI sees your cards only if you give them to it, and its cards come in only when you import its file.
+Ficha has no account and no tracking, and it makes no network connections of its own. Your cards are kept on your Mac. When you turn on sync, in Settings' Sync tab, they, or only those in the decks you choose, also go to your private iCloud, which the developer can't see. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Backups tab lists the copies and restores any of them. There's no AI inside the app either: an AI sees your cards only if you give them to it, and its cards come in only when you import its file.
 
 ---
 

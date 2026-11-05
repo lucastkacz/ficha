@@ -65,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// What the Mac tells Ficha, once the app launched with its cards.
     private var mac: SystemMacSignals?
     /// This Mac's sync through iCloud, once the app launched with its cards,
-    /// when it syncs (`AppVariant.syncsThroughICloud`).
+    /// when it's signed for iCloud (`AppVariant.isSignedForICloud`).
     private var iCloud: CloudKitSync?
     /// Ficha Dev's second device, once its debug menu opened it.
     private var secondDevice: SecondDevice?
@@ -251,15 +251,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Starts syncing `model`'s cards through iCloud, when the app syncs and
-    /// while Settings' switch is on: what waits now, those changes made while
-    /// the app didn't run included, and then each change to the database,
-    /// whichever process made it. The sync follows the switch as it's turned
-    /// on and off (`CloudKitSync`). Only then does the app show Settings'
-    /// Sync tab and the menu's line while iCloud is full. A scratch run syncs
-    /// in zones of its own (`AppVariant.scratchName`).
+    /// Starts syncing `model`'s cards through iCloud, in the environment the
+    /// app's entitlements name (ADR 0017), while Settings' switch is on: what
+    /// waits now, those changes made while the app didn't run included, and
+    /// then each change to the database, whichever process made it. The sync
+    /// follows the switch as it's turned on and off (`CloudKitSync`). Only
+    /// then does the app show Settings' Sync tab and the menu's line while
+    /// iCloud is full. A scratch run syncs in zones of its own
+    /// (`AppVariant.scratchName`).
     private func startSyncing(_ model: AppModel) {
-        guard AppVariant.current.syncsThroughICloud else { return }
         // A build signed without iCloud's entitlements leaves sync off
         // instead, and shows no Sync tab, which would wait forever for the
         // account.

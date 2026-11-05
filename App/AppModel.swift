@@ -63,9 +63,8 @@ final class AppModel {
     /// when the last backup failed.
     var backups: BackupsState
     /// Settings' Sync tab, and the menu's line while iCloud is full, which
-    /// the app's delegate opens as it starts syncing, or nil while the app
-    /// doesn't sync, which shows neither: the real Ficha, until #318, and a
-    /// Ficha Dev not signed for iCloud.
+    /// the app's delegate opens as it starts syncing, or nil in a build not
+    /// signed for iCloud, which doesn't sync and shows neither.
     var sync: SyncTabState?
     /// What the menu shows of Lucas's progress, or nil when it couldn't be
     /// counted (the engine logs why).
