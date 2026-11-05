@@ -42,7 +42,9 @@ import notify
 /// its fields' bytes alone, its text's in UTF-8, eight for a number and the
 /// file's for an asset, where iCloud counts what it likes; and CloudKit's
 /// documentation doesn't say whether a zone counts, so the fake, being the
-/// less forgiving, refuses one when nothing fits.
+/// less forgiving, refuses one when nothing fits. It has no schema either: it
+/// takes any record type and field, as iCloud's Development environment does,
+/// where Production refuses one its schema lacks, which `Sync` only logs.
 final class FakeICloud: Sendable {
     /// Who signed into the account, as the user record's ID tells accounts
     /// apart in `CKSyncEngine.Event.AccountChange`, with a name of its own.

@@ -45,7 +45,7 @@ settings:
     # it and its CLI share its App Group's folder, named after the team's ID,
     # which Xcode puts before it (ADR 0018).
     # It syncs in the Development environment of Ficha's iCloud container,
-    # apart from Lucas's cards, which sync in Production (ADR 0017).
+    # apart from the real Ficha's cards, which sync in Production (ADR 0017).
     # `FICHA_URL_SCHEME` is the scheme of the links that open each app, as a
     # click on its widget does, which its Info.plist claims, and which the
     # app and the widget read from their Info.plists (`WidgetHandover`).
@@ -58,10 +58,13 @@ settings:
     # The real Ficha: `make upload` sends it to TestFlight, which installs it
     # in /Applications. Its app, its CLI and its widget run in their
     # sandboxes, sign with the team and share its App Group's folder, where
-    # its last build without the sandbox moved Lucas's data (#309).
+    # its last build without the sandbox moved Lucas's data (#309). It syncs
+    # in the Production environment of Ficha's iCloud container.
     Release:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: FICHA_REAL
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha
+      FICHA_ICLOUD_ENVIRONMENT: Production
+      FICHA_PUSH_ENVIRONMENT: production
       FICHA_URL_SCHEME: ficha
 
 packages:
@@ -160,6 +163,10 @@ targets:
         # Apple Distribution.
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: Apple Development
+        # Both sync through iCloud, whose entitlements, and push's, are
+        # restricted: they need a provisioning profile, which Xcode makes and
+        # keeps through Lucas's account in Xcode, as automatic signing does.
+        CODE_SIGN_ENTITLEMENTS: App/Ficha.entitlements
         ENABLE_APP_SANDBOX: YES
         ENABLE_HARDENED_RUNTIME: YES
       # Each configuration names its app and gives it a bundle identifier of
@@ -167,21 +174,14 @@ targets:
       # an Icon Composer document in App/, named without its `.icon`: Ficha
       # Dev's is Ficha's drawing in another color, to tell the two apart.
       configs:
-        # Ficha Dev syncs through iCloud, whose entitlements, and push's, are
-        # restricted: they need a provisioning profile, which Xcode makes and
-        # keeps through Lucas's account in Xcode, as automatic signing does.
         Debug:
           PRODUCT_NAME: Ficha Dev
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha.dev
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
-          CODE_SIGN_ENTITLEMENTS: App/Ficha.entitlements
-        # The real Ficha holds the same entitlements but iCloud's and push's,
-        # which it takes once it syncs (#318).
         Release:
           PRODUCT_NAME: Ficha
           PRODUCT_BUNDLE_IDENTIFIER: com.lucastkacz.ficha
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-          CODE_SIGN_ENTITLEMENTS: App/FichaWithoutSync.entitlements
 
   # The `ficha` CLI (ADR 0008): its commands live in FichaKit, and this tool
   # only picks whose cards they open, and, in its sandbox, takes files from

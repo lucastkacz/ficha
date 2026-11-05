@@ -8,8 +8,8 @@ import os
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "icloud")
 
 /// Opens the database in this app's own data folder when the app launches,
-/// and starts the appearances, the widget's reloads and, in Ficha Dev, sync
-/// through iCloud. When it can't open the database, the app says why and
+/// and starts the appearances, the widget's reloads and sync through iCloud.
+/// When it can't open the database, the app says why and
 /// quits: Ficha doesn't run without its cards. It also opens the links a
 /// click on the widget opens the app with. It and `SecondDevice` are the only
 /// files of the app that load CloudKit, so `make render` leaves them out.
@@ -65,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// What the Mac tells Ficha, once the app launched with its cards.
     private var mac: SystemMacSignals?
     /// This Mac's sync through iCloud, once the app launched with its cards,
-    /// when it syncs (`AppVariant.syncsThroughICloud`).
+    /// when it's signed for iCloud (`AppVariant.isSignedForICloud`).
     private var iCloud: CloudKitSync?
     /// Ficha Dev's second device, once its debug menu opened it.
     private var secondDevice: SecondDevice?
@@ -251,15 +251,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Starts syncing `model`'s cards through iCloud, when the app syncs and
-    /// while Settings' switch is on: what waits now, those changes made while
-    /// the app didn't run included, and then each change to the database,
-    /// whichever process made it. The sync follows the switch as it's turned
-    /// on and off (`CloudKitSync`). Only then does the app show Settings'
-    /// Sync tab and the menu's line while iCloud is full. A scratch run syncs
-    /// in zones of its own (`AppVariant.scratchName`).
+    /// Starts syncing `model`'s cards through iCloud, in the environment the
+    /// app's entitlements name (ADR 0017), while Settings' switch is on: what
+    /// waits now, those changes made while the app didn't run included, and
+    /// then each change to the database, whichever process made it. The sync
+    /// follows the switch as it's turned on and off (`CloudKitSync`). Only
+    /// then does the app show Settings' Sync tab and the menu's line while
+    /// iCloud is full. A scratch run syncs in zones of its own
+    /// (`AppVariant.scratchName`).
     private func startSyncing(_ model: AppModel) {
-        guard AppVariant.current.syncsThroughICloud else { return }
         // A build signed without iCloud's entitlements leaves sync off
         // instead, and shows no Sync tab, which would wait forever for the
         // account.
