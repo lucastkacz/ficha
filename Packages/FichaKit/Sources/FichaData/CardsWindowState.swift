@@ -222,6 +222,9 @@ public struct CardsWindowState: Sendable {
         /// of the fields New Deck… was chosen in, which takes it:
         /// `CardsWindowDeckField.swift`.
         case newDeck(CardFields)
+        /// A new deck's whole name, in the New Deck sheet, after New Deck… in
+        /// the sidebar, whose OK makes the deck: `CardsWindowDecks.swift`.
+        case makeDeck
         /// Which emoji this tag gets, in the emoji sheet, whose field starts
         /// with the one it has.
         case emoji(CardTag)
@@ -244,6 +247,10 @@ public struct CardsWindowState: Sendable {
         /// picker of the fields New Type… was chosen in, which takes it:
         /// `CardsWindowTypes.swift`.
         case newType(CardFields)
+        /// A new type's name and emoji, in the New Type sheet, after New Type…
+        /// in the sidebar, whose OK makes the type, for no card:
+        /// `CardsWindowTypes.swift`.
+        case makeType
         /// Which name this user type gets, in the rename sheet, whose field
         /// starts with its name.
         case renameType(UserType)
@@ -377,6 +384,9 @@ public struct CardsWindowState: Sendable {
         /// He dragged this pinned tag to another place among the sidebar's
         /// pinned tags, with any he dragged along after it.
         case reorderPinned(tag: String)
+        /// He made a deck, in the New Deck sheet, after New Deck… in the
+        /// sidebar.
+        case makeDeck
         /// He made a type, in the New Type sheet.
         case makeType
         /// He renamed the user type with this name, in the rename sheet.

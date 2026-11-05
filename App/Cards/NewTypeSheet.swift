@@ -9,9 +9,24 @@ extension View {
     func newTypeSheet(
         for fields: CardsWindowState.CardFields, _ state: Binding<CardsWindowState>, failure: Binding<Failure?>
     ) -> some View {
+        newTypeSheet(asking: .newType(fields), state, failure: failure)
+    }
+
+    /// The New Type sheet over the view while the window `state` runs asks
+    /// for a new type after New Type… in the sidebar, with `failure` as the
+    /// alert over it.
+    func makeTypeSheet(_ state: Binding<CardsWindowState>, failure: Binding<Failure?>) -> some View {
+        newTypeSheet(asking: .makeType, state, failure: failure)
+    }
+
+    /// The New Type sheet over the view while the window `state` runs asks
+    /// `question`, with `failure` as the alert over it.
+    private func newTypeSheet(
+        asking question: CardsWindowState.Question, _ state: Binding<CardsWindowState>, failure: Binding<Failure?>
+    ) -> some View {
         sheet(
             isPresented: Binding(
-                get: { state.wrappedValue.question == .newType(fields) },
+                get: { state.wrappedValue.question == question },
                 set: { if !$0 { state.wrappedValue.cancelQuestion() } })
         ) {
             NewTypeSheet(failure: failure) { name, emoji in
@@ -23,9 +38,10 @@ extension View {
     }
 }
 
-/// The sheet New Type… in a card's type picker opens, in the card form or
-/// the editor, with a field for the new type's name and one for its emoji,
-/// which can stay empty. OK makes the type, which the picker then shows. It
+/// The sheet New Type… opens, in a card's type picker, in the card form or
+/// the editor, or in the sidebar's Types section, with a field for the new
+/// type's name and one for its emoji, which can stay empty. OK makes the
+/// type, which the picker then shows, and the sidebar lists. It
 /// stays off while the name is blank, and refuses a name of one of the four
 /// types Ficha comes with, or another type's, and anything in the emoji
 /// field but one emoji, which the sheet says under the fields.

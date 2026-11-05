@@ -22,7 +22,8 @@ import UniformTypeIdentifiers
 /// another goes inside it, or onto the Decks title to the top
 /// (`SidebarDrops.swift`). The card form and the editor have a
 /// Deck field, whose New Deck… names a deck in the New Deck sheet
-/// (`NewDeckSheet.swift`). The sidebar's Tags section
+/// (`NewDeckSheet.swift`), which New Deck… in a deck's menu or the Decks
+/// title's opens too, to make the deck. The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
 /// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
@@ -36,7 +37,8 @@ import UniformTypeIdentifiers
 /// two rows to move them to that level. The sidebar's Types section lists
 /// the four types Ficha comes with, then the user's, each with its emoji,
 /// whose context menu renames it, gives it an emoji, in the same sheets, and
-/// deletes it, asking first; New Type… in a card's type picker makes one, in
+/// deletes it, asking first; New Type…, in a card's type picker, in the
+/// context menu of any row of that section or of its title, makes one, in
 /// the New Type sheet (`NewTypeSheet.swift`).
 /// The cards' table opens with the columns Lucas showed and the order he
 /// sorted it by, which he changes in its headers, each column at a width that
@@ -562,10 +564,11 @@ struct CardsView: View {
         case newTypeSheet
     }
 
-    /// Where the alert shows now: over the New Type sheet while it's open;
-    /// over the flag sheet, the emoji sheet, the rename sheet, the Change Deck
-    /// sheet, the card form or the Export sheet while one is open, since the
-    /// window's own alert can't show over its sheet; and over the window
+    /// Where the alert shows now: over the New Type sheet while a card's type
+    /// picker opened it; over the flag sheet, the emoji sheet, the rename
+    /// sheet, the Change Deck sheet, the card form, the Export sheet or the
+    /// New Deck or New Type sheet the sidebar opened while one is open, since
+    /// the window's own alert can't show over its sheet; and over the window
     /// otherwise.
     private var alertPlace: AlertPlace {
         if case .newType = state.question {
@@ -573,7 +576,8 @@ struct CardsView: View {
         }
         let isSheetOpen =
             cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.deckChange != nil
-            || state.cardForm != nil || state.exporting != nil
+            || state.cardForm != nil || state.exporting != nil || state.question == .makeDeck
+            || state.question == .makeType
         return isSheetOpen ? .sheet : .window
     }
 
@@ -855,6 +859,14 @@ struct CardsView: View {
                     "Couldn't export the cards",
                     comment: "An alert's title in the Cards window, after Export… or over its Export sheet."),
                 error: error)
+        case .makeDeck:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't make the deck",
+                    comment:
+                        "An alert's title in the Cards window's New Deck sheet, after New Deck… in the sidebar and OK."
+                ),
+                error: error)
         case .makeType:
             return Failure(
                 title: LocalizedStringResource(
@@ -909,6 +921,8 @@ struct CardsView: View {
                 }
             }
         }
+        .makeDeckSheet($state, failure: failure(overSheet: true))
+        .makeTypeSheet($state, failure: failure(overSheet: true))
     }
 
     /// The sidebar's section `section`: the cards by where they stand; the
@@ -919,7 +933,8 @@ struct CardsView: View {
     /// menu, which he drags into another order, or tags from All Tags in
     /// among them to pin them, then All Tags…, which pins tags dropped on it
     /// after them, the one place to drop them while none is pinned; or the
-    /// cards by type, the user's types with their context menu.
+    /// cards by type, every row and the title with New Type… in its context
+    /// menu, and the user's types with what else they offer.
     @ViewBuilder
     private func sidebarSection(_ section: CardsWindowState.SidebarSection) -> some View {
         switch section {
@@ -949,6 +964,9 @@ struct CardsView: View {
                 Text("Decks", comment: "A section of the Cards window's sidebar: the decks, as a tree.")
                     // A deck dropped here goes to the top.
                     .takingSidebarDrops { state.dropOnDecksTitle($0) }
+                    .contextMenu {
+                        NewDeckItem(state: $state)
+                    }
             }
         case .tags(let pinned):
             Section {
@@ -999,17 +1017,42 @@ struct CardsView: View {
                 }
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
+                    // The title's whole row takes the right click, as the
+                    // Decks title's does.
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
+                    .contextMenu {
+                        newTypeItem
+                    }
             }
         }
     }
 
+    /// New Type…, in the context menu of every row of the sidebar's Types
+    /// section and of its title: it opens the New Type sheet, and OK makes
+    /// the type.
+    private var newTypeItem: some View {
+        Button {
+            state.askToMakeType()
+        } label: {
+            Text(
+                "New Type…",
+                comment: """
+                    An item of the menu of a row of the Types section in the Cards window's sidebar, or of its title: \
+                    it asks for a new type's name, and OK makes the type.
+                    """)
+        }
+    }
+
     /// The context menu of the sidebar's type group `group`, as the state
-    /// offers it, a user type's: Rename…, which opens the rename sheet;
-    /// Emoji…, which opens the emoji sheet; and Delete…, which asks first,
-    /// with how many cards have the type.
+    /// offers it: New Type…; and a user type's also has Rename…, which opens
+    /// the rename sheet; Emoji…, which opens the emoji sheet; and Delete…,
+    /// which asks first, with how many cards have the type.
     @ViewBuilder
     private func typeMenu(for group: CardGroup) -> some View {
+        newTypeItem
         if let type = state.typeMenu(for: group) {
+            Divider()
             Button {
                 state.askToRenameType(type.id)
             } label: {

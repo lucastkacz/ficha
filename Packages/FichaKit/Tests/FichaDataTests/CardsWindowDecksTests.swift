@@ -1,6 +1,7 @@
 import FichaCore
 import FichaData
 import Foundation
+import GRDB
 import Testing
 
 /// Tests on the Cards window's decks (ADR 0024): the sidebar's Decks section,
@@ -203,6 +204,116 @@ struct CardsWindowDecksTests {
         #expect(window.question == nil)
         #expect(try engine.cards().map(\.deck) == ["Idiomas::Inglés"])
         #expect(try engine.decks().map(\.name) == ["Arte", "Idiomas", "Idiomas::Inglés"])
+    }
+
+    @Test(
+        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A; Cancel makes none"
+    )
+    func newDeckFromTheSidebar() throws {
+        let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
+        var window = openWindow()
+        window.choose(.cards(.deck(Deck.defaultName)))
+
+        window.askToMakeDeck()
+        window.cancelQuestion()
+        let afterCancel = try engine.decks().map(\.name)
+        window.askToMakeDeck()
+        let asked = window.question
+        let blank = window.newDeckEntry(" :: ")
+        let defaultsName = window.newDeckEntry("default")
+        window.chooseNewDeck("Default")
+        let afterRefusal = window.question
+        window.chooseNewDeck(" Arte ")
+        let afterFirst = window.deckRows.outline
+        let afterFirstQuestion = window.question
+        window.askToMakeDeck()
+        window.chooseNewDeck("Idiomas :: Inglés")
+
+        #expect(afterCancel == [Deck.defaultName])
+        #expect(asked == .makeDeck)
+        #expect(blank == .blankName)
+        #expect(defaultsName == .refused(.defaultDeckName("default")))
+        #expect(afterRefusal == .makeDeck)
+        #expect(afterFirst == ["Default 0", "Arte 0"])
+        #expect(afterFirstQuestion == nil)
+        #expect(window.question == nil)
+        #expect(window.failure == nil)
+        #expect(window.deckRows.outline == ["Default 0", "Arte 0", "Idiomas 0", "  Inglés 0"])
+        #expect(try engine.decks().map(\.name) == [Deck.defaultName, "Arte", "Idiomas", "Idiomas::Inglés"])
+        // The sidebar stays where it was, and no card moved.
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
+        #expect(window.listedCardIDs == [petricor.id])
+        #expect(try engine.cards().map(\.deck) == [Deck.defaultName])
+    }
+
+    @Test("New Deck… from the Decks title makes the first deck of a window that lists none")
+    func newDeckFromTheTitleWithNoDeck() throws {
+        var window = openWindow()
+        let before = window.sidebarSections.contains(.decks([]))
+
+        window.askToMakeDeck()
+        window.chooseNewDeck("Arte")
+
+        #expect(before)
+        #expect(window.deckRows.outline == ["Arte 0"])
+        #expect(try engine.decks().map(\.name) == ["Arte"])
+    }
+
+    @Test("New Deck… in the sidebar opens the closed decks the new one sits inside, so it shows, and no other")
+    func newDeckInsideAClosedDeck() throws {
+        try engine.makeDeck(named: "Idiomas::Inglés")
+        try engine.makeDeck(named: "Arte::Pintura")
+        var window = openWindow()
+        window.setDeckOpen(false, "Idiomas")
+        window.setDeckOpen(false, "Idiomas::Inglés")
+        window.setDeckOpen(false, "Arte")
+
+        window.askToMakeDeck()
+        window.chooseNewDeck("Idiomas::Inglés::Phrasal verbs")
+
+        #expect(window.isDeckOpen("Idiomas"))
+        #expect(window.isDeckOpen("Idiomas::Inglés"))
+        #expect(!window.isDeckOpen("Arte"))
+    }
+
+    @Test("New Deck… in the sidebar with the name of a deck already there takes nothing from it")
+    func newDeckNamedAsOneAlreadyThere() throws {
+        try engine.makeDeck(named: "Arte")
+        try engine.setAside(deck: "Arte")
+        var window = openWindow()
+
+        window.askToMakeDeck()
+        window.chooseNewDeck("Arte")
+
+        #expect(window.question == nil)
+        #expect(window.failure == nil)
+        #expect(try engine.decks().map(\.name) == ["Arte"])
+        #expect(try engine.decks().first?.isSetAside == true)
+    }
+
+    // A name OK takes only fails when the write does, so this one takes a
+    // database in a file, whose deck table a trigger closes behind the engine.
+    @Test("when New Deck… in the sidebar can't write the deck, the window says so and the sheet goes on asking")
+    func newDeckThatCantBeWritten() throws {
+        let folder = URL.temporaryDirectory.appending(
+            path: "CardsWindowDecksTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let engine = try Engine(location: .folder(folder), time: time, calendar: try buenosAiresCalendar())
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        let database = try DatabaseQueue(path: folder.appending(path: "Ficha.sqlite").path(percentEncoded: false))
+        try database.write { db in
+            try db.execute(sql: "CREATE TRIGGER noDeck BEFORE INSERT ON deck BEGIN SELECT RAISE(ABORT, 'no'); END")
+        }
+        try database.close()
+
+        window.askToMakeDeck()
+        window.chooseNewDeck("Arte")
+
+        #expect(window.question == .makeDeck)
+        #expect(window.failure?.action == .makeDeck)
+        #expect(window.failure?.error == .storage)
+        #expect(try engine.decks().isEmpty)
     }
 
     /// The window as it opens, on All cards, with the cards read.

@@ -136,6 +136,64 @@ struct CardsWindowTypesTests {
     }
 
     @Test(
+        "New Type… in the sidebar refuses what the card form's refuses, and OK makes the type, which the sidebar lists and the picker offers; Cancel makes none"
+    )
+    func newTypeFromTheSidebar() throws {
+        try engine.makeUserType(named: "Fórmula")
+        let water = try engine.create(card(.word, front: "agua", back: "H₂O"))
+        var window = openWindow()
+        window.choose(.cards(.type(.word)))
+
+        window.askToMakeType()
+        window.cancelQuestion()
+        let afterCancel = try engine.userTypes().map(\.name)
+        window.askToMakeType()
+        let asked = window.question
+        let blank = window.newTypeEntry(name: "  ", emoji: "")
+        let builtIn = window.newTypeEntry(name: "Quote", emoji: "")
+        let taken = window.newTypeEntry(name: "FORMULA", emoji: "")
+        let twoEmoji = window.newTypeEntry(name: "Ley", emoji: "⚖️📜")
+        window.chooseNewType(name: "Quote", emoji: "")
+        let afterRefusal = window.question
+        window.chooseNewType(name: " Ley ", emoji: "⚖️")
+
+        let law = try #require(try engine.userTypes().first { $0.name == "Ley" })
+        #expect(afterCancel == ["Fórmula"])
+        #expect(asked == .makeType)
+        #expect(blank == .blankName)
+        #expect(builtIn == .refused(.builtInTypeName("Quote")))
+        #expect(taken == .refused(.typeNameTaken("Fórmula")))
+        #expect(twoEmoji == .refused(.notOneEmoji))
+        #expect(afterRefusal == .makeType)
+        #expect(law.emoji == "⚖️")
+        #expect(window.question == nil)
+        #expect(window.failure == nil)
+        #expect(window.typeGroups.contains(.type(.user(law))))
+        #expect(window.pickerTypes.contains(.user(law)))
+        #expect(window.typeMenu(for: .type(.user(law))) == law)
+        // The sidebar stays where it was, and the card keeps its type.
+        #expect(window.sidebarItem == .cards(.type(.word)))
+        #expect(window.listedCardIDs == [water.id])
+        #expect(try engine.cards().map(\.type) == [.word])
+    }
+
+    @Test(
+        "New Type… in the sidebar with a name another device took meanwhile says why, makes none and goes on asking"
+    )
+    func newTypeFromTheSidebarTakenMeanwhile() throws {
+        var window = openWindow()
+        window.askToMakeType()
+        try engine.makeUserType(named: "Ley")
+
+        window.chooseNewType(name: "ley", emoji: "")
+
+        #expect(window.failure?.action == .makeType)
+        #expect(window.failure?.error == .typeNameTaken("Ley"))
+        #expect(window.question == .makeType)
+        #expect(try engine.userTypes().map(\.name) == ["Ley"])
+    }
+
+    @Test(
         "Rename… and Emoji… in a user type's menu ask with its name and its emoji, refuse what the engine refuses, and OK changes them"
     )
     func renameAndEmojiOnAUserType() throws {
