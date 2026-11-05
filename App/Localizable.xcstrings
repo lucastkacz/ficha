@@ -21311,6 +21311,77 @@
         }
       }
     },
+    "Couldn't make the deck" : {
+      "comment" : "An alert's title in the Cards window's New Deck sheet, after New Deck… in the sidebar and OK.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذر إنشاء الرزمة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Stapel konnte nicht erstellt werden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo crear el mazo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de créer le paquet"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile creare il mazzo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デッキを作成できませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "덱을 만들 수 없음"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível criar o baralho"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось создать колоду"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法创建牌组"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法建立牌組"
+          }
+        }
+      }
+    },
     "Couldn't make the type" : {
       "comment" : "An alert's title in the Cards window's New Type sheet, after OK.",
       "localizations" : {
@@ -38068,7 +38139,7 @@
       }
     },
     "New Deck…" : {
-      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nThe last item of a menu of decks in the Cards window, a card's Deck field or the Import sheet's: it asks for a new deck's name.",
+      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list, and of the menu of the Decks title in the sidebar: it asks for a new deck's name, and OK makes the deck.\nThe last item of a menu of decks in the Cards window, a card's Deck field or the Import sheet's: it asks for a new deck's name.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -38281,7 +38352,7 @@
       }
     },
     "New Type…" : {
-      "comment" : "The last item of a card's type picker in the Cards window: it asks for a new type's name.",
+      "comment" : "An item of the menu of a row of the Types section in the Cards window's sidebar, or of its title: it asks for a new type's name, and OK makes the type.\nThe last item of a card's type picker in the Cards window: it asks for a new type's name.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {

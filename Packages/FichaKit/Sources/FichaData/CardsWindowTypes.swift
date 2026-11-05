@@ -5,10 +5,11 @@ import Foundation
 // Ficha comes with: the sidebar's Types section lists them after the four, in
 // alphabetical order, also while no card has one; the type picker, in the
 // card form and the editor, offers them, and New Type…, which makes one in
-// the New Type sheet; and a user type's context menu in the sidebar renames
-// it, gives it an emoji and deletes it, asking first with how many cards have
-// it. The sheets are the window's rename and emoji sheets, which a tag's menu
-// opens too.
+// the New Type sheet; every row's context menu in the Types section and its
+// title's have New Type… too; and a user type's context menu in the sidebar
+// also renames it, gives it an emoji and deletes it, asking first with how
+// many cards have it. The sheets are the window's rename and emoji sheets,
+// which a tag's menu opens too.
 
 extension CardsWindowState {
     /// What OK in the New Type sheet makes of what its fields hold.
@@ -35,10 +36,10 @@ extension CardsWindowState {
         }
     }
 
-    /// The user type whose context menu the sidebar's group `group` has,
-    /// with Rename…, Emoji… and Delete…, while the sidebar lists it, as last
-    /// read; nil for one of the four Ficha comes with, No Type and any other
-    /// group, which have no menu.
+    /// The user type whose Rename…, Emoji… and Delete… the context menu of
+    /// the sidebar's group `group` has, while the sidebar lists it, as last
+    /// read; nil for one of the four Ficha comes with and No Type, whose
+    /// menus have New Type… alone (`askToMakeType()`), and any other group.
     public func typeMenu(for group: CardGroup) -> UserType? {
         guard case .type(.user(let type)) = group else { return nil }
         return listedUserType(type.id)
@@ -66,6 +67,13 @@ extension CardsWindowState {
         question = .newType(fields)
     }
 
+    /// Asks for a new type's name and emoji, in the New Type sheet, after New
+    /// Type… in the sidebar: in the context menu of any row of the Types
+    /// section, or of its title.
+    public mutating func askToMakeType() {
+        question = .makeType
+    }
+
     /// What OK in the New Type sheet makes of what its fields hold, `name`
     /// in its name field and `emoji` in its emoji field: the type's name,
     /// without the spaces around it, and its emoji, or none for an empty
@@ -74,7 +82,10 @@ extension CardsWindowState {
     /// type's, or of anything but one emoji, as the engine refuses them. Nil
     /// while the window asks for no new type.
     public func newTypeEntry(name: String, emoji: String) -> NewTypeEntry? {
-        guard case .newType = question else { return nil }
+        switch question {
+        case .newType, .makeType: break
+        default: return nil
+        }
         if case .refused(let error) = emojiEntry(emoji) {
             return .refused(error)
         }
@@ -87,23 +98,24 @@ extension CardsWindowState {
 
     /// Chooses OK in the New Type sheet, whose name field holds `name` and
     /// emoji field `emoji`: makes the type, with that emoji, or none when the
-    /// field is empty, which the type picker it was asked from takes, and
-    /// reads the cards again; or records why it couldn't and goes on asking.
-    /// While OK doesn't take what the fields hold, as `newTypeEntry` says, it
-    /// does nothing, and the sheet says why.
+    /// field is empty, which the type picker it was asked from takes, if any,
+    /// since the sidebar's New Type… asks for no card, and reads the cards
+    /// again; or records why it couldn't and goes on asking. While OK doesn't
+    /// take what the fields hold, as `newTypeEntry` says, it does nothing,
+    /// and the sheet says why.
     public mutating func chooseNewType(name: String, emoji: String) {
-        guard case .newType(let fields) = question,
-            case .type(let name, let emoji)? = newTypeEntry(name: name, emoji: emoji)
-        else { return }
+        guard case .type(let name, let emoji)? = newTypeEntry(name: name, emoji: emoji) else { return }
         var made: UserType?
         let done = perform(.makeType) { engine throws(EngineError) in
             made = try engine.makeUserType(named: name, emoji: emoji)
         }
         guard done, let made else { return }
+        let asked = question
         question = nil
-        switch fields {
-        case .form: cardForm?.draft.type = .user(made)
-        case .editor: setTypeInEditor(.user(made))
+        switch asked {
+        case .newType(.form): cardForm?.draft.type = .user(made)
+        case .newType(.editor): setTypeInEditor(.user(made))
+        default: break
         }
         read(with: scheduler)
     }

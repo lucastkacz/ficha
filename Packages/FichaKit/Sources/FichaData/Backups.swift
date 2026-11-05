@@ -83,12 +83,7 @@ extension Engine {
         // at the same time.
         let (restoration, replaced) = try whileNoOtherProcessOpens(databaseFile(in: dataFolder)) {
             () throws(EngineError) in
-            let source = try reportingStorageErrors {
-                var configuration = Configuration()
-                configuration.readonly = true
-                return try DatabaseQueue(
-                    path: backupsFolder.appending(path: name).path(percentEncoded: false), configuration: configuration)
-            }
+            let source = try reportingStorageErrors { try openCopyToRead(backupsFolder.appending(path: name)) }
             if try reportingStorageErrors({ try source.read(Schema.migrator.hasBeenSuperseded) }) {
                 logger.error("Refused to restore \(name, privacy: .public), which a newer version of Ficha migrated")
                 throw .copyMigratedByNewerVersion(name)
@@ -213,12 +208,43 @@ func listCopies(in folder: URL) throws(EngineError) -> [DatabaseCopy] {
     }
 }
 
+/// Opens the copy saved in `file` to read it, changing nothing in it. A copy
+/// that versions of Ficha before backups saved is still in write-ahead logging,
+/// and a read-only connection fails on it when no log is beside it, which it
+/// can't make. No one writes a copy, so SQLite's `immutable` reads the file
+/// alone, leaving nothing beside it, which SQLite's guide to write-ahead logging
+/// gives for a database that's read only. A copy with a log beside it
+/// (`hasLogBeside(_:)`) never reads as immutable, which would ignore the log:
+/// the copy would seem not to use a file its cards do use, and the file would
+/// be dropped. It reads through a write-ahead log, where SQLite may make the
+/// log's index beside it, and fails, as any copy that can't be read, when a
+/// folder can't take that index, or a rollback journal would have to undo part
+/// of it. A damaged write-ahead log doesn't fail: SQLite skips its frames from
+/// the damage on with no error, so the copy uses what a restore would bring
+/// back. GRDB opens the path without SQLite's flag for URIs, so `immutable`
+/// counts on the system's SQLite being built to read them, as BackupTests
+/// checks; without it, the copy fails as one that can't be read.
+func openCopyToRead(_ file: URL) throws -> DatabaseQueue {
+    var configuration = Configuration()
+    configuration.readonly = true
+    let path = hasLogBeside(file) ? file.path(percentEncoded: false) : "\(file.absoluteString)?immutable=1"
+    return try DatabaseQueue(path: path, configuration: configuration)
+}
+
+/// Whether SQLite left a log beside the database saved in `file`: a write-ahead
+/// log, which may hold part of it, or a rollback journal, which may undo part
+/// of it. Without its log, it isn't what it says it is.
+func hasLogBeside(_ file: URL) -> Bool {
+    let path = file.path(percentEncoded: false)
+    return ["-wal", "-journal"].contains { FileManager.default.fileExists(atPath: path + $0) }
+}
+
 /// Moves the copies before an update that versions of Ficha before backups
 /// saved next to the database in `folder`, named after their migration, like
 /// `Ficha before v2 cards.sqlite`, into `backups`, the Backups folder, each
 /// as a copy before an update saved when its file was last written. One that
 /// can't be moved stays where it is, which the log says: Ficha still opens.
-/// So does one with a write-ahead log next to it, which may hold part of it.
+/// So does one with a log next to it (`hasLogBeside(_:)`).
 func moveOldCopiesBeforeAnUpdate(from folder: URL, into backups: URL) {
     let files: [URL]
     do {
@@ -230,8 +256,8 @@ func moveOldCopiesBeforeAnUpdate(from folder: URL, into backups: URL) {
     }
     for file in files where file.lastPathComponent.hasPrefix("Ficha before ") && file.pathExtension == "sqlite" {
         let name = file.lastPathComponent
-        guard !FileManager.default.fileExists(atPath: file.path(percentEncoded: false) + "-wal") else {
-            logger.error("Left the old copy \(name, privacy: .public) where it is: a write-ahead log is next to it")
+        guard !hasLogBeside(file) else {
+            logger.error("Left the old copy \(name, privacy: .public) where it is: SQLite's log is next to it")
             continue
         }
         do {

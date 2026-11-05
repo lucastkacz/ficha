@@ -5,11 +5,26 @@ import SwiftUI
 extension View {
     /// The New Deck sheet over the view while the window `state` runs asks
     /// for a new deck's name for the Deck field of `fields`, the card form
-    /// or the editor.
+    /// or the editor. Its OK writes nothing, so no alert goes over it.
     func newDeckSheet(for fields: CardsWindowState.CardFields, _ state: Binding<CardsWindowState>) -> some View {
+        newDeckSheet(asking: .newDeck(fields), state, failure: .constant(nil))
+    }
+
+    /// The New Deck sheet over the view while the window `state` runs asks
+    /// for a new deck's name after New Deck… in the sidebar, whose OK makes
+    /// the deck, with `failure` as the alert over it.
+    func makeDeckSheet(_ state: Binding<CardsWindowState>, failure: Binding<Failure?>) -> some View {
+        newDeckSheet(asking: .makeDeck, state, failure: failure)
+    }
+
+    /// The New Deck sheet over the view while the window `state` runs asks
+    /// `question`, with `failure` as the alert over it.
+    private func newDeckSheet(
+        asking question: CardsWindowState.Question, _ state: Binding<CardsWindowState>, failure: Binding<Failure?>
+    ) -> some View {
         sheet(
             isPresented: Binding(
-                get: { state.wrappedValue.question == .newDeck(fields) },
+                get: { state.wrappedValue.question == question },
                 set: { if !$0 { state.wrappedValue.cancelQuestion() } })
         ) {
             NewDeckName { name in
@@ -21,6 +36,7 @@ extension View {
             }
             .padding(20)
             .frame(width: 360)
+            .failureAlert(failure)
         }
     }
 }
@@ -28,6 +44,7 @@ extension View {
 /// A new deck's whole name, after New Deck…, as “Idiomas::Inglés”: in the
 /// New Deck sheet a card's Deck field opens, in the card form or the editor,
 /// where OK puts the deck in the field, for Add or Save to make it; in the
+/// New Deck sheet the sidebar opens, where OK makes the deck; in the
 /// Change Deck sheet, in its tree's place, where OK lists the deck there,
 /// chosen, for Move to make it; and in the Import sheet, in its preview's
 /// place, where OK chooses the deck in its menu of decks, for Import to make

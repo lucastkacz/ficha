@@ -28,14 +28,13 @@ extension Engine {
     /// folder refers to any more, now that copies went: pruned, or moved to
     /// the Trash. One that couldn't be dropped stays, and the log says why:
     /// the copies went all the same. When a copy can't be read, none is
-    /// dropped, since it may refer to any of them.
+    /// dropped, since it may refer to any of them, and the log says which
+    /// copy and why.
     func dropFilesNoCopyUses() {
         guard let backupsFolder else { return }
-        var referred = FileNames()
-        do throws(EngineError) {
-            for copy in try copies() {
-                referred.formUnion(try FileNames(referredByCopyIn: backupsFolder.appending(path: copy.name)))
-            }
+        let referred: FileNames
+        do {
+            referred = try filesTheCopiesUse(in: backupsFolder)
         } catch {
             logger.error(
                 "Couldn't read which files the copies use, so none was dropped: \(String(describing: error), privacy: .public)"
@@ -44,6 +43,21 @@ extension Engine {
         }
         dropShared(keeping: referred.images, in: backupsFolder)
         dropShared(keeping: referred.sounds, in: backupsFolder)
+    }
+
+    /// The files the cards in every copy in the Backups folder `backups`
+    /// refer to. Throws an `UnreadableCopy` for the first copy it can't read,
+    /// and what `copies()` throws when it can't list them.
+    func filesTheCopiesUse(in backups: URL) throws -> FileNames {
+        var referred = FileNames()
+        for copy in try copies() {
+            do {
+                referred.formUnion(try FileNames(referredByCopyIn: backups.appending(path: copy.name)))
+            } catch {
+                throw UnreadableCopy(name: copy.name, reason: String(describing: error))
+            }
+        }
+        return referred
     }
 
     /// What the files named by `Name` the copies share weigh, in bytes.
@@ -86,16 +100,24 @@ extension Engine {
     }
 }
 
+/// A copy in the Backups folder that couldn't be read while working out which
+/// files the copies use, as the log says it, at public privacy: its reason is
+/// what SQLite or `namesReferred(_:onCardsWhere:in:)` said, and neither quotes
+/// a card.
+struct UnreadableCopy: Error, CustomStringConvertible {
+    let name: String
+    let reason: String
+
+    var description: String {
+        "\(name): \(reason)"
+    }
+}
+
 extension FileNames {
     /// The files the cards in the copy saved in `file` refer to, which it
     /// reads without changing it.
-    init(referredByCopyIn file: URL) throws(EngineError) {
-        self = try reportingStorageErrors {
-            var configuration = Configuration()
-            configuration.readonly = true
-            return try DatabaseQueue(path: file.path(percentEncoded: false), configuration: configuration)
-                .read(FileNames.init(referredIn:))
-        }
+    init(referredByCopyIn file: URL) throws {
+        self = try openCopyToRead(file).read(FileNames.init(referredIn:))
     }
 }
 
