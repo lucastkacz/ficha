@@ -312,3 +312,9 @@ _Avoid_: cloud, mirror, upload
 **Selective sync**:
 Syncing only the cards in a deck the user chose, or in a deck inside one, instead of all of them, so the rest never go up to iCloud. Which decks sync is one choice for all their devices, and changing it deletes no card: one that stops syncing leaves iCloud, and each device keeps its copy.
 _Avoid_: partial sync, local cards, offline decks
+
+### First launch
+
+**Welcome page**:
+The one page Ficha shows the first time it opens on a Mac, which says it lives in the menu bar and asks whether it opens at login.
+_Avoid_: setup page, onboarding, tutorial
