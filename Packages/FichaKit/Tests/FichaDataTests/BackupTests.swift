@@ -723,6 +723,130 @@ final class BackupTests {
         #expect(try engine.sharedImagesSize() == nestSize)
     }
 
+    @Test("a copy whose write-ahead log holds part of it restores with what the log holds, and stays as it was")
+    func copyWhoseLogHoldsPartOfItRestores() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let image = try engine.image(nest)
+        let copy = try saveCopyWhoseLogHolds(frontImage: nest, of: engine)
+        let file = try path(of: copy, in: engine)
+        let saved = try contents(of: [file, file + "-wal"])
+        try FileManager.default.removeItem(at: folder.appending(path: "Images").appending(path: nest.rawValue))
+
+        time.advance(by: hours(1))
+        try engine.restore(copy.name)
+
+        #expect(try engine.cards().map(\.frontImage) == [nest])
+        #expect(try engine.image(nest) == image)
+        #expect(try contents(of: [file, file + "-wal"]) == saved)
+    }
+
+    @Test("a copy with a write-ahead log and no index beside it is read through the log, which stays as it was")
+    func copyWhoseLogHasNoIndexIsReadThroughIt() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let copy = try saveCopyWhoseLogHolds(frontImage: nest, of: engine)
+        let file = try path(of: copy, in: engine)
+        try FileManager.default.removeItem(atPath: file + "-shm")
+        let saved = try contents(of: [file, file + "-wal"])
+
+        let referred = try engine.filesTheCopiesUse(in: try #require(engine.backupsFolder))
+
+        #expect(referred.images == [nest])
+        #expect(try contents(of: [file, file + "-wal"]) == saved)
+    }
+
+    @Test(
+        "a copy with a write-ahead log and no index, in a folder that can't take one, can't be read, so none is dropped"
+    )
+    func copyWhoseLogHasNoIndexInAFolderThatCantTakeOne() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let copy = try saveCopyWhoseLogHolds(frontImage: nest, of: engine)
+        try FileManager.default.removeItem(atPath: try path(of: copy, in: engine) + "-shm")
+        let backups = try #require(engine.backupsFolder)
+        let backupsPath = backups.path(percentEncoded: false)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: backupsPath)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: backupsPath) }
+
+        let error = try #require(throws: UnreadableCopy.self) {
+            try engine.filesTheCopiesUse(in: backups)
+        }
+
+        #expect(error.name == copy.name)
+    }
+
+    // SQLite skips a log's frames from the damage on, with no error, so a file
+    // only those frames refer to goes: a restore couldn't bring it back to
+    // any card either.
+    @Test(
+        "a copy whose write-ahead log is damaged uses what SQLite still reads of it, which is what a restore brings back"
+    )
+    func copyWhoseLogIsDamaged() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let copy = try saveCopyWhoseLogHolds(frontImage: nest, of: engine)
+        let file = try path(of: copy, in: engine)
+        try FileManager.default.removeItem(atPath: file + "-shm")
+        var log = try Data(contentsOf: URL(filePath: file + "-wal"))
+        // The first frame's page, after the log's header and the frame's.
+        log[32 + 24 + 8] ^= 0xFF
+        try log.write(to: URL(filePath: file + "-wal"))
+
+        let referred = try engine.filesTheCopiesUse(in: try #require(engine.backupsFolder))
+
+        #expect(referred.images == [bird])
+        time.advance(by: hours(1))
+        try engine.restore(copy.name)
+        #expect(try engine.cards().map(\.frontImage) == [bird])
+    }
+
+    @Test(
+        "a copy with a rollback journal beside it, which would undo part of it, can't be read: none is dropped, and it doesn't restore"
+    )
+    func copyWithARollbackJournalBesideItCantBeRead() throws {
+        let engine = try openEngine()
+        let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero."))
+        let copy = try saveCopyWithItsRollbackJournal(of: engine)
+
+        let error = try #require(throws: UnreadableCopy.self) {
+            try engine.filesTheCopiesUse(in: try #require(engine.backupsFolder))
+        }
+
+        #expect(error.name == copy.name)
+        #expect(throws: EngineError.storage) {
+            try engine.restore(copy.name)
+        }
+        #expect(try engine.cards() == [hornero])
+    }
+
+    @Test(
+        "a copy moved to the Trash with its write-ahead log beside it no longer counts, and the other copies keep theirs"
+    )
+    func copyWithALogMovedToTheTrash() throws {
+        let engine = try openEngine()
+        let (bird, nest) = try twoImages(in: engine)
+        try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
+        let birdSize = try size(of: [bird], in: engine)
+        let withLog = try saveCopyWhoseLogHolds(frontImage: nest, of: engine)
+        time.advance(by: days(1))
+        try engine.backUpNow(.defaults)
+
+        let trashed = try engine.moveToTrash([withLog])
+        // The test's copies don't stay in Lucas's Trash.
+        defer {
+            for file in trashed {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+
+        #expect(try engine.sharedImagesSize() == birdSize)
+    }
+
     @Test("a copy that can't be read keeps every file the copies share as old backups go, and every copy but those")
     func unreadableCopyKeepsEverySharedFileWhenBackupsGo() async throws {
         let engine = try openEngine()
@@ -832,8 +956,9 @@ final class BackupTests {
     /// Saves a copy before an update of `engine`'s database with its
     /// write-ahead log beside it, whose one change, which the copy's file
     /// doesn't hold, gives every card the front image `image`, which the
-    /// copies share from then on.
-    private func saveCopyWhoseLogHolds(frontImage image: ImageName, of engine: Engine) throws {
+    /// copies share from then on, and returns it.
+    @discardableResult
+    private func saveCopyWhoseLogHolds(frontImage image: ImageName, of engine: Engine) throws -> DatabaseCopy {
         let copy = try #require(try engine.saveCopy(.beforeUpdate))
         let file = try path(of: copy, in: engine)
         let backups = try #require(engine.backupsFolder)
@@ -857,6 +982,48 @@ final class BackupTests {
             try FileManager.default.copyItem(atPath: writing + suffix, toPath: file + suffix)
         }
         try queue.close()
+        return copy
+    }
+
+    /// Saves a copy before an update of `engine`'s database as a write that
+    /// never finished leaves it: part of a transaction in its file, and beside
+    /// it the rollback journal that would undo that part. Returns it.
+    private func saveCopyWithItsRollbackJournal(of engine: Engine) throws -> DatabaseCopy {
+        let copy = try #require(try engine.saveCopy(.beforeUpdate))
+        let file = try path(of: copy, in: engine)
+        let writing = folder.appending(path: "Copy being written.sqlite").path(percentEncoded: false)
+        try FileManager.default.copyItem(atPath: file, toPath: writing)
+        let queue = try DatabaseQueue(path: writing)
+        try queue.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA journal_mode = DELETE")
+            try db.execute(
+                sql: """
+                    CREATE TABLE padding AS
+                    WITH RECURSIVE row(number) AS (SELECT 1 UNION ALL SELECT number + 1 FROM row WHERE number < 500)
+                    SELECT zeroblob(1000) AS filler FROM row
+                    """)
+            try db.execute(sql: "PRAGMA cache_size = 5")
+            try db.execute(sql: "PRAGMA cache_spill = 5")
+            try db.inTransaction {
+                // More pages than the cache holds, so they spill into the file,
+                // which still opens and reads with no error: the tables it
+                // lists stay, and only their rows are halfway.
+                try db.execute(sql: "UPDATE padding SET filler = zeroblob(1001)")
+                // Copied before the write ends, which takes the journal away.
+                try FileManager.default.removeItem(atPath: file)
+                for suffix in ["", "-journal"] {
+                    try FileManager.default.copyItem(atPath: writing + suffix, toPath: file + suffix)
+                }
+                return .rollback
+            }
+        }
+        try queue.close()
+        return copy
+    }
+
+    /// What the files at `paths` hold.
+    private func contents(of paths: [String]) throws -> [Data] {
+        try paths.map { try Data(contentsOf: URL(filePath: $0)) }
     }
 
     /// Saves in the Backups folder, which is there already, a file named as a

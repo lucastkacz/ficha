@@ -85,6 +85,22 @@ final class DatabaseFileTests {
         #expect(try engine.copies().count == 2)
     }
 
+    @Test(
+        "an old copy with a log next to it, which may hold or undo part of it, stays next to the database",
+        arguments: ["-wal", "-journal"])
+    func oldCopyWithALogStays(log: String) throws {
+        try saveFirstVersionDatabase(capturing: "serendipia")
+        let oldCopy = folder.appending(path: "Ficha before v2 cards.sqlite")
+        try FileManager.default.copyItem(at: folder.appending(path: "Ficha.sqlite"), to: oldCopy)
+        let oldCopyPath = oldCopy.path(percentEncoded: false)
+        try Data([1]).write(to: URL(filePath: oldCopyPath + log))
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        #expect(FileManager.default.fileExists(atPath: oldCopyPath))
+        #expect(try engine.copies().count == 1)
+    }
+
     // The review log's table is made again for answers from card
     // notifications, which have no response time.
     // Its first view comes in as the first review, rated again, that took

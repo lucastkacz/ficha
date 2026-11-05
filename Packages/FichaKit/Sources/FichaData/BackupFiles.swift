@@ -46,7 +46,8 @@ extension Engine {
     }
 
     /// The files the cards in every copy in the Backups folder `backups`
-    /// refer to, or an `UnreadableCopy` for the first copy it can't read.
+    /// refer to. Throws an `UnreadableCopy` for the first copy it can't read,
+    /// and what `copies()` throws when it can't list them.
     func filesTheCopiesUse(in backups: URL) throws -> FileNames {
         var referred = FileNames()
         for copy in try copies() {
