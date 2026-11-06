@@ -83,8 +83,44 @@ watch() {
   "$script" --after 2 --process fake-tests --advice "Advice for this run." -- "$@" 2>&1
 }
 
-output=$(watch "$tmp/fake-tests" hang)
-status=$?
+mkdir "$tmp/fake-tools"
+printf '#!/bin/bash\nexit 1\n' >"$tmp/fake-tools/sample"
+chmod +x "$tmp/fake-tools/sample"
+watch_where_sample_fails() {
+  PATH="$tmp/fake-tools:$PATH" watch "$@"
+}
+
+# Starts a run beside the others, since most of each is waiting out its limit,
+# in a folder of its own, as .build/hangs goes under the folder it runs from.
+run() {
+  local name=$1
+  shift
+  mkdir "$name"
+  (cd "$name" && "$@" >output 2>&1; echo $? >status) &
+}
+
+# Sets output and status to what the run $1 left.
+results_of() {
+  output=$(<"$1/output")
+  status=$(<"$1/status")
+}
+
+# Another session's tests, which share the process's name.
+"$tmp/fake-tests" hang &
+others+=($!)
+disown
+
+run hang watch "$tmp/fake-tests" hang
+run descendant watch bash -c "'$tmp/fake-tests' hang; exit 3"
+run burn watch "$tmp/fake-tests" burn 4
+run command-status watch "$tmp/fake-tests" exit 7
+# A build that waits for another's lock on .build uses no CPU either.
+run another-name "$script" --after 2 --process another-name --advice "Advice." -- "$tmp/fake-tests" wait 4
+run another-session watch sleep 4
+run failing-sample watch_where_sample_fails "$tmp/fake-tests" hang
+wait
+
+results_of hang
 check_status "$status" 1 "a process that uses no CPU fails the run"
 check "$output" "The run hung: fake-tests used no CPU for 2 seconds" "it says which process hung, and for how long"
 check "$output" "Advice for this run." "it says what to do"
@@ -92,7 +128,7 @@ check "$output" "com.apple.root.default-qos (concurrent): 3 threads" "it groups 
 check "$output" "com.example.waits (serial): 1 thread" "it lists each queue apart"
 check "$output" "semaphore_wait_trap (libsystem_kernel.dylib)" "it says where the threads wait"
 check "$output" "(fake-tests)" "it reaches the frames of the program itself"
-samples=$(find .build/hangs -name 'fake-tests-*.txt')
+samples=$(cd hang && find .build/hangs -name 'fake-tests-*.txt')
 check "$output" "$samples" "it names the file the sample stays in"
 hung=${samples##*-}
 if [[ -n $hung ]] && ! kill -0 "${hung%.txt}" 2>/dev/null; then
@@ -102,31 +138,21 @@ else
   failures=$((failures + 1))
 fi
 
-output=$(watch bash -c "'$tmp/fake-tests' hang; exit 3")
-status=$?
+results_of descendant
 check_status "$status" 1 "it finds the process among the command's descendants, as swift test starts the tests' helper"
 check "$output" "The run hung" "it says so for a descendant too"
 
-output=$(watch "$tmp/fake-tests" burn 4)
-status=$?
+results_of burn
 check_status "$status" 0 "a process that keeps using CPU past the limit passes"
 check_not "$output" "hung" "it says nothing of a hang then"
 
-output=$(watch "$tmp/fake-tests" exit 7)
-status=$?
+results_of command-status
 check_status "$status" 7 "it ends with the command's own status"
 
-# A build that waits for another's lock on .build uses no CPU either.
-output=$("$script" --after 2 --process another-name --advice "Advice." -- "$tmp/fake-tests" wait 4 2>&1)
-status=$?
+results_of another-name
 check_status "$status" 0 "it leaves alone a process of another name that uses no CPU"
 
-# Another session's tests, which share the process's name.
-"$tmp/fake-tests" hang &
-others+=($!)
-disown
-output=$(watch sleep 4)
-status=$?
+results_of another-session
 check_status "$status" 0 "it leaves alone a process of that name it didn't start"
 if kill -0 "${others[0]}" 2>/dev/null; then
   echo "ok    that process stays alive"
@@ -151,11 +177,7 @@ else
   failures=$((failures + 1))
 fi
 
-mkdir "$tmp/failing-sample"
-printf '#!/bin/bash\nexit 1\n' >"$tmp/failing-sample/sample"
-chmod +x "$tmp/failing-sample/sample"
-output=$(PATH="$tmp/failing-sample:$PATH" watch "$tmp/fake-tests" hang)
-status=$?
+results_of failing-sample
 check_status "$status" 1 "a process that sample can't read still fails the run"
 check "$output" "macOS's sample couldn't read process" "it says the sample failed"
 check "$output" "run this again" "it says what to do then"
