@@ -4,9 +4,9 @@ The user would give it a source or just a topic, such as "the signals of truco",
 
 ## Why this is out of scope
 
-Not yet, as Lucas decided on 2026-11-06. Ficha sells once (ADR 0029), which needs about 71 sales to recover what he set out to. An agent would need a server of Ficha's own, an identity per user and a cost per generation, and it would reverse ADR 0001 and ADR 0012, for a subscription that would change what sets Ficha apart: billing is the top or tied complaint in 5 of 6 AI card apps with Trustpilot reviews (report 17 of the market research, #452).
+Ficha holds no AI and has no server or accounts of its own (ADR 0001, ADR 0012, ADR 0017), and it sells once, with no subscription (ADR 0029). An agent would need a server, an identity per user and a cost per generation, and a subscription would change what sets Ficha apart. Billing is the top or tied complaint in 5 of 6 AI card apps with Trustpilot reviews, a site that draws the angry (report 17 in `docs/research/market/`).
 
-Lucas would think about it again once the app is published and takes off, say past 100 downloads: a subscription for AI features on demand, such as cards to learn truco's rules, cards and signals. It would need its own grilling and ADR.
+Lucas decided this on 2026-11-06, adding that it isn't needed now. He'd think about it again once the app is published and takes off, say past 100 downloads: a subscription for AI features on demand, such as cards to learn truco's rules and signals, with its own grilling and ADR.
 
 ## Prior requests
 
