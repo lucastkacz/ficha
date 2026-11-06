@@ -318,3 +318,17 @@ _Avoid_: partial sync, local cards, offline decks
 **Welcome page**:
 The one page Ficha shows the first time it opens on a Mac, which says it lives in the menu bar and asks whether it opens at login.
 _Avoid_: setup page, onboarding, tutorial
+
+### Buying Ficha
+
+**Purchase**:
+The one payment that gives the user Ficha for good, on their Mac and their iPhone alike.
+_Avoid_: subscription, license, unlock
+
+**Trial**:
+The seven days the user has all of Ficha for free before the purchase, counted from the first card they review, not from the download.
+_Avoid_: demo, free tier
+
+**Paywall**:
+What Ficha shows in place of everything else once the trial is over, until the purchase: Buy, Restore Purchases and Export. It deletes nothing, and the purchase brings everything back as it was.
+_Avoid_: lock screen, upgrade page
