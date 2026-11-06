@@ -95,7 +95,7 @@ report_hang() {
       text+=$'\n'"Where the threads of process $pid wait, cut short, from $file:"$'\n'
       text+="$("$here/where-threads-wait.sh" "$file")"$'\n'
     else
-      text+=$'\n'"macOS's sample couldn't read process $pid, so this can't say where it waits."$'\n'
+      text+=$'\n'"macOS's sample couldn't read process $pid, so no frames here say where it waits: run this again, which samples it again if it hangs again."$'\n'
     fi
   done
   printf '%s\n%s\n' "$text" "$advice" >"$report"
@@ -107,7 +107,9 @@ report_hang() {
 watch() {
   local seen="" pids="" time=0 grown_from=0 quiet=0
   while kill -0 "$$" 2>/dev/null; do
-    sleep "$poll"
+    # Away from this script's output: a killed watcher's sleep lives on until
+    # its poll ends, and would keep a pipe open that long, as in make test | tee.
+    sleep "$poll" >/dev/null 2>&1
     IFS=$'\t' read -r pids time < <(watched_processes) || pids=""
     if [[ -z $pids || $pids != "$seen" ]]; then
       seen=$pids

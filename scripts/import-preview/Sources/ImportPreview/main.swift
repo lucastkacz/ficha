@@ -63,7 +63,7 @@ struct CardLine: Encodable {
         type = card.type
         source = card.source
         bothWays = card.bothWays
-        buried = card.buriedAt != nil
+        buried = if case .buried = card.standing { true } else { false }
     }
 }
 
@@ -98,13 +98,13 @@ func dumpLines(of cards: [Card], leavingOut leftOut: [LeftOutLine]) throws -> [S
 /// The number `/usr/bin/time -l` calls peak memory footprint, in bytes, for
 /// this process so far, or nil when macOS doesn't say.
 func peakMemoryFootprint() -> UInt64? {
-    var usage = rusage_info_v4()
-    let status = withUnsafeMutablePointer(to: &usage) { pointer in
+    var resources = rusage_info_v4()
+    let status = withUnsafeMutablePointer(to: &resources) { pointer in
         pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
             proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0)
         }
     }
-    return status == 0 ? usage.ri_lifetime_max_phys_footprint : nil
+    return status == 0 ? resources.ri_lifetime_max_phys_footprint : nil
 }
 
 /// How many stay out, and how many for each reason the engine names.

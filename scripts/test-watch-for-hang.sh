@@ -140,6 +140,26 @@ status=$?
 check_status "$status" 2 "it refuses a limit that isn't whole seconds"
 check "$output" "Usage:" "it says how to run it"
 
+# A limit whose polls take 10 seconds: the watcher's sleep mustn't hold a pipe
+# open after the command ends, as make test | tee would wait for it.
+started=$SECONDS
+"$script" --after 200 --process fake-tests --advice "Advice." -- sleep 1 2>&1 | cat
+if ((SECONDS - started < 5)); then
+  echo "ok    it holds no pipe open after the command ends"
+else
+  echo "FAIL  it holds no pipe open after the command ends ($((SECONDS - started)) seconds)"
+  failures=$((failures + 1))
+fi
+
+mkdir "$tmp/failing-sample"
+printf '#!/bin/bash\nexit 1\n' >"$tmp/failing-sample/sample"
+chmod +x "$tmp/failing-sample/sample"
+output=$(PATH="$tmp/failing-sample:$PATH" watch "$tmp/fake-tests" hang)
+status=$?
+check_status "$status" 1 "a process that sample can't read still fails the run"
+check "$output" "macOS's sample couldn't read process" "it says the sample failed"
+check "$output" "run this again" "it says what to do then"
+
 # A report by hand, for what a real one of a hung process rarely shows.
 cat >"$tmp/report.txt" <<'REPORT'
 Call graph:
@@ -156,12 +176,13 @@ Call graph:
     100 Thread_3: a worker
     + 100 thread_start  (in libsystem_pthread.dylib) + 8  [0x9]
     +   100 ourFunction  (in Tool) + 8  [0xa]  Tool.swift:12
-    +     100 f6  (in libsystem_c.dylib) + 8  [0xb]
-    +       100 f5  (in libsystem_c.dylib) + 8  [0xc]
-    +         100 f4  (in libsystem_c.dylib) + 8  [0xd]
-    +           100 f3  (in libsystem_c.dylib) + 8  [0xe]
-    +             100 f2  (in libsystem_c.dylib) + 8  [0xf]
-    +               100 f1  (in libsystem_c.dylib) + 8  [0x10]
+    +     100 aFunctionWithAVeryLongName(ofItsFirstArgument: SomeVeryLongTypeName<AnotherVeryLongTypeName>, andItsSecondArgument: YetAnotherVeryLongTypeName<AndOneMoreLongTypeName>)  (in Tool) + 8  [0x11]  Tool.swift:20
+    +       100 f6  (in libsystem_c.dylib) + 8  [0xb]
+    +         100 f5  (in libsystem_c.dylib) + 8  [0xc]
+    +           100 f4  (in libsystem_c.dylib) + 8  [0xd]
+    +             100 f3  (in libsystem_c.dylib) + 8  [0xe]
+    +               100 f2  (in libsystem_c.dylib) + 8  [0xf]
+    +                 100 f1  (in libsystem_c.dylib) + 8  [0x10]
 
 Total number in stack (recursive counted multiple times):
 
@@ -178,6 +199,7 @@ check "$output" "a worker: 1 thread" "it names a thread without a queue by its n
 check "$output" "f4 (libsystem_c.dylib)" "it keeps the innermost frames"
 check_not "$output" "f5 (" "it cuts the frames in the middle"
 check "$output" "ourFunction (Tool) Tool.swift:12" "it keeps the frames of a binary that isn't Apple's"
+check "$output" "aFunctionWithAVeryLongName" "it keeps such a frame when its name runs long, as a Swift signature's does"
 check "$output" "…" "it marks where it cut"
 
 output=$("$summary" "$tmp/no-such-report.txt" 2>&1)
@@ -186,7 +208,7 @@ check_status "$status" 1 "it fails on a report it can't read"
 check "$output" "can't be read" "it says so"
 
 if ((failures > 0)); then
-  echo "$failures watch-for-hang test(s) failed"
+  echo "$failures of the watchdog's tests failed, as the lines above say: fix scripts/watch-for-hang.sh, scripts/where-threads-wait.sh or the tests, and run make check again." >&2
   exit 1
 fi
 echo "All watch-for-hang tests passed"

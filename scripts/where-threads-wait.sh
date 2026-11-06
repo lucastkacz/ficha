@@ -27,7 +27,7 @@ awk '
   # A frame of the call graph, "semaphore_wait_trap  (in libsystem_kernel.dylib)
   # + 8  [0x185bfcbb0]  File.swift:12", as "semaphore_wait_trap
   # (libsystem_kernel.dylib) File.swift:12".
-  function frame(text, place, image) {
+  function frame(text, place) {
     place = ""
     if (match(text, /\[0x[0-9a-f]+\] +[^ ].*$/)) {
       place = substr(text, RSTART, RLENGTH)
@@ -35,11 +35,10 @@ awk '
     }
     sub(/ *(\+ [0-9]+ +)?\[0x[0-9a-f]+\].*$/, "", text)
     sub(/ +\(in /, " (", text)
-    if (place != "") text = text " " place
-    return length(text) > 150 ? substr(text, 1, 150) "…" : text
+    return place != "" ? text " " place : text
   }
 
-  # The image a shortened frame names, between its last parentheses.
+  # The image a whole frame names, between its last parentheses.
   function image_of(text, opening) {
     opening = 0
     while (match(substr(text, opening + 1), /\(/)) opening += RSTART
@@ -71,7 +70,10 @@ awk '
     depth = RSTART
     if (depth <= last_depth[threads]) { following[threads] = 0; next }
     last_depth[threads] = depth
-    frames[threads, ++frame_count[threads]] = frame(substr($0, RSTART + RLENGTH))
+    whole = frame(substr($0, RSTART + RLENGTH))
+    frame_count[threads]++
+    images[threads, frame_count[threads]] = image_of(whole)
+    frames[threads, frame_count[threads]] = length(whole) > 150 ? substr(whole, 1, 150) "…" : whole
     next
   }
 
@@ -89,7 +91,7 @@ awk '
       shown = 0
       gap = 0
       for (i = count - 4; i >= 1 && shown < 4; i--) {
-        if (image_of(frames[thread, i]) in ours) {
+        if (images[thread, i] in ours) {
           stack = stack "    " (gap ? "…\n    " : "") frames[thread, i] "\n"
           shown++
           gap = 0

@@ -52,19 +52,27 @@ done
 }
 
 # Unpacks FichaKit as it is at the commit $1 in a new folder, with its
-# XCFramework, which git ignores, and prints the folder. The XCFramework is
-# copied when the commit's crate is this checkout's, and built otherwise.
+# XCFramework, which git ignores, and prints the folder, or says what failed.
+# The XCFramework is copied when the commit's crate is this checkout's, and
+# built otherwise.
 unpack_commit() {
   local commit=$1 work
-  mkdir -p "$scratch" &&
-    work=$(mktemp -d "$scratch/.unpacking.XXXXXX") &&
-    git archive "$commit" Packages/FichaKit scripts/build-fsrs.sh | tar -x -C "$work" || return 1
-  if git cat-file -e "$commit:$crate" 2>/dev/null; then
-    if git diff --quiet "$commit" -- "$crate"; then
-      cp -R "$fsrs" "$work/Packages/FichaKit/" || return 1
-    else
-      (cd "$work" && scripts/build-fsrs.sh "$crate" "$fsrs/CFichaFSRS.xcframework") >&2 || return 1
-    fi
+  if ! {
+    mkdir -p "$scratch" &&
+      work=$(mktemp -d "$scratch/.unpacking.XXXXXX") &&
+      git archive "$commit" Packages/FichaKit scripts/build-fsrs.sh | tar -x -C "$work"
+  }; then
+    echo "FichaKit at $commit couldn't be unpacked into $scratch, as it says above. A commit older than e8eaed8, which brought the Rust crate, can't be compared: try a later one. Otherwise check that the disk has room, delete $scratch, and try again." >&2
+    return 1
+  fi
+  if git diff --quiet "$commit" -- "$crate"; then
+    cp -R "$fsrs" "$work/Packages/FichaKit/" || {
+      echo "The XCFramework couldn't be copied into $work, as it says above: run make fsrs, check that the disk has room, delete $scratch, and try again." >&2
+      return 1
+    }
+  elif ! (cd "$work" && scripts/build-fsrs.sh "$crate" "$fsrs/CFichaFSRS.xcframework") >&2; then
+    echo "fsrs-rs at $commit didn't build, as it says above: run this through make preview-import, which finds Rust's tools, and if it still fails, try a later commit." >&2
+    return 1
   fi
   echo "$work"
 }
@@ -75,9 +83,12 @@ if [[ -n $at ]]; then
     echo "$at names no commit in this repository: pass a branch, a tag or a commit, such as main, and fetch it first if it's only on GitHub." >&2
     exit 1
   }
-  if [[ ! -d $scratch/$commit ]] && ! { work=$(unpack_commit "$commit") && mv "$work" "$scratch/$commit"; }; then
-    echo "FichaKit at $at couldn't be unpacked into $scratch, as it says above: check that the commit has Packages/FichaKit and that the disk has room, delete $scratch, and try again." >&2
-    exit 1
+  if [[ ! -d $scratch/$commit ]]; then
+    work=$(unpack_commit "$commit") || exit 1
+    mv "$work" "$scratch/$commit" || {
+      echo "$work couldn't become $scratch/$commit, as it says above: delete $scratch, and try again." >&2
+      exit 1
+    }
   fi
   package=$scratch/$commit/$tool
   if ! { mkdir -p "$package" && cp -Rp "$tool/Package.swift" "$tool/Sources" "$package/"; }; then
