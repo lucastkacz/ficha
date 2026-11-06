@@ -47,7 +47,7 @@ The fetch tool returned machine summaries, so counts are rough. All links read 2
 - **Other categories** (a small hand-picked set):
   - Readwise began beside Kindle and has charged since 2018; now $9.99 a month billed yearly, with about 5 of 76 HN comments on price (report 18). `[SAID]`/`[CLAIMED]` Its founder aims at power users, not the mass market.
   - [Fantastical](https://mjtsai.com/blog/2024/11/01/fantastical-4-and-windows-version) beside free Apple Calendar: $57 a year; of 18 comments cost is the main objection, while 1 says it's much better than Apple's on iOS. `[SAID]`
-  - Magnet and Moom beside macOS's own tiling: blogs, some selling, say native covers basics, power users keep third-party, and free Rectangle is the default pick ([one](https://dev.to/appish/mac-window-snapping-sequoia-vs-better-alternatives-9hk), snippet). No sales figures.
+  - Magnet and Moom beside macOS's own tiling: blogs, some selling, say native covers basics, power users keep third-party, and free Rectangle is the default pick (one (dev.to), snippet). No sales figures.
 - **Pattern** `[INFERRED]`: companions shown to earn add a device, or fresh content under a deadline. I found no independent one that adds only a way of reviewing and shows revenue. Absence of public figures, not proof of failure.
 
 ### "Anki, but simple"
@@ -84,7 +84,7 @@ Mochi, the survivor of this group, is named as Anki with a better look and simpl
 - **Small things go to special tools, with no sign of comparing to Anki.** `[INFERRED]`
   - Maps: [Seterra](https://www.commonsense.org/education/app/seterra-geography), free (snippets).
   - Quotes: Readwise, no card-making (snippets), criticized as passive.
-  - Names: [NameMemory](https://dev.to/kasamiworks/i-built-a-100-offline-app-to-remember-peoples-names-5-months-later-179-downloads-and-1-paying-a4b), maker's own post (2026), offline and no account: 215 downloads and 2 paying in six months.
+  - Names: NameMemory (dev.to), maker's own post (2026), offline and no account: 215 downloads and 2 paying in six months.
   - Word-a-day apps: reports 20 and 21.
 
 ### Can it be met for free?

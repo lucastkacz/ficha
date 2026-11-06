@@ -46,7 +46,7 @@ R = sells its own flashcard or study app. A = affiliate, paid placement, promoti
 | [Spacey](https://spacey-landing-page.pages.dev/blog/best-spaced-repetition-apps) (Mar 2026) | R, own last | Anki |
 | [Notelyn](https://www.notelyn.com/blog/spaced-repetition-app) (May 2026) | R, own last | Anki |
 | [Chunks](https://chunks-landing.pages.dev/blog/best-spaced-repetition-apps-2026) (Oct 2026) | R, own #2 | Anki |
-| [ScholarNet on dev.to](https://dev.to/adcreatorai_b50c3dec8ab8/best-flashcard-apps-free-13-tools-transforming-study-534e) (Apr 2026) | R | Anki |
+| ScholarNet on dev.to (dev.to) (Apr 2026) | R | Anki |
 | [FluentU](https://www.fluentu.com/blog/learn/language-flashcards-app/) (Jan 2025) | R, own #2 | Anki |
 | [Nibble](https://nibble-app.com/blog/best-flashcard-apps) (Sep 2026) | R, own last | Quizlet |
 | [Fiveable](https://fiveable.me/best-ap-flashcard-apps) (2026) | A: sells AP prep, no flashcards | Quizlet |

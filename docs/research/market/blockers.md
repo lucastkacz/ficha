@@ -4,13 +4,13 @@ Lo que la investigación no pudo leer, por qué, qué se probó y cómo podría 
 
 ## Lo que Lucas podría hacer
 
-Primero, lo que más reportes piden. Tiempos estimados.
+Primero, lo que más informes piden. Tiempos estimados.
 
-| Qué | Qué destraba | Reportes | Tiempo |
+| Qué | Qué destraba | Informes | Tiempo |
 |---|---|---|---|
 | Sesión de Reddit, o buscar a mano en r/macapps, r/iosapps, r/SideProject, r/languagelearning y r/LearnJapanese y guardar links; dump de r/Anki de Arctic Shift; [wiki de r/MedicinaBrasil](https://www.reddit.com/r/MedicinaBrasil/wiki/index/anki/) | Menu bar, widgets, alternativas, lanzamientos | 09, 12, 16, 18, 19, 22, 24, 25, 27, 28 | 1 h |
 | Cuenta o export de Sensor Tower, Appfigures, AppFollow o AppTweak | Ingresos, keywords, reseñas de Android | 06, 09, 11, 20, 21, 23, 24, 26, 27 | 30 min; pago |
-| Guardar hilos: SDN ([1](https://forums.studentdoctor.net/threads/is-anki-sustainable.1285926/), [2](https://forums.studentdoctor.net/threads/anki-fatigue.1391194/), [3](https://forums.studentdoctor.net/threads/the-official-anki-thread.1061415/)), forum.language-learners.org ([1](https://forum.language-learners.org/viewtopic.php?t=8566), [2](https://forum.language-learners.org/viewtopic.php?t=14729), [3](https://forum.language-learners.org/viewtopic.php?t=10394), [4](https://forum.language-learners.org/viewtopic.php?t=17428&start=20)), [Mediavida](https://www.mediavida.com/foro/estudios-trabajo/metodo-estudio-hilo-opositor-731137), [PreparaOposiciones](https://www.preparaoposiciones.com/foro/d/20-mi-experiencia-con-anki-para-memorizar-legislacion), [Medi-Learn](https://www.medi-learn.de/foren/archive/index.php/t-109357.html), [Mnemosyne](https://groups.google.com/g/mnemosyne-proj-users), 300 Hours CFA, Art of Memory, Indie Hackers, clearfounder.com; StudyBlue y Tinycards en Wayback Machine. Opcionales: [japaneselevelup.com](https://japaneselevelup.com/?p=26463), [Medium](https://medium.com/@iandanforth/why-anki-doesnt-work-for-me-69ef1944943b) | Voces de primera mano | 02, 03, 04, 05, 09, 10, 15, 27 | 5 min cada uno |
+| Guardar hilos: SDN ([1](https://forums.studentdoctor.net/threads/is-anki-sustainable.1285926/), [2](https://forums.studentdoctor.net/threads/anki-fatigue.1391194/), [3](https://forums.studentdoctor.net/threads/the-official-anki-thread.1061415/)), forum.language-learners.org ([1](https://forum.language-learners.org/viewtopic.php?t=8566), [2](https://forum.language-learners.org/viewtopic.php?t=14729), [3](https://forum.language-learners.org/viewtopic.php?t=10394), [4](https://forum.language-learners.org/viewtopic.php?t=17428&start=20)), [Mediavida](https://www.mediavida.com/foro/estudios-trabajo/metodo-estudio-hilo-opositor-731137), [PreparaOposiciones](https://www.preparaoposiciones.com/foro/d/20-mi-experiencia-con-anki-para-memorizar-legislacion), [Medi-Learn](https://www.medi-learn.de/foren/archive/index.php/t-109357.html), [Mnemosyne](https://groups.google.com/g/mnemosyne-proj-users), 300 Hours CFA, Art of Memory, Indie Hackers, clearfounder.com; StudyBlue y Tinycards en Wayback Machine. Opcionales: [japaneselevelup.com](https://japaneselevelup.com/?p=26463), un post en Medium, "Why Anki doesn't work for me" | Voces de primera mano | 02, 03, 04, 05, 09, 10, 15, 27 | 5 min cada uno |
 | PDFs a texto, o instalar `poppler`: WaitSuite primero, Duolingo KDD, Cai, [UCF](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12662189/), Brown, Setapp | Recall retardado, lift de Duolingo, cifras de UCF | 03, 04, 10, 17, 20, 25, 27 | 5 min cada uno |
 | [AnkiWeb](https://ankiweb.net/shared/addons): add-ons principales, Ruzu Pop-ups ([repo](https://github.com/RuzuStudios/ruzu-pop-ups)), Smart Notes. Votos en [RemNote](https://feedback.remnote.com/p/make-remnote-less-buggy-syncing-issues) y Brainscape | Ratings y votos | 01, 14, 17, 25, 29 | 20 min |
 | App Store: reseñas de Fresh Cards, Studies, Flashcards Deluxe, PopCards; top 20 de "flashcards" y "anki" en Mac. iPhone: paywalls de Vocabulary y Motivation, alertas de AnkiMobile 26.10 | Conteos, ranking en Mac | 01, 19, 21, 25, 27 | 40 min |
@@ -25,9 +25,9 @@ Primero, lo que más reportes piden. Tiempos estimados.
 
 ## Sitios y fuentes que no se pudieron leer
 
-Los más sueltos, en el `## Blockers` de cada reporte.
+Los más sueltos, en el `## Blockers` de cada informe.
 
-| Sitio | Motivo | Qué se probó | Reportes | Sin leer |
+| Sitio | Motivo | Qué se probó | Informes | Sin leer |
 |---|---|---|---|---|
 | Google Play | Truncado o vacío | chrome-stats, AppBrain, APKPure | 01, 06, 09, 11, 13, 14, 15, 20, 21, 26 | Android; solo [un hilo de 2021](https://forums.ankiweb.net/t/disappointed-in-ankidroid/9583) |
 | G2, Capterra, GetApp, Software Advice | 403 | subscribed.fyi | 02, 08, 09, 10, 13, 14, 17, 18, 19 | Ratings |
@@ -57,7 +57,7 @@ Probado el 2026-11-05, antes de lanzar los subagentes.
 
 **Cómo podría ayudar Lucas:** una sesión exclusiva de Reddit con el navegador de la app, que no le saca la pantalla, todavía sin probar. Si Reddit pide login o CAPTCHA, eso lo resuelve él.
 
-Los reportes 12 y 22 sobre el archivo:
+Los informes 12 y 22 sobre el archivo:
 
 - **Búsqueda por tema:** en r/Anki, `query` dio 422 en unas 6 de cada 10 llamadas; "menu bar", "alternative" y "habit" nunca anduvieron. De los 18 subreddits del 22, solo contestó r/Spanish.
 - **Solo por fechas:** r/LearnJapanese, r/medicalschool, r/step1, r/usmle, r/GetStudying, r/productivity, r/Japaneselanguage, r/German, r/French, r/macapps, r/apple, r/MacOS, r/SideProject, r/indiehackers; r/languagelearning y r/iosapps, en ventanas de 4 días.
@@ -65,7 +65,7 @@ Los reportes 12 y 22 sobre el archivo:
 
 ## Límites de método
 
-- **Citas:** 02, 20, 24, 26 y 29 se limitaron a una cita por reporte, más estricto que su brief, así que "Words people use" está mayormente parafraseado.
+- **Citas:** 02, 20, 24, 26 y 29 se limitaron a una cita por informe, más estricto que su brief, así que "Words people use" está mayormente parafraseado.
 - **Conteos aproximados:** WebFetch contesta con un modelo que resume (01, 03, 10, 12, 13, 18).
 - **Hilos truncados:** Hacker News, 100K de 154K caracteres (01) y de 338K (24).
 - **Sin datos de ingresos** de ninguna app (15, 20, 21, 23, 24).
@@ -73,7 +73,7 @@ Los reportes 12 y 22 sobre el archivo:
 
 ## Dos errores de los subagentes
 
-- **20:** abrió por error `reddit.sentinel-team.org`, un snapshot. Era off-topic y nada del reporte lo usa.
+- **20:** abrió por error `reddit.sentinel-team.org`, un snapshot. Era off-topic y nada del informe lo usa.
 - **26:** probó una vez `reddit.birdcat.cafe`, un proxy vivo. Contestó 403 y nada lo usa.
 
 Sin llamarlo error: el 13 leyó a propósito un hilo en `reddit.sentinel-team.org`, descartable según él; el 01 leyó Reddit por snapshots.

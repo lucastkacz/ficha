@@ -34,14 +34,14 @@ Method: HN threads were read through the public Algolia API and are linked at ne
 | [ExtraBar](https://www.producthunt.com/p/extrabar/one-month-later-380-users-4-major-updates-and-extrabar-is-just-getting-started), about 2026 | 380 users in a month | Product Hunt; a known r/macapps user's review |
 | [Chunk](https://hackernoon.com/lite/i-turned-a-failed-product-hunt-launch-into-a-top-3-win-on-a-budget), menu-bar, 2025 | 10 upvotes, then about 300 and #3 on relaunch; downloads nearly doubled | Video, edited screenshots, comment swaps |
 | [Noticky](https://www.indiehackers.com/product/noticky), $6, undated | 15 sales in 3 days, 150+ in 10 weeks; Product Hunt almost nothing | Search snippet only |
-| [Primitive](https://medium.com/@fogleman/product-launch-post-mortem-primitive-for-macos-2eee316134ad) [OLD] | 70% of revenue in 3 days | HN front page; search snippet only |
+| Primitive (Medium) [OLD] | 70% of revenue in 3 days | HN front page; search snippet only |
 
 ### Why they worked or fell flat
 
 - **A first flat post isn't final** [4 launches]. CleverDeck [3 points](https://news.ycombinator.com/item?id=14554068), then 108 a week later. Zorbi [6](https://news.ycombinator.com/item?id=27852021), then 118 a day later. 21st Night [1](https://news.ycombinator.com/item?id=26388502), then 123 three months later. Chunk 10, then about 300.
 - **Page quality is what a maker blames** [SAID, 1, Chunk]: no video, raw screenshots, no branding.
 - **Replying in the thread seems to help** [INFERRED, 3 threads: AWS cards, Godspeed, Nightwatch].
-- **Product Hunt gives a spike and feedback more than sales** [SAID, 2 makers plus Redacted's numbers]. [HiyokoBar](https://dev.to/hiyoyok/what-i-learned-building-hiyokobar-a-menubar-app-that-does-one-thing-per-click-2a4h), 2026, whose post links its own products, calls it worth doing once for feedback.
+- **Product Hunt gives a spike and feedback more than sales** [SAID, 2 makers plus Redacted's numbers]. HiyokoBar (dev.to), 2026, whose post links its own products, calls it worth doing once for feedback.
 - **The spike decays fast** [SAID, 3 apps]. [Unread](https://mjtsai.com/blog/2014/07/28/a-candid-look-at-unreads-first-year/), iOS [OLD 2014], made half its first-year sales in five days; a store front-page feature slowed the fall without a spike.
 - **Praise for offline, no account and one-time purchase is real, on a tiny launch** [SAID, StackCards' commenters]. They also asked for Anki import and spaced repetition.
 

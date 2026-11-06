@@ -50,7 +50,7 @@ How to read the counts: the feeds are the first page only, read 2026-11-05, newe
 Thinnest of the four, and the evidence is nearly all store reviews.
 - `[SAID]` [Anki it], 44 reviews over 16 years: 5 ask for Italian or complain of its translation, all `[OLD]` (2018 to 2023); 2 ask for AI built in (2025, 2026) and 1 can't import the AI-made files on mobile; 1 moved to Mochi because the iPhone app lags (Mar 2026). 0 mention medicine.
 - `[SAID]` [Quizlet it]: 3 ask when AI arrives, about 8 object to paying, 1 claims without evidence that it steals data.
-- `[SAID]` One Italian on the Anki forum says Anki is [little known in Italy][clalos] (search summary, single post).
+- `[SAID]` One Italian on the Anki forum says Anki is [little known in Italy][italy] (search summary, single post).
 - `[CLAIMED]` A [University of Padua library guide][padova] (2025, search summary) teaches Anki and warns to check who made a shared deck. An Italian-course seller [rates Anki for vocabulary only][think] (undated).
 - `[INFERRED]` **On the medicine test (TOLC-MED, semestre filtro), I found no evidence of Anki use.** What surfaced was [questions traded on Telegram][fanpage] in a 2023 scandal (`[OLD]`, search summary). This is a failure to find, not proof of absence.
 
@@ -178,7 +178,7 @@ Thinnest of the four, and the evidence is nearly all store reviews.
 [edn]: https://www.livres-medicaux.com/cardiologie-medecine-vasculaire/63465-edn-flash-kit-de-survie-cardiologie.html
 [payhip]: https://payhip.com/b/GL39K
 [major]: https://major-prepa.com/?p=152821
-[clalos]: https://forums.ankiweb.net/u/clalos33
+[italy]: https://forums.ankiweb.net
 [padova]: https://elearning.unipd.it/sba/pluginfile.php/32755/mod_data/content/2861/Perch%C3%A9%20usare%20anki.pdf
 [think]: https://www.thinkinitalian.com/app-review/anki
 [fanpage]: https://www.fanpage.it/roma/tolc-medicina-irregolare-vendevano-le-domande-su-telegram-ne-hanno-approfittato-anche-le-scuole/
