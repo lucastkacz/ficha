@@ -5,8 +5,9 @@ DerivedData/
 *.xcworkspace/
 .swiftpm/
 xcuserdata/
-# The render tool's: FichaKit's own pins its dependencies, which Dependabot updates
+# The render and import-preview tools': FichaKit's own pins their dependencies, which Dependabot updates
 scripts/render/Package.resolved
+scripts/import-preview/Package.resolved
 # fsrs-rs's XCFramework, which `make fsrs` builds from source (ADR 0026)
 Packages/FichaKit/Frameworks/
 
@@ -14,6 +15,9 @@ Packages/FichaKit/Frameworks/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Downloaded decks that tests of the import read, which are other people's and untrusted (docs/development.md)
+test-decks/
 
 # Lucas's paid team, which signs Ficha Dev on the Mac and the iPhone (Signing.xcconfig)
 iPhone/Local.xcconfig

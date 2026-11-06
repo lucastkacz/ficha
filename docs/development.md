@@ -103,7 +103,7 @@ Archiving and exporting with `xcodebuild`, and the keys of `ExportOptions.plist`
 
 FSRS's arithmetic comes from fsrs-rs, the Rust library Anki ships, pinned to 6.6.2 ([ADR 0026](adr/0026-fsrs-from-fsrs-rs.md)). Our crate, in `Packages/FichaKit/Rust/`, the only Rust of ours, exports the few functions Ficha calls as a C interface, whose header cbindgen writes as the crate builds (`build.rs`). `make fsrs` builds it into `Packages/FichaKit/Frameworks/CFichaFSRS.xcframework`, which git ignores: a static library for the Mac, for Apple silicon and Intel, one for an iPhone, and one for its simulator, on Apple silicon and Intel too, with the header and its module map. FichaKit links it as the binary target `CFichaFSRS`, `FichaFSRS` wraps it in Swift, and FichaCore imports `FichaFSRS`.
 
-- Every target that builds FichaKit runs `make fsrs` first: `make test`, `make project`, and so every Xcode build, `make render-build` and `make render`. It builds only when one of the crate's files, `Cargo.lock` and `rust-toolchain.toml` among them, or `scripts/build-fsrs.sh` changed since it last built, which a digest of them beside the XCFramework, `CFichaFSRS.digest`, records. Otherwise it takes a fraction of a second, so a second `make check` doesn't build fsrs-rs again.
+- Every target that builds FichaKit runs `make fsrs` first: `make test`, `make project`, and so every Xcode build, `make render-build`, `make render`, `make preview-import-build` and `make preview-import`. It builds only when one of the crate's files, `Cargo.lock` and `rust-toolchain.toml` among them, or `scripts/build-fsrs.sh` changed since it last built, which a digest of them beside the XCFramework, `CFichaFSRS.digest`, records. Otherwise it takes a fraction of a second, so a second `make check` doesn't build fsrs-rs again.
 - In a new worktree, run `make fsrs`, or `make test`, which runs it, before the first `swift test`: without the XCFramework, SwiftPM stops with "does not contain a binary artifact". The same goes for Xcode: `make project` builds it before you open `Ficha.xcodeproj`.
 - Cargo builds in the worktree's `.build/cargo`, as the crate's `.cargo/config.toml` says, and keeps the crates it downloads in `~/.cargo`, which every worktree shares. A cold build of all five targets, with the crates downloaded, took 18 seconds on Lucas's Mac, an Apple M5 with 10 cores, and one after a change to the crate 4 seconds. Worktrees don't share Cargo's build folder: a cold build costs that little, and two worktrees building into one folder could each take the other's library. That choice is our own.
 - `rust-toolchain.toml` pins Rust, with the five targets, rustfmt and clippy. `make bootstrap` installs rustup through Homebrew, which keeps it off the `PATH` (it's keg-only), and the toolchain, through `make rust-toolchain`. The `Makefile` puts rustup's folder on the `PATH` for its recipes; to run `cargo` by hand, add `$(brew --prefix rustup)/bin` to yours, and run it from the crate's folder, where rustup reads the pin.
@@ -296,6 +296,37 @@ A PR that changes what you see shows it in pictures, which `make render` draws f
 3. Link each picture from the PR's body by the first commit's full SHA, with a width that fits the body, like 560 for the Cards window and 280 for the iPhone: `<img alt="Sorted by Due, a card selected" width="560" src="https://raw.githubusercontent.com/lucastkacz/ficha/<sha>/pr-images/<issue>/by-due-light.png">`. Say under them which commit they come from and that the next one removes it.
 
 The squash merge leaves both commits off `main`, and GitHub keeps a PR's commits after its branch is deleted, so the links keep working.
+
+## An import's numbers
+
+`make preview-import` runs the engine's preview of a file of cards as the app does, in an engine in memory, so it never touches your cards. It shows nothing on screen and takes neither the mouse nor the keyboard, so it needs no OK from you. A change that touches importing uses it instead of a scratch tool of its own:
+
+```bash
+make preview-import ARGS="/path/to/test-decks/anki/Ultimate_Geography_v53.apkg"
+make preview-import ARGS="/path/to/test-decks/anki/*.apkg"
+make preview-import ARGS="--dump .build/branch.jsonl /path/to/test-decks/anki/Ultimate_Geography_v53.apkg"
+make preview-import ARGS="--at main --dump .build/main.jsonl /path/to/test-decks/anki/Ultimate_Geography_v53.apkg"
+```
+
+- **Timing a file:** it prints one line per file, with how long the preview took, how many cards the file holds, how many come in without images or sounds the file gives them, how many stay out and why, and the peak memory footprint, the number `/usr/bin/time -l` gives. Each file runs in a process of its own, so its footprint is its own.
+- **Dumping its cards:** `--dump <output>`, for one file, also imports it in that engine, with the choices the Import sheet starts with for an Anki package, so with its progress, and writes one JSON object a line, as JSON Lines does. A card's line holds its front, its back, the names of the image and the sound on each side, its tags, deck, type, source, whether it goes both ways and whether it came in buried, which a card suspended in Anki does, and leaves out a field a card doesn't have. The cards go sorted by front and back, and then comes a line for each card that stays out, `{"leftOut":"ankiImageOcclusion","line":12}`: its reason, as `LeftOutLine.Reason` names it, and its place among the package's cards, or a text file's line. The footprint then covers the import too.
+- **Comparing a branch with `main`:** `--at <commit>` builds the tool against FichaKit as it is at that commit, with `git archive` into `.build/import-preview-at/<commit>`, which stays for the next run at that commit, and which you can delete. Two dumps then diff line by line, with `diff`. It needs a commit whose public API the tool still compiles against.
+- **A sound's name can change from one run to the next:** a sound's name is the SHA-256 of its bytes, and some sounds convert to different bytes each time, on `main` too ([#229's comment](https://github.com/lucastkacz/ficha/issues/229#issuecomment-6453525842)). So before reading a diff as a change to the import, compare what it says apart from those names, which keeps whether a side has a sound: `jq -c '(.frontSound, .backSound) |= (. != null)' <dump> | sort`.
+- **The first run is slow:** the tool builds for release, a few minutes for a new worktree or `--at` commit. A run on a big deck takes minutes more, so run it in the background, one at a time.
+- **A hang:** when the tool's CPU time stops growing for a minute, the run fails, says where its threads wait, kills it, and leaves its whole `sample` in `.build/hangs`, as "A test that hangs" below says. A second file in the same run still runs.
+- **The decks are downloaded files, so they're untrusted.** They stay in `test-decks/`, in the main folder, which git ignores, and never in the repo; a worktree reaches them by their whole path. The tool reads them through the engine alone, and writes nothing next to them. WebKit draws their SVGs as in the app, in its own sandboxed processes, as an `<img>`, with every load blocked (`InProcessSVGDrawer`). The tool itself runs without the app's sandbox, so think before running it on a deck from somewhere new.
+
+The tool's source is `scripts/import-preview/`, a package like `scripts/render` that reaches FichaKit by path, and `make check` builds it, in debug, so a change to the engine can't break it unnoticed. Like the render tool, when a merge changes FichaKit's list of files, its cached build can fail with a file it can't find (#293): `swift package --package-path scripts/import-preview clean` fixes it.
+
+## A test that hangs
+
+`make test` runs `swift test` under `scripts/watch-for-hang.sh`. When `swiftpm-testing-helper`, the process that runs the tests, stops using CPU for two minutes, the script samples it, prints where each waiting thread is, grouped by queue and cut short, kills it, and fails, with the whole sample in `.build/hangs`. On CI the sample goes with the runner, so the lines it prints are what's left. A plain `swift test` runs without it.
+
+- **Why it's our own:** `swift test --help` shows no time limit for a whole run, and Swift Testing's `.timeLimit` is set per test or suite. Neither would help in the hang that made this necessary (#329): a `.timeLimit` that runs out cancels the test's task, which code blocked on a semaphore never notices.
+- **What it leaves alone:** a build that waits for another's lock on `.build`, which uses no CPU either, and the tests another session's `swift test` runs. It watches only that process, among the descendants of its own command.
+- **What counts as no CPU:** less than 1% of a core over the whole time, since a blocked process's few timers still use some. A slow test that works isn't a hang, however long it takes, and neither is a Mac that slept, since the script counts only the seconds it was awake.
+
+`scripts/where-threads-wait.sh <report>` prints the same lines for any report of `sample`.
 
 ## Cleaning up after a merge
 
