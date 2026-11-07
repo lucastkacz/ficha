@@ -13,7 +13,7 @@ let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "engine")
 public enum DatabaseLocation: Sendable {
     /// A file in this data folder, which is created if it doesn't exist yet.
     case folder(URL)
-    /// In memory, gone with the engine: for tests.
+    /// In memory, gone with the engine: for tests and the import-preview tool.
     case inMemory
 }
 

@@ -19,6 +19,7 @@
 PACKAGE := Packages/FichaKit
 DERIVED := .build/DerivedData
 RENDER := scripts/render
+IMPORT_PREVIEW := scripts/import-preview
 CHECKS :=
 
 # Our crate, which builds fsrs-rs, Anki's FSRS library, for FichaKit to link
@@ -68,9 +69,11 @@ xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-v
 
 # The render tool's own files: its `Sources/Render/App` is a link to `App/`,
 # and its `Languages.swift` one to `scripts/Languages.swift`, the reader of
-# Ficha's languages, which FichaKit's tests link to too.
+# Ficha's languages, which FichaKit's tests link to too. And the import-preview
+# tool's.
 SWIFT_SOURCES := App CLI SVGDrawer Widget iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
-	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift scripts/Languages.swift
+	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift scripts/Languages.swift \
+	$(IMPORT_PREVIEW)/Package.swift $(IMPORT_PREVIEW)/Sources
 # The shell scripts, for shellcheck. actionlint finds the workflows on its own,
 # in .github/workflows, and runs shellcheck on each step's `run:` script too.
 SHELL_SCRIPTS := .claude/hooks/*.sh scripts/*.sh
@@ -91,10 +94,17 @@ fmt: rustup ## Format the Swift code and our crate in place.
 	swift format --in-place --recursive --parallel $(SWIFT_SOURCES)
 	cd $(RUST) && cargo fmt
 
+# The tests' process, which runs them all, killed once its CPU time stops
+# growing for two minutes, saying where it hung: nothing else stops a run that
+# hangs on the Mac, and on CI the job's limit would, with no stacks. The script
+# says why it's our own.
+TEST_HANG_ADVICE := A test probably waits for something that never comes: the frames above say where, and CODING_STANDARDS.md's rule on code that blocks a thread says what usually causes it. Fix it and run make test again. A test that truly uses no CPU for that long needs a higher limit in the Makefile.
+
 .PHONY: test
 CHECKS += test
-test: fsrs ## Run the package tests.
-	swift test --package-path $(PACKAGE) --quiet
+test: fsrs ## Run the package tests, and fail, saying where, when they hang.
+	scripts/watch-for-hang.sh --after 120 --process swiftpm-testing-helper --advice "$(TEST_HANG_ADVICE)" -- \
+		swift test --package-path $(PACKAGE) --quiet
 
 .PHONY: project
 project: fsrs ## Generate Ficha.xcodeproj from project.yml (never edit it by hand), and build the XCFramework its package links.
@@ -216,10 +226,24 @@ CHECKS += last-crash-test
 last-crash-test: ## Test make last-crash on a crash report written by hand.
 	scripts/test-last-crash.sh
 
+.PHONY: watch-for-hang-test
+CHECKS += watch-for-hang-test
+watch-for-hang-test: ## Test the watchdog make test runs under, on small programs of its own that hang.
+	scripts/test-watch-for-hang.sh
+
 .PHONY: render-build
 CHECKS += render-build
 render-build: fsrs ## Build the render tool, so a change to the app's views can't break it unnoticed.
 	swift build --package-path $(RENDER) --quiet -Xswiftc -warnings-as-errors
+
+.PHONY: preview-import-build
+CHECKS += preview-import-build
+preview-import-build: fsrs ## Build the import-preview tool, so a change to the engine can't break it unnoticed.
+	swift build --package-path $(IMPORT_PREVIEW) --quiet -Xswiftc -warnings-as-errors
+
+.PHONY: preview-import
+preview-import: fsrs ## Time the engine's preview of files of cards, or dump a file's cards, in an engine in memory: make preview-import ARGS="[--at <commit>] [--dump <output>] <file>...".
+	@scripts/preview-import.sh $(ARGS)
 
 .PHONY: run
 run: team build ## Build and open Ficha Dev, in its sandbox, restarting it, with every other copy unregistered from LaunchServices, and on a scratch folder when FICHA_DEV_SCRATCH is set; the real Ficha keeps running.

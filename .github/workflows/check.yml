@@ -59,12 +59,14 @@ jobs:
     timeout-minutes: 30
     env:
       # What `make check`'s builds leave, which the next run builds from: the
-      # package's, the render tool's, and Xcode's derived data. They pay off
-      # together, as #124 measured: with the package's alone, `swift test`
-      # fetches no packages, so Xcode's first build fetches them from GitHub.
+      # package's, the render tool's, the import-preview tool's, and Xcode's
+      # derived data. They pay off together, as #124 measured: with the
+      # package's alone, `swift test` fetches no packages, so Xcode's first
+      # build fetches them from GitHub.
       BUILDS: |
         Packages/FichaKit/.build
         scripts/render/.build
+        scripts/import-preview/.build
         .build/DerivedData
       # What fsrs-rs's build leaves (ADR 0026), cached apart from the builds:
       # the step that restores it says why.

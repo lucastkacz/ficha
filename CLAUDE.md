@@ -69,7 +69,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `CODING_STANDARDS.md`: the standards `code-review` checks every change against.
 - `.claude/`: permissions, hooks, rules, the plugin, the `/refine` skill and the subagents' types. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
 - `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
-- `scripts/`: the hook tests, the render tools, the build of fsrs-rs's XCFramework (`make fsrs`), the wrapper `make` runs `xcodebuild` through, what unregisters an app's other copies from LaunchServices, the reader of Ficha Dev's last crash (`make last-crash`) with its tests, the runner of its `ficha` on a scratch folder, the cleanup after a merge with its tests, the translations check with its tests, the check that the clock and the review log's IDs come from their sources, and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
+- `scripts/`: the hook tests, the render tools, the import-preview tool, the watchdog for hung runs with its tests, the build of fsrs-rs's XCFramework (`make fsrs`), the wrapper `make` runs `xcodebuild` through, what unregisters an app's other copies from LaunchServices, the reader of Ficha Dev's last crash (`make last-crash`) with its tests, the runner of its `ficha` on a scratch folder, the cleanup after a merge with its tests, the translations check with its tests, the check that the clock and the review log's IDs come from their sources, and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
 
 ## Commands
 
@@ -79,6 +79,7 @@ At the end of each phase of work (the grilling, an implementation, a review), de
 - `make build-iphone`: Ficha Dev for the simulator. To run it there, read its logs, tell whether it crashed or reach its data, see "In the simulator" in `docs/development.md`.
 - `make render ARGS="cards"`: an app window as a PNG, drawn below the desktop picture, so it shows nothing and takes neither the mouse nor the keyboard, and needs no OK from Lucas. "A window's picture" in `docs/development.md` explains it.
 - `make render-iphone`: the iPhone app's opening screen as PNGs, light and dark, from a simulator of its own that it boots without the Simulator app and deletes after, so it needs no OK from Lucas either. "The iPhone's screen" in `docs/development.md` explains it.
+- `make preview-import ARGS="<file>"`: for a change that touches importing, in an engine in memory: a file's time, memory and counts, its cards as lines to diff, and a comparison with `main`. "An import's numbers" in `docs/development.md` explains it.
 - `make upload`: from `main` in the main folder, uploads the real Ficha to TestFlight, where Lucas installs it from the TestFlight app. It asks Lucas first.
 - `make install-iphone`: builds Ficha Dev for Lucas's connected iPhone and installs it, as `docs/development.md` explains. It asks Lucas first too.
 
