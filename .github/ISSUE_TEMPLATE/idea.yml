@@ -1,6 +1,5 @@
 name: Idea
-description: Something Ficha could do, or do better. Claude triages it with /triage.
-labels: ["enhancement", "needs-triage"]
+description: Something Ficha could do, or do better. Claude sorts it with /idea, into an Idea in its area.
 body:
   - type: textarea
     id: what

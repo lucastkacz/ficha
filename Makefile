@@ -221,6 +221,11 @@ CHECKS += clean-merged-test
 clean-merged-test: ## Test make clean-merged on a scratch repo, with a fake gh.
 	scripts/test-clean-merged.sh
 
+.PHONY: data-changes-test
+CHECKS += data-changes-test
+data-changes-test: ## Test the list make upload leaves of the changes to the cards' data, on a scratch repo.
+	scripts/test-data-changes.sh
+
 .PHONY: last-crash-test
 CHECKS += last-crash-test
 last-crash-test: ## Test make last-crash on a crash report written by hand.
@@ -292,10 +297,14 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # Archiving and exporting with xcodebuild is Apple's documented way. The archive
 # holds a Ficha.app, which a widget's click or a ficha:// link must never open
 # in place of the installed one, on Lucas's cards, so the other copies go.
+# Once the build is up, it lists what changed the cards' data since the last
+# upload, which reaches Lucas's cards when he installs this one, and tags the
+# build's commit `build-<number>` on GitHub, which the next upload compares
+# with (ADR 0030). The list and the tag are our own.
 UPLOAD := .build/upload
 
 .PHONY: upload
-upload: on-main team project ## From main: archive the real Ficha and upload it to TestFlight, for its internal testers alone.
+upload: on-main team project ## From main: archive the real Ficha, upload it to TestFlight, for its internal testers alone, list what changed the cards' data since the last upload, and tag its commit.
 	rm -rf $(UPLOAD)
 	$(XCODEBUILD_MAC) -configuration Release -destination 'generic/platform=macOS' \
 		-archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
@@ -303,6 +312,12 @@ upload: on-main team project ## From main: archive the real Ficha and upload it 
 	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
 		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
 		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \
+		exit 1; }
+	@scripts/data-changes.sh
+	@git rev-parse --quiet --verify refs/tags/build-$(BUILD_NUMBER) >/dev/null || \
+		git tag --annotate build-$(BUILD_NUMBER) --message "Build $(BUILD_NUMBER), uploaded to TestFlight"
+	@git push --quiet origin refs/tags/build-$(BUILD_NUMBER) || { \
+		echo "Build $(BUILD_NUMBER) is uploaded, but its tag didn't reach GitHub, as the lines above say: run git push origin build-$(BUILD_NUMBER), so the next upload lists what changed since this one." >&2; \
 		exit 1; }
 
 # The iPhones paired with the Mac, the connected ones first, as devicectl lists

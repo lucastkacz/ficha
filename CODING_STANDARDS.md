@@ -1,6 +1,6 @@
 # Coding standards
 
-How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and CI say when they fail, how the docs keep up with the files they describe, and how the documents agents read are written. The `code-review` skill checks every change against this file, so a rule that isn't here doesn't bind. Formatting is `swift format`'s job (`.swift-format`), rustfmt and clippy check our Rust crate, with warnings as errors, and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
+How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and CI say when they fail, how the docs keep up with the files they describe, and how the documents agents read are written. `/construir`'s review checks every change against this file and the plano, so a rule in neither doesn't bind. Formatting is `swift format`'s job (`.swift-format`), rustfmt and clippy check our Rust crate, with warnings as errors, and shellcheck and actionlint lint the shell scripts and the workflows; this file covers what those tools can't.
 
 ## Language and concurrency
 
@@ -26,7 +26,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - Where a card stands, in Lucas's reviews, waiting in the inbox, buried or set aside with its deck or a deck it sits inside (ADR 0024), is read from `CardStanding` (`Card.standing`), in `FichaCore/Scheduler/CardStanding.swift`, or from `cardInReviews(_:in:)`, in `FichaData/CardsInReviews.swift`, never worked out again from a card's flag, burial date and deck. A card read from the database knows which decks set it aside: `setAsideDecks(in:)`, in the same file, reads the decks that are set aside, and `CardStanding.setAsideDecks(of:among:)` picks the card's deck and the decks it sits inside, which `TagPath`, in `FichaCore/TagsInsideTags.swift`, says. A tag's switch, which the tag table keeps for `ficha tag convert-to-decks` to carry to the deck the tag becomes (`FichaData/TagsIntoDecks.swift`), decides nothing.
 - The cards that show up are read from one way in, never gathered again: `cardsThatShowUp(in:)`, in `FichaData/CardsInReviews.swift`, reads every card, the priority decks and the review log into `CardsInReviews`, in `FichaCore/Scheduler/CardsInReviews.swift`, which keeps the ways of the cards whose standing is in Lucas's reviews and knows which of those cards are in a priority deck or a deck inside one. The planners take that value, never ids, and pick ways, each a card and the way it shows (`CardWay`), which `CardsThatShowUp.panelCards` maps back to cards.
-- The merge gate watches these four files, so a change to where a card stands, and so to which cards show up, makes a pull request risk:high; the same rule written elsewhere would slip past it.
+- `make upload` lists the changes to these four files since the last upload, so a change to where a card stands, and so to which cards show up, is named before it reaches Lucas's cards; the same rule written elsewhere would slip past that list.
 - A card's flag and burial are set and cleared only by the functions in `FichaData/FlaggingAndBurying.swift`. Fixing and editing a card, the review panel's ⌘Z, an import that buries a card suspended in the app it comes from, and sync, which takes the flag and the burial another device left, call them too, never SQL of their own, so a change to how a card is flagged or buried can't miss a path.
 
 ## Time and IDs
@@ -72,7 +72,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed. The render tool (`scripts/render`) and the import-preview tool (`scripts/import-preview`) take their dependencies through FichaKit's pins, so their own `Package.resolved` files stay out.
 - Our Rust crate's (`Packages/FichaKit/Rust`) are pinned the same way: each direct dependency to an exact version (`=6.6.2`) in `Cargo.toml`, with `Cargo.lock` committed, and every Cargo command that builds or lints it runs with `--locked`.
-- A new dependency needs an ADR in `docs/adr/` and makes the PR `risk:high`.
+- A new dependency needs an ADR in `docs/adr/`, which Lucas approves through `/decision` before it's built.
 
 ## Scripts, hooks, the Makefile and CI
 
@@ -82,4 +82,11 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
 - No linter can tell that a file's scope changed, so the reviewer looks beyond the diff for these lines. A line the change left stale is a violation.
-- A document agents read, such as `CLAUDE.md` and those in `.claude/rules/`, `.claude/skills/`, `.claude/agents/` and `docs/agents/`, follows the mattpocock-skills plugin's `writing-for-agents` skill.
+- A document agents read, such as `CLAUDE.md` and those in `.claude/rules/`, `.claude/skills/`, `.claude/method/`, `.claude/agents/` and `docs/agents/`, is written for the agent that follows it:
+  - Its steps come in the order the agent takes them, and each ends on a condition the agent can check: "Done when …".
+  - What every case needs stays in the file. What only some cases reach goes to a file of its own, behind a line that says when to read it.
+  - Each meaning lives in one place, which the others point at. What a file, a command's `--help` or the code already says is looked up there, never copied.
+  - It says what to do. A ban stays only as a guardrail no wording can replace, beside what to do instead.
+  - Each line changes what the agent would do without it. A line that doesn't, or no longer matches what it describes, goes.
+
+  These rules are our own, adapted from the `writing-for-agents` skill of the `mattpocock-skills` plugin, which Ficha followed until ADR 0030.

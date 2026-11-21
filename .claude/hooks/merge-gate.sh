@@ -21,65 +21,25 @@ cmd=${cmd%%+([[:space:]])}
 repo=${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$input")}
 
 # The risk:high paths, each an extended regular expression that a changed
-# file's path matches from its start. One per line, so two branches that each
-# add one change different lines: that layout is our own.
+# file's path matches from its start: what limits the agents and the app
+# (ADR 0030). One per line, so two branches that each add one change different
+# lines: that layout is our own.
 risky_paths=(
-  # The process: what agents read, and what they may do.
-  'CLAUDE\.md'
-  'CODING_STANDARDS\.md'
-  '\.claude/'
-  'docs/agents/'
-  # The content guide, which every card Claude drafts follows.
-  'docs/content-guide\.md'
-  # CI and the build, with their configuration files, such as the one both
-  # apps sign with (Signing.xcconfig), and what their sandboxes let each app,
-  # its CLI, its widget and its SVG drawer, the one on the network, reach:
-  # their entitlements, and the CLI's Info.plist, which gives it a sandbox of
-  # its own (ADR 0018). And how `make upload` sends the real Ficha to
-  # TestFlight, and for whom (ExportOptions.plist).
+  # What agents may do: the hooks, the permissions, and the subagents' types,
+  # with the tools each loads.
+  '\.claude/hooks/'
+  '\.claude/settings\.json'
+  '\.claude/agents/'
+  # CI, and the Makefile, which holds every check CI runs.
   '\.github/workflows/'
-  '\.github/dependabot\.yml'
   'Makefile'
-  'scripts/'
-  '\.swift-format'
-  '\.xcode-version'
-  'project\.yml'
-  '.*\.xcconfig$'
+  # What the sandboxes let each app, its CLI, its widget and its SVG drawer,
+  # the one on the network, reach: their entitlements; the CLI's Info.plist,
+  # which gives it a sandbox of its own (ADR 0018); and project.yml, which
+  # turns each sandbox on and names its entitlements.
   '.*\.entitlements$'
   'CLI/Info\.plist'
-  'ExportOptions\.plist'
-  # The package's manifest, and the versions it pins.
-  'Packages/FichaKit/Package\.swift'
-  'Packages/FichaKit/Package\.resolved'
-  # FSRS's arithmetic, which spaces every card, and its build (ADR 0026): our
-  # crate, whole, with the functions that call fsrs-rs, its manifest, the
-  # versions its lock pins, fsrs-rs's among them, whose upgrade can change
-  # intervals, the Rust toolchain and the configuration that build it; and
-  # the Swift that wraps the crate for FichaCore.
-  'Packages/FichaKit/Rust/'
-  'Packages/FichaKit/Sources/FichaFSRS/'
-  # The database schema and its migrations, which all live in FichaData/Schema*.
-  'Packages/FichaKit/Sources/FichaData/Schema'
-  # The one way in to the cards that show up, those in Lucas's reviews, and
-  # which cards take an answer.
-  'Packages/FichaKit/Sources/FichaData/CardsInReviews\.swift'
-  # The scheduler, which spaces each review with FSRS, says where a card stands:
-  # in Lucas's reviews, waiting in the inbox, buried, or set aside by its deck
-  # or a deck it sits inside, and keeps the cards in his reviews for the
-  # planners to pick from.
-  'Packages/FichaKit/Sources/FichaCore/Scheduler/'
-  # Which decks a deck sits inside, named as tags inside tags are (ADR 0021,
-  # ADR 0024), which the scheduler reads to say a card is set aside by a deck
-  # its deck sits inside, and to tell which cards are in a priority deck or a
-  # deck inside one.
-  'Packages/FichaKit/Sources/FichaCore/TagsInsideTags\.swift'
-  # Which cards review now brings, when the review panel shows up on its own
-  # and with which cards, the settings' defaults, and the trigger's names,
-  # which the review log stores.
-  'Packages/FichaKit/Sources/FichaCore/ReviewNow\.swift'
-  'Packages/FichaKit/Sources/FichaCore/AppearancePlanner\.swift'
-  'Packages/FichaKit/Sources/FichaCore/ReviewSettings\.swift'
-  'Packages/FichaKit/Sources/FichaCore/Trigger\.swift'
+  'project\.yml'
 )
 
 # `gh` with `merge` later in the same command, in any form or place.

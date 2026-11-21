@@ -1,6 +1,5 @@
 name: Bug
-description: Something in Ficha doesn't work as it should. Claude triages it with /triage.
-labels: ["bug", "needs-triage"]
+description: Something in Ficha doesn't work as it should. Claude sorts it with /idea, into a Bug in its area.
 body:
   - type: textarea
     id: what-happened
