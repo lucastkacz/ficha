@@ -241,8 +241,8 @@ struct WayReplay {
 private let ankiDefaultHistoricalRetention: Float = 0.9
 
 // The order the scheduler replays a way's log in, and the rules it reads
-// its entries and their times by, live here, beside the replay, where the
-// merge gate watches the scheduler.
+// its entries and their times by, live here, beside the replay, in the
+// scheduler, whose changes `make upload` lists.
 extension ReviewLogEntry {
     /// Whether it's a new way's first review, which answered no entry, as
     /// the replay reads a review that names none: the new cards a day count

@@ -221,6 +221,11 @@ CHECKS += clean-merged-test
 clean-merged-test: ## Test make clean-merged on a scratch repo, with a fake gh.
 	scripts/test-clean-merged.sh
 
+.PHONY: data-changes-test
+CHECKS += data-changes-test
+data-changes-test: ## Test the list make upload leaves of the changes to the cards' data, on a scratch repo.
+	scripts/test-data-changes.sh
+
 .PHONY: last-crash-test
 CHECKS += last-crash-test
 last-crash-test: ## Test make last-crash on a crash report written by hand.
@@ -292,10 +297,19 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # Archiving and exporting with xcodebuild is Apple's documented way. The archive
 # holds a Ficha.app, which a widget's click or a ficha:// link must never open
 # in place of the installed one, on Lucas's cards, so the other copies go.
+# Once the build is up, it lists what changed the cards' data since the last
+# upload, which reaches Lucas's cards when he installs this one, and tags the
+# build's commit with its version and build number, which the next upload
+# compares with, on GitHub too (ADR 0030). The list and the tag are our own.
 UPLOAD := .build/upload
+# The version TestFlight shows beside the build number, as project.yml sets
+# it. Make expands a recipe whole before its first line runs, so without it
+# make upload stops before it archives.
+APP_VERSION = $(or $(shell sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\([^"]*\)".*/\1/p' project.yml | head -n 1),$(error No version: project.yml sets no MARKETING_VERSION))
+UPLOAD_TAG = v$(APP_VERSION)-$(BUILD_NUMBER)
 
 .PHONY: upload
-upload: on-main team project ## From main: archive the real Ficha and upload it to TestFlight, for its internal testers alone.
+upload: on-main team project ## From main: archive the real Ficha, upload it to TestFlight, for its internal testers alone, list what changed the cards' data since the last upload, and tag its commit.
 	rm -rf $(UPLOAD)
 	$(XCODEBUILD_MAC) -configuration Release -destination 'generic/platform=macOS' \
 		-archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
@@ -303,6 +317,16 @@ upload: on-main team project ## From main: archive the real Ficha and upload it 
 	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
 		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
 		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \
+		exit 1; }
+	@scripts/data-changes.sh || { \
+		echo "Build $(BUILD_NUMBER) is uploaded, but listing what changed the cards' data since the last upload failed, as the lines above say: fix it and run scripts/data-changes.sh, then tag the build's commit $(UPLOAD_TAG) and push the tag." >&2; \
+		exit 1; }
+	@git rev-parse --quiet --verify refs/tags/$(UPLOAD_TAG) >/dev/null || \
+		git tag --annotate $(UPLOAD_TAG) --message "Version $(APP_VERSION), build $(BUILD_NUMBER), uploaded to TestFlight" || { \
+		echo "Build $(BUILD_NUMBER) is uploaded, but tagging its commit $(UPLOAD_TAG) failed, as the lines above say: fix it, tag the commit and push the tag, so the next upload lists what changed since this one." >&2; \
+		exit 1; }
+	@git push --quiet origin refs/tags/$(UPLOAD_TAG) || { \
+		echo "Build $(BUILD_NUMBER) is uploaded, and its commit tagged $(UPLOAD_TAG) in this folder, but the tag didn't reach GitHub, as the lines above say: run git push origin $(UPLOAD_TAG), so GitHub and every other clone have it." >&2; \
 		exit 1; }
 
 # The iPhones paired with the Mac, the connected ones first, as devicectl lists

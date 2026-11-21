@@ -1,5 +1,5 @@
-# Monthly update PRs. They touch CI or dependencies, so they're labeled
-# risk:high and Lucas merges them.
+# Monthly update PRs, which Lucas merges (CLAUDE.md): their risk:high label
+# keeps Claude from merging them.
 version: 2
 updates:
   - package-ecosystem: github-actions

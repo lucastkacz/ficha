@@ -9,8 +9,8 @@ internal import GRDB
 // aside, on its own or inside a deck that is, can't become a priority deck.
 // The Cards window's deck menu and the menu bar's Prioritize submenu, which
 // lists every deck as a tree, set them. Where a card stands and which cards
-// come first read the switches in `CardsInReviews.swift`, which the merge
-// gate watches; a tag's switch, kept from before decks, counts nowhere.
+// come first read the switches in `CardsInReviews.swift`, whose changes
+// `make upload` lists; a tag's switch, kept from before decks, counts nowhere.
 
 extension Deck {
     /// Whether it's set aside on its own: every card that lives in it, or in

@@ -7,7 +7,7 @@
 #
 # Nothing is lost when a worktree has no uncommitted changes and its branch's
 # head is a merged pull request's head, or inside one, as an implementer's
-# branch joined into a spec's branch is: that check stands in for the prompt
+# branch joined into a node's branch is: that check stands in for the prompt
 # `git branch -D` asks when typed by hand. Reading Claude Code's locks is our
 # own.
 
@@ -66,7 +66,7 @@ claude_lock_pattern='^claude .*\(pid ([0-9]+)'
 keep() { echo "Kept $name: $1"; }
 
 # The worktrees that go, with their branches and the pull requests that merged
-# their work, all decided before any goes: a spec's branch holds the commits
+# their work, all decided before any goes: a node's branch holds the commits
 # of the implementers' branches joined into it.
 going=()
 branches=()

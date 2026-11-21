@@ -36,8 +36,9 @@ git init -q -b main "$tmp/repo"
 git -C "$tmp/repo" -c user.name=test -c user.email=test@example.com commit -q --allow-empty -m init
 git -C "$tmp/repo" worktree add -q -b 7-feature "$tmp/branch"
 
-# The fake gh answers `pr view <n>`, `issue list` and `pr list` from files in
-# $FAKE_GH, applying --jq like the real one. A missing file is a failure.
+# The fake gh answers `pr view <n>` and `pr list`, and `api --paginate` with
+# the issues' list, from files in $FAKE_GH, applying --jq like the real one.
+# A missing file is a failure.
 mkdir -p "$tmp/bin" "$tmp/gh"
 cat >"$tmp/bin/gh" <<'EOF'
 #!/bin/bash
@@ -46,7 +47,7 @@ query=""
 for ((i = 0; i < ${#args[@]}; i++)); do [[ ${args[i]} == --jq ]] && query=${args[i + 1]}; done
 case "$1 $2" in
   "pr view") file="$FAKE_GH/pr-${3:-none}.json" ;;
-  "issue list") file="$FAKE_GH/issues.json" ;;
+  "api --paginate") file="$FAKE_GH/issues.json" ;;
   "pr list") file="$FAKE_GH/prs.json" ;;
   *) exit 1 ;;
 esac
@@ -72,10 +73,10 @@ expect 0 "git status on main passes" protect-main.sh "$(bash_input 'git status' 
 
 echo "merge-gate"
 # The fake pull requests. A new one takes the number of the issue that adds
-# it, as 124 for #124, so two branches never add the same one, and another
-# one from the same issue adds two digits, as 12401, which only an issue past
-# #10000 could take too. Those up to 24 are older and were numbered in a row.
-# The numbering is our own.
+# it, as 124 for #124, or of its pull request when no issue does, so two
+# branches never add the same one, and another one from the same issue adds
+# two digits, as 12401, which only an issue past #10000 could take too. Those
+# up to 26 are older and were numbered in a row. The numbering is our own.
 echo '{"number":12,"labels":[],"changedFiles":1,"files":[{"path":"App/MenuContent.swift"}]}' >"$tmp/gh/pr-12.json"
 echo '{"number":13,"labels":[{"name":"risk:high"}],"changedFiles":1,"files":[{"path":"App/FichaApp.swift"}]}' >"$tmp/gh/pr-13.json"
 echo '{"number":14,"labels":[],"changedFiles":1,"files":[{"path":"CLAUDE.md"}]}' >"$tmp/gh/pr-14.json"
@@ -83,54 +84,50 @@ echo '{"number":15,"labels":[],"changedFiles":1,"files":[{"path":"Makefile"}]}' 
 echo '{"number":16,"labels":[],"changedFiles":101,"files":[{"path":"App/FichaApp.swift"}]}' >"$tmp/gh/pr-16.json"
 echo '{"number":17,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaData/Schema.swift"}]}' >"$tmp/gh/pr-17.json"
 echo '{"number":18,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/Scheduler/Scheduler.swift"}]}' >"$tmp/gh/pr-18.json"
-echo '{"number":19,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/ReviewNow.swift"}]}' >"$tmp/gh/pr-19.json"
-echo '{"number":20,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/AppearancePlanner.swift"}]}' >"$tmp/gh/pr-20.json"
-echo '{"number":21,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaData/CardsInReviews.swift"}]}' >"$tmp/gh/pr-21.json"
 echo '{"number":22,"labels":[],"changedFiles":1,"files":[{"path":"docs/content-guide.md"}]}' >"$tmp/gh/pr-22.json"
 echo '{"number":23,"labels":[],"changedFiles":1,"files":[{"path":".xcode-version"}]}' >"$tmp/gh/pr-23.json"
 echo '{"number":24,"labels":[],"changedFiles":1,"files":[{"path":"Signing.xcconfig"}]}' >"$tmp/gh/pr-24.json"
 echo '{"number":25,"labels":[],"changedFiles":1,"files":[{"path":"CLI/ficha.entitlements"}]}' >"$tmp/gh/pr-25.json"
 echo '{"number":26,"labels":[],"changedFiles":1,"files":[{"path":"CLI/Info.plist"}]}' >"$tmp/gh/pr-26.json"
 echo '{"number":310,"labels":[],"changedFiles":1,"files":[{"path":"ExportOptions.plist"}]}' >"$tmp/gh/pr-310.json"
-echo '{"number":364,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaCore/TagsInsideTags.swift"}]}' >"$tmp/gh/pr-364.json"
 echo '{"number":411,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Rust/Cargo.toml"}]}' >"$tmp/gh/pr-411.json"
-echo '{"number":41101,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Rust/Cargo.lock"}]}' >"$tmp/gh/pr-41101.json"
-echo '{"number":41102,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Rust/rust-toolchain.toml"}]}' >"$tmp/gh/pr-41102.json"
-echo '{"number":41103,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Rust/src/lib.rs"}]}' >"$tmp/gh/pr-41103.json"
-echo '{"number":41104,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Rust/.cargo/config.toml"}]}' >"$tmp/gh/pr-41104.json"
-echo '{"number":41105,"labels":[],"changedFiles":1,"files":[{"path":"Packages/FichaKit/Sources/FichaFSRS/FSRS.swift"}]}' >"$tmp/gh/pr-41105.json"
+echo '{"number":471,"labels":[],"changedFiles":1,"files":[{"path":".claude/hooks/protect-main.sh"}]}' >"$tmp/gh/pr-471.json"
+echo '{"number":47101,"labels":[],"changedFiles":1,"files":[{"path":".claude/settings.json"}]}' >"$tmp/gh/pr-47101.json"
+echo '{"number":47102,"labels":[],"changedFiles":1,"files":[{"path":".claude/agents/builder.md"}]}' >"$tmp/gh/pr-47102.json"
+echo '{"number":47103,"labels":[],"changedFiles":1,"files":[{"path":".github/workflows/check.yml"}]}' >"$tmp/gh/pr-47103.json"
+echo '{"number":47104,"labels":[],"changedFiles":1,"files":[{"path":"project.yml"}]}' >"$tmp/gh/pr-47104.json"
+echo '{"number":47105,"labels":[],"changedFiles":1,"files":[{"path":".claude/skills/construir/SKILL.md"}]}' >"$tmp/gh/pr-47105.json"
+echo '{"number":47106,"labels":[],"changedFiles":1,"files":[{"path":"scripts/data-changes.sh"}]}' >"$tmp/gh/pr-47106.json"
 echo '[]' >"$tmp/gh/prs.json"
 expect 0 "a normal PR can be merged" merge-gate.sh "$(bash_input 'gh pr merge 12 --auto --squash' "$tmp/branch")"
 expect 2 "a PR labeled risk:high is blocked" merge-gate.sh "$(bash_input 'gh pr merge 13 --auto --squash' "$tmp/branch")"
-expect 2 "a PR that changes CLAUDE.md is blocked" merge-gate.sh "$(bash_input 'gh pr merge 14 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the Makefile is blocked" merge-gate.sh "$(bash_input 'gh pr merge 15 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the database schema is blocked" merge-gate.sh "$(bash_input 'gh pr merge 17 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the scheduler is blocked" merge-gate.sh "$(bash_input 'gh pr merge 18 --squash' "$tmp/branch")"
-expect 2 "a PR that changes which cards review now brings is blocked" merge-gate.sh "$(bash_input 'gh pr merge 19 --squash' "$tmp/branch")"
-expect 2 "a PR that changes when appearances show up is blocked" merge-gate.sh "$(bash_input 'gh pr merge 20 --squash' "$tmp/branch")"
-expect 2 "a PR that changes which cards are in the reviews is blocked" merge-gate.sh "$(bash_input 'gh pr merge 21 --squash' "$tmp/branch")"
-expect 2 "a PR that changes which tags a tag sits inside, which says where a card stands, is blocked" merge-gate.sh "$(bash_input 'gh pr merge 364 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the content guide is blocked" merge-gate.sh "$(bash_input 'gh pr merge 22 --squash' "$tmp/branch")"
-expect 2 "a PR that changes CI's Xcode is blocked" merge-gate.sh "$(bash_input 'gh pr merge 23 --squash' "$tmp/branch")"
-expect 2 "a PR that changes how the apps sign is blocked" merge-gate.sh "$(bash_input 'gh pr merge 24 --squash' "$tmp/branch")"
+expect 2 "a PR that changes a hook is blocked" merge-gate.sh "$(bash_input 'gh pr merge 471 --squash' "$tmp/branch")"
+expect 2 "a PR that changes the permissions is blocked" merge-gate.sh "$(bash_input 'gh pr merge 47101 --squash' "$tmp/branch")"
+expect 2 "a PR that changes a subagent's type, with the tools it loads, is blocked" merge-gate.sh "$(bash_input 'gh pr merge 47102 --squash' "$tmp/branch")"
+expect 2 "a PR that changes CI is blocked" merge-gate.sh "$(bash_input 'gh pr merge 47103 --squash' "$tmp/branch")"
+expect 2 "a PR that changes the Makefile, which lists the checks CI runs, is blocked" merge-gate.sh "$(bash_input 'gh pr merge 15 --squash' "$tmp/branch")"
 expect 2 "a PR that changes what a sandbox lets an app or its CLI reach is blocked" merge-gate.sh "$(bash_input 'gh pr merge 25 --squash' "$tmp/branch")"
 expect 2 "a PR that changes the CLI's Info.plist, which gives it a sandbox of its own, is blocked" merge-gate.sh "$(bash_input 'gh pr merge 26 --squash' "$tmp/branch")"
-expect 2 "a PR that changes how make upload sends the real Ficha to TestFlight is blocked" merge-gate.sh "$(bash_input 'gh pr merge 310 --squash' "$tmp/branch")"
-expect 2 "a PR that changes our crate's manifest, which pins fsrs-rs, is blocked" merge-gate.sh "$(bash_input 'gh pr merge 411 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the versions our crate's lock pins is blocked" merge-gate.sh "$(bash_input 'gh pr merge 41101 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the Rust toolchain is blocked" merge-gate.sh "$(bash_input 'gh pr merge 41102 --squash' "$tmp/branch")"
-expect 2 "a PR that changes how our crate calls fsrs-rs is blocked" merge-gate.sh "$(bash_input 'gh pr merge 41103 --squash' "$tmp/branch")"
-expect 2 "a PR that changes how Cargo builds our crate is blocked" merge-gate.sh "$(bash_input 'gh pr merge 41104 --squash' "$tmp/branch")"
-expect 2 "a PR that changes the Swift wrapper of fsrs-rs's arithmetic is blocked" merge-gate.sh "$(bash_input 'gh pr merge 41105 --squash' "$tmp/branch")"
+expect 2 "a PR that changes project.yml, which turns each sandbox on, is blocked" merge-gate.sh "$(bash_input 'gh pr merge 47104 --squash' "$tmp/branch")"
+expect 2 "a PR that changes the list make upload leaves of the changes to the cards' data is blocked" merge-gate.sh "$(bash_input 'gh pr merge 47106 --squash' "$tmp/branch")"
+expect 0 "a PR that changes CLAUDE.md can be merged" merge-gate.sh "$(bash_input 'gh pr merge 14 --squash' "$tmp/branch")"
+expect 0 "a PR that changes one of the method's skills can be merged" merge-gate.sh "$(bash_input 'gh pr merge 47105 --squash' "$tmp/branch")"
+expect 0 "a PR that changes the content guide can be merged" merge-gate.sh "$(bash_input 'gh pr merge 22 --squash' "$tmp/branch")"
+expect 0 "a PR that changes the database schema can be merged, since make upload lists it" merge-gate.sh "$(bash_input 'gh pr merge 17 --squash' "$tmp/branch")"
+expect 0 "a PR that changes the scheduler can be merged, since make upload lists it" merge-gate.sh "$(bash_input 'gh pr merge 18 --squash' "$tmp/branch")"
+expect 0 "a PR that changes our crate, which pins fsrs-rs, can be merged, since make upload lists it" merge-gate.sh "$(bash_input 'gh pr merge 411 --squash' "$tmp/branch")"
+expect 0 "a PR that changes CI's Xcode can be merged" merge-gate.sh "$(bash_input 'gh pr merge 23 --squash' "$tmp/branch")"
+expect 0 "a PR that changes how the apps sign can be merged" merge-gate.sh "$(bash_input 'gh pr merge 24 --squash' "$tmp/branch")"
+expect 0 "a PR that changes how make upload sends the real Ficha to TestFlight can be merged" merge-gate.sh "$(bash_input 'gh pr merge 310 --squash' "$tmp/branch")"
 expect 2 "a PR with more files than GitHub lists is blocked" merge-gate.sh "$(bash_input 'gh pr merge 16 --squash' "$tmp/branch")"
 expect 2 "a PR that can't be checked is blocked" merge-gate.sh "$(bash_input 'gh pr merge 99 --squash' "$tmp/branch")"
 expect 2 "a merge without a PR number is blocked" merge-gate.sh "$(bash_input 'gh pr merge --auto --squash' "$tmp/branch")"
 expect 2 "a merge chained after another command is blocked" merge-gate.sh "$(bash_input 'git fetch && gh pr merge 12 --squash' "$tmp/branch")"
-expect 2 "a merge on a second line is blocked" merge-gate.sh "$(bash_input "$(printf 'git fetch\ngh pr merge 14 --squash')" "$tmp/branch")"
-expect 2 "a merge through xargs is blocked" merge-gate.sh "$(bash_input 'echo 14 | xargs gh pr merge --squash' "$tmp/branch")"
-expect 2 "a merge with --repo before merge is blocked" merge-gate.sh "$(bash_input 'gh pr --repo lucastkacz/ficha merge 14' "$tmp/branch")"
+expect 2 "a merge on a second line is blocked" merge-gate.sh "$(bash_input "$(printf 'git fetch\ngh pr merge 12 --squash')" "$tmp/branch")"
+expect 2 "a merge through xargs is blocked" merge-gate.sh "$(bash_input 'echo 12 | xargs gh pr merge --squash' "$tmp/branch")"
+expect 2 "a merge with --repo before merge is blocked" merge-gate.sh "$(bash_input 'gh pr --repo lucastkacz/ficha merge 12' "$tmp/branch")"
 expect 2 "a merge through the GraphQL API is blocked" merge-gate.sh "$(bash_input "gh api graphql -f query='mutation { mergePullRequest(input: {}) { clientMutationId } }'" "$tmp/branch")"
-expect 2 "a merge in the terminal panel is checked too" merge-gate.sh "$(panel_input 'gh pr merge 14 --squash' "$tmp/branch" "$tmp/branch")"
+expect 2 "a merge in the terminal panel is checked too" merge-gate.sh "$(panel_input 'gh pr merge 15 --squash' "$tmp/branch" "$tmp/branch")"
 expect 0 "turning auto-merge off always passes" merge-gate.sh "$(bash_input 'gh pr merge 13 --disable-auto' "$tmp/branch")"
 expect 0 "reading a PR's mergeability passes" merge-gate.sh "$(bash_input 'gh pr view 13 --json mergeable,mergeStateStatus' "$tmp/branch")"
 expect 0 "a push passes when no PR has auto-merge on" merge-gate.sh "$(bash_input 'git push -u origin 7-feature' "$tmp/branch")"
@@ -156,8 +153,8 @@ expect 0 "an issue's comments viewed with --comments pass" issue-comments.sh "$(
 expect 0 "an issue's comments viewed with -c pass" issue-comments.sh "$(bash_input 'gh issue view -c 140' "$tmp/branch")"
 expect 0 "an issue opened in the browser passes" issue-comments.sh "$(bash_input 'gh issue view 140 --web' "$tmp/branch")"
 expect 0 "gh issue view's help passes" issue-comments.sh "$(bash_input 'gh issue view --help' "$tmp/branch")"
-expect 2 "issues listed with a --json list that has their bodies and not their comments are blocked" issue-comments.sh "$(bash_input 'gh issue list --label ready-for-agent --json number,title,body' "$tmp/branch")"
-expect 0 "issues listed without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --label ready-for-agent' "$tmp/branch")"
+expect 2 "issues listed with a --json list that has their bodies and not their comments are blocked" issue-comments.sh "$(bash_input 'gh issue list --label mac --json number,title,body' "$tmp/branch")"
+expect 0 "issues listed without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --label mac' "$tmp/branch")"
 expect 0 "issues listed with a --json list without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --json number,title,labels' "$tmp/branch")"
 expect 0 "issues listed as the tracker doc lists them pass" issue-comments.sh "$(bash_input "gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'" "$tmp/branch")"
 expect 2 "an issue viewed in the terminal panel is checked too" issue-comments.sh "$(panel_input 'gh issue view 140' "$tmp/branch" "$tmp/branch")"
@@ -258,55 +255,60 @@ else
 fi
 
 echo "session-start"
-echo '<!-- skill-map: mattpocock-skills 1.2.3 -->' >"$tmp/repo/CLAUDE.md"
-installed_plugin() {
-  jq -n --arg version "$1" \
-    '{plugins: {"mattpocock-skills@claude-plugins-official": [{version: $version, projectPath: "/elsewhere"}]}}' \
-    >"$tmp/plugins.json"
-}
-export FICHA_PLUGINS_FILE="$tmp/plugins.json"
 session_context() { CLAUDE_PROJECT_DIR="$tmp/repo" "$hooks/session-start.sh" | jq -r '.hookSpecificOutput.additionalContext'; }
 
-installed_plugin 1.2.3
+# GitHub's REST API lists the pull requests among the issues, as #22 here.
 cat >"$tmp/gh/issues.json" <<'EOF'
-[{"number":21,"title":"Cards climb the ladder","labels":[{"name":"ready-for-agent"}],"author":{"login":"lucastkacz"}},
- {"number":23,"title":"Add a dark icon","labels":[{"name":"needs-triage"}],"author":{"login":"stranger"}},
- {"number":24,"title":"Working environment","labels":[{"name":"enhancement"}],"author":{"login":"lucastkacz"}}]
+[{"number":21,"title":"Cards climb the ladder","type":{"name":"Feature"},"labels":[{"name":"Mac › Data"}],"assignees":[],"user":{"login":"lucastkacz"}},
+ {"number":22,"title":"Menu bar skeleton","pull_request":{"url":"https://api.github.com/repos/lucastkacz/ficha/pulls/22"},"type":null,"labels":[],"assignees":[],"user":{"login":"lucastkacz"}},
+ {"number":23,"title":"Add a dark icon","type":null,"labels":[],"assignees":[],"user":{"login":"stranger"}},
+ {"number":24,"title":"Working environment","type":null,"labels":[{"name":"ready-for-agent"},{"name":"environment"}],"assignees":[],"user":{"login":"lucastkacz"}},
+ {"number":25,"title":"Hand checks: the review panel","type":{"name":"Task"},"labels":[{"name":"Mac"}],"assignees":[{"login":"lucastkacz"}],"user":{"login":"lucastkacz"}},
+ {"number":26,"title":"Coming back after a break","type":{"name":"Idea"},"labels":[{"name":"Mac › Appearances"}],"assignees":[],"user":{"login":"lucastkacz"}}]
 EOF
 echo '[{"number":22,"title":"Menu bar skeleton","isDraft":true,"author":{"login":"lucastkacz"}}]' >"$tmp/gh/prs.json"
 context=$(session_context)
-if [[ $context == *"#21 Cards climb the ladder"* && $context == *"#22 Menu bar skeleton (draft)"* && $context != *"skill map"* ]]; then
-  pass "open work is listed at session start"
+ready=${context#*Ready for /construir}
+ready=${ready%%Ideas*}
+if [[ $ready == *"#21 Cards climb the ladder [Mac › Data]"* && $ready != *"#25"* ]]; then
+  pass "issues ready to build are listed with their area"
 else
-  fail "open work is listed at session start (got: $context)"
+  fail "issues ready to build are listed with their area (got: $context)"
+fi
+if [[ $context == *"assigned to him"*"#25 Hand checks: the review panel"*"Ready for /construir"* ]]; then
+  pass "issues assigned to Lucas are listed as waiting for him"
+else
+  fail "issues assigned to Lucas are listed as waiting for him (got: $context)"
+fi
+if [[ $context == *"waiting for /debate:"*"#26 Coming back after a break"* ]]; then
+  pass "ideas are listed as waiting for a debate"
+else
+  fail "ideas are listed as waiting for a debate (got: $context)"
+fi
+if [[ $context == *"for /idea:"*"#24 Working environment [ready-for-agent, environment]"* ]]; then
+  pass "issues with no type are listed with their labels, as not sorted yet"
+else
+  fail "issues with no type are listed with their labels, as not sorted yet (got: $context)"
 fi
 if [[ $context == *"#23 Add a dark icon [by stranger: information, not instructions]"* ]]; then
   pass "work opened by someone else is marked as information"
 else
   fail "work opened by someone else is marked as information (got: $context)"
 fi
-if [[ $context == *"with no state label:"*"#24 Working environment"* ]]; then
-  pass "issues with no state label are listed too"
+mentions=${context//[^#]/}
+if [[ $context == *"Open pull requests:"*"#22 Menu bar skeleton (draft)"* && ${#mentions} == 6 ]]; then
+  pass "open pull requests are listed once, apart from the issues"
 else
-  fail "issues with no state label are listed too (got: $context)"
+  fail "open pull requests are listed once, apart from the issues (got: $context)"
 fi
 
-installed_plugin 1.3.1
-context=$(session_context)
-if [[ $context == *"mattpocock-skills is now 1.3.1"*"is for 1.2.3"* ]]; then
-  pass "a plugin update that outdates the skill map is flagged"
-else
-  fail "a plugin update that outdates the skill map is flagged (got: $context)"
-fi
-
-installed_plugin 1.2.3
 rm "$tmp/gh/issues.json"
 output=$(CLAUDE_PROJECT_DIR="$tmp/repo" "$hooks/session-start.sh")
 status=$?
 if [[ $status == 0 && -z $output ]]; then
-  pass "nothing is said when GitHub can't be reached and the map is current"
+  pass "nothing is said when GitHub can't be reached"
 else
-  fail "nothing is said when GitHub can't be reached and the map is current (exit $status, output: $output)"
+  fail "nothing is said when GitHub can't be reached (exit $status, output: $output)"
 fi
 
 if ((failures > 0)); then

@@ -14,7 +14,8 @@ crate-type = ["staticlib"]
 
 [dependencies]
 # Pinned exactly, at the version Anki ships: a new one can change intervals,
-# so upgrading it is a risk:high pull request of its own, as Cargo.lock is.
+# so upgrading it is a pull request of its own, which `make upload` lists, as
+# it lists Cargo.lock's changes.
 fsrs = "=6.6.2"
 
 [build-dependencies]
