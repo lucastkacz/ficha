@@ -40,7 +40,7 @@ for subcommand in "${subcommands[@]}"; do [[ $subcommand == pull ]] || only_pull
 ((only_pulls)) && [[ $cmd == *--ff-only* ]] && exit 0
 
 block() {
-  echo "On main nothing is committed or merged: create a branch <issue>-<short-name> and open a pull request (CLAUDE.md)." >&2
+  echo "On main nothing is committed or merged: create a branch named after the node you build, in a worktree of its own, and open a pull request (CLAUDE.md)." >&2
   exit 2
 }
 

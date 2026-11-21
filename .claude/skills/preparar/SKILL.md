@@ -19,7 +19,7 @@ Done when each section of the template has its facts, each with the file it come
 Fill the template. Each item is decided when the project's files or the user already chose it, provisional when it's your proposal, and open when nobody knows yet: an open item is decided in the debate that needs it, so write it down and move on.
 
 - **Hands-free**: for driving, seeing and testing the product, name the project's tool, or the gap. Each gap is an open item, and, once the user agrees, the first issues to build.
-- **What waits for the user's OK**: the paths of CI and what it runs, the hooks, the permissions, the subagent types and the app's sandbox, as the guard that enforces them (a merge-gate hook, a branch rule) lists them. Where the guard and the pliego disagree, the guard is what holds: say so.
+- **What waits for the user's OK**: the paths of CI, as its workflows and the file that lists the checks they run, the hooks, the permissions, the subagent types and the app's sandbox, as the guard that enforces them (a merge-gate hook, a branch rule) lists them. Where the guard and the pliego disagree, the guard is what holds: say so.
 - **The plano**: the parts as the build files declare them, what each does, which uses which, and the rules the code keeps, with the rule every plano holds: everything is driven and seen without hands.
 - **The areas**: a tree two or three levels deep, from the plano's parts and the work that isn't code.
 
@@ -32,6 +32,8 @@ Done when every section is filled, and each item is decided, provisional or open
 An artifact, as [`../../method/artifacts.md`](../../method/artifacts.md) says: the home with the pliego's items by status, the plano as a diagram, hands-free as three columns (drives, sees, tests), the areas as a tree with a color per top area, a question for each provisional item that changes how the agents work, with your recommendation, the open items, and Aprobar.
 
 Tell the user in one line, with the link, and end the turn.
+
+Done when the artifact passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), and the user has its link.
 
 ## 4. Write it
 

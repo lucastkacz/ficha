@@ -1,5 +1,5 @@
 name: Bug
-description: Something in Ficha doesn't work as it should. Claude sorts it with /idea, into a Bug in its area.
+description: Something in Ficha doesn't work as it should. Claude sorts it with /idea.
 body:
   - type: textarea
     id: what-happened

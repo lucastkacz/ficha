@@ -26,9 +26,13 @@ The debate is one artifact: a tab per round, the earlier ones with their answers
 
 Tell the user in one line, with the link, and end the turn.
 
+Done when the round's tab passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), and the user has its link.
+
 ## 3. Read the answers
 
 Read the round's answers and notes from the artifact's database. Each is the user's own word: a note that questions the question itself makes it next round's first.
+
+Done when every question of the round has its answer, or a note that says why not. Then:
 
 - **Something still changes what gets built**: back to **2**, with the new round.
 - **Nothing does**: on to **4**.
@@ -38,3 +42,5 @@ Read the round's answers and notes from the artifact's database. Each is the use
 The artifact's last tab: what each round settled, in a line each, and what stays open, with why it can wait. Tell the user in one line, and suggest `/decision`.
 
 The open items the debate settled, and its new words, are written with the decision, by `/decision`.
+
+Done when the last tab is published, and the user has the line.

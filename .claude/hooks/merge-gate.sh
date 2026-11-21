@@ -30,7 +30,7 @@ risky_paths=(
   '\.claude/hooks/'
   '\.claude/settings\.json'
   '\.claude/agents/'
-  # CI, and the Makefile, which holds every check CI runs.
+  # CI: its workflows, and the Makefile, which lists the checks they run.
   '\.github/workflows/'
   'Makefile'
   # What the sandboxes let each app, its CLI, its widget and its SVG drawer,
@@ -40,6 +40,9 @@ risky_paths=(
   '.*\.entitlements$'
   'CLI/Info\.plist'
   'project\.yml'
+  # The list make upload leaves of what changed the cards' data, which
+  # stands in for Lucas's merge of those changes (ADR 0030).
+  'scripts/data-changes\.sh'
 )
 
 # `gh` with `merge` later in the same command, in any form or place.

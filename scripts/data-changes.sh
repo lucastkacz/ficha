@@ -3,12 +3,15 @@
 # database and the scheduler. Since ADR 0030 those merge without waiting for
 # Lucas, and they reach his cards only through an upload, so `make upload`
 # runs this once the build is up, before it tags the build's commit
-# `build-<number>`.
+# `v<version>-<build>`.
 #
 # scripts/data-changes.sh [<commit>]: compares with <commit>, by default the
-# last upload's, the nearest build-* tag behind HEAD.
+# last upload's, the nearest v* tag behind HEAD.
 
 set -euo pipefail
+# git reads a pathspec from the folder it runs in, and those below are from
+# the repo's root.
+cd "$(git rev-parse --show-toplevel)"
 
 # What reaches the cards' data, as git pathspecs from the repo's root, each
 # with what it holds. One per line, so two branches that each add one change
@@ -43,10 +46,16 @@ data_paths=(
   'Packages/FichaKit/Sources/FichaFSRS/'
 )
 
-since=${1:-$(git describe --tags --abbrev=0 --match 'build-*' HEAD 2>/dev/null || true)}
+since=${1:-$(git describe --tags --abbrev=0 --match 'v*' HEAD 2>/dev/null || true)}
 if [[ -z $since ]]; then
-  echo "No earlier upload carries a build-* tag, so there's nothing to compare yet: from this upload on, each one's commit is tagged."
-  exit 0
+  # Before the first tagged upload, the commit that added this script, since
+  # which those changes merge without Lucas.
+  since=$(git log --diff-filter=A --format=%h -- scripts/data-changes.sh | tail -n 1)
+  if [[ -z $since ]]; then
+    echo "Nothing to compare with: no upload carries a v* tag, and this script isn't committed yet."
+    exit 0
+  fi
+  echo "No upload carries a v* tag yet, so this compares with $since, the commit that added this list, since which those changes merge without Lucas."
 fi
 changes=$(git log --format='  %h %s' "$since..HEAD" -- "${data_paths[@]}")
 if [[ -z $changes ]]; then

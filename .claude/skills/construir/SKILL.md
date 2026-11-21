@@ -10,7 +10,7 @@ The user typed `/construir` with a node, such as `Mac › UI › Settings`, or a
 
 ## 1. The node's issues
 
-The open issues of type Feature, Bug or Task whose area is the node or below it, leaving out those assigned to the user, which wait for them. Read each with every comment. A bug named alone, because it blocks everything, is a node of its own.
+The open issues of type Feature, Bug or Task whose area is the node or below it, leaving out those assigned to the user. Read each with every comment. A bug named alone, because it blocks everything, is a node of its own.
 
 Done when you have the list. With nothing ready, tell the user what the node holds, such as Ideas waiting for `/debate`, and stop.
 
@@ -47,9 +47,11 @@ Done when all three pass with no finding left.
 
 ## 5. The PR
 
-One PR from the node's branch, in English: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, and the pictures.
+One PR from the node's branch, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
 
 - **It changes a path the pliego lists under what waits for the user's OK**: the project's label for it, and the user's merge command, last in the message.
 - **Otherwise**: it merges itself once CI passes, as the project's instructions turn that on.
 
 Tell the user in one line: the PR, linked, and whether it merges itself or waits for them. After the merge, `/entregar`.
+
+Done when the PR is open, merging itself or labeled for the user's merge, and the user has the line.

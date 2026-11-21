@@ -9,9 +9,9 @@ set -o pipefail
 project=${CLAUDE_PROJECT_DIR:-.}
 cd "$project" 2>/dev/null || exit 0
 
-# The open issues come from GitHub's REST API, which gives each its type, as
-# `gh issue list` doesn't, and lists the pull requests among them, which are
-# left out here.
+# The open issues come from GitHub's REST API, which gives each its type with
+# any gh, as `gh issue list` does only from 2.94 on, and lists the pull
+# requests among them, which are left out here.
 fields='{number, title, type: .type.name, labels: [.labels[].name], assignees: [.assignees[].login], author: {login: .user.login}}'
 issues=$(gh api --paginate 'repos/{owner}/{repo}/issues?state=open&per_page=100' \
   --jq ".[] | select(.pull_request == null) | $fields" 2>/dev/null | jq -s .) || exit 0

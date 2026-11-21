@@ -24,7 +24,7 @@ What stays by hand, each with why it can't be a test yet.
 
 ## What waits for the user's OK
 
-The paths that hold CI and what it runs, the hooks, the permissions, the subagent types and the app's sandbox, as the guard that enforces them lists them, and the label a PR that changes one carries.
+The paths that hold CI, as its workflows and the file that lists the checks they run, the hooks, the permissions, the subagent types and the app's sandbox, as the guard that enforces them lists them, and the label a PR that changes one carries.
 
 ## When publishing
 

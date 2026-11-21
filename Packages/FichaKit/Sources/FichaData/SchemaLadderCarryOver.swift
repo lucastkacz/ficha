@@ -5,8 +5,8 @@ internal import GRDB
 // The review log as a version of Ficha before FSRS kept it, on the ladder,
 // carried over to the scheduler's (#404): by "v33 the scheduler replaces the
 // ladder", and as each of its entries comes from iCloud, sent by a device
-// that still runs that version. It lives beside the migrations, where the
-// merge gate watches.
+// that still runs that version. It lives beside the migrations, so
+// `make upload` lists its changes as it does theirs.
 
 /// The ladder's intervals as Ficha shipped them, in whole seconds, from the
 /// first step up: 1 hour, 4 hours, 2 days, 5 days, 12 days, 30 days and 75

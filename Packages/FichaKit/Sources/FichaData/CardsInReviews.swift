@@ -3,8 +3,8 @@ internal import GRDB
 
 // Which cards are in Lucas's reviews, as their standing says: the only ones
 // the review panel brings, and takes an answer for. They decide which cards
-// show up, so the merge gate (`.claude/hooks/merge-gate.sh`) watches this
-// file: changing it makes a pull request risk:high.
+// show up, so `make upload` lists each change to this file among those
+// that reach Lucas's cards (`scripts/data-changes.sh`).
 
 /// The cards that show up, as the engine reads them for the planners: the
 /// cards in Lucas's reviews, whose ways the planners pick from, and every

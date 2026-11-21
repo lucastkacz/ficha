@@ -39,11 +39,21 @@ expect_output() {
 
 kit=Packages/FichaKit
 commit App/MenuContent.swift "The menu's first line"
-expect_output "with no upload tagged yet, it says there's nothing to compare" "*nothing to compare yet*"
+expect_output "with no upload tagged and the script not committed, there's nothing to compare with" "Nothing to compare with*"
 
-git -C "$repo" tag -a build-1 -m "Build 1"
+commit $kit/Sources/FichaData/Schema.swift "the schema before the script"
+commit scripts/data-changes.sh "the script"
+commit $kit/Sources/FichaData/Schema.swift "the schema after the script"
+output=$(cd "$repo" && "$script" 2>&1)
+if [[ $output == "No upload carries a v* tag yet"*"the schema after the script"* && $output != *"before the script"* ]]; then
+  pass "before the first tagged upload, it lists the changes since the commit that added the script"
+else
+  fail "before the first tagged upload, it lists the changes since the commit that added the script (got: $output)"
+fi
+
+git -C "$repo" tag -a v0.1.0-5 -m "Build 5"
 commit App/MenuContent.swift "The menu's second line"
-expect_output "a change outside the cards' data isn't listed" "Since build-1, nothing changed*"
+expect_output "a change outside the cards' data isn't listed" "Since v0.1.0-5, nothing changed*"
 
 subjects=()
 # data <file> <what it holds>: commits a change to one of the cards' data.
@@ -64,7 +74,7 @@ data Rust/Cargo.lock "the version of fsrs-rs"
 data Sources/FichaFSRS/FSRS.swift "the Swift that wraps fsrs-rs"
 commit $kit/Sources/FichaData/FlaggingAndBurying.swift "how a card is flagged, outside the list"
 for subject in "${subjects[@]}"; do
-  expect_output "a change to $subject is listed" "Since build-1, these changed*$subject*"
+  expect_output "a change to $subject is listed" "Since v0.1.0-5, these changed*$subject*"
 done
 output=$(cd "$repo" && "$script" 2>&1)
 if [[ $output != *"outside the list"* && $output != *"The menu's"* ]]; then
@@ -72,11 +82,17 @@ if [[ $output != *"outside the list"* && $output != *"The menu's"* ]]; then
 else
   fail "a change outside the cards' data isn't listed among them (got: $output)"
 fi
+output=$(cd "$repo/$kit" && "$script" 2>&1)
+if [[ $output == "Since v0.1.0-5, these changed"*"the schema"* ]]; then
+  pass "run from a folder inside the repo, it lists the same"
+else
+  fail "run from a folder inside the repo, it lists the same (got: $output)"
+fi
 
-git -C "$repo" tag -a build-15 -m "Build 15"
+git -C "$repo" tag -a v0.1.0-19 -m "Build 19"
 commit App/MenuContent.swift "The menu's third line"
-expect_output "it compares with the last upload's tag" "Since build-15, nothing changed*"
-expect_output "a commit given is compared with instead" "Since build-1, these changed*the schema*" build-1
+expect_output "it compares with the last upload's tag" "Since v0.1.0-19, nothing changed*"
+expect_output "a commit given is compared with instead" "Since v0.1.0-5, these changed*the schema*" v0.1.0-5
 
 if ((failures > 0)); then
   echo "$failures test(s) of the list of changes to the cards' data failed"

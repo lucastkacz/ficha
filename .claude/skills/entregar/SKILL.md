@@ -20,12 +20,18 @@ Done when every issue the PR closed, and its decision, tell what was built.
 
 ## 2. Clean up
 
-What the pliego says follows a merge, such as removing the merged branch's folders.
+Do what the pliego says follows a merge, such as removing the merged branch's folders.
+
+Done when each of those steps ran, or the user has the one that needs them.
 
 ## 3. A retro, only if something went sideways
 
-Sideways is a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, or a node that took far longer than its size. Then: what happened, why, and the change to the method, the pliego or the project's tools that would have avoided it, as a Task issue in the area of the way of working. With nothing sideways, no retro.
+What went sideways, as [`../../method/method.md`](../../method/method.md) says: what the PR's body lists, and what its comments and commits show since it opened. For each: what happened, why, and the change to the method, the pliego or the project's tools that would have avoided it, as a Task issue in the area of the way of working. With nothing sideways, no retro.
+
+Done when each thing that went sideways has its Task issue, or nothing did.
 
 ## 4. Tell the user
 
 One line: what was delivered, by the decision's title, linked; what's left, by the issues' titles, linked; and the next step.
+
+Done when the user has the line.

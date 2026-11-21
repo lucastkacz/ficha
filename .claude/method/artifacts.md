@@ -17,6 +17,10 @@ A debate's round is up to five questions, one card each: the question in a line,
 
 A home with the change in a table (today, and with the decision), and what stays open. A tab per piece: its before and after, what gets built as items marked ✓ decided, ◐ provisional or ○ open, the why in a line, and the agent's part folded, in English. A last tab, Aprobar: one button, and a note per piece.
 
+## A change order
+
+One screen: the plano before and after, side by side, with what changes marked in both; why, in a line; and the node's issues it touches, each with what changes for it. Then Aprobar, with a note.
+
 ## What the user answers
 
 Answers, notes and the approval are kept in the artifact's database (capabilities `db` and `user`): a collection per artifact, one document per question, per piece's note, and `aprobacion` for the approval, `{approved, at, note}`. Claude reads them with the `ArtifactData` tool once the user says they answered, and takes each as the user's own word.

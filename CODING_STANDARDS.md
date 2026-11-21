@@ -72,7 +72,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 - Each dependency is pinned to an exact version in `Package.swift`, and `Package.resolved` is committed. The render tool (`scripts/render`) and the import-preview tool (`scripts/import-preview`) take their dependencies through FichaKit's pins, so their own `Package.resolved` files stay out.
 - Our Rust crate's (`Packages/FichaKit/Rust`) are pinned the same way: each direct dependency to an exact version (`=6.6.2`) in `Cargo.toml`, with `Cargo.lock` committed, and every Cargo command that builds or lints it runs with `--locked`.
-- A new dependency needs an ADR in `docs/adr/`, which Lucas approves through `/decision` before it's built.
+- A new dependency needs an ADR in `docs/adr/`.
 
 ## Scripts, hooks, the Makefile and CI
 

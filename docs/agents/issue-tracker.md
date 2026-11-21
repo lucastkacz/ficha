@@ -1,12 +1,12 @@
 # Issue tracker: GitHub
 
-Issues for this repo live as GitHub issues, with the method's types, area labels and body, which `.claude/method/method.md` describes, with how to create, retype and list them through `gh api`. Use the `gh` CLI for all operations.
+Issues for this repo live as GitHub issues, with the method's types, area labels and body, which `.claude/method/method.md` describes, with how to create, retype and list them through `gh`. Use the `gh` CLI for all operations.
 
 ## Conventions
 
 - **Create a detour**: an issue that comes up while building another, such as a retro's change or a tool an issue needs, is a detour. Its body starts with the issue it came up in, so GitHub lists it in that issue's timeline: "Came up in the retro of #127, a detour from the Cards window (#87)." An issue that waits for a detour gets both GitHub's native link, as **Blocking** below shows, and a `Blocked by` line in its folded part for the agent, since **Read an issue** doesn't show the links.
-- **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments`. Its type comes from the REST API, as `.claude/method/method.md` says.
-- **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters. To filter by type, list through the REST API instead.
+- **Read an issue**: `gh issue view <number> --json number,title,issueType,body,labels,comments`.
+- **List issues**: `gh issue list --state open --json number,title,issueType,body,labels,comments --jq '[.[] | {number, title, type: .issueType.name, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label`, `--type` and `--state` filters.
 - **Make an issue a sub-issue of a parent**: `gh issue edit <parent> --add-sub-issue <child>` once both exist (`gh` 2.94+). Older `gh`: `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>` (database id, as in **Blocking** below). Without sub-issues, put `Part of #<parent>` at the top of the child body.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Leave work to another issue**: when an issue, or its PR, leaves part of its work to another open issue, a comment on the other issue says what is left to it and why: the agent that builds the other issue reads only its body and comments (**Read an issue**).
@@ -37,6 +37,6 @@ Each check is a comment of its own, since an issue's body holds only 65,536 char
 2. Read the body afresh, add a line for each check, written as the lines already there are, and write the body back (`gh issue edit <n> --body-file <file>`).
 3. Add the links to the checks' comments to the PR's body (`gh pr edit <pr> --body-file <file>`).
 
-Lucas tells a session how a check went, and that session ticks it: it reads the body afresh, ticks the check's line and writes the body back, then posts what he said as a comment that links the check's. A check that found a bug stays unticked until the fix is on `main` and Lucas checks again, and the session takes the bug as a hand test's, as Shipping in `CLAUDE.md` says. Once every line is ticked, the session closes the issue (`gh issue close <n> --reason completed`).
+Lucas tells a session how a check went, and that session ticks it: it reads the body afresh, ticks the check's line and writes the body back, then posts what he said as a comment that links the check's. A check that found a bug stays unticked until the fix is on `main` and Lucas checks again, and the session suggests `/idea` for the bug. Once every line is ticked, the session closes the issue (`gh issue close <n> --reason completed`).
 
 The iPhone's checks keep issues of their own until the iPhone starts.

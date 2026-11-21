@@ -26,6 +26,8 @@ Done when every answer of the debate is in a piece, and every item of what gets 
 
 The decision's artifact, as [`../../method/artifacts.md`](../../method/artifacts.md) says, linked from the idea's issue. Tell the user in one line, with the link, and end the turn.
 
+Done when the artifact passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), the idea's issue links it, and the user has its link.
+
 ## 3. Approved
 
 Read the approval and the notes from the artifact's database. A note that changes a piece: change it, show it again, and end the turn. Approved as it is:

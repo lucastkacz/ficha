@@ -76,11 +76,11 @@ worktree 12-ahead 12-ahead
 merged_12=$(tip "$worktrees/12-ahead")
 commit "$worktrees/12-ahead" "after the merge"
 worktree 13-open 13-open
-# An implementer's branch, joined into its spec's branch, which then goes on.
+# An implementer's branch, joined into its node's branch, which then goes on.
 worktree agent-a1 worktree-agent-a1
-worktree 14-spec 14-spec
-git -C "$worktrees/14-spec" merge -q --no-edit worktree-agent-a1
-commit "$worktrees/14-spec" "after the implementer"
+worktree 14-node 14-node
+git -C "$worktrees/14-node" merge -q --no-edit worktree-agent-a1
+commit "$worktrees/14-node" "after the implementer"
 git -C "$main" worktree add -q -b 15-fresh "$worktrees/15-fresh" main
 # Claude Code locks a session's worktree with its process's pid: this test's
 # own, which runs, and one that ended.
@@ -96,7 +96,7 @@ cat >"$tmp/gh/prs-merged.json" <<EOF
 [{"number":10,"headRefOid":"$(tip "$worktrees/10-merged")"},
  {"number":11,"headRefOid":"$(tip "$worktrees/11-dirty")"},
  {"number":12,"headRefOid":"$merged_12"},
- {"number":14,"headRefOid":"$(tip "$worktrees/14-spec")"},
+ {"number":14,"headRefOid":"$(tip "$worktrees/14-node")"},
  {"number":16,"headRefOid":"$(tip "$worktrees/16-live")"},
  {"number":17,"headRefOid":"$(tip "$worktrees/17-ended")"}]
 EOF
@@ -154,8 +154,8 @@ expect_gone "a merged, clean worktree goes with its branch and its build folders
 expect_kept "a worktree with uncommitted changes stays" 11-dirty 11-dirty "uncommitted changes"
 expect_kept "a worktree whose head isn't the merged pull request's stays" 12-ahead 12-ahead "isn't merged"
 expect_kept "a worktree whose pull request is open stays" 13-open 13-open "pull request #13, which is still open"
-expect_gone "an implementer's branch inside a merged spec's branch goes" agent-a1 worktree-agent-a1
-expect_gone "the merged spec's branch goes" 14-spec 14-spec
+expect_gone "an implementer's branch inside a merged node's branch goes" agent-a1 worktree-agent-a1
+expect_gone "the merged node's branch goes" 14-node 14-node
 expect_kept "a worktree with no commits of its own stays" 15-fresh 15-fresh "no commits of its own"
 expect_kept "a worktree a running session holds stays" 16-live 16-live "a running process"
 expect_gone "a worktree a session that ended held goes" 17-ended 17-ended

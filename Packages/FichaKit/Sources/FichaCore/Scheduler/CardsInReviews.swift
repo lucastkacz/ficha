@@ -5,7 +5,7 @@ import Foundation
 /// his reviews, by card in the order he approved them, with which cards are
 /// priority cards, and the whole review log. The planners take nothing else,
 /// so which ways can show up, and which come first, is decided here, from
-/// where each card stands and its deck, and the merge gate watches it.
+/// where each card stands and its deck, and `make upload` lists its changes.
 public struct CardsInReviews: Sendable, Equatable {
     /// The ways in Lucas's reviews, by card in the order he approved them:
     /// each card's front-first way, and then its back-first way, when it has

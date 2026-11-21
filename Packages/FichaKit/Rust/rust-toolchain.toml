@@ -2,8 +2,8 @@
 # as rustup reads it from this folder: `make bootstrap` installs it, with the
 # targets each app builds for. The Mac's archive is for Apple silicon and
 # Intel, the iPhone's builds for an iPhone and for its simulator, which runs on
-# either (ADR 0015). Moving it is a risk:high pull request, as the merge gate
-# says.
+# either (ADR 0015). Moving it is a pull request that `make upload` lists, as
+# it lists every change to our crate.
 [toolchain]
 channel = "1.99.1"
 profile = "minimal"
