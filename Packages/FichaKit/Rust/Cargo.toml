@@ -16,7 +16,7 @@ crate-type = ["staticlib"]
 # Pinned exactly, at the version Anki ships: a new one can change intervals,
 # so upgrading it is a pull request of its own, which `make upload` lists, as
 # it lists Cargo.lock's changes.
-fsrs = "=6.6.2"
+fsrs = "=7.0.0"
 
 [build-dependencies]
 # Writes the C header from this crate's source as it builds, pinned so the
