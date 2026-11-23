@@ -1,6 +1,6 @@
 name: check
 
-# A pull request's rounds (ADR 0031). While it's a draft, each push runs
+# What a pull request runs (ADR 0031). While it's a draft, each push runs
 # `tests`, `make test` alone, about 8 minutes; once it's ready, marking it
 # ready and each push run `check`, the full `make check`, about 24. Each push
 # to main, and a run started by hand, run `check` too. A pull request whose
@@ -12,11 +12,11 @@ name: check
 # log when it failed.
 #
 # On a draft, `check` is skipped, which counts as passed, and a draft can't
-# merge. Marking it ready starts a new run, but until that run's `check` shows
-# on the pull request, the draft's skipped one still counts: so auto-merge
-# turns on, and Lucas merges, only once it shows (CLAUDE.md). Running the
-# tests alone on a draft is our own; skipping a job by a condition is
-# GitHub's documented way.
+# merge. Marking it ready starts a new run, but until the pull request's
+# `check` turns from skipped to queued, the draft's skipped one still counts:
+# so auto-merge turns on, and Lucas merges, only once it's queued or running
+# (CLAUDE.md). Skipping a job by a condition is GitHub's documented way;
+# running the tests alone on a draft, and that wait, are our own.
 
 on:
   pull_request:
@@ -81,10 +81,10 @@ jobs:
       - id: files
         # The files the merge commit changes from its first parent, the base
         # branch. A rename counts both names, and when git can't list them,
-        # the pull request runs its round, `tests` or `check`.
+        # `tests` or `check` runs, as on any other pull request.
         run: |
           if ! files=$(git diff --name-only --no-renames HEAD^1 HEAD); then
-            echo "::warning::git couldn't list the files this pull request changes, as it says above, so this pull request runs its round, tests or check, as any other does."
+            echo "::warning::git couldn't list the files this pull request changes, as it says above, so tests or check runs, as on any other pull request."
             exit 0
           fi
           echo "$files"
@@ -248,7 +248,11 @@ jobs:
     # `check` runs, from the caches a run on main saved, so fsrs-rs builds only
     # when its cache misses. It saves no cache, as no pull request's run does.
     # Each step is `check`'s of the same name, whose comment says why it's so:
-    # a change to one goes to both.
+    # a change to one goes to both. Copying them by hand is our own: GitHub's
+    # YAML anchors would share them, but an older actionlint, such as 1.7.7,
+    # which a Mac may still run, rejects them, and a composite action would
+    # move CI's steps out of .github/workflows/, the folder merge-gate.sh
+    # guards.
     needs: changes
     # Only a draft runs it, unless its files are all Markdown: a ready pull
     # request runs the tests in `check`.
