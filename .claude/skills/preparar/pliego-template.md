@@ -22,6 +22,16 @@ How an agent gets a picture of a screen without the device: a render command, a 
 
 What stays by hand, each with why it can't be a test yet.
 
+## Where it runs
+
+Cloud first (`.claude/method/method.md`): the project's machines, each with what it can do and what it costs, linked to the page that says so.
+
+- **The session in the cloud**: its system, its tools, what its network lets in, and what of the project it builds and tests.
+- **Rented machines**: the CI's runners by system, what they cost the project, such as nothing for a public repo's standard runners, or a price per minute by system past a private repo's included amount, and how long a run takes.
+- **The user's computer**: how a session reaches it.
+
+Then each kind of work and its machine: writing issues, debates and decisions, the reviews, building, the tests while building, the tests and CI of the three checks, the pictures, running the product, publishing. What stays on the user's computer, each with why no other machine can do it yet.
+
 ## What waits for the user's OK
 
 The paths that hold CI, as its workflows and the file that lists the checks they run, the hooks, the permissions, the subagent types and the app's sandbox, as the guard that enforces them lists them, and the label a PR that changes one carries.
