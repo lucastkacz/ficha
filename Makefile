@@ -1,6 +1,7 @@
-# Ficha's commands. CI runs `make check` on every pull request whose files
-# aren't all Markdown, which none of its steps reads, and CLAUDE.md says when
-# it runs on the Mac before one opens.
+# Ficha's commands. CI runs `make check` on every ready pull request whose
+# files aren't all Markdown, which none of its steps reads, and `make test`
+# alone on each push to a draft (.github/workflows/check.yml); CLAUDE.md says
+# when it runs on the Mac before one opens.
 #
 # A new or changed check is seen failing once, on purpose, before its pull
 # request, and the pull request says how: a check nobody saw fail may pass

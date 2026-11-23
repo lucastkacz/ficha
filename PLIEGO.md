@@ -64,7 +64,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - ○ A window described as text, in place of its picture but for colors and the look: what each element says, where it is and its size, the focus, the selection, and what's cut off or overlaps (#139).
 - **Tests it**
   - ✓ `make test` while building, and `make check` before the PR is ready, on Lucas's Mac: every step in the `Makefile`'s `CHECKS +=` lines, warnings as errors. From the cloud: Where it runs.
-  - ✓ CI, `.github/workflows/check.yml`: `make check` on each PR, unless all its files are Markdown, and on each push to `main`, a run that stays, since it alone saves the cache the PRs' runs read.
+  - ✓ CI, `.github/workflows/check.yml`: `make test` alone on each push to a draft PR, and `make check` once it's ready (Where it runs), neither when all its files are Markdown; and `make check` on each push to `main`, a run that stays, since it alone saves the cache the PRs' runs read.
   - ✓ They run on a Mac, GitHub's or Lucas's (Where it runs).
 
 What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" in `docs/agents/issue-tracker.md` says. ○ An agent runs the checks its tools already reach (#473); the rest wait for a tool, or need Lucas's Mac: meetings, Focus, logging in, the widget on the desktop, TestFlight.
@@ -82,7 +82,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ✓ Issues, debates, decisions and the reviews: the cloud.
 - ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
-  - ◐ From the cloud, each push to the node's draft PR runs a round, `make test` alone, and marking it ready runs the full `check` (#478). Until then, each push runs the full `check`.
+  - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, read from the `tests` check run's conclusion and its job's log; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
 - ○ The pictures: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
