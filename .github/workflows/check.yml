@@ -1,11 +1,28 @@
 name: check
 
-# `make check` on every push to main and every pull request, but one whose
-# files are all Markdown, which none of its steps reads. The ruleset on main
-# requires the job "check" to pass before anything merges.
+# A pull request's rounds (ADR 0031). While it's a draft, each push runs
+# `tests`, `make test` alone, about 8 minutes; once it's ready, marking it
+# ready and each push run `check`, the full `make check`, about 24. Each push
+# to main, and a run started by hand, run `check` too. A pull request whose
+# files are all Markdown, which none of their steps reads, runs neither. The
+# ruleset on main requires the job "check" to pass before anything merges.
+#
+# A cloud session, which can't build Ficha, reads a draft's round from the
+# pull request's check runs: the `tests` check run's conclusion, and its job's
+# log when it failed.
+#
+# On a draft, `check` is skipped, which counts as passed, and a draft can't
+# merge. Marking it ready starts a new run, but until that run's `check` shows
+# on the pull request, the draft's skipped one still counts: so auto-merge
+# turns on, and Lucas merges, only once it shows (CLAUDE.md). Running the
+# tests alone on a draft is our own; skipping a job by a condition is
+# GitHub's documented way.
 
 on:
   pull_request:
+    # The three types a pull request runs a workflow on by default, and
+    # marking a draft ready.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
@@ -17,13 +34,39 @@ concurrency:
   group: check-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  # What `make check`'s builds leave, which the next run builds from: the
+  # package's, the render tool's, the import-preview tool's, and Xcode's
+  # derived data. They pay off together, as #124 measured: with the
+  # package's alone, `swift test` fetches no packages, so Xcode's first
+  # build fetches them from GitHub. `tests` restores them all too, since a
+  # cache is restored by the same paths it was saved with.
+  BUILDS: |
+    Packages/FichaKit/.build
+    scripts/render/.build
+    scripts/import-preview/.build
+    .build/DerivedData
+  # What fsrs-rs's build leaves (ADR 0026), cached apart from the builds:
+  # the step that restores it says why.
+  RUST_BUILDS: |
+    ~/.cargo/registry/index
+    ~/.cargo/registry/cache
+    ~/.cargo/git/db
+    Packages/FichaKit/Frameworks
+    .build/cargo/debug
+  # Where rustup keeps the toolchain that rust-toolchain.toml pins: a
+  # folder of its own, which holds that toolchain alone, so its cache
+  # leaves out the stable toolchain the image keeps in ~/.rustup.
+  # RUSTUP_HOME is rustup's documented way to move it.
+  RUSTUP_HOME: ${{ github.workspace }}/.build/rustup
+
 jobs:
   changes:
-    # Whether a pull request's files are all Markdown. Then `check` skips its
-    # job, which counts as passed, through a condition and not the workflow's
-    # `paths-ignore`: a required check whose workflow never runs keeps the
-    # pull request waiting, as "Handling skipped but required checks" in
-    # GitHub's docs says. Reading the files from git is our own.
+    # Whether a pull request's files are all Markdown. Then `tests` and
+    # `check` skip their jobs, which counts as passed, through a condition and
+    # not the workflow's `paths-ignore`: a required check whose workflow never
+    # runs keeps the pull request waiting, as "Handling skipped but required
+    # checks" in GitHub's docs says. Reading the files from git is our own.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -38,10 +81,10 @@ jobs:
       - id: files
         # The files the merge commit changes from its first parent, the base
         # branch. A rename counts both names, and when git can't list them,
-        # `check` runs.
+        # the pull request runs its round, `tests` or `check`.
         run: |
           if ! files=$(git diff --name-only --no-renames HEAD^1 HEAD); then
-            echo "::warning::git couldn't list the files this pull request changes, as it says above, so check runs as for any pull request."
+            echo "::warning::git couldn't list the files this pull request changes, as it says above, so this pull request runs its round, tests or check, as any other does."
             exit 0
           fi
           echo "$files"
@@ -52,35 +95,12 @@ jobs:
   check:
     needs: changes
     # `!cancelled()` runs it also when `changes` was skipped, on a push or a
-    # run started by hand, or failed: only a pull request known to be all
-    # Markdown skips it.
-    if: ${{ !cancelled() && needs.changes.outputs.markdown-only != 'true' }}
+    # run started by hand, or failed: only a draft, and a pull request known
+    # to be all Markdown, skip it. A push has no pull request, whose draft is
+    # then null.
+    if: ${{ !cancelled() && needs.changes.outputs.markdown-only != 'true' && github.event.pull_request.draft != true }}
     runs-on: macos-26
     timeout-minutes: 30
-    env:
-      # What `make check`'s builds leave, which the next run builds from: the
-      # package's, the render tool's, the import-preview tool's, and Xcode's
-      # derived data. They pay off together, as #124 measured: with the
-      # package's alone, `swift test` fetches no packages, so Xcode's first
-      # build fetches them from GitHub.
-      BUILDS: |
-        Packages/FichaKit/.build
-        scripts/render/.build
-        scripts/import-preview/.build
-        .build/DerivedData
-      # What fsrs-rs's build leaves (ADR 0026), cached apart from the builds:
-      # the step that restores it says why.
-      RUST_BUILDS: |
-        ~/.cargo/registry/index
-        ~/.cargo/registry/cache
-        ~/.cargo/git/db
-        Packages/FichaKit/Frameworks
-        .build/cargo/debug
-      # Where rustup keeps the toolchain that rust-toolchain.toml pins: a
-      # folder of its own, which holds that toolchain alone, so its cache
-      # leaves out the stable toolchain the image keeps in ~/.rustup.
-      # RUSTUP_HOME is rustup's documented way to move it.
-      RUSTUP_HOME: ${{ github.workspace }}/.build/rustup
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -222,3 +242,67 @@ jobs:
         with:
           path: ${{ env.RUSTUP_HOME }}
           key: ${{ steps.rustup-cache.outputs.cache-primary-key }}
+
+  tests:
+    # A draft's round (ADR 0031): `make test` alone, on the Mac and the Xcode
+    # `check` runs, from the caches a run on main saved, so fsrs-rs builds only
+    # when its cache misses. It saves no cache, as no pull request's run does.
+    # Each step is `check`'s of the same name, whose comment says why it's so:
+    # a change to one goes to both.
+    needs: changes
+    # Only a draft runs it, unless its files are all Markdown: a ready pull
+    # request runs the tests in `check`.
+    if: ${{ !cancelled() && needs.changes.outputs.markdown-only != 'true' && github.event.pull_request.draft == true }}
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select Xcode
+        run: |
+          xcode="/Applications/Xcode_$(cat .xcode-version).app"
+          if [[ ! -d $xcode ]]; then
+            echo "::error::The runner has no $xcode, the Xcode .xcode-version names. Move the Mac's Xcode and the file to one it has: $(cd /Applications && echo Xcode_*.app)"
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+      - name: Install rustup
+        # The one tool of `check`'s "Install the tools" that `make test` needs.
+        run: brew install rustup
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      - name: Restore the Rust toolchain
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RUSTUP_HOME }}
+          key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Packages/FichaKit/Rust/rust-toolchain.toml') }}
+      - name: Install the Rust toolchain
+        run: make rust-toolchain
+      - name: Name the runner's image
+        id: image
+        run: |
+          if [[ -z ${ImageOS:-} || -z ${ImageVersion:-} ]]; then
+            echo "::warning::The runner set no ImageOS or ImageVersion, so the builds' cache key can't name its image, and this run builds without the cache: name the image another way in this step, from what the Set up job step's Runner Image section shows."
+            exit 0
+          fi
+          echo "name=$ImageOS-$ImageVersion" >>"$GITHUB_OUTPUT"
+      - name: Restore the builds
+        if: steps.image.outputs.name != ''
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.BUILDS }}
+          key: builds-${{ steps.image.outputs.name }}-${{ hashFiles('.xcode-version', 'Packages/FichaKit/Package.resolved') }}
+      - name: Restore fsrs-rs's build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RUST_BUILDS }}
+          key: rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Packages/FichaKit/Rust/**', 'scripts/build-fsrs.sh') }}
+          restore-keys: rust-${{ runner.os }}-${{ runner.arch }}-
+      - run: make test
