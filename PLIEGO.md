@@ -1,0 +1,174 @@
+# Pliego of Ficha
+
+What the method's six commands read about Ficha (`.claude/method/method.md`), approved by Lucas on 2026-11-23. Each item is ✓ decided, ◐ provisional (it holds until a debate changes it) or ○ open. An item points at the file that already holds its details, and that file is where they change. A quoted name, such as "A window's picture", is a section of `docs/development.md`.
+
+## What it is
+
+- ✓ A macOS menu-bar app, for anyone, Lucas first, that shows its user a tiny flashcard every so often and spaces each card with FSRS, as Anki does. The cards stay on the user's devices and in their own iCloud (`README.md`, ADR 0017, ADR 0025).
+- ✓ It sells once on the App Store, the Mac and the iPhone together, after seven free days (ADR 0029, #160). The iPhone app is Ficha Dev with the sample cards for now (#97).
+- ○ The new direction, "small things, Anki inside, Ficha outside": the `/debate` that takes it up decides it; until then, the ADRs hold.
+
+## Areas
+
+✓ Each node is a label, named with its path and colored as its top area, and each issue carries exactly one.
+
+- `Mac` (blue): the Mac app.
+  - `Mac › Review`: the review panel, appearances and what holds them back, Review now.
+  - `Mac › Cards`: the Cards window: cards, decks, tags, types, the card form, the inbox.
+    - `Mac › Cards › Import`: import and export: text files, zips, Anki's packages.
+  - `Mac › Menu`: the menu bar item and its menu, Capture, the Welcome page, Diagnostics.
+  - `Mac › Settings`: the Settings window's tabs.
+  - `Mac › Widget`: the Next Card widget.
+  - `Mac › CLI`: the `ficha` command.
+- `iPhone` (amber): the iPhone app.
+  - `iPhone › Review`: appearances as notifications, the Review tab.
+  - `iPhone › Cards`: the Cards tab.
+  - `iPhone › Capture`: capturing on the iPhone.
+  - `iPhone › Settings`: Settings and the debug tools.
+- `Core` (orange): what both apps share, in FichaKit (ADR 0019).
+  - `Core › Scheduling`: FSRS, the learning steps, where a card stands, which cards show up and when.
+  - `Core › Cards`: what a card holds: its sides, images, sounds, formatting, both ways.
+  - `Core › Data`: the database and its migrations, the engine, backups.
+  - `Core › Sync`: sync through the user's iCloud.
+- `Launch` (green): selling Ficha.
+  - `Launch › App Store`: its page, name, pictures, keywords and positioning.
+  - `Launch › Price`: the free days and the payment (ADR 0029).
+  - `Launch › Beta`: TestFlight's testers.
+  - `Launch › Research`: the market research (`docs/research/`).
+- `Environment` (pink): how agents build Ficha.
+  - `Environment › Method`: the skills, this pliego, `CLAUDE.md` and the documents agents read.
+  - `Environment › Guards`: CI, the `Makefile`, the hooks, the permissions, the subagents' types.
+  - `Environment › Hands-free`: the tools that drive, see and test Ficha, and the hand checks.
+  - `Environment › Publishing`: `make upload`, TestFlight, the tags, iCloud's schema.
+
+## How it's drawn
+
+- ✓ A Mac window: `make render ARGS="<window>"`, offscreen, with Ficha Dev's sample cards ("A window's picture").
+- ✓ The iPhone: `make render-iphone`, its opening screen alone ("The iPhone's screen").
+- ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
+- ✓ A PR that changes what Lucas sees: each window or screen in English, German and Arabic ("The PR's pictures").
+- ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic. The kit and the Ficha Lab move from the Claude project's shared folder into `mockups/` in the repo (#475).
+- ✓ An artifact's sources: the Claude project's shared folder, `/mnt/project-files/` in its sessions, a folder per artifact, such as `preparar/`.
+
+## Hands-free
+
+- **Drives it**
+  - ✓ `ficha`, the CLI: cards, decks, tags, types, captures, approvals, fixes. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
+  - ✓ `make render`'s clicks, keys and typing in a window; `make preview-import` for an import; `xcrun simctl` for the simulator.
+  - ○ Ficha Dev's Debug menu (the sample cards, its clock, an appearance now, the second device) takes clicks only: #474 brings it to the command line.
+  - ○ Dragging, right-clicks, double-clicks, menus and popovers: `make render` can't; #293's driver would, on Lucas's screen.
+  - ○ The iPhone takes no taps or typing (#136).
+- **Sees it**
+  - ✓ `make render` and `make render-iphone`'s pictures, in each of Ficha's languages.
+  - ✓ The log, subsystem `com.lucastkacz.ficha`, with `/usr/bin/log` or `simctl spawn … log`; `make last-crash`; the samples `make test` leaves in `.build/hangs`; `make preview-import`'s numbers.
+  - ○ A window described as text, in place of its picture but for colors and the look: what each element says, where it is and its size, the focus, the selection, and what's cut off or overlaps (#139).
+- **Tests it**
+  - ✓ `make test` while building; `make check` before the PR: every step in the `Makefile`'s `CHECKS +=` lines, warnings as errors.
+  - ✓ CI, `.github/workflows/check.yml`: `make check` on each PR, unless all its files are Markdown, and on each push to `main`, a run that stays, since it alone saves the cache the PRs' runs read.
+  - ✓ They run on a Mac: a session in the cloud can't build, test or draw Ficha.
+
+What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" in `docs/agents/issue-tracker.md` says. ○ An agent runs the checks its tools already reach (#473); the rest wait for a tool, or need Lucas's Mac: meetings, Focus, logging in, the widget on the desktop, TestFlight.
+
+## What waits for Lucas's OK
+
+- ✓ A PR that changes a path `.claude/hooks/merge-gate.sh` lists carries `risk:high`, and Lucas merges it: `.claude/hooks/`, `.claude/settings.json`, `.claude/agents/`, `.github/workflows/`, `Makefile`, `*.entitlements`, `CLI/Info.plist`, `project.yml`, `scripts/data-changes.sh`. Where this list and the hook differ, the hook holds.
+- ✓ Dependabot's update PRs carry it too (`.github/dependabot.yml`).
+- ✓ GitHub's ruleset on `main`: a PR, a green `check`, a linear history, no bypass (ADR 0006).
+- ✓ `make upload`, `make install-iphone` and `ficha restore` ask first (`.claude/settings.json`).
+
+## When publishing
+
+- ✓ `make upload`, from `main` in the main folder: the real Ficha to TestFlight's internal testers, tagged `v<version>-<build>`, listing the commits since the last tag that changed a path in `scripts/data-changes.sh`, the cards' database and the scheduler ("Upload to TestFlight").
+- ✓ A new iCloud record type or field deploys to Production first ("A new record type or field in iCloud").
+- ✓ `site/` publishes itself on GitHub Pages when it changes on `main` (`.github/workflows/pages.yml`).
+
+## Plano
+
+What `project.yml` builds, which generates the Xcode project with both apps:
+
+```
+Ficha.app (App/): the Mac app        iPhone (iPhone/): Ficha Dev, for now
+├─ ficha (CLI/), in Contents/Helpers
+├─ FichaWidget (Widget/), in Contents/PlugIns
+└─ SVGDrawer (SVGDrawer/), in Contents/XPCServices
+```
+
+Who uses whom, with what each takes from outside:
+
+```
+Ficha ───────> FichaICloud, FichaData, FichaSVG, FichaCore
+ficha ───────> FichaCLI, FichaData
+FichaWidget ─> FichaData, FichaCore
+SVGDrawer ───> FichaSVG
+iPhone ──────> FichaData, FichaCore
+FichaICloud ─> FichaData                     CloudKit
+FichaCLI ────> FichaData, FichaCore          swift-argument-parser
+FichaData ───> FichaSVG, FichaCore           GRDB, ZIPFoundation, zstd
+FichaCore ───> FichaFSRS ─> CFichaFSRS       fsrs-rs, from Rust/
+FichaSVG                                     WebKit
+```
+
+The executables:
+
+- ✓ **Ficha** (`App/`): the Mac app, thin, built as the real Ficha or as Ficha Dev, which alone has the Debug menu. It bundles `docs/instructions-for-an-ai.md`, which the Import sheet copies.
+- ✓ **ficha** (`CLI/`): runs FichaCLI's commands in a sandbox of its own, inside the app.
+- ✓ **FichaWidget** (`Widget/`): the Next Card widget, inside the app.
+- ✓ **SVGDrawer** (`SVGDrawer/`): an XPC service inside the app, the only part with the network entitlement WebKit needs in the sandbox (ADR 0018).
+- ✓ **iPhone** (`iPhone/`): the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, and the real Ficha on the Mac sign with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
+- ✓ What they share from `App/`: the CLI, the widget and the iPhone app compile `App/AppVariant.swift` too; the widget also `App/WidgetHandover.swift`; the iPhone app takes `App/AppIcon-Dev.icon`.
+
+The libraries, in `Packages/FichaKit/`, a Swift package for macOS and iOS:
+
+- ✓ **FichaCore**: the rules, as pure functions: scheduling, the planners, where a card stands, reading Anki.
+- ✓ **FichaFSRS**: fsrs-rs's arithmetic for FichaCore, from our crate in `Rust/`, which `make fsrs` builds into an XCFramework (ADR 0026).
+- ✓ **FichaData**: the engine: SQLite through GRDB, import and export, sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
+- ✓ **FichaSVG**: draws an import's SVGs with WebKit: in the app, through the SVGDrawer service; in `swift test`, in the process.
+- ✓ **FichaICloud**: the thin adapter that puts CloudKit's `CKSyncEngine` behind FichaData's `ICloudSyncEngine`; the only part that loads CloudKit, and the Mac app alone links it.
+- ✓ **FichaCLI**: the `ficha` command's commands, with swift-argument-parser (ADR 0008).
+
+The rest:
+
+- ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; the translations check, with its tests; the check that the clock and the review log's IDs come from their sources; and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
+- ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `terms.md`, Ficha's words in each language; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
+- ✓ `.claude/`: the permissions, the hooks, the rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types.
+- ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
+- ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
+- ✓ `CODING_STANDARDS.md`: the standards `/construir`'s review checks every change against.
+- ○ `.out-of-scope/`: ideas Lucas decided against, from before ADR 0030; no command reads it.
+
+Rules that don't break:
+
+1. ✓ Everything is driven and seen without hands: a new screen gets a `make render` window, a new behavior a `ficha` command, a Debug action an agent reaches or a test; what can't yet is a Task in `Environment › Hands-free`.
+2. ✓ FichaCore is pure: Foundation, the standard library and FichaFSRS; the time from `TimeSource`, the review log's IDs from `IDSource` (ADR 0005, ADR 0026, `CODING_STANDARDS.md`, Layers and Time and IDs).
+3. ✓ The apps are thin: what a window decides lives in FichaData, as a `Sendable` state (`CODING_STANDARDS.md`, Layers).
+4. ✓ One way in: where a card stands, the cards that show up, flags and burials (`CODING_STANDARDS.md`, Where a card stands).
+5. ✓ The OS enters through protocols, so the logic is tested without it (`CODING_STANDARDS.md`, Layers).
+6. ✓ CloudKit lives in FichaICloud alone, which the Mac app alone links (ADR 0017, `Packages/FichaKit/Package.swift`).
+7. ✓ No network of Ficha's own; only the SVG drawer may use it, drawing files already on the Mac (ADR 0001, ADR 0017).
+8. ✓ Each executable runs in its sandbox (ADR 0018).
+9. ✓ `project.yml` is the project; the Xcode project is generated, never edited (ADR 0005).
+10. ✓ No crashes by design, and errors that say what to do; each dependency pinned, a new one with an ADR (`CODING_STANDARDS.md`, Errors and crashes, Dependencies).
+
+## Words
+
+- ✓ Ficha's: `GLOSSARY.md`. The method's: `.claude/method/method.md`.
+
+## How we work
+
+- ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps follow the Mac's language, in English and eleven more (ADR 0009, ADR 0027, `CLAUDE.md`).
+- ✓ Decisions: `docs/adr/`, one per decision, never rewritten: a later one says which it replaces.
+- ✓ The default branch is `main`. A node's branch is named after its path, such as `mac-cards-import`, in a worktree of its own (`CLAUDE.md`, Shipping).
+- ✓ The standards: `CODING_STANDARDS.md`.
+- ✓ A PR merges itself after the three checks, with auto-merge; a `risk:high` PR waits for Lucas (`CLAUDE.md`, Shipping).
+- ✓ After a merge: `/entregar`, then `make clean-merged` from the main folder ("Cleaning up after a merge").
+- ✓ A mechanical chore goes to a `clerk`; building to `builder`s; the reviews to `reviewer`s (`.claude/agents/`).
+- ◐ Where the work runs: in the cloud as far as it can, so it doesn't wait for Lucas's Mac: the commands that write and decide, a node whose files no `make check` step reads, and in `/construir` the writing and the reviews. What needs Xcode, building, `make check`, `make render` and the simulator, runs on the Mac.
+- ○ How a node with Swift splits between the cloud and the Mac, and how its issues are written for that split: a `/debate`. Until then, such a node is built on the Mac, as `CLAUDE.md`'s Shipping says.
+
+## Open
+
+- ○ The new direction: the `/debate` that takes it up.
+- ○ The split between the cloud and the Mac: a `/debate`.
+- ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
+- ○ The Idea issue type: Lucas creates it in his account's settings; then a `clerk` gives the open issues their types and areas, and takes off the old triage labels (ADR 0030).
+- ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.

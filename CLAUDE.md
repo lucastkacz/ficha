@@ -2,7 +2,7 @@
 
 A macOS menu-bar app that shows its user a tiny flashcard every so often and spaces each card by how well they know it. Zero friction: answering takes seconds, and the cards stay on their devices and in their own iCloud. Lucas built it for himself first; now it's for anyone, and it will sell on the App Store together with its iPhone app (#160), which for now is only Ficha Dev, with the sample cards (#97).
 
-Ficha is built by agents with Lucas's own method, whose six commands are below (ADR 0030). Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; what the method reads about Ficha lives in its pliego, `PLIEGO.md`, once `/preparar` writes it, and until then the other five commands stop and ask for it; the domain glossary is `GLOSSARY.md` and decisions are in `docs/adr/`.
+Ficha is built by agents with Lucas's own method, whose six commands are below (ADR 0030). Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; what the method reads about Ficha lives in its pliego, `PLIEGO.md`; the domain glossary is `GLOSSARY.md` and decisions are in `docs/adr/`.
 
 ## Rules
 
@@ -22,7 +22,7 @@ Six commands take an idea or a bug from Lucas's words to the code and back to wh
 
 | When | Suggest |
 |---|---|
-| Ficha has no pliego yet, or it no longer matches the project | `/preparar` |
+| Ficha's pliego no longer matches the project | `/preparar` |
 | Lucas brings an idea or a bug, or issues wait without a type, such as those from his phone | `/idea` |
 | An Idea issue is to be shaped, or Lucas answered a debate's round | `/debate` |
 | A debate is settled, an idea is small enough to need none, or Lucas approved a decision | `/decision` |
@@ -34,7 +34,7 @@ At the end of each phase of work, such as a debate's round, a node's build or a 
 
 ## Shipping
 
-- Every change goes through a pull request from a short branch named after its node, such as `mac-ui-settings` (`.claude/method/method.md`), built in a worktree of its own, so Lucas's main folder stays on `main` for the other sessions working in it. Before the first edit, call `EnterWorktree` with that name, which creates `.claude/worktrees/<name>`, then give the branch that name with `git branch -m`: the tool names it `worktree-<name>`, and the rename is our own. Never commit on `main`: a hook blocks it, and GitHub rejects pushes to it.
+- Every change goes through a pull request from a short branch named after its node, such as `mac-cards-import` (`.claude/method/method.md`), built in a worktree of its own, so Lucas's main folder stays on `main` for the other sessions working in it. Before the first edit, call `EnterWorktree` with that name, which creates `.claude/worktrees/<name>`, then give the branch that name with `git branch -m`: the tool names it `worktree-<name>`, and the rename is our own. Never commit on `main`: a hook blocks it, and GitHub rejects pushes to it.
 - Before opening the PR, `/construir`'s three checks pass: `make check`, a `reviewer` against what each issue asks for, and one against the plano and `CODING_STANDARDS.md`. A PR whose files are all Markdown skips `make check`, as CI does, since none of its steps reads Markdown.
 - The PR body says `Closes #<n>` for each issue it resolves.
 - **Merging:**
@@ -49,13 +49,7 @@ At the end of each phase of work, such as a debate's round, a node's build or a 
 
 ## Map
 
-- `Packages/FichaKit/`: the core, as a Swift package for macOS and iOS. `FichaCore` is pure logic. `FichaData` also has Ficha Dev's sample cards. `FichaICloud`, the only part that loads CloudKit, is linked by the Mac app alone. `Rust/`, our crate, builds fsrs-rs into the XCFramework that `FichaFSRS` wraps for `FichaCore` (ADR 0026).
-- `App/`: the macOS app. The Xcode project, with both apps, is generated from `project.yml`.
-- `iPhone/`: the iPhone app, for now only Ficha Dev (#97). Ficha Dev, on the Mac and the iPhone, and the real Ficha on the Mac sign with Lucas's paid team, whose ID is in `iPhone/Local.xcconfig`, which git ignores.
-- `CODING_STANDARDS.md`: the standards `/construir`'s review checks every change against.
-- `.claude/`: permissions, hooks, rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types. `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and issue forms.
-- `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
-- `scripts/`: the hook tests, the render tools, the import-preview tool, the watchdog for hung runs with its tests, the build of fsrs-rs's XCFramework (`make fsrs`), the wrapper `make` runs `xcodebuild` through, what unregisters an app's other copies from LaunchServices, the reader of Ficha Dev's last crash (`make last-crash`) with its tests, the runner of its `ficha` on a scratch folder, the cleanup after a merge with its tests, the list of what changed the cards' data since the last upload with its tests, the translations check with its tests, the check that the clock and the review log's IDs come from their sources, and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
+The plano, in `PLIEGO.md`: Ficha's parts, who uses whom, what each folder holds, and the rules that don't break. Read it before a change to the code, to `project.yml` or to what a folder holds.
 
 ## Commands
 
