@@ -4,22 +4,23 @@ Six commands take an idea, or a bug, from the user's words to the code and back 
 
 | Command | What it leaves the user |
 |---|---|
-| `/preparar` | The project's pliego and plano, once per project, and again when they no longer match it |
+| `/preparar` | The project's pliego, with its plano and where its work runs, once per project, and again when they no longer match it |
 | `/idea` | An issue in its area: an idea, or a bug |
 | `/debate` | An artifact with questions, round by round, until the idea can be decided |
 | `/decision` | An artifact to approve; once approved, its decision record and its issues |
 | `/construir` | A node's branch, its issues' tests first, and its PR |
 | `/entregar` | Everything as built, and a retro only if something went sideways |
 
-The project's own facts (its areas, commands, pictures, tests, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
+The project's own facts (its areas, commands, pictures, tests, machines, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
 
 ## Words
 
 The user's words, from building works, kept in Spanish where the user sees them.
 
-- **Pliego**: the project's file the skills read, `PLIEGO.md` unless the project's `CLAUDE.md` names another: what the product is, its areas, how it's drawn, how an agent drives, sees and tests it, what waits for the user's OK, what publishing flags, its plano, its words and how we work. Each item is **decided** (the user chose it), **provisional** (Claude proposed it; it holds until a debate changes it) or **open** (decided in the debate that needs it, not before), as in an anteproyecto, a building's first draft.
+- **Pliego**: the project's file the skills read, `PLIEGO.md` unless the project's `CLAUDE.md` names another: what the product is, its areas, how it's drawn, how an agent drives, sees and tests it, where its work runs, what waits for the user's OK, what publishing flags, its plano, its words and how we work. Each item is **decided** (the user chose it), **provisional** (Claude proposed it; it holds until a debate changes it) or **open** (decided in the debate that needs it, not before), as in an anteproyecto, a building's first draft.
 - **Plano**: the map of the code, in the pliego: its parts, what each does, which uses which, and the rules that don't break. Every plano holds the rule "everything is driven and seen without hands".
 - **Hands-free** (sin manos): an agent drives the product (a CLI or a debug mode), sees it (logs, screenshots, crash reports) and tests it (automatic tests). The user decides, and at most looks at the screen. A check by hand is the exception, and becomes a test where it can. When a product can't be driven hands-free yet, building that comes first.
+- **Cloud first** (nube primero): the work runs off the user's computer wherever another machine can do it. A session in the cloud writes and reviews, and builds and tests what its own tools reach; a rented machine, such as a CI runner, builds, tests and draws the rest; the user's computer does only what needs it, such as the user's hands, their signed-in accounts, a device plugged in, or a tool no other machine has. A session elsewhere asks the user before it runs anything on their computer, and a session running on it runs there only what the pliego places there. A machine that costs money runs only where the user chose it. Every command sends each step to the machine the pliego's "Where it runs" names.
 - **Area** (área): where an issue or a decision belongs, as a path in the pliego's tree of areas: `Mac › UI › Settings`.
 - **Node** (nodo): one point of that tree, of any size: a leaf, or `Mac › UI` whole. `/construir` builds a node.
 - **Replanteo**: before building, `/construir` sets each issue against today's code, and stops to ask when something changed since it was decided.
