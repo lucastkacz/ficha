@@ -330,6 +330,25 @@ The tool's source is `scripts/import-preview/`, a package like `scripts/render` 
 
 `scripts/where-threads-wait.sh <report>` prints the same lines for any report of `sample`.
 
+## A workflow change from the cloud
+
+A cloud session can't push a change to `.github/workflows/`: GitHub refuses it, by git and by the session's GitHub tool, since its token has no `workflow` scope. So the change reaches its branch from Lucas's Mac, through Remote Control:
+
+1. The cloud session writes the new file outside that folder, as `.github/<name>.yml`, where GitHub runs nothing. Once actionlint passes on it, the session pushes it and takes its `sha256sum`.
+2. It asks for Lucas's OK on a Remote Control card in the `ficha` folder, whose instructions name the cloud's branch, the staged file and that sum.
+3. The session on the Mac fetches the branch and adds a worktree of its own from it, so the main folder stays on `main`. The local branch takes the cloud's branch's name, so the push needs no `<local>:<remote>`, which `merge-gate.sh` refuses while a PR has auto-merge on. A local branch of that name left from an earlier move holds no work of its own, so it removes it first.
+
+   ```bash
+   git fetch origin <cloud's branch>
+   git worktree add -b <cloud's branch> .claude/worktrees/<node's name> origin/<cloud's branch>
+   ```
+
+4. In the worktree, it moves the file into place with `git mv -f .github/<name>.yml .github/workflows/<name>.yml`, and checks that `shasum -a 256` prints the card's sum. If it doesn't, it stops and tells Lucas.
+5. It commits, pushes with `git push origin <cloud's branch>`, with no force, removes the worktree and its branch, and reports the commit's SHA. On a draft, that push runs the next round.
+6. The cloud session ends the Remote Control session, then fetches that commit and fast-forwards to it, before its next push.
+
+Staging the file, and moving it from the Mac, are our own.
+
 ## Cleaning up after a merge
 
 On Lucas's Mac, each change is built in a worktree of its own, in `.claude/worktrees/`, with build folders of several GB. Once its PR merges, `make clean-merged`, run from the main folder on `main`, removes it:
