@@ -43,7 +43,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
 
 ## How it's drawn
 
-- ✓ A Mac window: `make render ARGS="<window>"`, offscreen, with Ficha Dev's sample cards ("A window's picture").
+- ✓ A Mac window: `make render ARGS="<window>"`, offscreen, with Ficha Dev's sample cards ("A window's picture"), on the Mac Where it runs names.
 - ✓ The iPhone: `make render-iphone`, its opening screen alone ("The iPhone's screen").
 - ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
 - ✓ A PR that changes what Lucas sees: each window or screen in English, German and Arabic ("The PR's pictures").
@@ -63,11 +63,35 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - ✓ The log, subsystem `com.lucastkacz.ficha`, with `/usr/bin/log` or `simctl spawn … log`; `make last-crash`; the samples `make test` leaves in `.build/hangs`; `make preview-import`'s numbers.
   - ○ A window described as text, in place of its picture but for colors and the look: what each element says, where it is and its size, the focus, the selection, and what's cut off or overlaps (#139).
 - **Tests it**
-  - ✓ `make test` while building; `make check` before the PR: every step in the `Makefile`'s `CHECKS +=` lines, warnings as errors.
+  - ✓ `make test` while building, and `make check` before the PR is ready, on Lucas's Mac: every step in the `Makefile`'s `CHECKS +=` lines, warnings as errors. From the cloud: Where it runs.
   - ✓ CI, `.github/workflows/check.yml`: `make check` on each PR, unless all its files are Markdown, and on each push to `main`, a run that stays, since it alone saves the cache the PRs' runs read.
-  - ✓ They run on a Mac: a session in the cloud can't build, test or draw Ficha.
+  - ✓ They run on a Mac, GitHub's or Lucas's (Where it runs).
 
 What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" in `docs/agents/issue-tracker.md` says. ○ An agent runs the checks its tools already reach (#473); the rest wait for a tool, or need Lucas's Mac: meetings, Focus, logging in, the widget on the desktop, TestFlight.
+
+## Where it runs
+
+Cloud first (`.claude/method/method.md`), as ADR 0031 decides for Ficha.
+
+- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It writes, reviews and pushes; its network reaches GitHub through the session's own tools, and `gh` only to search. It comes with Lucas's Claude plan.
+- **GitHub's Macs**: CI's `macos-26` runners, standard ones with 3 cores, free on a public repo ([GitHub's billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)). A full `make check` takes about 24 minutes, `make test` alone about 8.
+- **Lucas's Mac**: 10 cores, and his accounts, his signing and his screen. A cloud session runs work on it only through Remote Control, after his OK on its card, in the `ficha` folder, and it costs the Mac on and its cores while it runs. ○ The `ficha` folder in Remote Control: added once, by the first card or by Lucas in the Claude app.
+
+Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
+
+- ✓ Issues, debates, decisions and the reviews: the cloud.
+- ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
+- ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
+  - ◐ From the cloud, each push to the node's draft PR runs a round, `make test` alone, and marking it ready runs the full `check` (#478). Until then, each push runs the full `check`.
+- ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
+- ○ The pictures: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
+- ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
+- ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
+- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where the pictures are made, and `hand` on Lucas's Mac, from the Hand checks issue.
+- ◐ In the cloud, a node's branch is the one the session is given.
+- ○ The guards: no hook of the repo ran in a cloud session on 2026-11-23, and none matches the session's GitHub tools (#479). Until they do, a cloud session keeps them itself.
+
+What stays on Lucas's Mac: `make upload` and `make install-iphone`, which sign with his team and reach App Store Connect and his iPhone; and the checks by hand, which need his hands, his meetings and his accounts.
 
 ## What waits for Lucas's OK
 
@@ -157,18 +181,17 @@ Rules that don't break:
 
 - ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps follow the Mac's language, in English and eleven more (ADR 0009, ADR 0027, `CLAUDE.md`).
 - ✓ Decisions: `docs/adr/`, one per decision, never rewritten: a later one says which it replaces.
-- ✓ The default branch is `main`. A node's branch is named after its path, such as `mac-cards-import`, in a worktree of its own (`CLAUDE.md`, Shipping).
+- ✓ The default branch is `main`. On Lucas's Mac, a node's branch is named after its path, such as `mac-cards-import`, in a worktree of its own (`CLAUDE.md`, Shipping); in the cloud, Where it runs.
 - ✓ The standards: `CODING_STANDARDS.md`.
 - ✓ A PR merges itself after the three checks, with auto-merge; a `risk:high` PR waits for Lucas (`CLAUDE.md`, Shipping).
 - ✓ After a merge: `/entregar`, then `make clean-merged` from the main folder ("Cleaning up after a merge").
 - ✓ A mechanical chore goes to a `clerk`; building to `builder`s; the reviews to `reviewer`s (`.claude/agents/`).
-- ◐ Where the work runs: in the cloud as far as it can, so it doesn't wait for Lucas's Mac: the commands that write and decide, a node whose files no `make check` step reads, and in `/construir` the writing and the reviews. What needs Xcode, building, `make check`, `make render` and the simulator, runs on the Mac.
-- ○ How a node with Swift splits between the cloud and the Mac, and how its issues are written for that split: a `/debate`. Until then, such a node is built on the Mac, as `CLAUDE.md`'s Shipping says.
+- ✓ Where each kind of work runs, and on which machine: Where it runs (ADR 0031).
 
 ## Open
 
 - ○ The new direction: the `/debate` that takes it up.
-- ○ The split between the cloud and the Mac: a `/debate`.
+- ○ The pictures from GitHub's Macs (#480), and the guards in a cloud session (#479): Where it runs.
 - ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
 - ○ The Idea issue type: Lucas creates it in his account's settings; then a `clerk` gives the open issues their types and areas, and takes off the old triage labels (ADR 0030).
 - ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.
