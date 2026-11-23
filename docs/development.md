@@ -334,17 +334,17 @@ The tool's source is `scripts/import-preview/`, a package like `scripts/render` 
 
 A cloud session can't push a change to `.github/workflows/`: GitHub refuses it, by git and by the session's GitHub tool, since its token has no `workflow` scope. So the change reaches its branch from Lucas's Mac, through Remote Control:
 
-1. The cloud session writes the new file outside that folder, as `.github/<name>.yml`, where GitHub runs nothing. Once actionlint passes on it, the session pushes it and takes its `sha256sum`.
+1. The cloud session writes the new file outside that folder, as `.github/<name>.yml`, where GitHub runs nothing, pushes it, and takes its `sha256sum`. Its PR has auto-merge off, as a `risk:high` PR does until Lucas runs his merge command, and a workflow change makes it one: `merge-gate.sh` blocks every push to a branch whose PR has auto-merge on (CLAUDE.md, Merging).
 2. It asks for Lucas's OK on a Remote Control card in the `ficha` folder, whose instructions name the cloud's branch, the staged file and that sum.
-3. The session on the Mac fetches the branch and adds a worktree of its own from it, so the main folder stays on `main`. The local branch takes the cloud's branch's name, so the push needs no `<local>:<remote>`, which `merge-gate.sh` refuses while a PR has auto-merge on. A local branch of that name left from an earlier move holds no work of its own, so it removes it first.
+3. The session on the Mac starts in the main folder. If a worktree at `.claude/worktrees/workflow-move`, or a local branch named as the cloud's branch, is left from an earlier move, it stops and tells Lucas. Otherwise it adds that worktree from the cloud's branch, with a local branch of the same name, so the push in step 5 names one branch, the form `merge-gate.sh` allows:
 
    ```bash
    git fetch origin <cloud's branch>
-   git worktree add -b <cloud's branch> .claude/worktrees/<node's name> origin/<cloud's branch>
+   git worktree add -b <cloud's branch> .claude/worktrees/workflow-move origin/<cloud's branch>
    ```
 
-4. In the worktree, it moves the file into place with `git mv -f .github/<name>.yml .github/workflows/<name>.yml`, and checks that `shasum -a 256` prints the card's sum. If it doesn't, it stops and tells Lucas.
-5. It commits, pushes with `git push origin <cloud's branch>`, with no force, removes the worktree and its branch, and reports the commit's SHA. On a draft, that push runs the next round.
+4. It moves into the worktree with `cd`, in a Bash call of its own, since `protect-main.sh` blocks a commit run from the main folder. There, `shasum -a 256 .github/<name>.yml` prints the card's sum, and `actionlint .github/<name>.yml` passes; `make bootstrap` installs actionlint. If either fails, it goes back to the main folder, removes the worktree and its branch, which hold nothing yet, and stops and tells Lucas.
+5. It moves the file into place with `git mv -f .github/<name>.yml .github/workflows/<name>.yml`, commits, and pushes with `git push origin <cloud's branch>`, with no force. If the push is refused, it stops and tells Lucas. Otherwise it goes back to the main folder, removes the worktree and its branch, and reports the commit's SHA. On a draft, that push runs the next round.
 6. The cloud session ends the Remote Control session, then fetches that commit and fast-forwards to it, before its next push.
 
 Staging the file, and moving it from the Mac, are our own.
