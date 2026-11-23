@@ -7,16 +7,14 @@ name: check
 # files are all Markdown, which none of their steps reads, runs neither. The
 # ruleset on main requires the job "check" to pass before anything merges.
 #
-# A cloud session, which can't build Ficha, reads a draft's round from the
-# pull request's check runs: the `tests` check run's conclusion, and its job's
-# log when it failed.
+# A cloud session reads a draft's round by its job's name, `tests` (CLAUDE.md,
+# Shipping).
 #
 # On a draft, `check` is skipped, which counts as passed, and a draft can't
-# merge. Marking it ready starts a new run, but until the pull request's
-# `check` turns from skipped to queued, the draft's skipped one still counts:
-# so auto-merge turns on, and Lucas merges, only once it's queued or running
-# (CLAUDE.md). Skipping a job by a condition is GitHub's documented way;
-# running the tests alone on a draft, and that wait, are our own.
+# merge. Marking it ready starts a new run, and CLAUDE.md's Shipping says when
+# auto-merge turns on after that. Skipping a job by a condition is GitHub's
+# documented way; running the tests alone on a draft, and the wait before
+# auto-merge, are our own.
 
 on:
   pull_request:
@@ -249,8 +247,9 @@ jobs:
     # when its cache misses. It saves no cache, as no pull request's run does.
     # Each step is `check`'s of the same name, whose comment says why it's so:
     # a change to one goes to both. Copying them by hand is our own: GitHub's
-    # YAML anchors would share them, but an older actionlint, such as 1.7.7,
-    # which a Mac may still run, rejects them, and a composite action would
+    # YAML anchors would share them, but actionlint reads them only from
+    # 1.7.10, and `make bootstrap` installs it when it's missing and never
+    # upgrades it, so a Mac may run an older one; and a composite action would
     # move CI's steps out of .github/workflows/, the folder merge-gate.sh
     # guards.
     needs: changes
