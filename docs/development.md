@@ -332,7 +332,7 @@ The tool's source is `scripts/import-preview/`, a package like `scripts/render` 
 
 ## Cleaning up after a merge
 
-Each change is built in a worktree of its own, in `.claude/worktrees/`, with build folders of several GB. Once its PR merges, `make clean-merged`, run from the main folder on `main`, removes it:
+On Lucas's Mac, each change is built in a worktree of its own, in `.claude/worktrees/`, with build folders of several GB. Once its PR merges, `make clean-merged`, run from the main folder on `main`, removes it:
 
 ```bash
 make clean-merged
