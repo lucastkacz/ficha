@@ -4,7 +4,7 @@
 # CLAUDE.md says when it runs on the Mac before one opens.
 #
 # A new or changed check is seen failing once, on purpose, before its pull
-# request, and the pull request says how: a check nobody saw fail may pass
+# request is ready, and the pull request says how: a check nobody saw fail may pass
 # whatever it checks.
 #
 # Each target has its .PHONY line right above it, as the GNU Make manual shows
