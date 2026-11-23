@@ -64,7 +64,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - ○ A window described as text, in place of its picture but for colors and the look: what each element says, where it is and its size, the focus, the selection, and what's cut off or overlaps (#139).
 - **Tests it**
   - ✓ `make test` while building, and `make check` before the PR is ready, on Lucas's Mac: every step in the `Makefile`'s `CHECKS +=` lines, warnings as errors. From the cloud: Where it runs.
-  - ✓ CI, `.github/workflows/check.yml`: `make check` on each PR, unless all its files are Markdown, and on each push to `main`, a run that stays, since it alone saves the cache the PRs' runs read.
+  - ✓ CI, `.github/workflows/check.yml`: on each PR, unless all its files are Markdown, as Where it runs says; and `make check` on each push to `main`, a run that stays, since it alone saves the cache the PRs' runs read.
   - ✓ They run on a Mac, GitHub's or Lucas's (Where it runs).
 
 What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" in `docs/agents/issue-tracker.md` says. ○ An agent runs the checks its tools already reach (#473); the rest wait for a tool, or need Lucas's Mac: meetings, Focus, logging in, the widget on the desktop, TestFlight.
@@ -75,14 +75,15 @@ Cloud first (`.claude/method/method.md`), as ADR 0031 decides for Ficha.
 
 - **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It writes, reviews and pushes; its network reaches GitHub through the session's own tools, and `gh` only to search. It comes with Lucas's Claude plan.
 - **GitHub's Macs**: CI's `macos-26` runners, standard ones with 3 cores, free on a public repo ([GitHub's billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)). A full `make check` takes about 24 minutes, `make test` alone about 8.
-- **Lucas's Mac**: 10 cores, and his accounts, his signing and his screen. A cloud session runs work on it only through Remote Control, after his OK on its card, in the `ficha` folder, and it costs the Mac on and its cores while it runs. ○ The `ficha` folder in Remote Control: added once, by the first card or by Lucas in the Claude app.
+- **Lucas's Mac**: 10 cores, and his accounts, his signing and his screen. A cloud session runs work on it only through Remote Control, after his OK on its card, in the `ficha` folder, and it costs the Mac on and its cores while it runs. ✓ The `ficha` folder is in Remote Control: Lucas added it in the Claude app on 2026-11-23.
 
 Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 
 - ✓ Issues, debates, decisions and the reviews: the cloud.
 - ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
+  - ○ A change to `.github/workflows/`: GitHub refuses a cloud session's push there, since its token has no `workflow` scope, so it's pushed from Lucas's Mac through Remote Control ("A workflow change from the cloud").
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
-  - ◐ From the cloud, each push to the node's draft PR runs a round, `make test` alone, and marking it ready runs the full `check` (#478). Until then, each push runs the full `check`.
+  - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
 - ○ The pictures: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
@@ -192,6 +193,7 @@ Rules that don't break:
 
 - ○ The new direction: the `/debate` that takes it up.
 - ○ The pictures from GitHub's Macs (#480), and the guards in a cloud session (#479): Where it runs.
+- ○ A change to `.github/workflows/` from a cloud session, pushed from Lucas's Mac while the session's token has no `workflow` scope: the `/debate` that takes it up; Where it runs.
 - ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
 - ○ The Idea issue type: Lucas creates it in his account's settings; then a `clerk` gives the open issues their types and areas, and takes off the old triage labels (ADR 0030).
 - ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.
