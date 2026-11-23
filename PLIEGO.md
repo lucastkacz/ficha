@@ -83,6 +83,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
   - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, read from the `tests` check run's conclusion and its job's log; marking the PR ready runs the full `check`.
+- ◐ A change to `.github/workflows/`: written in the cloud, and pushed from Lucas's Mac through Remote Control, since GitHub refuses a cloud session's push there, by git or by its GitHub tool: its token has no `workflow` scope.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
 - ○ The pictures: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
