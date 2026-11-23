@@ -8,7 +8,7 @@ Six commands take an idea, or a bug, from the user's words to the code and back 
 | `/idea` | An issue in its area: an idea, or a bug |
 | `/debate` | An artifact with questions, round by round, until the idea can be decided |
 | `/decision` | An artifact to approve; once approved, its decision record and its issues |
-| `/construir` | A node's branch, each issue's test first, and its PR |
+| `/construir` | A node's branch, its issues' tests first, and its PR |
 | `/entregar` | Everything as built, and a retro only if something went sideways |
 
 The project's own facts (its areas, commands, pictures, tests, machines, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
@@ -45,7 +45,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
   2. `Qué buscamos`: the outcome, in a line. The review checks the PR against it.
   3. `Antes y después`: pictures, as the pliego says how the product is drawn, or a line each.
   4. `El artifact`: the link to the debate or the decision it came from.
-  5. A folded part for the agent, in English: `<details><summary>Para el agente</summary>`, then the decision records it follows and its acceptance criteria, one line each (`Accept: …`).
+  5. A folded part for the agent, in English: `<details><summary>Para el agente</summary>`, then the decision records it follows and its acceptance criteria, one line each, each naming its proof: `Accept (test): …`, a test that runs; `Accept (picture): …`, a picture, as the pliego says how the product is drawn; or `Accept (hand): …`, a check by hand. The pliego says which machine runs each.
 
   An Idea needs only the first two. Files and tests stay out of the issue: the replanteo sets them against the code.
 - **Through `gh`** 2.94 or later, whose `issue` commands take the type: `gh issue create --type <Type> --label <area>` creates one, `gh issue edit <n> --type <Type>` changes its type, and `gh issue list --json number,title,issueType,labels` lists them, or those of one type with `--type <Type>`.
@@ -53,8 +53,8 @@ The user's words, from building works, kept in Spanish where the user sees them.
 
 ## Branches, checks and merges
 
-- **One branch per node**, short, from the default branch, named after the node's path in lowercase with dashes: `mac-ui-settings`. It holds the node's ready issues, one commit each, behind one PR that closes them all. It lives hours and is deleted after the merge. A node goes in when its ready issues are done; what gets decided later goes in its next PR. Where the project's instructions name branches otherwise, theirs win.
-- **Three checks** before the PR opens:
+- **One branch per node**, short, from the default branch, named after the node's path in lowercase with dashes: `mac-ui-settings`. It holds the node's ready issues, each in commits that name it, behind one PR that closes them all. It lives hours and is deleted after the merge. A node goes in when its ready issues are done; what gets decided later goes in its next PR. Where the project's instructions name branches otherwise, theirs win.
+- **Three checks** before the PR is ready:
   1. the tests and CI the pliego names, passing;
   2. a review against each issue's `Qué buscamos` and acceptance criteria;
   3. a review against the plano and the project's standards.
