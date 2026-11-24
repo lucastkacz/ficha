@@ -46,7 +46,7 @@ Done when all three pass with no finding left, and each such procedure ran as wr
 
 ## 5. The PR
 
-One PR from the node's branch, or the draft its rounds ran on, marked ready, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, how each procedure of step 4 ran, or how the node got its step done instead, with the procedure's Task, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
+One PR from the node's branch, or the draft its rounds ran on, marked ready, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, for a probe what it found, how each procedure of step 4 ran, or how the node got its step done instead, with the procedure's Task, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
 
 - **It changes a path the pliego lists under what waits for the user's OK**: the project's label for it, and the user's merge command, last in the message.
 - **Otherwise**: it merges itself once CI passes, as the project's instructions turn that on.
