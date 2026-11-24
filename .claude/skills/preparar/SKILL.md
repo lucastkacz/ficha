@@ -14,13 +14,13 @@ Read what the project already says about itself: its README, `CLAUDE.md` and wha
 
 Then measure the machines the work could use, cloud first, trying rather than assuming:
 
-- **The session in the cloud**: whether the user starts sessions there, and, when this one runs there, its system, its tools and what its network lets in. Run the project's build and tests in it, and keep what fails and why. Then, from its own branch, never the default one, try a push of a harmless change to each path the guards list, such as CI's workflows, and keep each the repo's host refused, with the error it gave; take back, with a commit of its own, each that went through.
+- **The session in the cloud**: whether the user starts sessions there, and, when this one runs there, its system, its tools and what its network lets in. Run the project's build and tests in it, and keep what fails and why. Then, from its own branch, never the default one, try each path the guards list, such as CI's workflows, one at a time: a harmless change to it, in a commit of its own, pushed alone. Keep each the repo's host refused, with the error it gave, and drop its commit before the next; take back, with a commit of its own, each that went through.
 - **Rented machines**: where the repo lives and whether it's public, the runners its CI host offers by system, and what they cost on the plan of the account that owns the repo, from the host's current pricing page, linked; and how long the project's recent CI runs took.
 - **The user's computer**: whether a session can reach it, and what only it has: the user's hands, signed-in accounts, a device, a tool or a license.
 
 What trying can't tell, such as another machine the user has, is a question for the user in the artifact.
 
-Done when each section of the template has its facts, each with the file, page or run it comes from, or is named as unknown.
+Done when each section of the template has its facts, each with the file, page or run it comes from, or is named as unknown, and each push that went through is taken back.
 
 ## 2. Draft it
 
