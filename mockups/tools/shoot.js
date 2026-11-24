@@ -1,5 +1,12 @@
 // Renders a mock locally: CDN scripts come from the npm packages, kit files from disk.
 // node mockups/tools/shoot.js <mockDir> <kitDir> <outDir> [dev], from the repo's folder (mockups/README.md)
+// dev loads React's development builds, whose errors say more.
+// SIZES, a JSON array: [{ "name", "width", "height", "dark": true for dark mode, "full": true for the whole page }].
+// STEPS, a JSON array, each step one or more of, in this order:
+//   "click": a text to click, with "exact": true to match it whole; "css": a selector to click;
+//   "select": { "css", "value" }; "key": a key to press, such as "Escape";
+//   "hover": { "css", "nth", "x", "y" }; "wait": milliseconds; "shot": a name for a picture.
+// Each size gets <name>-0.png, then a picture for each step's "shot", and prints its console errors.
 const fs = require('fs');
 const path = require('path');
 
@@ -12,7 +19,7 @@ let chromium;
 try {
   ({ chromium } = require('playwright'));
 } catch (e) {
-  console.error("Couldn't load Playwright, which shoot.js renders with. Run it in a Claude cloud session, which has it (mockups/README.md, \"A debate's mock\").");
+  console.error("Couldn't load Playwright, which shoot.js renders with. Run it on the machine PLIEGO.md's Where it runs gives the web mocks' pictures.");
   process.exit(1);
 }
 // The npm packages of React, ReactDOM and htm: NPMTEST, or npmtest/ beside tools/.
@@ -70,7 +77,7 @@ async function setup(browser, opts) {
 (async () => {
   const steps = json('STEPS', '[]');
   const sizes = json('SIZES', '[{"name":"desk","width":1440,"height":860}]');
-  const browser = await chromium.launch().catch((e) => fail(`Chromium didn't launch: ${e.message.split('\n')[0]}. Run shoot.js where Playwright's Chromium is installed, as in a Claude session in the cloud`));
+  const browser = await chromium.launch().catch((e) => fail(`Chromium didn't launch: ${e.message.split('\n')[0]}. Run shoot.js on the machine PLIEGO.md's Where it runs gives the web mocks' pictures`));
   fs.mkdirSync(outDir, { recursive: true });
   for (const size of sizes) {
     const { ctx, page, errors } = await setup(browser, { viewport: { width: size.width, height: size.height }, colorScheme: size.dark ? 'dark' : 'light', deviceScaleFactor: 1 });

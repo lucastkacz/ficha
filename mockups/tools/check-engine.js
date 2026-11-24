@@ -18,7 +18,7 @@ const fresh = (id = 'c1') => ({ id, state: 'new', step: 0, mem: null, last: null
 const days = (p) => [1, 2, 3, 4].map((g) => Math.round(p[g].wait / DAY));
 const noSteps = { ...SCHEDULER, learningSteps: [] };
 
-// FSRSTests: a new card's next states at 90%.
+// FSRSTests.newCardsNextStates: a new card's next states at 90%.
 {
   const mems = [1, 2, 3, 4].map((g) => FSRS.nextMemory(null, g, 0));
   check('a new card\'s stabilities are 0.212, 1.2931, 2.3065, 8.2956',
@@ -26,7 +26,7 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   check('a new card\'s difficulties are 6.4133, 5.1121707, 2.118104, 1.0',
     mems.every((m, i) => near(m.D, [6.4133, 5.1121707, 2.118104, 1.0][i], 1e-5)), mems.map((m) => m.D));
 }
-// FSRSTests: retrievability is 90% once the stability's days have passed.
+// SchedulerIntervalsTests.retrievability: 90% once the stability's days have passed.
 {
   check('retrievability is 90% once the stability\'s days have passed', near(FSRS.retrievability(7, 7), 0.9, 1e-6), FSRS.retrievability(7, 7));
 }
@@ -73,20 +73,24 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   const d = days(preview(card, start, s10));
   check('the longest interval caps hard, good and easy', d[1] <= 10 && d[2] === 10 && d[3] === 10, d);
 }
-// SchedulerStepsTests: Ficha's standard steps, 1 h and 4 h, relearning 1 h.
+// SchedulerStepsTests: Ficha's standard steps.
 {
+  // againAndHardOnANewWay, goodAndEasyOnANewWay
   const p = preview(fresh(), start);
   const waits = [1, 2, 3].map((g) => p[g].wait / HOUR);
   check('a new card: again waits 1 h, hard 2.5 h, good 4 h (the second step)', waits.join() === '1,2.5,4', waits);
   check('a new card: easy graduates it', p[4].card.state === 'review', p[4].card.state);
+  // eachRatingOnTheLastLearningStep
   const onLast = rate(fresh(), 3, start);
   const q = preview(onLast, start + 4 * HOUR);
   check('on the last step, again goes back to the first, hard repeats it, good and easy graduate',
     q[1].wait === HOUR && q[2].wait === 4 * HOUR && q[3].card.state === 'review' && q[4].card.state === 'review',
     [q[1].wait / HOUR, q[2].wait / HOUR, q[3].card.state, q[4].card.state]);
+  // eachRatingOfAGraduatedWay
   const graduated = { ...fresh(), state: 'review', mem: { S: 10, D: 5 }, last: start - 10 * DAY, reps: 4 };
   const r = preview(graduated, start);
   check('again on a graduated card is a lapse, to the relearning step of 1 h', r[1].card.state === 'relearning' && r[1].wait === HOUR, [r[1].card.state, r[1].wait / HOUR]);
+  // eachRatingOnTheOneRelearningStep
   const relearning = r[1].card;
   const s = preview(relearning, start + HOUR);
   check('on the one relearning step, hard waits 1.5 times as long, good and easy graduate',
