@@ -82,7 +82,7 @@ The plano, in `PLIEGO.md`: Ficha's parts, who uses whom, what each folder holds,
 
 ### Issue tracker
 
-Issues live in GitHub Issues (`lucastkacz/ficha`), with the method's types and area labels, through the `gh` CLI on Lucas's Mac, and from a cloud session through its own GitHub tools. Before reading or creating an issue, or leaving work to another issue, read `docs/agents/issue-tracker.md`, which gives each operation in both forms.
+Issues live in GitHub Issues (`lucastkacz/ficha`), with the method's types and area labels. Before reading or creating an issue, or leaving work to another issue, read `docs/agents/issue-tracker.md`, which gives each operation's form through the `gh` CLI on Lucas's Mac and from a cloud session.
 
 ### Domain docs
 
