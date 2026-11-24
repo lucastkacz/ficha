@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # Decision
 
-The user typed `/decision` after a debate, or for an idea small enough to need none, or after approving. Build the decision for the user to approve; once approved, write it down and split it into issues `/construir` can build. Read [`../../method/method.md`](../../method/method.md) and [`../../method/artifacts.md`](../../method/artifacts.md) first, then the pliego. With no pliego, tell the user `/preparar` comes first, and stop.
+The user typed `/decision` after a debate, or for an idea small enough to need none, or after approving, or once a probe a piece waited on merged. Build the decision for the user to approve; once approved, write it down and split it into issues `/construir` can build. Read [`../../method/method.md`](../../method/method.md) and [`../../method/artifacts.md`](../../method/artifacts.md) first, then the pliego. With no pliego, tell the user `/preparar` comes first, and stop.
 
-When the decision's artifact already exists and the user says they approved, start at **3**. When a probe a piece waited on has merged, start at **3.4**, for that piece alone, with what its PR found.
+When the decision's artifact already exists and the user says they approved, start at **3**. When a probe a piece waited on has merged, start at **3**'s step 2, for that piece alone, with what its PR found.
 
 ## 1. The pieces
 

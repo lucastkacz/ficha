@@ -25,7 +25,7 @@ Six commands take an idea or a bug from Lucas's words to the code and back to wh
 | Ficha's pliego no longer matches the project | `/preparar` |
 | Lucas brings an idea or a bug, or issues wait without a type, such as those from his phone | `/idea` |
 | An Idea issue is to be shaped, or Lucas answered a debate's round | `/debate` |
-| A debate is settled, an idea is small enough to need none, or Lucas approved a decision | `/decision` |
+| A debate is settled, an idea is small enough to need none, Lucas approved a decision, or a probe a decision waited on merged | `/decision` |
 | A node has ready issues, of type Feature, Bug or Task, or a bug blocks everything | `/construir`, with the node or the bug |
 | A node's PR merged | `/entregar` |
 | Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them; or Lucas wants an image or a sound on a card, his decks, tags or card types tidied, or his tags turned into decks | `/refine`, ours and outside the method: it proposes the cards, each in its deck, the changes to decks, tags and types, or the tags that become decks, and Lucas approves them |
