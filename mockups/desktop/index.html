@@ -248,17 +248,18 @@
   // HowFast: the pace, and when a deck would be all met (ADR 0034).
   // ---------------------------------------------------------------------
   function HowFast({ app, state, deckId, pace, setPace, first, setFirst }) {
-    const ahead = app.queueDecks().filter((d) => d.id !== deckId && app.newLeft(d.id) > 0);
+    // With no deck, from scratch or a new deck, there's nothing to meet yet: the paces alone.
+    const ahead = deckId ? app.queueDecks().filter((d) => d.id !== deckId && app.newLeft(d.id) > 0) : [];
     const others = state.decks.some((d) => d.added && d.id !== deckId);
     return html`<section className="howfast" aria-label="How fast?">
       <h3>How fast?</h3>
       <div className="paces" role="radiogroup" aria-label="Pace">
         ${E.PACES.map((p) => {
-          const f = app.forecast({ pace: p.id, add: deckId, first })[deckId];
+          const f = deckId && app.finishDates({ pace: p.id, add: deckId, first })[deckId];
           return html`<button type="button" key=${p.id} role="radio" aria-checked=${pace === p.id} className="pace-row"
             onClick=${() => setPace(p.id)}>
             <span className="radio" /><b>${p.name}</b><span className="what">${p.perDay} new a day</span>
-            <span className="when">${f ? metBy(f, state.now) : 'all met'}</span>
+            <span className="when">${f ? metBy(f, state.now) : ''}</span>
           </button>`;
         })}
       </div>
@@ -285,8 +286,8 @@
     const anki = state.decks.find((d) => !d.ficha);
     const chosen = choice && choice !== 'scratch' ? app.deck(choice) : null;
     const finish = (login) => {
+      if (choice) app.setPace(pace);
       if (chosen) {
-        app.setPace(pace);
         app.addDeck(chosen.id);
         // The first card comes a minute after the Welcome page (#467).
         app.state.notBefore = app.state.now + E.MINUTE;
@@ -295,9 +296,9 @@
       app.emit();
       onDone();
     };
-    const steps = chosen || !choice ? ['start', 'pace', 'login'] : ['start', 'login'];
+    const steps = ['start', 'pace', 'login'];
     const next = () => {
-      if (step === 'start' && choice) setStep(choice === 'scratch' ? 'login' : 'pace');
+      if (step === 'start' && choice) setStep('pace');
       else if (step === 'pace') setStep('login');
       else if (step === 'login') finish(true);
     };
@@ -334,11 +335,15 @@
               Start from scratch</button>
           </div>
           <div className="actions"><${Button} prominent title="Next" k="↩" disabled=${!choice} onClick=${next} /></div>`}
-        ${step === 'pace' && chosen && html`
-          <div className="deck-head"><span className="deck-emoji">${chosen.emoji}</span>
-            <div><h2>${chosen.name}</h2>
-              <p className="sub">${cardsIn(app, chosen.id)} cards · ${chosen.ficha ? "one of Ficha's decks" : `from ${chosen.file}`}</p></div></div>
-          <${HowFast} app=${app} state=${state} deckId=${chosen.id} pace=${pace} setPace=${setPace} />
+        ${step === 'pace' && html`
+          ${chosen
+            ? html`<div className="deck-head"><span className="deck-emoji">${chosen.emoji}</span>
+              <div><h2>${chosen.name}</h2>
+                <p className="sub">${cardsIn(app, chosen.id)} cards · ${chosen.ficha ? "one of Ficha's decks" : `from ${chosen.file}`}</p></div></div>`
+            : html`<div className="deck-head"><span className="deck-emoji">🗂️</span>
+              <div><h2>From scratch</h2>
+                <p className="sub">No cards yet. Make a deck, or capture a card from the menu bar.</p></div></div>`}
+          <${HowFast} app=${app} state=${state} deckId=${chosen ? chosen.id : null} pace=${pace} setPace=${setPace} />
           <p className="hint">You can change it later in Settings, under Pace.</p>
           <div className="actions"><${Button} title="Back" onClick=${() => setStep('start')} />
             <${Button} prominent title="Next" k="↩" onClick=${next} /></div>`}
@@ -363,15 +368,17 @@
     const total = cardsIn(app, d.id);
     const met = total - app.newLeft(d.id);
     if (!d.added) return { line: `${total} cards`, share: 0 };
+    if (!total) return { line: 'No cards yet', share: 0, empty: true };
     if (d.setAside) return { line: `Set aside · ${met} of ${total} met`, share: met / total };
     if (!app.newLeft(d.id)) {
-      const days = d.metAllAt && d.addedAt ? Math.max(1, Math.round((d.metAllAt - d.addedAt) / E.DAY)) : null;
+      // Calendar days, counting the day it came in and the day its last card was met.
+      const days = d.metAllAt && d.addedAt ? Math.round((E.startOfDay(d.metAllAt) - E.startOfDay(d.addedAt)) / E.DAY) + 1 : null;
       return { line: `Met them all${days ? ` · ${total} cards in ${days} day${days > 1 ? 's' : ''}` : ''}`, share: 1, done: true };
     }
-    const f = app.forecast()[d.id];
+    const f = app.finishDates()[d.id];
     const when = f ? formatFinish(f.soonestAt, f.latestAt, state.now) : '';
     if (app.currentDeck() && app.currentDeck().id === d.id) return { line: `${met} of ${total} · on track for ${when}`, share: met / total };
-    return { line: `${f && f.place === 1 ? 'Next' : 'In the queue'} · on track for ${when}`, share: met / total };
+    return { line: `Next · on track for ${when}`, share: met / total };
   }
   function nextReview(c, now) {
     if (c.state === 'new') return 'New';
@@ -388,6 +395,7 @@
     const [pace, setPace] = useState(state.pace);
     const [first, setFirst] = useState(false);
     const openSheet = (id) => (setSheet(id), setPace(app.state.pace), setFirst(false));
+    const NEW = 'new-deck';
     useEffect(() => {
       if (!request) return;
       setSelected(request.deckId);
@@ -395,8 +403,9 @@
     }, [request && request.n]);
     const start = () => {
       app.setPace(pace);
-      app.addDeck(sheet, { first });
-      setSelected(sheet);
+      const id = sheet === NEW ? app.newDeck() : sheet;
+      app.addDeck(id, { first });
+      setSelected(id);
       setSheet(null);
     };
     useEffect(() => {
@@ -410,11 +419,12 @@
       return () => window.removeEventListener('keydown', onKey);
     });
 
-    const deck = app.deck(selected);
-    const status = deckStatus(app, state, deck);
+    const making = selected === NEW;
+    const deck = making ? { id: NEW, name: 'New Deck', emoji: '🗂️', blurb: 'An empty deck of your own. Add cards with Capture, from the menu bar, or here.' } : app.deck(selected);
+    const status = making ? { line: '' } : deckStatus(app, state, deck);
     const current = app.currentDeck();
-    const cards = app.deckCards(deck.id);
-    const sheetDeck = sheet && app.deck(sheet);
+    const cards = making ? [] : app.deckCards(deck.id);
+    const sheetDeck = sheet && (sheet === NEW ? deck : app.deck(sheet));
     const row = (d) => {
       const st = deckStatus(app, state, d);
       return html`<button type="button" key=${d.id} className=${d.setAside ? 'side-row aside' : 'side-row'}
@@ -426,38 +436,40 @@
         <nav className="sidebar" aria-label="Decks">
           ${yours.length ? html`<div className="side-title">Your decks</div>${yours.map(row)}` : null}
           ${toAdd.length ? html`<div className="side-title">Ficha's decks</div>${toAdd.map(row)}` : null}
-          ${anki && html`<div className="side-title">From a file</div>
-            <button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
+          <div className="side-title">Your own</div>
+          <button type="button" className="side-row" aria-selected=${making} onClick=${() => setSelected(NEW)}>
+            <span>🗂️</span><span className="name">New Deck…</span><small>Empty, for your own cards</small></button>
+          ${anki && html`<button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
               <span>📥</span><span className="name">Import an Anki file…</span><small>Mock: ${anki.file}</small></button>`}
         </nav>
         <div className="detail">
           <div className="deck-head"><span className="deck-emoji">${deck.emoji}</span>
             <div><h2>${deck.name}</h2>
-              <p className="sub">${deck.added ? status.line : `${cards.length} cards · ${deck.ficha ? "one of Ficha's decks" : `from ${deck.file}`}`}</p></div></div>
+              <p className="sub">${deck.added ? status.line : making ? 'No cards yet' : `${cards.length} cards · ${deck.ficha ? "one of Ficha's decks" : `from ${deck.file}`}`}</p></div></div>
           ${deck.added
-            ? html`<div className=${status.done ? 'bar done' : 'bar'}><i style=${{ width: `${Math.round(status.share * 100)}%` }} /></div>
+            ? html`${!status.empty && html`<div className=${status.done ? 'bar done' : 'bar'}><i style=${{ width: `${Math.round(status.share * 100)}%` }} /></div>`}
               <div className="row-actions">
-                ${!deck.setAside && !status.done && !(current && current.id === deck.id) &&
+                ${!deck.setAside && !status.done && !status.empty && !(current && current.id === deck.id) &&
                 html`<${Button} title="Put it first" onClick=${() => app.putFirst(deck.id)} />`}
-                ${!status.done && html`<${Button} title=${deck.setAside ? 'Back in the queue' : 'Set aside'}
+                ${!status.done && !status.empty && html`<${Button} title=${deck.setAside ? 'Back in the queue' : 'Set aside'}
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
               </div>
-              <table><thead><tr><th>Front</th><th>Back</th><th>Next review</th></tr></thead>
+              ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`<table><thead><tr><th>Front</th><th>Back</th><th>Next review</th></tr></thead>
                 <tbody>${cards.map((c) => html`<tr key=${c.id}><td>${c.front}</td><td className="back">${c.back}</td>
-                  <td className="when">${nextReview(c, state.now)}</td></tr>`)}</tbody></table>`
+                  <td className="when">${nextReview(c, state.now)}</td></tr>`)}</tbody></table>`}`
             : html`<p className="sub">${deck.blurb}</p>
               <div className="peek">${cards.slice(0, 5).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
                 ${cards.length > 5 && html`<${Capsule}>+${cards.length - 5} more</${Capsule}>`}</div>
-              <div className="row-actions"><${Button} prominent title=${deck.ficha ? 'Add Deck…' : 'Import…'}
+              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : deck.ficha ? 'Add Deck…' : 'Import…'}
                 onClick=${() => openSheet(deck.id)} /></div>`}
         </div>
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
           <div className="deck-head"><span className="deck-emoji">${sheetDeck.emoji}</span>
             <div><h2>${sheetDeck.name}</h2>
-              <p className="sub">${cardsIn(app, sheetDeck.id)} cards · ${sheetDeck.ficha ? "one of Ficha's decks" : `imported from ${sheetDeck.file}`}</p></div></div>
-          <${HowFast} app=${app} state=${state} deckId=${sheetDeck.id} pace=${pace} setPace=${setPace} first=${first} setFirst=${setFirst} />
+              <p className="sub">${sheet === NEW ? 'No cards yet' : `${cardsIn(app, sheetDeck.id)} cards · ${sheetDeck.ficha ? "one of Ficha's decks" : `imported from ${sheetDeck.file}`}`}</p></div></div>
+          <${HowFast} app=${app} state=${state} deckId=${sheet === NEW ? null : sheetDeck.id} pace=${pace} setPace=${setPace} first=${first} setFirst=${setFirst} />
           <div className="actions"><${Button} title="Cancel" k="esc" onClick=${() => setSheet(null)} />
-            <${Button} prominent title="Start" k="↩" onClick=${start} /></div>
+            <${Button} prominent title=${sheet === NEW ? 'Create' : 'Start'} k="↩" onClick=${start} /></div>
         </div></div>`}
       </div>
     </${Window}>`;
@@ -525,12 +537,12 @@
 
   function PaceTab({ app, state }) {
     const queue = app.queueDecks().filter((d) => app.newLeft(d.id) > 0);
-    const forecast = app.forecast();
-    const last = queue.length ? forecast[queue[queue.length - 1].id] : null;
+    const dates = app.finishDates();
+    const last = queue.length ? dates[queue[queue.length - 1].id] : null;
     return html`
       <${Group} title=${html`How fast?<${Origin} from="Appearances" label="Replaces New cards per day, in Appearances" />`} footer=${last ? `At this pace, you'll have met every deck in your queue by ${formatFinish(last.soonestAt, last.latestAt, state.now)}.` : 'No deck waits for new cards.'}>
         ${E.PACES.map((p) => {
-          const all = queue.length ? app.forecast({ pace: p.id })[queue[queue.length - 1].id] : null;
+          const all = queue.length ? app.finishDates({ pace: p.id })[queue[queue.length - 1].id] : null;
           return html`<${Row} key=${p.id} label=${p.name} sub=${`${p.perDay} new card${p.perDay > 1 ? 's' : ''} a day${all ? ` · queue met by ${formatFinish(all.soonestAt, all.latestAt, state.now)}` : ''}`}>
             <${Radio} on=${state.pace === p.id} label=${p.name} onClick=${() => app.setPace(p.id)} /></${Row}>`;
         })}
@@ -539,8 +551,8 @@
         ${queue.length
           ? queue.map((d, i) => html`<div className="queue-row" key=${d.id}>
               <span className="emoji">${d.emoji}</span>
-              <span>${d.name}<small>${i === 0 ? 'Now' : i === 1 ? 'Next' : 'Then'} · ${app.newLeft(d.id)} cards to meet · ${formatFinish(forecast[d.id].soonestAt, forecast[d.id].latestAt, state.now)}</small></span>
-              ${i > 0 ? html`<${Button} title="Put first" onClick=${() => app.putFirst(d.id)} />` : html`<span />`}
+              <span>${d.name}<small>${i === 0 ? 'Now' : 'Next'} · ${app.newLeft(d.id)} cards to meet · ${formatFinish(dates[d.id].soonestAt, dates[d.id].latestAt, state.now)}</small></span>
+              ${i > 0 ? html`<${Button} title="Put it first" onClick=${() => app.putFirst(d.id)} />` : html`<span />`}
             </div>`)
           : html`<div className="queue-row"><span /><span className="sub">No deck waits. Add one from the Cards window.</span><span /></div>`}
       </${Group}>`;
@@ -627,8 +639,8 @@
       <${Group} title="Backups">
         <${Row} label="Back up" from="Backups"><${Popup} label="Back up" value=${prefs.backup} onChange=${(backup) => setPrefs({ ...prefs, backup })}
           options=${[{ value: 'hour', label: 'Every hour' }, { value: 'day', label: 'Every day' }, { value: 'week', label: 'Every week' }]} /></${Row}>
-        <${Row} label="Keep" from="Backups"><${Popup} label="Keep" value=${prefs.keep} onChange=${(keep) => setPrefs({ ...prefs, keep })}
-          options=${[5, 10, 20, 50].map((v) => ({ value: v, label: `${v} copies` }))} /></${Row}>
+        <${Row} label="Backups to keep" from="Backups"><${Popup} label="Backups to keep" value=${prefs.keep} onChange=${(keep) => setPrefs({ ...prefs, keep })}
+          options=${Array.from({ length: 30 }, (_, i) => ({ value: i + 1, label: String(i + 1) }))} /></${Row}>
         <${Row} label="Last backup" sub="Today, 8:00" from="Backups"><${Button} title="Back Up Now" /></${Row}>
         <${Row} label="Folder" sub="Ficha › Backups" from="Backups"><${Button} title="Show in Finder" /></${Row}>
         <table className="copies"><tbody>
@@ -780,7 +792,7 @@
     <p>Whether the panel takes the keyboard from the app you're typing in, Spaces, how macOS really detects meetings,
       videos and full screen, and exact pixels. Those still need the Mac.</p>`;
 
-  const PREFS = { login: true, showsDueCount: false, focus: 'idle', idle: 5, sync: true, syncWhat: 'all', offerFlag: true, flagAfter: 8, backup: 'day', keep: 10 };
+  const PREFS = { login: true, showsDueCount: false, focus: 'idle', idle: 5, sync: true, syncWhat: 'all', offerFlag: true, flagAfter: 8, backup: 'day', keep: 7 };
 
   function Mock() {
     const [scenario, setScenario] = useState('welcome');
@@ -798,7 +810,7 @@
     const restart = (which) => (setScenario(which), setApp(makeApp(which)), setPrefs(PREFS), setGeneration(generation + 1));
     const variants = html`<${HudGroup} label="Start">
         <${HudChoice} label="Start" value=${scenario} onChange=${restart}
-          options=${[{ value: 'welcome', label: 'First launch' }, { value: 'week', label: 'A week in' }]} />
+          options=${[{ value: 'welcome', label: 'First launch' }, { value: 'week', label: 'Twelve days in' }]} />
       </${HudGroup}>
       <${HudGroup} label="Panel">
         <${HudChoice} label="Panel" value=${face} onChange=${setFace}

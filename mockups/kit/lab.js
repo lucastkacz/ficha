@@ -29,8 +29,8 @@
     newPerAppearance: 1,
     // New cards a day, for all decks together: Steady.
     newPerDay: 2,
-    // New cards from one deck at a time, the queue's first; false takes
-    // them from every deck in turn, as the app does before #490.
+    // New cards from one deck at a time, the queue's first; false splits
+    // them between every deck in turn, ADR 0034's "one pace split between them".
     queue: true,
     retention: 0.85,
     // The decks in use, in the queue's order: a sample deck's id, or a
@@ -161,7 +161,7 @@
         wasMeeting = meeting;
         s.now = t;
         s.suppression = meeting ? 'meeting' : null;
-        if (s.introduced.day !== E.startOfDay(t, settings)) s.introduced = { day: E.startOfDay(t, settings), count: 0, byDeck: {} };
+        if (s.introduced.day !== E.startOfDay(t, settings)) s.introduced = { day: E.startOfDay(t, settings), count: 0 };
         const next = on ? app.nextAppearance() : null;
         const boundary = bounds.find((b) => b > t) ?? dayEnd;
         if (next && next.at <= t) {
@@ -184,7 +184,6 @@
               if (card.state === 'new') {
                 stats.newMet++;
                 s.introduced.count++;
-                s.introduced.byDeck[card.deckId] = (s.introduced.byDeck[card.deckId] || 0) + 1;
               }
               if (card.state === 'review') {
                 stats.graduatedReviews++;

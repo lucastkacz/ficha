@@ -27,7 +27,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `kit/tokens.css` | Colors, type and shapes, named as macOS names them, in light and dark. |
 | `kit/ui.css` | The look of macOS 26 controls, Liquid Glass, the review panel, and the mock's own bar. |
 | `kit/ui.js` | React components named after their SwiftUI counterparts, the fake Mac, and `MockControls`. |
-| `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace estimate. Plain JavaScript, so it also runs in Node. |
+| `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace, the queue and the finish date. Plain JavaScript, so it also runs in Node. |
 | `kit/decks.js` | Sample decks, made up. |
 | `kit/lab.js` | The Lab's simulator: weeks of the toy engine in a made-up life (the Mac's hours, meetings, snoozed appearances, ratings as FSRS predicts), run several times and averaged. Plain JavaScript; the Lab page and `tools/simulate.js` share it. |
 
@@ -55,7 +55,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 
 - FSRS-6 with fsrs-rs's default parameters and desired retention (`FichaFSRS`), and the learning and relearning steps of `Scheduler.standard` (`Scheduler.swift`, `StepRules.swift`); Anki's order for a review's ratings (Hard ≤ Good < Easy).
 - `ReviewSettings.defaults`: the active hours, the separation, the cards an appearance, the look-ahead, the auto-close, and the wait after a meeting ends or the Mac wakes.
-- FichaCore's `AppearancePlanner.swift` and `ReviewNow.swift`: Ficha appears when a card is due now, and the look-ahead only brings along the cards due within it; each appearance brings one new card at most; a deck's new cards a day count by the calendar day.
+- FichaCore's `AppearancePlanner.swift` and `ReviewNow.swift`: Ficha appears when a card is due now, and the look-ahead only brings along the cards due within it; each appearance brings one new card at most; new cards a day count by the calendar day, as `ReviewNow`'s `metToday` does.
 - `tools/check-engine.js` runs cases copied from FichaFSRS's and FichaCore's tests (`FSRSTests`, `SchedulerIntervalsTests`, `SchedulerStepsTests`, in `Packages/FichaKit/Tests`) against the toy engine. Run it, from the repo's folder, after any change to `kit/engine.js`, and after a change to those tests or to the scheduling they test: `node mockups/tools/check-engine.js`.
 - The review panel's keys, as `App/ReviewPanelView.swift` handles them, and how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
@@ -65,9 +65,9 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 
 What ADRs 0033 and 0034 decided and their issues build, so a mock shows Ficha as it will be. `tools/check-engine.js` can't check these until FichaCore has them and its tests do; once it does, the cases move there.
 
-- The pace, one for all decks: `PACES` in `kit/engine.js`, Chill, Steady and Faster at 1, 2 and 4 new cards a day, Steady to start (#490).
-- The queue: new cards come from the first deck with cards not met, then from the next; a deck goes last, or first when asked; a deck set aside leaves it (`ToyFicha`'s `pickCards`, `addDeck`, `putFirst`, `setAside`). `newCardsFrom: 'together'` takes them from every deck in turn instead, as the app does now, for the Lab's "Ficha before".
-- The finish date, as a range: `finishDays` gives each deck's days, the soonest if every day has appearances and the latest if five days a week do, and `formatFinish` in `kit/ui.js` says it as "mid-December" (#490, #491).
+- The pace, one for all decks: `PACES` in `kit/engine.js`, Chill, Steady and Faster at 1, 2 and 4 new cards a day, Steady to start, in one count for all decks (#490).
+- The queue: new cards come from the first deck with cards not met, then from the next; a deck goes last, or first when asked; a deck set aside leaves it (`ToyFicha`'s `pickCards`, `addDeck`, `putFirst`, `setAside`). `newCardsFrom: 'together'` splits them between every deck in turn instead, ADR 0034's "one pace split between them", which the Lab's "Ficha before" uses too; the app itself takes new cards in the order they came in (`ReviewNow`).
+- The finish date, as a range: `finishDays` gives each deck's days, the soonest if every day has appearances and the latest if five days a week do, `ToyFicha`'s `finishDates` places them on the calendar, and `formatFinish` in `kit/ui.js` says it as "Wednesday or Thursday" or "mid-December" (#490, #491).
 - 85% desired retention on a new install: `NEW_INSTALL_RETENTION`; `SCHEDULER` keeps FichaCore's 90%, which `tools/check-engine.js`'s cases use.
 - The review panel's two buttons: `FACES` in `kit/ui.js`. Keys 1 to 4 record Anki's four ratings in either face (#489).
 
@@ -77,7 +77,7 @@ What ADRs 0033 and 0034 decided and their issues build, so a mock shows Ficha as
 - **Full screen** gives the mock the whole display and hides the bar (the Mock tab brings it back). On Lucas's own Mac, full screen with "Fit the window" is the closest to the real thing.
 - Windows resize from their lower right corner; the green button takes Writer to full screen, which holds Ficha back as a full-screen app does.
 
-What it makes up: the learner who rates the cards in a fast-forward and in the pace estimate (they remember as FSRS predicts), and the seconds a card takes.
+What it makes up: the learner who rates the cards in a fast-forward and in the Lab (they remember as FSRS predicts), and the seconds a card takes.
 
 ## Deciding with numbers
 
@@ -89,7 +89,7 @@ The mocks show how Ficha feels in a minute; the Lab and the terminal tool show w
 
 A number from the Lab is a lead, not a fact: like a rule from a mock, it goes into the decision's issue and is checked by FichaCore's tests. The made-up life is in "How the Lab works" on the page and in `DEFAULTS` in `kit/lab.js`.
 
-How fast?'s range holds in the Lab's made-up life: Ficha's four decks, 56 cards, are all met on day 33 at Steady, against a promise of day 28 to 39, and on day 16 at Faster, against 14 to 20. The Lab's "All cards met" shows both for any setting.
+How fast?'s range holds in the Lab's made-up life: Ficha's four decks, 56 cards, are all met on day 33 at Steady, against a promise of day 28 to 39, and on day 16 at Faster, against 14 to 20. The Lab's "All cards met" shows both for any setting but "Ficha before", which promised no date.
 
 ## A debate's mock
 

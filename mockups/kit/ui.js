@@ -61,24 +61,26 @@
   }
   /**
    * A finish date as a range (ADR 0034), between the day it comes if every
-   * day has appearances and the day if five days a week do: "today",
-   * "tomorrow", "Thursday" within the week, then "mid-December", "early to
-   * mid-December" or "late November to early December".
+   * day has appearances and the day if five days a week do. Within the week
+   * it names both ends, "Wednesday or Thursday", "Wednesday to Saturday", or
+   * one day when they meet; then "mid-December", "early to mid-December" or
+   * "late November to early December".
    */
   function formatFinish(soonest, latest, now) {
-    const days = Math.round((E.startOfDay(latest) - E.startOfDay(now)) / E.DAY);
-    if (days <= 0) return 'today';
-    if (days === 1) return 'tomorrow';
-    if (days < 7) return weekdayFmt.format(latest);
+    const daysTo = (t) => Math.round((E.startOfDay(t) - E.startOfDay(now)) / E.DAY);
+    const day = (t) => (daysTo(t) <= 0 ? 'today' : daysTo(t) === 1 ? 'tomorrow' : weekdayFmt.format(t));
+    const from = daysTo(soonest);
+    const to = daysTo(latest);
+    if (to < 7) return to <= from ? day(latest) : `${day(soonest)} ${to - from === 1 ? 'or' : 'to'} ${day(latest)}`;
     const a = third(soonest);
     const b = third(latest);
     if (a.month === b.month) return a.part === b.part ? a.say(a.month) : `${a.part} to ${b.say(b.month)}`;
     return `${a.say(a.month)} to ${b.say(b.month)}`;
   }
-  /** "all met by mid-December", "all met today". */
+  /** "all met by mid-December", "all met today", "all met today or tomorrow". */
   const metBy = (f, now) => {
     const when = formatFinish(f.soonestAt, f.latestAt, now);
-    return when === 'today' ? 'all met today' : `all met by ${when}`;
+    return /^today\b/.test(when) ? `all met ${when}` : `all met by ${when}`;
   };
 
   // ---------------------------------------------------------------------
@@ -473,16 +475,16 @@
     </div>`;
   }
 
-  /** The ⋯ menu in the panel's corner: what had icons, with their keys. */
+  /** The ⋯ menu in the panel's corner: what had icons, with their keys. Once the cards are done, only Undo and Close. */
   function MoreMenu({ app, panel, onAsk, onFlag, onClose }) {
     const item = (title, k, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
       onClick=${() => (onClose(), fn())}><span className="title">${title}</span><span className="shortcut">${k}</span></button>`;
     return html`<div className="more-cover" onPointerDown=${onClose} />
       <div className="menu more-menu glass" role="menu">
-        ${item('Ask…', 'A', onAsk)}
-        ${item('Flag…', 'M', onFlag)}
-        ${item('Bury', 'E', () => app.bury())}
-        <div className="sep" />
+        ${!panel.done && html`${item('Ask…', 'A', onAsk)}
+          ${item('Flag…', 'M', onFlag)}
+          ${item('Bury', 'E', () => app.bury())}
+          <div className="sep" />`}
         ${item('Undo', '⌘Z', () => app.undo(), !panel.undo.length)}
         ${item('Close', 'esc', () => app.close())}
       </div>`;
@@ -562,7 +564,7 @@
       maxHeight,
       '--card-scale': state.cardSize / 100,
     };
-    const cls = `panel glass${leaving ? ' leaving' : ''}${face === 'new' ? ' alone' : ''}`;
+    const cls = `panel glass${leaving ? ' leaving' : ''}`;
     const toast = state.toast && html`<div className="toast glass">${state.toast.text}</div>`;
     const close = html`<${IconButton} icon=${Icon.close} label="Close (esc)" onClick=${() => app.close()} />`;
     const undo = html`<${IconButton} icon=${Icon.undo} label="Undo (⌘Z)" disabled=${!panel.undo.length}
@@ -878,7 +880,6 @@
     MockControls,
     HudGroup,
     HudChoice,
-    HudSelect,
     FACES,
     formatFinish,
     metBy,

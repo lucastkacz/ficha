@@ -211,7 +211,9 @@
     // At most this many new cards an appearance brings (ReviewNow.bringsNewCard: one).
     newPerAppearance: 1,
     // Where new cards come from: 'queue', one deck at a time (ADR 0034), or
-    // 'together', every deck in turn, as the app does before #490.
+    // 'together', every deck in turn: the day's new cards split between the
+    // decks, ADR 0034's "one pace split between them". The app itself takes
+    // new cards in the order they came in (ReviewNow).
     newCardsFrom: 'queue',
     // New cards a day count by the calendar day, as ReviewNow's metToday does.
     dayStartsAtHour: 0,
@@ -274,8 +276,8 @@
   }
   const inActiveHours = (t, s = SETTINGS) => intoActiveHours(t, s) === t;
 
-  // A small seeded random, so a fast-forward and a pace estimate come out
-  // the same every time.
+  // A small seeded random, so a fast-forward and a Lab run come out the
+  // same every time.
   function seeded(seed) {
     let a = seed >>> 0;
     return () => {
@@ -353,7 +355,7 @@
         cards,
         panel: null,
         lastClosedAt: null,
-        introduced: { day: dayKey(now, settings), count: 0, byDeck: {} },
+        introduced: { day: dayKey(now, settings), count: 0 },
         buried: {},
         inbox: 0,
         log: [],
@@ -387,7 +389,8 @@
       return this.state.cards.find((c) => c.id === id);
     }
     activeCards() {
-      const added = new Set(this.state.decks.filter((d) => d.added).map((d) => d.id));
+      // A deck set aside takes all its cards out of the reviews (GLOSSARY.md).
+      const added = new Set(this.state.decks.filter((d) => d.added && !d.setAside).map((d) => d.id));
       const buriedUntil = this.state.buried;
       return this.state.cards.filter((c) => added.has(c.deckId) && !(buriedUntil[c.id] > this.state.now));
     }
@@ -495,7 +498,7 @@
       const s = this.state;
       s.now = t;
       const today = dayKey(t, this.settings);
-      if (today !== s.introduced.day) s.introduced = { day: today, count: 0, byDeck: {} };
+      if (today !== s.introduced.day) s.introduced = { day: today, count: 0 };
       if (s.panel) {
         if (t - s.panel.touchedAt > this.settings.autoClose) this.close('auto');
         return;
@@ -598,6 +601,13 @@
       this.changed();
       this.emit();
     }
+    /** A deck of the user's own, with no cards yet, as New Deck… makes it; returns its id. */
+    newDeck(name = 'New Deck') {
+      const s = this.state;
+      const id = `own-${s.decks.length}`;
+      s.decks.push({ id, name, emoji: '🗂️', ficha: false, added: false, addedAt: null, metAllAt: null, setAside: false });
+      return id;
+    }
     putFirst(id) {
       const s = this.state;
       s.queue = [id, ...s.queue.filter((x) => x !== id)];
@@ -626,7 +636,7 @@
      * How fast?; `pace` tries another pace. Days without appearances move
      * the dates later, since they count from today's cards not met.
      */
-    forecast({ pace = this.state.pace, add = null, first = false } = {}) {
+    finishDates({ pace = this.state.pace, add = null, first = false } = {}) {
       let ids = this.queueDecks().map((d) => d.id);
       if (add) {
         ids = ids.filter((x) => x !== add);
@@ -711,7 +721,6 @@
       if (wasNew) {
         const intro = this.state.introduced;
         intro.count++;
-        intro.byDeck[card.deckId] = (intro.byDeck[card.deckId] || 0) + 1;
       }
       Object.assign(card, rate(card, g, now, this.scheduler));
       const deck = this.deck(card.deckId);
@@ -733,7 +742,6 @@
       const card = this.card(last.card.id);
       if (card.state !== 'new' && last.card.state === 'new') {
         this.state.introduced.count--;
-        this.state.introduced.byDeck[card.deckId]--;
         this.deck(card.deckId).metAllAt = null;
         p.metAll = p.metAll.filter((id) => id !== card.deckId);
       }
@@ -830,7 +838,6 @@
     SETTINGS,
     SUPPRESSIONS,
     PACES,
-    paceOf,
     finishDays,
     rate,
     preview,
