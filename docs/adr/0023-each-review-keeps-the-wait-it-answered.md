@@ -1,6 +1,6 @@
 # Each review keeps the wait it answered, so step statistics count only a step's current wait
 
-> Replaced by [ADR 0025](0025-fsrs-spaces-cards-as-in-anki.md), but for its rule that Ficha shows no other statistics, which [ADR 0034](0034-one-pace-with-its-finish-date-new-cards-from-one-deck-at-a-time.md) replaces with the pace's finish date (2026-11-24).
+> Replaced by [ADR 0025](0025-fsrs-spaces-cards-as-in-anki.md), but for its rule that Ficha shows no other statistics, which [ADR 0034](0034-one-pace-with-its-finish-date-new-cards-from-one-deck-at-a-time.md) replaced with the pace's finish date on 2026-11-24.
 
 The ladder is fixed so the user always knows why a card shows up (ADR 0002), and they change its waits by hand in Settings' Ladder tab. Step statistics (#168) give them their own data to change it with: how they rated the reviews on each step. A card's step is worked out by replaying its review log with today's ladder, so a change to the ladder re-times every card, and the log doesn't say which wait a review answered. Counted by the step each review replays to, a step's statistics would mix every wait it ever had: after Lucas shortens step 5 from 12 to 10 days, months of 12-day reviews would hide the new ones, and he couldn't tell whether the change worked. So each review now keeps the wait it answered, and a step's statistics count only the reviews that answered the wait it has now: they start over when the wait changes, and the old reviews count again if it changes back.
 

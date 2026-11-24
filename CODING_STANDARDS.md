@@ -81,7 +81,7 @@ How Swift is written in Ficha, what the scripts, the hooks, the `Makefile` and C
 
 ## Docs
 
-- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time.
+- A change that renames a file, or changes what it covers or does, updates in the same PR every line elsewhere in the repo that describes it, such as those in `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/` and comments. `git grep` finds them by the file's name and by words for what it covers or does. `docs/adr/` and `docs/prototypes/` stay as they are: they record what was decided or tried at the time. A later record adds only a line under an older one's title, as `PLIEGO.md`'s How we work says.
 - No linter can tell that a file's scope changed, so the reviewer looks beyond the diff for these lines. A line the change left stale is a violation.
 - A document agents read, such as `CLAUDE.md` and those in `.claude/rules/`, `.claude/skills/`, `.claude/method/`, `.claude/agents/` and `docs/agents/`, is written for the agent that follows it:
   - Its steps come in the order the agent takes them, and each ends on a condition the agent can check: "Done when …".

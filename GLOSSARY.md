@@ -128,7 +128,7 @@ One pass over one card: the user sees its front, or back first its back, flips i
 _Avoid_: answer, attempt, study
 
 **Rating**:
-How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows two buttons, Forgot for again and Got it for good, and keys 2 and 4 give hard and easy (ADR 0033).
+How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows two buttons, Forgot for again and Got it for good, and keys 2 and 4 give hard and easy.
 _Avoid_: grade, score, ease
 
 **Review log**:
@@ -214,7 +214,7 @@ A review rated again of a graduated card: the user forgot what they had learned.
 _Avoid_: failure, miss
 
 **Desired retention**:
-How likely the user wants to be to remember a card when it comes due: 85% to start, or as they set it (ADR 0034).
+How likely the user wants to be to remember a card when it comes due: 85% to start, or as they set it.
 _Avoid_: target, success rate
 
 **Stability**:
@@ -244,7 +244,7 @@ A graduated card whose interval is 21 days or more, what Anki calls mature.
 _Avoid_: mastered, known, mature
 
 **Pace**:
-How many new cards a day the user meets, one for every deck: Chill, Steady or Faster, which Ficha asks as a deck comes in.
+How many new cards a day the user meets, one pace for all decks: Chill, Steady or Faster, which Ficha asks as a deck comes in.
 _Avoid_: speed, rhythm, daily limit
 
 **Queue**:
@@ -252,7 +252,7 @@ The decks waiting their turn for new cards: new cards come from the first alone 
 _Avoid_: playlist, order, schedule
 
 **Finish date**:
-When the pace says the user will have met all of a deck's cards, shown as a range, such as mid-December. It moves later when days go by without appearances.
+When the user will have met all of a deck's cards, worked out from the pace and the decks ahead of it in the queue, and shown as a range, such as mid-December. It moves later when days go by without appearances.
 _Avoid_: deadline, ETA, forecast
 
 ### Appearances

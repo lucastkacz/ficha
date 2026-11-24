@@ -6,7 +6,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
 
 - ✓ A macOS menu-bar app, for anyone, Lucas first, that shows its user a tiny flashcard every so often and spaces each card with FSRS, as Anki does. The cards stay on the user's devices and in their own iCloud (`README.md`, ADR 0017, ADR 0025).
 - ✓ It sells once on the App Store, the Mac and the iPhone together, after seven free days (ADR 0029, #160). The iPhone app is Ficha Dev with the sample cards for now (#97).
-- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks and tags, FSRS, the four ratings each review stores, its packages. Ficha outside: the card alone with two buttons, Forgot and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85 %; a few small decks inside, picked at the Welcome page; English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha").
+- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks and tags, FSRS, the four ratings each review stores, its packages. Ficha outside: the card alone with two buttons, Forgot and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; a few small decks of Ficha's own, picked at the Welcome page; English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha").
 
 ## Areas
 
@@ -46,7 +46,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
 - ✓ A Mac window: `make render ARGS="<window>"`, offscreen, with Ficha Dev's sample cards ("A window's picture"), on the Mac Where it runs names.
 - ✓ The iPhone: `make render-iphone`, its opening screen alone ("The iPhone's screen").
 - ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
-- ◐ A PR that changes what Lucas sees: each window or screen in English, German and Arabic ("The PR's pictures"), until #488 leaves English only (ADR 0036).
+- ✓ A PR that changes what Lucas sees: each window or screen in English, German and Arabic ("The PR's pictures"), until #488 leaves English alone (ADR 0036).
 - ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic, and the Ficha Lab, in `mockups/` (its README).
 - ✓ An artifact's sources: the Claude project's shared folder, `/mnt/project-files/` in its sessions, a folder per artifact, such as `preparar/`.
 
@@ -59,7 +59,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - ○ Dragging, right-clicks, double-clicks, menus and popovers: `make render` can't; #293's driver would, on Lucas's screen.
   - ○ The iPhone takes no taps or typing (#136).
 - **Sees it**
-  - ✓ `make render` and `make render-iphone`'s pictures, in each of Ficha's languages.
+  - ✓ `make render` and `make render-iphone`'s pictures, in each of Ficha's languages, until #488 leaves English alone.
   - ✓ The log, subsystem `com.lucastkacz.ficha`, with `/usr/bin/log` or `simctl spawn … log`; `make last-crash`; the samples `make test` leaves in `.build/hangs`; `make preview-import`'s numbers.
   - ○ A window described as text, in place of its picture but for colors and the look: what each element says, where it is and its size, the focus, the selection, and what's cut off or overlaps (#139).
 - **Tests it**
@@ -155,7 +155,7 @@ The libraries, in `Packages/FichaKit/`, a Swift package for macOS and iOS:
 
 The rest:
 
-- ○ Ficha's decks: a Ficha package each, in the app's resources, with each image's license, which come in through the same import as any package; #458 brings them (ADR 0035).
+- ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the same import as any file; #458 brings them (ADR 0035).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; the translations check, with its tests; the check that the clock and the review log's IDs come from their sources; and Ficha's languages, `languages.txt`, which the render tools, the check and FichaKit's engine messages test read through `languages.sh` and `Languages.swift`.
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `terms.md`, Ficha's words in each language; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types.
@@ -185,7 +185,7 @@ Rules that don't break:
 ## How we work
 
 - ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps are in English alone (ADR 0036), once #488 takes out the eleven languages ADR 0027 brought (`CLAUDE.md`).
-- ✓ Decisions: `docs/adr/`, one per decision, never rewritten: a later one says which it replaces or changes in part, and the older one gets a line under its title that says so, "Replaced by", "Changed in part by" or "Obsolete since", with the link (ADR 0032 onward).
+- ✓ Decisions: `docs/adr/`, one per decision, never rewritten: a later one says which it replaces, changes in part or makes obsolete, and, for records from ADR 0032 on, the older one gets a line under its title that says so, "Replaced by", "Changed in part by" or "Obsolete since", with the link.
 - ✓ The default branch is `main`. On Lucas's Mac, a node's branch is named after its path, such as `mac-cards-import`, in a worktree of its own (`CLAUDE.md`, Shipping); in the cloud, Where it runs.
 - ✓ The standards: `CODING_STANDARDS.md`.
 - ✓ A PR merges itself after the three checks, with auto-merge; a `risk:high` PR waits for Lucas (`CLAUDE.md`, Shipping).
@@ -195,7 +195,7 @@ Rules that don't break:
 
 ## Open
 
-- ○ A web page where people share decks, which Lucas would like once the decks inside are built: an `/idea` when he brings it, against `.out-of-scope/card-sharing-website.md` (ADR 0035).
+- ○ A web page where people share decks, which Lucas would like once Ficha's decks are built: an `/idea` when he brings it (ADR 0035).
 - ○ Coming back after a break, without a wall of cards (#460): a `/debate` of its own (ADR 0034).
 - ○ The pictures from GitHub's Macs (#480), and the guards in a cloud session (#479): Where it runs.
 - ○ A change to `.github/workflows/` from a cloud session, pushed from Lucas's Mac while the session's token has no `workflow` scope: the `/debate` that takes it up; Where it runs.
