@@ -1,0 +1,362 @@
+<title>Ficha Desktop Mock</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<style>
+  /* Layout: the fake Mac fills the page as a screen, framed by the mock's dark bar. */
+  html, body { height: 100%; }
+  body { background: var(--hud-bg); color: var(--hud-text); }
+  #app {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 12px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .stage { border-radius: 12px; box-shadow: 0 0 0 1px var(--hud-line); }
+  .noscript { padding: 24px; font: 14px/1.5 var(--font-text); }
+
+  /* ---------- New: the Add a Deck window and its "How fast?" ---------- */
+  .adddeck { position: absolute; inset: 0; display: grid; grid-template-columns: 220px 1fr; }
+  .adddeck .sidebar {
+    margin: 0 0 10px 10px;
+    padding: 6px;
+    border-radius: 12px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: auto;
+  }
+  .adddeck .side-title { padding: 4px 8px 6px; font-size: var(--text-subheadline); font-weight: 600; color: var(--secondary-label); }
+  .adddeck .side-row {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    text-align: left;
+    cursor: default;
+  }
+  .adddeck .side-row:hover { background: var(--fill); }
+  .adddeck .side-row[aria-selected='true'] { background: var(--selection); }
+  .adddeck .side-row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .adddeck .side-row .count { color: var(--secondary-label); font-size: var(--text-subheadline); font-variant-numeric: tabular-nums; }
+  .adddeck .side-row .added { color: var(--accent); font-size: var(--text-subheadline); font-weight: 600; }
+  .adddeck .detail { min-width: 0; padding: 6px 22px 18px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+  .adddeck .deck-head { display: flex; gap: 12px; align-items: center; }
+  .adddeck .deck-emoji { font-size: 34px; line-height: 1; }
+  .adddeck h2 { margin: 0; font-size: var(--text-title3); font-weight: 600; }
+  .adddeck .sub, .adddeck .hint { margin: 0; color: var(--secondary-label); }
+  .adddeck .hint { font-size: var(--text-callout); }
+  .adddeck .peek { display: flex; flex-wrap: wrap; gap: 6px; }
+  .adddeck .pace { display: flex; flex-direction: column; gap: 10px; }
+  .adddeck .pace-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .adddeck h3 { margin: 0; font-size: var(--text-headline); font-weight: 600; }
+  .adddeck .met { margin: 0; font-size: var(--text-title2); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+  .adddeck .met strong { color: var(--accent); font-weight: 700; }
+  .adddeck .chart { width: 100%; height: auto; display: block; }
+  .adddeck .legend { display: flex; gap: 14px; font-size: var(--text-caption); color: var(--secondary-label); }
+  .adddeck .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: -0.5px; }
+  .adddeck .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 4px; }
+</style>
+
+<div id="app"><p class="noscript">The mock is loading. It needs JavaScript, and React from a CDN.</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="kit/engine.js"></script>
+<script src="kit/decks.js"></script>
+<script src="kit/ui.js"></script>
+<script>
+  /*
+   * Mock: the desktop, the review panel, the clock, and "How fast?".
+   *
+   * Explores: how appearances feel over a working day; the panel over
+   * someone's work and during a meeting; and a pace screen when a deck
+   * comes in ("N cards, X new a day, all met by <dates>").
+   * New here, not in the app yet: the Add a Deck window (AddDeckWindow).
+   */
+  const { useState, useEffect, useMemo, useRef } = React;
+  const {
+    html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuRow, MenuContent,
+    ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Segmented, Capsule, Divider,
+    DeskToast, MockControls, HudGroup, HudChoice, formatDayRange, formatDay,
+  } = FichaUI;
+  const E = FichaEngine;
+
+  /** Opens on a morning: Palabras lindas in use for six days, Ficha quiet until its next appearance. */
+  function makeApp() {
+    const morning = new Date();
+    morning.setHours(8, 0, 0, 0);
+    const app = new E.ToyFicha({ decks: FichaDecks, now: morning.getTime() - 6 * E.DAY, speed: 60 });
+    app.addDeck('palabras', 3);
+    app.fastForward(morning.getTime());
+    const next = app.nextAppearance();
+    if (next && next.at - 20 * E.MINUTE > app.state.now) app.state.now = next.at - 20 * E.MINUTE;
+    app.log('Palabras lindas: six days in use, 3 new a day', 'deck');
+    return app;
+  }
+
+  // ---------------------------------------------------------------------
+  // AddDeckWindow: a deck's cards, and how fast they'd come.
+  // ---------------------------------------------------------------------
+  const PACES = [2, 3, 5, 10];
+  const SECONDS_PER_CARD = 8;
+
+  /** Cards a day for four weeks: this deck's on top, the other decks' under. */
+  function PaceChart({ days }) {
+    const W = 440, H = 96, top = 14, bottom = 18;
+    const max = Math.max(4, ...days.map((d) => d.deck + d.others));
+    const scale = (H - top - bottom) / max;
+    const step = W / days.length;
+    const bw = Math.max(2, step - 3);
+    const ticks = [0, 7, 14, 21];
+    return html`<svg className="chart" viewBox=${`0 0 ${W} ${H}`} role="img"
+      aria-label="Cards a day for the next four weeks">
+      <line x1="0" x2=${W} y1=${H - bottom + 0.5} y2=${H - bottom + 0.5} stroke="var(--separator)" />
+      <line x1="0" x2=${W} y1=${top + 0.5} y2=${top + 0.5} stroke="var(--separator)" strokeDasharray="2 3" />
+      <text x="0" y=${top - 4} fontSize="10" fill="var(--secondary-label)">${Math.round(max)} cards</text>
+      ${days.map((d, i) => {
+        const x = i * step + (step - bw) / 2;
+        const ho = d.others * scale;
+        const hd = d.deck * scale;
+        const base = H - bottom;
+        return html`<g key=${i}>
+          <title>${`${formatDay(d.day)}: about ${Math.round(d.deck + d.others)} cards, ${Math.round(d.deck)} from this deck`}</title>
+          <rect x=${x} y=${base - ho} width=${bw} height=${Math.max(0, ho)} rx="1.5" fill="var(--tertiary-label)" />
+          <rect x=${x} y=${base - ho - hd} width=${bw} height=${Math.max(0, hd)} rx="1.5" fill="var(--accent)" />
+        </g>`;
+      })}
+      ${ticks.map(
+        (t) => html`<text key=${t} x=${t * step + 1} y=${H - 4} fontSize="10" fill="var(--secondary-label)">
+          ${t === 0 ? 'Today' : formatDayRange(days[t].day, days[t].day)}</text>`,
+      )}
+    </svg>`;
+  }
+
+  function AddDeckWindow({ app, state, onClose, onAdded, ...win }) {
+    const [selected, setSelected] = useState('nubes');
+    const deck = app.deck(selected);
+    const [perDay, setPerDay] = useState(5);
+    useEffect(() => setPerDay(deck.added ? deck.perDay : 5), [selected]);
+
+    const cards = state.cards.filter((c) => c.deckId === selected);
+    const newCards = cards.filter((c) => c.state === 'new').length;
+    const day = E.startOfDay(state.now);
+    const days = useMemo(() => {
+      const pool = state.cards.filter((c) => c.deckId === selected || app.deck(c.deckId).added);
+      return E.simulatePace({ cards: pool, deckId: selected, perDay, now: state.now });
+    }, [selected, perDay, day, state.revision]);
+    const met = E.metBy({ newCards, perDay, now: state.now });
+    const busiest = Math.max(...days.map((d) => d.deck + d.others));
+    const minutes = Math.max(1, Math.round((busiest * SECONDS_PER_CARD) / 60));
+    const hasOthers = state.decks.some((d) => d.added && d.id !== selected);
+    const unchanged = deck.added && deck.perDay === perDay;
+    const add = () => {
+      if (unchanged) return;
+      const was = deck.added;
+      app.addDeck(selected, perDay);
+      onAdded(was ? `${deck.name}: ${perDay} new cards a day` : `Added ${deck.name}. Its first cards come at the next appearance.`);
+    };
+
+    useEffect(() => {
+      const onKey = (e) => {
+        if (app.state.panel || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+        if (e.key === 'Escape') onClose();
+        if (e.key === 'Enter') (e.preventDefault(), add());
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    });
+
+    return html`<${Window} title="Add a Deck" onClose=${onClose} ...${win}>
+      <div className="adddeck">
+        <nav className="sidebar" aria-label="Sample decks">
+          <div className="side-title">Sample Decks</div>
+          ${state.decks.map(
+            (d) => html`<button type="button" key=${d.id} className="side-row" aria-selected=${d.id === selected}
+              onClick=${() => setSelected(d.id)}>
+              <span>${d.emoji}</span><span className="name">${d.name}</span>
+              ${d.added
+                ? html`<span className="added">Added</span>`
+                : html`<span className="count">${state.cards.filter((c) => c.deckId === d.id).length}</span>`}
+            </button>`,
+          )}
+        </nav>
+        <div className="detail">
+          <div className="deck-head">
+            <span className="deck-emoji">${deck.emoji}</span>
+            <div>
+              <h2>${deck.name}</h2>
+              <p className="sub">${cards.length} cards · ${deck.language}${deck.added ? ` · ${newCards} not met yet` : ''}</p>
+            </div>
+          </div>
+          <p className="sub">${deck.blurb}</p>
+          <div className="peek">
+            ${cards.slice(0, 4).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
+            ${cards.length > 4 && html`<${Capsule}>+${cards.length - 4} more</${Capsule}>`}
+          </div>
+          <${Divider} />
+          <section className="pace" aria-label="How fast">
+            <div className="pace-head">
+              <h3>How fast?</h3>
+              <${Segmented} label="New cards a day" value=${perDay} onChange=${setPerDay}
+                options=${PACES.map((n) => ({ value: n, label: `${n} a day` }))} />
+            </div>
+            ${newCards
+              ? html`<p className="met">All ${newCards} met by <strong>${formatDayRange(met.soonest, met.latest)}</strong></p>
+                  <p className="hint">${perDay} new cards a day. The later date is if you skip a day or two a week.</p>`
+              : html`<p className="met">You've met every card in this deck.</p>`}
+            <${PaceChart} days=${days} />
+            <div className="legend">
+              <span><i style=${{ background: 'var(--accent)' }} />This deck</span>
+              ${hasOthers && html`<span><i style=${{ background: 'var(--tertiary-label)' }} />Your other decks</span>`}
+            </div>
+            <p className="hint">At the busiest, about ${Math.round(busiest)} cards in a day${hasOthers ? ' with your other decks' : ''}:
+              around ${minutes} minute${minutes > 1 ? 's' : ''} in all, a few at a time.</p>
+          </section>
+          <div className="actions">
+            <${Button} title="Cancel" k="esc" onClick=${onClose} />
+            <${Button} prominent title=${deck.added ? 'Change Pace' : 'Add Deck'} k="↩" disabled=${unchanged} onClick=${add} />
+          </div>
+        </div>
+      </div>
+    </${Window}>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // The desktop.
+  // ---------------------------------------------------------------------
+  const APPS = {
+    doc: { name: 'Writer', menus: ['File', 'Edit', 'Format', 'View', 'Window', 'Help'] },
+    decks: { name: 'Ficha', menus: ['File', 'Edit', 'Window', 'Help'] },
+    capture: { name: 'Ficha', menus: ['File', 'Edit', 'Window', 'Help'] },
+    call: { name: 'Call', menus: ['View', 'Window', 'Help'] },
+    video: { name: 'Player', menus: ['File', 'View', 'Playback', 'Window', 'Help'] },
+  };
+
+  function Desktop({ app, state, ratings }) {
+    const { w, h, menuBar, notch } = useScreen();
+    const [order, setOrder] = useState(['doc', 'decks']);
+    const [menu, setMenu] = useState(false);
+    const ficha = useRef(null);
+    const full = state.suppression === 'fullScreen';
+    const free = h - menuBar - DOCK;
+    const focus = (id) => setOrder((o) => (o[o.length - 1] === id ? o : [...o.filter((x) => x !== id), id]));
+    const close = (id) => setOrder((o) => o.filter((x) => x !== id));
+    const isOpen = (id) => order.includes(id) && (!full || id === 'doc');
+    const z = (id) => 10 + order.indexOf(id);
+    const say = (text) => (app.toast(text), app.emit());
+    // Ficha's own windows leave a full-screen app, as opening them would.
+    const openFicha = (id) => (full && app.setSuppression(null), focus(id));
+
+    // What's on screen follows what you're doing: a call, a video, or Writer in full screen.
+    useEffect(() => {
+      const s = state.suppression;
+      s === 'meeting' ? focus('call') : close('call');
+      s === 'video' ? focus('video') : close('video');
+      if (s === 'fullScreen') focus('doc');
+    }, [state.suppression]);
+
+    const front = full ? 'doc' : order[order.length - 1];
+    const status = html`<button type="button" ref=${ficha} className="item" aria-label="Ficha" aria-expanded=${menu}
+      onClick=${() => setMenu(!menu)}>${Icon.book(16)}</button>`;
+    const app0 = APPS[front] || APPS.doc;
+    const running = ['writer', isOpen('decks') || isOpen('capture') ? 'ficha' : null, isOpen('call') && 'call',
+      isOpen('video') && 'video'].filter(Boolean);
+    return html`
+      <${MenuBar} appName=${app0.name} menus=${app0.menus} now=${state.now} status=${status} autohide=${full} />
+      ${full && notch && html`<div className="notch-band" style=${{ height: menuBar }} />`}
+      ${isOpen('doc') &&
+      html`<${DocumentWindow} id="doc" title="Mendoza — Edited" x=${40} y=${menuBar + 30} width=${Math.min(600, w - 80)}
+        height=${Math.min(470, free - 50)} z=${z('doc')} active=${front === 'doc'} full=${full} onFocus=${focus}
+        onClose=${() => close('doc')} onZoom=${() => app.setSuppression(full ? null : 'fullScreen')} />`}
+      ${isOpen('video') &&
+      html`<${VideoWindow} id="video" title="Las nubes, episodio 3" x=${w - 540} y=${menuBar + 24} width=${500} height=${330}
+        z=${z('video')} active=${front === 'video'} onFocus=${focus} onClose=${() => app.setSuppression(null)} />`}
+      ${isOpen('call') &&
+      html`<${CallWindow} id="call" title="Weekly sync" x=${w - 390} y=${menuBar + 24} width=${360} height=${260}
+        z=${z('call')} active=${front === 'call'} onFocus=${focus} onLeave=${() => app.setSuppression(null)} />`}
+      ${isOpen('decks') &&
+      html`<${AddDeckWindow} id="decks" app=${app} state=${state} x=${Math.max(24, Math.round(w / 2 - 250))}
+        y=${Math.max(menuBar + 16, menuBar + free - 544)} width=${680} height=${Math.min(530, free - 30)} minWidth=${560}
+        minHeight=${420} z=${z('decks')} active=${front === 'decks'} onFocus=${focus}
+        onClose=${() => close('decks')} onAdded=${(text) => (close('decks'), say(text))} />`}
+      ${isOpen('capture') &&
+      html`<${CaptureView} id="capture" x=${Math.round(w / 2 - 210)} y=${menuBar + 126} z=${z('capture')}
+        active=${front === 'capture'} onFocus=${focus} onCancel=${() => close('capture')}
+        onSave=${() => (close('capture'), app.capture())} />`}
+      ${!full && html`<${Dock} running=${running} />`}
+      ${menu &&
+      html`<${Menu} left=${Math.min(ficha.current ? ficha.current.offsetLeft - 6 : w, w - 296)} onDismiss=${() => setMenu(false)}>
+        <${MenuContent} app=${app} state=${state} dismiss=${() => setMenu(false)}
+          onCapture=${() => openFicha('capture')} onReviewNow=${() => app.reviewNow()}
+          extraRows=${html`<${MenuRow} title="Add a Deck…" onClick=${() => (setMenu(false), openFicha('decks'))} />`} />
+      </${Menu}>`}
+      <${ReviewPanelView} app=${app} state=${state} ratings=${ratings} dock=${!full} />
+      <${DeskToast} state=${state} />`;
+  }
+
+  const ABOUT = html`<strong>About this mock</strong>
+    <p>A web mock of Ficha on a Mac, to try how it looks and feels before anything is built in SwiftUI. Its engine is a
+      toy: FichaCore, with its tests, decides the real rules.</p>
+    <h4>What's copied from the app</h4>
+    <ul>
+      <li>FSRS-6 with its default parameters at 90%, learning steps of 1 h and 4 h, relearning 1 h.</li>
+      <li>Appearances from 9:00 to 22:00, at least 30 minutes apart, up to 5 cards, bringing cards due within 20 minutes.
+        The panel closes on its own after 10 untouched minutes. After a meeting, Ficha waits 2 minutes.</li>
+      <li>The panel's keys: Space flips and then answers Good, 1 to 4 rate, A asks, M flags, E buries, ⌘Z undoes, Esc closes.</li>
+      <li>The card's size: ⌘+, ⌘− and ⌘0 while the panel is open, or the bar's Card size, from 80% to 200%. The text grows,
+        the panel widens above 100%, and the buttons keep their size. A card taller than two thirds of the free screen scrolls.</li>
+      <li>What holds Ficha back: a meeting, a video, or an app in full screen. The green button on Writer's window takes
+        it to full screen too. Once it ends, Ficha waits 2 minutes.</li>
+    </ul>
+    <h4>Sizes</h4>
+    <p>Screen picks a Mac at macOS's default size, with the notch and its taller menu bar on MacBooks; a page smaller
+      than that Mac shows it scaled down. Full screen gives the mock the whole display, so on your own Mac "Fit the
+      window" is close to the real thing at 1:1. Windows resize from their lower right corner.</p>
+    <h4>New here</h4>
+    <ul>
+      <li>Add a Deck, with "How fast?": the dates assume each day's new cards come at its first appearance, and the
+        later date assumes five days a week. The chart is a made-up learner who remembers as FSRS predicts, averaged
+        over 12 runs, at about ${SECONDS_PER_CARD} seconds a card.</li>
+      <li>Two rating buttons, as a variant: Forgot is stored as Again, Got it as Good.</li>
+    </ul>
+    <h4>What a web mock can't show</h4>
+    <p>Whether the panel takes the keyboard from the app you're typing in, Spaces, how macOS really detects meetings,
+      videos and full screen, and exact pixels. Those still need the Mac.</p>`;
+
+  function Mock() {
+    const [app, setApp] = useState(makeApp);
+    const [generation, setGeneration] = useState(0);
+    const state = useStore(app);
+    useClock(app);
+    const [look, setLook] = useState({ theme: 'auto', wallpaper: 'sky' });
+    useTheme(look.theme);
+    const [ratings, setRatings] = useState('four');
+    const [screen, setScreen] = useState('fit');
+    const [screenScale, setScreenScale] = useState(1);
+    const reset = () => (setApp(makeApp()), setGeneration(generation + 1));
+    const variants = html`<${HudGroup} label="Rating buttons">
+      <${HudChoice} label="Rating buttons" value=${ratings} onChange=${setRatings}
+        options=${[{ value: 'four', label: 'Four' }, { value: 'two', label: 'Two' }]} />
+    </${HudGroup}>`;
+    return html`
+      <${Stage} wallpaper=${look.wallpaper} screen=${screen} onScale=${setScreenScale}>
+        <${Desktop} key=${`${generation}-${screen}`} app=${app} state=${state} ratings=${ratings} />
+      </${Stage}>
+      <${MockControls} app=${app} state=${state} look=${look} setLook=${setLook} screen=${screen} setScreen=${setScreen}
+        screenScale=${screenScale} variants=${variants} about=${ABOUT} onReset=${reset} />`;
+  }
+
+  ReactDOM.createRoot(document.getElementById('app')).render(html`<${Mock} />`);
+</script>

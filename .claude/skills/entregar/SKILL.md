@@ -32,6 +32,6 @@ Done when each thing that went sideways has its Task issue, or nothing did.
 
 ## 4. Tell the user
 
-One line: what was delivered, by the decision's title, linked; what's left, by the issues' titles, linked; and the next step.
+One line: what was delivered, by the decision's title, linked; what's left, by the issues' titles, linked; and the next step, which after a probe is `/decision` for the piece it held back.
 
 Done when the user has the line.

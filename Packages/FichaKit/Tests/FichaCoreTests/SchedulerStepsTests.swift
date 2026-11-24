@@ -6,6 +6,8 @@ import Testing
 /// steps, as Anki moves a card (#404), through the standing the scheduler
 /// works out from the way's review log. The standard learning steps are 1
 /// hour and 4 hours, and its relearning step 1 hour.
+/// `mockups/tools/check-engine.js` copies some of these cases into the web
+/// mocks' toy engine: run it after changing one (`mockups/README.md`).
 struct SchedulerStepsTests {
     @Test("a way without entries is new")
     func aWayWithoutEntriesIsNew() throws {

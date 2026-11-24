@@ -36,7 +36,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - `Launch › Beta`: TestFlight's testers.
   - `Launch › Research`: the market research (`docs/research/`).
 - `Environment` (pink): how agents build Ficha.
-  - `Environment › Method`: the skills, this pliego, `CLAUDE.md` and the documents agents read.
+  - `Environment › Method`: the skills, this pliego, `CLAUDE.md`, the documents agents read, and `mockups/`, the web mocks and the Lab.
   - `Environment › Guards`: CI, the `Makefile`, the hooks, the permissions, the subagents' types.
   - `Environment › Hands-free`: the tools that drive, see and test Ficha, and the hand checks.
   - `Environment › Publishing`: `make upload`, TestFlight, the tags, iCloud's schema.
@@ -47,7 +47,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
 - ✓ The iPhone: `make render-iphone`, its opening screen alone ("The iPhone's screen").
 - ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
 - ✓ A PR that changes what Lucas sees: each window or screen in English, German and Arabic ("The PR's pictures").
-- ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic. The kit and the Ficha Lab move from the Claude project's shared folder into `mockups/` in the repo (#475).
+- ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic, and the Ficha Lab, in `mockups/` (its README).
 - ✓ An artifact's sources: the Claude project's shared folder, `/mnt/project-files/` in its sessions, a folder per artifact, such as `preparar/`.
 
 ## Hands-free
@@ -73,7 +73,7 @@ What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" i
 
 Cloud first (`.claude/method/method.md`), as ADR 0031 decides for Ficha.
 
-- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It writes, reviews and pushes; its network reaches GitHub through the session's own tools, and `gh` only to search. It comes with Lucas's Claude plan.
+- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It has Node and Playwright's Chromium, which draw the web mocks (`mockups/`). It writes, reviews and pushes. Its network reaches GitHub, through the session's own tools, and npm's registry; it searches GitHub with `gh api`'s REST routes, such as `search/issues`, since GraphQL, and so `gh search`, is refused. It comes with Lucas's Claude plan.
 - **GitHub's Macs**: CI's `macos-26` runners, standard ones with 3 cores, free on a public repo ([GitHub's billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)). A full `make check` takes about 24 minutes, `make test` alone about 8.
 - **Lucas's Mac**: 10 cores, and his accounts, his signing and his screen. A cloud session runs work on it only through Remote Control, after his OK on its card, in the `ficha` folder, and it costs the Mac on and its cores while it runs. ✓ The `ficha` folder is in Remote Control: Lucas added it in the Claude app on 2026-11-23.
 
@@ -82,13 +82,15 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ✓ Issues, debates, decisions and the reviews: the cloud.
 - ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
   - ○ A change to `.github/workflows/`: GitHub refuses a cloud session's push there, since its token has no `workflow` scope, so it's pushed from Lucas's Mac through Remote Control ("A workflow change from the cloud").
+  - ○ The other paths `.claude/hooks/merge-gate.sh` lists: no cloud session has tried a push to them yet; the next `/preparar` does.
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
   - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
-- ○ The pictures: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
+- ✓ The web mocks' pictures, with `mockups/tools/shoot.js`: the cloud.
+- ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
 - ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
-- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where the pictures are made, and `hand` on Lucas's Mac, from the Hand checks issue.
+- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where its picture is made, above, and `hand` on Lucas's Mac, from the Hand checks issue.
 - ◐ In the cloud, a node's branch is the one the session is given.
 - ○ The guards: no hook of the repo ran in a cloud session on 2026-11-23, and none matches the session's GitHub tools (#479). Until they do, a cloud session keeps them itself.
 
@@ -157,6 +159,7 @@ The rest:
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `terms.md`, Ficha's words in each language; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
+- ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).
 - ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
 - ✓ `CODING_STANDARDS.md`: the standards `/construir`'s review checks every change against.
 - ○ `.out-of-scope/`: ideas Lucas decided against, from before ADR 0030; no command reads it.
@@ -194,6 +197,7 @@ Rules that don't break:
 - ○ The new direction: the `/debate` that takes it up.
 - ○ The pictures from GitHub's Macs (#480), and the guards in a cloud session (#479): Where it runs.
 - ○ A change to `.github/workflows/` from a cloud session, pushed from Lucas's Mac while the session's token has no `workflow` scope: the `/debate` that takes it up; Where it runs.
+- ○ Which of the guards' other paths a cloud session can push to: the next `/preparar`; Where it runs.
 - ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
 - ○ The Idea issue type: Lucas creates it in his account's settings; then a `clerk` gives the open issues their types and areas, and takes off the old triage labels (ADR 0030).
 - ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.
