@@ -73,7 +73,7 @@ What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" i
 
 Cloud first (`.claude/method/method.md`), as ADR 0031 decides for Ficha.
 
-- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It has Node and Playwright's Chromium, which draw the web mocks (`mockups/`). It writes, reviews and pushes. Its network reaches GitHub, through the session's own tools, and npm's registry; it uses `gh` only to search. It comes with Lucas's Claude plan.
+- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It has Node and Playwright's Chromium, which draw the web mocks (`mockups/`). It writes, reviews and pushes. Its network reaches GitHub, through the session's own tools, and npm's registry; it searches GitHub with `gh api`'s REST routes, such as `search/issues`, since GraphQL, and so `gh search`, is refused. It comes with Lucas's Claude plan.
 - **GitHub's Macs**: CI's `macos-26` runners, standard ones with 3 cores, free on a public repo ([GitHub's billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)). A full `make check` takes about 24 minutes, `make test` alone about 8.
 - **Lucas's Mac**: 10 cores, and his accounts, his signing and his screen. A cloud session runs work on it only through Remote Control, after his OK on its card, in the `ficha` folder, and it costs the Mac on and its cores while it runs. ✓ The `ficha` folder is in Remote Control: Lucas added it in the Claude app on 2026-11-23.
 
@@ -90,7 +90,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
 - ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
-- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where Ficha's pictures are made, and `hand` on Lucas's Mac, from the Hand checks issue.
+- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where its picture is made, above, and `hand` on Lucas's Mac, from the Hand checks issue.
 - ◐ In the cloud, a node's branch is the one the session is given.
 - ○ The guards: no hook of the repo ran in a cloud session on 2026-11-23, and none matches the session's GitHub tools (#479). Until they do, a cloud session keeps them itself.
 
