@@ -35,7 +35,7 @@ Read the approval and the notes from the artifact's database. A note that change
 1. **The record**: a decision record in the project's format, in English, saying which records it replaces or changes in part.
 2. **The pliego**: the open items it decided, and the plano's changes; and the glossary's new words.
 3. **A PR** with those, through the three checks and the merge rule of [`../../method/method.md`](../../method/method.md).
-4. **The issues**: one for each part of the work `/construir` can build and check on its own, a Feature, a Bug or a Task, in its area, written as [`../../method/method.md`](../../method/method.md) says and linking the artifact. The Idea it came from becomes the first of them, its type and body updated, or, when it became several, closes with a comment that links them.
+4. **The issues**: one for each part of the work `/construir` can build and check on its own, a Feature, a Bug or a Task, in its area, written as [`../../method/method.md`](../../method/method.md) says and linking the artifact. A piece with an open item that changes what gets built gets, first, a Task for a probe that settles it, or goes back to `/debate`: its Feature, Bug or Task is written once the probe or the debate settles the item, so `/construir` never finds it open. The Idea it came from becomes the first of them, its type and body updated, or, when it became several, closes with a comment that links them.
 5. **The artifact** marks the decision approved, and links its record and its issues.
 
-Done when every piece is in the record or in an issue, and the user has the issues by node, titles linked, with the next step: `/construir` with the node to build first.
+Done when every piece is in the record, in an issue, or waiting on its probe or its debate, and the user has the issues by node, titles linked, with the next step: `/construir` with the node to build first.
