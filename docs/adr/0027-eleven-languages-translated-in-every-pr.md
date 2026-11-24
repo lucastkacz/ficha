@@ -1,5 +1,7 @@
 # Ficha comes in eleven languages besides English, translated in every PR
 
+> Replaced by [ADR 0036](0036-ficha-comes-only-in-english.md), which has Ficha in English alone (2026-11-24).
+
 ADR 0009 made English the app's base language and left other languages for later. On 2026-11-01, grilling #390, Lucas decided Ficha comes in the most-used languages before his friends test it (#359), since not all of them speak English. The languages are chosen by how much each matters to a paid app on the Mac, from what its countries spend on the App Store, how many Macs they have and its weight on the web, not by how many people speak it: Simplified Chinese, Japanese, German, Spanish, French, Korean, Portuguese (Brazil), Traditional Chinese, Italian, Russian and Arabic. Claude translates them, with Anki's word for each term Anki has, in the same PR that adds or changes a text, so no screen mixes languages. This changes ADR 0009, which left the languages for later and planned Rioplatense Spanish first.
 
 ## Considered options
