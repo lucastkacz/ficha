@@ -1,5 +1,7 @@
 # The language stays in System Settings, with no picker of Ficha's own
 
+> Obsolete since [ADR 0036](0036-ficha-comes-only-in-english.md): with one language, the Language row goes (2026-11-24).
+
 ADR 0009 says Ficha has no language setting of its own, since System Settings sets a language per app. In #444 Lucas asked for a picker in Ficha, in Settings and at the first launch, as in Anki, since his family shares his Mac and doesn't read much English. Apple advises against setting an app's language in code and points to Settings (WWDC19 session 403). On hearing that, on 2026-11-05, Lucas chose to do as Apple proposes, so ADR 0009 stands. This is a difference from Anki on purpose.
 
 ## Considered options

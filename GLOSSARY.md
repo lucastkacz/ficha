@@ -45,6 +45,10 @@ _Avoid_: folder, collection, category, nested deck
 The deck a card lives in when it has no other: a card the user didn't put in a deck, or one an Anki package had in Anki's own Default. It can't be renamed or deleted.
 _Avoid_: no deck, unsorted, inbox
 
+**Ficha's decks**:
+The few small decks Ficha comes with, in English, which the user picks at the Welcome page or later. Once added, a deck is the user's like any other, and an update of the app doesn't touch it.
+_Avoid_: sample cards, starter deck, preset
+
 **Tag**:
 A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina".
 _Avoid_: topic, category, deck, subtag, nested tag
@@ -124,7 +128,7 @@ One pass over one card: the user sees its front, or back first its back, flips i
 _Avoid_: answer, attempt, study
 
 **Rating**:
-How well the user says they knew a card in a review, with Anki's four buttons and names: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't.
+How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows two buttons, Forgot for again and Got it for good, and keys 2 and 4 give hard and easy.
 _Avoid_: grade, score, ease
 
 **Review log**:
@@ -210,7 +214,7 @@ A review rated again of a graduated card: the user forgot what they had learned.
 _Avoid_: failure, miss
 
 **Desired retention**:
-How likely the user wants to be to remember a card when it comes due: 90%, or as they set it.
+How likely the user wants to be to remember a card when it comes due: 85% to start, or as they set it.
 _Avoid_: target, success rate
 
 **Stability**:
@@ -224,7 +228,7 @@ How likely the user is to remember a card right now, as FSRS estimates it.
 _Avoid_: recall, memory
 
 **Settings that decide progress**:
-The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, and after how many lapses a card is forgotten often, one set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
+The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, which the pace sets, and after how many lapses a card is forgotten often, one set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
 _Avoid_: synced settings, review settings, preset
 
 **Due**:
@@ -238,6 +242,18 @@ _Avoid_: unseen, fresh
 **Learned**:
 A graduated card whose interval is 21 days or more, what Anki calls mature.
 _Avoid_: mastered, known, mature
+
+**Pace**:
+How many new cards a day the user meets, one pace for all decks: Chill, Steady or Faster, which Ficha asks as a deck comes in.
+_Avoid_: speed, rhythm, daily limit
+
+**Queue**:
+The decks waiting their turn for new cards: new cards come from the first alone until the user has met all of its cards, then from the next. Cards already met keep coming from every deck.
+_Avoid_: playlist, order, schedule
+
+**Finish date**:
+When the user will have met all of a deck's cards, worked out from the pace and the decks ahead of it in the queue, and shown as a range, such as mid-December. It moves later when days go by without appearances.
+_Avoid_: deadline, ETA, forecast
 
 ### Appearances
 
@@ -316,7 +332,7 @@ _Avoid_: partial sync, local cards, offline decks
 ### First launch
 
 **Welcome page**:
-The one page Ficha shows the first time it opens on a Mac, which says it lives in the menu bar and asks whether it opens at login.
+The one page Ficha shows the first time it opens on a Mac, which says it lives in the menu bar, offers Ficha's decks, an Anki file or starting from scratch, asks the pace, and asks whether it opens at login.
 _Avoid_: setup page, onboarding, tutorial
 
 ### Buying Ficha

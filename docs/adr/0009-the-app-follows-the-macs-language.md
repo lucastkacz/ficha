@@ -1,5 +1,7 @@
 # The app follows the Mac's language, starting with English
 
+> Changed in part by [ADR 0036](0036-ficha-comes-only-in-english.md), which has Ficha in English alone (2026-11-24).
+
 Lucas's Mac is set to English, and he wants Ficha in his Mac's language, though he speaks Spanish and his cards are in Spanish. So the app's interface follows the Mac's language: every text is written in English first, as the base language, and other languages come later as translations, starting with Rioplatense Spanish with "vos". The cards' content is Lucas's and doesn't depend on the app's language. The `ficha` CLI stays in English whatever the Mac's language, since Claude reads it while refining and Lucas is its only other reader.
 
 ## Considered options
