@@ -1,6 +1,6 @@
 // Checks the mock's toy engine against FichaCore's own tests, so what the
 // mock and the lab show is what the app would do.
-//   node tools/check-engine.js
+//   node mockups/tools/check-engine.js    (from the repo's folder)
 // Each case cites the Swift test it copies, in Packages/FichaKit/Tests.
 const path = require('path');
 require(path.join(__dirname, '..', 'kit', 'engine.js'));
@@ -26,13 +26,8 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   check('a new card\'s difficulties are 6.4133, 5.1121707, 2.118104, 1.0',
     mems.every((m, i) => near(m.D, [6.4133, 5.1121707, 2.118104, 1.0][i], 1e-5)), mems.map((m) => m.D));
 }
-// FSRSTests: retrievability with a decay of 0.2.
+// FSRSTests: retrievability is 90% once the stability's days have passed.
 {
-  const w = FSRS.W.slice();
-  const decay = -0.2;
-  const factor = Math.pow(0.9, 1 / decay) - 1;
-  const R = (t, S) => Math.pow(1 + (factor * t) / S, decay);
-  check('retrievability with decay 0.2 is 0.9 after 1 day and 0.84028935 after 2', near(R(1, 1), 0.9, 1e-6) && near(R(2, 1), 0.84028935, 1e-6), [R(1, 1), R(2, 1)]);
   check('retrievability is 90% once the stability\'s days have passed', near(FSRS.retrievability(7, 7), 0.9, 1e-6), FSRS.retrievability(7, 7));
 }
 // SchedulerIntervalsTests.memoryAfterKnownRatings: fsrs-rs's test_memory_state.
@@ -97,11 +92,13 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   check('on the one relearning step, hard waits 1.5 times as long, good and easy graduate',
     s[2].wait === 1.5 * HOUR && s[3].card.state === 'review' && s[4].card.state === 'review', [s[2].wait / HOUR, s[3].card.state]);
 }
-// SchedulerIntervalsTests.wholeDays: 11 h counts as the same day, 13 h as the next.
+// SchedulerIntervalsTests.elapsedDaysAreRounded: 11 h counts as the same day, 13 h as the next.
 {
   const after = (h) => rate({ ...fresh(), state: 'review', mem: { S: 5, D: 5 }, last: start, reps: 2 }, 3, start + h * HOUR).mem.S;
   check('days since the last review round to the nearest whole day', after(11) === after(0.1) && after(13) === after(24), [after(11), after(13)]);
 }
 
-console.log(failed ? `\n${failed} failed` : '\nAll match FichaCore.');
+console.log(failed
+  ? `\n${failed} failed: mockups/kit/engine.js no longer matches FichaCore's tests. Change engine.js until they pass, or the case above if the Swift test it copies changed (mockups/README.md).`
+  : '\nAll match FichaCore.');
 process.exit(failed ? 1 : 0);

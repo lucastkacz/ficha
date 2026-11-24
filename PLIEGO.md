@@ -36,7 +36,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - `Launch › Beta`: TestFlight's testers.
   - `Launch › Research`: the market research (`docs/research/`).
 - `Environment` (pink): how agents build Ficha.
-  - `Environment › Method`: the skills, this pliego, `CLAUDE.md` and the documents agents read.
+  - `Environment › Method`: the skills, this pliego, `CLAUDE.md`, the documents agents read, and the web mock kit.
   - `Environment › Guards`: CI, the `Makefile`, the hooks, the permissions, the subagents' types.
   - `Environment › Hands-free`: the tools that drive, see and test Ficha, and the hand checks.
   - `Environment › Publishing`: `make upload`, TestFlight, the tags, iCloud's schema.
@@ -157,7 +157,7 @@ The rest:
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `terms.md`, Ficha's words in each language; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
-- ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node; no step of `make check` builds or reads it (its README).
+- ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).
 - ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
 - ✓ `CODING_STANDARDS.md`: the standards `/construir`'s review checks every change against.
 - ○ `.out-of-scope/`: ideas Lucas decided against, from before ADR 0030; no command reads it.

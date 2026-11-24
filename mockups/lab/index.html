@@ -361,7 +361,7 @@
   ];
   const OVER_TIME = [
     { key: 'met', title: 'Met', get: (d) => d.met, fmt: (v) => String(Math.round(v)), note: 'Cards met at least once, by the end of each day.' },
-    { key: 'learned', title: 'Learned', get: (d) => d.learned, fmt: (v) => String(Math.round(v)), note: 'Cards past their learning steps, by the end of each day.' },
+    { key: 'graduated', title: 'Graduated', get: (d) => d.graduated, fmt: (v) => String(Math.round(v)), note: 'Cards past their learning steps, by the end of each day.' },
     { key: 'dueLeft', title: 'Waiting', get: (d) => d.dueLeft, fmt: one, floor: 1, note: 'Cards due and not yet reviewed when each day ends.' },
   ];
 
@@ -434,8 +434,8 @@
         },
       },
       {
-        label: 'Learned in 4 weeks',
-        get: (r) => r.totals.learned,
+        label: 'Graduated in 4 weeks',
+        get: (r) => r.totals.graduated,
         fmt: (v) => `${Math.round(v)} of ${total}`,
         delta: (d) => signed(d, (x) => String(Math.round(x))),
       },
@@ -521,7 +521,7 @@
         <summary>How the Lab works</summary>
         <ul>
           <li>The engine is the mock's toy Ficha: FSRS-6 with fsrs-rs's default weights, learning steps of 1 h and 4 h, relearning 1 h, Anki's fuzz, and FichaCore's rules for when to appear (a card due now, cards due in the next 20 minutes come along, one new card each time unless B says more). tools/check-engine.js checks it against 16 of FichaCore's own tests.</li>
-          <li>The person: the Mac is on weekdays from 9 to 6:30, some evenings from 8 to 10, and some weekend mornings; meetings last 30 to 60 minutes; they skip one appearance in ten and spend 8 seconds a card.</li>
+          <li>The person: the Mac is on weekdays from 9 to 6:30, some evenings from 8 to 10, and some weekend mornings; meetings last 30 to 60 minutes; they snooze one appearance in ten and spend 8 seconds a card.</li>
           <li>They answer as FSRS predicts: they forget a review card as often as its memory says. New cards: 15% forgotten, 5% hard, 5% easy.</li>
           <li>Meetings hold Ficha back, and Ficha waits 2 minutes after a meeting ends or the Mac wakes. Full-screen apps and videos aren't in the Lab yet.</li>
           <li>Every run uses the same four weeks from a Monday, so A and B face the same days and the same meetings.</li>

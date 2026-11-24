@@ -2,7 +2,7 @@
  * Ficha mock kit: the lab. Runs weeks of Ficha in a made-up person's life,
  * with the toy engine (checked against FichaCore by tools/check-engine.js),
  * and counts what a setting costs and gives: how often Ficha interrupts,
- * how many minutes a day it takes, how many cards get learned.
+ * how many minutes a day it takes, how many cards graduate.
  *
  * Plain JavaScript: the Lab page and tools/simulate.js run the same code.
  * Needs engine.js, and decks.js for the sample decks.
@@ -195,7 +195,7 @@
         }
         t = Math.min(next ? next.at : Infinity, boundary);
       }
-      stats.learned = s.cards.filter((c) => c.state === 'review').length;
+      stats.graduated = s.cards.filter((c) => c.state === 'review').length;
       stats.met = s.cards.filter((c) => c.state !== 'new').length;
       stats.dueLeft = s.cards.filter((c) => c.state !== 'new' && c.due < dayEnd).length;
       if (allMetDay == null && stats.met === total) allMetDay = day;
@@ -215,7 +215,7 @@
     const monday = start ?? nextMonday(Date.now());
     const runs = Array.from({ length: config.runs }, (_, r) => runOnce(config, monday, 1000 + r * 7919));
     const n = config.days;
-    const keys = ['appearances', 'heldBack', 'snoozed', 'reviews', 'newMet', 'seconds', 'learned', 'met', 'dueLeft', 'macHours', 'meetings', 'recalls', 'graduatedReviews'];
+    const keys = ['appearances', 'heldBack', 'snoozed', 'reviews', 'newMet', 'seconds', 'graduated', 'met', 'dueLeft', 'macHours', 'meetings', 'recalls', 'graduatedReviews'];
     const days = Array.from({ length: n }, (_, d) => {
       const out = { day: runs[0].days[d].day, weekend: runs[0].days[d].weekend };
       for (const k of keys) out[k] = mean(runs.map((r) => r.days[d][k]));
@@ -244,7 +244,7 @@
         snoozedShare: mean(all.map((d) => d.snoozed)) / Math.max(1e-9, mean(all.map((d) => d.appearances))),
         recall: graduated ? recalls / graduated : null,
         met: last.met,
-        learned: last.learned,
+        graduated: last.graduated,
         dueLeft: last.dueLeft,
         // The day the last new card was met, in every run; null where some never were.
         allMetDay: metDays.every((d) => d != null) ? mean(metDays) : null,

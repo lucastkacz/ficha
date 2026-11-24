@@ -1,10 +1,20 @@
 // Renders a mock locally: CDN scripts come from the npm packages, kit files from disk.
-// node shoot.js <mockDir> <kitDir> <outDir> [dev]
-const { chromium } = require('playwright');
+// node mockups/tools/shoot.js <mockDir> <kitDir> <outDir> [dev], from the repo's folder (mockups/README.md)
 const fs = require('fs');
 const path = require('path');
 
 const [mockDir, kitDir, outDir, dev] = process.argv.slice(2);
+if (!mockDir || !kitDir || !outDir) {
+  console.error('Usage: node mockups/tools/shoot.js <mockDir> <kitDir> <outDir> [dev], such as mockups/desktop mockups/kit /tmp/shots (mockups/README.md, "A debate\'s mock").');
+  process.exit(2);
+}
+let chromium;
+try {
+  ({ chromium } = require('playwright'));
+} catch (e) {
+  console.error("Couldn't load Playwright, which shoot.js renders with. Run it in a Claude cloud session, which has it (mockups/README.md, \"A debate's mock\").");
+  process.exit(1);
+}
 // The npm packages of React, ReactDOM and htm: NPMTEST, or npmtest/ beside tools/.
 const npm = process.env.NPMTEST || path.join(__dirname, '..', 'npmtest');
 const libs = {
@@ -12,6 +22,11 @@ const libs = {
   'react-dom.production.min.js': path.join(npm, 'react-dom-18.3.1/package/umd', dev ? 'react-dom.development.js' : 'react-dom.production.min.js'),
   'htm.umd.js': path.join(npm, 'htm-3.1.1/package/dist/htm.umd.js'),
 };
+const missing = Object.values(libs).filter((f) => !fs.existsSync(f));
+if (missing.length) {
+  console.error(`Missing ${missing.join(', ')}: unpack React, ReactDOM and htm's npm packages into ${npm}, each in a folder named as its tarball (mockups/README.md, "A debate's mock", step 4).`);
+  process.exit(1);
+}
 const page0 = fs.readFileSync(path.join(mockDir, 'index.html'), 'utf8');
 const wrapped = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${page0}</body></html>`;

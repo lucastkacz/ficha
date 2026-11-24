@@ -6,7 +6,8 @@
  * with its default parameters, the standard scheduler's steps, and the
  * appearance rules of ReviewSettings.defaults. It is a toy: FichaCore,
  * with its tests, decides the real logic. A rule that comes out of a mock
- * goes into a spec and is built in Swift.
+ * goes into the decision's issue and is built in Swift with its tests
+ * (mockups/README.md).
  *
  * Mirrors, in the repo:
  *   FSRS                 -> Packages/FichaKit/Sources/FichaFSRS (fsrs-rs)
@@ -355,8 +356,9 @@
     dueCount(at = this.state.now) {
       return this.activeCards().filter((c) => c.state !== 'new' && c.due <= at).length;
     }
+    // Learned, as WayStanding.isLearned counts it (GLOSSARY.md).
     learnedCount() {
-      return this.state.cards.filter((c) => c.state === 'review').length;
+      return this.state.cards.filter((c) => c.state === 'review' && c.ivlDays >= 21).length;
     }
 
     /**
