@@ -28,7 +28,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `kit/ui.css` | The look of macOS 26 controls, Liquid Glass, the review panel, and the mock's own bar. |
 | `kit/ui.js` | React components named after their SwiftUI counterparts, the fake Mac, and `MockControls`. |
 | `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace estimate. Plain JavaScript, so it also runs in Node. |
-| `kit/decks.js` | Sample decks, made up: Palabras lindas, Tipos de nubes, Los catorce ochomiles, Cuadros famosos. |
+| `kit/decks.js` | Sample decks, made up. |
 | `kit/lab.js` | The Lab's simulator: weeks of the toy engine in a made-up life (the Mac's hours, meetings, snoozed appearances, ratings as FSRS predicts), run several times and averaged. Plain JavaScript; the Lab page and `tools/simulate.js` share it. |
 
 ### From the mock to SwiftUI
@@ -50,11 +50,11 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 
 ### What the toy engine copies
 
-- FSRS-6 with fsrs-rs's default parameters and desired retention, and the learning and relearning steps of `Scheduler.standard`; Anki's order for a review's ratings (Hard ≤ Good < Easy).
+- FSRS-6 with fsrs-rs's default parameters and desired retention (`FichaFSRS`), and the learning and relearning steps of `Scheduler.standard` (`Scheduler.swift`, `StepRules.swift`); Anki's order for a review's ratings (Hard ≤ Good < Easy).
 - `ReviewSettings.defaults`: the active hours, the separation, the cards an appearance, the look-ahead, the auto-close, and the wait after a meeting ends or the Mac wakes.
 - FichaCore's `AppearancePlanner.swift` and `ReviewNow.swift`: Ficha appears when a card is due now, and the look-ahead only brings along the cards due within it; each appearance brings one new card at most; a deck's new cards a day count by the calendar day.
 - `tools/check-engine.js` runs cases copied from FichaFSRS's and FichaCore's tests (`FSRSTests`, `SchedulerIntervalsTests`, `SchedulerStepsTests`, in `Packages/FichaKit/Tests`) against the toy engine. Run it, from the repo's folder, after any change to `kit/engine.js`, and after a change to those tests or to the scheduling they test: `node mockups/tools/check-engine.js`.
-- The review panel's keys, as `App/ReviewPanelView.swift` handles them.
+- The review panel's keys, as `App/ReviewPanelView.swift` handles them, and how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
 - The suppressions a mock can act out, as `AppearancePlanner.swift` names them: a meeting, a video, an app in full screen.
 

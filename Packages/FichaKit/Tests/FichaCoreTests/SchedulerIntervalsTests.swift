@@ -8,6 +8,8 @@ import Testing
 /// upgrade that changes them fails here (ADR 0026): each cites where fsrs-rs
 /// states them, in
 /// https://github.com/open-spaced-repetition/fsrs-rs/blob/v6.6.2/src/inference.rs.
+/// `mockups/tools/check-engine.js` copies some of these cases into the web
+/// mocks' toy engine: run it after changing one (`mockups/README.md`).
 struct SchedulerIntervalsTests {
     @Test("a way's memory after again, good the same day, and good 1, 3, 8 and 21 days apart is fsrs-rs's")
     func memoryAfterKnownRatings() throws {

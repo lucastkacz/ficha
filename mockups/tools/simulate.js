@@ -30,15 +30,20 @@ const scenarios = process.argv[2]
       '85%': { retention: 0.85 },
     };
 
+const isObject = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+const reject = (what) => {
+  console.error(`${what}. A scenarios file is { "name": { ...changes to kit/lab.js's DEFAULTS } }.`);
+  process.exit(1);
+};
+if (!isObject(scenarios)) reject(`${process.argv[2]} doesn't hold an object of scenarios`);
 for (const [name, over] of Object.entries(scenarios)) {
-  const isObject = over && typeof over === 'object' && !Array.isArray(over);
-  const unknown = isObject ? Object.keys(over).filter((k) => !(k in DEFAULTS)) : [];
-  const unknownLife = isObject && over.life ? Object.keys(over.life).filter((k) => !(k in DEFAULTS.life)) : [];
-  if (!isObject || unknown.length || unknownLife.length) {
-    const bad = !isObject ? 'isn\'t an object' : `changes ${[...unknown, ...unknownLife.map((k) => `life.${k}`)].join(', ')}, which kit/lab.js's DEFAULTS don't have`;
-    console.error(`The scenario "${name}" ${bad}. Each scenario is an object of changes to DEFAULTS, with its keys: ${Object.keys(DEFAULTS).join(', ')}.`);
-    process.exit(1);
-  }
+  if (!isObject(over)) reject(`The scenario "${name}" isn't an object`);
+  const unknown = Object.keys(over).filter((k) => !(k in DEFAULTS));
+  if (unknown.length) reject(`The scenario "${name}" changes ${unknown.join(', ')}, which DEFAULTS don't have; its keys are ${Object.keys(DEFAULTS).join(', ')}`);
+  if ('life' in over && !isObject(over.life)) reject(`The scenario "${name}" gives life as something other than an object`);
+  const unknownLife = Object.keys(over.life || {}).filter((k) => !(k in DEFAULTS.life));
+  if (unknownLife.length) reject(`The scenario "${name}" changes life's ${unknownLife.join(', ')}, which DEFAULTS.life doesn't have; its keys are ${Object.keys(DEFAULTS.life).join(', ')}`);
+  if ('decks' in over && !Array.isArray(over.decks)) reject(`The scenario "${name}" gives decks as something other than an array, such as [{ "id": "palabras", "perDay": 5 }]`);
 }
 
 const start = globalThis.FichaLab.nextMonday(Date.now());

@@ -4,6 +4,8 @@ import Testing
 // fsrs-rs's own expected values, at the version Ficha pins, so an upgrade that
 // changes them fails here (ADR 0026). Each test cites where fsrs-rs states
 // them, in https://github.com/open-spaced-repetition/fsrs-rs/blob/v6.6.2/src/inference.rs.
+// `mockups/tools/check-engine.js` copies some of these cases into the web
+// mocks' toy engine: run it after changing one (`mockups/README.md`).
 struct FSRSTests {
     @Test("the default parameters are FSRS-6's, as fsrs-rs ships them")
     func defaultParameters() throws {

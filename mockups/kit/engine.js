@@ -2,19 +2,11 @@
  * Ficha mock kit: the toy engine.
  *
  * Plain JavaScript, no React, so it runs in a page and in Node alike.
- * It imitates FichaCore closely enough for a mock to feel right: FSRS-6
- * with its default parameters, the standard scheduler's steps, and the
- * appearance rules of ReviewSettings.defaults. It is a toy: FichaCore,
+ * It imitates FichaCore closely enough for a mock to feel right, in what
+ * mockups/README.md's "What the toy engine copies" lists. It is a toy: FichaCore,
  * with its tests, decides the real logic. A rule that comes out of a mock
  * goes into the decision's issue and is built in Swift with its tests
  * (mockups/README.md).
- *
- * Mirrors, in the repo:
- *   FSRS                 -> Packages/FichaKit/Sources/FichaFSRS (fsrs-rs)
- *   Scheduler            -> FichaCore/Scheduler/Scheduler.swift, StepRules.swift
- *   SETTINGS             -> FichaCore/ReviewSettings.swift (defaults)
- *   ToyFicha.next...     -> FichaCore/AppearancePlanner.swift
- *   formatInterval       -> App/IntervalText.swift
  */
 (function (root) {
   'use strict';

@@ -48,13 +48,17 @@ async function setup(browser, opts) {
   const ctx = await browser.newContext(opts);
   const page = await ctx.newPage();
   const errors = [];
-  page.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errors.push(`${m.type()}: ${m.text()}`));
+  page.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errors.push(`${m.type()}: ${m.text()}${m.location().url ? ` (${m.location().url})` : ''}`));
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   await page.route('**/*', (route) => {
     const url = route.request().url();
     const name = url.split('/').pop();
     if (libs[name]) return route.fulfill({ path: libs[name], contentType: 'application/javascript' });
-    if (url.startsWith('http://mock.local/kit/')) return route.fulfill({ path: path.join(kitDir, url.slice('http://mock.local/kit/'.length)) });
+    if (url.startsWith('http://mock.local/kit/')) {
+      const file = path.join(kitDir, url.slice('http://mock.local/kit/'.length));
+      if (!fs.existsSync(file)) fail(`The mock loads ${file}, which isn't there: pass the kit's folder, such as mockups/kit, or add the file to it`);
+      return route.fulfill({ path: file });
+    }
     if (url === 'http://mock.local/') return route.fulfill({ body: wrapped, contentType: 'text/html' });
     return route.abort();
   });

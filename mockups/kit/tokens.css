@@ -1,16 +1,8 @@
 /*
  * Ficha mock kit: tokens.
  *
- * Named as macOS names them, so a mock reads straight into SwiftUI:
- *   --label            -> .primary            (NSColor.labelColor)
- *   --secondary-label  -> .secondary          (secondaryLabelColor)
- *   --tertiary-label   -> .tertiary           (tertiaryLabelColor)
- *   --separator        -> Divider()           (separatorColor)
- *   --fill             -> .bordered button    (the control fill on glass)
- *   --accent           -> .tint / .accentColor (controlAccentColor)
- *   --glass-*          -> .glassEffect(.regular, in: ...)
- *   --window-bg        -> a window's background (windowBackgroundColor)
- *   --text-*           -> Font text styles at macOS's default sizes
+ * Named as macOS names them, so a mock reads straight into SwiftUI, as
+ * mockups/README.md's "From the mock to SwiftUI" maps them.
  *
  * Light values on :root; dark under prefers-color-scheme and data-theme,
  * as Artifacts expect. The mock's Light/Dark switch sets data-theme.

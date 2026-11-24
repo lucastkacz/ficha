@@ -2,12 +2,8 @@
  * Ficha mock kit: React components, written with htm so no build step runs.
  *
  * Each component is named after its SwiftUI counterpart in the repo, so a
- * mock that's settled translates screen by screen:
- *   MenuContent      -> App/MenuContent.swift (MenuBarExtra's menu)
- *   ReviewPanelView  -> App/ReviewPanelView.swift
- *   CaptureView      -> App/CaptureView.swift
- *   Button, IconButton, KeyLabel, Capsule, Segmented, Field -> SwiftUI controls
- * The scenery (Stage, MenuBar, Window, DocumentWindow, CallWindow) and
+ * mock that's settled translates screen by screen, as mockups/README.md's
+ * "From the mock to SwiftUI" maps them. The scenery (Stage, MenuBar, Window, DocumentWindow, CallWindow) and
  * MockControls belong to the mock only.
  *
  * Needs React 18, ReactDOM 18, htm, then engine.js, loaded before it.
