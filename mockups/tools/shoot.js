@@ -27,7 +27,20 @@ if (missing.length) {
   console.error(`Missing ${missing.join(', ')}: unpack React, ReactDOM and htm's npm packages into ${npm}, each in a folder named as its tarball (mockups/README.md, "A debate's mock", step 4).`);
   process.exit(1);
 }
-const page0 = fs.readFileSync(path.join(mockDir, 'index.html'), 'utf8');
+const fail = (what) => {
+  console.error(`${what} (mockups/README.md, "A debate's mock", step 4).`);
+  process.exit(1);
+};
+const json = (name, fallback) => {
+  try {
+    return JSON.parse(process.env[name] || fallback);
+  } catch (e) {
+    fail(`${name} isn't JSON: ${e.message}. Pass it as a JSON array`);
+  }
+};
+const mockPage = path.join(mockDir, 'index.html');
+if (!fs.existsSync(mockPage)) fail(`No ${mockPage}: pass the mock's folder, the one that holds its index.html, such as mockups/desktop`);
+const page0 = fs.readFileSync(mockPage, 'utf8');
 const wrapped = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${page0}</body></html>`;
 
@@ -51,20 +64,25 @@ async function setup(browser, opts) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const steps = json('STEPS', '[]');
+  const sizes = json('SIZES', '[{"name":"desk","width":1440,"height":860}]');
+  const browser = await chromium.launch().catch((e) => fail(`Chromium didn't launch: ${e.message.split('\n')[0]}. Run shoot.js where Playwright's Chromium is installed, as in a Claude session in the cloud`));
   fs.mkdirSync(outDir, { recursive: true });
-  const steps = JSON.parse(process.env.STEPS || '[]');
-  const sizes = JSON.parse(process.env.SIZES || '[{"name":"desk","width":1440,"height":860}]');
   for (const size of sizes) {
     const { ctx, page, errors } = await setup(browser, { viewport: { width: size.width, height: size.height }, colorScheme: size.dark ? 'dark' : 'light', deviceScaleFactor: 1 });
     await page.screenshot({ path: path.join(outDir, `${size.name}-0.png`), fullPage: !!size.full });
     let i = 1;
     for (const step of steps) {
-      if (step.click) await page.getByText(step.click, { exact: step.exact ?? false }).first().click();
-      if (step.css) await page.locator(step.css).first().click();
-      if (step.select) await page.selectOption(step.select.css, step.select.value);
-      if (step.key) await page.keyboard.press(step.key);
-      if (step.hover) await page.locator(step.hover.css).nth(step.hover.nth || 0).hover({ position: { x: step.hover.x, y: step.hover.y } });
+      try {
+        if (step.click) await page.getByText(step.click, { exact: step.exact ?? false }).first().click({ timeout: 5000 });
+        if (step.css) await page.locator(step.css).first().click({ timeout: 5000 });
+        if (step.select) await page.selectOption(step.select.css, step.select.value, { timeout: 5000 });
+        if (step.key) await page.keyboard.press(step.key);
+        if (step.hover) await page.locator(step.hover.css).nth(step.hover.nth || 0).hover({ position: { x: step.hover.x, y: step.hover.y }, timeout: 5000 });
+      } catch (e) {
+        await browser.close();
+        fail(`At ${size.name}, the step ${JSON.stringify(step)} found nothing to act on: ${e.message.split('\n')[0].replace(/\.+$/, '')}. Check its text or selector against the mock, or take a shot just before it`);
+      }
       if (step.wait) await page.waitForTimeout(step.wait);
       if (step.shot) await page.screenshot({ path: path.join(outDir, `${size.name}-${i++}-${step.shot}.png`), fullPage: !!size.full });
     }

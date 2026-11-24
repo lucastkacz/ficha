@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const kit = path.join(__dirname, '..', 'kit');
 for (const f of ['engine.js', 'decks.js', 'lab.js']) require(path.join(kit, f));
-const { simulate } = globalThis.FichaLab;
+const { simulate, DEFAULTS } = globalThis.FichaLab;
 
 function readScenarios(file) {
   try {
@@ -30,6 +30,17 @@ const scenarios = process.argv[2]
       '85%': { retention: 0.85 },
     };
 
+for (const [name, over] of Object.entries(scenarios)) {
+  const isObject = over && typeof over === 'object' && !Array.isArray(over);
+  const unknown = isObject ? Object.keys(over).filter((k) => !(k in DEFAULTS)) : [];
+  const unknownLife = isObject && over.life ? Object.keys(over.life).filter((k) => !(k in DEFAULTS.life)) : [];
+  if (!isObject || unknown.length || unknownLife.length) {
+    const bad = !isObject ? 'isn\'t an object' : `changes ${[...unknown, ...unknownLife.map((k) => `life.${k}`)].join(', ')}, which kit/lab.js's DEFAULTS don't have`;
+    console.error(`The scenario "${name}" ${bad}. Each scenario is an object of changes to DEFAULTS, with its keys: ${Object.keys(DEFAULTS).join(', ')}.`);
+    process.exit(1);
+  }
+}
+
 const start = globalThis.FichaLab.nextMonday(Date.now());
 const results = Object.entries(scenarios).map(([name, over]) => [name, simulate(over, { start }).totals]);
 const rows = [
@@ -39,7 +50,7 @@ const rows = [
   ['Minutes a weekday', (t) => t.minutesPerWeekday.toFixed(1)],
   ['Busiest day, minutes', (t) => t.busiestMinutes.toFixed(1)],
   ['Held back a weekday', (t) => t.heldBackPerWeekday.toFixed(1)],
-  ['Recall on reviews', (t) => (t.recall == null ? '–' : `${Math.round(t.recall * 100)}%`)],
+  ['Remembered on reviews', (t) => (t.recall == null ? '–' : `${Math.round(t.recall * 100)}%`)],
   ['All met on day', (t) => (t.allMetDay == null ? `never (${Math.round(t.allMetShare * 100)}%)` : `${(t.allMetDay + 1).toFixed(1)}, latest ${t.allMetLatest + 1}`)],
   ['Graduated by the end', (t) => `${Math.round(t.graduated)} of ${t.cards}`],
   ['Due and waiting at the end', (t) => t.dueLeft.toFixed(1)],

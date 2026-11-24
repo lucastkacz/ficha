@@ -36,7 +36,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
   - `Launch › Beta`: TestFlight's testers.
   - `Launch › Research`: the market research (`docs/research/`).
 - `Environment` (pink): how agents build Ficha.
-  - `Environment › Method`: the skills, this pliego, `CLAUDE.md`, the documents agents read, and the web mock kit.
+  - `Environment › Method`: the skills, this pliego, `CLAUDE.md`, the documents agents read, and `mockups/`, the web mocks and the Lab.
   - `Environment › Guards`: CI, the `Makefile`, the hooks, the permissions, the subagents' types.
   - `Environment › Hands-free`: the tools that drive, see and test Ficha, and the hand checks.
   - `Environment › Publishing`: `make upload`, TestFlight, the tags, iCloud's schema.

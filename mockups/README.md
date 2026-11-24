@@ -16,7 +16,7 @@ No step of `make check` builds or reads this folder: the pages run in a browser,
 | Mock | Artifact | What it explores |
 |---|---|---|
 | `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | The review panel over a working day on a fast clock; a meeting, a video or a full-screen app that holds an appearance back; the menu, Capture, the card size, two rating buttons as a variant, and a proposed Add a Deck window with "How fast?". On a Mac's real screen sizes, in the browser's full screen. |
-| `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four weeks of Ficha in a made-up working life, A against B. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met and graduated, recall), day by day. |
+| `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four weeks of Ficha in a made-up working life, A against B. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met and graduated, how often a review is remembered), day by day. |
 
 ## How it's built
 
@@ -54,13 +54,13 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 - `ReviewSettings.defaults`: the active hours, the separation, the cards an appearance, the look-ahead, the auto-close, and the wait after a meeting ends or the Mac wakes.
 - FichaCore's `AppearancePlanner.swift` and `ReviewNow.swift`: Ficha appears when a card is due now, and the look-ahead only brings along the cards due within it; each appearance brings one new card at most; a deck's new cards a day count by the calendar day.
 - `tools/check-engine.js` runs cases copied from FichaFSRS's and FichaCore's tests (`FSRSTests`, `SchedulerIntervalsTests`, `SchedulerStepsTests`, in `Packages/FichaKit/Tests`) against the toy engine. Run it, from the repo's folder, after any change to `kit/engine.js`, and after a change to those tests or to the scheduling they test: `node mockups/tools/check-engine.js`.
-- The review panel's keys: Space flips and then rates Good, 1 to 4 rate, A asks, M flags, E buries, ⌘Z undoes, Esc closes.
+- The review panel's keys, as `App/ReviewPanelView.swift` handles them.
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
 - The suppressions a mock can act out, as `AppearancePlanner.swift` names them: a meeting, a video, an app in full screen.
 
 ### Sizes
 
-- **Screen** in the mock's bar picks a Mac at macOS's default "looks like" size: MacBook Air 13″ (1470×956), MacBook Pro 14″ (1512×982) and 16″ (1728×1117) with the notch and their 37-point menu bar, a small screen without a notch (1280×800), or a 27″ display (2560×1440). A page smaller than that Mac shows it scaled down, and the bar says by how much. "Fit the window" fills the page instead, at 1:1 once it's at least 1024×660.
+- **Screen** in the mock's bar picks a Mac at macOS's default "looks like" size, with the notch and the menu bar its model has (`SCREENS` in `kit/ui.js`). A page smaller than that Mac shows it scaled down, and the bar says by how much. "Fit the window" fills the page instead, at 1:1 once the page is as large as `Stage` in `kit/ui.js` needs.
 - **Full screen** gives the mock the whole display and hides the bar (the Mock tab brings it back). On Lucas's own Mac, full screen with "Fit the window" is the closest to the real thing.
 - Windows resize from their lower right corner; the green button takes Writer to full screen, which holds Ficha back as a full-screen app does.
 
@@ -76,7 +76,7 @@ The mocks show how Ficha feels in a minute; the Lab and the terminal tool show w
 
 A number from the Lab is a lead, not a fact: like a rule from a mock, it goes into the decision's issue and is checked by FichaCore's tests. The made-up life is in "How the Lab works" on the page and in `DEFAULTS` in `kit/lab.js`.
 
-Known gap: the desktop mock's "How fast?" estimate (`simulatePace` and `metBy` in `kit/engine.js`) meets each day's new cards all at once, while Ficha brings one new card an appearance. With small decks they agree; with 200 cards at 20 a day, "How fast?" says day 10 to 14 and the Lab says about day 21.
+Known gap: the desktop mock's "How fast?" estimate (`simulatePace` and `metBy` in `kit/engine.js`) meets each day's new cards all at once, while Ficha brings one new card an appearance. With small decks they agree; with a large deck and many new cards a day, "How fast?" says much sooner than the Lab; `node mockups/tools/simulate.js` shows by how much.
 
 ## A debate's mock
 
