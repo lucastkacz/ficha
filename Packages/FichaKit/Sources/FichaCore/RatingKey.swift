@@ -3,7 +3,7 @@
 /// with them: the number row's 1 key types ١ in Apple's Arabic layouts and &
 /// in its French ones, which a shortcut for "1" doesn't take, since AppKit
 /// and SwiftUI match a shortcut by what its key types. The keys keep their
-/// ratings in every layout (ADR 0027). This rule is our own. The panel's
+/// ratings in every layout. This rule is our own. The panel's
 /// view keeps the shortcuts themselves; this map is here so it's tested.
 public enum RatingKey {
     /// The key that rates a card `rating`, "1" to "4" in Anki's order, again's

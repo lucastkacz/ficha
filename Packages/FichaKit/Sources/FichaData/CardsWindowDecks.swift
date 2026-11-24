@@ -35,7 +35,7 @@ extension CardsWindowState {
         /// sits inside.
         public let deck: Deck
         /// What its row says: its last level under its parent, or nothing for
-        /// Default, which the window names in the Mac's language.
+        /// Default, which the window names from the app's String Catalog.
         public let title: String
         /// How many cards it lists and how many of those are due, counting
         /// the decks inside it: none for a deck New Deck… named, which the

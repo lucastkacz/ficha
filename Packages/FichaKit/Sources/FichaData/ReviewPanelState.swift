@@ -128,7 +128,8 @@ public struct ReviewPanelState: Sendable {
     let engine: Engine
     private let settings: ReviewSettings
     /// The note the panel offers to flag a card forgotten often with, for
-    /// how many times Lucas forgot it and which way, in the Mac's language.
+    /// how many times Lucas forgot it and which way, from the app's String
+    /// Catalog.
     private let forgottenOftenNote: @Sendable (ForgottenOften) -> String
     private let shownAt: Date
     /// When Lucas last did something in the panel, or when it showed.

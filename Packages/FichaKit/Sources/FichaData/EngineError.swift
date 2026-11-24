@@ -104,8 +104,8 @@ public enum EngineError: Error, Equatable {
     /// changed.
     case blankTypeName
     /// A user type was to be made or renamed with this name, which one of
-    /// the four types Ficha comes with goes by, its raw value or its name in
-    /// the Mac's language, so nothing changed.
+    /// the four types Ficha comes with goes by, its raw value or its name as
+    /// the app shows it, so nothing changed.
     case builtInTypeName(String)
     /// A user type was to be made or renamed with the name of another, this
     /// one, ignoring case and accents, so nothing changed.
@@ -650,8 +650,8 @@ extension EngineError {
     }
 }
 
-/// `names`, each in the quotes of the language the message shows in, listed
-/// as the Mac's language lists them, like “ética” and “filosofía” in English.
+/// `names`, each in quotes (`EngineError.quotedName`), listed as the locale
+/// lists them, like “ética” and “filosofía”.
 private func quotedList(_ names: [String]) -> String {
     names.map { String(localized: EngineError.quotedName($0)) }.formatted(.list(type: .and))
 }

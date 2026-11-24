@@ -20,8 +20,8 @@ struct TagCapsule: View {
 }
 
 /// A card's deck as a capsule, drawn as a tag's (`TagCapsule`): its emoji
-/// before its whole name, as in "🏛 Historia › Roma", or Default's in the
-/// Mac's language, tinted with its color, its own or else the decks' it sits
+/// before its whole name, as in "🏛 Historia › Roma", or Default's as the
+/// app shows it, tinted with its color, its own or else the decks' it sits
 /// inside. The review panel draws it first on a card's line, before its tags.
 /// A long name gives way in its middle when the line has no room for it,
 /// which its tooltip names whole.

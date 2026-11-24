@@ -116,8 +116,8 @@ extension CardGroup {
 
 extension Deck {
     /// "Default", the key of the app's String Catalog by which
-    /// `Deck.shownName(_:)`, in FichaData, names Default in the Mac's
-    /// language: Xcode fills the catalog from the app's own sources alone,
+    /// `Deck.shownName(_:)`, in FichaData, names Default as the app shows
+    /// it: Xcode fills the catalog from the app's own sources alone,
     /// never from a package's, so this line puts the key there. Nothing
     /// reads it.
     private static let defaultNameInCatalog = String(
@@ -144,7 +144,7 @@ extension GroupWithLook {
     /// How it's named where it stands alone, as in a capsule or a menu: its
     /// emoji, when it shows one, before its whole name, written with " › ",
     /// as in "economía › Argentina" or "🏛 Historia › Roma", or before
-    /// Default's name in the Mac's language.
+    /// Default's name as the app shows it.
     var title: String {
         title(shown: group.title)
     }
@@ -189,7 +189,7 @@ extension DeckInTree {
     /// What it says in a tree of decks, in the sidebar, the Change Deck sheet,
     /// the menu bar's Prioritize submenu and the Sync tab: its emoji, its own
     /// or else the decks' it sits inside, when it shows one, before its last
-    /// level, or before Default's name in the Mac's language.
+    /// level, or before Default's name as the app shows it.
     var shownTitle: String {
         deck.title(shown: deck.isDefault ? Deck.shownName(deck.name) : title)
     }
@@ -244,7 +244,7 @@ nonisolated enum InboxKind: CaseIterable {
 
 extension CardType {
     /// The type's name, as the Cards window shows it, and as its table sorts
-    /// by it: one of the four's in the Mac's language, as the engine also
+    /// by it: one of the four's from the app's String Catalog, as the engine also
     /// knows it (`CardType.builtInNames`), and a user type's as the user
     /// wrote it.
     nonisolated var name: String {

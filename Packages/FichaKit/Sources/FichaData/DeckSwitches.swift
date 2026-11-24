@@ -74,7 +74,7 @@ public struct PrioritizeMenu: Sendable, Equatable {
         /// sits inside.
         public let deck: Deck
         /// What it says: its last level under its parent, or nothing for
-        /// Default, which the app names in the Mac's language.
+        /// Default, which the app names from its String Catalog.
         public let title: String
         /// Whether it's on: unless it's set aside, on its own or inside a deck
         /// that is, since a deck is never both (ADR 0011), but a priority

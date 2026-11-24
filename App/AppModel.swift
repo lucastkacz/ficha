@@ -171,7 +171,7 @@ final class AppModel {
 
     /// Opens the review panel with `cards`, which `trigger` brought: it times
     /// Lucas on the system's continuous clock, and writes the note it offers
-    /// to flag a card forgotten often with in the Mac's language.
+    /// to flag a card forgotten often with, from its String Catalog.
     private func openPanel(_ trigger: Trigger, with cards: [PanelCard]) throws(EngineError) -> ReviewPanelModel {
         ReviewPanelModel(
             try engine.openPanel(

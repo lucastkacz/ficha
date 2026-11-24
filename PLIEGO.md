@@ -184,7 +184,7 @@ Rules that don't break:
 
 ## How we work
 
-- ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps are in English alone, every text through a String Catalog (ADR 0036; `CLAUDE.md`).
+- ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps are in English alone, their texts through String Catalogs as `CODING_STANDARDS.md`'s UI says (ADR 0036).
 - ✓ Decisions: `docs/adr/`, one per decision, never rewritten: a later one says which it replaces, changes in part or makes obsolete, and, for records from ADR 0032 on, the older one gets a line under its title that says so, "Replaced by", "Changed in part by" or "Obsolete since", with the link.
 - ✓ The default branch is `main`. On Lucas's Mac, a node's branch is named after its path, such as `mac-cards-import`, in a worktree of its own (`CLAUDE.md`, Shipping); in the cloud, Where it runs.
 - ✓ The standards: `CODING_STANDARDS.md`.

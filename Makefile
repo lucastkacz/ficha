@@ -164,6 +164,8 @@ build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI
 # scratch folder. It builds the Mac's for Intel too, and Xcode then processes
 # Ficha Dev's CLI's Info.plist for Apple silicon alone, so its link for Intel
 # can't find it: the export, which only reads the code, leaves it out.
+# FichaKit's StringCatalogsTests lists them too, to keep each in English
+# alone: a new catalog goes in both.
 CATALOGS := App/Localizable.xcstrings App/AppShortcuts.xcstrings Widget/Localizable.xcstrings \
 	iPhone/Localizable.xcstrings
 STRINGS := .build/strings
