@@ -40,13 +40,13 @@ Done when every issue has its commits and its passing test.
 2. **What each issue asked for**: a fresh reviewer gets the issues, with their comments, and the diff, and reports for each issue whether `Qué buscamos` and every acceptance criterion hold, citing file and line.
 3. **The plano and the standards**: a fresh reviewer gets the plano, the standards and the diff, and reports each rule broken, citing the rule, the file and the line.
 
-A change the user sees gets its pictures, as the pliego says. Fix every finding, then run the check it came from again.
+A change the user sees gets its pictures, as the pliego says. A procedure the node writes for agents that its issues didn't ask for, such as steps to take on another machine, runs once as written, on the machine it's for, before the PR is ready. When that machine can't be reached, the node uses the workaround, and the procedure goes to an issue of its own, a detour the PR tells among what went sideways. Fix every finding, then run the check it came from again.
 
 Done when all three pass with no finding left.
 
 ## 5. The PR
 
-One PR from the node's branch, or the draft its rounds ran on, marked ready, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
+One PR from the node's branch, or the draft its rounds ran on, marked ready, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, how each procedure it wrote for agents ran, or the workaround it used instead, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
 
 - **It changes a path the pliego lists under what waits for the user's OK**: the project's label for it, and the user's merge command, last in the message.
 - **Otherwise**: it merges itself once CI passes, as the project's instructions turn that on.
