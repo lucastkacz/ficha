@@ -759,8 +759,8 @@ extension Engine {
     /// which moving the engine's time doesn't move: the system's continuous
     /// clock in the app. `forgottenOftenNote` writes the note the panel
     /// offers to flag a card forgotten often with, for how many times Lucas
-    /// forgot it and which way, in the Mac's language, which the app
-    /// translates.
+    /// forgot it and which way, which the app words from its String
+    /// Catalog.
     public func openPanel(
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>,
         forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String

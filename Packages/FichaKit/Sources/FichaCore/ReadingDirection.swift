@@ -1,9 +1,9 @@
 /// Which way a text reads, from its first letter, as Unicode's bidirectional
 /// algorithm finds a paragraph's direction from its first strong character
 /// (rules P2 and P3). The app aligns a card's text at the side it starts
-/// from, whatever its own language: a Spanish card at the left on a Mac in
-/// Arabic, an Arabic card at the right on a Mac in English (ADR 0027). The
-/// letters this finds by their blocks are our own shortcut, since Swift
+/// from, whatever its own direction: an Arabic card at the right, though the
+/// app reads left to right, since a card can be in any language (ADR 0036).
+/// The letters this finds by their blocks are our own shortcut, since Swift
 /// doesn't give a character's bidirectional class.
 public enum ReadingDirection: Sendable, Equatable {
     case leftToRight

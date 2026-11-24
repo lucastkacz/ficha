@@ -77,7 +77,7 @@ public struct CardContent: Sendable, Equatable {
 
     /// The tags a Tags field holds, `text`, separated by commas, as they come
     /// in: `init` cleans them up as it does wherever a card comes from. The
-    /// comma of each of Ficha's languages separates them: `,`, Arabic's
+    /// comma each keyboard types separates them: `,`, Arabic's
     /// U+060C, Chinese's full-width U+FF0C, and U+3001, Japanese's and that of
     /// Chinese lists. A field that still holds what `tagsField(of:)` writes
     /// for the tags it started with, `tags`, holds those tags as they are, so

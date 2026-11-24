@@ -68,12 +68,10 @@ xcode-check: ## Fail when this Mac's Xcode isn't the one CI runs, which .xcode-v
 		echo "This Mac runs Xcode $$mac and CI runs $$ci, the one .xcode-version names: update the Mac's Xcode to $$ci, or the file to $$mac, which moves CI too." >&2; \
 		exit 1; }
 
-# The render tool's own files: its `Sources/Render/App` is a link to `App/`,
-# and its `Languages.swift` one to `scripts/Languages.swift`, the reader of
-# Ficha's languages, which FichaKit's tests link to too. And the import-preview
-# tool's.
+# The render tool's own files, since its `Sources/Render/App` is a link to
+# `App/`, and the import-preview tool's.
 SWIFT_SOURCES := App CLI SVGDrawer Widget iPhone $(PACKAGE)/Package.swift $(PACKAGE)/Sources $(PACKAGE)/Tests \
-	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift scripts/Languages.swift \
+	$(RENDER)/Package.swift $(RENDER)/Sources/Render/main.swift \
 	$(IMPORT_PREVIEW)/Package.swift $(IMPORT_PREVIEW)/Sources
 # The shell scripts, for shellcheck. actionlint finds the workflows on its own,
 # in .github/workflows, and runs shellcheck on each step's `run:` script too.
@@ -160,8 +158,8 @@ build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI
 # one for the Mac's App Shortcuts, which the builds compile but never fill.
 # Xcode's export fills them all from the code: it adds the UI's new
 # texts, and drops the ones the code no longer has, or marks them stale when
-# they have plural variations or translations. Whatever the scheme, it builds both apps on the
-# way, the iPhone's for an iPhone and unsigned, so it takes the build's derived
+# they hold a value of their own, such as plural variations. Whatever the
+# scheme, it builds both apps on the way, the iPhone's for an iPhone and unsigned, so it takes the build's derived
 # data, build number and signing, and writes its own copy of the texts to a
 # scratch folder. It builds the Mac's for Intel too, and Xcode then processes
 # Ficha Dev's CLI's Info.plist for Apple silicon alone, so its link for Intel
@@ -190,22 +188,6 @@ strings-check: project ## Fail when a String Catalog is out of date, showing how
 		cp $(BEFORE) $$catalog; stale=1; \
 		echo "$$catalog is out of date with the code's UI texts: run make strings and commit the catalog." >&2; }; \
 		done; exit $$stale
-
-# Ficha's languages, English and the eleven it comes in (ADR 0027): the check
-# below requires a translation into each of the eleven, as FichaKit's test of
-# the engine's messages does, and the render tools draw in each. The check
-# reads the catalogs alone, without building anything.
-LANGUAGES := scripts/languages.txt
-
-.PHONY: translations-check
-CHECKS += translations-check
-translations-check: ## Fail while a String Catalog lacks a translation, naming the catalog, the text and the language.
-	@scripts/check-translations.sh $(LANGUAGES) $(CATALOGS)
-
-.PHONY: translations-check-test
-CHECKS += translations-check-test
-translations-check-test: ## Test the translations check on small catalogs of its own.
-	scripts/test-check-translations.sh
 
 .PHONY: time-and-ids-check
 CHECKS += time-and-ids-check
@@ -266,7 +248,7 @@ render: fsrs ## Draw an app window as a PNG, offscreen: make render ARGS="cards 
 	CFFIXED_USER_HOME=$(CURDIR)/.build/render/home swift run --package-path $(RENDER) --quiet Render $(ARGS)
 
 .PHONY: render-iphone
-render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, in a simulator of its own: make render-iphone ARGS="[--language <code>] [--out <path>]".
+render-iphone: build-iphone ## Take the iPhone app's pictures, light and dark, in a simulator of its own: make render-iphone ARGS="[--out <path>]".
 	scripts/render-iphone.sh "$(DERIVED)/Build/Products/Debug-iphonesimulator/Ficha Dev.app" $(ARGS)
 
 # `make upload` sends the real Ficha to TestFlight from main alone, as GitHub
