@@ -159,13 +159,14 @@ build-iphone: project ## Build the iPhone app for the simulator, unsigned, as CI
 # Xcode's export fills them all from the code: it adds the UI's new
 # texts, and drops the ones the code no longer has, or marks them stale when
 # they hold a value of their own, such as plural variations. Whatever the
-# scheme, it builds both apps on the way, the iPhone's for an iPhone and unsigned, so it takes the build's derived
-# data, build number and signing, and writes its own copy of the texts to a
-# scratch folder. It builds the Mac's for Intel too, and Xcode then processes
-# Ficha Dev's CLI's Info.plist for Apple silicon alone, so its link for Intel
-# can't find it: the export, which only reads the code, leaves it out.
-# FichaKit's StringCatalogsTests lists them too, to keep each in English
-# alone: a new catalog goes in both.
+# scheme, it builds both apps on the way, the iPhone's for an iPhone and
+# unsigned, so it takes the build's derived data, build number and signing,
+# and writes its own copy of the texts to a scratch folder. It builds the
+# Mac's for Intel too, and Xcode then processes Ficha Dev's CLI's Info.plist
+# for Apple silicon alone, so its link for Intel can't find it: the export,
+# which only reads the code, leaves it out. FichaKit's StringCatalogsTests
+# lists them too, to keep each in English alone, with no stale text: a new
+# catalog goes in both.
 CATALOGS := App/Localizable.xcstrings App/AppShortcuts.xcstrings Widget/Localizable.xcstrings \
 	iPhone/Localizable.xcstrings
 STRINGS := .build/strings

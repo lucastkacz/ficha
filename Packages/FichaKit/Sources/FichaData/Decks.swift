@@ -40,7 +40,7 @@ public struct Deck: Sendable, Hashable {
     /// Default's name, as a card names it and the `deck` table keeps it:
     /// empty, which no name the user types is, since a blank one is refused
     /// (`Engine.makeDeck(named:)`). The app shows Default by a name of its
-    /// own, in the Mac's language, as `Deck.defaultNames` lists it.
+    /// own, from its String Catalog, as `Deck.defaultNames` lists it.
     public static let defaultName = ""
 
     /// Its whole name, its levels joined by `::`, as `TagPath` reads it, or

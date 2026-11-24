@@ -2,10 +2,10 @@ import FichaCore
 import Foundation
 import Testing
 
-/// The locales are as `Locale.current` comes in the app: the app's language,
-/// the one its catalogs give it, with the Mac's region, such as `de_US` for
-/// a Mac in German set to the United States' formats, or `zh_TW` for one in
-/// Traditional Chinese.
+/// The app's `Locale.current` is English, the one language its catalogs give
+/// it (ADR 0036), with the Mac's region, such as `en_DE` for a Mac set to
+/// Germany's formats. The other languages test `shortInterval(in:)` for any
+/// locale it's given.
 struct ShortIntervalTests {
     @Test("an interval under a month shows narrow in English, like 8d, as Anki's buttons show it, whatever the region")
     func englishIsNarrow() {

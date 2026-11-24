@@ -4,7 +4,7 @@ import AppKit
 /// its widths in the app's language, which the table draws them at. Saved is
 /// as wide as its dates and Size as its sizes, and Kind takes what they leave
 /// it, down to its header, its texts wrapping, so that every column shows
-/// whole within the width the tab names give Settings, in every language.
+/// whole within the width the tab names give Settings.
 struct CopyTableColumns {
     let saved: FittedColumn
     let kind: FittedColumn
