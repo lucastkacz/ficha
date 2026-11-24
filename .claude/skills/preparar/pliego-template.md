@@ -26,7 +26,7 @@ What stays by hand, each with why it can't be a test yet.
 
 Cloud first (`.claude/method/method.md`): the project's machines, each with what it can do and what it costs, linked to the page that says so.
 
-- **The session in the cloud**: its system, its tools, what its network lets in, and what of the project it builds and tests.
+- **The session in the cloud**: its system, its tools, what its network lets in, what of the project it builds and tests, and which of the paths the guards list it can push to.
 - **Rented machines**: the CI's runners by system, what they cost the project, such as nothing for a public repo's standard runners, or a price per minute by system past a private repo's included amount, and how long a run takes.
 - **The user's computer**: how a session reaches it.
 
