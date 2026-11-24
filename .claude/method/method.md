@@ -26,6 +26,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
 - **Replanteo**: before building, `/construir` sets each issue against today's code, and stops to ask when something changed since it was decided.
 - **Change order** (orden de cambio): when the plano must change while building, `/construir` stops and shows the user the plano before and after, and which of the node's active issues the change touches, for them to approve. A big one goes back to `/debate`.
 - **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned.
+- **Probe** (prueba): a Task that settles an open item before the issue that depends on it is written, by trying it on the machine it's about, such as whether a rented machine can draw the pictures. Its PR says what it found, and `/decision`, typed again, writes the waiting piece's issues with it.
 - **Sideways** (se torció): a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, or a node that took far longer than its size. `/construir`'s PR says what went sideways, and `/entregar` looks back at it.
 
 ## What the user sees
