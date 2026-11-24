@@ -24,7 +24,7 @@ Done when each section of the template has its facts, each with the file, page o
 
 ## 2. Draft it
 
-Fill the template. Each item is decided when the project's files or the user already chose it, provisional when it's your proposal, and open when nobody knows yet: an open item is decided in the debate that needs it, so write it down and move on.
+Fill the template. Each item is decided when the project's files or the user already chose it, provisional when it's your proposal, and open when nobody knows yet: an open item is decided in the debate that needs it, or by a probe, so write it down and move on.
 
 - **Hands-free**: for driving, seeing and testing the product, name the project's tool, or the gap. Each gap is an open item, and, once the user agrees, the first issues to build.
 - **Where it runs**: each kind of work on the first machine that can do it, in cloud first's order: the session in the cloud, a rented machine, the user's computer. Each with what it costs, how long it takes, and the page or run that says so; one that costs money is the user's choice, as a question. The checks the method needs before the PR is ready, such as the tests, need a way to run on their machine before then, such as a CI workflow on a push or on demand. A step left on the user's computer for a missing tool, a path the session in the cloud couldn't push to, with the error it gave, or a check with no way to run before the PR is ready, is a gap: an open item, and, once the user agrees, an issue.
