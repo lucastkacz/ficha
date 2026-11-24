@@ -13,23 +13,29 @@
   const E = root.FichaEngine;
   const { MINUTE, HOUR, DAY } = E;
 
-  /** A setting to try, as the Lab's defaults: Ficha's own, and a working week. */
+  /**
+   * A setting to try, as the Lab's defaults: Ficha as ADR 0034 decided it,
+   * and a working week.
+   */
   const DEFAULTS = {
     days: 28,
     runs: 8,
-    // Ficha's settings (ReviewSettings.defaults, Scheduler.standard).
+    // Ficha's settings (ReviewSettings.defaults, Scheduler.standard), with
+    // ADR 0034's pace, queue and retention.
     cardsPerAppearance: 5,
     separationMinutes: 30,
     activeHours: [9, 22],
     lookAheadMinutes: 20,
     newPerAppearance: 1,
-    retention: 0.9,
-    // The decks in use, each at its pace: a sample deck's id, or a made-up
-    // deck with a number of cards.
-    decks: [
-      { id: 'palabras', perDay: 3 },
-      { id: 'nubes', perDay: 5 },
-    ],
+    // New cards a day, for all decks together: Steady.
+    newPerDay: 2,
+    // New cards from one deck at a time, the queue's first; false takes
+    // them from every deck in turn, as the app does before #490.
+    queue: true,
+    retention: 0.85,
+    // The decks in use, in the queue's order: a sample deck's id, or a
+    // made-up deck with a number of cards.
+    decks: [{ id: 'clouds' }, { id: 'mountains' }],
     // The person: when the Mac is on, meetings, and how they answer.
     life: {
       weekday: [9, 18.5],
@@ -108,18 +114,18 @@
       activeHours: config.activeHours,
       lookAhead: config.lookAheadMinutes * MINUTE,
       newPerAppearance: config.newPerAppearance,
+      newCardsFrom: config.queue ? 'queue' : 'together',
     };
     const scheduler = { ...E.SCHEDULER, retention: config.retention };
-    const app = new E.ToyFicha({ decks: decksFor(config), now: start, speed: 0, settings, scheduler });
-    config.decks.forEach((d, i) => {
-      const deck = app.state.decks[i];
-      deck.added = true;
-      deck.perDay = d.perDay;
-    });
+    const decks = decksFor(config);
+    const app = new E.ToyFicha({ decks, now: start, speed: 0, settings, scheduler, pace: config.newPerDay });
+    decks.forEach((d) => app.addDeck(d.id));
     const total = app.state.cards.length;
     const s = app.state;
     const days = [];
     let allMetDay = null;
+    // The day each deck's last new card was met, in the decks' order.
+    const deckMetDay = decks.map(() => null);
 
     for (let day = 0; day < config.days; day++) {
       const dayStart = start + day * DAY;
@@ -155,7 +161,7 @@
         wasMeeting = meeting;
         s.now = t;
         s.suppression = meeting ? 'meeting' : null;
-        if (s.introduced.day !== E.startOfDay(t, settings)) s.introduced = { day: E.startOfDay(t, settings), byDeck: {} };
+        if (s.introduced.day !== E.startOfDay(t, settings)) s.introduced = { day: E.startOfDay(t, settings), count: 0, byDeck: {} };
         const next = on ? app.nextAppearance() : null;
         const boundary = bounds.find((b) => b > t) ?? dayEnd;
         if (next && next.at <= t) {
@@ -177,6 +183,7 @@
               const g = E.pretendRating(card, t, random);
               if (card.state === 'new') {
                 stats.newMet++;
+                s.introduced.count++;
                 s.introduced.byDeck[card.deckId] = (s.introduced.byDeck[card.deckId] || 0) + 1;
               }
               if (card.state === 'review') {
@@ -199,9 +206,12 @@
       stats.met = s.cards.filter((c) => c.state !== 'new').length;
       stats.dueLeft = s.cards.filter((c) => c.state !== 'new' && c.due < dayEnd).length;
       if (allMetDay == null && stats.met === total) allMetDay = day;
+      decks.forEach((d, i) => {
+        if (deckMetDay[i] == null && app.newLeft(d.id) === 0) deckMetDay[i] = day;
+      });
       days.push(stats);
     }
-    return { days, total, allMetDay };
+    return { days, total, allMetDay, deckMetDay };
   }
 
   const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
@@ -229,6 +239,7 @@
     const graduated = all.reduce((a, d) => a + d.graduatedReviews, 0);
     const metDays = runs.map((r) => r.allMetDay);
     const total = runs[0].total;
+    const deckNames = decksFor(config).map((d) => d.name);
     const last = days[n - 1];
     return {
       config,
@@ -250,6 +261,11 @@
         allMetDay: metDays.every((d) => d != null) ? mean(metDays) : null,
         allMetLatest: metDays.every((d) => d != null) ? Math.max(...metDays) : null,
         allMetShare: metDays.filter((d) => d != null).length / metDays.length,
+        // Each deck, in the queue's order: the day its cards were all met, or null where some run never did.
+        decks: deckNames.map((name, i) => {
+          const each = runs.map((r) => r.deckMetDay[i]);
+          return { name, metDay: each.every((d) => d != null) ? mean(each) : null };
+        }),
       },
     };
   }

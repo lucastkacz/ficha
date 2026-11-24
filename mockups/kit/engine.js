@@ -3,10 +3,12 @@
  *
  * Plain JavaScript, no React, so it runs in a page and in Node alike.
  * It imitates FichaCore closely enough for a mock to feel right, in what
- * mockups/README.md's "What the toy engine copies" lists. It is a toy: FichaCore,
- * with its tests, decides the real logic. A rule that comes out of a mock
- * goes into the decision's issue and is built in Swift with its tests
- * (mockups/README.md).
+ * mockups/README.md's "What the toy engine copies" lists, and acts out what
+ * ADR 0034 decided ahead of FichaCore, which #490 builds: the pace, the
+ * queue of decks, the finish date and 85% on a new install. It is a toy:
+ * FichaCore, with its tests, decides the real logic. A rule that comes out
+ * of a mock goes into the decision's issue and is built in Swift with its
+ * tests (mockups/README.md).
  */
 (function (root) {
   'use strict';
@@ -77,6 +79,8 @@
     retention: 0.9,
     longestIntervalDays: 36500,
   };
+  /** ADR 0034: the desired retention a new install starts at, ahead of FichaCore (#490). */
+  const NEW_INSTALL_RETENTION = 0.85;
 
   /**
    * Anki's fuzz: a graduated interval of 3 days or more moves a little,
@@ -201,11 +205,46 @@
     separation: 30 * MINUTE,
     waitAfterSuppression: 2 * MINUTE,
     autoClose: 10 * MINUTE,
+    waitAfterWaking: 2 * MINUTE,
+    // What holds an appearance back, each a key of SUPPRESSIONS.
+    suppressionsThatApply: ['meeting', 'video', 'fullScreen'],
     // At most this many new cards an appearance brings (ReviewNow.bringsNewCard: one).
     newPerAppearance: 1,
+    // Where new cards come from: 'queue', one deck at a time (ADR 0034), or
+    // 'together', every deck in turn, as the app does before #490.
+    newCardsFrom: 'queue',
     // New cards a day count by the calendar day, as ReviewNow's metToday does.
     dayStartsAtHour: 0,
   };
+
+  /**
+   * ADR 0034: one pace for all decks, the new cards a day the user meets.
+   * Steady to start. The numbers are provisional: #490 measures them again
+   * in the Lab.
+   */
+  const PACES = [
+    { id: 'chill', name: 'Chill', perDay: 1 },
+    { id: 'steady', name: 'Steady', perDay: 2 },
+    { id: 'faster', name: 'Faster', perDay: 4 },
+  ];
+  /** A pace by its id; a number is any count a day, as the Lab tries. */
+  const paceOf = (id) =>
+    typeof id === 'number' ? { id, name: `${id} a day`, perDay: id } : PACES.find((p) => p.id === id) || PACES[1];
+
+  /**
+   * ADR 0034's finish date, in days from today, for each deck of a queue:
+   * `left` is each deck's new cards still to meet, in the queue's order, and
+   * `today` the new cards today may still bring. `soonest` is if every day
+   * has appearances, `latest` if five days a week do.
+   */
+  function finishDays({ left, perDay, today = 0 }) {
+    let total = 0;
+    return left.map((n) => {
+      total += n;
+      const days = Math.ceil(Math.max(0, total - today) / perDay);
+      return { soonest: days, latest: Math.ceil((days * 7) / 5) };
+    });
+  }
 
   /** The suppressions of AppearancePlanner, as the log says them. */
   const SUPPRESSIONS = {
@@ -260,14 +299,22 @@
     return x < 0.12 ? 1 : x < 0.16 ? 2 : 3;
   }
 
+
   // ---------------------------------------------------------------------
   // ToyFicha: the app's state, the clock and the appearances.
   // A tiny store: read `state`, call actions, `subscribe` to changes.
   // ---------------------------------------------------------------------
   class ToyFicha {
-    constructor({ decks, now, speed = 60, settings = SETTINGS, scheduler = SCHEDULER }) {
-      this.settings = settings;
-      this.scheduler = scheduler;
+    constructor({
+      decks,
+      now,
+      speed = 60,
+      settings = SETTINGS,
+      scheduler = { ...SCHEDULER, retention: NEW_INSTALL_RETENTION },
+      pace = 'steady',
+    }) {
+      this.settings = { ...settings };
+      this.scheduler = { ...scheduler };
       this.listeners = new Set();
       const cards = [];
       for (const deck of decks) {
@@ -296,12 +343,17 @@
         suppression: null,
         suppressionEndedAt: null,
         heldBack: false,
+        // No appearance before this time, as after the Welcome page.
+        notBefore: null,
         cardSize: 100,
-        decks: decks.map(({ cards: _, ...d }) => ({ ...d, added: false, perDay: 5, addedAt: null })),
+        // ADR 0034: one pace for all decks, and the queue new cards come from.
+        pace,
+        queue: [],
+        decks: decks.map(({ cards: _, ...d }) => ({ ...d, added: false, addedAt: null, metAllAt: null, setAside: false })),
         cards,
         panel: null,
         lastClosedAt: null,
-        introduced: { day: dayKey(now, settings), byDeck: {} },
+        introduced: { day: dayKey(now, settings), count: 0, byDeck: {} },
         buried: {},
         inbox: 0,
         log: [],
@@ -339,11 +391,29 @@
       const buriedUntil = this.state.buried;
       return this.state.cards.filter((c) => added.has(c.deckId) && !(buriedUntil[c.id] > this.state.now));
     }
-    newLeftToday(deck, at = this.state.now) {
+    deckCards(id) {
+      return this.state.cards.filter((c) => c.deckId === id);
+    }
+    /** A deck's cards not met yet. */
+    newLeft(id) {
+      return this.deckCards(id).filter((c) => c.state === 'new').length;
+    }
+    perDay(pace = this.state.pace) {
+      return paceOf(pace).perDay;
+    }
+    /** The decks in the queue, first to last; a deck set aside leaves it. */
+    queueDecks() {
+      return this.state.queue.map((id) => this.deck(id)).filter((d) => d && !d.setAside);
+    }
+    /** The deck new cards come from now: the first in the queue with cards not met. */
+    currentDeck() {
+      return this.queueDecks().find((d) => this.newLeft(d.id) > 0) || null;
+    }
+    /** New cards today may still bring, for all decks together. */
+    newLeftToday(at = this.state.now) {
       const today = dayKey(at, this.settings);
-      const used = today === this.state.introduced.day ? this.state.introduced.byDeck[deck.id] || 0 : 0;
-      const remaining = this.state.cards.filter((c) => c.deckId === deck.id && c.state === 'new').length;
-      return Math.min(Math.max(0, deck.perDay - used), remaining);
+      const used = today === this.state.introduced.day ? this.state.introduced.count : 0;
+      return Math.max(0, this.perDay() - used);
     }
     dueCount(at = this.state.now) {
       return this.activeCards().filter((c) => c.state !== 'new' && c.due <= at).length;
@@ -352,35 +422,38 @@
     learnedCount() {
       return this.state.cards.filter((c) => c.state === 'review' && c.ivlDays >= 21).length;
     }
+    /** Whether a suppression holds appearances back now, as Settings lets it. */
+    holding() {
+      const s = this.state.suppression;
+      return !!s && this.settings.suppressionsThatApply.includes(s);
+    }
 
     /**
      * The cards an appearance at `at` would bring, as ReviewNow.pickCards
      * picks them: the cards due within the look-ahead, soonest first, up to
      * the cards an appearance brings, and then one new card if there's room
-     * and a deck may still meet one today. With several decks, the new card
-     * comes from the deck with the most left to meet today (new here: the
-     * app has one count of new cards a day for all decks).
+     * and today's pace allows one. The new card comes from the first deck in
+     * the queue with cards not met (ADR 0034), or, with `newCardsFrom`
+     * 'together', from each deck in turn.
      */
     pickCards(at = this.state.now, lookAhead = this.settings.lookAhead) {
       const max = this.settings.cardsPerAppearance;
-      const picked = this.activeCards()
+      const active = this.activeCards();
+      const picked = active
         .filter((c) => c.state !== 'new' && c.due <= at + lookAhead)
         .sort((a, b) => a.due - b.due)
         .slice(0, max)
         .map((c) => c.id);
-      for (let n = 0; n < this.settings.newPerAppearance && picked.length < max; n++) {
-        const decks = this.state.decks
-          .filter((d) => d.added)
-          .map((d) => ({ d, left: this.newLeftToday(d, at) - picked.filter((id) => this.card(id).state === 'new' && this.card(id).deckId === d.id).length }))
-          .filter((x) => x.left > 0)
-          .sort((a, b) => b.left - a.left);
-        if (!decks.length) break;
-        const fresh = this.activeCards()
-          .filter((c) => c.deckId === decks[0].d.id && c.state === 'new' && !picked.includes(c.id))
-          .sort((a, b) => a.order - b.order)[0];
-        if (!fresh) break;
-        picked.push(fresh.id);
-      }
+      const byDeck = this.queueDecks().map((d) =>
+        active.filter((c) => c.deckId === d.id && c.state === 'new').sort((a, b) => a.order - b.order),
+      );
+      const together = this.settings.newCardsFrom === 'together';
+      // Together, the decks take turns: each one's first card, then each one's second.
+      const fresh = together
+        ? byDeck.flatMap((cards, k) => cards.map((c) => ({ c, rank: c.order * byDeck.length + k }))).sort((a, b) => a.rank - b.rank).map((x) => x.c)
+        : byDeck.flat();
+      const room = Math.min(this.settings.newPerAppearance, this.newLeftToday(at), max - picked.length);
+      for (const c of fresh.slice(0, Math.max(0, room))) picked.push(c.id);
       return picked;
     }
 
@@ -388,27 +461,27 @@
     nextAppearance() {
       const s = this.state;
       if (s.panel) return null;
+      if (!s.decks.some((d) => d.added)) return null;
       let t = s.now;
+      if (s.notBefore != null) t = Math.max(t, s.notBefore);
       if (s.lastClosedAt != null) t = Math.max(t, s.lastClosedAt + this.settings.separation);
       if (s.suppressionEndedAt != null) t = Math.max(t, s.suppressionEndedAt + this.settings.waitAfterSuppression);
-      const added = s.decks.filter((d) => d.added);
-      if (!added.length) return null;
+      const hasNew = !!this.currentDeck();
       for (let i = 0; i < 30; i++) {
         t = intoActiveHours(t, this.settings);
-        if (added.some((d) => this.newLeftToday(d, t) > 0)) break;
+        if (hasNew && this.newLeftToday(t) > 0) break;
         // An appearance comes once a card is due; the look-ahead only brings others along.
         const dues = this.activeCards()
           .filter((c) => c.state !== 'new')
           .map((c) => c.due);
         const nextDue = dues.length ? Math.min(...dues) : null;
         const nextDay = startOfDay(t, this.settings) + DAY;
-        const hasNew = added.some((d) => this.state.cards.some((c) => c.deckId === d.id && c.state === 'new'));
         if (nextDue != null && nextDue <= t) break;
         const candidates = [nextDue, hasNew ? nextDay : null].filter((x) => x != null);
         if (!candidates.length) return null;
         t = Math.min(...candidates);
       }
-      return { at: t, heldBack: !!s.suppression, cards: this.pickCards(t).length };
+      return { at: t, heldBack: this.holding(), cards: this.pickCards(t).length };
     }
 
     // The clock.
@@ -422,7 +495,7 @@
       const s = this.state;
       s.now = t;
       const today = dayKey(t, this.settings);
-      if (today !== s.introduced.day) s.introduced = { day: today, byDeck: {} };
+      if (today !== s.introduced.day) s.introduced = { day: today, count: 0, byDeck: {} };
       if (s.panel) {
         if (t - s.panel.touchedAt > this.settings.autoClose) this.close('auto');
         return;
@@ -433,7 +506,7 @@
       const s = this.state;
       const next = this.nextAppearance();
       if (!next || next.at > s.now) return;
-      if (s.suppression) {
+      if (this.holding()) {
         if (!s.heldBack) this.log(`Appearance held back: ${SUPPRESSIONS[s.suppression]}`, 'held');
         s.heldBack = true;
         return;
@@ -468,7 +541,8 @@
       s.suppression = kind;
       if (was && !kind) {
         s.suppressionEndedAt = s.now;
-        if (s.heldBack) this.log('Over: the appearance waits 2 minutes', 'held');
+        const wait = Math.round(this.settings.waitAfterSuppression / MINUTE);
+        if (s.heldBack) this.log(`Over: the appearance waits ${wait} minute${wait === 1 ? '' : 's'}`, 'held');
         s.heldBack = false;
       }
       if (kind) this.log(SUPPRESSIONS[kind][0].toUpperCase() + SUPPRESSIONS[kind].slice(1), 'held');
@@ -478,24 +552,104 @@
       this.setSuppression(on ? 'meeting' : null);
     }
 
-    /** ⌘+, ⌘− and ⌘0: the card's size, from 80% to 200% by tens (CardSize). */
+    /** ⌘+, ⌘− and ⌘0, or a percent from Settings: the card's size, from 80% to 200% by tens (CardSize). */
     setCardSize(key) {
       const p = this.state.cardSize;
-      const next = key === '0' ? 100 : key === '-' ? Math.max(80, p - 10) : Math.min(200, p + 10);
+      const step = key === '0' ? 100 : key === '-' ? Math.max(80, p - 10) : Math.min(200, p + 10);
+      const next = typeof key === 'number' ? key : step;
       this.state.cardSize = next;
       this.emit();
     }
 
-    // Decks.
-    addDeck(id, perDay) {
-      const d = this.deck(id);
-      const was = d.added;
-      d.added = true;
-      d.perDay = perDay;
-      d.addedAt = d.addedAt ?? this.state.now;
-      this.log(was ? `${d.name}: ${perDay} new a day` : `Added ${d.name}, ${perDay} new a day`, 'deck');
+    // Settings.
+    /** Changes one of ReviewSettings' values, by its name in SETTINGS. */
+    setSetting(key, value) {
+      this.settings = { ...this.settings, [key]: value };
       this.changed();
       this.emit();
+    }
+    setRetention(retention) {
+      this.scheduler = { ...this.scheduler, retention };
+      this.log(`Desired retention ${Math.round(retention * 100)}%`, 'deck');
+      this.changed();
+      this.emit();
+    }
+
+    // The pace and the queue (ADR 0034).
+    setPace(pace) {
+      if (this.state.pace === pace) return;
+      this.state.pace = pace;
+      const p = paceOf(pace);
+      this.log(`Pace: ${p.name}, ${p.perDay} new a day`, 'deck');
+      this.changed();
+      this.emit();
+    }
+    /** Adds a deck at the end of the queue, or first when asked. */
+    addDeck(id, { first = false } = {}) {
+      const d = this.deck(id);
+      const s = this.state;
+      d.added = true;
+      d.setAside = false;
+      d.addedAt = d.addedAt ?? s.now;
+      s.queue = s.queue.filter((x) => x !== id);
+      if (first) s.queue.unshift(id);
+      else s.queue.push(id);
+      this.log(`Added ${d.name}, ${first ? 'first' : 'last'} in the queue`, 'deck');
+      this.changed();
+      this.emit();
+    }
+    putFirst(id) {
+      const s = this.state;
+      s.queue = [id, ...s.queue.filter((x) => x !== id)];
+      this.log(`${this.deck(id).name} goes first`, 'deck');
+      this.changed();
+      this.emit();
+    }
+    /** Sets a deck aside, out of the queue, or brings it back, last (provisional in ADR 0034). */
+    setAside(id, aside = true) {
+      const d = this.deck(id);
+      const s = this.state;
+      d.setAside = aside;
+      if (!aside) s.queue = [...s.queue.filter((x) => x !== id), id];
+      this.log(aside ? `${d.name} set aside` : `${d.name} back in the queue, last`, 'deck');
+      this.changed();
+      this.emit();
+    }
+    /** Whether a new card can still come today, before active hours end. */
+    canMeetToday(at = this.state.now) {
+      return new Date(at).getHours() < this.settings.activeHours[1];
+    }
+    /**
+     * Each queued deck's finish date (ADR 0034): when the user will have met
+     * all its cards, as a range of days, from the pace and the decks ahead
+     * of it. `add` places a deck not yet added, last or `first`, to answer
+     * How fast?; `pace` tries another pace. Days without appearances move
+     * the dates later, since they count from today's cards not met.
+     */
+    forecast({ pace = this.state.pace, add = null, first = false } = {}) {
+      let ids = this.queueDecks().map((d) => d.id);
+      if (add) {
+        ids = ids.filter((x) => x !== add);
+        if (first) ids.unshift(add);
+        else ids.push(add);
+      }
+      const decks = ids.filter((id) => this.newLeft(id) > 0);
+      const s = this.state;
+      const used = s.introduced.day === dayKey(s.now, this.settings) ? s.introduced.count : 0;
+      const today = this.canMeetToday() ? Math.max(0, this.perDay(pace) - used) : 0;
+      const days = finishDays({ left: decks.map((id) => this.newLeft(id)), perDay: this.perDay(pace), today });
+      const start = startOfDay(s.now, this.settings);
+      const out = {};
+      decks.forEach((id, i) => {
+        out[id] = {
+          ...days[i],
+          left: this.newLeft(id),
+          soonestAt: start + days[i].soonest * DAY,
+          latestAt: start + days[i].latest * DAY,
+          place: i,
+        };
+      });
+      return out;
     }
 
     // The review panel.
@@ -512,6 +666,8 @@
         touchedAt: s.now,
         undo: [],
         rated: 0,
+        // The decks whose last new card this panel met: "You've met them all".
+        metAll: [],
       };
       s.heldBack = false;
       this.log(kind === 'appearance' ? `Appearance, ${queue.length} card${queue.length > 1 ? 's' : ''}` : `Review now, ${queue.length} cards`, 'appear');
@@ -520,7 +676,7 @@
       if (this.state.panel) return;
       const queue = this.pickCards(this.state.now, 0);
       if (queue.length) this.open('reviewNow', queue);
-      else this.state.panel = { kind: 'empty', queue: [], index: 0, touchedAt: this.state.now, undo: [], openedAt: this.state.now };
+      else this.state.panel = { kind: 'empty', queue: [], index: 0, touchedAt: this.state.now, undo: [], openedAt: this.state.now, metAll: [] };
       this.emit();
     }
     touch() {
@@ -544,17 +700,26 @@
       p.mode = null;
       if (p.index >= p.queue.length) p.done = true;
     }
+    /** Records Anki's rating g, 1 to 4, whichever button or key gave it. */
     rate(g) {
       const p = this.state.panel;
       const card = this.currentCard();
       if (!card || !p.flipped) return;
       const now = this.state.now;
+      const wasNew = card.state === 'new';
       p.undo.push({ index: p.index, card: { ...card } });
-      if (card.state === 'new') {
-        const intro = this.state.introduced.byDeck;
-        intro[card.deckId] = (intro[card.deckId] || 0) + 1;
+      if (wasNew) {
+        const intro = this.state.introduced;
+        intro.count++;
+        intro.byDeck[card.deckId] = (intro.byDeck[card.deckId] || 0) + 1;
       }
       Object.assign(card, rate(card, g, now, this.scheduler));
+      const deck = this.deck(card.deckId);
+      if (wasNew && this.newLeft(deck.id) === 0) {
+        deck.metAllAt = now;
+        p.metAll.push(deck.id);
+        this.log(`You've met them all: ${deck.name}`, 'done');
+      }
       p.rated++;
       this.changed();
       this.advance();
@@ -567,7 +732,10 @@
       if (!last) return;
       const card = this.card(last.card.id);
       if (card.state !== 'new' && last.card.state === 'new') {
+        this.state.introduced.count--;
         this.state.introduced.byDeck[card.deckId]--;
+        this.deck(card.deckId).metAllAt = null;
+        p.metAll = p.metAll.filter((id) => id !== card.deckId);
       }
       Object.assign(card, last.card);
       p.index = last.index;
@@ -652,77 +820,18 @@
     }
   }
 
-  // ---------------------------------------------------------------------
-  // The pace a deck would take: the "How fast?" screen's numbers.
-  // ---------------------------------------------------------------------
-  /**
-   * Simulates the coming `days` with the made-up learner, reviewing each card
-   * when it's due inside active hours, and returns the cards each day would
-   * bring, the new deck's apart from the rest, averaged over a few runs.
-   */
-  function simulatePace({ cards, deckId, perDay, now, days = 28, runs = 12, settings = SETTINGS, scheduler = SCHEDULER }) {
-    const start = startOfDay(now, settings);
-    const totals = Array.from({ length: days }, () => ({ deck: 0, others: 0, fresh: 0 }));
-    for (let run = 0; run < runs; run++) {
-      const random = seeded(101 + run);
-      const pool = cards.map((c) => ({ ...c }));
-      const fresh = pool.filter((c) => c.deckId === deckId && c.state === 'new').sort((a, b) => a.order - b.order);
-      for (let day = 0; day < days; day++) {
-        const dayStart = start + day * DAY;
-        const dayEnd = dayStart + DAY;
-        const firstHour = intoActiveHours(Math.max(dayStart, day === 0 ? now : dayStart), settings);
-        // New cards meet at the day's first appearance.
-        if (firstHour < dayEnd) {
-          for (const c of fresh.splice(0, perDay)) {
-            Object.assign(c, rate(c, pretendRating(c, firstHour, random), firstHour, scheduler));
-            totals[day].deck++;
-            totals[day].fresh++;
-          }
-        }
-        // Then every card due today, once each time it's due.
-        for (let guard = 0; guard < 400; guard++) {
-          const due = pool
-            .filter((c) => c.state !== 'new' && c.due < dayEnd)
-            .sort((a, b) => a.due - b.due)[0];
-          if (!due) break;
-          const at = intoActiveHours(Math.max(due.due, firstHour), settings);
-          if (at >= dayEnd) {
-            due.due = at;
-            continue;
-          }
-          Object.assign(due, rate(due, pretendRating(due, at, random), at, scheduler));
-          if (due.deckId === deckId) totals[day].deck++;
-          else totals[day].others++;
-        }
-      }
-    }
-    return totals.map((d, i) => ({
-      day: start + i * DAY,
-      deck: d.deck / runs,
-      others: d.others / runs,
-      fresh: d.fresh / runs,
-    }));
-  }
-
-  /** When the last new card would be met: every day, or five days a week. */
-  function metBy({ newCards, perDay, now, settings = SETTINGS }) {
-    const firstDay = startOfDay(now, settings) + (new Date(now).getHours() >= settings.activeHours[1] ? DAY : 0);
-    const daysNeeded = Math.max(1, Math.ceil(newCards / perDay));
-    return {
-      daysNeeded,
-      soonest: firstDay + (daysNeeded - 1) * DAY,
-      latest: firstDay + (Math.ceil((daysNeeded * 7) / 5) - 1) * DAY,
-    };
-  }
-
   root.FichaEngine = {
     MINUTE,
     HOUR,
     DAY,
     FSRS,
     SCHEDULER,
+    NEW_INSTALL_RETENTION,
     SETTINGS,
     SUPPRESSIONS,
+    PACES,
+    paceOf,
+    finishDays,
     rate,
     preview,
     fuzz,
@@ -732,8 +841,6 @@
     startOfDay,
     seeded,
     pretendRating,
-    simulatePace,
-    metBy,
     ToyFicha,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

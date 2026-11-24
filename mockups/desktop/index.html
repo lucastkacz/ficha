@@ -19,53 +19,170 @@
   .stage { border-radius: 12px; box-shadow: 0 0 0 1px var(--hud-line); }
   .noscript { padding: 24px; font: 14px/1.5 var(--font-text); }
 
-  /* ---------- New: the Add a Deck window and its "How fast?" ---------- */
-  .adddeck { position: absolute; inset: 0; display: grid; grid-template-columns: 220px 1fr; }
-  .adddeck .sidebar {
-    margin: 0 0 10px 10px;
-    padding: 6px;
-    border-radius: 12px;
-    background: var(--sidebar-bg);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: auto;
+  /* A grouped form's colors, as a macOS Settings window draws them. */
+  :root { --form-bg: #f2f2f4; --group-bg: #ffffff; --group-edge: rgba(0, 0, 0, 0.07); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) { --form-bg: #1c1c1e; --group-bg: #2a2a2c; --group-edge: rgba(255, 255, 255, 0.06); }
   }
-  .adddeck .side-title { padding: 4px 8px 6px; font-size: var(--text-subheadline); font-weight: 600; color: var(--secondary-label); }
-  .adddeck .side-row {
+  :root[data-theme='dark'] { --form-bg: #1c1c1e; --group-bg: #2a2a2c; --group-edge: rgba(255, 255, 255, 0.06); }
+
+  .mac h2, .mac h3, .mac h4, .mac p { margin: 0; }
+  .mac .sub { color: var(--secondary-label); }
+  .mac .hint { color: var(--secondary-label); font-size: var(--text-callout); }
+  .mac .linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; }
+  .mac .linkish[aria-pressed='true'] { font-weight: 600; text-decoration: underline; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .deck-head { display: flex; gap: 12px; align-items: center; }
+  .deck-emoji { font-size: 32px; line-height: 1; }
+  .deck-head h2 { font-size: var(--text-title3); font-weight: 600; }
+  .bar { height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+  .bar.done i { background: var(--green); }
+
+  /* ---------- How fast? (ADR 0034, #491) ---------- */
+  .howfast { display: flex; flex-direction: column; gap: 8px; }
+  .howfast h3 { font-size: var(--text-headline); font-weight: 600; }
+  .paces { display: flex; flex-direction: column; gap: 6px; }
+  .pace-row {
     display: grid;
-    grid-template-columns: 22px 1fr auto;
+    grid-template-columns: 18px 58px max-content 1fr;
     align-items: center;
-    gap: 6px;
-    height: 28px;
-    padding: 0 8px;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 12px;
     border: 0;
-    border-radius: 7px;
-    background: transparent;
+    border-radius: 10px;
+    background: var(--fill);
     text-align: left;
     cursor: default;
   }
-  .adddeck .side-row:hover { background: var(--fill); }
-  .adddeck .side-row[aria-selected='true'] { background: var(--selection); }
-  .adddeck .side-row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .adddeck .side-row .count { color: var(--secondary-label); font-size: var(--text-subheadline); font-variant-numeric: tabular-nums; }
-  .adddeck .side-row .added { color: var(--accent); font-size: var(--text-subheadline); font-weight: 600; }
-  .adddeck .detail { min-width: 0; padding: 6px 22px 18px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
-  .adddeck .deck-head { display: flex; gap: 12px; align-items: center; }
-  .adddeck .deck-emoji { font-size: 34px; line-height: 1; }
-  .adddeck h2 { margin: 0; font-size: var(--text-title3); font-weight: 600; }
-  .adddeck .sub, .adddeck .hint { margin: 0; color: var(--secondary-label); }
-  .adddeck .hint { font-size: var(--text-callout); }
-  .adddeck .peek { display: flex; flex-wrap: wrap; gap: 6px; }
-  .adddeck .pace { display: flex; flex-direction: column; gap: 10px; }
-  .adddeck .pace-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .adddeck h3 { margin: 0; font-size: var(--text-headline); font-weight: 600; }
-  .adddeck .met { margin: 0; font-size: var(--text-title2); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
-  .adddeck .met strong { color: var(--accent); font-weight: 700; }
-  .adddeck .chart { width: 100%; height: auto; display: block; }
-  .adddeck .legend { display: flex; gap: 14px; font-size: var(--text-caption); color: var(--secondary-label); }
-  .adddeck .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: -0.5px; }
-  .adddeck .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .pace-row[aria-checked='true'] { background: var(--selection); box-shadow: inset 0 0 0 1px var(--accent); }
+  .radio { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--tertiary-label); }
+  [aria-checked='true'] > .radio { box-shadow: inset 0 0 0 4.5px var(--accent); }
+  .radio-btn { display: grid; place-items: center; padding: 2px; border: 0; background: none; cursor: default; }
+  .pace-row .what { color: var(--secondary-label); white-space: nowrap; }
+  .pace-row .when { font-weight: 600; text-align: right; text-wrap: balance; padding: 6px 0; }
+  .check { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; color: var(--label); white-space: nowrap; }
+  .check input { margin: 0; accent-color: var(--accent); }
+
+  /* ---------- WelcomePage (#467) ---------- */
+  .welcome { position: absolute; inset: 0; padding: 4px 28px 20px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+  .welcome .hello { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .welcome .hello h2 { font-size: var(--text-title2); font-weight: 700; }
+  .welcome .hello svg { vertical-align: -2px; }
+  .welcome .hello-icon {
+    width: 52px; height: 52px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(#fdfdfd, #e6e1d6); color: #4a3f2e; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .welcome h3 { font-size: var(--text-headline); font-weight: 600; }
+  .deck-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .deck-tile {
+    display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 8px;
+    padding: 10px 12px; border: 0; border-radius: 12px; background: var(--fill); text-align: left; cursor: default;
+  }
+  .deck-tile .emoji { grid-row: 1 / 3; font-size: 24px; align-self: center; }
+  .deck-tile .name { font-weight: 600; }
+  .deck-tile .count { color: var(--secondary-label); font-size: var(--text-callout); }
+  .deck-tile[aria-checked='true'] { background: var(--selection); box-shadow: inset 0 0 0 1px var(--accent); }
+  .doors { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .drop {
+    flex: 1 1 220px; min-height: 40px; padding: 8px 12px; border: 1.5px dashed var(--tertiary-label); border-radius: 12px;
+    background: transparent; text-align: center; color: var(--secondary-label); cursor: default;
+  }
+  .drop b { color: var(--label); }
+  .drop.on { border-color: var(--accent); background: var(--selection); }
+  .welcome .question { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; margin-top: 30px; }
+  .welcome .question h2 { font-size: var(--text-title2); font-weight: 700; }
+  .steps { display: flex; justify-content: center; gap: 6px; }
+  .steps i { width: 6px; height: 6px; border-radius: 50%; background: var(--quaternary-label); }
+  .steps i.on { background: var(--secondary-label); }
+
+  /* ---------- CardsWindow: the decks and their queue (#491, #458) ---------- */
+  .cards { position: absolute; inset: 0; display: grid; grid-template-columns: 250px 1fr; }
+  .cards .sidebar { margin: 0 0 10px 10px; padding: 6px; border-radius: 12px; background: var(--sidebar-bg); display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+  .cards .side-title { padding: 8px 8px 4px; font-size: var(--text-subheadline); font-weight: 600; color: var(--secondary-label); }
+  .cards .side-row {
+    display: grid; grid-template-columns: 22px 1fr; column-gap: 6px; align-items: center;
+    padding: 5px 8px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: default;
+  }
+  .cards .side-row:hover { background: var(--fill); }
+  .cards .side-row[aria-selected='true'] { background: var(--selection); }
+  .cards .side-row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cards .side-row small { grid-column: 2; color: var(--secondary-label); font-size: var(--text-subheadline); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cards .side-row.aside .name { color: var(--secondary-label); }
+  .cards .detail { min-width: 0; padding: 6px 22px 18px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+  .cards .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cards .peek { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cards table { width: 100%; border-collapse: collapse; font-size: var(--text-callout); }
+  .cards th { text-align: left; font-weight: 500; color: var(--secondary-label); padding: 4px 8px 4px 0; border-bottom: 1px solid var(--separator); }
+  .cards td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--separator); vertical-align: top; }
+  .cards td.back { color: var(--secondary-label); }
+  .cards td.when { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .sheet-cover { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.12); z-index: 5; display: flex; justify-content: center; }
+  .sheet {
+    width: min(440px, calc(100% - 40px)); align-self: flex-start; padding: 18px 20px; border-radius: 0 0 14px 14px;
+    background: var(--window-bg); box-shadow: var(--window-shadow); display: flex; flex-direction: column; gap: 12px;
+    max-height: calc(100% - 20px); overflow: auto; animation: panel-in 0.2s ease-out;
+  }
+
+  /* ---------- Settings in five tabs (#492) ---------- */
+  .settings { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--form-bg); }
+  .settings .toolbar { display: flex; justify-content: center; gap: 4px; padding: 0 10px 8px; background: var(--window-bg); border-bottom: 1px solid var(--separator); }
+  .settings .tab {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 62px; padding: 5px 8px 4px;
+    border: 0; border-radius: 8px; background: transparent; color: var(--secondary-label); font-size: var(--text-subheadline); cursor: default;
+  }
+  .settings .tab svg { width: 20px; height: 20px; }
+  .settings .tab[aria-selected='true'] { background: var(--fill); color: var(--accent); }
+  .settings .form { flex: 1; overflow: auto; padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .fgroup h4 { margin: 0 0 6px 10px; font-size: var(--text-headline); font-weight: 600; }
+  .fgroup h4 .origin { margin-left: 6px; vertical-align: 1px; }
+  .fbox { background: var(--group-bg); border-radius: 10px; box-shadow: 0 0 0 1px var(--group-edge); }
+  .frow { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 22px; padding: 9px 12px; }
+  .frow + .frow { border-top: 1px solid var(--separator); }
+  .flabel { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .flabel small { color: var(--secondary-label); font-size: var(--text-subheadline); }
+  .fcontrol { display: flex; align-items: center; gap: 8px; flex: none; }
+  .ffoot { margin: 6px 10px 0; color: var(--secondary-label); font-size: var(--text-subheadline); }
+  .popup {
+    height: 22px; padding: 0 6px; border: 0; border-radius: 6px; background: var(--fill); color: var(--label);
+    font: inherit; font-size: var(--text-callout);
+  }
+  .switch { width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: var(--quaternary-label); position: relative; cursor: default; }
+  .switch i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: left 0.15s; }
+  .switch[aria-checked='true'] { background: var(--accent); }
+  .switch[aria-checked='true'] i { left: 16px; }
+  .switch[disabled] { opacity: 0.4; }
+  .stepper { display: inline-flex; flex-direction: column; border-radius: 5px; background: var(--fill); overflow: hidden; }
+  .stepper button { width: 16px; height: 11px; padding: 0; border: 0; background: transparent; font-size: 8px; line-height: 11px; cursor: default; }
+  .stepper button:hover { background: var(--fill-hover); }
+  .num { font-variant-numeric: tabular-nums; }
+  .shortcut-field { padding: 2px 8px; border-radius: 6px; background: var(--fill); font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .queue-row { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; padding: 8px 12px; }
+  .queue-row + .queue-row { border-top: 1px solid var(--separator); }
+  .queue-row .emoji { font-size: 18px; }
+  .queue-row small { display: block; color: var(--secondary-label); font-size: var(--text-subheadline); }
+  .about { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0 4px; text-align: center; }
+  .about .app-icon {
+    width: 56px; height: 56px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px;
+    background: linear-gradient(#fdfdfd, #e6e1d6); color: #4a3f2e; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .about b { font-size: var(--text-title3); }
+  .about .origin { align-self: center; }
+  .copies { width: 100%; border-collapse: collapse; font-size: var(--text-subheadline); }
+  .copies td { padding: 4px 12px; border-top: 1px solid var(--separator); color: var(--secondary-label); }
+  .copies td:first-child { color: var(--label); }
+
+  /* Where a row of Settings came from: the mock's note, not Ficha's. */
+  .origin {
+    align-self: flex-start; margin-top: 3px; padding: 0 6px; border-radius: 4px;
+    font-size: var(--text-footnote); line-height: 15px; color: var(--hud-accent-ink); background: var(--hud-accent);
+  }
+  .origin.new { background: #9fd8b5; color: #0f2a1a; }
+  .origin.ask { box-shadow: 0 0 0 1.5px #e0663c; }
+
+  .menubar .due-count { margin-left: 3px; font-variant-numeric: tabular-nums; }
 </style>
 
 <div id="app"><p class="noscript">The mock is loading. It needs JavaScript, and React from a CDN.</p></div>
@@ -78,156 +195,465 @@
 <script src="kit/ui.js"></script>
 <script>
   /*
-   * Mock: the desktop, the review panel, the clock, and "How fast?".
+   * Mock: Ficha on a Mac, as ADRs 0033 to 0035 decided it.
    *
-   * Explores: how appearances feel over a working day; the panel over
-   * someone's work and during a meeting; and a pace screen when a deck
-   * comes in ("N cards, X new a day, all met by <dates>").
-   * New here, not in the app yet: the Add a Deck window (AddDeckWindow).
+   * Explores: the review panel's new face, the card alone with Forgot and
+   * Got it (#489); the pace, the queue of decks and the finish date, in How
+   * fast? and the Cards window (#491); Ficha's decks (#458) and the Welcome
+   * page that offers them (#467); Settings in five tabs, with where each of
+   * today's rows went (#492). And, as before, the panel over a working day
+   * on a fast clock, and what holds it back.
+   * New here, not in the app yet: WelcomePage's steps, HowFast, the Cards
+   * window's deck rows, and SettingsWindow's five tabs.
    */
-  const { useState, useEffect, useMemo, useRef } = React;
+  const { useState, useEffect, useRef, createContext, useContext } = React;
   const {
-    html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuRow, MenuContent,
-    ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Segmented, Capsule, Divider,
-    DeskToast, MockControls, HudGroup, HudChoice, formatDayRange, formatDay,
+    html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuContent,
+    ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Capsule, Divider,
+    DeskToast, MockControls, HudGroup, HudChoice, formatDay, formatTime, formatFinish, metBy,
   } = FichaUI;
   const E = FichaEngine;
+  const listFmt = new Intl.ListFormat('en', { type: 'conjunction' });
 
-  /** Opens on a morning: Palabras lindas in use for six days, Ficha quiet until its next appearance. */
-  function makeApp() {
+  // ---------------------------------------------------------------------
+  // Where the mock starts.
+  // ---------------------------------------------------------------------
+  /**
+   * 'welcome': a Mac where Ficha just opened for the first time, with no
+   * decks, at 9:40. 'week': twelve days in at Steady, Famous paintings all
+   * met, the eight-thousanders under way, Types of clouds next; Ficha quiet
+   * until its next appearance.
+   */
+  function makeApp(scenario) {
     const morning = new Date();
     morning.setHours(8, 0, 0, 0);
-    const app = new E.ToyFicha({ decks: FichaDecks, now: morning.getTime() - 6 * E.DAY, speed: 60 });
-    app.addDeck('palabras', 3);
+    if (scenario === 'welcome') {
+      const app = new E.ToyFicha({ decks: FichaDecks, now: morning.getTime() + 100 * E.MINUTE, speed: 60 });
+      app.log('Ficha opens for the first time', 'deck');
+      return app;
+    }
+    const app = new E.ToyFicha({ decks: FichaDecks, now: morning.getTime() - 12 * E.DAY, speed: 60 });
+    ['paintings', 'mountains', 'clouds'].forEach((id) => app.addDeck(id));
     app.fastForward(morning.getTime());
     const next = app.nextAppearance();
     if (next && next.at - 20 * E.MINUTE > app.state.now) app.state.now = next.at - 20 * E.MINUTE;
-    app.log('Palabras lindas: six days in use, 3 new a day', 'deck');
+    app.log('Twelve days in, at Steady', 'deck');
     return app;
   }
 
-  // ---------------------------------------------------------------------
-  // AddDeckWindow: a deck's cards, and how fast they'd come.
-  // ---------------------------------------------------------------------
-  const PACES = [2, 3, 5, 10];
-  const SECONDS_PER_CARD = 8;
+  const cardsIn = (app, id) => app.deckCards(id).length;
+  const nameList = (decks) => listFmt.format(decks.map((d) => d.name));
 
-  /** Cards a day for four weeks: this deck's on top, the other decks' under. */
-  function PaceChart({ days }) {
-    const W = 440, H = 96, top = 14, bottom = 18;
-    const max = Math.max(4, ...days.map((d) => d.deck + d.others));
-    const scale = (H - top - bottom) / max;
-    const step = W / days.length;
-    const bw = Math.max(2, step - 3);
-    const ticks = [0, 7, 14, 21];
-    return html`<svg className="chart" viewBox=${`0 0 ${W} ${H}`} role="img"
-      aria-label="Cards a day for the next four weeks">
-      <line x1="0" x2=${W} y1=${H - bottom + 0.5} y2=${H - bottom + 0.5} stroke="var(--separator)" />
-      <line x1="0" x2=${W} y1=${top + 0.5} y2=${top + 0.5} stroke="var(--separator)" strokeDasharray="2 3" />
-      <text x="0" y=${top - 4} fontSize="10" fill="var(--secondary-label)">${Math.round(max)} cards</text>
-      ${days.map((d, i) => {
-        const x = i * step + (step - bw) / 2;
-        const ho = d.others * scale;
-        const hd = d.deck * scale;
-        const base = H - bottom;
-        return html`<g key=${i}>
-          <title>${`${formatDay(d.day)}: about ${Math.round(d.deck + d.others)} cards, ${Math.round(d.deck)} from this deck`}</title>
-          <rect x=${x} y=${base - ho} width=${bw} height=${Math.max(0, ho)} rx="1.5" fill="var(--tertiary-label)" />
-          <rect x=${x} y=${base - ho - hd} width=${bw} height=${Math.max(0, hd)} rx="1.5" fill="var(--accent)" />
-        </g>`;
-      })}
-      ${ticks.map(
-        (t) => html`<text key=${t} x=${t * step + 1} y=${H - 4} fontSize="10" fill="var(--secondary-label)">
-          ${t === 0 ? 'Today' : formatDayRange(days[t].day, days[t].day)}</text>`,
-      )}
-    </svg>`;
+  // ---------------------------------------------------------------------
+  // HowFast: the pace, and when a deck would be all met (ADR 0034).
+  // ---------------------------------------------------------------------
+  function HowFast({ app, state, deckId, pace, setPace, first, setFirst }) {
+    const ahead = app.queueDecks().filter((d) => d.id !== deckId && app.newLeft(d.id) > 0);
+    const others = state.decks.some((d) => d.added && d.id !== deckId);
+    return html`<section className="howfast" aria-label="How fast?">
+      <h3>How fast?</h3>
+      <div className="paces" role="radiogroup" aria-label="Pace">
+        ${E.PACES.map((p) => {
+          const f = app.forecast({ pace: p.id, add: deckId, first })[deckId];
+          return html`<button type="button" key=${p.id} role="radio" aria-checked=${pace === p.id} className="pace-row"
+            onClick=${() => setPace(p.id)}>
+            <span className="radio" /><b>${p.name}</b><span className="what">${p.perDay} new a day</span>
+            <span className="when">${f ? metBy(f, state.now) : 'all met'}</span>
+          </button>`;
+        })}
+      </div>
+      ${ahead.length && setFirst
+        ? html`<p className="hint">${first
+            ? html`Goes first: ${nameList(ahead)} ${ahead.length > 1 ? 'wait' : 'waits'} until you've met it all.`
+            : html`Goes after ${nameList(ahead)}, which you're meeting ${ahead.length > 1 ? 'first' : 'now'}.`}
+            <label className="check"><input type="checkbox" checked=${first} onChange=${(e) => setFirst(e.target.checked)} />
+              Put it first</label></p>`
+        : null}
+      ${others ? html`<p className="hint">One pace for all your decks. A deck waits its turn for new cards, so what Ficha asks a day stays the same.</p>` : null}
+    </section>`;
   }
 
-  function AddDeckWindow({ app, state, onClose, onAdded, ...win }) {
-    const [selected, setSelected] = useState('nubes');
-    const deck = app.deck(selected);
-    const [perDay, setPerDay] = useState(5);
-    useEffect(() => setPerDay(deck.added ? deck.perDay : 5), [selected]);
-
-    const cards = state.cards.filter((c) => c.deckId === selected);
-    const newCards = cards.filter((c) => c.state === 'new').length;
-    const day = E.startOfDay(state.now);
-    const days = useMemo(() => {
-      const pool = state.cards.filter((c) => c.deckId === selected || app.deck(c.deckId).added);
-      return E.simulatePace({ cards: pool, deckId: selected, perDay, now: state.now });
-    }, [selected, perDay, day, state.revision]);
-    const met = E.metBy({ newCards, perDay, now: state.now });
-    const busiest = Math.max(...days.map((d) => d.deck + d.others));
-    const minutes = Math.max(1, Math.round((busiest * SECONDS_PER_CARD) / 60));
-    const hasOthers = state.decks.some((d) => d.added && d.id !== selected);
-    const unchanged = deck.added && deck.perDay === perDay;
-    const add = () => {
-      if (unchanged) return;
-      const was = deck.added;
-      app.addDeck(selected, perDay);
-      onAdded(was ? `${deck.name}: ${perDay} new cards a day` : `Added ${deck.name}. Its first cards come at the next appearance.`);
+  // ---------------------------------------------------------------------
+  // WelcomePage: Ficha's decks, an Anki file or from scratch; How fast?;
+  // then whether it opens at login (#467).
+  // ---------------------------------------------------------------------
+  function WelcomePage({ app, state, onDone, ...win }) {
+    const [step, setStep] = useState('start');
+    const [choice, setChoice] = useState(null);
+    const [pace, setPace] = useState(state.pace);
+    const fichaDecks = state.decks.filter((d) => d.ficha);
+    const anki = state.decks.find((d) => !d.ficha);
+    const chosen = choice && choice !== 'scratch' ? app.deck(choice) : null;
+    const finish = (login) => {
+      if (chosen) {
+        app.setPace(pace);
+        app.addDeck(chosen.id);
+        // The first card comes a minute after the Welcome page (#467).
+        app.state.notBefore = app.state.now + E.MINUTE;
+      }
+      app.log(login ? 'Ficha opens at login' : "Ficha won't open at login", 'deck');
+      app.emit();
+      onDone();
     };
-
+    const steps = chosen || !choice ? ['start', 'pace', 'login'] : ['start', 'login'];
+    const next = () => {
+      if (step === 'start' && choice) setStep(choice === 'scratch' ? 'login' : 'pace');
+      else if (step === 'pace') setStep('login');
+      else if (step === 'login') finish(true);
+    };
     useEffect(() => {
       const onKey = (e) => {
-        if (app.state.panel || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-        if (e.key === 'Escape') onClose();
-        if (e.key === 'Enter') (e.preventDefault(), add());
+        if (app.state.panel || e.target.tagName === 'INPUT') return;
+        if (e.key === 'Enter') (e.preventDefault(), next());
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    });
+    return html`<${Window} title="" resizable=${false} onClose=${() => finish(false)} ...${win}>
+      <div className="welcome">
+        ${step === 'start' && html`
+          <div className="hello">
+            <div className="hello-icon">${Icon.book(28)}</div>
+            <h2>Ficha lives in the menu bar</h2>
+            <p className="sub">Look for ${Icon.book(13)} at the top of your screen. From there, Ficha shows you a card every so often.</p>
+          </div>
+          <${Divider} />
+          <h3>What do you want to remember?</h3>
+          <div className="deck-grid" role="radiogroup" aria-label="Ficha's decks">
+            ${fichaDecks.map((d) => html`<button type="button" key=${d.id} role="radio" aria-checked=${choice === d.id}
+              className="deck-tile" onClick=${() => setChoice(d.id)}>
+              <span className="emoji">${d.emoji}</span><span className="name">${d.name}</span>
+              <span className="count">${cardsIn(app, d.id)} cards</span></button>`)}
+          </div>
+          <div className="doors">
+            <button type="button" className=${choice === anki.id ? 'drop on' : 'drop'} onClick=${() => setChoice(anki.id)}>
+              ${choice === anki.id
+                ? html`<b>${anki.file}</b> · ${cardsIn(app, anki.id)} cards, ready to import`
+                : html`<b>I have Anki:</b> drop a file`}</button>
+            <button type="button" className="linkish" aria-pressed=${choice === 'scratch'} onClick=${() => setChoice('scratch')}>
+              Start from scratch</button>
+          </div>
+          <div className="actions"><${Button} prominent title="Next" k="↩" disabled=${!choice} onClick=${next} /></div>`}
+        ${step === 'pace' && chosen && html`
+          <div className="deck-head"><span className="deck-emoji">${chosen.emoji}</span>
+            <div><h2>${chosen.name}</h2>
+              <p className="sub">${cardsIn(app, chosen.id)} cards · ${chosen.ficha ? "one of Ficha's decks" : `from ${chosen.file}`}</p></div></div>
+          <${HowFast} app=${app} state=${state} deckId=${chosen.id} pace=${pace} setPace=${setPace} />
+          <p className="hint">You can change it later in Settings, under Pace.</p>
+          <div className="actions"><${Button} title="Back" onClick=${() => setStep('start')} />
+            <${Button} prominent title="Next" k="↩" onClick=${next} /></div>`}
+        ${step === 'login' && html`
+          <div className="question">
+            <div className="hello-icon">${Icon.book(28)}</div>
+            <h2>Open Ficha when you log in?</h2>
+            <p className="sub">Ficha shows you cards only while it's open. You can change this later in Settings.</p>
+          </div>
+          <div className="actions"><${Button} title="Not Now" onClick=${() => finish(false)} />
+            <${Button} prominent title="Open at Login" k="↩" onClick=${() => finish(true)} /></div>`}
+        <div className="steps" aria-hidden="true">${steps.map((s) => html`<i key=${s} className=${s === step ? 'on' : ''} />`)}</div>
+      </div>
+    </${Window}>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // CardsWindow: the decks, in their queue, and Ficha's decks to add.
+  // ---------------------------------------------------------------------
+  /** A deck's line, as its row says it (#491). */
+  function deckStatus(app, state, d) {
+    const total = cardsIn(app, d.id);
+    const met = total - app.newLeft(d.id);
+    if (!d.added) return { line: `${total} cards`, share: 0 };
+    if (d.setAside) return { line: `Set aside · ${met} of ${total} met`, share: met / total };
+    if (!app.newLeft(d.id)) {
+      const days = d.metAllAt && d.addedAt ? Math.max(1, Math.round((d.metAllAt - d.addedAt) / E.DAY)) : null;
+      return { line: `Met them all${days ? ` · ${total} cards in ${days} day${days > 1 ? 's' : ''}` : ''}`, share: 1, done: true };
+    }
+    const f = app.forecast()[d.id];
+    const when = f ? formatFinish(f.soonestAt, f.latestAt, state.now) : '';
+    if (app.currentDeck() && app.currentDeck().id === d.id) return { line: `${met} of ${total} · on track for ${when}`, share: met / total };
+    return { line: `${f && f.place === 1 ? 'Next' : 'In the queue'} · on track for ${when}`, share: met / total };
+  }
+  function nextReview(c, now) {
+    if (c.state === 'new') return 'New';
+    if (c.due <= now) return 'Due';
+    return E.startOfDay(c.due) === E.startOfDay(now) ? formatTime(c.due) : formatDay(c.due);
+  }
+
+  function CardsWindow({ app, state, request, ...win }) {
+    const yours = [...app.state.queue.map((id) => app.deck(id)).filter((d) => !d.setAside), ...state.decks.filter((d) => d.added && d.setAside)];
+    const toAdd = state.decks.filter((d) => d.ficha && !d.added);
+    const anki = state.decks.find((d) => !d.ficha && !d.added);
+    const [selected, setSelected] = useState((yours[0] || toAdd[0]).id);
+    const [sheet, setSheet] = useState(null);
+    const [pace, setPace] = useState(state.pace);
+    const [first, setFirst] = useState(false);
+    const openSheet = (id) => (setSheet(id), setPace(app.state.pace), setFirst(false));
+    useEffect(() => {
+      if (!request) return;
+      setSelected(request.deckId);
+      if (request.add) openSheet(request.deckId);
+    }, [request && request.n]);
+    const start = () => {
+      app.setPace(pace);
+      app.addDeck(sheet, { first });
+      setSelected(sheet);
+      setSheet(null);
+    };
+    useEffect(() => {
+      if (!sheet) return undefined;
+      const onKey = (e) => {
+        if (app.state.panel) return;
+        if (e.key === 'Escape') setSheet(null);
+        if (e.key === 'Enter') (e.preventDefault(), start());
       };
       window.addEventListener('keydown', onKey);
       return () => window.removeEventListener('keydown', onKey);
     });
 
-    return html`<${Window} title="Add a Deck" onClose=${onClose} ...${win}>
-      <div className="adddeck">
-        <nav className="sidebar" aria-label="Sample decks">
-          <div className="side-title">Sample Decks</div>
-          ${state.decks.map(
-            (d) => html`<button type="button" key=${d.id} className="side-row" aria-selected=${d.id === selected}
-              onClick=${() => setSelected(d.id)}>
-              <span>${d.emoji}</span><span className="name">${d.name}</span>
-              ${d.added
-                ? html`<span className="added">Added</span>`
-                : html`<span className="count">${state.cards.filter((c) => c.deckId === d.id).length}</span>`}
-            </button>`,
-          )}
+    const deck = app.deck(selected);
+    const status = deckStatus(app, state, deck);
+    const current = app.currentDeck();
+    const cards = app.deckCards(deck.id);
+    const sheetDeck = sheet && app.deck(sheet);
+    const row = (d) => {
+      const st = deckStatus(app, state, d);
+      return html`<button type="button" key=${d.id} className=${d.setAside ? 'side-row aside' : 'side-row'}
+        aria-selected=${d.id === selected} onClick=${() => setSelected(d.id)}>
+        <span>${d.emoji}</span><span className="name">${d.name}</span><small>${st.line}</small></button>`;
+    };
+    return html`<${Window} title="Cards" onClose=${win.onClose} ...${win}>
+      <div className="cards">
+        <nav className="sidebar" aria-label="Decks">
+          ${yours.length ? html`<div className="side-title">Your decks</div>${yours.map(row)}` : null}
+          ${toAdd.length ? html`<div className="side-title">Ficha's decks</div>${toAdd.map(row)}` : null}
+          ${anki && html`<div className="side-title">From a file</div>
+            <button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
+              <span>📥</span><span className="name">Import an Anki file…</span><small>Mock: ${anki.file}</small></button>`}
         </nav>
         <div className="detail">
-          <div className="deck-head">
-            <span className="deck-emoji">${deck.emoji}</span>
-            <div>
-              <h2>${deck.name}</h2>
-              <p className="sub">${cards.length} cards · ${deck.language}${deck.added ? ` · ${newCards} not met yet` : ''}</p>
-            </div>
-          </div>
-          <p className="sub">${deck.blurb}</p>
-          <div className="peek">
-            ${cards.slice(0, 4).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
-            ${cards.length > 4 && html`<${Capsule}>+${cards.length - 4} more</${Capsule}>`}
-          </div>
-          <${Divider} />
-          <section className="pace" aria-label="How fast">
-            <div className="pace-head">
-              <h3>How fast?</h3>
-              <${Segmented} label="New cards a day" value=${perDay} onChange=${setPerDay}
-                options=${PACES.map((n) => ({ value: n, label: `${n} a day` }))} />
-            </div>
-            ${newCards
-              ? html`<p className="met">All ${newCards} met by <strong>${formatDayRange(met.soonest, met.latest)}</strong></p>
-                  <p className="hint">${perDay} new cards a day. The later date is if you skip a day or two a week.</p>`
-              : html`<p className="met">You've met every card in this deck.</p>`}
-            <${PaceChart} days=${days} />
-            <div className="legend">
-              <span><i style=${{ background: 'var(--accent)' }} />This deck</span>
-              ${hasOthers && html`<span><i style=${{ background: 'var(--tertiary-label)' }} />Your other decks</span>`}
-            </div>
-            <p className="hint">At the busiest, about ${Math.round(busiest)} cards in a day${hasOthers ? ' with your other decks' : ''}:
-              around ${minutes} minute${minutes > 1 ? 's' : ''} in all, a few at a time.</p>
-          </section>
-          <div className="actions">
-            <${Button} title="Cancel" k="esc" onClick=${onClose} />
-            <${Button} prominent title=${deck.added ? 'Change Pace' : 'Add Deck'} k="↩" disabled=${unchanged} onClick=${add} />
-          </div>
+          <div className="deck-head"><span className="deck-emoji">${deck.emoji}</span>
+            <div><h2>${deck.name}</h2>
+              <p className="sub">${deck.added ? status.line : `${cards.length} cards · ${deck.ficha ? "one of Ficha's decks" : `from ${deck.file}`}`}</p></div></div>
+          ${deck.added
+            ? html`<div className=${status.done ? 'bar done' : 'bar'}><i style=${{ width: `${Math.round(status.share * 100)}%` }} /></div>
+              <div className="row-actions">
+                ${!deck.setAside && !status.done && !(current && current.id === deck.id) &&
+                html`<${Button} title="Put it first" onClick=${() => app.putFirst(deck.id)} />`}
+                ${!status.done && html`<${Button} title=${deck.setAside ? 'Back in the queue' : 'Set aside'}
+                  onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
+              </div>
+              <table><thead><tr><th>Front</th><th>Back</th><th>Next review</th></tr></thead>
+                <tbody>${cards.map((c) => html`<tr key=${c.id}><td>${c.front}</td><td className="back">${c.back}</td>
+                  <td className="when">${nextReview(c, state.now)}</td></tr>`)}</tbody></table>`
+            : html`<p className="sub">${deck.blurb}</p>
+              <div className="peek">${cards.slice(0, 5).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
+                ${cards.length > 5 && html`<${Capsule}>+${cards.length - 5} more</${Capsule}>`}</div>
+              <div className="row-actions"><${Button} prominent title=${deck.ficha ? 'Add Deck…' : 'Import…'}
+                onClick=${() => openSheet(deck.id)} /></div>`}
+        </div>
+        ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
+          <div className="deck-head"><span className="deck-emoji">${sheetDeck.emoji}</span>
+            <div><h2>${sheetDeck.name}</h2>
+              <p className="sub">${cardsIn(app, sheetDeck.id)} cards · ${sheetDeck.ficha ? "one of Ficha's decks" : `imported from ${sheetDeck.file}`}</p></div></div>
+          <${HowFast} app=${app} state=${state} deckId=${sheetDeck.id} pace=${pace} setPace=${setPace} first=${first} setFirst=${setFirst} />
+          <div className="actions"><${Button} title="Cancel" k="esc" onClick=${() => setSheet(null)} />
+            <${Button} prominent title="Start" k="↩" onClick=${start} /></div>
+        </div></div>`}
+      </div>
+    </${Window}>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // SettingsWindow: five tabs (#492). Where each of today's rows went is
+  // the decision's proposal, to settle here before any Swift.
+  // ---------------------------------------------------------------------
+  const Origins = createContext(true);
+  /** The mock's note on where a row was: today's tab, "New", or a row to ask about. */
+  function Origin({ from, ask, label }) {
+    if (!useContext(Origins) || !from) return null;
+    const cls = ['origin', from === 'new' && 'new', ask && 'ask'].filter(Boolean).join(' ');
+    const text = label || (from === 'new' ? 'New' : `Was in ${from}`);
+    return html`<span className=${cls} title=${ask || ''}>${text}${ask ? ' · ?' : ''}</span>`;
+  }
+  const Group = ({ title, footer, children }) => html`<section className="fgroup">${title && html`<h4>${title}</h4>`}
+    <div className="fbox">${children}</div>${footer && html`<p className="ffoot">${footer}</p>`}</section>`;
+  const Row = ({ label, sub, from, ask, children }) => html`<div className="frow">
+    <div className="flabel"><span>${label}</span>${sub && html`<small>${sub}</small>`}<${Origin} from=${from} ask=${ask} /></div>
+    <div className="fcontrol">${children}</div></div>`;
+  const Toggle = ({ on, onChange, label, disabled }) => html`<button type="button" role="switch" aria-checked=${on}
+    aria-label=${label} className="switch" disabled=${disabled} onClick=${() => onChange(!on)}><i /></button>`;
+  const Popup = ({ value, options, onChange, label, disabled }) => html`<select className="popup" aria-label=${label}
+    value=${String(value)} disabled=${disabled} onChange=${(e) => onChange(options.find((o) => String(o.value) === e.target.value).value)}>
+    ${options.map((o) => html`<option key=${String(o.value)} value=${String(o.value)}>${o.label}</option>`)}</select>`;
+  const Radio = ({ on, onClick, label }) => html`<button type="button" role="radio" aria-checked=${on} aria-label=${label}
+    className="radio-btn" onClick=${onClick}><span className="radio" /></button>`;
+  const Stepper = ({ onStep, label }) => html`<span className="stepper" role="group" aria-label=${label}>
+    <button type="button" aria-label="More" onClick=${() => onStep(1)}>▲</button>
+    <button type="button" aria-label="Less" onClick=${() => onStep(-1)}>▼</button></span>`;
+
+  const minutes = (list) => list.map((m) => ({ value: m * E.MINUTE, label: m === 0 ? 'None' : m < 60 ? `${m} min` : `${m / 60} h` }));
+  const hourLabel = (hh) => (hh === 24 ? '24:00' : `${hh}:00`);
+  const sIcon = (paths) => html`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+    strokeLinejoin="round" aria-hidden="true">${paths}</svg>`;
+  const TABS = [
+    { id: 'general', name: 'General', icon: sIcon(html`<circle cx="10" cy="10" r="2.6" /><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6" />`) },
+    { id: 'pace', name: 'Pace', icon: sIcon(html`<path d="M3.5 13.5a6.5 6.5 0 1 1 13 0" /><path d="m10 13.5 3.2-4.2" /><circle cx="10" cy="13.5" r="1" fill="currentColor" />`) },
+    { id: 'interruptions', name: 'Interruptions', icon: sIcon(html`<circle cx="10" cy="10" r="7" /><path d="M10 5.8V10l2.8 1.8" />`) },
+    { id: 'sync', name: 'Sync', icon: sIcon(html`<path d="M6 15.5h8.2a3.3 3.3 0 0 0 .3-6.6A4.7 4.7 0 0 0 5.5 8.2 3.7 3.7 0 0 0 6 15.5z" />`) },
+    { id: 'advanced', name: 'Advanced', icon: sIcon(html`<path d="M4 5.5h12M4 10h12M4 14.5h12" /><circle cx="7.5" cy="5.5" r="1.6" fill="var(--window-bg)" /><circle cx="12.5" cy="10" r="1.6" fill="var(--window-bg)" /><circle cx="8.5" cy="14.5" r="1.6" fill="var(--window-bg)" />`) },
+  ];
+
+  function GeneralTab({ app, state, prefs, setPrefs }) {
+    return html`
+      <${Group} footer="A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut.">
+        <${Row} label="Start at login" from="General"><${Toggle} label="Start at login" on=${prefs.login} onChange=${(login) => setPrefs({ ...prefs, login })} /></${Row}>
+        <${Row} label="Show how many cards are due in the menu bar" from="General">
+          <${Toggle} label="Show how many cards are due" on=${prefs.showsDueCount} onChange=${(showsDueCount) => setPrefs({ ...prefs, showsDueCount })} /></${Row}>
+        <${Row} label="Capture shortcut" from="General"><span className="shortcut-field">⌃⌥⌘C</span></${Row}>
+      </${Group}>
+      <${Group} footer="⌘+ and ⌘− make a card larger or smaller in the review panel and the Cards window, and ⌘0 returns it to its normal size.">
+        <${Row} label="Card size" from="General"><${Popup} label="Card size" value=${state.cardSize}
+          options=${[80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200].map((v) => ({ value: v, label: `${v}%` }))}
+          onChange=${(v) => app.setCardSize(v)} /></${Row}>
+      </${Group}>
+      <div className="about">
+        <span className="app-icon">${Icon.book(30)}</span><b>Ficha</b><span className="sub">Version 1.0 (1)</span>
+        <button type="button" className="linkish">Privacy Policy</button>
+        <${Origin} from="About" />
+      </div>`;
+  }
+
+  function PaceTab({ app, state }) {
+    const queue = app.queueDecks().filter((d) => app.newLeft(d.id) > 0);
+    const forecast = app.forecast();
+    const last = queue.length ? forecast[queue[queue.length - 1].id] : null;
+    return html`
+      <${Group} title=${html`How fast?<${Origin} from="Appearances" label="Replaces New cards per day, in Appearances" />`} footer=${last ? `At this pace, you'll have met every deck in your queue by ${formatFinish(last.soonestAt, last.latestAt, state.now)}.` : 'No deck waits for new cards.'}>
+        ${E.PACES.map((p) => {
+          const all = queue.length ? app.forecast({ pace: p.id })[queue[queue.length - 1].id] : null;
+          return html`<${Row} key=${p.id} label=${p.name} sub=${`${p.perDay} new card${p.perDay > 1 ? 's' : ''} a day${all ? ` · queue met by ${formatFinish(all.soonestAt, all.latestAt, state.now)}` : ''}`}>
+            <${Radio} on=${state.pace === p.id} label=${p.name} onClick=${() => app.setPace(p.id)} /></${Row}>`;
+        })}
+      </${Group}>
+      <${Group} title=${html`Up next<${Origin} from="new" label="New: the queue" />`} footer="New cards come from the first deck until you've met them all, then from the next. Cards you've met keep coming from every deck.">
+        ${queue.length
+          ? queue.map((d, i) => html`<div className="queue-row" key=${d.id}>
+              <span className="emoji">${d.emoji}</span>
+              <span>${d.name}<small>${i === 0 ? 'Now' : i === 1 ? 'Next' : 'Then'} · ${app.newLeft(d.id)} cards to meet · ${formatFinish(forecast[d.id].soonestAt, forecast[d.id].latestAt, state.now)}</small></span>
+              ${i > 0 ? html`<${Button} title="Put first" onClick=${() => app.putFirst(d.id)} />` : html`<span />`}
+            </div>`)
+          : html`<div className="queue-row"><span /><span className="sub">No deck waits. Add one from the Cards window.</span><span /></div>`}
+      </${Group}>`;
+  }
+
+  function InterruptionsTab({ app, state, prefs, setPrefs }) {
+    const s = app.settings;
+    const set = (key) => (v) => app.setSetting(key, v);
+    const hold = (kind) => s.suppressionsThatApply.includes(kind);
+    const setHold = (kind) => (on) => app.setSetting('suppressionsThatApply', on
+      ? [...s.suppressionsThatApply, kind] : s.suppressionsThatApply.filter((k) => k !== kind));
+    const [from, to] = s.activeHours;
+    return html`
+      <${Group} title="When Ficha shows up">
+        <${Row} label="Start at" from="Appearances"><${Popup} label="Start at" value=${from} onChange=${(v) => app.setSetting('activeHours', [v, to])}
+          options=${Array.from({ length: to }, (_, i) => ({ value: i, label: hourLabel(i) }))} /></${Row}>
+        <${Row} label="End at" from="Appearances"><${Popup} label="End at" value=${to} onChange=${(v) => app.setSetting('activeHours', [from, v])}
+          options=${Array.from({ length: 24 - from }, (_, i) => ({ value: from + 1 + i, label: hourLabel(from + 1 + i) }))} /></${Row}>
+        <${Row} label="At least this long apart" from="Appearances"><${Popup} label="Apart" value=${s.separation} onChange=${set('separation')}
+          options=${minutes([10, 15, 20, 30, 45, 60, 90, 120, 180, 240])} /></${Row}>
+        <${Row} label="Cards per appearance" from="Appearances" ask="The decision's picture had it in Advanced; the issue's text, here.">
+          <${Popup} label="Cards per appearance" value=${s.cardsPerAppearance} onChange=${set('cardsPerAppearance')}
+            options=${Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: String(i + 1) }))} /></${Row}>
+        <${Row} label="Bring along cards due within" from="Appearances"><${Popup} label="Look-ahead" value=${s.lookAhead} onChange=${set('lookAhead')}
+          options=${minutes([0, 5, 10, 15, 20, 30, 45, 60])} /></${Row}>
+        <${Row} label="After the Mac wakes, wait" from="Appearances"><${Popup} label="After waking" value=${s.waitAfterWaking} onChange=${set('waitAfterWaking')}
+          options=${minutes([0, 1, 2, 3, 5, 10, 15])} /></${Row}>
+      </${Group}>
+      <${Group} title="Hold appearances back during">
+        <${Row} label="Meetings" sub="The camera or the microphone in use" from="Appearances"><${Toggle} label="Meetings" on=${hold('meeting')} onChange=${setHold('meeting')} /></${Row}>
+        <${Row} label="Videos" sub="An app keeping the display awake" from="Appearances"><${Toggle} label="Videos" on=${hold('video')} onChange=${setHold('video')} /></${Row}>
+        <${Row} label="Full-screen apps" from="Appearances"><${Toggle} label="Full-screen apps" on=${hold('fullScreen')} onChange=${setHold('fullScreen')} /></${Row}>
+        <${Row} label="Then wait" from="Appearances"><${Popup} label="Then wait" value=${s.waitAfterSuppression} onChange=${set('waitAfterSuppression')}
+          options=${minutes([0, 1, 2, 3, 5, 10, 15])} /></${Row}>
+      </${Group}>
+      <${Group} title="The review panel" footer="When it shows up on its own. Opened with Review now, it takes the keyboard at once.">
+        <${Row} label="Take the keyboard" from="Review panel"><${Popup} label="Take the keyboard" value=${prefs.focus}
+          onChange=${(focus) => setPrefs({ ...prefs, focus })}
+          options=${[{ value: 'never', label: 'Never' }, { value: 'idle', label: "Once you're idle" }, { value: 'always', label: 'Always' }]} /></${Row}>
+        <${Row} label="Idle for" from="Review panel"><${Popup} label="Idle for" value=${prefs.idle} disabled=${prefs.focus !== 'idle'}
+          onChange=${(idle) => setPrefs({ ...prefs, idle })} options=${[1, 2, 3, 5, 10, 15, 30].map((v) => ({ value: v, label: `${v} s` }))} /></${Row}>
+        <${Row} label="Close it when untouched for" from="Review panel"><${Popup} label="Auto-close" value=${s.autoClose} onChange=${set('autoClose')}
+          options=${minutes([1, 2, 3, 5, 10, 15, 20, 30, 60])} /></${Row}>
+      </${Group}>`;
+  }
+
+  function SyncTab({ state, prefs, setPrefs }) {
+    const added = state.decks.filter((d) => d.added);
+    return html`
+      <${Group} footer="Your cards go only to your own iCloud, which the developer can't see.">
+        <${Row} label="Sync with iCloud" from="Sync"><${Toggle} label="Sync with iCloud" on=${prefs.sync} onChange=${(sync) => setPrefs({ ...prefs, sync })} /></${Row}>
+        <${Row} label="Cards to sync" from="Sync"><${Popup} label="Cards to sync" value=${prefs.syncWhat} disabled=${!prefs.sync}
+          onChange=${(syncWhat) => setPrefs({ ...prefs, syncWhat })}
+          options=${[{ value: 'all', label: 'Every card' }, { value: 'decks', label: 'Decks to sync' }]} /></${Row}>
+      </${Group}>
+      ${prefs.sync && prefs.syncWhat === 'decks' && html`<${Group} title="Decks to sync">
+        ${added.length ? added.map((d) => html`<${Row} key=${d.id} label=${`${d.emoji} ${d.name}`} from="Sync"><${Toggle} label=${d.name} on=${true} onChange=${() => {}} /></${Row}>`)
+          : html`<${Row} label="No decks yet" />`}
+      </${Group}>`}`;
+  }
+
+  function AdvancedTab({ app, prefs, setPrefs }) {
+    const r = app.scheduler.retention;
+    const step = (d) => app.setRetention(Math.min(0.99, Math.max(0.7, Math.round((r + d / 100) * 100) / 100)));
+    return html`
+      <${Group} title="Learning steps" footer="A new card waits each step in turn before it graduates. With none, its first review graduates it.">
+        <${Row} label="Steps" from="Scheduling"><span className="chips"><${Capsule}>1h</${Capsule}><${Capsule}>4h</${Capsule}></span></${Row}>
+      </${Group}>
+      <${Group} title="Relearning steps" footer="A card you forget waits each step in turn before it graduates again. With none, it gets FSRS's interval at once.">
+        <${Row} label="Steps" from="Scheduling"><span className="chips"><${Capsule}>1h</${Capsule}></span></${Row}>
+      </${Group}>
+      <${Group} footer="A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review.">
+        <${Row} label="Desired retention" sub="From 70% to 99% · 85% on a new install" from="Scheduling">
+          <span className="num">${Math.round(r * 100)}%</span><${Stepper} label="Desired retention" onStep=${step} /></${Row}>
+        <${Row} label="Longest interval" sub="In days, up to 36,500" from="Scheduling"><span className="num">36500</span></${Row}>
+      </${Group}>
+      <${Group} footer="Each Again to a card out of its learning and relearning steps counts, since its front or back last changed.">
+        <${Row} label="Offer to flag a card you forget often" sub="So it gets fixed. Ficha never flags a card on its own."
+          from="Review panel" ask="Not in the decision's list: here, as Anki keeps its leech threshold in its deck options. Or Interruptions?">
+          <${Toggle} label="Offer to flag" on=${prefs.offerFlag} onChange=${(offerFlag) => setPrefs({ ...prefs, offerFlag })} /></${Row}>
+        ${prefs.offerFlag && html`<${Row} label=${`After forgetting it ${prefs.flagAfter} times`} from="Review panel">
+          <${Stepper} label="Times" onStep=${(d) => setPrefs({ ...prefs, flagAfter: Math.min(20, Math.max(4, prefs.flagAfter + d)) })} /></${Row}>`}
+      </${Group}>
+      <${Group} title="Backups">
+        <${Row} label="Back up" from="Backups"><${Popup} label="Back up" value=${prefs.backup} onChange=${(backup) => setPrefs({ ...prefs, backup })}
+          options=${[{ value: 'hour', label: 'Every hour' }, { value: 'day', label: 'Every day' }, { value: 'week', label: 'Every week' }]} /></${Row}>
+        <${Row} label="Keep" from="Backups"><${Popup} label="Keep" value=${prefs.keep} onChange=${(keep) => setPrefs({ ...prefs, keep })}
+          options=${[5, 10, 20, 50].map((v) => ({ value: v, label: `${v} copies` }))} /></${Row}>
+        <${Row} label="Last backup" sub="Today, 8:00" from="Backups"><${Button} title="Back Up Now" /></${Row}>
+        <${Row} label="Folder" sub="Ficha › Backups" from="Backups"><${Button} title="Show in Finder" /></${Row}>
+        <table className="copies"><tbody>
+          <tr><td>Today, 8:00</td><td>Every day</td></tr><tr><td>Yesterday, 8:00</td><td>Every day</td></tr>
+        </tbody></table>
+        <div className="frow"><span /><span className="fcontrol"><${Button} title="Restore…" /><${Button} title="Delete…" /></span></div>
+      </${Group}>`;
+  }
+
+  function SettingsWindow({ app, state, prefs, setPrefs, ...win }) {
+    const [tab, setTab] = useState('general');
+    const current = TABS.find((t) => t.id === tab);
+    const props = { app, state, prefs, setPrefs };
+    return html`<${Window} title=${current.name} onClose=${win.onClose} ...${win}>
+      <div className="settings">
+        <div className="toolbar" role="tablist">
+          ${TABS.map((t) => html`<button type="button" key=${t.id} role="tab" aria-selected=${t.id === tab} className="tab"
+            onClick=${() => setTab(t.id)}>${t.icon}<span>${t.name}</span></button>`)}
+        </div>
+        <div className="form" role="tabpanel" aria-label=${current.name}>
+          ${tab === 'general' && html`<${GeneralTab} ...${props} />`}
+          ${tab === 'pace' && html`<${PaceTab} ...${props} />`}
+          ${tab === 'interruptions' && html`<${InterruptionsTab} ...${props} />`}
+          ${tab === 'sync' && html`<${SyncTab} ...${props} />`}
+          ${tab === 'advanced' && html`<${AdvancedTab} ...${props} />`}
         </div>
       </div>
     </${Window}>`;
@@ -236,18 +662,23 @@
   // ---------------------------------------------------------------------
   // The desktop.
   // ---------------------------------------------------------------------
+  const FICHA_MENUS = ['File', 'Edit', 'Window', 'Help'];
   const APPS = {
     doc: { name: 'Writer', menus: ['File', 'Edit', 'Format', 'View', 'Window', 'Help'] },
-    decks: { name: 'Ficha', menus: ['File', 'Edit', 'Window', 'Help'] },
-    capture: { name: 'Ficha', menus: ['File', 'Edit', 'Window', 'Help'] },
+    welcome: { name: 'Ficha', menus: FICHA_MENUS },
+    cards: { name: 'Ficha', menus: FICHA_MENUS },
+    settings: { name: 'Ficha', menus: FICHA_MENUS },
+    capture: { name: 'Ficha', menus: FICHA_MENUS },
     call: { name: 'Call', menus: ['View', 'Window', 'Help'] },
     video: { name: 'Player', menus: ['File', 'View', 'Playback', 'Window', 'Help'] },
   };
+  const FICHA_WINDOWS = ['welcome', 'cards', 'settings', 'capture'];
 
-  function Desktop({ app, state, ratings }) {
+  function Desktop({ app, state, face, prefs, setPrefs, scenario }) {
     const { w, h, menuBar, notch } = useScreen();
-    const [order, setOrder] = useState(['doc', 'decks']);
+    const [order, setOrder] = useState(scenario === 'welcome' ? ['doc', 'welcome'] : ['doc']);
     const [menu, setMenu] = useState(false);
+    const [cardsRequest, setCardsRequest] = useState(null);
     const ficha = useRef(null);
     const full = state.suppression === 'fullScreen';
     const free = h - menuBar - DOCK;
@@ -255,9 +686,9 @@
     const close = (id) => setOrder((o) => o.filter((x) => x !== id));
     const isOpen = (id) => order.includes(id) && (!full || id === 'doc');
     const z = (id) => 10 + order.indexOf(id);
-    const say = (text) => (app.toast(text), app.emit());
     // Ficha's own windows leave a full-screen app, as opening them would.
     const openFicha = (id) => (full && app.setSuppression(null), focus(id));
+    const openCards = (deckId, add) => (setCardsRequest({ deckId, add, n: Date.now() }), openFicha('cards'));
 
     // What's on screen follows what you're doing: a call, a video, or Writer in full screen.
     useEffect(() => {
@@ -268,11 +699,16 @@
     }, [state.suppression]);
 
     const front = full ? 'doc' : order[order.length - 1];
+    const due = app.dueCount();
     const status = html`<button type="button" ref=${ficha} className="item" aria-label="Ficha" aria-expanded=${menu}
-      onClick=${() => setMenu(!menu)}>${Icon.book(16)}</button>`;
+      onClick=${() => setMenu(!menu)}>${Icon.book(16)}${prefs.showsDueCount && due ? html`<span className="due-count">${due}</span>` : null}</button>`;
     const app0 = APPS[front] || APPS.doc;
-    const running = ['writer', isOpen('decks') || isOpen('capture') ? 'ficha' : null, isOpen('call') && 'call',
+    const running = ['writer', FICHA_WINDOWS.some(isOpen) ? 'ficha' : null, isOpen('call') && 'call',
       isOpen('video') && 'video'].filter(Boolean);
+    const centered = (width, height) => ({ x: Math.max(24, Math.round((w - width) / 2)), y: Math.max(menuBar + 16, menuBar + Math.round((free - height) / 2)) });
+    const welcomeSize = { width: 540, height: Math.min(500, free - 30) };
+    const cardsSize = { width: Math.min(780, w - 60), height: Math.min(540, free - 30) };
+    const settingsSize = { width: 560, height: Math.min(640, free - 30) };
     return html`
       <${MenuBar} appName=${app0.name} menus=${app0.menus} now=${state.now} status=${status} autohide=${full} />
       ${full && notch && html`<div className="notch-band" style=${{ height: menuBar }} />`}
@@ -286,11 +722,17 @@
       ${isOpen('call') &&
       html`<${CallWindow} id="call" title="Weekly sync" x=${w - 390} y=${menuBar + 24} width=${360} height=${260}
         z=${z('call')} active=${front === 'call'} onFocus=${focus} onLeave=${() => app.setSuppression(null)} />`}
-      ${isOpen('decks') &&
-      html`<${AddDeckWindow} id="decks" app=${app} state=${state} x=${Math.max(24, Math.round(w / 2 - 250))}
-        y=${Math.max(menuBar + 16, menuBar + free - 544)} width=${680} height=${Math.min(530, free - 30)} minWidth=${560}
-        minHeight=${420} z=${z('decks')} active=${front === 'decks'} onFocus=${focus}
-        onClose=${() => close('decks')} onAdded=${(text) => (close('decks'), say(text))} />`}
+      ${isOpen('welcome') &&
+      html`<${WelcomePage} id="welcome" app=${app} state=${state} ...${centered(welcomeSize.width, welcomeSize.height)} ...${welcomeSize}
+        z=${z('welcome')} active=${front === 'welcome'} onFocus=${focus} onDone=${() => close('welcome')} />`}
+      ${isOpen('cards') &&
+      html`<${CardsWindow} id="cards" app=${app} state=${state} request=${cardsRequest} ...${centered(cardsSize.width, cardsSize.height)}
+        ...${cardsSize} minWidth=${620} minHeight=${420} z=${z('cards')} active=${front === 'cards'} onFocus=${focus}
+        onClose=${() => close('cards')} />`}
+      ${isOpen('settings') &&
+      html`<${SettingsWindow} id="settings" app=${app} state=${state} prefs=${prefs} setPrefs=${setPrefs}
+        ...${centered(settingsSize.width, settingsSize.height)} ...${settingsSize} minWidth=${500} minHeight=${360}
+        z=${z('settings')} active=${front === 'settings'} onFocus=${focus} onClose=${() => close('settings')} />`}
       ${isOpen('capture') &&
       html`<${CaptureView} id="capture" x=${Math.round(w / 2 - 210)} y=${menuBar + 126} z=${z('capture')}
         active=${front === 'capture'} onFocus=${focus} onCancel=${() => close('capture')}
@@ -300,62 +742,81 @@
       html`<${Menu} left=${Math.min(ficha.current ? ficha.current.offsetLeft - 6 : w, w - 296)} onDismiss=${() => setMenu(false)}>
         <${MenuContent} app=${app} state=${state} dismiss=${() => setMenu(false)}
           onCapture=${() => openFicha('capture')} onReviewNow=${() => app.reviewNow()}
-          extraRows=${html`<${MenuRow} title="Add a Deck…" onClick=${() => (setMenu(false), openFicha('decks'))} />`} />
+          onCards=${() => openCards((app.currentDeck() || state.decks[0]).id, false)} onSettings=${() => openFicha('settings')} />
       </${Menu}>`}
-      <${ReviewPanelView} app=${app} state=${state} ratings=${ratings} dock=${!full} />
+      <${ReviewPanelView} app=${app} state=${state} face=${face} dock=${!full}
+        onOfferDeck=${(id) => (app.close(), openCards(id, true))} />
       <${DeskToast} state=${state} />`;
   }
 
   const ABOUT = html`<strong>About this mock</strong>
-    <p>A web mock of Ficha on a Mac, to try how it looks and feels before anything is built in SwiftUI. Its engine is a
-      toy: FichaCore, with its tests, decides the real rules.</p>
-    <h4>What's copied from the app</h4>
+    <p>A web mock of Ficha on a Mac, as ADRs 0033 to 0035 decided it, to try how it looks and feels before anything is
+      built in SwiftUI. Its engine is a toy: FichaCore, with its tests, decides the real rules.</p>
+    <h4>New here, from the decision</h4>
     <ul>
-      <li>FSRS-6 with its default parameters at 90%, learning steps of 1 h and 4 h, relearning 1 h.</li>
-      <li>Appearances from 9:00 to 22:00, at least 30 minutes apart, up to 5 cards, bringing cards due within 20 minutes.
-        The panel closes on its own after 10 untouched minutes. After a meeting, Ficha waits 2 minutes.</li>
-      <li>The panel's keys: Space flips and then answers Good, 1 to 4 rate, A asks, M flags, E buries, ⌘Z undoes, Esc closes.</li>
-      <li>The card's size: ⌘+, ⌘− and ⌘0 while the panel is open, or the bar's Card size, from 80% to 200%. The text grows,
-        the panel widens above 100%, and the buttons keep their size. A card taller than two thirds of the free screen scrolls.</li>
-      <li>What holds Ficha back: a meeting, a video, or an app in full screen. The green button on Writer's window takes
-        it to full screen too. Once it ends, Ficha waits 2 minutes.</li>
+      <li>The review panel: the card alone, and once it's flipped, Forgot and Got it (New to me and Knew it on a new
+        card's first flip). Keys 1, Space or 3, 2 and 4 record Again, Good, Hard and Easy. Ask, flag, bury, undo and
+        close sit in the ⋯ menu. "Panel: Today" in this bar shows the four buttons as they are now.</li>
+      <li>The pace, one for all decks: Chill, Steady or Faster, 1, 2 or 4 new cards a day. New cards come from the first
+        deck in the queue until you've met them all, then from the next. A finish date is a range: the soonest if every
+        day has appearances, the latest if five days a week do. 85% desired retention.</li>
+      <li>Ficha's decks, in English, offered at the Welcome page and in the Cards window; the first card comes a minute
+        after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
+      <li>Settings in five tabs. "Settings: Show where from" marks each row with the tab it was in today; a row marked
+        ? is one to decide.</li>
+    </ul>
+    <h4>Still as the app has it</h4>
+    <ul>
+      <li>FSRS-6 with its default parameters, learning steps of 1 h and 4 h, relearning 1 h.</li>
+      <li>Appearances from 9:00 to 22:00, at least 30 minutes apart, up to 5 cards, one new card at most each time,
+        bringing cards due within 20 minutes. The panel closes on its own after 10 untouched minutes. After a meeting,
+        a video or a full-screen app, Ficha waits 2 minutes.</li>
+      <li>The card's size: ⌘+, ⌘− and ⌘0 while the panel is open, from 80% to 200%.</li>
     </ul>
     <h4>Sizes</h4>
-    <p>Screen picks a Mac at macOS's default size, with the notch and its taller menu bar on MacBooks; a page smaller
-      than that Mac shows it scaled down. Full screen gives the mock the whole display, so on your own Mac "Fit the
-      window" is close to the real thing at 1:1. Windows resize from their lower right corner.</p>
-    <h4>New here</h4>
-    <ul>
-      <li>Add a Deck, with "How fast?": the dates assume each day's new cards come at its first appearance, and the
-        later date assumes five days a week. The chart is a made-up learner who remembers as FSRS predicts, averaged
-        over 12 runs, at about ${SECONDS_PER_CARD} seconds a card.</li>
-      <li>Two rating buttons, as a variant: Forgot is stored as Again, Got it as Good.</li>
-    </ul>
+    <p>Screen picks a Mac at macOS's default size, with the notch on MacBooks; a page smaller than that Mac shows it
+      scaled down. Full screen gives the mock the whole display. Windows resize from their lower right corner.</p>
     <h4>What a web mock can't show</h4>
     <p>Whether the panel takes the keyboard from the app you're typing in, Spaces, how macOS really detects meetings,
       videos and full screen, and exact pixels. Those still need the Mac.</p>`;
 
+  const PREFS = { login: true, showsDueCount: false, focus: 'idle', idle: 5, sync: true, syncWhat: 'all', offerFlag: true, flagAfter: 8, backup: 'day', keep: 10 };
+
   function Mock() {
-    const [app, setApp] = useState(makeApp);
+    const [scenario, setScenario] = useState('welcome');
+    const [app, setApp] = useState(() => makeApp('welcome'));
     const [generation, setGeneration] = useState(0);
     const state = useStore(app);
     useClock(app);
     const [look, setLook] = useState({ theme: 'auto', wallpaper: 'sky' });
     useTheme(look.theme);
-    const [ratings, setRatings] = useState('four');
+    const [face, setFace] = useState('new');
+    const [origins, setOrigins] = useState(true);
+    const [prefs, setPrefs] = useState(PREFS);
     const [screen, setScreen] = useState('fit');
     const [screenScale, setScreenScale] = useState(1);
-    const reset = () => (setApp(makeApp()), setGeneration(generation + 1));
-    const variants = html`<${HudGroup} label="Rating buttons">
-      <${HudChoice} label="Rating buttons" value=${ratings} onChange=${setRatings}
-        options=${[{ value: 'four', label: 'Four' }, { value: 'two', label: 'Two' }]} />
-    </${HudGroup}>`;
+    const restart = (which) => (setScenario(which), setApp(makeApp(which)), setPrefs(PREFS), setGeneration(generation + 1));
+    const variants = html`<${HudGroup} label="Start">
+        <${HudChoice} label="Start" value=${scenario} onChange=${restart}
+          options=${[{ value: 'welcome', label: 'First launch' }, { value: 'week', label: 'A week in' }]} />
+      </${HudGroup}>
+      <${HudGroup} label="Panel">
+        <${HudChoice} label="Panel" value=${face} onChange=${setFace}
+          options=${[{ value: 'new', label: 'New' }, { value: 'today', label: 'Today' }]} />
+      </${HudGroup}>
+      <${HudGroup} label="Settings">
+        <${HudChoice} label="Settings: where each row came from" value=${origins} onChange=${setOrigins}
+          options=${[{ value: true, label: 'Show where from' }, { value: false, label: 'Hide' }]} />
+      </${HudGroup}>`;
     return html`
-      <${Stage} wallpaper=${look.wallpaper} screen=${screen} onScale=${setScreenScale}>
-        <${Desktop} key=${`${generation}-${screen}`} app=${app} state=${state} ratings=${ratings} />
-      </${Stage}>
+      <${Origins.Provider} value=${origins}>
+        <${Stage} wallpaper=${look.wallpaper} screen=${screen} onScale=${setScreenScale}>
+          <${Desktop} key=${`${generation}-${screen}`} app=${app} state=${state} face=${face} prefs=${prefs} setPrefs=${setPrefs}
+            scenario=${scenario} />
+        </${Stage}>
+      </${Origins.Provider}>
       <${MockControls} app=${app} state=${state} look=${look} setLook=${setLook} screen=${screen} setScreen=${setScreen}
-        screenScale=${screenScale} variants=${variants} about=${ABOUT} onReset=${reset} />`;
+        screenScale=${screenScale} variants=${variants} about=${ABOUT} onReset=${() => restart(scenario)} />`;
   }
 
   ReactDOM.createRoot(document.getElementById('app')).render(html`<${Mock} />`);
