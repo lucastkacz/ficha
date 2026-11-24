@@ -38,7 +38,7 @@ Done when every issue has its commits, with the lines that describe what they ch
 
 1. **Tests and CI**: every command the pliego names, passing.
 2. **What each issue asked for**: a fresh reviewer gets the issues, with their comments, and the diff, and reports for each issue whether `Qué buscamos` and every acceptance criterion hold, citing file and line.
-3. **The plano and the standards**: a fresh reviewer gets the plano, the standards and the diff, and reports each rule broken, citing the rule, the file and the line.
+3. **The plano and the standards**: a fresh reviewer gets the plano, the standards and the diff, and reports each rule broken, citing the rule, the file and the line. A diff too large for one careful read, such as files moved in from outside the repo, is split by groups of files that belong together, a fresh reviewer each, and the check passes when every group does.
 
 A change the user sees gets its pictures, as the pliego says. Fix every finding, then run the check it came from again. Then a procedure the node writes for agents that its issues didn't ask for, such as steps to take on another machine, runs once as written, after its last change, on the machine it's for, before the PR is ready. When that machine can't be reached, the node gets that step done another way, such as the user taking it by hand, and the procedure goes to a Task of its own, in the area of the way of working, written as [`../../method/method.md`](../../method/method.md) says.
 
