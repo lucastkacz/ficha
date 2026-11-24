@@ -1,0 +1,161 @@
+/*
+ * Ficha mock kit: tokens.
+ *
+ * Named as macOS names them, so a mock reads straight into SwiftUI:
+ *   --label            -> .primary            (NSColor.labelColor)
+ *   --secondary-label  -> .secondary          (secondaryLabelColor)
+ *   --tertiary-label   -> .tertiary           (tertiaryLabelColor)
+ *   --separator        -> Divider()           (separatorColor)
+ *   --fill             -> .bordered button    (the control fill on glass)
+ *   --accent           -> .tint / .accentColor (controlAccentColor)
+ *   --glass-*          -> .glassEffect(.regular, in: ...)
+ *   --window-bg        -> a window's background (windowBackgroundColor)
+ *   --text-*           -> Font text styles at macOS's default sizes
+ *
+ * Light values on :root; dark under prefers-color-scheme and data-theme,
+ * as Artifacts expect. The mock's Light/Dark switch sets data-theme.
+ */
+:root {
+  /* Type: SF on a Mac (system-ui), Inter elsewhere; New York as the serif. */
+  --font-text: -apple-system, BlinkMacSystemFont, system-ui, 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: ui-serif, 'New York', 'Iowan Old Style', Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* macOS text styles, in points (CSS px on a Mac at 100%). */
+  --text-large-title: 26px; /* .largeTitle */
+  --text-title: 22px; /* .title */
+  --text-title2: 17px; /* .title2  - a card's upper side, semibold */
+  --text-title3: 15px; /* .title3 */
+  --text-headline: 13px; /* .headline, semibold */
+  --text-body: 13px; /* .body    - a card's lower side */
+  --text-callout: 12px; /* .callout */
+  --text-subheadline: 11px; /* .subheadline */
+  --text-footnote: 10px; /* .footnote */
+  --text-caption: 10px; /* .caption - intervals, a card's source */
+
+  /* Shapes. */
+  --radius-panel: 24px; /* ReviewPanelView.cornerRadius */
+  --radius-window: 16px; /* a macOS 26 window */
+  --radius-menu: 12px;
+  --radius-control: 8px;
+  --radius-field: 7px;
+
+  /* Colors, light. */
+  --label: rgba(0, 0, 0, 0.85);
+  --secondary-label: rgba(0, 0, 0, 0.5);
+  --tertiary-label: rgba(0, 0, 0, 0.26);
+  --quaternary-label: rgba(0, 0, 0, 0.1);
+  --separator: rgba(0, 0, 0, 0.1);
+  --fill: rgba(0, 0, 0, 0.06);
+  --fill-hover: rgba(0, 0, 0, 0.1);
+  --fill-pressed: rgba(0, 0, 0, 0.15);
+  --accent: #007aff;
+  --accent-label: #ffffff;
+  --accent-soft: rgba(0, 122, 255, 0.15);
+  --window-bg: #ffffff;
+  --sidebar-bg: rgba(246, 246, 248, 0.86);
+  --field-bg: #ffffff;
+  --field-border: rgba(0, 0, 0, 0.12);
+  --selection: rgba(0, 122, 255, 0.16);
+  --menu-bar: rgba(255, 255, 255, 0.28);
+  --menu-bar-label: rgba(0, 0, 0, 0.85);
+  --glass-fill: rgba(255, 255, 255, 0.5);
+  --glass-edge: rgba(255, 255, 255, 0.7);
+  --glass-highlight: rgba(255, 255, 255, 0.85);
+  --glass-shadow: 0 12px 40px rgba(20, 20, 60, 0.22), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --window-shadow: 0 22px 70px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.18);
+  --red: #ff3b30;
+  --orange: #ff9500;
+  --yellow: #ffcc00;
+  --green: #34c759;
+  --traffic-red: #ff5f57;
+  --traffic-yellow: #febc2e;
+  --traffic-green: #28c840;
+  --traffic-off: rgba(0, 0, 0, 0.12);
+  --doc-ink: #1d1d1f;
+  --doc-paper: #ffffff;
+  --call-bg: #1c1c1e;
+  --call-tile: #2c2c2e;
+  --call-label: rgba(255, 255, 255, 0.85);
+
+  /* The page around the fake Mac: the mock's own controls. One dark look
+     in both themes, so it never reads as part of Ficha. */
+  --hud-bg: #15171c;
+  --hud-raised: #22262e;
+  --hud-line: #343a45;
+  --hud-text: #e8eaee;
+  --hud-dim: #9aa2b1;
+  --hud-accent: #f2b84b;
+  --hud-accent-ink: #1a1405;
+  --hud-good: #6fcf97;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --label: rgba(255, 255, 255, 0.86);
+    --secondary-label: rgba(255, 255, 255, 0.55);
+    --tertiary-label: rgba(255, 255, 255, 0.25);
+    --quaternary-label: rgba(255, 255, 255, 0.1);
+    --separator: rgba(255, 255, 255, 0.12);
+    --fill: rgba(255, 255, 255, 0.1);
+    --fill-hover: rgba(255, 255, 255, 0.15);
+    --fill-pressed: rgba(255, 255, 255, 0.2);
+    --accent: #0a84ff;
+    --accent-label: #ffffff;
+    --accent-soft: rgba(10, 132, 255, 0.24);
+    --window-bg: #1f1f21;
+    --sidebar-bg: rgba(40, 40, 44, 0.86);
+    --field-bg: rgba(255, 255, 255, 0.06);
+    --field-border: rgba(255, 255, 255, 0.14);
+    --selection: rgba(10, 132, 255, 0.3);
+    --menu-bar: rgba(0, 0, 0, 0.24);
+    --menu-bar-label: rgba(255, 255, 255, 0.92);
+    --glass-fill: rgba(40, 40, 46, 0.5);
+    --glass-edge: rgba(255, 255, 255, 0.16);
+    --glass-highlight: rgba(255, 255, 255, 0.22);
+    --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --window-shadow: 0 22px 70px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+    --red: #ff453a;
+    --orange: #ff9f0a;
+    --yellow: #ffd60a;
+    --green: #30d158;
+    --traffic-off: rgba(255, 255, 255, 0.14);
+    --doc-ink: #e8e8ea;
+    --doc-paper: #1e1e20;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --label: rgba(255, 255, 255, 0.86);
+  --secondary-label: rgba(255, 255, 255, 0.55);
+  --tertiary-label: rgba(255, 255, 255, 0.25);
+  --quaternary-label: rgba(255, 255, 255, 0.1);
+  --separator: rgba(255, 255, 255, 0.12);
+  --fill: rgba(255, 255, 255, 0.1);
+  --fill-hover: rgba(255, 255, 255, 0.15);
+  --fill-pressed: rgba(255, 255, 255, 0.2);
+  --accent: #0a84ff;
+  --accent-label: #ffffff;
+  --accent-soft: rgba(10, 132, 255, 0.24);
+  --window-bg: #1f1f21;
+  --sidebar-bg: rgba(40, 40, 44, 0.86);
+  --field-bg: rgba(255, 255, 255, 0.06);
+  --field-border: rgba(255, 255, 255, 0.14);
+  --selection: rgba(10, 132, 255, 0.3);
+  --menu-bar: rgba(0, 0, 0, 0.24);
+  --menu-bar-label: rgba(255, 255, 255, 0.92);
+  --glass-fill: rgba(40, 40, 46, 0.5);
+  --glass-edge: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --window-shadow: 0 22px 70px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  --red: #ff453a;
+  --orange: #ff9f0a;
+  --yellow: #ffd60a;
+  --green: #30d158;
+  --traffic-off: rgba(255, 255, 255, 0.14);
+  --doc-ink: #e8e8ea;
+  --doc-paper: #1e1e20;
+  color-scheme: dark;
+}

@@ -47,7 +47,7 @@ What the method's six commands read about Ficha (`.claude/method/method.md`), ap
 - ✓ The iPhone: `make render-iphone`, its opening screen alone ("The iPhone's screen").
 - ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
 - ✓ A PR that changes what Lucas sees: each window or screen in English, German and Arabic ("The PR's pictures").
-- ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic. The kit and the Ficha Lab move from the Claude project's shared folder into `mockups/` in the repo (#475).
+- ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic, and the Ficha Lab, in `mockups/` (its README).
 - ✓ An artifact's sources: the Claude project's shared folder, `/mnt/project-files/` in its sessions, a folder per artifact, such as `preparar/`.
 
 ## Hands-free
@@ -157,6 +157,7 @@ The rest:
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `terms.md`, Ficha's words in each language; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
+- ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node; no step of `make check` builds or reads it (its README).
 - ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
 - ✓ `CODING_STANDARDS.md`: the standards `/construir`'s review checks every change against.
 - ○ `.out-of-scope/`: ideas Lucas decided against, from before ADR 0030; no command reads it.

@@ -28,3 +28,6 @@ iPhone/Local.xcconfig
 
 # macOS
 .DS_Store
+
+# The mock kit's npm packages, which mockups/tools/shoot.js reads (mockups/README.md)
+mockups/npmtest/

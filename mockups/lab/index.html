@@ -1,0 +1,534 @@
+<title>Ficha Lab</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<style>
+  /* The charts' colors, from the dataviz reference palette (validated on
+     this page's surfaces, light #ffffff and dark #1f1f21): A is slot 1, B slot 2. */
+  :root {
+    --a: #2a78d6;
+    --b: #eb6834;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --muted: #898781;
+    --weekend: rgba(0, 0, 0, 0.035);
+    --hover-band: rgba(0, 0, 0, 0.06);
+    --tip-bg: #ffffff;
+    --tip-ring: rgba(11, 11, 11, 0.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --a: #3987e5;
+      --b: #d95926;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --weekend: rgba(255, 255, 255, 0.035);
+      --hover-band: rgba(255, 255, 255, 0.07);
+      --tip-bg: #2a2a2d;
+      --tip-ring: rgba(255, 255, 255, 0.1);
+    }
+  }
+  :root[data-theme='dark'] {
+    --a: #3987e5;
+    --b: #d95926;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --weekend: rgba(255, 255, 255, 0.035);
+    --hover-band: rgba(255, 255, 255, 0.07);
+    --tip-bg: #2a2a2d;
+    --tip-ring: rgba(255, 255, 255, 0.1);
+  }
+
+  html, body { background: var(--window-bg); color: var(--label); }
+  body { margin: 0; font: var(--text-body) / 1.45 var(--font-text); -webkit-font-smoothing: antialiased; }
+  #app { box-sizing: border-box; max-width: 1080px; margin: 0 auto; padding: 28px 16px 48px; }
+  .noscript { padding: 24px; }
+  button { font: inherit; color: inherit; }
+  .segmented { flex-wrap: wrap; border-radius: 12px; }
+  .segmented button { font-size: var(--text-callout); }
+
+  h1 { margin: 0; font-size: var(--text-large-title); font-weight: 700; letter-spacing: -0.01em; }
+  .lede { margin: 6px 0 0; max-width: 64ch; color: var(--secondary-label); font-size: var(--text-title3); line-height: 1.4; }
+  h2 { margin: 0; font-size: var(--text-title3); font-weight: 600; }
+  .section { margin-top: 28px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .hint { color: var(--secondary-label); font-size: var(--text-callout); }
+
+  /* The comparison grid: a label, then A, then B. */
+  .grid { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 1fr; column-gap: 20px; }
+  .grid > .row { display: contents; }
+  .grid .cell { padding: 9px 0; border-top: 1px solid var(--separator); display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .grid .label { color: var(--secondary-label); }
+  .grid .head { border-top: 0; padding: 0 0 8px; font-weight: 600; }
+  .key { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .swatch.a { background: var(--a); }
+  .swatch.b { background: var(--b); }
+  .line-key { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+  .line-key.a { background: var(--a); }
+  .line-key.b { background: var(--b); }
+  .mini-key { display: none; }
+  .shared { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; column-gap: 20px; }
+  .shared .cell { padding: 9px 0; border-top: 1px solid var(--separator); display: flex; align-items: center; min-width: 0; }
+  .shared .label { color: var(--secondary-label); }
+
+  .tries { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .try { height: 24px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--fill); font-size: var(--text-callout); cursor: pointer; }
+  .try:hover { background: var(--fill-hover); }
+  .try:focus-visible, .segmented button:focus-visible, .linkish:focus-visible, .plot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: var(--text-callout); }
+
+  /* Results. */
+  .results .cell { flex-direction: column; align-items: flex-start; gap: 0; }
+  .results .label { flex-direction: row; align-items: center; }
+  .value { font-size: var(--text-title2); font-weight: 600; line-height: 1.25; }
+  .value .delta { margin-left: 8px; font-size: var(--text-callout); font-weight: 500; color: var(--secondary-label); }
+  .sub { color: var(--secondary-label); font-size: var(--text-callout); }
+  .warn { color: var(--label); }
+  .busy { opacity: 0.55; transition: opacity 120ms; }
+
+  /* Charts. */
+  .chart { margin-top: 12px; padding: 14px 16px 10px; border-radius: 14px; box-shadow: 0 0 0 1px var(--separator); }
+  .chart-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--secondary-label); font-size: var(--text-callout); }
+  .plot-wrap { position: relative; margin-top: 8px; }
+  .plot { display: block; width: 100%; touch-action: pan-y; }
+  .plot text { fill: var(--muted); font-size: 10px; font-family: var(--font-text); font-variant-numeric: tabular-nums; }
+  .plot .end-label { fill: var(--secondary-label); font-size: 11px; }
+  .tip {
+    position: absolute; top: 0; pointer-events: none; min-width: 120px; padding: 8px 10px; border-radius: 10px;
+    background: var(--tip-bg); box-shadow: 0 0 0 1px var(--tip-ring), 0 6px 20px rgba(0, 0, 0, 0.12); font-size: var(--text-callout);
+  }
+  .tip .when { color: var(--secondary-label); margin-bottom: 4px; }
+  .tip .tip-row { display: flex; align-items: center; gap: 8px; }
+  .tip strong { font-variant-numeric: tabular-nums; min-width: 34px; }
+  .tip .who { color: var(--secondary-label); }
+  .chart-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+  table { border-collapse: collapse; margin-top: 8px; font-size: var(--text-callout); font-variant-numeric: tabular-nums; }
+  th, td { padding: 3px 14px 3px 0; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--secondary-label); font-weight: 500; }
+  tr.weekend td { color: var(--secondary-label); }
+  .table-scroll { max-height: 280px; overflow: auto; }
+
+  details { margin-top: 28px; color: var(--secondary-label); }
+  details summary { cursor: pointer; color: var(--label); font-weight: 600; }
+  details ul { margin: 8px 0 0; padding-left: 18px; max-width: 72ch; }
+  details li { margin: 4px 0; }
+
+  @media (max-width: 680px) {
+    #app { padding-top: 20px; }
+    .grid, .shared { grid-template-columns: 1fr; }
+    .grid .cell.label, .shared .cell.label { padding-bottom: 2px; border-top: 1px solid var(--separator); }
+    .grid .cell:not(.label), .shared .cell:not(.label) { border-top: 0; padding: 4px 0; }
+    .grid .head { display: none; }
+    .mini-key { display: inline-flex; width: 16px; font-weight: 600; color: var(--secondary-label); font-size: var(--text-callout); }
+    .results .cell:not(.label) { flex-direction: row; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  }
+</style>
+
+<div id="app"><p class="noscript">The Lab is loading. It needs JavaScript, and React from a CDN.</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="kit/engine.js"></script>
+<script src="kit/decks.js"></script>
+<script src="kit/lab.js"></script>
+<script src="kit/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { useState, useEffect, useMemo, useRef, useLayoutEffect } = React;
+  const { html, Segmented } = window.FichaUI;
+  const L = window.FichaLab;
+  const DECKS = window.FichaDecks;
+
+  // ---------------------------------------------------------------------
+  // What can change. The person's life and cards are shared by A and B;
+  // Ficha's settings are each column's own.
+  // ---------------------------------------------------------------------
+  const COLLECTIONS = {
+    two: { label: '22 · 2 decks', decks: [{ id: 'palabras' }, { id: 'nubes' }] },
+    four: { label: '48 · 4 decks', decks: ['palabras', 'nubes', 'ochomiles', 'cuadros'].map((id) => ({ id })) },
+    one200: { label: '200 · 1 deck', decks: [{ id: 'big', name: 'One deck of 200', cards: 200 }] },
+    four200: { label: '200 · 4 decks', decks: [1, 2, 3, 4].map((i) => ({ id: `d${i}`, name: `Deck ${i}`, cards: 50 })) },
+  };
+  const LIVES = {
+    office: { label: 'Office hours', life: {} },
+    allDay: { label: 'All day', life: { weekday: [9, 22], eveningChance: 0, weekendChance: 0.6, weekend: [10, 18] } },
+    mornings: { label: 'Mornings', life: { weekday: [9, 13], eveningChance: 0.1, weekendChance: 0.2 } },
+  };
+  const MEETINGS = [0, 2, 4];
+
+  const SETTINGS = [
+    { key: 'perDay', label: 'New cards a day, each deck', options: [3, 5, 10, 20].map((v) => ({ value: v, label: String(v) })) },
+    { key: 'newPerAppearance', label: 'New cards each time', options: [1, 2, 3].map((v) => ({ value: v, label: String(v) })) },
+    { key: 'cardsPerAppearance', label: 'Cards each time, at most', options: [3, 5, 8].map((v) => ({ value: v, label: String(v) })) },
+    { key: 'separationMinutes', label: 'Apart, at least', options: [[15, '15 min'], [30, '30 min'], [60, '1 h']].map(([v, l]) => ({ value: v, label: l })) },
+    { key: 'retention', label: 'Remember', options: [0.85, 0.9, 0.95].map((v) => ({ value: v, label: `${Math.round(v * 100)}%` })) },
+  ];
+  // Ficha's own settings (ReviewSettings.defaults, Scheduler.standard); the pace is the person's.
+  const FICHA = { perDay: 20, newPerAppearance: 1, cardsPerAppearance: 5, separationMinutes: 30, retention: 0.9 };
+  const TRIES = [
+    { label: '2 new cards each time', change: { newPerAppearance: 2 } },
+    { label: 'An hour apart', change: { separationMinutes: 60 } },
+    { label: '3 cards each time', change: { cardsPerAppearance: 3 } },
+    { label: 'Remember 85%', change: { retention: 0.85 } },
+    { label: 'Same as A', change: {} },
+  ];
+
+  function configFor(column, shared) {
+    const collection = COLLECTIONS[shared.collection];
+    return {
+      cardsPerAppearance: column.cardsPerAppearance,
+      separationMinutes: column.separationMinutes,
+      newPerAppearance: column.newPerAppearance,
+      retention: column.retention,
+      decks: collection.decks.map((d) => ({ ...d, perDay: column.perDay })),
+      life: { ...LIVES[shared.life].life, meetingsPerDay: shared.meetings },
+    };
+  }
+
+  /** What the "How fast?" window promises: the slowest deck's days, every day or five a week. */
+  function promise(column, shared) {
+    const sizes = COLLECTIONS[shared.collection].decks.map((d) => {
+      const sample = DECKS.find((s) => s.id === d.id);
+      return sample ? sample.cards.length : d.cards;
+    });
+    const days = Math.max(...sizes.map((n) => Math.ceil(n / column.perDay)));
+    return { soonest: days, latest: Math.ceil((days * 7) / 5) };
+  }
+
+  // ---------------------------------------------------------------------
+  // Numbers as the page shows them.
+  // ---------------------------------------------------------------------
+  const one = (x) => (Math.round(x * 10) / 10).toLocaleString('en', { maximumFractionDigits: 1 });
+  const signed = (x, f = one) => (Math.abs(x) < 0.05 ? '±0' : `${x > 0 ? '+' : '−'}${f(Math.abs(x))}`);
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayName = (d) => WEEKDAYS[new Date(d.day).getDay()];
+
+  function niceTicks(max, count = 4) {
+    if (max <= 0) return { top: 1, ticks: [0, 1] };
+    const raw = max / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+    const top = Math.ceil(max / step) * step;
+    const ticks = [];
+    for (let v = 0; v <= top + 1e-9; v += step) ticks.push(Math.round(v * 100) / 100);
+    return { top, ticks };
+  }
+
+  function useWidth() {
+    const ref = useRef(null);
+    const [width, setWidth] = useState(600);
+    useLayoutEffect(() => {
+      const el = ref.current;
+      if (!el) return undefined;
+      const ro = new ResizeObserver(([e]) => setWidth(Math.max(240, Math.floor(e.contentRect.width))));
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+    return [ref, width];
+  }
+
+  // ---------------------------------------------------------------------
+  // The charts: each day as paired columns, or the four weeks as two lines.
+  // ---------------------------------------------------------------------
+  const H = 190;
+  const M = { top: 14, right: 40, bottom: 24, left: 34 };
+
+  function topRounded(x, y, w, h, r) {
+    if (h <= 0) return '';
+    r = Math.min(r, w / 2, h);
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+  }
+
+  function DayChart({ kind, a, b, metric, names }) {
+    const [ref, width] = useWidth();
+    const [hover, setHover] = useState(null);
+    const n = a.length;
+    const plotW = width - M.left - M.right;
+    const plotH = H - M.top - M.bottom;
+    const band = plotW / n;
+    const va = a.map(metric.get);
+    const vb = b.map(metric.get);
+    const { top, ticks } = niceTicks(Math.max(...va, ...vb, metric.floor || 0));
+    const y = (v) => M.top + plotH - (v / top) * plotH;
+    const bx = (i) => M.left + i * band;
+    const cx = (i) => bx(i) + band / 2;
+
+    const pick = (clientX) => {
+      const r = ref.current.getBoundingClientRect();
+      const i = Math.floor((clientX - r.left - M.left) / band);
+      setHover(i >= 0 && i < n ? i : null);
+    };
+    const onKey = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      setHover((h) => Math.max(0, Math.min(n - 1, (h == null ? 0 : h + (e.key === 'ArrowRight' ? 1 : -1)))));
+    };
+
+    const weekend = a.map((d, i) => (d.weekend ? html`<rect key=${'w' + i} x=${bx(i)} y=${M.top} width=${band} height=${plotH} fill="var(--weekend)" />` : null));
+    const grid = ticks.map((t) => html`<g key=${'t' + t}>
+      <line x1=${M.left} x2=${M.left + plotW} y1=${y(t)} y2=${y(t)} stroke=${t === 0 ? 'var(--axis)' : 'var(--grid)'} strokeWidth="1" />
+      <text x=${M.left - 6} y=${y(t) + 3} textAnchor="end">${metric.tick ? metric.tick(t) : t}</text></g>`);
+    const weeks = [0, 7, 14, 21].filter((i) => i < n).map((i) => html`<text key=${'x' + i} x=${bx(i) + 2} y=${H - 6}>Week ${i / 7 + 1}</text>`);
+
+    let marks;
+    if (kind === 'columns') {
+      const gap = 2;
+      const w = Math.max(2, Math.min(12, (band - gap - 3) / 2));
+      marks = a.map((_, i) => {
+        const x0 = cx(i) - w - gap / 2;
+        return html`<g key=${'c' + i}>
+          <path d=${topRounded(x0, y(va[i]), w, y(0) - y(va[i]), 4)} fill="var(--a)" />
+          <path d=${topRounded(x0 + w + gap, y(vb[i]), w, y(0) - y(vb[i]), 4)} fill="var(--b)" /></g>`;
+      });
+    } else {
+      const path = (vs) => vs.map((v, i) => `${i ? 'L' : 'M'}${cx(i)},${y(v)}`).join('');
+      const last = n - 1;
+      const ya = y(va[last]);
+      const yb = y(vb[last]);
+      const apart = Math.abs(ya - yb) >= 13;
+      marks = html`
+        <path d=${path(va)} fill="none" stroke="var(--a)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d=${path(vb)} fill="none" stroke="var(--b)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx=${cx(last)} cy=${ya} r="4" fill="var(--a)" stroke="var(--window-bg)" strokeWidth="2" />
+        <circle cx=${cx(last)} cy=${yb} r="4" fill="var(--b)" stroke="var(--window-bg)" strokeWidth="2" />
+        ${apart ? html`<text className="end-label" x=${cx(last) + 8} y=${ya + 4}>${metric.fmt(va[last])}</text>
+          <text className="end-label" x=${cx(last) + 8} y=${yb + 4}>${metric.fmt(vb[last])}</text>` : null}`;
+    }
+
+    const hoverMarks = hover == null ? null : kind === 'columns'
+      ? html`<rect x=${bx(hover)} y=${M.top} width=${band} height=${plotH} fill="var(--hover-band)" rx="3" />`
+      : html`<g><line x1=${cx(hover)} x2=${cx(hover)} y1=${M.top} y2=${M.top + plotH} stroke="var(--axis)" strokeWidth="1" />
+          <circle cx=${cx(hover)} cy=${y(va[hover])} r="4" fill="var(--a)" stroke="var(--window-bg)" strokeWidth="2" />
+          <circle cx=${cx(hover)} cy=${y(vb[hover])} r="4" fill="var(--b)" stroke="var(--window-bg)" strokeWidth="2" /></g>`;
+
+    const tipLeft = hover == null ? 0 : Math.min(Math.max(0, cx(hover) + 12), width - 150);
+    const tipFlip = hover != null && cx(hover) + 160 > width;
+    const keyClass = kind === 'columns' ? 'swatch' : 'line-key';
+    return html`<div className="plot-wrap" ref=${ref}>
+      <svg className="plot" width=${width} height=${H} viewBox=${`0 0 ${width} ${H}`} tabIndex="0"
+        role="img" aria-label=${`${metric.title}, A and B, day by day. Arrow keys move through the days.`}
+        onPointerMove=${(e) => pick(e.clientX)} onPointerLeave=${() => setHover(null)}
+        onKeyDown=${onKey} onBlur=${() => setHover(null)}>
+        ${weekend}${kind === 'columns' ? hoverMarks : null}${grid}${marks}${kind === 'lines' ? hoverMarks : null}${weeks}
+      </svg>
+      ${hover == null ? null : html`<div className="tip" style=${{ left: tipFlip ? cx(hover) - 162 : tipLeft, top: M.top }}>
+        <div className="when">Day ${hover + 1} · ${dayName(a[hover])}</div>
+        <div className="tip-row"><span className=${keyClass + ' a'}></span><strong>${metric.fmt(va[hover])}</strong><span className="who">${names.a}</span></div>
+        <div className="tip-row"><span className=${keyClass + ' b'}></span><strong>${metric.fmt(vb[hover])}</strong><span className="who">${names.b}</span></div>
+      </div>`}
+    </div>`;
+  }
+
+  function Chart({ title, kind, metrics, a, b, names }) {
+    const [which, setWhich] = useState(metrics[0].key);
+    const [table, setTable] = useState(false);
+    const metric = metrics.find((m) => m.key === which);
+    const keyClass = kind === 'columns' ? 'swatch' : 'line-key';
+    // In a column of numbers, every average keeps its one decimal so they line up.
+    const cell = (v) => (metric.fmt === one ? v.toFixed(1) : metric.fmt(v));
+    return html`<div className="chart">
+      <div className="chart-head">
+        <h2>${title}</h2>
+        <${Segmented} label=${title} value=${which} onChange=${setWhich} options=${metrics.map((m) => ({ value: m.key, label: m.title }))} />
+      </div>
+      <div className="legend" style=${{ marginTop: 8 }}>
+        <span className="key"><span className=${keyClass + ' a'}></span>A · ${names.a}</span>
+        <span className="key"><span className=${keyClass + ' b'}></span>B · ${names.b}</span>
+        <span>Shaded: weekends</span>
+      </div>
+      <${DayChart} kind=${kind} a=${a} b=${b} metric=${metric} names=${names} />
+      <div className="chart-foot">
+        <span className="hint">${metric.note}</span>
+        <button type="button" className="linkish" onClick=${() => setTable(!table)}>${table ? 'Hide the numbers' : 'Show the numbers'}</button>
+      </div>
+      ${table ? html`<div className="table-scroll"><table>
+        <thead><tr><th>Day</th><th>A</th><th>B</th></tr></thead>
+        <tbody>${a.map((d, i) => html`<tr key=${i} className=${d.weekend ? 'weekend' : ''}>
+          <td>${i + 1} · ${dayName(d)}</td><td>${cell(metric.get(d))}</td><td>${cell(metric.get(b[i]))}</td></tr>`)}</tbody>
+      </table></div>` : null}
+    </div>`;
+  }
+
+  const PER_DAY = [
+    { key: 'appearances', title: 'Appearances', get: (d) => d.appearances, fmt: one, note: 'Times Ficha appeared, averaged over the runs.' },
+    { key: 'minutes', title: 'Minutes', get: (d) => d.minutes, fmt: one, note: 'Minutes spent answering, at 8 seconds a card.' },
+    { key: 'newMet', title: 'New cards', get: (d) => d.newMet, fmt: one, note: 'Cards met for the first time that day.' },
+    { key: 'heldBack', title: 'Held back', get: (d) => d.heldBack, fmt: one, floor: 1, note: 'Appearances a meeting held back until it ended.' },
+  ];
+  const OVER_TIME = [
+    { key: 'met', title: 'Met', get: (d) => d.met, fmt: (v) => String(Math.round(v)), note: 'Cards met at least once, by the end of each day.' },
+    { key: 'learned', title: 'Learned', get: (d) => d.learned, fmt: (v) => String(Math.round(v)), note: 'Cards past their learning steps, by the end of each day.' },
+    { key: 'dueLeft', title: 'Waiting', get: (d) => d.dueLeft, fmt: one, floor: 1, note: 'Cards due and not yet reviewed when each day ends.' },
+  ];
+
+  // ---------------------------------------------------------------------
+  // The page.
+  // ---------------------------------------------------------------------
+  function nameOf(column) {
+    const diffs = SETTINGS.filter((s) => column[s.key] !== FICHA[s.key] && s.key !== 'perDay');
+    if (!diffs.length) return 'Ficha today';
+    return diffs.map((s) => {
+      const o = s.options.find((x) => x.value === column[s.key]);
+      return s.key === 'retention' ? `remember ${o.label}` : s.key === 'separationMinutes' ? `${o.label} apart` : s.key === 'newPerAppearance' ? `${o.label} new each time` : `${o.label} each time`;
+    }).join(', ');
+  }
+
+  function Lab() {
+    const [shared, setShared] = useState({ collection: 'one200', life: 'office', meetings: 2 });
+    const [cols, setCols] = useState({ a: { ...FICHA }, b: { ...FICHA, newPerAppearance: 2 } });
+    const [results, setResults] = useState(null);
+    const [busy, setBusy] = useState(true);
+    const start = useMemo(() => L.nextMonday(Date.now()), []);
+
+    useEffect(() => {
+      setBusy(true);
+      // Let the page show it's working, then run both columns.
+      const id = setTimeout(() => {
+        setResults({
+          a: L.simulate(configFor(cols.a, shared), { start }),
+          b: L.simulate(configFor(cols.b, shared), { start }),
+        });
+        setBusy(false);
+      }, 30);
+      return () => clearTimeout(id);
+    }, [shared, cols, start]);
+
+    const set = (col, key, value) => setCols((c) => ({ ...c, [col]: { ...c[col], [key]: value } }));
+    const names = { a: nameOf(cols.a), b: nameOf(cols.b) };
+    const total = results ? results.a.totals.cards : 0;
+
+    const mini = (k) => html`<span className="mini-key"><span className=${'swatch ' + k}></span></span>`;
+
+    const resultRows = results ? [
+      {
+        label: 'Appearances a weekday',
+        get: (r) => r.totals.appearancesPerWeekday,
+        fmt: one,
+        sub: (r) => `${one(r.totals.appearancesPerMacHour)} an hour at the Mac, ${one(r.totals.cardsPerAppearance)} cards each`,
+      },
+      {
+        label: 'Minutes a weekday',
+        get: (r) => r.totals.minutesPerWeekday,
+        fmt: one,
+        sub: (r) => `Busiest day ${one(r.totals.busiestMinutes)} min`,
+      },
+      {
+        label: 'Held back by a meeting',
+        get: (r) => r.totals.heldBackPerWeekday,
+        fmt: one,
+        sub: () => 'Times a weekday',
+      },
+      {
+        label: 'All cards met',
+        get: (r) => (r.totals.allMetDay == null ? null : r.totals.allMetDay + 1),
+        fmt: (v) => (v == null ? 'Not in 4 weeks' : `Day ${Math.round(v)}`),
+        sub: (r, col) => {
+          const p = promise(cols[col], shared);
+          const said = `How fast? says day ${p.soonest}${p.latest !== p.soonest ? ` to ${p.latest}` : ''}`;
+          const t = r.totals;
+          return t.allMetDay == null ? `${t.allMetShare ? `${Math.round(t.allMetShare * 100)}% of runs did` : 'No run did'} · ${said}` : `Latest day ${t.allMetLatest + 1} · ${said}`;
+        },
+      },
+      {
+        label: 'Learned in 4 weeks',
+        get: (r) => r.totals.learned,
+        fmt: (v) => `${Math.round(v)} of ${total}`,
+        delta: (d) => signed(d, (x) => String(Math.round(x))),
+      },
+      {
+        label: 'Remembered on reviews',
+        get: (r) => r.totals.recall,
+        fmt: (v) => (v == null ? '–' : `${Math.round(v * 100)}%`),
+        delta: (d) => `${signed(d * 100, (x) => String(Math.round(x)))} pts`,
+      },
+    ] : [];
+
+    return html`
+      <header>
+        <h1>Ficha Lab</h1>
+        <p className="lede">Four weeks of Ficha in a made-up working life, run eight times. Change B and see what a setting costs and what it gives.</p>
+      </header>
+
+      <section className="section">
+        <div className="section-head"><h2>The person</h2><span className="hint">The same for A and B</span></div>
+        <div className="shared">
+          <div className="cell label">Their cards</div>
+          <div className="cell"><${Segmented} label="Their cards" value=${shared.collection}
+            onChange=${(v) => setShared({ ...shared, collection: v })}
+            options=${Object.entries(COLLECTIONS).map(([value, c]) => ({ value, label: c.label }))} /></div>
+          <div className="cell label">Mac on</div>
+          <div className="cell"><${Segmented} label="Mac on" value=${shared.life}
+            onChange=${(v) => setShared({ ...shared, life: v })}
+            options=${Object.entries(LIVES).map(([value, l]) => ({ value, label: l.label }))} /></div>
+          <div className="cell label">Meetings</div>
+          <div className="cell"><${Segmented} label="Meetings" value=${shared.meetings}
+            onChange=${(v) => setShared({ ...shared, meetings: v })}
+            options=${MEETINGS.map((m) => ({ value: m, label: m ? `${m} a day` : 'None' }))} /></div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head"><h2>Ficha's settings</h2>
+          <div className="tries"><span className="hint">Try in B:</span>
+            ${TRIES.map((t) => html`<button type="button" className="try" key=${t.label}
+              onClick=${() => setCols((c) => ({ ...c, b: { ...c.a, ...t.change } }))}>${t.label}</button>`)}
+          </div>
+        </div>
+        <div className="grid">
+          <div className="row">
+            <div className="cell head"></div>
+            <div className="cell head"><span className="key"><span className="swatch a"></span>A · ${names.a}</span>
+              <button type="button" className="linkish" onClick=${() => setCols((c) => ({ ...c, a: { ...FICHA, perDay: c.a.perDay } }))}>Ficha's defaults</button></div>
+            <div className="cell head"><span className="key"><span className="swatch b"></span>B · ${names.b}</span></div>
+          </div>
+          ${SETTINGS.map((s) => html`<div className="row" key=${s.key}>
+            <div className="cell label">${s.label}</div>
+            ${['a', 'b'].map((k) => html`<div className="cell" key=${k}>${mini(k)}
+              <${Segmented} label=${`${s.label}, ${k.toUpperCase()}`} value=${cols[k][s.key]} onChange=${(v) => set(k, s.key, v)} options=${s.options} /></div>`)}
+          </div>`)}
+        </div>
+      </section>
+
+      <section className=${'section results' + (busy ? ' busy' : '')} aria-busy=${busy}>
+        <div className="section-head"><h2>What happens</h2><span className="hint">${busy ? 'Running…' : 'Averages of 8 runs over the same 4 weeks'}</span></div>
+        ${results ? html`<div className="grid">
+          ${resultRows.map((row) => {
+            const va = row.get(results.a);
+            const vb = row.get(results.b);
+            const d = va != null && vb != null ? vb - va : null;
+            return html`<div className="row" key=${row.label}>
+              <div className="cell label">${row.label}</div>
+              ${['a', 'b'].map((k) => {
+                const v = k === 'a' ? va : vb;
+                return html`<div className="cell" key=${k}>
+                  <div className="value">${mini(k)}${row.fmt(v)}${k === 'b' && d != null && Math.abs(d) >= 0.05
+                    ? html`<span className="delta">${row.delta ? row.delta(d) : signed(d)}</span>` : null}</div>
+                  ${row.sub ? html`<div className="sub">${row.sub(results[k], k)}</div>` : null}
+                </div>`;
+              })}
+            </div>`;
+          })}
+        </div>
+        <${Chart} title="Each day" kind="columns" metrics=${PER_DAY} a=${results.a.days} b=${results.b.days} names=${names} />
+        <${Chart} title="Over the four weeks" kind="lines" metrics=${OVER_TIME} a=${results.a.days} b=${results.b.days} names=${names} />` : null}
+      </section>
+
+      <details>
+        <summary>How the Lab works</summary>
+        <ul>
+          <li>The engine is the mock's toy Ficha: FSRS-6 with fsrs-rs's default weights, learning steps of 1 h and 4 h, relearning 1 h, Anki's fuzz, and FichaCore's rules for when to appear (a card due now, cards due in the next 20 minutes come along, one new card each time unless B says more). tools/check-engine.js checks it against 16 of FichaCore's own tests.</li>
+          <li>The person: the Mac is on weekdays from 9 to 6:30, some evenings from 8 to 10, and some weekend mornings; meetings last 30 to 60 minutes; they skip one appearance in ten and spend 8 seconds a card.</li>
+          <li>They answer as FSRS predicts: they forget a review card as often as its memory says. New cards: 15% forgotten, 5% hard, 5% easy.</li>
+          <li>Meetings hold Ficha back, and Ficha waits 2 minutes after a meeting ends or the Mac wakes. Full-screen apps and videos aren't in the Lab yet.</li>
+          <li>Every run uses the same four weeks from a Monday, so A and B face the same days and the same meetings.</li>
+        </ul>
+      </details>`;
+  }
+
+  ReactDOM.createRoot(document.getElementById('app')).render(html`<${Lab} />`);
+})();
+</script>
