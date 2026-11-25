@@ -53,8 +53,7 @@ extension Engine {
     /// Records Lucas's answer as `record(_:of:way:responseTime:trigger:settings:reviewingAhead:)`
     /// does, a review keeping the interval its rating would set as the
     /// scheduler works it out at `previewedAt`, when the review panel showed
-    /// the intervals on its buttons (`ReviewPanelState.intervals`), or at the
-    /// answer when it's nil.
+    /// the card's lower side, or at the answer when it's nil.
     func record(
         _ kind: ReviewLogEntry.Kind,
         of cardID: Int64,
@@ -170,11 +169,11 @@ func logEntries(ofExisting cardID: Int64, in db: Database) throws -> [ReviewLogE
 /// and returns whether the card is now forgotten often that way, or throws
 /// when the way can't take the answer. A review keeps the interval its
 /// rating would set as the scheduler works it out at `previewedAt`, when the
-/// review panel showed it, or else at `answeredAt`, and its ID comes from
-/// `ids`. A back-first way takes
-/// it also when the card no longer goes both ways, as when Lucas switched it
-/// off while the review panel showed that way: the way keeps its progress
-/// for when it's switched on again.
+/// review panel showed the card's lower side, or else at `answeredAt`, and
+/// its ID comes from `ids`. A back-first way takes it also when the card no
+/// longer goes both ways, as when Lucas switched it off while the review
+/// panel showed that way: the way keeps its progress for when it's switched
+/// on again.
 @discardableResult
 func recordAnswer(
     _ kind: ReviewLogEntry.Kind,
