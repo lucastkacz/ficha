@@ -11,8 +11,11 @@ const path = require('path');
 const MAX_WORDS = 40; // per card, outside its drawings (artifacts.md)
 const MAX_FIG_WORDS = 60; // per mock in a drawing, outside its SVG
 const MAX_CAPTION_WORDS = 20; // per step of a movie
+const MIN_STEPS = 4; // a movie, as Lucas approved it (artifacts.md)
+const MAX_STEPS = 8;
 const MAX_TABS = 5; // the tab bar at the bottom of a phone holds five
 const MIN_TEXT_PX = 11;
+const MIN_DRAWN_PX = 10; // a drawing's labels, as drawn on the screen: our own floor, a little under the text's
 const MIN_TAP_PX = 28;
 const SIZES = [
   { name: 'phone', width: 390, height: 700, mobile: true },
@@ -87,28 +90,29 @@ function survey(lim) {
     return n;
   }
   const title = (c) => (c.querySelector('h2,h3') || {}).textContent?.trim() || '';
+  const problems = [];
+  if (!$$('.k-view').length) problems.push('The page has no .k-view: put each tab in a <section class="k-view" data-tab="…">, with a .k-deck of .k-card inside (README, A page).');
   const views = $$('.k-view').map((v) => ({
     id: v.id, tab: v.dataset.tab || v.id,
     decks: $$(':scope > .k-deck', v).map((dk) => ({ name: dk.dataset.name || '', cards: dk._cards ? dk._cards.length : 0 })),
     stray: $$('.k-card', v).filter((c) => !c.closest('.k-deck')).length,
   }));
-  const problems = [];
   const where = (c) => { const v = c.closest('.k-view'); const dk = c.closest('.k-deck'); const cs = dk && dk._cards ? dk._cards : []; return `tab "${v ? v.dataset.tab || v.id : '?'}"${dk && dk.dataset.name ? `, deck "${dk.dataset.name}"` : ''}, card ${cs.indexOf(c) + 1}${title(c) ? ` "${title(c)}"` : ''}`; };
   $$('.k-card').forEach((c) => {
     const n = words(c, SKIP);
     if (n > lim.words) problems.push(`${where(c)}: ${n} words, over ${lim.words}. Cut it to a line per idea, and show the rest as a drawing, a before and after or a movie, or fold it (artifacts.md, The page).`);
     $$('.k-fig,.k-pv > [data-o],.k-ba [data-side],.k-sides > [data-side]', c).forEach((f) => {
       const m = words(f, 'svg,script,style');
-      if (m > lim.fig) problems.push(`${where(c)}: a drawing holds ${m} words of text, over ${lim.fig}. Draw it with labels inside an SVG, or say less (artifacts.md, The page).`);
+      if (m > lim.fig) problems.push(`${where(c)}: a drawing, a preview or a side holds ${m} words outside its SVG, over ${lim.fig}. Put its labels inside the SVG, or say less (artifacts.md, The page).`);
     });
   });
   $$('.k-movie').forEach((m) => {
     const c = m.closest('.k-card'); const caps = $$(':scope > ol > li', m);
-    if (caps.length < 3 || caps.length > 8) problems.push(`${where(c)}: a movie of ${caps.length} steps. Give it 3 to 8, one <li> each (README, The movie).`);
+    if (caps.length < lim.minSteps || caps.length > lim.maxSteps) problems.push(`${where(c)}: a movie of ${caps.length} steps. Give it ${lim.minSteps} to ${lim.maxSteps}, one <li> each, or show it as steps or a drawing (README, The pieces).`);
     caps.forEach((li, i) => { const n = count(li.textContent); if (n > lim.caption) problems.push(`${where(c)}: the movie's step ${i + 1} says ${n} words, over ${lim.caption}. Say one thing per step.`); });
     $$('[data-in],[data-out],[data-only],[data-skip],[data-on]', m).forEach((e) => {
       const nums = ['in', 'out', 'only', 'skip', 'on'].flatMap((k) => (e.dataset[k] || '').split(/\s+/).filter(Boolean).map(Number));
-      const bad = nums.filter((x) => !(x >= 1 && x <= caps.length + 1));
+      const bad = nums.filter((x) => !(x >= 1 && x <= caps.length));
       if (bad.length) problems.push(`${where(c)}: a part of the movie names step ${bad[0]}, and it has ${caps.length}. Number its data-in, data-out, data-only, data-skip and data-on from 1 to ${caps.length}.`);
     });
   });
@@ -132,6 +136,10 @@ function survey(lim) {
     const m = t.textContent.match(/(^|[\s(\[,;:])#\d+\b/);
     if (m) problems.push(`The page shows "${m[0].trim()}" by its number: show the issue's title, linked, with what it does in data-tip (method.md, What the user sees).`);
   }
+  $$('[data-tip]').forEach((e) => {
+    const m = e.dataset.tip.match(/(^|[\s(\[,;:])#\d+\b/);
+    if (m && !e.closest('.k-fold')) problems.push(`The tip of "${e.textContent.trim().slice(0, 30)}" shows "${m[0].trim()}" by its number: say what the issue does, in words (method.md, What the user sees).`);
+  });
   $$('img').forEach((i) => { if (!i.complete || !i.naturalWidth) problems.push(`The picture ${i.getAttribute('src')} doesn't load: keep it beside the page, at the path the page names, and publish it in the Artifact tool's files.`); });
   if (!document.title.trim()) problems.push('The page has no <title>: name it in two to four words, as the Artifact tool asks.');
   return { views, problems, ready: document.body.classList.contains('k-ready') };
@@ -151,6 +159,21 @@ function layout(lim) {
     const cr = c.getBoundingClientRect();
     $$('svg', c).forEach((g) => { const r = g.getBoundingClientRect(); if (r.width && (r.bottom > cr.bottom + 2 || r.right > cr.right + 2)) out.push(`${name}: a drawing runs out of the card. Put it in a .k-fig, .k-movie or .k-pv, which size it to fit, or give it a viewBox and no fixed size.`); });
     if (c.scrollWidth - c.clientWidth > 1) out.push(`${name} is wider than the screen by ${c.scrollWidth - c.clientWidth} px. Give the wide part min-width:0, or let it wrap.`);
+    // Each preview and each side shows in turn, so each must fit the box they share.
+    $$('.k-pv', c).forEach((pv) => $$(':scope > [data-o]', pv).forEach((o) => {
+      const over = Math.max(o.scrollHeight, o.getBoundingClientRect().height) - pv.clientHeight;
+      if (over > 2) out.push(`${name}: option ${o.dataset.o}'s preview is cut by ${Math.round(over)} px. Draw it smaller, or say less in it.`);
+    }));
+    $$('.k-sides > [data-side]', c).forEach((s) => { if (s.scrollHeight - s.clientHeight > 2) out.push(`${name}: the side "${s.dataset.side}" is cut by ${s.scrollHeight - s.clientHeight} px. Draw it smaller, or say less in it.`); });
+    // A drawing's labels, at the size the screen draws them.
+    const tiny = new Set();
+    $$('svg text', c).forEach((t) => {
+      if (!t.textContent.trim() || t.closest('[hidden],.off')) return; // a part of a movie that's off is checked at its step
+      const m = t.getScreenCTM(); if (!m) return;
+      const px = parseFloat(getComputedStyle(t).fontSize) * Math.hypot(m.a, m.b);
+      if (px < lim.drawn - 0.05) tiny.add(`${name}: the label "${t.textContent.trim().slice(0, 30)}" is drawn at ${px.toFixed(1)} px: make it at least ${lim.drawn}. Give the drawing a smaller viewBox, or its labels a bigger class (README, The pieces).`);
+    });
+    out.push(...tiny);
   });
   if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`the page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth} px. Find what's wider than the screen and let it wrap.`);
   const tw = document.createTreeWalker(v, NodeFilter.SHOW_TEXT); let t;
@@ -158,13 +181,14 @@ function layout(lim) {
   while ((t = tw.nextNode())) {
     const p = t.parentElement;
     if (!t.textContent.trim() || !p || p.closest('svg,script,style,.k-terms') || !p.getClientRects().length) continue;
-    const fs = parseFloat(getComputedStyle(p).fontSize);
+    const cs = getComputedStyle(p), fs = parseFloat(cs.fontSize);
     if (fs < lim.text) small.add(`text "${t.textContent.trim().slice(0, 30)}" at ${fs} px: make it at least ${lim.text} px.`);
+    if (cs.textOverflow === 'ellipsis' && p.scrollWidth > p.clientWidth + 1) small.add(`text "${t.textContent.trim().slice(0, 30)}" is cut with an ellipsis: let it wrap, or say it shorter.`);
   }
   out.push(...small);
   const taps = $$('button,[role=button]:not(.k-term),summary,a.k-go,textarea,input', v).concat($$('.k-tabs button'));
   taps.forEach((b) => {
-    if (b.closest('.k-dots,.k-mdots,[hidden]')) return;
+    if (b.closest('[hidden]')) return;
     const r = b.getBoundingClientRect();
     if (!r.width || !r.height) return;
     if (Math.min(r.width, r.height) < lim.tap) out.push(`"${(b.textContent || b.getAttribute('aria-label') || b.tagName).trim().slice(0, 30)}" is ${Math.round(r.width)}×${Math.round(r.height)} px: make what a finger taps at least ${lim.tap} px.`);
@@ -173,8 +197,14 @@ function layout(lim) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
-  const lim = { words: MAX_WORDS, fig: MAX_FIG_WORDS, caption: MAX_CAPTION_WORDS, text: MIN_TEXT_PX, tap: MIN_TAP_PX };
+  let browser;
+  try {
+    browser = await chromium.launch();
+  } catch (e) {
+    console.error(`Couldn't start Chromium (${e.message.split('\n')[0]}): run the inspection on the machine the pliego's Where it runs gives the inspection of the method's pages, which has Playwright's Chromium.`);
+    process.exit(2);
+  }
+  const lim = { words: MAX_WORDS, fig: MAX_FIG_WORDS, caption: MAX_CAPTION_WORDS, minSteps: MIN_STEPS, maxSteps: MAX_STEPS, text: MIN_TEXT_PX, drawn: MIN_DRAWN_PX, tap: MIN_TAP_PX };
   const shots = [];
   let tried = false;
   try {
@@ -185,7 +215,8 @@ function layout(lim) {
         await ctx.addInitScript(fakeDb);
         const pg = await ctx.newPage();
         const errors = [];
-        pg.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com|ERR_|net::/.test(m.text() + (m.location().url || ''))) errors.push(m.text()); });
+        // Only the fonts may fail, on a machine whose network doesn't reach them.
+        pg.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(m.text() + ' ' + (m.location().url || ''))) errors.push(m.text()); });
         pg.on('pageerror', (e) => errors.push(e.message));
         await pg.goto('file://' + wrapped, { waitUntil: 'load', timeout: 30000 }).catch(() => {});
         await pg.evaluate(() => document.fonts && document.fonts.ready).catch(() => {});
@@ -194,7 +225,7 @@ function layout(lim) {
         if (!s.ready) fail(`${label}: the kit didn't start, so nothing else can be checked. Look at the console errors below.`);
         if (!dark && size.mobile) {
           s.problems.forEach(fail);
-          if (s.views.length > MAX_TABS) fail(`The page has ${s.views.length} tabs, over ${MAX_TABS}: a phone's tab bar holds ${MAX_TABS}. Join tabs, or put a round or a piece each in a deck of its own inside one tab (README, Views and decks).`);
+          if (s.views.length > MAX_TABS) fail(`The page has ${s.views.length} tabs, over ${MAX_TABS}: a phone's tab bar holds ${MAX_TABS}. Join tabs, or put a round or a piece each in a deck of its own inside one tab (README, A page).`);
           s.views.forEach((v) => {
             if (v.stray) fail(`tab "${v.tab}": ${v.stray} card(s) outside a .k-deck. Put every card in a deck.`);
             if (!v.decks.length || v.decks.every((dk) => !dk.cards)) fail(`tab "${v.tab}" has no cards. Give it a .k-deck with at least one .k-card.`);
@@ -241,7 +272,15 @@ function layout(lim) {
               const b = [...q.querySelectorAll('.k-opt')].find((x) => x.dataset.o !== q.dataset.rec);
               if (b) { b.click(); await new Promise((f) => setTimeout(f, 50)); const doc = window.__kitDocs[q.dataset.q]; if (!doc || doc.choice !== b.dataset.o) res.push(`choosing option ${b.dataset.o} of "${q.dataset.q}" didn't save it`); }
             }
+            // A note typed just before another save comes back stays, and is saved.
+            const ta = q && q.querySelector('.k-notebox textarea');
+            if (ta) { ta.value = 'nota de prueba'; ta.dispatchEvent(new Event('input')); }
             if (ap) { ap.click(); await new Promise((f) => setTimeout(f, 50)); const doc = window.__kitDocs.aprobacion; if (!doc || !doc.approved) res.push("Aprobar didn't save the approval"); }
+            if (ta) {
+              if (ta.value !== 'nota de prueba') res.push('a note typed while another answer was saved was lost');
+              ta.dispatchEvent(new Event('blur')); await new Promise((f) => setTimeout(f, 50));
+              const doc = window.__kitDocs[q.dataset.q]; if (!doc || doc.note !== 'nota de prueba') res.push(`the note of "${q.dataset.q}" wasn't saved when the user left it`);
+            }
             return res;
           });
           r.forEach((p) => fail(`${label}: ${p}. Check the page's data-db, and the markup of its questions against pieces.html.`));
@@ -259,8 +298,8 @@ function layout(lim) {
     failures.forEach((f) => console.log('- ' + f));
     process.exit(1);
   }
-  console.log('All passed: at most 40 words a card, nothing cut or too wide, text and taps big enough, no console errors, on a phone and a laptop, light and dark.');
+  console.log(`All passed: at most ${MAX_WORDS} words a card, nothing cut or too wide, text, labels and taps big enough, no console errors, on a phone and a laptop, light and dark.`);
 })().catch((e) => {
-  console.error(`The inspection stopped: ${e.message}. Run it again; if it stops at the same place, the page's script is the likely cause.`);
+  console.error(`The inspection stopped: ${e.message.split('\n')[0]}. Run it again; if it stops at the same place, look at the page's script, and then at inspect.js.`);
   process.exit(2);
 });

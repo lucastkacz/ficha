@@ -8,12 +8,11 @@
   const el = (tag, cls, html) => { const e = d.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const hover = () => matchMedia('(hover: hover)').matches;
   const phone = () => innerWidth < 640;
 
   // The kit's own words, in the user's language. A page in another language sets window.KIT_TEXT first.
   const T = Object.assign({
-    card: 'Tarjeta', of: 'de', step: 'Paso', play: '▶ Reproducir', pause: '❚❚ Pausa', again: '↺ De nuevo',
+    card: 'Tarjeta', of: 'de', play: '▶ Reproducir', pause: '❚❚ Pausa', again: '↺ De nuevo',
     prev: 'Anterior', next: 'Siguiente', today: 'Hoy', after: 'Con esto', rec: 'Recomendada', yours: 'tuya',
     unanswered: 'Sin responder: va la recomendada', chosen: 'Elegiste', addNote: '+ Agregar una nota', note: 'Nota',
     notePh: 'Lo que ninguna opción dice…', approve: 'Aprobar', approved: 'Aprobado ✓',
@@ -61,7 +60,7 @@
       const b = el('button', null, `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[v.dataset.icon] || ICONS[ORDER[i % ORDER.length]]}</svg><b>${i + 1}</b>${esc(v.dataset.tab || v.id)}<i></i>`);
       b.setAttribute('role', 'tab');
       b.dataset.v = v.id;
-      b.addEventListener('click', () => { if (location.hash !== '#' + v.id) location.hash = v.id; else show(v.id); });
+      b.addEventListener('click', () => open(v.id));
       tabs.appendChild(b);
     });
     (top || d.body).appendChild(tabs);
@@ -85,7 +84,7 @@
       let per;
       if (phone()) per = n > 1 ? w - 18 : w;
       else {
-        const min = +deck.dataset.min || 300, fit = Math.max(1, Math.floor((w + gap) / (min + gap)));
+        const min = +deck.dataset.min || 340, fit = Math.max(1, Math.floor((w + gap) / (min + gap)));
         const cols = +deck.dataset.cols || Math.min(n, fit, 4);
         per = (w - (cols - 1) * gap) / cols;
       }
@@ -143,19 +142,31 @@
     $$('.k-deck', v).forEach((dk) => dk._paint && requestAnimationFrame(dk._paint));
     d.dispatchEvent(new CustomEvent('k-view', { detail: v.id }));
   }
-  addEventListener('hashchange', () => show(location.hash.slice(1)));
+  // The view the address names; an id with accents arrives encoded.
+  const hashId = () => { const h = location.hash.slice(1); try { return decodeURIComponent(h); } catch (e) { return h; } };
+  // Opens a view through the address, so the browser's back button returns to the last one.
+  function open(id) { if (hashId() !== id) location.hash = encodeURIComponent(id); else show(id); }
+  addEventListener('hashchange', () => show(hashId()));
   // Takes the user to a card: its view, its deck and the card itself.
   function goTo(card) {
     const v = card.closest('.k-view'), deck = card.closest('.k-deck');
     if (!v || !deck) return;
-    if (location.hash !== '#' + v.id) location.hash = v.id; else show(v.id);
+    open(v.id);
     const decks = $$(':scope > .k-deck', v);
     if (v._pick) v._pick(decks.indexOf(deck));
     setTimeout(() => deck._go(deck._cards.indexOf(card)), 80);
   }
   addEventListener('keydown', (e) => {
     if (e.target.closest('textarea,input,[contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (/^[1-9]$/.test(e.key) && views[+e.key - 1]) { location.hash = views[+e.key - 1].id; return; }
+    if (/^[1-9]$/.test(e.key) && views[+e.key - 1]) { open(views[+e.key - 1].id); return; }
+    // On the tab bar, the arrows move between tabs, as a tab list does.
+    const tab = e.target.closest('[role=tab]');
+    if (tab && tabs && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      const all = $$('[role=tab]', tabs), i = all.indexOf(tab);
+      const j = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length;
+      e.preventDefault(); open(all[j].dataset.v); all[j].focus();
+      return;
+    }
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' || !current) return;
     const deck = $$('.k-deck', current).find((dk) => !dk.hidden);
     if (deck && deck._go) { e.preventDefault(); deck._go(deck._idx() + (e.key === 'ArrowRight' ? 1 : -1)); }
@@ -178,11 +189,11 @@
     if (!svg || !N) return;
     const stage = el('div', 'k-stage'); stage.appendChild(svg);
     const cap = el('div', 'k-cap');
-    const player = el('div', 'k-player', `<button aria-label="${T.prev}">‹</button><button class="k-play"></button><button aria-label="${T.next}">›</button><div class="k-mdots">${caps.map((_, i) => `<button aria-label="${T.step} ${i + 1}"></button>`).join('')}</div>`);
+    const player = el('div', 'k-player', `<button aria-label="${T.prev}">‹</button><button class="k-play"></button><button aria-label="${T.next}">›</button><div class="k-mdots" aria-hidden="true">${caps.map(() => '<i></i>').join('')}</div>`);
     const list = el('div', 'k-steplist', caps.map((c, i) => `<button><i>${i + 1}</i><span>${esc(c.dataset.label || c.textContent.trim())}</span></button>`).join(''));
     fig.prepend(stage); fig.append(cap, player, list);
     const [bPrev, bPlay, bNext] = $$(':scope > button', player);
-    const mdots = $$('.k-mdots button', player), items = $$('button', list);
+    const mdots = $$('.k-mdots i', player), items = $$('button', list);
     const parts = $$('[data-in],[data-out],[data-only],[data-skip],[data-on]', svg);
     let s = 1, timer = null;
     function step(n) {
@@ -212,7 +223,6 @@
     bPlay.addEventListener('click', play);
     bPrev.addEventListener('click', () => { stop(); step(Math.max(1, s - 1)); });
     bNext.addEventListener('click', () => { stop(); step(Math.min(N, s + 1)); });
-    mdots.forEach((b, i) => b.addEventListener('click', () => { stop(); step(i + 1); }));
     items.forEach((b, i) => b.addEventListener('click', () => { stop(); step(i + 1); }));
     step(1);
     watch(fig, () => { if (!reduce) play(); }, stop);
@@ -261,7 +271,7 @@
     let head, body, link = '';
     if (t.dataset.term) [head, body] = terms[t.dataset.term] || [esc(t.textContent), ''];
     else { head = esc(t.textContent.trim()); body = esc(t.dataset.tip || ''); }
-    if (t.matches('a[href^="https://"]') && !hover()) link = `<a href="${esc(t.href)}" target="_blank" rel="noopener">${T.open}</a>`;
+    if (t.matches('a[href^="https://"]') && mouseOn !== t) link =`<a href="${esc(t.href)}" target="_blank" rel="noopener">${T.open}</a>`;
     pop.innerHTML = `<b>${head}</b>${body ? `<p>${body}</p>` : ''}${link}`;
     pop.hidden = false; popFor = t;
     const r = t.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
@@ -271,17 +281,18 @@
   }
   const closePop = () => { pop.hidden = true; popFor = null; };
   const tipSel = '.k-term,[data-tip]';
+  let mouseOn = null; // the tip a mouse is over, which a click keeps open
   $$(tipSel).forEach((t) => {
     if (!t.matches('a,button')) { t.tabIndex = 0; t.setAttribute('role', 'button'); }
-    t.addEventListener('mouseenter', () => { if (hover()) openPop(t); });
-    t.addEventListener('mouseleave', () => { if (hover() && popFor === t) closePop(); });
+    t.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') { mouseOn = t; openPop(t); } });
+    t.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { mouseOn = null; if (popFor === t) closePop(); } });
   });
   d.addEventListener('click', (e) => {
     const t = e.target.closest(tipSel);
     if (t) {
-      if (t.matches('a[href]') && hover()) return; // a mouse already saw the tip; the click opens the link
+      if (t.matches('a[href]') && mouseOn === t) return; // a mouse already saw the tip; the click opens the link
       e.preventDefault();
-      if (popFor === t) closePop(); else openPop(t);
+      if (mouseOn === t) openPop(t); else if (popFor === t) closePop(); else openPop(t);
       return;
     }
     if (!e.target.closest('.k-pop')) closePop();
@@ -295,23 +306,34 @@
 
   /* ---------- Questions, notes and the approval, kept in the artifact's database ---------- */
   const S = { ans: {}, notes: {}, approval: null, apNote: '' };
-  const qs = $$('.k-q[data-q]');
+  const qs = $$('.k-q[data-q]').filter((q) => {
+    if (q.querySelector('.k-opts > li[data-o]')) return true;
+    console.error(`The question "${q.dataset.q}" has no .k-opts with its <li data-o> options: give it 2 to 4, as pieces.html does (.claude/method/kit/README.md).`);
+    return false;
+  });
   const noteBoxes = $$('.k-note[data-id]');
   const approve = d.querySelector('.k-approve');
   const dbName = (d.querySelector('[data-db]') || {}).dataset?.db;
+  const optOf = (q, o) => $$('.k-opt', q).find((b) => b.dataset.o === o);
   const chosen = (q) => S.ans[q.dataset.q] || q.dataset.rec;
-  let col = null, readOnly = false;
+  let col = null, readOnly = false, synced = false;
   const status = (t, cls) => { if (!save) return; save.textContent = t; save.className = 'k-save' + (cls ? ' ' + cls : ''); };
+  // What the user changed here that the database doesn't hold yet, by document and field: a snapshot
+  // leaves those alone, so a note typed while another save comes back isn't lost.
+  const touched = {}, ver = {}, queued = new Set();
+  const touch = (id, field) => { (touched[id] = touched[id] || new Set()).add(field); ver[id] = (ver[id] || 0) + 1; };
 
   function noteBox(id, label) {
     const box = el('details', 'k-notebox', `<summary>${esc(label)}</summary><textarea id="n-${esc(id)}" placeholder="${esc(T.notePh)}"></textarea>`);
     const ta = box.querySelector('textarea');
-    ta.addEventListener('input', () => { S.notes[id] = ta.value; later(id); });
+    ta.addEventListener('input', () => { S.notes[id] = ta.value; touch(id, 'note'); later(id); });
+    ta.addEventListener('blur', () => flush(id));
     return box;
   }
   qs.forEach((q, qi) => {
     const id = q.dataset.q, h = q.querySelector('h2');
-    const head = el('div', 'k-qhead'); if (h) { q.insertBefore(head, h); head.appendChild(h); }
+    const head = el('div', 'k-qhead');
+    if (h) { q.insertBefore(head, h); head.appendChild(h); } else q.prepend(head);
     head.prepend(el('span', 'k-qstate'));
     const pv = q.querySelector('.k-pv'), pvs = pv ? $$(':scope > [data-o]', pv) : [];
     const ul = q.querySelector('.k-opts');
@@ -319,8 +341,8 @@
       const b = el('button', 'k-opt', `<span class="k-rad"></span><span class="k-ol">${li.innerHTML}</span>${li.dataset.o === q.dataset.rec ? `<span class="k-recb">${T.rec}</span>` : ''}`);
       b.dataset.o = li.dataset.o;
       li.innerHTML = ''; li.appendChild(b);
-      b.addEventListener('click', () => { if (readOnly) return; S.ans[id] = li.dataset.o; paintQ(q); paintApprove(); saveDoc(id); });
-      b.addEventListener('pointerenter', () => { if (hover()) { q._look = li.dataset.o; paintQ(q); } });
+      b.addEventListener('click', () => { if (readOnly) return; S.ans[id] = li.dataset.o; touch(id, 'choice'); paintQ(q); paintApprove(); saveDoc(id); });
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') { q._look = li.dataset.o; paintQ(q); } });
       b.addEventListener('pointerleave', () => { if (q._look === li.dataset.o) { q._look = null; paintQ(q); } });
       b.addEventListener('focus', () => { q._look = li.dataset.o; paintQ(q); });
       b.addEventListener('blur', () => { q._look = null; paintQ(q); });
@@ -328,6 +350,10 @@
     const why = q.querySelector('.k-why');
     if (why) why.prepend(el('span', 'k-recb', T.rec));
     q.appendChild(noteBox(id, T.addNote));
+    // An inner box, so a wide card can lay the question out beside its preview (a container can't style itself).
+    const inner = el('div', 'k-qin');
+    [...q.childNodes].forEach((n) => inner.appendChild(n));
+    q.appendChild(inner);
     q._pvs = pvs; q._n = qi + 1;
   });
   function paintQ(q) {
@@ -355,8 +381,9 @@
     apState = el('p', 'k-apstate');
     approve.append(apList, apNote, apBtn, apState);
     apList.addEventListener('click', (e) => { const b = e.target.closest('button[data-i]'); if (b) goTo(qs[+b.dataset.i]); });
-    apNote.addEventListener('input', () => { S.apNote = apNote.value; later('aprobacion'); });
-    apBtn.addEventListener('click', () => { if (readOnly) return; S.approval = { approved: true, at: new Date().toISOString() }; saveDoc('aprobacion'); paintApprove(); });
+    apNote.addEventListener('input', () => { S.apNote = apNote.value; touch('aprobacion', 'note'); later('aprobacion'); });
+    apNote.addEventListener('blur', () => flush('aprobacion'));
+    apBtn.addEventListener('click', () => { if (readOnly) return; S.approval = { approved: true, at: new Date().toISOString() }; touch('aprobacion', 'approved'); saveDoc('aprobacion'); paintApprove(); });
   }
   function paintApprove() {
     if (tabs) {
@@ -365,7 +392,7 @@
     }
     if (!approve) return;
     apList.innerHTML = qs.map((q, i) => {
-      const o = q.querySelector(`.k-opt[data-o="${chosen(q)}"] .k-ol`);
+      const b = optOf(q, chosen(q)), o = b && b.querySelector('.k-ol');
       const label = o ? (o.querySelector('b') || o).textContent.trim() : '';
       return `<button data-i="${i}"><span class="k-qn">${i + 1}</span><b>${esc(label)}</b><span class="k-tag${S.ans[q.dataset.q] ? ' mine' : ''}">${S.ans[q.dataset.q] ? T.yours : T.rec}</span></button>`;
     }).join('');
@@ -385,48 +412,70 @@
     if (qs.some((q) => q.dataset.q === id)) return { choice: S.ans[id] || null, note: S.notes[id] || '', at: new Date().toISOString() };
     return { note: S.notes[id] || '', at: new Date().toISOString() };
   }
+  // Saves a document once the database answered its first snapshot; until then, what the user did waits in queued.
   async function saveDoc(id) {
-    if (!col || readOnly) return;
+    if (readOnly) return;
+    if (!col || !synced) { queued.add(id); return; }
     if (writing[id]) { again[id] = true; return; }
     writing[id] = true; status(T.saving);
-    try { await col.doc(id).set(docFor(id)); status(T.saved, 'ok'); }
-    catch (e) {
+    const v = ver[id];
+    try {
+      await col.doc(id).set(docFor(id));
+      if (ver[id] === v) delete touched[id];
+      status(T.saved, 'ok');
+    } catch (e) {
       const code = e && e.code;
-      if (code === 'not_granted' || code === 'revoked' || code === 'capability_disabled' || code === 'capability_removed') { readOnly = true; status(T.readOnly, 'err'); paintAll(); }
-      else status(T.notSaved, 'err');
+      writing[id] = false;
+      if (code === 'not_granted' || code === 'revoked' || code === 'capability_disabled' || code === 'capability_removed') { goReadOnly(T.readOnly, 'err'); return; }
+      status(T.notSaved, 'err');
     }
     writing[id] = false;
     if (again[id]) { again[id] = false; saveDoc(id); }
   }
-  function later(id) { clearTimeout(timers[id]); timers[id] = setTimeout(() => saveDoc(id), 800); }
+  function later(id) { clearTimeout(timers[id]); timers[id] = setTimeout(() => { timers[id] = null; saveDoc(id); }, 800); }
+  function flush(id) { if (timers[id]) { clearTimeout(timers[id]); timers[id] = null; saveDoc(id); } }
+  const flushAll = () => Object.keys(timers).forEach(flush);
+  addEventListener('pagehide', flushAll);
+  d.addEventListener('visibilitychange', () => { if (d.visibilityState === 'hidden') flushAll(); });
+  // A view that can't save: what was chosen stays on screen, but an approval that never reached the database isn't one.
+  function goReadOnly(msg, cls) {
+    readOnly = true;
+    if (touched.aprobacion && touched.aprobacion.has('approved')) S.approval = null;
+    status(msg, cls); paintAll();
+  }
   function paintAll() { qs.forEach(paintQ); paintNotes(); paintApprove(); }
 
   async function initDb() {
     if (!qs.length && !noteBoxes.length && !approve) return;
     if (top) { save = el('span', 'k-save'); top.insertBefore(save, tabs && tabs.parentNode === top ? tabs.nextSibling : null); }
-    if (!dbName) { console.error('The page has questions, notes or Aprobar but no data-db: put data-db="<collection>" on its .k-top (.claude/method/kit/README.md).'); readOnly = true; status(T.noSave); paintAll(); return; }
+    if (!dbName) { console.error('The page has questions, notes or Aprobar but no data-db: put data-db="<collection>" on its .k-top (.claude/method/kit/README.md).'); goReadOnly(T.noSave); return; }
     let db = null;
     try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
-    if (!db) { readOnly = true; status(T.noSave); paintAll(); return; }
+    if (!db) { goReadOnly(T.noSave); return; }
     col = db.collection(dbName);
     const slow = setTimeout(() => status(T.slow), 10000);
     col.onSnapshot((snap) => {
       clearTimeout(slow);
       snap.docs.forEach((doc) => {
-        const v = doc.data() || {};
-        if (doc.id === 'aprobacion') { S.approval = v; if (d.activeElement !== apNote) S.apNote = v.note || ''; return; }
-        if (v.choice) S.ans[doc.id] = v.choice;
-        const ta = d.getElementById('n-' + doc.id);
-        if (!ta || d.activeElement !== ta) S.notes[doc.id] = v.note || '';
+        const v = doc.data() || {}, t = touched[doc.id] || new Set();
+        if (doc.id === 'aprobacion') {
+          if (!t.has('approved')) S.approval = v.approved ? { approved: true, at: v.at } : null;
+          if (!t.has('note')) S.apNote = typeof v.note === 'string' ? v.note : '';
+          return;
+        }
+        const q = qs.find((x) => x.dataset.q === doc.id);
+        if (q && !t.has('choice')) { if (optOf(q, v.choice)) S.ans[doc.id] = v.choice; else delete S.ans[doc.id]; }
+        if (!t.has('note')) S.notes[doc.id] = typeof v.note === 'string' ? v.note : '';
       });
       status(snap.empty ? T.ready : T.upToDate, snap.empty ? '' : 'ok');
+      if (!synced) { synced = true; const ids = [...queued]; queued.clear(); ids.forEach(saveDoc); }
       paintAll();
-    }, () => { clearTimeout(slow); readOnly = true; status(T.noSave, 'err'); paintAll(); });
+    }, () => { clearTimeout(slow); goReadOnly(T.noSave, 'err'); });
   }
 
   /* ---------- Start ---------- */
   paintAll();
-  show(location.hash.slice(1));
+  show(hashId());
   d.body.classList.add('k-ready');
   initDb();
   window.Kit = { show, goTo, text: T };

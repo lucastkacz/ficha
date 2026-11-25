@@ -20,7 +20,7 @@ Done when you can name each question whose answer changes what gets built, and t
 
 ## 2. A round
 
-Up to five questions, those the others depend on first, written as [`../../method/artifacts.md`](../../method/artifacts.md) says: each in the user's terms, with 2 to 4 options shown, not described, the one you recommend and why, and a note. A visual choice gets a mock of each option; a choice about behavior, a short movie or a simulation's numbers.
+Up to five questions, those the others depend on first, written as [`../../method/artifacts.md`](../../method/artifacts.md) says: each in the user's terms, with 2 to 4 options shown, not described, the one you recommend and why, and a note. A visual choice gets a mock of each option; a choice about behavior, a drawing of what happens or a simulation's numbers.
 
 The debate is one artifact: its home, with the idea's issue linked; a tab of rounds, a deck each, the earlier ones with their answers; and its close, once it comes.
 
@@ -43,4 +43,4 @@ The artifact's last tab: what each round settled, in a line each, and what stays
 
 The open items the debate settled, and its new words, are written with the decision, by `/decision`.
 
-Done when the last tab is published, and the user has the line.
+Done when the last tab is published, passing the checks of [`../../method/artifacts.md`](../../method/artifacts.md), and the user has the line.
