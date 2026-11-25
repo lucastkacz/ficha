@@ -28,7 +28,7 @@ Done when each issue has its files and tests, every criterion its proof, and not
 Open the node's branch from the default branch, as [`../../method/method.md`](../../method/method.md) names it, or as the project's instructions say. Each run of the tests goes where the pliego says; where that's CI on a draft PR, the first push opens the node's PR as a draft. Then the node in two rounds:
 
 1. **The tests first**: for each issue in turn, a test that fails for its reason, the bug reproduced or an `Accept (test)` criterion unmet, marked with its issue as the project's standards say, in a commit that names the issue. What a test needs that doesn't exist yet gets a stub that compiles and fails it, so one missing part doesn't hide the other tests. Run them all at once, and see each fail for its own issue's reason.
-2. **The code**: for each issue in turn, each building on the last, in a commit that names the issue; a change order the user approved updates the plano in it. Then run the project's tests until all pass, each fix in a commit of its own that names its issue.
+2. **The code**: for each issue in turn, each building on the last, in a commit that names the issue; a change order the user approved updates the plano in it. A change to what a file covers or does updates, in the same commit, the lines elsewhere that describe it, found as the project's standards say. Then run the project's tests until all pass, each fix in a commit of its own that names its issue.
 
 A fix that would change a decision goes back to `/debate`: stop, and tell the user.
 
@@ -38,9 +38,9 @@ Done when every issue has its commits and its passing test.
 
 1. **Tests and CI**: every command the pliego names, passing.
 2. **What each issue asked for**: a fresh reviewer gets the issues, with their comments, and the diff, and reports for each issue whether `Qué buscamos` and every acceptance criterion hold, citing file and line.
-3. **The plano and the standards**: a fresh reviewer gets the plano, the standards and the diff, and reports each rule broken, citing the rule, the file and the line.
+3. **The plano and the standards**: a fresh reviewer gets the plano, the standards and the diff, and reports each rule broken, citing the rule, the file and the line. A diff too large for one careful read, such as files moved in from outside the repo, is split by groups of files, a fresh reviewer each, all in the same pass, and the check passes when every group does.
 
-A change the user sees gets its pictures, as the pliego says. Fix every finding, then run the check it came from again. Then a procedure the node writes for agents that its issues didn't ask for, such as steps to take on another machine, runs once as written, after its last change, on the machine it's for, before the PR is ready. When that machine can't be reached, the node gets that step done another way, such as the user taking it by hand, and the procedure goes to a Task of its own, in the area of the way of working, written as [`../../method/method.md`](../../method/method.md) says.
+A change the user sees gets its pictures, as the pliego says. Fix every finding, and before committing a fix, read it against the rule its finding cites and, for the text it writes, the project's standards for documents. Then run the check it came from again: once a pass has read the whole diff, a review run again reads the lines the fixes changed and what they could leave stale. Then a procedure the node writes for agents that its issues didn't ask for, such as steps to take on another machine, runs once as written, after its last change, on the machine it's for, before the PR is ready. When that machine can't be reached, the node gets that step done another way, such as the user taking it by hand, and the procedure goes to a Task of its own, in the area of the way of working, written as [`../../method/method.md`](../../method/method.md) says.
 
 Done when all three pass with no finding left, and each such procedure ran as written, or its step got done another way and the procedure has its own Task.
 
