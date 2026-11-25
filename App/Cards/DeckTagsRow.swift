@@ -6,7 +6,7 @@ import SwiftUI
 /// a button drawn as its capsule, with how many of the deck's cards carry it,
 /// the most first, then "+N more", a menu of the tags that don't fit. As
 /// many fit as the pane's width holds: the line shows the most tags that fit
-/// beside "+N more", as the review panel's line of tags does.
+/// beside "+N more".
 /// `CardsWindowState` offers the lines to try, up to 15 tags, and decides
 /// what choosing a tag does (`CardsWindowDeckTags.swift`): it narrows the
 /// card list to the deck's cards that carry it, outlined while it's chosen,

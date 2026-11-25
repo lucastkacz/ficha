@@ -84,10 +84,10 @@
       "comment" : "For VoiceOver, a point of the Cards window's chart: what Lucas answered, in a review that went back first, like “Good, back first”."
     },
     "%@mo" : {
-      "comment" : "An interval of this many months, a month counted as a twelfth of a year of 365 days, about 30.4 days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit in each language."
+      "comment" : "An interval of this many months, a month counted as a twelfth of a year of 365 days, about 30.4 days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, in the Cards window. Anki's own short unit in each language."
     },
     "%@y" : {
-      "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit in each language."
+      "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, in the Cards window. Anki's own short unit in each language."
     },
     "%lld cards are Image Occlusion cards, which hide parts of an image." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
@@ -843,10 +843,6 @@
         }
       }
     },
-    "+%lld" : {
-      "comment" : "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them.",
-      "shouldTranslate" : false
-    },
     "+%lld more" : {
       "comment" : "A menu above the Cards window's card list, after the tags of the deck the sidebar chose that fit: the tags that don't, with how many."
     },
@@ -958,7 +954,7 @@
       "comment" : "Settings, under Appearances: how long an appearance waits once the Mac wakes."
     },
     "Again" : {
-      "comment" : "A rating, Anki's first button, as the review panel's button names it and the Cards window's review log shows it: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish."
+      "comment" : "A rating, Anki's first button, as the Cards window's review log shows it: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish."
     },
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead, and beside such a review in the Cards window's review log."
@@ -974,6 +970,9 @@
     },
     "Allow it in System Settings, in Login Items." : {
 
+    },
+    "Also %@ Hard and %@ Easy, as in Anki" : {
+      "comment" : "Under the review panel's two buttons, Forgot and Got it: keys 2 and 4 still rate the card Hard and Easy, Anki's names for its second and fourth buttons, which the panel doesn't show."
     },
     "Also review it back first: its back, then its front once you flip it." : {
       "comment" : "In the Cards window, under a card's Both ways checkbox."
@@ -1009,10 +1008,7 @@
       "comment" : "In the Cards window's detail of a follow-up, above the card it was asked about in the review panel."
     },
     "Ask…" : {
-      "comment" : "A button that asks a question about the card the review panel shows, which waits in the inbox tied to the card."
-    },
-    "Ask… (a)" : {
-      "comment" : "The tooltip of the button that asks a question about the card, with its key."
+      "comment" : "An item of the review panel's ⋯ menu, whose key is A: it asks a question about the card the panel shows, which waits in the inbox tied to the card."
     },
     "At least this long apart" : {
       "comment" : "Settings, under Appearances: the least time between two appearances."
@@ -1093,10 +1089,7 @@
       "comment" : "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
     },
     "Bury" : {
-      "comment" : "A button of the Cards window that buries the selected cards: they leave Lucas's reviews.\nA button that buries the card the review panel shows: it never shows up again."
-    },
-    "Bury (e)" : {
-      "comment" : "The tooltip of the button that buries the card, with its key."
+      "comment" : "A button of the Cards window that buries the selected cards: they leave Lucas's reviews.\nAn item of the review panel's ⋯ menu, whose key is E: it buries the card the panel shows, which never shows up again."
     },
     "Bury (⌘E)" : {
       "comment" : "The tooltip of the Cards window's button that buries the cards."
@@ -1585,9 +1578,6 @@
     "Couldn't untick Set Aside on “%@”" : {
       "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, with the deck."
     },
-    "Couldn't work out the buttons' intervals" : {
-
-    },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
@@ -1743,7 +1733,7 @@
       "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Again” is the review panel's button, as Anki names it."
     },
     "Easy" : {
-      "comment" : "A rating, Anki's fourth button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
+      "comment" : "A rating, Anki's fourth button, as the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
     },
     "Edit" : {
       "comment" : "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
@@ -1895,10 +1885,7 @@
       "comment" : "The flag icon beside a flagged card, in the Cards window."
     },
     "Flag…" : {
-      "comment" : "A button of the Cards window that flags the card, asking for a note on what to fix.\nA button that flags the card the review panel shows, asking for a note on what to fix."
-    },
-    "Flag… (m)" : {
-      "comment" : "The tooltip of the button that flags the card, with its key."
+      "comment" : "A button of the Cards window that flags the card, asking for a note on what to fix.\nAn item of the review panel's ⋯ menu, whose key is M: it flags the card the panel shows, asking for a note on what to fix."
     },
     "Flag… (⇧⌘L)" : {
       "comment" : "The tooltip of the Cards window's button that flags the card."
@@ -1911,6 +1898,9 @@
     },
     "Folder" : {
       "comment" : "Settings, under Backups: the folder the copies are in."
+    },
+    "Forgot" : {
+      "comment" : "The review panel's button, once a card is turned over, for a card the user didn't remember: it records Anki's Again. Its key is 1."
     },
     "Forgotten %lld times" : {
       "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times front first while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
@@ -1985,7 +1975,10 @@
       "comment" : "A tab of the Settings window."
     },
     "Good" : {
-      "comment" : "A rating, Anki's third button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card. Anki's own name for it, “Bien” in Spanish."
+      "comment" : "A rating, Anki's third button, as the Cards window's review log shows it: Lucas knew the card. Anki's own name for it, “Bien” in Spanish."
+    },
+    "Got it" : {
+      "comment" : "The review panel's button, once a card is turned over, for a card the user remembered: it records Anki's Good. Its keys are Space and 3."
     },
     "Gray" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
@@ -1994,7 +1987,7 @@
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Hard" : {
-      "comment" : "A rating, Anki's second button, as the review panel's button names it and the Cards window's review log shows it: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish."
+      "comment" : "A rating, Anki's second button, as the Cards window's review log shows it: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish."
     },
     "Held back by a Focus" : {
       "comment" : "In Diagnostics: a Focus of macOS was on, and Ficha's filter in it holds appearances back."
@@ -2112,6 +2105,9 @@
     },
     "Kind" : {
       "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card.\nSettings, under Backups: the column of each copy's kind."
+    },
+    "Knew it" : {
+      "comment" : "The review panel's Got it button on a new card's first turn, for a card the user already knew: it records Anki's Good. Its keys are Space and 3."
     },
     "Last backup" : {
       "comment" : "Settings, under Backups: when the last backup was saved."
@@ -2259,6 +2255,9 @@
     "Microphone" : {
       "comment" : "A detector in Diagnostics: the microphones in use."
     },
+    "More" : {
+      "comment" : "The review panel's ⋯ menu, which asks about the card, flags it or buries it, undoes the last thing the user did, or closes the panel."
+    },
     "Move" : {
       "comment" : "The button of the Cards window's Change Deck sheet that moves the cards to the chosen deck."
     },
@@ -2321,7 +2320,7 @@
       "comment" : "Settings: the review panel never takes the keyboard on its own."
     },
     "New" : {
-      "comment" : "A badge on a card the review panel shows for the first time.\nIn the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
+      "comment" : "In the Cards window: a card that hasn't had its first review yet, or its back-first way, when it goes both ways."
     },
     "New Card" : {
       "comment" : "A button in the Cards window while the user has no cards.\nA hidden button of the Cards window: ⌘N, which opens the card form.\nThe Cards window's toolbar button that opens the card form.\nThe title of the Cards window's card form."
@@ -2346,6 +2345,9 @@
     },
     "New cards per day" : {
 
+    },
+    "New to me" : {
+      "comment" : "The review panel's Forgot button on a new card's first turn, for a card the user hadn't met before: it records Anki's Again. Its key is 1."
     },
     "No Type" : {
       "comment" : "An item of the Cards window's sidebar: the cards that have no type."
@@ -3009,9 +3011,6 @@
       "comment" : "The tooltip of the Cards window's button that unburies the cards."
     },
     "Undo" : {
-
-    },
-    "Undo (⌘Z)" : {
 
     },
     "Unknown version" : {

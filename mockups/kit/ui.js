@@ -432,11 +432,12 @@
   // ReviewPanelView.
   // ---------------------------------------------------------------------
   /**
-   * The panel's two faces. The new one, ADR 0033's: the card alone, and once
-   * it's flipped two buttons, Forgot for Again and Got it for Good, named New
-   * to me and Knew it on a new card's first flip. Today's, ADR 0025's: the
-   * deck and tags, the icons, and Anki's four buttons with their intervals.
-   * Both store Anki's four ratings, and both take keys 1 to 4, and Space.
+   * The panel's two faces. The new one, ADR 0033's, the app's since #489:
+   * the card alone, and once it's flipped two buttons, Forgot for Again and
+   * Got it for Good, named New to me and Knew it on a new card's first flip.
+   * 'today', the app's before #489, ADR 0025's, kept as a variant: the deck
+   * and tags, the icons, and Anki's four buttons with their intervals. Both
+   * store Anki's four ratings, and both take keys 1 to 4, and Space.
    */
   const FACES = {
     new: [
@@ -475,18 +476,25 @@
     </div>`;
   }
 
-  /** The ⋯ menu in the panel's corner: what had icons, with their keys. Once the cards are done, only Undo and Close. */
+  /**
+   * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:offersUndo:)`
+   * in `App/ReviewPanelView.swift`): Ask…, Flag… and Bury, then Undo and
+   * Close. While a note or a question is being written, Close alone; once the
+   * cards are done, Undo and Close. Its items show no keys, as the app's
+   * don't: A, M, E, ⌘Z and Esc work with the menu closed.
+   */
   function MoreMenu({ app, panel, onAsk, onFlag, onClose }) {
-    const item = (title, k, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
-      onClick=${() => (onClose(), fn())}><span className="title">${title}</span><span className="shortcut">${k}</span></button>`;
+    const item = (title, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
+      onClick=${() => (onClose(), fn())}><span className="title">${title}</span></button>`;
+    const onACard = !panel.done && !panel.mode;
     return html`<div className="more-cover" onPointerDown=${onClose} />
       <div className="menu more-menu glass" role="menu">
-        ${!panel.done && html`${item('Ask…', 'A', onAsk)}
-          ${item('Flag…', 'M', onFlag)}
-          ${item('Bury', 'E', () => app.bury())}
+        ${onACard && html`${item('Ask…', onAsk)}
+          ${item('Flag…', onFlag)}
+          ${item('Bury', () => app.bury())}
           <div className="sep" />`}
-        ${item('Undo', '⌘Z', () => app.undo(), !panel.undo.length)}
-        ${item('Close', 'esc', () => app.close())}
+        ${!panel.mode && item('Undo', () => app.undo(), !panel.undo.length)}
+        ${item('Close', () => app.close())}
       </div>`;
   }
 

@@ -1,12 +1,12 @@
 import FichaCore
 import Foundation
 
-/// An interval as the review panel's buttons and the Cards window show it,
-/// short, as Anki's buttons do: in days, hours and minutes under a month,
-/// like "5d" or "2h 30m" (`shortInterval(in:)`), then in months, like
-/// "1.5mo", and from a year on in years, like "2.1y", with a decimal. A year
-/// is 365 days and a month a twelfth of it, about 30.4 days, as Anki counts
-/// them (`rslib/src/scheduler/timespan.rs`), so 30 days are still "30d".
+/// An interval as the Cards window shows it, short, as Anki's buttons do: in
+/// days, hours and minutes under a month, like "5d" or "2h 30m"
+/// (`shortInterval(in:)`), then in months, like "1.5mo", and from a year on
+/// in years, like "2.1y", with a decimal. A year is 365 days and a month a
+/// twelfth of it, about 30.4 days, as Anki counts them
+/// (`rslib/src/scheduler/timespan.rs`), so 30 days are still "30d".
 func intervalText(_ interval: Duration) -> String {
     let days = interval.inDays
     guard days >= daysInAMonth else {
@@ -18,16 +18,15 @@ func intervalText(_ interval: Duration) -> String {
             localized: "\((days / daysInAMonth).formatted(tenths))mo",
             comment: """
                 An interval of this many months, a month counted as a twelfth of a year of 365 days, about 30.4 \
-                days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, on the review panel's \
-                buttons and in the Cards window. Anki's own short unit in each language.
+                days, with a decimal, like “1.5mo”: short, as Anki's buttons show it, in the Cards window. \
+                Anki's own short unit in each language.
                 """)
     }
     return String(
         localized: "\((days / daysInAYear).formatted(tenths))y",
         comment: """
             An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as \
-            Anki's buttons show it, on the review panel's buttons and in the Cards window. Anki's own short unit \
-            in each language.
+            Anki's buttons show it, in the Cards window. Anki's own short unit in each language.
             """)
 }
 
