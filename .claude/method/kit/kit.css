@@ -86,7 +86,7 @@ ul,ol{margin:0}
   .k-top h1{font-size:19px}
   .k-save{max-width:120px;font-size:11px}
   .k-tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;background:var(--sheet);padding:4px var(--gr) calc(4px + env(safe-area-inset-bottom,0px)) var(--gl);display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:0}
-  .k-tabs button{flex-direction:column;gap:3px;padding:6px 2px;min-height:52px;min-width:0;font-size:11.5px;line-height:1.15;justify-content:center;text-align:center;white-space:normal;overflow-wrap:anywhere}
+  .k-tabs button{flex-direction:column;gap:3px;padding:6px 2px;min-height:52px;min-width:0;font-size:11.5px;line-height:1.15;justify-content:center;text-align:center;white-space:normal}
   .k-tabs b{display:none}
   .k-tabs svg{width:22px;height:22px}
   .k-tabs button[aria-selected="true"]{background:var(--blue-t);color:var(--blue);box-shadow:none}

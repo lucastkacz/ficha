@@ -56,9 +56,14 @@ const base = 'file://' + path.dirname(pageFile) + '/';
 const html = `<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><base href="${base}"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${page}</body></html>`;
 const name = path.basename(pageFile, '.html');
 const outDir = path.resolve(outArg || path.join(os.tmpdir(), 'inspect', `${path.basename(path.dirname(pageFile))}-${name}`));
+if (outDir === path.dirname(pageFile)) {
+  console.error(`The pictures' folder is the page's own, ${outDir}, which holds its sources: pass another folder, or none.`);
+  process.exit(2);
+}
 fs.mkdirSync(outDir, { recursive: true });
-// The last run's pictures go, so a card since removed leaves none behind.
-fs.readdirSync(outDir).filter((f) => f.endsWith('.png')).forEach((f) => fs.unlinkSync(path.join(outDir, f)));
+// The last run's pictures go, and only those, so a card since removed leaves none behind.
+const OWN = /^(phone|laptop)(-dark)?-.*\.png$/;
+fs.readdirSync(outDir).filter((f) => OWN.test(f)).forEach((f) => fs.unlinkSync(path.join(outDir, f)));
 const wrapped = path.join(outDir, '_page.html');
 fs.writeFileSync(wrapped, html);
 
@@ -206,6 +211,7 @@ function layout(lim) {
     const rg = document.createRange(); rg.selectNodeContents(tx);
     const lines = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))).size;
     if (lines > 2) out.push(`@the tab "${tx.textContent.trim().slice(0, 30)}" takes ${lines} lines on a phone's bar: name it in a word or two.`);
+    if (b.scrollWidth - b.clientWidth > 1) out.push(`@the tab "${tx.textContent.trim().slice(0, 30)}" is wider than its place on a phone's bar: name it with shorter words.`);
   });
   [[document.querySelector('.k-top'), 'the header'], [document.querySelector('.k-tabs'), 'the tab bar'], [v.querySelector('.k-chaps'), 'the row of chips']].forEach(([e, what]) => {
     if (!e || !e.getClientRects().length) return;
@@ -320,7 +326,7 @@ function layout(lim) {
             }
             // A note typed just before another save comes back stays, and is saved: a question's, or else a piece's.
             const ta = (q && q.querySelector('.k-notebox textarea')) || document.querySelector('.k-note textarea');
-            const nid = ta && (q ? q.dataset.q : ta.closest('.k-note').dataset.id);
+            const nid = ta && (ta.closest('.k-q') ? ta.closest('.k-q').dataset.q : ta.closest('.k-note').dataset.id);
             if (ta) { ta.value = 'nota de prueba'; ta.dispatchEvent(new Event('input')); }
             if (ap) { ap.click(); await new Promise((f) => setTimeout(f, 50)); const doc = window.__kitDocs.aprobacion; if (!doc || !doc.approved) res.push("Aprobar didn't save the approval"); }
             if (ta) {

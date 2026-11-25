@@ -17,6 +17,7 @@
     unanswered: 'Sin responder: va la recomendada', chosen: 'Elegiste', addNote: '+ Agregar una nota', note: 'Nota',
     notePh: 'Lo que ninguna opción dice…', approve: 'Aprobar', approved: 'Aprobado ✓',
     approvedAt: (t) => `Aprobado el ${t}. Ya lo leo.`, withChoices: 'Con lo que elegiste.', noSave: 'En esta vista no se guarda.',
+    unsaved: 'Una respuesta no se guardó: tocala de nuevo, y después aprobá.',
     saving: 'Guardando…', saved: 'Guardado ✓', upToDate: 'Al día ✓', ready: 'Listo para tus respuestas', readOnly: 'Solo lectura',
     notSaved: 'No se guardó: probá de nuevo', slow: 'Todavía no llego a tus respuestas', open: 'Abrir ›', locale: 'es-AR',
   }, window.KIT_TEXT || {});
@@ -323,8 +324,8 @@
   const status = (t, cls) => { if (!save) return; save.textContent = t; save.className = 'k-save' + (cls ? ' ' + cls : ''); };
   // What the user changed here that the database doesn't hold yet, by document and field: a snapshot
   // leaves those alone, so a note typed while another save comes back isn't lost.
-  const touched = {}, ver = {}, queued = new Set();
-  const touch = (id, field) => { (touched[id] = touched[id] || new Set()).add(field); ver[id] = (ver[id] || 0) + 1; };
+  const touched = {}, queued = new Set();
+  const touch = (id, field) => { (touched[id] = touched[id] || new Set()).add(field); };
 
   function noteBox(id, label) {
     const box = el('details', 'k-notebox', `<summary>${esc(label)}</summary><textarea id="n-${esc(id)}" placeholder="${esc(T.notePh)}"></textarea>`);
@@ -401,12 +402,14 @@
     }).join('');
     apList.hidden = !qs.length;
     // Approved shows only once the database holds it; until then the button says it's saving.
+    // An answer the database doesn't hold would be approved without the agent seeing it: Aprobar waits for it.
     const ap = S.approval, done = !!(ap && ap.approved), sending = done && !!(touched.aprobacion && touched.aprobacion.has('approved'));
-    apBtn.disabled = done || readOnly;
+    const lost = [...failed].some((id) => id !== 'aprobacion');
+    apBtn.disabled = done || readOnly || lost;
     apBtn.textContent = sending ? T.saving : done ? T.approved : T.approve;
     apState.textContent = done && !sending
       ? T.approvedAt(new Date(ap.at).toLocaleString(T.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))
-      : readOnly ? T.noSave : T.withChoices;
+      : readOnly ? T.noSave : lost ? T.unsaved : T.withChoices;
     if (d.activeElement !== apNote) apNote.value = S.apNote || '';
   }
 
@@ -428,10 +431,12 @@
     if (!col || !synced) { queued.add(id); return; }
     if (writing[id]) { again[id] = true; return; }
     writing[id] = true; status(T.saving);
-    const v = ver[id];
+    const sent = docFor(id);
     try {
-      await col.doc(id).set(docFor(id));
-      if (ver[id] === v) delete touched[id];
+      await col.doc(id).set(sent);
+      // A field the database now holds is no longer the page's alone, unless the user changed it meanwhile.
+      const t = touched[id], now = docFor(id);
+      if (t) { ['choice', 'note', 'approved'].forEach((f) => { if (now[f] === sent[f]) t.delete(f); }); if (!t.size) delete touched[id]; }
       failed.delete(id); tries[id] = 0;
     } catch (e) {
       const code = e && e.code;
