@@ -3,7 +3,7 @@
 Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Your cards stay on your Mac, and in your own iCloud if you turn on sync.
 
 <p align="center">
-  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with Anki's four buttons below, Again, Hard, Good and Easy, each under how long the card would wait: 1h, 2h 30m, 4h and 2d.">
+  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with two buttons below, Forgot and Got it, and a small line under them: also 2 Hard and 4 Easy, as in Anki.">
 </p>
 
 The cards in these pictures are samples, in Spanish. Yours can be in any language.
@@ -26,16 +26,16 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
 
 <p align="center">
   <img src="docs/images/card-front.png" width="49%" alt="The review panel showing only the front of a card, the quote “Caminante, no hay camino, se hace camino al andar.”, with a Flip button.">
-  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Again, Hard, Good and Easy, each under how long the card would wait.">
+  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Forgot and Got it.">
 </p>
 
-A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how you did with Anki's four buttons: 1 for "Again", 2 for "Hard", 3 for "Good", which Space says too, or 4 for "Easy". Above each one is how long the card would wait if you pressed it, as in Anki. It takes a few seconds, and every button has its key, so you never need the mouse. A card you haven't met yet comes the same way, marked "New": try to remember its back too, even if you can't yet, and rate it like any other.
+A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say whether you remembered it: 1 for "Forgot", or Space for "Got it". The panel shows the card alone, with those two buttons. It takes a few seconds, and every button has its key, so you never need the mouse. If you come from Anki, its four keys still work: 2 for "Hard", 3 for "Good", as Space, and 4 for "Easy". A card you haven't met yet comes the same way, its buttons named "New to me" and "Knew it": try to remember its back too, even if you can't yet, and say which.
 
-A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first it's marked "New" too.
+A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first its buttons say "New to me" and "Knew it" too.
 
 A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the lower side's once you've turned it over, or the upper side's when the lower one has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
 
-When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Again" to it once it has graduated, outside its learning and relearning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. ⌘Z undoes the last thing you did, and then the one before. ⌘+ and ⌘− make a card's text and images larger or smaller, here and in the Cards window, and ⌘0 returns them to their normal size.
+When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Forgot" to it once it has graduated, outside its learning and relearning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. The ⋯ menu at the top of the panel offers the same three, with Undo and Close. ⌘Z undoes the last thing you did, and then the one before. ⌘+ and ⌘− make a card's text and images larger or smaller, here and in the Cards window, and ⌘0 returns them to their normal size.
 
 ## Why each card waits its own time
 
@@ -46,10 +46,10 @@ Ficha spaces each card as Anki does, with FSRS, Anki's modern scheduler, worked 
 ```mermaid
 flowchart LR
     new["New"] --> l1["1 hour"] --> l2["4 hours"] --> g["Days, more each time you know it"]
-    g -- "Again" --> r["1 hour"] --> g
+    g -- "Forgot" --> r["1 hour"] --> g
 ```
 
-A new card goes through two learning steps. "Good" moves it to the next one, "Hard" waits a little more before it comes back, "Again" sends it back to the first, and "Easy" graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 9 times out of 10, so a card you know well waits longer each time, and one you find hard comes back sooner. "Again" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
+A new card goes through two learning steps. "Got it" moves it to the next one, and "Forgot" sends it back to the first. Anki's other two keys do what they do there: 2, "Hard", waits a little more before it comes back, and 4, "Easy", graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 9 times out of 10, so a card you know well waits longer each time, and one you find hard comes back sooner. "Forgot" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
 
 The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Scheduling tab.
 

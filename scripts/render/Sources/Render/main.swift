@@ -139,15 +139,14 @@ enum Window: String, CaseIterable {
     /// The Diagnostics window, while a Focus holds appearances back, once it
     /// held one back.
     case diagnostics
-    /// The review panel on a new card in Ciencias › Psicología, a deck inside
-    /// Ciencias, whose color and emoji it shows, with its three tags, drawn
-    /// on a gradient in a window, since the panel's own has nothing behind
-    /// its Liquid Glass below the desktop picture. `--key space` flips it,
-    /// showing the four buttons with their intervals.
+    /// The review panel on a new card, alone, drawn on a gradient in a
+    /// window, since the panel's own has nothing behind its Liquid Glass below
+    /// the desktop picture. `--key space` flips it, showing its two buttons as
+    /// a new card's first review names them, New to me and Knew it.
     case panelCard = "panel-card"
     /// The same on the sample's graduated card that waits longest, once it's
-    /// due, which `--key space` flips, showing the intervals of days or months
-    /// the four buttons would set.
+    /// due, which `--key space` flips, showing its two buttons, Forgot and Got
+    /// it.
     case panelReview = "panel-review"
     /// The Cards window with a sample card that goes both ways selected, its
     /// back-first way rated Again and then Good, its detail scrolled to its
@@ -1297,7 +1296,7 @@ func hours(_ count: Int) -> TimeInterval {
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .welcome,
-        .welcomeOneButton:
+        .welcomeOneButton, .panelCard:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1306,13 +1305,8 @@ func model(for name: Window) throws -> AppModel {
         try setSampleDeckAside(in: engine)
         try giveSampleDecksLooks(in: engine)
         return try AppModel(engine: engine)
-    case .panelCard:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try giveSampleDecksLooks(in: engine)
-        return try AppModel(engine: engine)
     case .panelReview:
         let (engine, time) = try sampleEngine(at: .inMemory)
-        try giveSampleDecksLooks(in: engine)
         let due = try longestWaitingSampleCard(in: engine).due
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)

@@ -287,7 +287,7 @@
 /* KeyLabel: a title and the key that presses it. */
 .key { color: var(--secondary-label); font-size: var(--text-subheadline); }
 
-/* A capsule: CardTopLine's deck and tags, TagCapsule. */
+/* A capsule: TagCapsule, and the deck and tags of the panel's 'today' face. */
 .capsule {
   display: inline-flex;
   align-items: center;
@@ -414,15 +414,6 @@
    the ⋯ menu, and "You've met them all". */
 .panel .two { display: flex; flex-direction: column; gap: 8px; }
 .panel .alt-keys { text-align: center; font-size: var(--text-caption); color: var(--tertiary-label); }
-.panel .alt-keys .kbd {
-  display: inline-block;
-  min-width: 13px;
-  padding: 0 3px;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 0.5px var(--tertiary-label);
-  color: var(--secondary-label);
-  font-variant-numeric: tabular-nums;
-}
 .panel .more-cover { position: absolute; inset: -2000px; z-index: 1; }
 .panel .more-menu { top: 46px; right: 14px; min-width: 190px; z-index: 2; background: var(--window-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .panel .met-all { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--fill); }

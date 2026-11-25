@@ -1,30 +1,29 @@
 import FichaCore
 import Foundation
 
-/// An appearance or a review now while the review panel shows it: the cards
-/// it brought, which Lucas goes through one at a time, what the panel shows of
-/// the card he's on, its deck and tags included, whether the panel may have the
-/// keyboard, and how it closes. Each card comes one of its ways, front first
-/// or back first, and his answers move only that way. He flips and rates a
-/// new way, in its first review, a due way, or one he reviews ahead. He plays
-/// a side's sound
-/// only when he asks, one at a time, until he answers the card, writes about
-/// it or leaves it, or the panel closes. He can also flag any card
-/// with a note on what to fix, or bury it, and ask questions about it, each a
-/// follow-up in the inbox, without leaving it. When his rating of again makes
-/// a card forgotten often, the panel offers to flag it, with a note that says
-/// how many times he forgot it, and back first when it was that way. Each is
-/// saved as he does it, and ⌘Z undoes it, the last first, while the panel is
-/// open, and shows the card again as he left it. Once he went through every
-/// card, the panel stays open and offers more cards, if there are any, until
-/// he closes it. The
-/// panel goes into the appearance log as it closes. It runs on the engine's
-/// time, which Ficha Dev's debug menu moves forward, and times Lucas on a
-/// steady clock, which it doesn't.
+/// An appearance or a review now while the review panel shows it: the cards it
+/// brought, which Lucas goes through one at a time, what the panel shows of the
+/// card he's on, the card alone (ADR 0033), what its ⋯ menu offers, whether the
+/// panel may have the keyboard, and how it closes. Each card comes one of its
+/// ways, front first or back first, and his answers move only that way. He
+/// flips and rates a new way, in its first review, a due way, or one he reviews
+/// ahead. He plays a side's sound only when he asks, one at a time, until he
+/// answers the card, writes about it or leaves it, or the panel closes. He can
+/// also flag any card with a note on what to fix, or bury it, and ask questions
+/// about it, each a follow-up in the inbox, without leaving it. When his rating
+/// of again makes a card forgotten often, the panel offers to flag it, with a
+/// note that says how many times he forgot it, and back first when it was that
+/// way. Each is saved as he does it, and ⌘Z undoes it, the last first, while
+/// the panel is open, and shows the card again as he left it. Once he went
+/// through every card, the panel stays open and offers more cards, if there are
+/// any, until he closes it. The panel goes into the appearance log as it
+/// closes. It runs on the engine's time, which Ficha Dev's debug menu moves
+/// forward, and times Lucas on a steady clock, which it doesn't.
 public struct ReviewPanelState: Sendable {
     /// Who closes the panel.
     public enum Closing: Sendable {
-        /// Lucas: with Esc or the close button, or by quitting Ficha.
+        /// Lucas: with Esc, the ⋯ menu's Close, or the close button of a
+        /// panel with no card, or by quitting Ficha.
         case byLucas
         /// The panel itself: left untouched for a while, or as the Mac or its
         /// screens go to sleep.
@@ -42,11 +41,11 @@ public struct ReviewPanelState: Sendable {
         case nothingToReview
         /// A way of a card, its upper side alone, for Lucas to remember the
         /// other: a due way, one he reviews ahead, or a new way, in its first
-        /// review, marked as new.
+        /// review, which `isNew` says.
         case upperSide(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
         /// A way of a card, its upper side and its lower side, for Lucas to
-        /// rate it: a due way, one he reviews ahead, or a new way, marked as
-        /// new.
+        /// rate it: a due way, one he reviews ahead, or a new way, whose
+        /// buttons the panel names for a first review (`AnswerButton`).
         case bothSides(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
         /// The card Lucas is on, as it showed, its lower side included or
         /// not, while he writes a note on what to fix in it, also when the
@@ -83,9 +82,6 @@ public struct ReviewPanelState: Sendable {
         /// He went through every card, and the panel looked for more to
         /// offer.
         case lookForMore
-        /// He turned a card over, or ⌘Z showed its lower side again, and the
-        /// panel worked out the interval each of its buttons would set.
-        case workOutIntervals
     }
 
     /// What opened the panel: Lucas, with review now, or an appearance.
@@ -118,13 +114,6 @@ public struct ReviewPanelState: Sendable {
     public internal(set) var sounds = ShownSounds()
     /// The sound that plays, which Lucas asked for, if any.
     public internal(set) var playingSound: PlayingSound?
-    /// What every tag has of its own, as it was when the panel opened: a tag
-    /// changed while it's open shows from the next panel on, so the card
-    /// Lucas is on doesn't change under him.
-    private let ownTags: OwnTags
-    /// What every deck has of its own, as it was when the panel opened, as
-    /// with the tags.
-    private let ownDecks: OwnDecks
     let engine: Engine
     private let settings: ReviewSettings
     /// The note the panel offers to flag a card forgotten often with, for
@@ -142,8 +131,9 @@ public struct ReviewPanelState: Sendable {
     /// Whether the card Lucas is on shows its lower side: he flipped it.
     private var isFlipped = false
     /// The interval each rating would set for the card Lucas is on, as the
-    /// scheduler worked them out when its lower side showed, and when, or
-    /// nil until it shows, or when they couldn't be worked out.
+    /// scheduler worked them out when its lower side showed, and when, which
+    /// his rating keeps (#404); or nil until it shows, or when they couldn't
+    /// be worked out.
     private var shownIntervals: (preview: IntervalPreview, at: Date)?
     /// The note Lucas is writing to flag the card he's on, while he writes
     /// it.
@@ -160,15 +150,12 @@ public struct ReviewPanelState: Sendable {
     private var followUpsOnCard: [Int64] = []
 
     init(
-        trigger: Trigger, cards: [PanelCard], ownTags: OwnTags, ownDecks: OwnDecks, engine: Engine,
-        settings: ReviewSettings, clock: some Clock<Duration>,
+        trigger: Trigger, cards: [PanelCard], engine: Engine, settings: ReviewSettings, clock: some Clock<Duration>,
         forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String
     ) {
         self.trigger = trigger
         self.cards = cards
         broughtCount = cards.count
-        self.ownTags = ownTags
-        self.ownDecks = ownDecks
         self.engine = engine
         self.settings = settings
         self.forgottenOftenNote = forgottenOftenNote
@@ -187,29 +174,11 @@ public struct ReviewPanelState: Sendable {
         wentThrough.count < cards.count ? cards[wentThrough.count] : nil
     }
 
-    /// The deck the card Lucas is on lives in, by its whole name, Default
-    /// too, with its color and emoji, its own or the nearest deck's it sits
-    /// inside, as they were when the panel opened, which the panel shows at
-    /// the card's top, before its tags, so that he knows which subject it's
-    /// about in the mixed stream (ADR 0011, ADR 0024); or nil once he went
-    /// through every card.
-    public var deck: Deck? {
-        current.map { ownDecks.deck($0.card.deck) }
-    }
-
-    /// The tags of the card Lucas is on, in the card's order, each with its
-    /// color and emoji as they were when the panel opened, which the panel
-    /// shows at the card's top, after its deck, or none once he went through
-    /// every card.
-    public var tags: [CardTag] {
-        current?.card.tags.map(ownTags.tag) ?? []
-    }
-
     /// What the panel shows: the card Lucas is on, the way it came, its
     /// upper side alone or with its lower side, or as it showed while he
     /// writes a note to flag it or a question about it, or that there was
     /// nothing to review, or that he went through every card. A new way
-    /// shows its upper side until he flips it, as a review does, marked as
+    /// shows its upper side until he flips it, as a review does, and says it's
     /// new.
     public var content: Content {
         guard !cards.isEmpty else {
@@ -233,19 +202,23 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
-    /// The interval each of the four ratings would set for the card Lucas
-    /// is on, which the panel's buttons show once its lower side shows, as
-    /// Anki's do, and which his rating keeps (#404): worked out as the lower
-    /// side showed, so that what a button showed is what the card gets,
-    /// however long he takes. Nil while the panel shows anything else, or
-    /// when the scheduler couldn't work them out, as when it can't follow
-    /// the card's review log: then the buttons show none, and `failure`
-    /// says why.
-    public var intervals: IntervalPreview? {
-        guard case .bothSides = content else {
-            return nil
+    /// What the panel's ⋯ menu offers to do with the card Lucas is on, each
+    /// also on its key (`CardAction`): asking about it, flagging it and
+    /// burying it while it shows, and nothing while he writes about it or
+    /// once he went through every card.
+    public var cardActions: [CardAction] {
+        isOnACard ? CardAction.allCases : []
+    }
+
+    /// Whether the ⋯ menu offers Undo after what it does with the card: while
+    /// a card shows and once Lucas went through every card, but not while he
+    /// writes about one, when it holds Close alone. Undo is dimmed while
+    /// there's nothing to undo (`canUndo`).
+    public var menuOffersUndo: Bool {
+        switch content {
+        case .upperSide, .bothSides, .done: true
+        case .nothingToReview, .flagging, .asking: false
         }
-        return shownIntervals?.preview
     }
 
     /// Whether "See more" has cards to bring, now that Lucas went through
@@ -326,17 +299,17 @@ public struct ReviewPanelState: Sendable {
     public mutating func flip() {
         guard case .upperSide = content else { return }
         isFlipped = true
-        showIntervals()
+        workOutIntervals()
         touch()
     }
 
     /// Works out the interval each rating would set for the card Lucas is
-    /// on, now, while its lower side shows, for its buttons to show and his
-    /// rating to keep, or none otherwise. When the scheduler can't work them
-    /// out, the buttons show none, and the panel says why, as when it can't
-    /// look for more cards: a rating then keeps the interval worked out as
-    /// he answers, if it can be.
-    private mutating func showIntervals() {
+    /// on, now, while its lower side shows, for his rating to keep, as Anki
+    /// keeps the intervals its buttons showed (#404), though the panel shows
+    /// none (ADR 0033); or none otherwise. When the scheduler can't work them
+    /// out, as when the card was deleted meanwhile, a rating keeps the
+    /// interval worked out as he answers, and says why when it can't.
+    private mutating func workOutIntervals() {
         guard showsLowerSide, let current else {
             shownIntervals = nil
             return
@@ -346,7 +319,8 @@ public struct ReviewPanelState: Sendable {
             shownIntervals = (try engine.intervals(of: current.cardWay, at: now, settings: settings), now)
         } catch {
             shownIntervals = nil
-            failure = Failure(action: .workOutIntervals, error: error)
+            logger.error(
+                "Couldn't work out the flipped card's intervals: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -446,6 +420,17 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
+    /// Does `action` with the card Lucas is on, which he chose from the ⋯
+    /// menu or with its key: starts asking about it or flagging it, or buries
+    /// it.
+    public mutating func choose(_ action: CardAction) {
+        switch action {
+        case .ask: startAsking()
+        case .flag: startFlagging()
+        case .bury: buryCard()
+        }
+    }
+
     /// Buries the card Lucas is on, which takes it out of his reviews for
     /// good, and moves on to the next card. When it can't be saved, the card
     /// stays, and the panel says why.
@@ -522,7 +507,7 @@ public struct ReviewPanelState: Sendable {
     /// Records Lucas's answer to the current card in the review log, with how
     /// long he took, and moves on to the next card: in a review ahead, as one.
     /// Once the card's lower side showed, a review keeps the interval the
-    /// panel offered for its rating (`intervals`). When the engine says a
+    /// scheduler worked out for its rating then. When the engine says a
     /// rating of again made the card forgotten often,
     /// the panel stays on it instead, flagging it, with the note written as
     /// how many times he forgot it the way it showed, and the card's time
@@ -619,7 +604,7 @@ public struct ReviewPanelState: Sendable {
         followUpsOnCard = last.followUps
         moreCards = []
         isFlipped = last.showedLowerSide
-        showIntervals()
+        workOutIntervals()
         startTiming(from: last.timeOnCard)
         touch()
     }
@@ -755,8 +740,7 @@ private struct Asking: Sendable {
 
 extension Engine {
     /// Opens the review panel with `cards`, which `trigger` brought: the panel
-    /// shows them from now on, with their decks' and tags' colors and emoji
-    /// as they are now, and times Lucas on each on `clock`, a steady one,
+    /// shows them from now on, and times Lucas on each on `clock`, a steady one,
     /// which moving the engine's time doesn't move: the system's continuous
     /// clock in the app. `forgottenOftenNote` writes the note the panel
     /// offers to flag a card forgotten often with, for how many times Lucas
@@ -766,9 +750,8 @@ extension Engine {
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>,
         forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String
     ) throws(EngineError) -> ReviewPanelState {
-        let (ownTags, ownDecks) = try read { db in (try OwnTags(in: db), try OwnDecks(in: db)) }
-        return ReviewPanelState(
-            trigger: trigger, cards: cards, ownTags: ownTags, ownDecks: ownDecks, engine: self, settings: settings,
-            clock: clock, forgottenOftenNote: forgottenOftenNote)
+        ReviewPanelState(
+            trigger: trigger, cards: cards, engine: self, settings: settings, clock: clock,
+            forgottenOftenNote: forgottenOftenNote)
     }
 }

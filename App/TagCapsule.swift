@@ -2,13 +2,11 @@ import AppKit
 import FichaData
 import SwiftUI
 
-/// A tag as a small capsule, like the review panel's "New" and "Ahead"
-/// badges: its emoji before its whole name, as in "economía › Argentina",
-/// tinted with its color, or gray like "Ahead" when it has none, its own or
-/// else the tags' it sits inside. The name always shows, so neither the color
-/// nor the emoji is the only cue. The Cards window's Tags column draws a
-/// card's tags with it, in a row, and the review panel draws them the same
-/// way after its badge and the card's deck (`DeckCapsule`).
+/// A tag as a small capsule, like the "Ahead" badge: its emoji before its
+/// whole name, as in "economía › Argentina", tinted with its color, or gray
+/// like "Ahead" when it has none, its own or else the tags' it sits inside.
+/// The name always shows, so neither the color nor the emoji is the only cue.
+/// The Cards window's Tags column draws a card's tags with it, in a row.
 struct TagCapsule: View {
     let tag: CardTag
 
@@ -19,24 +17,7 @@ struct TagCapsule: View {
     }
 }
 
-/// A card's deck as a capsule, drawn as a tag's (`TagCapsule`): its emoji
-/// before its whole name, as in "🏛 Historia › Roma", or Default's as the
-/// app shows it, tinted with its color, its own or else the decks' it sits
-/// inside. The review panel draws it first on a card's line, before its tags.
-/// A long name gives way in its middle when the line has no room for it,
-/// which its tooltip names whole.
-struct DeckCapsule: View {
-    let deck: Deck
-
-    var body: some View {
-        Text(verbatim: deck.title)
-            .truncationMode(.middle)
-            .capsuleLook(tintedWith: deck.shownColor)
-            .help(Text(verbatim: deck.title))
-    }
-}
-
-/// How a tag or a deck looks as a capsule, in its color or gray.
+/// How a tag looks as a capsule, in its color or gray.
 private struct CapsuleLook: ViewModifier {
     let color: TagColor?
     @Environment(\.colorScheme) private var colorScheme
@@ -51,10 +32,9 @@ private struct CapsuleLook: ViewModifier {
             .background(background, in: .capsule)
     }
 
-    /// The text's color: the tag's or the deck's, or the secondary gray of
-    /// "Ahead". In light mode, the color is a third darker, so that yellow
-    /// and green read on the faint capsule; in dark mode, they read as they
-    /// are.
+    /// The text's color: the tag's, or the secondary gray of "Ahead". In
+    /// light mode, the color is a third darker, so that yellow and green read
+    /// on the faint capsule; in dark mode, they read as they are.
     private var tint: AnyShapeStyle {
         color.map { AnyShapeStyle($0.color.mix(with: .black, by: colorScheme == .light ? 1 / 3 : 0)) }
             ?? AnyShapeStyle(.secondary)
@@ -67,8 +47,8 @@ private struct CapsuleLook: ViewModifier {
 }
 
 extension View {
-    /// The view as a tag's or a deck's capsule, tinted with `color`, or gray
-    /// when it's nil.
+    /// The view as a tag's capsule, tinted with `color`, or gray when it's
+    /// nil.
     func capsuleLook(tintedWith color: TagColor?) -> some View {
         modifier(CapsuleLook(color: color))
     }

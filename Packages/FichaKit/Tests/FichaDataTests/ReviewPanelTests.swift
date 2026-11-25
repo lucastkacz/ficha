@@ -4,10 +4,11 @@ import Foundation
 import Testing
 
 /// Tests on the review panel while it's open: how it closes, when an
-/// appearance's panel takes the keyboard, how long Lucas takes on a card,
-/// and the deck and the tags each card comes with, with the default settings. Left untouched for 10 minutes, the panel closes
-/// on its own, and an appearance's panel takes the keyboard once Lucas has
-/// been idle for 5 seconds.
+/// appearance's panel takes the keyboard, how long Lucas takes on a card, and
+/// what its buttons, its keys and its ⋯ menu do, with the default settings.
+/// Left untouched for 10 minutes, the panel closes on its own, and an
+/// appearance's panel takes the keyboard once Lucas has been idle for 5
+/// seconds.
 struct ReviewPanelTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -160,12 +161,72 @@ struct ReviewPanelTests {
         #expect(panel.mayHaveKeyboard)
     }
 
+    // What a review stores stays Anki's four ratings (ADR 0033).
+    @Test(
+        "Forgot, Got it and keys 2 and 4 record again, good, hard and easy through the panel, as before",
+        .bug(id: 489))
+    func theButtonsAndKeysRecordAnkisRatings() throws {
+        let cards = try ["serendipia", "ubuntu", "hygge", "resiliencia"].map { try approveCard($0, in: engine) }
+        var panel = try engine.openPanel(.reviewNow, with: cards.map { .new($0) }, settings: settings)
+
+        for rating in [AnswerButton.forgot.rating, .hard, AnswerButton.gotIt.rating, .easy] {
+            panel.flip()
+            panel.rate(rating)
+        }
+
+        #expect(panel.failure == nil)
+        #expect(
+            try engine.reviewLog().map(\.kind) == [.review(.again), .review(.hard), .review(.good), .review(.easy)])
+    }
+
+    @Test(
+        "the ⋯ menu and A, M and E ask, flag and bury the card, and the menu holds Close alone while Lucas writes",
+        .bug(id: 489))
+    func theMenuAndItsKeysAskFlagAndBury() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
+
+        var offersUndo: [Bool] = []
+        let onItsUpperSide = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
+        panel.flip()
+        let onBothSides = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
+        panel.choose(.ask)
+        let asking = panel.content
+        let whileAsking = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
+        panel.cancelAsking()
+        panel.choose(.flag)
+        let flagging = panel.content
+        let whileFlagging = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
+        panel.cancelFlagging()
+        panel.choose(.bury)
+        offersUndo.append(panel.menuOffersUndo)
+
+        #expect(onItsUpperSide == [.ask, .flag, .bury])
+        #expect(onBothSides == [.ask, .flag, .bury])
+        #expect(asking == .asking(serendipia, showsLowerSide: true))
+        #expect(whileAsking.isEmpty)
+        #expect(flagging == .flagging(serendipia, showsLowerSide: true))
+        #expect(whileFlagging.isEmpty)
+        #expect(try engine.cards().map(\.buriedAt) == [time.now])
+        #expect(panel.content == .done)
+        #expect(panel.cardActions.isEmpty)
+        // Undo on both sides, not while writing, and once done.
+        #expect(offersUndo == [true, true, false, false, true])
+    }
+
     // As Anki records the intervals its buttons showed, the review keeps the
-    // ones the panel worked out as the card flipped, also when Lucas answers
-    // after the time since the card's last review went past half a day more,
-    // which rounds FSRS's days up.
-    @Test("the intervals the panel offers for a new card and for a graduated one are the intervals the review keeps")
-    func theReviewKeepsTheIntervalsThePanelOffers() throws {
+    // ones the scheduler worked out as the card flipped, though the panel
+    // shows none (ADR 0033), also when Lucas answers after the time since the
+    // card's last review went past half a day more, which rounds FSRS's days
+    // up.
+    @Test(
+        "a review keeps the intervals the scheduler worked out as the card flipped, for a new card and a graduated one",
+        .bug(id: 489))
+    func theReviewKeepsTheIntervalsOfTheFlip() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.climb(ubuntu, goods: 2, movingForward: time)
@@ -174,48 +235,46 @@ struct ReviewPanelTests {
         time.move(to: due + hours(12) - minutes(1))
         var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia), .review(ubuntu)], settings: settings)
 
-        let beforeTheFlip = panel.intervals
         panel.flip()
-        let offeredForTheNewCard = try #require(panel.intervals)
+        let atTheNewCardsFlip = try settings.scheduler.preview(
+            of: CardWay(cardID: serendipia.id, way: .frontFirst), after: [], at: time.now)
         panel.rate(.easy)
         panel.flip()
-        let offeredForTheGraduatedCard = try #require(panel.intervals)
         let ubuntusLog = try engine.reviewLog().filter { $0.cardID == ubuntu.id }
+        let atTheGraduatedCardsFlip = try settings.scheduler.preview(
+            of: CardWay(cardID: ubuntu.id, way: .frontFirst), after: ubuntusLog, at: time.now)
         time.advance(by: minutes(2))
         panel.rate(.hard)
 
-        #expect(beforeTheFlip == nil)
-        // The learning steps' 1 hour and 4 hours, and hard on the first
-        // step halfway between them.
-        #expect(
-            [offeredForTheNewCard.again, offeredForTheNewCard.hard, offeredForTheNewCard.good] == [
-                .seconds(hours(1)), .seconds(minutes(150)), .seconds(hours(4)),
-            ])
         // Easy graduates it.
-        #expect(offeredForTheNewCard.easy >= .seconds(days(1)))
+        #expect(atTheNewCardsFlip.easy >= .seconds(days(1)))
         #expect(
             try engine.reviewLog().suffix(2).map(\.interval) == [
-                offeredForTheNewCard.easy, offeredForTheGraduatedCard.hard,
+                atTheNewCardsFlip.easy, atTheGraduatedCardsFlip.hard,
             ])
         // At the answer, the days since ubuntu's last review round up, so
         // its intervals there would differ.
         #expect(
             try settings.scheduler.preview(
                 of: CardWay(cardID: ubuntu.id, way: .frontFirst), after: ubuntusLog, at: time.now)
-                != offeredForTheGraduatedCard)
+                != atTheGraduatedCardsFlip)
     }
 
     // As when the Cards window deleted the card while the panel showed it.
-    @Test("when the panel can't work out a flipped card's intervals, its buttons show none, and it says why")
-    func thePanelSaysWhyItCantWorkOutTheIntervals() throws {
+    @Test(
+        "a card deleted before it's flipped shows its lower side, and answering it says it was deleted", .bug(id: 489))
+    func answeringADeletedCardSaysWhy() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
 
         _ = try engine.delete([serendipia.id])
         panel.flip()
+        let afterTheFlip = panel.failure
+        panel.rate(.good)
 
-        #expect(panel.intervals == nil)
-        #expect(panel.failure?.action == .workOutIntervals)
+        #expect(afterTheFlip == nil)
+        #expect(panel.content == .bothSides(serendipia, isNew: true))
+        #expect(panel.failure?.action == .answer)
         #expect(panel.failure?.error == .cardNotFound(serendipia.id))
     }
 
@@ -279,124 +338,6 @@ struct ReviewPanelTests {
         #expect(buriedPanel.content == .bothSides(serendipia, isNew: true))
         #expect(setAsidePanel.content == .bothSides(ubuntu, isNew: true))
         #expect(try engine.reviewLog().isEmpty)
-    }
-
-    // Subjects come mixed (ADR 0011): "Poder" isn't answered the same way
-    // under "derecho" as under "física".
-    @Test("a new card comes with its tags, in its order, each with its color and emoji")
-    func aNewCardComesWithItsTags() throws {
-        let mayo = try approve(
-            card(
-                .concept, front: "Revolución de Mayo", back: "25 de mayo de 1810.",
-                tags: ["historia", "argentina", "lenguaje"]),
-            in: engine)
-        try engine.setColor(.blue, of: "argentina")
-        try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
-        try engine.setColor(.green, of: "historia")
-
-        let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-
-        #expect(panel.content == .upperSide(mayo, isNew: true))
-        #expect(
-            panel.tags == [
-                CardTag(name: "historia", color: .green),
-                CardTag(name: "argentina", color: .blue, emoji: "🇦🇷"),
-                CardTag(name: "lenguaje"),
-            ])
-    }
-
-    @Test("a review and a review ahead come with their tags, each with its color and emoji")
-    func aReviewAndAReviewAheadComeWithTheirTags() throws {
-        let constituyente = try approve(
-            card(.concept, front: "Poder constituyente", back: "El que crea la constitución.", tags: ["derecho"]),
-            in: engine)
-        let poder = try approve(
-            card(.concept, front: "Poder", back: "Trabajo por unidad de tiempo.", tags: ["física", "ciencia"]),
-            in: engine)
-        try engine.climb(constituyente, goods: 2, movingForward: time)
-        try engine.meet(poder)
-        time.advance(by: hours(1))
-        try engine.setEmoji(Emoji("⚖️"), of: "derecho")
-        try engine.setColor(.orange, of: "física")
-        // Now "Poder" is due, and "Poder constituyente", graduated, is the
-        // closest to being due, for a review ahead.
-        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        #expect(panel.content == .upperSide(poder))
-        #expect(panel.tags == [CardTag(name: "física", color: .orange), CardTag(name: "ciencia")])
-
-        try panel.answer(.review(.good), responseTime: .seconds(3))
-        panel.seeMore()
-
-        #expect(panel.content == .upperSide(constituyente, isAhead: true))
-        #expect(panel.tags == [CardTag(name: "derecho", emoji: "⚖️")])
-    }
-
-    @Test("a card with no tags comes with none")
-    func aCardWithNoTagsComesWithNone() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        try engine.setColor(.green, of: "ciencia")
-
-        let panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-
-        #expect(panel.content == .upperSide(serendipia, isNew: true))
-        #expect(panel.tags.isEmpty)
-    }
-
-    // Subjects come mixed (ADR 0011, ADR 0024): the deck says which one a
-    // card is about, before its tags label it.
-    @Test(
-        "a card comes with its deck, by its whole name, with its color and emoji, its own or its parent's, before its tags; Default's too"
-    )
-    func aCardComesWithItsDeckBeforeItsTags() throws {
-        let mayo = try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", tags: ["política"], in: engine)
-        let petricor = try approveInDeck("petricor", in: engine)
-        try engine.setColor(.blue, ofDeck: "Historia")
-        try engine.setEmoji(Emoji("📜"), ofDeck: "Historia")
-        try engine.setEmoji(Emoji("🇦🇷"), ofDeck: "Historia::Argentina")
-
-        var panel = try engine.openPanel(
-            .appearance, with: [.new(mayo), .new(petricor)], settings: settings)
-
-        #expect(panel.content == .upperSide(mayo, isNew: true))
-        #expect(
-            panel.deck
-                == Deck(name: "Historia::Argentina", emoji: "🇦🇷", inheritedColor: .blue, inheritedEmoji: "📜"))
-        #expect(panel.tags == [CardTag(name: "política")])
-        panel.flip()
-        panel.rate(.good)
-        #expect(panel.content == .upperSide(petricor, isNew: true))
-        #expect(panel.deck == Deck(name: Deck.defaultName))
-        panel.flip()
-        panel.rate(.good)
-        #expect(panel.deck == nil)
-    }
-
-    // So the card Lucas is on doesn't change under him, as with its tags.
-    @Test("a deck's color or emoji changed while the panel is open shows from the next panel on")
-    func aDeckChangedWhileThePanelIsOpenShowsFromTheNextPanelOn() throws {
-        try approveInDeck("fotosíntesis", deck: "Ciencias", in: engine)
-        let open = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-
-        try engine.setColor(.green, ofDeck: "Ciencias")
-        try engine.setEmoji(Emoji("🔬"), ofDeck: "Ciencias")
-        let next = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-
-        #expect(open.deck == Deck(name: "Ciencias"))
-        #expect(next.deck == Deck(name: "Ciencias", color: .green, emoji: "🔬"))
-    }
-
-    // So the card Lucas is on doesn't change under him.
-    @Test("a tag's color or emoji changed while the panel is open shows from the next panel on")
-    func aTagChangedWhileThePanelIsOpenShowsFromTheNextPanelOn() throws {
-        try approve(card(.concept, front: "fotosíntesis", back: "Luz en azúcar.", tags: ["ciencia"]), in: engine)
-        let open = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-
-        try engine.setColor(.green, of: "ciencia")
-        try engine.setEmoji(Emoji("🔬"), of: "ciencia")
-        let next = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-
-        #expect(open.tags == [CardTag(name: "ciencia")])
-        #expect(next.tags == [CardTag(name: "ciencia", color: .green, emoji: "🔬")])
     }
 
     // Ficha Dev's debug menu moves the engine's time forward, as this test's

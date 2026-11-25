@@ -123,8 +123,9 @@ private struct FlagIcon: View {
     }
 }
 
-/// The mark beside a buried card, in the table and the detail: the icon the
-/// review panel's Bury button has.
+/// The mark beside a buried card, in the table and the detail: an eye
+/// crossed out, since the card stays out of the reviews until it's
+/// unburied.
 private struct BuriedIcon: View {
     var body: some View {
         Image(systemName: "eye.slash")

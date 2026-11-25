@@ -4,19 +4,20 @@ import SwiftUI
 
 /// What the review panel shows, on Liquid Glass: the cards a review now or an
 /// appearance brought, one at a time, each with its upper side on top and,
-/// once flipped, its lower side under it. A card shows front first, or, when
-/// it goes both ways, back first too, with the back on top and a "Back first"
-/// mark. Every action has a key and a button: Space flips a card, 1, 2, 3
-/// and 4 rate it with Anki's four buttons, Again, Hard, Good and Easy, each
-/// with the interval it would set above it, as in Anki, and Space again rates
-/// it Good, as Space answers in Anki, a new card's first review too, which
-/// shows front first like any card, with a "New" badge, A asks a question
-/// about the card, which waits in the inbox as
-/// a follow-up, M flags it with a note, E buries it, ⌘Z undoes the last thing
-/// Lucas did, and Esc closes the panel, which snoozes an appearance. A side
-/// with a sound has a ▶ under its text, which plays it and shows ■ while it
-/// plays, and R plays or stops the lower side's sound once it shows, or else
-/// the upper side's. When 1 makes a card forgotten often,
+/// once flipped, its lower side under it, the card alone, with no deck, tags
+/// or intervals (ADR 0033). A card shows front first, or, when it goes both
+/// ways, back first too, with the back on top and a "Back first" mark, and a
+/// review ahead is marked "Ahead". Every action has a key: Space flips a
+/// card, and then two buttons answer it, Forgot, on 1, and Got it, on Space,
+/// named New to me and Knew it on a new way's first review (`AnswerButton`),
+/// while 2, 3 and 4 still rate it hard, good and easy, as a small line under
+/// them says of 2 and 4. A ⋯ menu in the corner offers the rest, each also on
+/// its key: A asks a question about the card, which waits in the inbox as a
+/// follow-up, M flags it with a note, E buries it (`CardAction`), ⌘Z undoes
+/// the last thing Lucas did, and Esc closes the panel, which snoozes an
+/// appearance. A side with a sound has a ▶ under its text, which plays it and
+/// shows ■ while it plays, and R plays or stops the lower side's sound once
+/// it shows, or else the upper side's. When 1 makes a card forgotten often,
 /// the panel offers to flag it, its note written: Enter flags it, and Esc
 /// leaves it in his reviews. Once Lucas went through every card, the
 /// panel stays open until he closes it, and offers more cards if there are
@@ -44,17 +45,18 @@ struct ReviewPanelView: View {
             String(
                 localized: "Forgotten \(forgotten.times) times",
                 comment: """
-                    The note the review panel offers to flag a card with, once the user answered “Again” to it this \
-                    many times front first while it was graduated, out of its learning and relearning steps, since \
-                    its front or back last changed: Anki's lapses. They can add to it.
+                    The note the review panel offers to flag a card with, once the user answered “Forgot”, Anki's \
+                    Again, to it this many times front first while it was graduated, out of its learning and \
+                    relearning steps, since its front or back last changed: Anki's lapses. They can add to it.
                     """)
         case .backFirst:
             String(
                 localized: "Forgotten \(forgotten.times) times back first",
                 comment: """
-                    The note the review panel offers to flag a card with, once the user answered “Again” to it this \
-                    many times back first, its back shown on top, while it was graduated, out of its learning and \
-                    relearning steps, since its front or back last changed: Anki's lapses. They can add to it.
+                    The note the review panel offers to flag a card with, once the user answered “Forgot”, Anki's \
+                    Again, to it this many times back first, its back shown on top, while it was graduated, out of \
+                    its learning and relearning steps, since its front or back last changed: Anki's lapses. They can \
+                    add to it.
                     """)
         }
     }
@@ -71,13 +73,13 @@ struct ReviewPanelView: View {
     var maximumHeight = CGFloat.infinity
     /// The tallest a side's image shows.
     private var imageHeight: CGFloat { cardSize.imageHeightLimit(panelTallest: maximumHeight) }
-    /// The widest the rating buttons and the writing fields show, the inside of
+    /// The widest the answer buttons and the writing fields show, the inside of
     /// the panel at 100%, so they stay their size as it widens with the card.
     private static let controlsWidth = CardSize.normal.panelWidth - 2 * 20
     /// How large a card's text and images show.
     @Environment(\.cardSize) private var cardSize
     /// Whether the note's field has the keyboard. Whatever shows the note
-    /// sets it, in the same action, as the flag button does.
+    /// sets it, in the same action, as M and the ⋯ menu's Flag… do.
     @FocusState private var noteIsFocused: Bool
     /// Where the cursor is in the note, or what's selected: at the end of the
     /// note the panel offers, which the field would otherwise select whole as
@@ -86,13 +88,13 @@ struct ReviewPanelView: View {
     /// selection in the last note may lie past the end of the new one.
     @State private var noteSelection: TextSelection?
     /// Whether the question's field has the keyboard. Whatever shows the
-    /// question sets it, in the same action, as the ask button does.
+    /// question sets it, in the same action, as A and the ⋯ menu's Ask… do.
     @FocusState private var questionIsFocused: Bool
-    /// Where the cursor is in the question, or what's selected, which the ask
-    /// button clears as the note's is.
+    /// Where the cursor is in the question, or what's selected, which A and
+    /// Ask… clear as M and Flag… clear the note's.
     @State private var questionSelection: TextSelection?
     /// Whether the panel reads right to left, which says whether a card's
-    /// upper side can sit beside the buttons.
+    /// upper side can sit beside the ⋯ menu.
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
@@ -175,8 +177,6 @@ struct ReviewPanelView: View {
         case .ask: Failure(title: "Couldn't save your question", message: error.messageInReviewPanel)
         case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
         case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
-        case .workOutIntervals:
-            Failure(title: "Couldn't work out the buttons' intervals", message: error.messageInReviewPanel)
         }
     }
 
@@ -207,54 +207,30 @@ struct ReviewPanelView: View {
             } buttons: {
                 closeButton(closeByLucas)
             }
-        case .upperSide(let card, let way, let isNew, let isAhead):
+        case .upperSide(let card, let way, _, let isAhead):
             sides(of: card, way, showingLowerSide: false, buttons: .forTheCard, in: panel) {
-                topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
+                marks(way, isAhead: isAhead)
             }
             HStack {
                 Spacer()
                 Button {
                     panel.state.flip()
                 } label: {
-                    KeyLabel(
-                        title: Text("Flip"),
-                        key: String(localized: "space", comment: "The Space key's name, next to the button it presses.")
-                    )
+                    KeyLabel(title: Text("Flip"), key: keyName(of: .space))
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])
             }
         case .bothSides(let card, let way, let isNew, let isAhead):
             sides(of: card, way, showingLowerSide: true, buttons: .forTheCard, in: panel) {
-                topLine(way, isNew: isNew, isAhead: isAhead, deck: panel.state.deck, tags: panel.state.tags)
+                marks(way, isAhead: isAhead)
             }
-            HStack(alignment: .bottom) {
-                // In Anki's order, again's first, on 1 to 4 (`RatingKey`).
-                ForEach(Rating.allCases, id: \.self) { rating in
-                    ratingButton(rating, in: panel)
-                }
-            }
-            // In the middle of a wider panel, as Anki's bottom bar.
-            .frame(maxWidth: Self.controlsWidth)
-            .frame(maxWidth: .infinity)
-            .background {
-                // Space too, as it answers Good in Anki once the answer
-                // shows, through a hidden button, since a button takes one
-                // key. The note's and the question's fields never show while
-                // it does, so Space in them types a space.
-                Button {
-                    rate(.good, in: panel)
-                } label: {
-                    Text(Rating.good.name)
-                }
-                .keyboardShortcut(.space, modifiers: [])
-                .hidden()
-            }
+            answerButtons(isNew: isNew, in: panel)
         case .flagging(let card, let way, let showsLowerSide):
-            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .closeWithoutEsc, in: panel) {}
+            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .whileWriting, in: panel) {}
             noteEditor(of: panel)
         case .asking(let card, let way, let showsLowerSide):
-            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .closeWithoutEsc, in: panel) {}
+            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .whileWriting, in: panel) {}
             questionEditor(of: panel)
         case .done where panel.state.canSeeMore:
             header {
@@ -268,8 +244,10 @@ struct ReviewPanelView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 }
             } buttons: {
-                undoButton(of: panel)
-                closeButton(closeByLucas)
+                moreMenu(of: panel)
+            }
+            .background {
+                menuKeys(of: panel)
             }
             enterButton(Text("See more")) {
                 panel.state.seeMore()
@@ -279,8 +257,10 @@ struct ReviewPanelView: View {
                 Text("You went through every card.")
                     .font(.headline)
             } buttons: {
-                undoButton(of: panel)
-                closeButton(closeByLucas)
+                moreMenu(of: panel)
+            }
+            .background {
+                menuKeys(of: panel)
             }
             enterButton(
                 Text("Done", comment: "A button that closes the review panel once every card was gone through."),
@@ -333,26 +313,25 @@ struct ReviewPanelView: View {
         .buttonStyle(.borderless)
     }
 
-    /// A card's sides, under the line at its top and beside the buttons at
-    /// the panel's top trailing corner: the upper side, which `way` says, and
-    /// the lower one when it shows. The panel's window stops at its share of
-    /// the screen (`ReviewPanelWindow`). A card that doesn't fit has its
-    /// upper side go under the line at its top, the panel's width, and when
-    /// it still doesn't fit, its sides scroll, each card and way from its
-    /// top, while the line at its top and the buttons stay in view, as what's
-    /// under the card does. The scroll never takes the keyboard, so the
-    /// panel's keys work as on a short card. The buttons show once, over the
-    /// room each layout keeps for them, so no key belongs to two buttons. An
-    /// upper side that reads against the panel, a Spanish card in Arabic,
-    /// always goes under the line at its top, since beside the buttons it
-    /// would start from where they end, rather than from the panel's edge as
-    /// its lower side does.
+    /// A card's sides, under the line at its top and beside the ⋯ menu at the
+    /// panel's top trailing corner: the upper side, which `way` says, and the
+    /// lower one when it shows. The panel's window stops at its share of the
+    /// screen (`ReviewPanelWindow`). A card that doesn't fit has its upper
+    /// side go under the line at its top, the panel's width, and when it still
+    /// doesn't fit, its sides scroll, each card and way from its top, while
+    /// the line at its top and the menu stay in view, as what's under the card
+    /// does. The scroll never takes the keyboard, so the panel's keys work as
+    /// on a short card. The menu shows once, over the room each layout keeps
+    /// for it. An upper side that reads against the panel, a Spanish card in
+    /// Arabic, always goes under the line at its top, since beside the menu it
+    /// would start from where the menu ends, rather than from the panel's edge
+    /// as its lower side does.
     private func sides<TopLine: View>(
         of card: Card, _ way: Way, showingLowerSide: Bool, buttons: TopButtons, in panel: ReviewPanelModel,
         @ViewBuilder topLine: () -> TopLine
     ) -> some View {
         let line = topLine()
-        let room = topButtons(buttons, of: panel, withKeys: false).hidden()
+        let room = moreMenu(of: panel).hidden()
         let upper = upperSide(of: card, way, in: panel)
         let lower = lowerSide(of: card, way, in: panel)
         let bothSides = VStack(alignment: .leading, spacing: 16) {
@@ -405,11 +384,11 @@ struct ReviewPanelView: View {
         }
         .overlay(alignment: .topTrailing) {
             iconButtons {
-                topButtons(buttons, of: panel, withKeys: true)
+                moreMenu(of: panel)
             }
         }
         .background {
-            // R, as A, M and E, while the card shows with its buttons, on a
+            // R, as A, M and E (`menuKeys(of:)`), while the card shows, on a
             // layout of another script too (`LetterKey`). It works through a
             // hidden button, since the ▶ it presses changes with the side that
             // shows.
@@ -426,102 +405,154 @@ struct ReviewPanelView: View {
                 .keyboardShortcut("r", modifiers: [])
                 .disabled(panel.state.sideForR == nil)
                 .hidden()
+                menuKeys(of: panel)
             }
         }
     }
 
-    /// Which buttons a card has at the panel's top trailing corner.
+    /// Whether the panel takes the keys of a card's ⋯ menu, as its state says
+    /// what the menu holds.
     private enum TopButtons {
-        /// Undo, ask, flag, bury, and close, with Esc.
+        /// A, M, E, ⌘Z and Esc, and R, while the card shows.
         case forTheCard
-        /// Close alone, without Esc, which goes back to the card while the user
-        /// writes a note to flag it or a question about it.
-        case closeWithoutEsc
+        /// None, while Lucas writes a note to flag the card or a question
+        /// about it, where Esc goes back to the card.
+        case whileWriting
     }
 
-    /// The buttons at a card's top trailing corner, with their keys, or,
-    /// `withKeys` false, a copy without them that only keeps their room.
+    /// The ⋯ menu at the panel's top trailing corner, for whoever doesn't
+    /// remember a key (ADR 0033): what Lucas can do with the card he's on
+    /// (`CardAction`), then Undo and Close. While he writes about the card,
+    /// it holds Close alone, and once he went through every card, Undo and
+    /// Close (`ReviewPanelState.menuOffersUndo`). Its items show no keys,
+    /// which the panel keeps on hidden buttons instead (`menuKeys(of:)`), so
+    /// that each key belongs to one control, which takes it whether the menu
+    /// is open or not.
+    private func moreMenu(of panel: ReviewPanelModel) -> some View {
+        Menu {
+            ForEach(panel.state.cardActions, id: \.self) { action in
+                Button {
+                    perform(action, in: panel)
+                } label: {
+                    title(of: action)
+                }
+            }
+            if !panel.state.cardActions.isEmpty {
+                Divider()
+            }
+            if panel.state.menuOffersUndo {
+                Button("Undo") {
+                    panel.state.undoLastCard()
+                }
+                .disabled(!panel.state.canUndo)
+            }
+            Button("Close") {
+                panel.state.close(.byLucas)
+            }
+        } label: {
+            Label {
+                moreTitle
+            } icon: {
+                Image(systemName: "ellipsis.circle")
+            }
+        }
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(moreTitle)
+    }
+
+    /// The ⋯ menu's name, which its tooltip and VoiceOver say.
+    private var moreTitle: Text {
+        Text(
+            "More",
+            comment: """
+                The review panel's ⋯ menu, which asks about the card, flags it or buries it, undoes the last thing \
+                the user did, or closes the panel.
+                """)
+    }
+
+    /// The keys of what the ⋯ menu does, on hidden buttons, since a menu's
+    /// items take their keys only while it's open: A, M and E, while a card
+    /// shows (`CardAction`), ⌘Z, which undoes the last thing Lucas did, and
+    /// Esc, which closes the panel. The letters work on a layout of another
+    /// script too (`LetterKey`).
     @ViewBuilder
-    private func topButtons(_ buttons: TopButtons, of panel: ReviewPanelModel, withKeys: Bool) -> some View {
-        let closeByLucas = { panel.state.close(.byLucas) }
-        switch buttons {
-        case .forTheCard:
-            cardButtons(of: panel, withKeys: withKeys)
-            closeButton(closeByLucas, withEsc: withKeys)
-        case .closeWithoutEsc:
-            closeButton(closeByLucas, withEsc: false)
+    private func menuKeys(of panel: ReviewPanelModel) -> some View {
+        ForEach(panel.state.cardActions, id: \.self) { action in
+            Button {
+                perform(action, in: panel)
+            } label: {
+                title(of: action)
+            }
+            .keyboardShortcut(KeyEquivalent(action.key), modifiers: [])
+            .hidden()
         }
-    }
-
-    /// The button that closes the panel with `close`, and with Esc unless the
-    /// panel takes Esc for something else.
-    private func closeButton(_ close: @escaping () -> Void, withEsc: Bool = true) -> some View {
-        Button("Close", systemImage: "xmark", action: close)
-            .keyboardShortcut(withEsc ? .cancelAction : nil)
-            .help(withEsc ? Text("Close (esc)") : Text("Close"))
-    }
-
-    /// The buttons for the card Lucas is on: ⌘Z undoes the last thing he did,
-    /// A asks a question about this card, M flags it with a note, and E buries
-    /// it, on a layout of another script too (`LetterKey`). Without `withKeys`,
-    /// none of them has its key.
-    @ViewBuilder
-    private func cardButtons(of panel: ReviewPanelModel, withKeys: Bool) -> some View {
-        undoButton(of: panel, withKeys: withKeys)
-        Button(
-            String(
-                localized: "Ask…",
-                comment:
-                    "A button that asks a question about the card the review panel shows, which waits in the inbox tied to the card."
-            ),
-            systemImage: "questionmark.bubble"
-        ) {
-            panel.state.startAsking()
-            // The question's field gets the keyboard in the same action that
-            // shows it, as the note's does (#61), with no selection left from
-            // the last question.
-            questionSelection = nil
-            questionIsFocused = true
-        }
-        .keyboardShortcut(withKeys ? KeyboardShortcut("a", modifiers: []) : nil)
-        .help(Text("Ask… (a)", comment: "The tooltip of the button that asks a question about the card, with its key."))
-        Button(
-            String(
-                localized: "Flag…",
-                comment: "A button that flags the card the review panel shows, asking for a note on what to fix."),
-            systemImage: "flag"
-        ) {
-            panel.state.startFlagging()
-            // The note's field gets the keyboard in the same action that
-            // shows it, with no selection left from the last note. Asked from
-            // the field's `onAppear` instead, after M, SwiftUI never focused
-            // it while the panel had the keyboard (#61).
-            noteSelection = nil
-            noteIsFocused = true
-        }
-        .keyboardShortcut(withKeys ? KeyboardShortcut("m", modifiers: []) : nil)
-        .help(Text("Flag… (m)", comment: "The tooltip of the button that flags the card, with its key."))
-        Button(
-            String(
-                localized: "Bury",
-                comment: "A button that buries the card the review panel shows: it never shows up again."),
-            systemImage: "eye.slash"
-        ) {
-            panel.state.buryCard()
-        }
-        .keyboardShortcut(withKeys ? KeyboardShortcut("e", modifiers: []) : nil)
-        .help(Text("Bury (e)", comment: "The tooltip of the button that buries the card, with its key."))
-    }
-
-    /// The button that undoes the last thing the user did: ⌘Z, unless
-    /// `withKeys` is false.
-    private func undoButton(of panel: ReviewPanelModel, withKeys: Bool = true) -> some View {
-        Button("Undo", systemImage: "arrow.uturn.backward") {
+        Button("Undo") {
             panel.state.undoLastCard()
         }
-        .keyboardShortcut(withKeys ? KeyboardShortcut("z", modifiers: .command) : nil)
+        .keyboardShortcut("z", modifiers: .command)
         .disabled(!panel.state.canUndo)
-        .help("Undo (⌘Z)")
+        .hidden()
+        Button("Close") {
+            panel.state.close(.byLucas)
+        }
+        .keyboardShortcut(.cancelAction)
+        .hidden()
+    }
+
+    /// What the ⋯ menu calls `action`.
+    private func title(of action: CardAction) -> Text {
+        switch action {
+        case .ask:
+            Text(
+                "Ask…",
+                comment: """
+                    An item of the review panel's ⋯ menu, whose key is A: it asks a question about the card the \
+                    panel shows, which waits in the inbox tied to the card.
+                    """)
+        case .flag:
+            Text(
+                "Flag…",
+                comment: """
+                    An item of the review panel's ⋯ menu, whose key is M: it flags the card the panel shows, asking \
+                    for a note on what to fix.
+                    """)
+        case .bury:
+            Text(
+                "Bury",
+                comment: """
+                    An item of the review panel's ⋯ menu, whose key is E: it buries the card the panel shows, which \
+                    never shows up again.
+                    """)
+        }
+    }
+
+    /// Does `action` with the card Lucas is on, from the ⋯ menu or its key.
+    /// The question's or the note's field gets the keyboard in the same
+    /// action that shows it, with no selection left from the last one: asked
+    /// from the field's `onAppear` instead, after M, SwiftUI never focused it
+    /// while the panel had the keyboard (#61).
+    private func perform(_ action: CardAction, in panel: ReviewPanelModel) {
+        panel.state.choose(action)
+        switch action {
+        case .ask:
+            questionSelection = nil
+            questionIsFocused = true
+        case .flag:
+            noteSelection = nil
+            noteIsFocused = true
+        case .bury:
+            break
+        }
+    }
+
+    /// The button that closes the panel with `close`, and with Esc, while it
+    /// shows no card.
+    private func closeButton(_ close: @escaping () -> Void) -> some View {
+        Button("Close", systemImage: "xmark", action: close)
+            .keyboardShortcut(.cancelAction)
+            .help(Text("Close (esc)"))
     }
 
     /// Where Lucas writes what to fix in the card he flags: Enter flags it,
@@ -624,32 +655,17 @@ struct ReviewPanelView: View {
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
-    private var newBadge: some View {
-        Text("New", comment: "A badge on a card the review panel shows for the first time.")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(.tint.opacity(0.15), in: .capsule)
-    }
-
-    /// The line at the top of a card: its badges, "New" on a new way's first
-    /// review, "Ahead" on a review ahead and "Back first" when `way` is, each when it
-    /// applies, then the card's deck, and its tags, when it has some.
+    /// The marks over a card's upper side, each when it applies: "Ahead" on a
+    /// review ahead, and "Back first" when `way` is. The panel shows nothing
+    /// else of the card above it (ADR 0033).
     @ViewBuilder
-    private func topLine(
-        _ way: Way, isNew: Bool = false, isAhead: Bool = false, deck: Deck?, tags: [CardTag]
-    ) -> some View {
-        let isBackFirst = way == .backFirst
-        if isNew || isAhead || isBackFirst || deck != nil || !tags.isEmpty {
-            CardTopLine(deck: deck, tags: tags) {
-                if isNew {
-                    newBadge
-                }
+    private func marks(_ way: Way, isAhead: Bool) -> some View {
+        if isAhead || way == .backFirst {
+            HStack(spacing: 4) {
                 if isAhead {
                     AheadBadge()
                 }
-                if isBackFirst {
+                if way == .backFirst {
                     BackFirstBadge()
                 }
             }
@@ -713,29 +729,112 @@ struct ReviewPanelView: View {
         .disabled(!panel.state.canPlaySounds)
     }
 
-    /// The button that rates the card `rating`, named as Anki names it, with
-    /// its key, and the interval it would set above it, small, as Anki shows
-    /// it, which VoiceOver reads after its name, in words.
-    private func ratingButton(_ rating: Rating, in panel: ReviewPanelModel) -> some View {
-        let interval = panel.state.intervals?[rating]
-        let key = RatingKey.digit(of: rating)
-        return VStack(spacing: 4) {
-            Text(interval.map(intervalText) ?? "")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .accessibilityHidden(true)
-            Button {
-                rate(rating, in: panel)
-            } label: {
-                KeyLabel(title: Text(rating.name), key: String(key))
-                    .frame(maxWidth: .infinity)
+    /// The two buttons that answer the card once its lower side shows
+    /// (`AnswerButton`), in the middle of a wider panel, as Anki's bottom bar,
+    /// and under them a small line that says 2 and 4 still rate it hard and
+    /// easy, as in Anki. The four rating keys work through hidden buttons, one
+    /// each (`RatingKey`), since a button takes one key, Got it's is Space,
+    /// and 2 and 4 have no button. The note's and the question's fields never
+    /// show with them, so Space in those types a space.
+    private func answerButtons(isNew: Bool, in panel: ReviewPanelModel) -> some View {
+        let hardKey = String(RatingKey.digit(of: .hard))
+        let easyKey = String(RatingKey.digit(of: .easy))
+        return VStack(spacing: 8) {
+            HStack {
+                ForEach(AnswerButton.allCases, id: \.self) { button in
+                    answerButton(button, isNew: isNew, in: panel)
+                }
             }
-            .buttonStyle(.bordered)
-            .keyboardShortcut(KeyEquivalent(key), modifiers: [])
-            .accessibilityValue(interval.map(spokenIntervalText) ?? "")
+            Text(
+                "Also \(hardKey) Hard and \(easyKey) Easy, as in Anki",
+                comment: """
+                    Under the review panel's two buttons, Forgot and Got it: keys 2 and 4 still rate the card Hard \
+                    and Easy, Anki's names for its second and fourth buttons, which the panel doesn't show.
+                    """
+            )
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: Self.controlsWidth)
         .frame(maxWidth: .infinity)
+        .background {
+            ForEach(Rating.allCases, id: \.self) { rating in
+                Button {
+                    rate(rating, in: panel)
+                } label: {
+                    Text(verbatim: String(RatingKey.digit(of: rating)))
+                }
+                .keyboardShortcut(KeyEquivalent(RatingKey.digit(of: rating)), modifiers: [])
+                .hidden()
+            }
+        }
+    }
+
+    /// The button that rates the card as `button` says, named New to me or
+    /// Knew it when `isNew`, a new way's first review, where Forgot means
+    /// nothing, with the key its label shows. The one Space presses is the
+    /// prominent one, as Flip is.
+    @ViewBuilder
+    private func answerButton(_ button: AnswerButton, isNew: Bool, in panel: ReviewPanelModel) -> some View {
+        let answer = Button {
+            rate(button.rating, in: panel)
+        } label: {
+            KeyLabel(title: name(of: button, isNew: isNew), key: keyName(of: button.key))
+                .frame(maxWidth: .infinity)
+        }
+        if button.key == .space {
+            answer
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.space, modifiers: [])
+        } else {
+            answer
+                .buttonStyle(.bordered)
+        }
+    }
+
+    /// What `button` is called, on a new way's first review when `isNew`.
+    private func name(of button: AnswerButton, isNew: Bool) -> Text {
+        switch (button, isNew) {
+        case (.forgot, false):
+            Text(
+                "Forgot",
+                comment: """
+                    The review panel's button, once a card is turned over, for a card the user didn't remember: it \
+                    records Anki's Again. Its key is 1.
+                    """)
+        case (.gotIt, false):
+            Text(
+                "Got it",
+                comment: """
+                    The review panel's button, once a card is turned over, for a card the user remembered: it records \
+                    Anki's Good. Its keys are Space and 3.
+                    """)
+        case (.forgot, true):
+            Text(
+                "New to me",
+                comment: """
+                    The review panel's Forgot button on a new card's first turn, for a card the user hadn't met \
+                    before: it records Anki's Again. Its key is 1.
+                    """)
+        case (.gotIt, true):
+            Text(
+                "Knew it",
+                comment: """
+                    The review panel's Got it button on a new card's first turn, for a card the user already knew: it \
+                    records Anki's Good. Its keys are Space and 3.
+                    """)
+        }
+    }
+
+    /// The name a button's label shows for `key`: a digit as it is, and
+    /// Space's from the String Catalog.
+    private func keyName(of key: AnswerButton.Key) -> String {
+        switch key {
+        case .digit(let digit): String(digit)
+        case .space: String(localized: "space", comment: "The Space key's name, next to the button it presses.")
+        }
     }
 
     /// Rates the card the panel shows `rating`. When the rating makes the
@@ -795,63 +894,6 @@ struct BackFirstBadge: View {
         .padding(.vertical, 2)
         .background(.secondary.opacity(0.15), in: .capsule)
         .fixedSize()
-    }
-}
-
-/// The line at the top of a card in the review panel: its badges, "New" or
-/// "Ahead", and "Back first", when it has some, then its deck, by its whole
-/// name (`DeckCapsule`), and then its tags, each as the Cards window's Tags
-/// column draws it, so that Lucas knows which subject the card is about, and
-/// which way he's asked, before he answers it (ADR 0024). It's one line, so
-/// the panel stays as small as it is: the tags that don't fit collapse into a
-/// "+n" capsule, whose tooltip names them, and a deck's name too long for
-/// what's left gives way in its middle.
-private struct CardTopLine<Badge: View>: View {
-    let deck: Deck?
-    let tags: [CardTag]
-    @ViewBuilder let badge: Badge
-
-    var body: some View {
-        // The first line that fits shows: every tag, then one fewer and
-        // "+1", down to none and "+n".
-        ViewThatFits(in: .horizontal) {
-            ForEach((0...tags.count).reversed(), id: \.self) { shown in
-                HStack(spacing: 4) {
-                    badge
-                    if let deck {
-                        DeckCapsule(deck: deck)
-                    }
-                    ForEach(tags.prefix(shown), id: \.name) { tag in
-                        TagCapsule(tag: tag)
-                    }
-                    if shown < tags.count {
-                        MoreTagsCapsule(tags: Array(tags.dropFirst(shown)))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// The tags that don't fit on a card's line in the review panel, as one
-/// capsule that counts them, gray like a tag without a color, and whose
-/// tooltip names them, one per line, each as its capsule names it.
-private struct MoreTagsCapsule: View {
-    let tags: [CardTag]
-
-    var body: some View {
-        Text(
-            "+\(tags.count)",
-            comment:
-                "A capsule on the review panel's card, after the tags that fit on its line, counting those that don't. Its tooltip names them."
-        )
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 2)
-        .background(.secondary.opacity(0.15), in: .capsule)
-        .fixedSize()
-        .help(Text(verbatim: tags.map(\.title).joined(separator: "\n")))
     }
 }
 

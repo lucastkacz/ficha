@@ -69,8 +69,8 @@ final class ReviewPanelWindow: NSPanel {
         isMovableByWindowBackground = true
         hidesOnDeactivate = false
         // AppKit shows tooltips only in the active app's windows, and Ficha
-        // is never activated: the panel's tooltips say what each icon does,
-        // and which key does the same (#66).
+        // is never activated: the panel's tooltips name its ⋯ menu and its
+        // close button, and say what a review ahead does (#66).
         allowsToolTipsWhenApplicationIsInactive = true
         isReleasedWhenClosed = false
         backgroundColor = .clear
@@ -218,10 +218,10 @@ final class ReviewPanelWindow: NSPanel {
     /// Takes the focus from the button AppKit gave it as the panel showed, so
     /// no button holds it. With Keyboard navigation on, in System Settings,
     /// the first time a window shows, AppKit gives the focus to its first view
-    /// that takes it: in the panel, the first button after undo, which is off
-    /// on the first card. The button looked pressed, and Space, on a card it
-    /// doesn't flip, pressed it (#231). Every action in the panel has its key,
-    /// so no button needs the focus until Lucas moves it there with Tab.
+    /// that takes it, such as the ⋯ menu. A button with the focus looked
+    /// pressed, and Space, on a card it doesn't flip, pressed it (#231). Every
+    /// action in the panel has its key, so no button needs the focus until
+    /// Lucas moves it there with Tab.
     private func dropInitialFocus() {
         makeFirstResponder(nil)
     }

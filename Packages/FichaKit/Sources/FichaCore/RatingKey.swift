@@ -7,7 +7,8 @@
 /// view keeps the shortcuts themselves; this map is here so it's tested.
 public enum RatingKey {
     /// The key that rates a card `rating`, "1" to "4" in Anki's order, again's
-    /// first: the one its button shows and its shortcut takes.
+    /// first, which its shortcut takes, with or without a button
+    /// (`AnswerButton`).
     public static func digit(of rating: Rating) -> Character {
         switch rating {
         case .again: "1"
