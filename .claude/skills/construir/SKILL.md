@@ -25,7 +25,7 @@ Done when each issue has its files and tests, every criterion its proof, and not
 
 ## 3. Build
 
-Open the node's branch from the default branch, as [`../../method/method.md`](../../method/method.md) names it, or as the project's instructions say. Each run of the tests goes where the pliego says; where that's CI on a draft PR, the first push opens the node's PR as a draft. Before the first push, look again as step 1 does: when an open PR now closes one of the node's issues, stop, and tell the user which. Then the node in two rounds:
+Open the node's branch from the default branch, as [`../../method/method.md`](../../method/method.md) names it, or as the project's instructions say. Each run of the tests goes where the pliego says; where that's CI on a draft PR, the first push opens the node's PR as a draft. Before the node's first push, look again as step 1 does: when an open PR now closes one of the node's issues, stop, and tell the user which PR holds which issue. Then the node in two rounds:
 
 1. **The tests first**: for each issue in turn, a test that fails for its reason, the bug reproduced or an `Accept (test)` criterion unmet, marked with its issue as the project's standards say, in a commit that names the issue. What a test needs that doesn't exist yet gets a stub that compiles and fails it, so one missing part doesn't hide the other tests. Run them all at once, and see each fail for its own issue's reason.
 2. **The code**: for each issue in turn, each building on the last, in a commit that names the issue; a change order the user approved updates the plano in it. Then run the project's tests until all pass, each fix in a commit of its own that names its issue. Each commit of this round, a fix's too, also updates the lines elsewhere that describe what it changed: the project's standards say which changes those are and how to find the lines.
@@ -46,7 +46,7 @@ Done when all three pass with no finding left, and each such procedure ran as wr
 
 ## 5. The PR
 
-One PR from the node's branch, or the draft its rounds ran on, marked ready, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, for a probe what it found, how each procedure of step 4 ran, or how the node got its step done instead, with the procedure's Task, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
+With no draft yet, the node's first push comes now: look again first, as step 3 says. Then one PR from the node's branch, or the draft its rounds ran on, marked ready, in the repo's language: a title that names the node and what it does, then each issue it closes (`Closes #<n>`), what was built, the three checks' results, the pictures, for a probe what it found, how each procedure of step 4 ran, or how the node got its step done instead, with the procedure's Task, and what went sideways while building, as [`../../method/method.md`](../../method/method.md) says, or that nothing did.
 
 - **It changes a path the pliego lists under what waits for the user's OK**: the project's label for it, and the user's merge command, last in the message.
 - **Otherwise**: it merges itself once CI passes, as the project's instructions turn that on.
