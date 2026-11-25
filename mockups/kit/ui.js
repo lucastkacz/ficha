@@ -477,11 +477,12 @@
   }
 
   /**
-   * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:offersUndo:)`
-   * in `App/ReviewPanelView.swift`): Ask…, Flag… and Bury, then Undo and
-   * Close. While a note or a question is being written, Close alone; once the
-   * cards are done, Undo and Close. Its items show no keys, as the app's
-   * don't: A, M, E, ⌘Z and Esc work with the menu closed.
+   * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:)` in
+   * `App/ReviewPanelView.swift`, with `ReviewPanelState`'s `cardActions` and
+   * `menuOffersUndo`): Ask…, Flag… and Bury, then Undo and Close. While a
+   * note or a question is being written, Close alone; once the cards are
+   * done, Undo and Close. Its items show no keys, as the app's don't: A, M,
+   * E, ⌘Z and Esc work with the menu closed.
    */
   function MoreMenu({ app, panel, onAsk, onFlag, onClose }) {
     const item = (title, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}

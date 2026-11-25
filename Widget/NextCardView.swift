@@ -310,7 +310,7 @@ extension WidgetCard {
 }
 
 /// A badge on the card the widget shows: "New" in the tint, and "Back
-/// first" in gray, as the review panel draws its own.
+/// first" in gray, as the review panel draws it.
 private struct Badge: View {
     let title: Text
     let isProminent: Bool
