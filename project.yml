@@ -8,7 +8,7 @@ options:
   deploymentTarget:
     macOS: "26.0"
     iOS: "26.0"
-  # The app follows the Mac's language, with English as the base (ADR 0009).
+  # The apps are in English alone (ADR 0036).
   developmentLanguage: en
   createIntermediateGroups: true
   minimumXcodeGenVersion: 2.46.0
@@ -140,8 +140,7 @@ targets:
         # Menu bar only: no Dock icon and no main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
-        # The copyright line, which Settings' About tab shows. It isn't
-        # translated.
+        # The copyright line, which Settings' About tab shows.
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Lucas Ariel Tkacz"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         # Ficha uses no encryption that needs a declaration, so App Store

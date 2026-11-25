@@ -186,7 +186,7 @@ struct ExportSheet: View {
     /// The name the save panel proposes for the file, as the state chose it:
     /// for a deck's cards or a tag's, its whole name, written with " › ", as
     /// in "economía › Argentina", since a Mac's file name can't hold a colon,
-    /// or Default's name in the Mac's language.
+    /// or Default's name as the app shows it.
     private var fileName: String {
         switch exporting.fileName {
         case .selectedCards:

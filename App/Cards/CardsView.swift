@@ -364,7 +364,7 @@ struct CardsView: View {
     /// here and on his other devices, whether or not they sync, as he
     /// decided on 2026-10-31 (`DeckChanges.swift`); and that it can't be
     /// undone, though the daily backups hold them. The sentences follow one
-    /// another as the Mac's language joins them (`joinedSentences(_:)`).
+    /// another as the String Catalog joins them (`joinedSentences(_:)`).
     private func deckDeletionMessage(for deletion: DeckDeletion) -> String {
         var sentences: [String] = []
         if !deletion.decksInside.isEmpty {
@@ -389,12 +389,13 @@ struct CardsView: View {
     }
 
     /// `sentences`, which a question before Lucas deletes tags or a deck
-    /// says under its title, one after another, as the Mac's language joins
-    /// them, with a space in English. Each sentence after the first comes
-    /// with what goes before it, rather than the whole question so far going
-    /// into the next join: Foundation wraps a text it puts into another in
-    /// Unicode's directional isolates, and an isolate holding only isolates
-    /// reads left to right, which put Arabic's sentences in the wrong order.
+    /// says under its title, one after another, as the String Catalog's
+    /// `deletion.next-sentence` joins them, with a space. Each sentence after
+    /// the first comes with what goes before it, rather than the whole
+    /// question so far going into the next join: Foundation wraps a text it
+    /// puts into another in Unicode's directional isolates, and an isolate
+    /// holding only isolates reads left to right, which put Arabic's
+    /// sentences in the wrong order.
     private func joinedSentences(_ sentences: [String]) -> String {
         sentences.reduce(into: "") { text, sentence in
             text +=
@@ -442,7 +443,7 @@ struct CardsView: View {
     /// them that go too, the cards that lose them, which stay; and that it
     /// can't be undone. Since decks decide what syncs, deleting tags changes
     /// it for no card (ADR 0024). The sentences follow one another as the
-    /// Mac's language joins them (`joinedSentences(_:)`).
+    /// String Catalog joins them (`joinedSentences(_:)`).
     private func tagDeletionMessage(for deletion: TagDeletion) -> String {
         let isOne = deletion.tags.count == 1
         var sentences: [String] = []

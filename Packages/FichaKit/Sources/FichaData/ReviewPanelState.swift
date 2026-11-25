@@ -128,7 +128,8 @@ public struct ReviewPanelState: Sendable {
     let engine: Engine
     private let settings: ReviewSettings
     /// The note the panel offers to flag a card forgotten often with, for
-    /// how many times Lucas forgot it and which way, in the Mac's language.
+    /// how many times Lucas forgot it and which way, from the app's String
+    /// Catalog.
     private let forgottenOftenNote: @Sendable (ForgottenOften) -> String
     private let shownAt: Date
     /// When Lucas last did something in the panel, or when it showed.
@@ -759,8 +760,8 @@ extension Engine {
     /// which moving the engine's time doesn't move: the system's continuous
     /// clock in the app. `forgottenOftenNote` writes the note the panel
     /// offers to flag a card forgotten often with, for how many times Lucas
-    /// forgot it and which way, in the Mac's language, which the app
-    /// translates.
+    /// forgot it and which way, which the app words from its String
+    /// Catalog.
     public func openPanel(
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>,
         forgottenOftenNote: @escaping @Sendable (ForgottenOften) -> String

@@ -205,12 +205,11 @@ enum DataFolderError: Error {
 #if os(macOS)
     /// What the alert at launch says, the widget too, as why it can't read
     /// the cards, and the CLI. Those the app and the widget can show, the
-    /// real Ficha's included, are translated, as every text they show is,
-    /// the widget's from its own String Catalog; the CLI's main bundle has no
-    /// String Catalog, which keeps them in English there. Only an agent's run
-    /// of Ficha Dev or its CLI meets `unusableScratchName`, which is in
-    /// English and verbatim, never translated, as Ficha Dev's debug tools'
-    /// messages are (ADR 0009).
+    /// real Ficha's included, go through a String Catalog, as every text
+    /// they show does, the widget's through its own; the CLI's main bundle has
+    /// no String Catalog. Only an agent's run of Ficha Dev or its CLI meets
+    /// `unusableScratchName`, which is verbatim, outside the catalogs, as
+    /// Ficha Dev's debug tools' messages are (ADR 0009).
     extension DataFolderError: LocalizedError {
         var errorDescription: String? {
             switch self {

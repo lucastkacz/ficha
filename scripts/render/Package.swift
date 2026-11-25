@@ -4,10 +4,7 @@ import PackageDescription
 
 // Draws the app's windows offscreen as PNGs (`make render`). The target
 // compiles the app's own files through `Sources/Render/App`, a link to `App/`,
-// with the app's settings: Ficha Dev's flag and the main actor by default. It
-// compiles the reader of Ficha's languages through `Sources/Render/
-// Languages.swift`, a link to `scripts/Languages.swift`, which FichaKit's
-// tests compile too.
+// with the app's settings: Ficha Dev's flag and the main actor by default.
 let package = Package(
     name: "Render",
     platforms: [.macOS(.v26)],

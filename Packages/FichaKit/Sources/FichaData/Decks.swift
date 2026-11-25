@@ -40,7 +40,7 @@ public struct Deck: Sendable, Hashable {
     /// Default's name, as a card names it and the `deck` table keeps it:
     /// empty, which no name the user types is, since a blank one is refused
     /// (`Engine.makeDeck(named:)`). The app shows Default by a name of its
-    /// own, in the Mac's language, as `Deck.defaultNames` lists it.
+    /// own, from its String Catalog, as `Deck.defaultNames` lists it.
     public static let defaultName = ""
 
     /// Its whole name, its levels joined by `::`, as `TagPath` reads it, or
@@ -94,13 +94,13 @@ public struct Deck: Sendable, Hashable {
     }
 
     /// The deck named `name` as the app names it on its own, in a message
-    /// too: its whole name, written with " › ", or Default's in the Mac's
-    /// language.
+    /// too: its whole name, written with " › ", or Default's as the app
+    /// shows it.
     public static func shownName(_ name: String) -> String {
         name == defaultName ? defaultShownName : TagPath.shown(name)
     }
 
-    /// Default's name in the Mac's language: the key "Default" of the app's
+    /// Default's name as the app shows it: the key "Default" of the app's
     /// String Catalog, which the app's own sources put there
     /// (`CardsNames.swift`), since Xcode fills the catalog from no package.
     static var defaultShownName: String {
@@ -108,8 +108,9 @@ public struct Deck: Sendable, Hashable {
     }
 
     /// The names Default goes by, which no deck the user makes takes at its
-    /// top level: "Default", and its name in the Mac's language, as the app
-    /// shows it.
+    /// top level: "Default", and its name as the app shows it
+    /// (`defaultShownName`), the same while the app is in English alone (ADR
+    /// 0036).
     static var defaultNames: [String] {
         ["Default", defaultShownName]
     }
@@ -131,7 +132,7 @@ public protocol DeckInTree {
     /// sits inside.
     var deck: Deck { get }
     /// What it says: its last level under its parent, or nothing for
-    /// Default, which the app names in the Mac's language.
+    /// Default, which the app names from its String Catalog.
     var title: String { get }
     /// The decks right inside it, in the order a tree lists them.
     var children: [Self] { get }

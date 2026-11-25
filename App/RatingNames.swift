@@ -3,8 +3,7 @@ import Foundation
 
 extension Rating {
     /// The rating, as the review panel's buttons and the Cards window's
-    /// review log name it: Anki's names for its four buttons, in each
-    /// language Anki's own.
+    /// review log name it: Anki's names for its four buttons.
     var name: String {
         switch self {
         case .again:

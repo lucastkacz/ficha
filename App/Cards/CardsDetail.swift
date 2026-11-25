@@ -712,7 +712,7 @@ struct ReviewsText: View {
 /// widths measure.
 enum DueText {
     /// When one of a card's ways is due, counted from `now`: "now" once it's
-    /// due, however long ago, and before, as the Mac's locale words it, like
+    /// due, however long ago, and before, as the app's locale words it, like
     /// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the
     /// card is set aside by its deck, and nothing while the way is new, or
     /// the card flagged or buried, since it won't show up then.
@@ -750,7 +750,7 @@ enum DueText {
         return [Self.now, setAside] + hours.map { until(now.addingTimeInterval($0 * 3600), from: now) }
     }
 
-    /// How long from `now` until `due`, as the Mac's locale words it.
+    /// How long from `now` until `due`, as the app's locale words it.
     static func until(_ due: Date, from now: Date) -> String {
         // In days, hours and minutes, the units of a step's interval and of a
         // graduated one under a month: "in 8d", never "next week", and "in

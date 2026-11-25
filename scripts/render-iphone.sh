@@ -8,35 +8,10 @@
 # simctl's, which `xcrun simctl help` documents. Our own are a simulator for
 # each run, the line the app says on its standard output once its screen is up
 # (iPhone/Rendering.swift), and the wait for a still screen after it.
-#
-# With `--language <code>`, the app opens in one of Ficha's languages, with
-# its region's formats, through the launch arguments Xcode's scheme options
-# pass: `-AppleLanguages` and `-AppleLocale`, and for a language read right to
-# left, Arabic, those of its right-to-left pseudolanguage too, which mirror the
-# screen.
 
 set -euo pipefail
 
-# English and the eleven languages Ficha comes in, from scripts/languages.txt,
-# which make render reads too: each language's code in the String Catalogs,
-# its region, its direction, ltr or rtl, and its name in English.
-# shellcheck source=scripts/languages.sh
-source "$(dirname "$0")/languages.sh"
-lines=$(read_languages "$(dirname "$0")/languages.txt" "run the tool again") || exit 1
-codes=()
-regions=()
-directions=()
-names=()
-language_list=""
-while read -r code region direction _ name; do
-  codes+=("$code")
-  regions+=("$region")
-  directions+=("$direction")
-  names+=("$name")
-  language_list+="${language_list:+, }$code ($name)"
-done <<<"$lines"
-
-usage="Usage: make render-iphone ARGS=\"[--language <code>] [--out <path>]\", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without --out, iphone-<code>-light.png and iphone-<code>-dark.png in a language. Without --language, the app opens in English, with the simulator's formats. The languages: $language_list."
+usage="Usage: make render-iphone ARGS=\"[--out <path>]\", which saves <path>-light.png and <path>-dark.png, or .build/render/iphone-light.png and iphone-dark.png without --out."
 (($# > 0)) || {
   echo "There's no app to take pictures of: run the tool through make render-iphone, which builds Ficha Dev and passes its path. $usage" >&2
   exit 1
@@ -44,10 +19,6 @@ usage="Usage: make render-iphone ARGS=\"[--language <code>] [--out <path>]\", wh
 app=$1
 shift
 out=""
-language=""
-language_name=""
-locale=""
-language_direction=ltr
 while (($# > 0)); do
   case $1 in
     --out)
@@ -56,23 +27,6 @@ while (($# > 0)); do
         exit 1
       }
       out=$2
-      shift 2
-      ;;
-    --language)
-      language=${2:-}
-      locale=""
-      for i in "${!codes[@]}"; do
-        if [[ ${codes[i]} == "$language" ]]; then
-          locale=${codes[i]}_${regions[i]}
-          language_name=${names[i]}
-          language_direction=${directions[i]}
-        fi
-      done
-      [[ -n $locale ]] || {
-        echo "${language:+Ficha has no language $language: }--language takes one of the languages below, by its code." >&2
-        echo "$usage" >&2
-        exit 1
-      }
       shift 2
       ;;
     *)
@@ -85,7 +39,7 @@ if [[ $out == *.png ]]; then
   echo "--out takes a path without .png: the tool adds -light.png and -dark.png to it. $usage" >&2
   exit 1
 fi
-out=${out:-.build/render/iphone${language:+-$language}}
+out=${out:-.build/render/iphone}
 
 # What the app reads and says when the tool opens it, as iPhone/Rendering.swift
 # writes them.
@@ -96,26 +50,6 @@ bundle=$(plutil -extract CFBundleIdentifier raw "$app/Info.plist" 2>/dev/null) |
   echo "There's no app at $app: build it with make build-iphone." >&2
   exit 1
 }
-
-# The language the app opens in: English without --language, with the
-# simulator's own formats.
-if [[ -z $locale ]]; then
-  launch_arguments+=(-AppleLanguages "(en)")
-else
-  launch_arguments+=(-AppleLanguages "($language)" -AppleLocale "$locale")
-  if [[ $language_direction == rtl ]]; then
-    launch_arguments+=(-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES)
-  fi
-  # The app's bundle is flat on iOS: its compiled String Catalog is a folder
-  # for each language beside its Info.plist, with the texts in Localizable
-  # files, which an incremental build leaves the folder without when the
-  # catalog loses the language. English is the language the code writes the
-  # texts in, which needs none.
-  strings=$app/$language.lproj/Localizable
-  if [[ $language != en && ! -e $strings.strings && ! -e $strings.stringsdict ]]; then
-    echo "iPhone/Localizable.xcstrings has no $language_name ($language) yet, so the app's texts are English, as Ficha shows them on an iPhone in $language_name, with its formats."
-  fi
-fi
 
 # The newest iOS the Mac has, and the first iPhone it offers: simctl lists them
 # by generation, newest first.

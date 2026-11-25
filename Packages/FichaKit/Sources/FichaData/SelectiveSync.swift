@@ -167,7 +167,7 @@ public struct DeckToChoose: Sendable, Equatable, Identifiable {
     /// it has of its own and what it takes from the decks it sits inside.
     public let deck: Deck
     /// What it says: its last level under its parent, or nothing for
-    /// Default, which the app names in the Mac's language.
+    /// Default, which the app names from its String Catalog.
     public let title: String
     /// Whether the user chose a deck it sits inside, so it syncs whatever its
     /// own tick, which can't be unticked meanwhile.

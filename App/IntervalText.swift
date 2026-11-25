@@ -3,11 +3,10 @@ import Foundation
 
 /// An interval as the review panel's buttons and the Cards window show it,
 /// short, as Anki's buttons do: in days, hours and minutes under a month,
-/// like "5d" or "2h 30m" in English and "5 Tg." in German
-/// (`shortInterval(in:)` says why), then in months, like "1.5mo", and from a
-/// year on in years, like "2.1y", with a decimal. A year is 365 days and a
-/// month a twelfth of it, about 30.4 days, as Anki counts them
-/// (`rslib/src/scheduler/timespan.rs`), so 30 days are still "30d".
+/// like "5d" or "2h 30m" (`shortInterval(in:)`), then in months, like
+/// "1.5mo", and from a year on in years, like "2.1y", with a decimal. A year
+/// is 365 days and a month a twelfth of it, about 30.4 days, as Anki counts
+/// them (`rslib/src/scheduler/timespan.rs`), so 30 days are still "30d".
 func intervalText(_ interval: Duration) -> String {
     let days = interval.inDays
     guard days >= daysInAMonth else {
@@ -34,7 +33,7 @@ func intervalText(_ interval: Duration) -> String {
 
 /// An interval as VoiceOver reads it, in whole words: in days, hours and
 /// minutes, like "45 days" or "2 hours, 30 minutes", whatever its length,
-/// as the Mac's language says them.
+/// in English, with the Mac's region, as `Locale.current` says them.
 func spokenIntervalText(_ interval: Duration) -> String {
     interval.formatted(.units(allowed: [.days, .hours, .minutes], width: .wide))
 }

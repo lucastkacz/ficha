@@ -7,9 +7,8 @@ import FichaData
 import SQLite3
 import SwiftUI
 
-// Draws one of the app's windows as a PNG, with Ficha Dev's sample cards, in
-// English or any of Ficha's languages, without showing anything on screen:
-// `make render ARGS="cards --dark"`, `make render ARGS="cards --language ar"`. The
+// Draws one of the app's windows as a PNG, with Ficha Dev's sample cards,
+// without showing anything on screen: `make render ARGS="cards --dark"`. The
 // window goes below the desktop picture, where macOS still draws it but nobody
 // sees it and nothing takes the mouse or the keyboard; the tool clicks, presses
 // keys and types in it where it's told, as Lucas would, and captures it with
@@ -157,8 +156,7 @@ enum Window: String, CaseIterable {
     case cardsBothWays = "cards-both-ways"
     /// The review panel on a new card in Arabic, which the tool adds to the
     /// sample, as `panel-card` draws it: its text reads, and is aligned, right
-    /// to left whatever the window's language, as a Spanish card's reads left
-    /// to right in Arabic. `--key space` flips it.
+    /// to left, in a window that reads left to right. `--key space` flips it.
     case panelArabic = "panel-arabic"
     /// The Cards window with that card in Arabic first in the table and
     /// selected, its detail showing it, which `--key cmd+l` edits in the
@@ -170,9 +168,6 @@ enum Window: String, CaseIterable {
 struct Request {
     var window: Window?
     var isDark = false
-    /// The language to draw the window in, or none for English with the Mac's
-    /// own formats.
-    var language: FichaLanguage?
     /// What to do in the window before the capture, in order.
     var actions: [Action] = []
     /// Where the PNG goes.
@@ -202,23 +197,6 @@ enum Action: CustomStringConvertible {
         case .copyImage(let picture): "--copy-image \(picture.rawValue)"
         case .copySound: "--copy-sound"
         }
-    }
-}
-
-/// The languages the tool draws a window in, as a Mac in each would show it,
-/// `--language de`: Ficha's languages, English and the eleven Ficha comes in,
-/// in `scripts/languages.txt`, which `scripts/render-iphone.sh` reads too, so
-/// both draw in the same ones. The tool reaches the list from this file's own
-/// path, three folders up, as it reaches the app's String Catalog, and reads
-/// it with `FichaLanguage`, in `Languages.swift`, a link to the reader in
-/// `scripts/`.
-func readRenderLanguages() throws(RenderError) -> [FichaLanguage] {
-    let list = URL(filePath: #filePath).deletingLastPathComponent()
-        .appending(path: "../../../languages.txt").standardized
-    do {
-        return try FichaLanguage.read(at: list, again: "render again")
-    } catch {
-        throw RenderError(description: error.description)
     }
 }
 
@@ -420,14 +398,10 @@ struct RenderError: Error, CustomStringConvertible {
 let whenMacOSRefuses = "This doesn't fail on macOS 26, which the tool was written for: open an issue with this message."
 
 let usage = """
-    Usage: make render ARGS="<window> [--dark] [--language <code>] [--click <point> | --key <keys> | --type <text>]...
-                             [--out <file.png>]"
+    Usage: make render ARGS="<window> [--dark] [--click <point> | --key <keys> | --type <text>]... [--out <file.png>]"
       <window>   one of these, which "A window's picture" in docs/development.md describes:
     \(indentedLines(listing: Window.allCases.map(\.rawValue), indent: 13, width: 118))
       --dark     dark mode instead of light
-      --language the language to draw the window in, as a Mac in it shows it: with the app's translations, its region's
-                 formats, and mirrored for Arabic. Without it, English, with this Mac's formats. The languages, by
-                 their codes, like de or ar: English and Ficha's eleven, which scripts/languages.txt lists
       --click    a click, in points from the window's top-left corner, after the modifiers held down: 280,121,
                  cmd+280,121, shift+280,145; on a row of a table or the sidebar, a column header, or a sheet
       --key      a key, after the modifiers held down: cmd+f, cmd+a, escape, return, shift+tab
@@ -435,8 +409,7 @@ let usage = """
       --type     text typed into what holds the focus, like a text field
       --copy-image  a picture, flag or sun, copied to the tool's own pasteboard, for --key cmd+v to paste
       --copy-sound  a sound file, a tone of 12 seconds, copied to the tool's own pasteboard, for --key cmd+v
-      --out      the PNG, by default .build/render/<window>-<light|dark>.png, or <window>-<code>-<light|dark>.png in a
-                 language
+      --out      the PNG, by default .build/render/<window>-<light|dark>.png
     --click, --key, --type, --copy-image and --copy-sound run in the order given, and after each one the tool
     prints what holds the focus.
     While the window has a sheet, an alert or a confirmation open, they go to it.
@@ -508,24 +481,14 @@ func mouseClick(named name: String) throws(RenderError) -> MouseClick {
     return MouseClick(name: name, point: CGPoint(x: numbers[0], y: numbers[1]), modifiers: modifiers)
 }
 
-/// The request in the tool's arguments, whose `--language` takes one of
-/// `languages`.
-func request(from arguments: [String], languages: [FichaLanguage]) throws(RenderError) -> Request {
+/// The request in the tool's arguments.
+func request(from arguments: [String]) throws(RenderError) -> Request {
     var request = Request()
     var arguments = arguments[...]
     while let argument = arguments.popFirst() {
         switch argument {
         case "--dark":
             request.isDark = true
-        case "--language":
-            let code = arguments.popFirst() ?? ""
-            guard let language = languages.first(where: { $0.code == code }) else {
-                let unknown = code.isEmpty ? "" : "Ficha has no language \(code): "
-                let list = languages.map { "\($0.code) (\($0.name))" }.joined(separator: ", ")
-                throw RenderError(
-                    description: "\(unknown)--language takes one of these, by its code: \(list).\n\(usage)")
-            }
-            request.language = language
         case "--click":
             request.actions.append(.click(try mouseClick(named: arguments.popFirst() ?? "")))
         case "--key":
@@ -2026,33 +1989,26 @@ func capture(_ window: NSWindow, to output: URL) throws {
 /// The app's String Catalog, through the tool's link to `App/`.
 let renderCatalog = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "App/Localizable.xcstrings")
 
-/// Gives the tool the app's translations and `language`, or English with the
-/// Mac's own formats without one, as a Mac in that language gives them to the
-/// app. Run it before anything reads a text or a format: Foundation and
-/// AppKit read the language once.
+/// Gives the tool the app's texts, in English, as the app has them, with the
+/// Mac's own formats. Run it before anything reads a text or a format:
+/// Foundation and AppKit read the language once.
 ///
-/// The translations go where SwiftUI and `String(localized:)` look for them,
-/// the tool's main bundle, the folder its executable is in: the tool compiles
-/// the app's String Catalog there, as Xcode compiles it into the app, with
-/// `xcstringstool`, Xcode's own tool, into a `.lproj` folder for each language
-/// the catalog has. The language and the region are the user defaults macOS
-/// keeps them in, `AppleLanguages` and `AppleLocale`, set as launch arguments
-/// would set them, as Xcode's scheme options do. Our own: the compiled
-/// catalog beside the executable, and the defaults set by the tool itself.
-///
-/// For a language read right to left, the tool sets the defaults Xcode's
-/// right-to-left pseudolanguage sets, `AppleTextDirection` and
-/// `NSForceRightToLeftWritingDirection`, which mirror the window even before
-/// the catalog has the language, and its title bar too, with its buttons on
-/// the right, as macOS draws every app's when its own language reads right to
-/// left. A catalog with the language and `AppleTextDirection` alone mirror
-/// the window's content but leave its title bar as it is.
-func useLanguage(_ language: FichaLanguage?) throws(RenderError) {
+/// The texts go where SwiftUI and `String(localized:)` look for them, the
+/// tool's main bundle, the folder its executable is in: the tool compiles the
+/// app's String Catalog there, as Xcode compiles it into the app, with
+/// `xcstringstool`, Xcode's own tool, into an `.lproj` folder, which holds the
+/// texts that differ from their key, such as those with plural variations.
+/// The language is the user default macOS keeps it in, `AppleLanguages`, set
+/// as a launch argument would set it, as Xcode's scheme options do, so that
+/// the tool draws in English on a Mac in any language, as Ficha shows itself
+/// there. Our own: the compiled catalog beside the executable, and the default
+/// set by the tool itself.
+func useTheAppsTexts() throws(RenderError) {
     // SwiftPM's `.build/debug` is a link to the folder.
     let bundle = Bundle.main.bundleURL.resolvingSymlinksInPath()
-    // The languages an earlier run compiled go first, since the catalog may
-    // no longer have them. SwiftPM puts nothing of its own in `.lproj`
-    // folders there: it keeps resources in bundles.
+    // The folders an earlier run compiled go first, since the catalog may no
+    // longer have their texts, or their languages. SwiftPM puts nothing of its
+    // own in `.lproj` folders there: it keeps resources in bundles.
     do {
         for folder in try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil)
         where folder.pathExtension == "lproj" {
@@ -2061,7 +2017,7 @@ func useLanguage(_ language: FichaLanguage?) throws(RenderError) {
     } catch {
         throw RenderError(
             description: """
-                Couldn't remove the translations an earlier run compiled, the .lproj folders in \
+                Couldn't remove the texts an earlier run compiled, the .lproj folders in \
                 \(bundle.path(percentEncoded: false)): \(error.localizedDescription) Remove them yourself, and \
                 render again.
                 """)
@@ -2091,33 +2047,7 @@ func useLanguage(_ language: FichaLanguage?) throws(RenderError) {
                 """)
     }
     var defaults = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
-    defaults["AppleLanguages"] = [language?.code ?? "en"]
-    if let language {
-        defaults["AppleLocale"] = language.locale
-        if language.isRightToLeft {
-            defaults["AppleTextDirection"] = true
-            // It puts the title bar's buttons on the right, as a Mac in Arabic
-            // does, even once the catalog has the language, and changes
-            // nothing else: drawn with a throwaway Arabic catalog, with it and
-            // without it (#416), the review panel's Spanish card, front and
-            // back, and the Cards window's rows came out pixel for pixel the
-            // same, right-aligned both ways; only the title bar differed, and
-            // in the Cards window the toolbar beside its buttons.
-            defaults["NSForceRightToLeftWritingDirection"] = true
-        }
-        // English is the language the code writes the texts in, which the
-        // catalog needs no folder for.
-        if language.code != "en",
-            !FileManager.default.fileExists(
-                atPath: bundle.appending(path: "\(language.code).lproj").path(percentEncoded: false))
-        {
-            print(
-                """
-                App/Localizable.xcstrings has no \(language.name) (\(language.code)) yet, so the window's texts are \
-                English, as Ficha shows them on a Mac in \(language.name), with its formats.
-                """)
-        }
-    }
+    defaults["AppleLanguages"] = ["en"]
     UserDefaults.standard.setVolatileDomain(defaults, forName: UserDefaults.argumentDomain)
 }
 
@@ -2134,11 +2064,11 @@ do {
     let preferencesDomain = ProcessInfo.processInfo.processName
     UserDefaults.standard.removePersistentDomain(forName: preferencesDomain)
     defer { UserDefaults.standard.removePersistentDomain(forName: preferencesDomain) }
-    let request = try request(from: Array(CommandLine.arguments.dropFirst()), languages: readRenderLanguages())
+    let request = try request(from: Array(CommandLine.arguments.dropFirst()))
     guard let name = request.window else {
         throw RenderError(description: "Which window? Name one.\n\(usage)")
     }
-    try useLanguage(request.language)
+    try useTheAppsTexts()
     let pasteboard = try usePasteboardOfItsOwn()
     defer { pasteboard.releaseGlobally() }
     NSApplication.shared.setActivationPolicy(.accessory)
@@ -2185,10 +2115,8 @@ do {
         try wait(0.5)
         print("\(action): the focus is on \(focus(in: window))")
     }
-    let language = request.language.map { "-\($0.code)" } ?? ""
     let output =
-        request.output
-        ?? URL(filePath: ".build/render/\(name.rawValue)\(language)-\(request.isDark ? "dark" : "light").png")
+        request.output ?? URL(filePath: ".build/render/\(name.rawValue)-\(request.isDark ? "dark" : "light").png")
     try capture(window, to: output)
     print(
         "\(output.path(percentEncoded: false)): a \(Int(window.frame.width)) × \(Int(window.frame.height)) pt window"

@@ -205,7 +205,7 @@ struct CardTypesByName {
 
 extension CardType {
     /// The type Ficha comes with that `name` names, by its raw value or its
-    /// name in the Mac's language (`builtInNames`), as
+    /// name as the app shows it (`builtInNames`), as
     /// `UserType.isSameName(_:as:)` compares them, or nil when none does:
     /// the one lookup of the four by name, as a file, a refine session, a
     /// new user type's name or the `ficha` CLI's type commands give it.
@@ -221,7 +221,7 @@ extension CardType {
     }
 
     /// The names a type Ficha comes with goes by: its raw value, and its name
-    /// in the Mac's language, as the app's `CardType.name` writes it, whose
+    /// as the app's `CardType.name` writes it, whose
     /// keys of the app's String Catalog these are; none for a user type.
     var builtInNames: [String] {
         let name: String? =

@@ -187,8 +187,8 @@ extension Engine {
     }
 
     /// Opens the review panel with `cards`, timing Lucas on `clock`, with the
-    /// note it offers to flag a card forgotten often with in English, as the
-    /// app writes it on a Mac in English.
+    /// note it offers to flag a card forgotten often with, as the app writes
+    /// it.
     func openPanel(
         _ trigger: Trigger, with cards: [PanelCard], settings: ReviewSettings, clock: some Clock<Duration>
     ) throws -> ReviewPanelState {

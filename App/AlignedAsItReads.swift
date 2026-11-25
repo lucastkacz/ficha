@@ -21,9 +21,9 @@ struct TextAsItReads: View {
 
 extension View {
     /// Aligns the user's text, `text`, which this view shows or edits, at the
-    /// side it starts reading from, whatever the app's language: a Spanish
-    /// card at the left on a Mac in Arabic, and an Arabic card at the right
-    /// on a Mac in English, its lines too (ADR 0027). SwiftUI already gives a
+    /// side it starts reading from, whatever language it's in: an Arabic
+    /// card at the right, its lines too, though the app reads left to right
+    /// (ADR 0036). SwiftUI already gives a
     /// text its own direction within its lines, macOS 26's content-based
     /// writing direction, but aligns a `Text` at the layout's leading side,
     /// its default `Text.AlignmentStrategy`, `.layoutBased`. Apple documents

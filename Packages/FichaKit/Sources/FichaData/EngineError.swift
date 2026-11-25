@@ -3,10 +3,10 @@ import Foundation
 
 /// What can go wrong in the engine. Each message says what happened and what
 /// to do about it, in English, and is looked up in the main bundle (ADR 0009),
-/// whose String Catalog translates it, with each message added by hand, as
+/// whose String Catalog holds it, with each message added by hand, as
 /// CODING_STANDARDS.md says. The `ficha` CLI's main bundle is its own folder
-/// in the app, Contents/Helpers, which has no catalog, so the CLI always
-/// prints them in English.
+/// in the app, Contents/Helpers, which has no catalog, so the CLI prints each
+/// message from its key, its English text.
 public enum EngineError: Error, Equatable {
     /// The database has migrations this version doesn't know: a newer version
     /// of Ficha migrated it, so this one refuses to open it.
@@ -104,8 +104,8 @@ public enum EngineError: Error, Equatable {
     /// changed.
     case blankTypeName
     /// A user type was to be made or renamed with this name, which one of
-    /// the four types Ficha comes with goes by, its raw value or its name in
-    /// the Mac's language, so nothing changed.
+    /// the four types Ficha comes with goes by, its raw value or its name as
+    /// the app shows it, so nothing changed.
     case builtInTypeName(String)
     /// A user type was to be made or renamed with the name of another, this
     /// one, ignoring case and accents, so nothing changed.
@@ -642,18 +642,16 @@ extension CardsFileProblem {
 }
 
 extension EngineError {
-    /// `name` in the quotes of the language the message shows in, like
-    /// “ética” in English, „ética“ in German and 「ética」 in Japanese: a text
-    /// of its own in the String Catalogs, added by hand and translated as a
-    /// message is, since a message takes a list of names as one value, which
-    /// its translation can't quote name by name.
+    /// `name` in quotes, like “ética”: a text of its own in the String
+    /// Catalogs, added by hand as a message is, since a message takes a list
+    /// of names as one value, whose quotes are then the catalog's.
     static func quotedName(_ name: String) -> LocalizedStringResource {
         LocalizedStringResource("“\(name)”")
     }
 }
 
-/// `names`, each in the quotes of the language the message shows in, listed
-/// as the Mac's language lists them, like “ética” and “filosofía” in English.
+/// `names`, each in quotes (`EngineError.quotedName`), listed as the locale
+/// lists them, like “ética” and “filosofía”.
 private func quotedList(_ names: [String]) -> String {
     names.map { String(localized: EngineError.quotedName($0)) }.formatted(.list(type: .and))
 }

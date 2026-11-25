@@ -77,9 +77,10 @@ public struct CardSize: Sendable, Hashable {
 /// that layout, as for `LetterKey`, and a press of ⌘ and Shift for what its
 /// layout types with Shift, since + takes Shift on a US keyboard, = on a German
 /// one, and 0 on a French or an Italian one, where ⌘ alone still types à or é.
-/// macOS's own layouts for Ficha's languages type all four keys this way, as
-/// `UCKeyTranslate` read them. This rule is our own. The windows keep the
-/// shortcuts themselves; this rule is here so it's tested.
+/// macOS's own layouts for the twelve languages Ficha came in before ADR 0036
+/// type all four keys this way, as `UCKeyTranslate` read them. This rule is
+/// our own. The windows keep the shortcuts themselves; this rule is here so
+/// it's tested.
 public enum CardSizeKey: Character, CaseIterable, Sendable {
     case plus = "+"
     case equals = "="
