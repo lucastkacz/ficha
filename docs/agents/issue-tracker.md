@@ -29,7 +29,7 @@ An issue is all one agent can build in one fresh context without compacting: up 
 What only Lucas can check by hand on his Mac waits in one open issue, assigned to him, whose title starts with `Hand checks`; the search also finds other titles with those words, which the `--jq` leaves out. On Lucas's Mac:
 
 ```
-gh issue list --state open --search 'in:title "Hand checks"' --json number,title,issueType,labels,assignees,body,comments --jq '[.[] | select(.title | startswith("Hand checks")) | {number, title, type: .issueType.name, labels: [.labels[].name], assignees: [.assignees[].login], body, comments: [.comments[].body]}]'
+gh issue list --state open --search 'in:title "Hand checks"' --json number,title,issueType,labels,assignees,body,comments --jq '[.[] | select(.title | startswith("Hand checks")) | {number, title, type: .issueType.name, labels: [.labels[].name], assignees: [.assignees[].login], body, comments: [.comments[] | {url, body}]}]'
 ```
 
 In a cloud session, find it with the command below, then read the issue and its comments as **Read an issue** says:
