@@ -156,7 +156,10 @@ expect 0 "gh issue view's help passes" issue-comments.sh "$(bash_input 'gh issue
 expect 2 "issues listed with a --json list that has their bodies and not their comments are blocked" issue-comments.sh "$(bash_input 'gh issue list --label mac --json number,title,body' "$tmp/branch")"
 expect 0 "issues listed without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --label mac' "$tmp/branch")"
 expect 0 "issues listed with a --json list without their bodies pass" issue-comments.sh "$(bash_input 'gh issue list --json number,title,labels' "$tmp/branch")"
-expect 0 "issues listed as the tracker doc lists them pass" issue-comments.sh "$(bash_input "gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'" "$tmp/branch")"
+# A copy of the command docs/agents/issue-tracker.md's **List issues** gives,
+# which changes with it: CI skips a pull request whose files are all Markdown,
+# so no case reads the doc.
+expect 0 "issues listed as the tracker doc lists them pass" issue-comments.sh "$(bash_input "gh issue list --state open --limit 1000 --json number,title,issueType,body,labels,assignees,comments --jq '[.[] | {number, title, type: .issueType.name, body, labels: [.labels[].name], assignees: [.assignees[].login], comments: [.comments[].body]}]'" "$tmp/branch")"
 expect 2 "an issue viewed in the terminal panel is checked too" issue-comments.sh "$(panel_input 'gh issue view 140' "$tmp/branch" "$tmp/branch")"
 expect 0 "a pull request viewed without its comments passes" issue-comments.sh "$(bash_input 'gh pr view 137 --json body' "$tmp/branch")"
 expect 0 "an issue read through the API passes" issue-comments.sh "$(bash_input 'gh api repos/lucastkacz/ficha/issues/140' "$tmp/branch")"
