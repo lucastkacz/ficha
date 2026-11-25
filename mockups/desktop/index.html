@@ -180,7 +180,6 @@
     font-size: var(--text-footnote); line-height: 15px; color: var(--hud-accent-ink); background: var(--hud-accent);
   }
   .origin.new { background: #9fd8b5; color: #0f2a1a; }
-  .origin.ask { box-shadow: 0 0 0 1.5px #e0663c; }
 
   .menubar .due-count { margin-left: 3px; font-variant-numeric: tabular-nums; }
 </style>
@@ -476,21 +475,20 @@
   }
 
   // ---------------------------------------------------------------------
-  // SettingsWindow: five tabs (#492). Where each of today's rows went is
-  // the decision's proposal, to settle here before any Swift.
+  // SettingsWindow: five tabs (#492). Each of today's rows sits where
+  // Lucas approved it on 2026-11-25.
   // ---------------------------------------------------------------------
   const Origins = createContext(true);
-  /** The mock's note on where a row was: today's tab, "New", or a row to ask about. */
-  function Origin({ from, ask, label }) {
+  /** The mock's note on where a row was: today's tab, or "New". */
+  function Origin({ from, label }) {
     if (!useContext(Origins) || !from) return null;
-    const cls = ['origin', from === 'new' && 'new', ask && 'ask'].filter(Boolean).join(' ');
     const text = label || (from === 'new' ? 'New' : `Was in ${from}`);
-    return html`<span className=${cls} title=${ask || ''}>${text}${ask ? ' · ?' : ''}</span>`;
+    return html`<span className=${from === 'new' ? 'origin new' : 'origin'}>${text}</span>`;
   }
   const Group = ({ title, footer, children }) => html`<section className="fgroup">${title && html`<h4>${title}</h4>`}
     <div className="fbox">${children}</div>${footer && html`<p className="ffoot">${footer}</p>`}</section>`;
-  const Row = ({ label, sub, from, ask, children }) => html`<div className="frow">
-    <div className="flabel"><span>${label}</span>${sub && html`<small>${sub}</small>`}<${Origin} from=${from} ask=${ask} /></div>
+  const Row = ({ label, sub, from, children }) => html`<div className="frow">
+    <div className="flabel"><span>${label}</span>${sub && html`<small>${sub}</small>`}<${Origin} from=${from} /></div>
     <div className="fcontrol">${children}</div></div>`;
   const Toggle = ({ on, onChange, label, disabled }) => html`<button type="button" role="switch" aria-checked=${on}
     aria-label=${label} className="switch" disabled=${disabled} onClick=${() => onChange(!on)}><i /></button>`;
@@ -573,7 +571,7 @@
           options=${Array.from({ length: 24 - from }, (_, i) => ({ value: from + 1 + i, label: hourLabel(from + 1 + i) }))} /></${Row}>
         <${Row} label="At least this long apart" from="Appearances"><${Popup} label="Apart" value=${s.separation} onChange=${set('separation')}
           options=${minutes([10, 15, 20, 30, 45, 60, 90, 120, 180, 240])} /></${Row}>
-        <${Row} label="Cards per appearance" from="Appearances" ask="The decision's picture had it in Advanced; the issue's text, here.">
+        <${Row} label="Cards per appearance" from="Appearances">
           <${Popup} label="Cards per appearance" value=${s.cardsPerAppearance} onChange=${set('cardsPerAppearance')}
             options=${Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: String(i + 1) }))} /></${Row}>
         <${Row} label="Bring along cards due within" from="Appearances"><${Popup} label="Look-ahead" value=${s.lookAhead} onChange=${set('lookAhead')}
@@ -631,7 +629,7 @@
       </${Group}>
       <${Group} footer="Each Again to a card out of its learning and relearning steps counts, since its front or back last changed.">
         <${Row} label="Offer to flag a card you forget often" sub="So it gets fixed. Ficha never flags a card on its own."
-          from="Review panel" ask="Not in the decision's list: here, as Anki keeps its leech threshold in its deck options. Or Interruptions?">
+          from="Review panel">
           <${Toggle} label="Offer to flag" on=${prefs.offerFlag} onChange=${(offerFlag) => setPrefs({ ...prefs, offerFlag })} /></${Row}>
         ${prefs.offerFlag && html`<${Row} label=${`After forgetting it ${prefs.flagAfter} times`} from="Review panel">
           <${Stepper} label="Times" onStep=${(d) => setPrefs({ ...prefs, flagAfter: Math.min(20, Math.max(4, prefs.flagAfter + d)) })} /></${Row}>`}
@@ -774,8 +772,8 @@
         day has appearances, the latest if five days a week do. 85% desired retention.</li>
       <li>Ficha's decks, in English, offered at the Welcome page and in the Cards window; the first card comes a minute
         after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
-      <li>Settings in five tabs. "Settings: Show where from" marks each row with the tab it was in today; a row marked
-        ? is one to decide.</li>
+      <li>Settings in five tabs, as Lucas approved them. "Settings: Show where from" marks each row with the tab it
+        was in today.</li>
     </ul>
     <h4>Still as the app has it</h4>
     <ul>
