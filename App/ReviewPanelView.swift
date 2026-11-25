@@ -45,17 +45,18 @@ struct ReviewPanelView: View {
             String(
                 localized: "Forgotten \(forgotten.times) times",
                 comment: """
-                    The note the review panel offers to flag a card with, once the user answered “Again” to it this \
-                    many times front first while it was graduated, out of its learning and relearning steps, since \
-                    its front or back last changed: Anki's lapses. They can add to it.
+                    The note the review panel offers to flag a card with, once the user answered “Forgot”, Anki's \
+                    Again, to it this many times front first while it was graduated, out of its learning and \
+                    relearning steps, since its front or back last changed: Anki's lapses. They can add to it.
                     """)
         case .backFirst:
             String(
                 localized: "Forgotten \(forgotten.times) times back first",
                 comment: """
-                    The note the review panel offers to flag a card with, once the user answered “Again” to it this \
-                    many times back first, its back shown on top, while it was graduated, out of its learning and \
-                    relearning steps, since its front or back last changed: Anki's lapses. They can add to it.
+                    The note the review panel offers to flag a card with, once the user answered “Forgot”, Anki's \
+                    Again, to it this many times back first, its back shown on top, while it was graduated, out of \
+                    its learning and relearning steps, since its front or back last changed: Anki's lapses. They can \
+                    add to it.
                     """)
         }
     }
@@ -533,17 +534,16 @@ struct ReviewPanelView: View {
     /// from the field's `onAppear` instead, after M, SwiftUI never focused it
     /// while the panel had the keyboard (#61).
     private func perform(_ action: CardAction, in panel: ReviewPanelModel) {
+        panel.state.choose(action)
         switch action {
         case .ask:
-            panel.state.startAsking()
             questionSelection = nil
             questionIsFocused = true
         case .flag:
-            panel.state.startFlagging()
             noteSelection = nil
             noteIsFocused = true
         case .bury:
-            panel.state.buryCard()
+            break
         }
     }
 

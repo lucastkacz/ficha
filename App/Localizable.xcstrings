@@ -928,7 +928,7 @@
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
     },
     "After forgetting it %lld times" : {
-      "comment" : "Settings, under Review panel: how many “Again” answers to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it.",
+      "comment" : "Settings, under Review panel: how many “Forgot” answers, Anki's Again, to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1729,8 +1729,8 @@
     "Due" : {
       "comment" : "A column of the Cards window: when the card is due.\nIn the Cards window's detail: when the card is due."
     },
-    "Each “Again” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
-      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Again” is the review panel's button, as Anki names it."
+    "Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
+      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Forgot” is the review panel's button that records Anki's Again, also on key 1."
     },
     "Easy" : {
       "comment" : "A rating, Anki's fourth button, as the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
@@ -1903,7 +1903,7 @@
       "comment" : "The review panel's button, once a card is turned over, for a card the user didn't remember: it records Anki's Again. Its key is 1."
     },
     "Forgotten %lld times" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times front first while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Forgot”, Anki's Again, to it this many times front first while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1926,7 +1926,7 @@
       }
     },
     "Forgotten %lld times back first" : {
-      "comment" : "The note the review panel offers to flag a card with, once the user answered “Again” to it this many times back first, its back shown on top, while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
+      "comment" : "The note the review panel offers to flag a card with, once the user answered “Forgot”, Anki's Again, to it this many times back first, its back shown on top, while it was graduated, out of its learning and relearning steps, since its front or back last changed: Anki's lapses. They can add to it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2470,7 +2470,7 @@
 
     },
     "Offer to flag a card you forget often" : {
-      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Again” to while it's out of its learning and relearning steps, so it gets fixed."
+      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Forgot”, Anki's Again, to while it's out of its learning and relearning steps, so it gets fixed."
     },
     "On its own" : {
       "comment" : "In Diagnostics: the review panel showed up on its own."

@@ -410,6 +410,17 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
+    /// Does `action` with the card Lucas is on, which he chose from the ⋯
+    /// menu or with its key: starts asking about it or flagging it, or buries
+    /// it.
+    public mutating func choose(_ action: CardAction) {
+        switch action {
+        case .ask: startAsking()
+        case .flag: startFlagging()
+        case .bury: buryCard()
+        }
+    }
+
     /// Buries the card Lucas is on, which takes it out of his reviews for
     /// good, and moves on to the next card. When it can't be saved, the card
     /// stays, and the panel says why.

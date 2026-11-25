@@ -180,27 +180,32 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "the ⋯ menu offers to ask, flag and bury the card, as A, M and E do, and nothing while Lucas writes or once he's done",
+        "the ⋯ menu and A, M and E ask, flag and bury the card, and the menu offers nothing while Lucas writes or once he's done",
         .bug(id: 489))
-    func theMenuOffersTheCardsActions() throws {
+    func theMenuAndItsKeysAskFlagAndBury() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
 
         let onItsUpperSide = panel.cardActions
         panel.flip()
         let onBothSides = panel.cardActions
-        panel.startAsking()
+        panel.choose(.ask)
+        let asking = panel.content
         let whileAsking = panel.cardActions
         panel.cancelAsking()
-        panel.startFlagging()
+        panel.choose(.flag)
+        let flagging = panel.content
         let whileFlagging = panel.cardActions
         panel.cancelFlagging()
-        panel.buryCard()
+        panel.choose(.bury)
 
         #expect(onItsUpperSide == [.ask, .flag, .bury])
         #expect(onBothSides == [.ask, .flag, .bury])
+        #expect(asking == .asking(serendipia, showsLowerSide: true))
         #expect(whileAsking.isEmpty)
+        #expect(flagging == .flagging(serendipia, showsLowerSide: true))
         #expect(whileFlagging.isEmpty)
+        #expect(try engine.cards().map(\.buriedAt) == [time.now])
         #expect(panel.content == .done)
         #expect(panel.cardActions.isEmpty)
     }
@@ -210,7 +215,8 @@ struct ReviewPanelTests {
     // shows none (ADR 0033), also when Lucas answers after the time since the
     // card's last review went past half a day more, which rounds FSRS's days
     // up.
-    @Test("a review keeps the intervals the scheduler worked out as the card flipped, for a new card and a graduated one")
+    @Test(
+        "a review keeps the intervals the scheduler worked out as the card flipped, for a new card and a graduated one")
     func theReviewKeepsTheIntervalsOfTheFlip() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)

@@ -2,8 +2,8 @@
 /// it, in the order its ⋯ menu offers them (ADR 0033): ask a question about
 /// it, flag it with a note on what to fix, and bury it. Each keeps its key,
 /// A, M and E, also on a layout of another script (`LetterKey`). The panel's
-/// view keeps the menu and the shortcuts; this map is here so it's tested.
-/// The ⋯ menu is provisional (ADR 0033).
+/// view keeps the menu and the shortcuts, and its state does each; this map
+/// is here so it's tested. The ⋯ menu is provisional (ADR 0033).
 public enum CardAction: CaseIterable, Sendable {
     /// Asks a question about the card, which waits in the inbox as a
     /// follow-up.
