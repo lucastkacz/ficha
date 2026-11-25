@@ -2,7 +2,7 @@
 
 A macOS menu-bar app that shows its user a tiny flashcard every so often and spaces each card by how well they know it. Zero friction: answering takes seconds, and the cards stay on their devices and in their own iCloud. Lucas built it for himself first; now it's for anyone, and it will sell on the App Store together with its iPhone app (#160), which for now is only Ficha Dev, with the sample cards (#97).
 
-Ficha is built by agents with Lucas's own method, whose six commands are below (ADR 0030). Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; what the method reads about Ficha lives in its pliego, `PLIEGO.md`; the domain glossary is `GLOSSARY.md` and decisions are in `docs/adr/`.
+Ficha is built by agents with Lucas's own method, whose seven commands are below (ADR 0030, ADR 0037). Lucas brings the ideas and the decisions; Claude does the rest. The product spec lives in a GitHub issue; what the method reads about Ficha lives in its pliego, `PLIEGO.md`; the domain glossary is `GLOSSARY.md` and decisions are in `docs/adr/`.
 
 ## Rules
 
@@ -18,7 +18,7 @@ Ficha is built by agents with Lucas's own method, whose six commands are below (
 
 ## The method: Claude suggests, Lucas types
 
-Six commands take an idea or a bug from Lucas's words to the code and back to what was built. Only Lucas types them, and Claude can't see them: `.claude/method/method.md` is what they share, with their words, such as pliego, plano, area and node. When one fits, suggest it in one line, with the exact command and why, naming an issue by its title, linked, never by its number alone, e.g. "¿Corrés `/debate` sobre [Volver después de una pausa](…)? Falta elegir cuántas tarjetas te muestra al volver." Never carry out a command's steps by hand instead.
+Six commands take an idea or a bug from Lucas's words to the code and back to what was built, and a seventh, `/recorrida`, walks through where they all stand. Only Lucas types them, and Claude can't see them: `.claude/method/method.md` is what they share, with their words, such as pliego, plano, area and node. When one fits, suggest it in one line, with the exact command and why, naming an issue by its title, linked, never by its number alone, e.g. "¿Corrés `/debate` sobre [Volver después de una pausa](…)? Falta elegir cuántas tarjetas te muestra al volver." Never carry out a command's steps by hand instead.
 
 | When | Suggest |
 |---|---|
@@ -28,6 +28,7 @@ Six commands take an idea or a bug from Lucas's words to the code and back to wh
 | A debate is settled, an idea is small enough to need none, Lucas approved a decision, or `/entregar` delivered a probe a piece waited on | `/decision` |
 | A node has ready issues, of type Feature, Bug or Task, or a bug blocks everything | `/construir`, with the node or the bug |
 | A node's PR merged | `/entregar` |
+| Lucas comes back after a few days, or asks where things stand or what's next | `/recorrida` |
 | Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them; or Lucas wants an image or a sound on a card, his decks, tags or card types tidied, or his tags turned into decks | `/refine`, ours and outside the method: it proposes the cards, each in its deck, the changes to decks, tags and types, or the tags that become decks, and Lucas approves them |
 
 At the end of each phase of work, such as a debate's round, a node's build or a review, decide how to go on: continue, `/clear`, `/compact` or a subagent. Suggest it.

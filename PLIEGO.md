@@ -1,6 +1,6 @@
 # Pliego of Ficha
 
-What the method's six commands read about Ficha (`.claude/method/method.md`), approved by Lucas on 2026-11-23. Each item is ✓ decided, ◐ provisional (it holds until a debate changes it) or ○ open. An item points at the file that already holds its details, and that file is where they change. A quoted name, such as "A window's picture", is a section of `docs/development.md`.
+What the method's commands read about Ficha (`.claude/method/method.md`), approved by Lucas on 2026-11-23. Each item is ✓ decided, ◐ provisional (it holds until a debate changes it) or ○ open. An item points at the file that already holds its details, and that file is where they change. A quoted name, such as "A window's picture", is a section of `docs/development.md`.
 
 ## What it is
 
@@ -158,7 +158,7 @@ The rest:
 - ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the same import as any file; #458 brings them (ADR 0035).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; and the check that the clock and the review log's IDs come from their sources.
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
-- ✓ `.claude/`: the permissions, the hooks, the rules, the method's six skills and what they share (`method/`), the `/refine` skill and the subagents' types.
+- ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), the `/refine` skill and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
 - ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).
 - ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
@@ -190,6 +190,7 @@ Rules that don't break:
 - ✓ The standards: `CODING_STANDARDS.md`.
 - ✓ A PR merges itself after the three checks, with auto-merge; a `risk:high` PR waits for Lucas (`CLAUDE.md`, Shipping).
 - ✓ After a merge: `/entregar`, then `make clean-merged` from the main folder ("Cleaning up after a merge").
+- ✓ The order of the work: the issue "Roadmap: the Mac app in the new direction, then the iPhone" (#160), node by node, which each decision reorders.
 - ✓ A mechanical chore goes to a `clerk`, or in a cloud session to a `general-purpose` agent (`CLAUDE.md`, Shipping); building to `builder`s; the reviews to `reviewer`s (`.claude/agents/`).
 - ✓ Where each kind of work runs, and on which machine: Where it runs (ADR 0031).
 

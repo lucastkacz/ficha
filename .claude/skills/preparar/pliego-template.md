@@ -50,7 +50,7 @@ The glossary's file.
 
 ## How we work
 
-The language of each reader, the default branch, the branch and worktree rules, the standards' file, how a PR merges, and what happens after a merge.
+The language of each reader, the default branch, the branch and worktree rules, the standards' file, how a PR merges, what happens after a merge, and where the order of the work lives, such as a roadmap issue.
 
 ## Open
 

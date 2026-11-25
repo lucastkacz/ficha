@@ -1,6 +1,6 @@
 # The method
 
-Six commands take an idea, or a bug, from the user's words to the code and back to what was built. Only the user types them; Claude suggests the next one in a line. This file is what the six share: each reads it before its own steps, and its words are theirs.
+Six commands take an idea, or a bug, from the user's words to the code and back to what was built, and a seventh, `/recorrida`, walks through where they all stand. Only the user types them; Claude suggests the next one in a line. This file is what the seven share: each reads it before its own steps, and its words are theirs.
 
 | Command | What it leaves the user |
 |---|---|
@@ -10,6 +10,7 @@ Six commands take an idea, or a bug, from the user's words to the code and back 
 | `/decision` | An artifact to approve; once approved, its decision record and its issues |
 | `/construir` | A node's branch, its issues' tests first, and its PR |
 | `/entregar` | Everything as built, and a retro only if something went sideways |
+| `/recorrida` | Where the work stands, outside the flow above: what was done since the user last looked and why, and the next command, on one page |
 
 The project's own facts (its areas, commands, pictures, tests, machines, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
 
@@ -28,6 +29,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
 - **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned.
 - **Probe** (prueba): a Task that settles an open item before the issue that depends on it is written, by trying it on the machine it's about, such as whether a rented machine can draw the pictures, once the decision says what the piece does with each answer. Its PR says what it found, and `/decision`, typed again, settles the pliego's open item and writes the waiting piece's issues with it.
 - **Sideways** (se torció): a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, a procedure written for agents that couldn't run on its machine, whose own issue stands as its retro's Task, or a node that took far longer than its size. `/construir`'s PR says what went sideways, and `/entregar` looks back at it.
+- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next. It changes nothing but its own page.
 
 ## What the user sees
 

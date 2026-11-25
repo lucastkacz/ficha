@@ -1,5 +1,7 @@
 # Ficha is built with Lucas's own method: six commands, a pliego, and one branch per node
 
+> Changed in part by [ADR 0037](0037-a-seventh-command-recorrida-walks-through-where-the-work-stands.md), which adds a seventh command, `/recorrida`, outside the six's flow (2026-11-25).
+
 Since ADR 0007, agents built Ficha with the `mattpocock-skills` plugin and a map of its skills in `CLAUDE.md`, partly as an experiment. After a month Lucas found its 25 skills, ours among them, too many to remember and their text too long to read, specs split into tickets slow to review, and 45 of the last 100 pull requests (#200 to #469) waiting for his merge. In nine rounds of debate, on 2026-11-19 and 2026-11-20, he designed a method of his own, generic so that any of his projects can follow it, and approved it as a decision with its before and after. It replaces ADR 0007, and changes ADR 0006 in part.
 
 - Six commands, which only Lucas types, take an idea or a bug from his words to the code and back. `/preparar` writes a project's pliego, its plano among it; `/idea` makes an idea or a bug an issue in its area; `/debate` asks, round by round, in an artifact; `/decision` shows the decision to approve, then writes its record and splits it into issues; `/construir` builds a node's ready issues on one branch, each test first, behind one PR; `/entregar` leaves everything as built, with a retro only when something went sideways. They live in `.claude/skills/`, with what they share in `.claude/method/`, and say nothing of Ficha: they read Ficha from its pliego.

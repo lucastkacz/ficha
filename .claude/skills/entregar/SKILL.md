@@ -32,6 +32,6 @@ Done when each thing that went sideways has its Task issue, or nothing did.
 
 ## 4. Tell the user
 
-One line: what was delivered, by the decision's title, linked; what's left, by the issues' titles, linked; and the next step, which after a probe is `/decision` for the piece it held back.
+One line: what was delivered, by the decision's title, linked; what's left, by the issues' titles, linked; and the next step, which after a probe is `/decision` for the piece it held back. The same line goes on the merged PR as a comment, which tells a later `/recorrida` the PR was delivered.
 
-Done when the user has the line.
+Done when the user has the line, and the PR has it as a comment.
